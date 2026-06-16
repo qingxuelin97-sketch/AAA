@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
-import { ScrollText, Coins, Play, Plus } from 'lucide-react';
+import { ScrollText, Coins, Play, Plus, Inbox } from 'lucide-react';
+import { CategoryIcon } from '../assets.jsx';
 
 function ScriptCard({ s, nav, extra }) {
   return (
     <div className="char-card" onClick={() => nav('/script/' + s.id)}>
       <div className="cover">
-        {s.cover ? <img src={s.cover} alt="" /> : <div className="ph">📜</div>}
+        {s.cover ? <img src={s.cover} alt="" /> : <div className="ph"><ScrollText size={46} /></div>}
       </div>
       <div className="meta">
         <h3>{s.title}</h3>
@@ -90,8 +91,8 @@ export default function Scripts() {
                 <ScrollText size={14} style={{ verticalAlign: 'middle' }} /> 全部
               </button>
               {cats.map(c => (
-                <button key={c.slug} className={'cat-chip' + (cat === c.slug ? ' active' : '')} onClick={() => setCat(c.slug)}>
-                  {c.icon ? <span>{c.icon} </span> : null}{c.name}
+                <button key={c.slug} className={'cat-chip' + (cat === c.slug ? ' active' : '')} onClick={() => setCat(c.slug)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <CategoryIcon slug={c.slug} size={14} /> {c.name}
                 </button>
               ))}
             </div>
@@ -109,7 +110,7 @@ export default function Scripts() {
 
             {loading ? <div className="empty">载入中…</div> :
               scripts.length === 0 ? (
-                <div className="empty"><div className="big">📜</div>暂无剧本</div>
+                <div className="empty"><div className="big"><ScrollText size={46} /></div>暂无剧本</div>
               ) : (
                 <div className="grid">
                   {scripts.map(s => <ScriptCard key={s.id} s={s} nav={nav} />)}
@@ -122,7 +123,7 @@ export default function Scripts() {
           loading ? <div className="empty">载入中…</div> :
             mine.created.length === 0 ? (
               <div className="empty">
-                <div className="big">✍️</div>你还没有创建剧本
+                <div className="big"><ScrollText size={46} /></div>你还没有创建剧本
                 <div style={{ marginTop: 16 }}><button className="btn primary" onClick={() => nav('/script/new')}>创建第一个剧本</button></div>
               </div>
             ) : (
@@ -135,7 +136,7 @@ export default function Scripts() {
         {tab === 'purchased' && (
           loading ? <div className="empty">载入中…</div> :
             mine.purchased.length === 0 ? (
-              <div className="empty"><div className="big">🛒</div>你还没有购买剧本</div>
+              <div className="empty"><div className="big"><Inbox size={46} /></div>你还没有购买剧本</div>
             ) : (
               <div className="grid">
                 {mine.purchased.map(s => (

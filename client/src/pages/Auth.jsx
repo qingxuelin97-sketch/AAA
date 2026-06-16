@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../api.jsx';
 import { useToast } from '../ui.jsx';
+import { Logo } from '../assets.jsx';
+import { Drama, BookOpen, Plug, Volume2, Users } from 'lucide-react';
 
 export default function Auth() {
   const { login, register } = useAuth();
@@ -19,7 +21,7 @@ export default function Auth() {
     try {
       if (mode === 'login') await login(form.username, form.password);
       else await register(form);
-      toast(mode === 'login' ? '欢迎回来 ✨' : '注册成功，开启你的幻域之旅');
+      toast(mode === 'login' ? '欢迎回来' : '注册成功，开启你的幻域之旅');
       nav('/');
     } catch (err) {
       toast(err.message, 'err');
@@ -31,14 +33,15 @@ export default function Auth() {
       <div className="auth-hero">
         <div className="glow" />
         <div className="brand" style={{ padding: 0, marginBottom: 26 }}>
-          <div className="logo" style={{ width: 46, height: 46, fontSize: 24 }}>🜲</div>
+          <Logo size={46} radius={13} />
           <div><b style={{ fontSize: 22 }}>幻域</b><small>HUANYU AI</small></div>
         </div>
         <h1>与你创造的<br />角色一同呼吸</h1>
         <p>自定义角色立绘与动态聊天背景，编写世界书与人设，接入你自己的语言 / 语音模型，沉浸式扮演属于你的故事。把得意之作分享到广场，推送给同好。</p>
         <div className="auth-feat">
-          <span>🎭 自定义角色</span><span>📖 世界书</span><span>🔌 自带模型 API</span>
-          <span>🔊 语音对话</span><span>🌐 社区广场</span>
+          <span><Drama size={14} /> 自定义角色</span><span><BookOpen size={14} /> 世界书</span>
+          <span><Plug size={14} /> 自带模型 API</span><span><Volume2 size={14} /> 语音对话</span>
+          <span><Users size={14} /> 社区广场</span>
         </div>
       </div>
 

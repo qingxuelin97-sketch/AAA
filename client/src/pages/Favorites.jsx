@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
-import { Heart } from 'lucide-react';
+import { Heart, HeartCrack, Drama } from 'lucide-react';
 
 export default function Favorites() {
   const [chars, setChars] = useState([]);
@@ -47,19 +47,19 @@ export default function Favorites() {
         {loading ? (
           <div className="empty">载入中…</div>
         ) : chars.length === 0 ? (
-          <div className="empty"><div className="big">💔</div>还没有收藏角色</div>
+          <div className="empty"><div className="big"><HeartCrack size={46} /></div>还没有收藏角色</div>
         ) : (
           <div className="grid">
             {chars.map(c => (
               <div key={c.id} className="char-card">
                 <div className="cover">
-                  {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph">🎭</div>}
+                  {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}
                   <button
                     className="btn sm danger"
                     style={{ position: 'absolute', top: 8, right: 8 }}
                     title="取消收藏"
                     onClick={e => unfavorite(e, c)}
-                  >❤</button>
+                  ><Heart size={14} fill="currentColor" /></button>
                 </div>
                 <div className="meta">
                   <h3>{c.name}</h3>

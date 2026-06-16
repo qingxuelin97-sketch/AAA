@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar, Uploader, Modal } from '../ui.jsx';
-import { Users, Plus } from 'lucide-react';
+import { Users, Plus, MessageCircle } from 'lucide-react';
 
 export default function Groups() {
   const [groups, setGroups] = useState([]);
@@ -25,7 +25,7 @@ export default function Groups() {
         <button className="btn primary" onClick={() => setCreating(true)}><Plus size={16} /> 创建群聊</button>
       </div>
       <div className="page">
-        {groups.length === 0 ? <div className="empty"><div className="big">💬</div>还没有群聊，创建一个吧</div> :
+        {groups.length === 0 ? <div className="empty"><div className="big"><MessageCircle size={46} /></div>还没有群聊，创建一个吧</div> :
           groups.map(g => (
             <div key={g.id} className="room-row" onClick={() => open(g)}>
               {g.avatar ? <img className="ava" src={g.avatar} alt="" /> : <div className="ava" style={{ display: 'grid', placeItems: 'center', background: 'var(--panel-2)' }}><Users size={22} /></div>}

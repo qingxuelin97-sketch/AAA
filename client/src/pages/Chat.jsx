@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft } from 'lucide-react';
 
 export default function Chat() {
   const { id } = useParams();
@@ -74,7 +75,7 @@ export default function Chat() {
     } catch (err) {
       toast(err.message, 'err');
       setMessages(m => { const c = [...m]; const last = c[c.length - 1];
-        if (last?._streaming) c[c.length - 1] = { role: 'assistant', content: '⚠️ ' + err.message, _streaming: false }; return c; });
+        if (last?._streaming) c[c.length - 1] = { role: 'assistant', content: '（连接出错）' + err.message, _streaming: false }; return c; });
     } finally { setStreaming(false); }
   };
 
@@ -103,14 +104,14 @@ export default function Chat() {
   return (
     <div className="chat-layout">
       <div className={'chat-list' + (conv ? ' hide-mobile' : '')}>
-        <div className="hd">对话 <button className="btn sm" onClick={() => nav('/library')}>＋</button></div>
+        <div className="hd">对话 <button className="btn sm" onClick={() => nav('/library')}><Plus size={15} /></button></div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {convs.length === 0 && <div className="empty" style={{ padding: 30, fontSize: 13 }}>从「我的角色」开始一段对话</div>}
           {convs.map(cv => (
             <div key={cv.id} className={'conv-item' + (String(cv.id) === String(id) ? ' active' : '')} onClick={() => nav('/chats/' + cv.id)}>
               <Avatar src={cv.character_avatar} name={cv.character_name} size={40} />
               <div className="tx"><b>{cv.character_name}</b><span>{cv.title}</span></div>
-              <button className="speak" onClick={e => delConv(e, cv)}>✕</button>
+              <button className="speak" onClick={e => delConv(e, cv)}><X size={14} /></button>
             </div>
           ))}
         </div>
@@ -119,7 +120,7 @@ export default function Chat() {
       <div className="chat-main">
         {!conv ? (
           <div className="empty" style={{ margin: 'auto' }}>
-            <div className="big">💬</div>选择左侧对话，或从角色库开启新对话
+            <div className="big"><MessageCircle size={46} /></div>选择左侧对话，或从角色库开启新对话
           </div>
         ) : (
           <>
@@ -131,7 +132,7 @@ export default function Chat() {
               </div>
             )}
             <div className="chat-head">
-              <button className="btn ghost sm mobile-only" onClick={() => nav('/chats')}>←</button>
+              <button className="btn ghost sm mobile-only" onClick={() => nav('/chats')}><ArrowLeft size={16} /></button>
               <Avatar src={character?.avatar} name={character?.name} size={42} />
               <div className="nm"><b>{character?.name}</b><br /><span>{character?.tagline || '正在扮演中'}</span></div>
             </div>
@@ -145,7 +146,7 @@ export default function Chat() {
                       {m.content || (m._streaming && <span className="typing"><span></span><span></span><span></span></span>)}
                     </div>
                     {m.role === 'assistant' && m.content && !m._streaming &&
-                      <button className="speak" onClick={() => speak(m.content)}>🔊 朗读</button>}
+                      <button className="speak" onClick={() => speak(m.content)}><Volume2 size={13} /> 朗读</button>}
                   </div>
                 </div>
               ))}
@@ -155,7 +156,7 @@ export default function Chat() {
               <div className="box">
                 <textarea rows={1} value={input} placeholder={`对 ${character?.name} 说点什么…（Enter 发送，Shift+Enter 换行）`}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
-                <button className="send-btn" onClick={send} disabled={streaming || !input.trim()}>➤</button>
+                <button className="send-btn" onClick={send} disabled={streaming || !input.trim()}><Send size={17} /></button>
               </div>
             </div>
           </>

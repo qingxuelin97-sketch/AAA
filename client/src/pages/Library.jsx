@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
+import { Drama, Globe, MessageCircle, Plus, X } from 'lucide-react';
 
 export default function Library() {
   const [chars, setChars] = useState([]);
@@ -21,7 +22,7 @@ export default function Library() {
   };
   const publish = async (e, c) => {
     e.stopPropagation();
-    try { await api('/community/publish-character/' + c.id, { method: 'POST' }); toast('已发布到广场 🎉'); load(); }
+    try { await api('/community/publish-character/' + c.id, { method: 'POST' }); toast('已发布到广场'); load(); }
     catch (err) { toast(err.message, 'err'); }
   };
   const del = async (e, c) => {
@@ -38,13 +39,13 @@ export default function Library() {
           <h1>我的角色</h1>
           <div className="sub">创建并管理你的角色，配置立绘、动态背景与世界书</div>
         </div>
-        <button className="btn primary" onClick={() => nav('/character/new')}>＋ 新建角色</button>
+        <button className="btn primary" onClick={() => nav('/character/new')}><Plus size={16} style={{ verticalAlign: -3 }} /> 新建角色</button>
       </div>
       <div className="page">
         {loading ? <div className="empty">载入中…</div> :
           chars.length === 0 ? (
             <div className="empty">
-              <div className="big">🎭</div>还没有角色
+              <div className="big"><Drama size={46} /></div>还没有角色
               <div style={{ marginTop: 16 }}><button className="btn primary" onClick={() => nav('/character/new')}>创建第一个角色</button></div>
             </div>
           ) : (
@@ -52,18 +53,18 @@ export default function Library() {
               {chars.map(c => (
                 <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id + '/edit')}>
                   <div className="cover">
-                    {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph">🎭</div>}
-                    {c.is_public ? <div className="pill-pub">🌐 已公开</div> : null}
+                    {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}
+                    {c.is_public ? <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Globe size={12} /> 已公开</div> : null}
                   </div>
                   <div className="meta">
                     <h3>{c.name}</h3>
                     <p>{c.tagline || c.intro || '暂无简介'}</p>
                     <div className="foot">
-                      <span>💬 {c.uses}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MessageCircle size={13} /> {c.uses}</span>
                       <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
                         <button className="btn sm primary" onClick={e => startChat(e, c)}>对话</button>
                         {!c.is_public && <button className="btn sm" onClick={e => publish(e, c)}>发布</button>}
-                        <button className="btn sm danger" onClick={e => del(e, c)}>✕</button>
+                        <button className="btn sm danger" onClick={e => del(e, c)}><X size={14} /></button>
                       </div>
                     </div>
                   </div>

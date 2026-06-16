@@ -48,7 +48,7 @@ export default function ScriptEditor() {
     try {
       if (editing) await api('/scripts/' + id, { method: 'PUT', body });
       else await api('/scripts', { method: 'POST', body });
-      toast('已保存 ✓');
+      toast('已保存');
       nav('/scripts');
     } catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }
   };

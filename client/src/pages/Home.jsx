@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame } from 'lucide-react';
+import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play } from 'lucide-react';
+import { CategoryIcon } from '../assets.jsx';
 
 export default function Home() {
   const [cats, setCats] = useState([]);
@@ -49,9 +50,9 @@ export default function Home() {
 
       <div className="page">
         <div className="cat-bar">
-          <button className={'cat-chip' + (cat === 'all' ? ' active' : '')} onClick={() => setCat('all')}>🔥 全部</button>
+          <button className={'cat-chip' + (cat === 'all' ? ' active' : '')} onClick={() => setCat('all')}><Flame size={14} /> 全部</button>
           {cats.map(c => (
-            <button key={c.slug} className={'cat-chip' + (cat === c.slug ? ' active' : '')} onClick={() => setCat(c.slug)}>{c.icon} {c.name}</button>
+            <button key={c.slug} className={'cat-chip' + (cat === c.slug ? ' active' : '')} onClick={() => setCat(c.slug)}><CategoryIcon slug={c.slug} size={14} /> {c.name}</button>
           ))}
         </div>
 
@@ -68,12 +69,12 @@ export default function Home() {
         </div>
 
         {loading ? <div className="empty">载入中…</div> :
-          chars.length === 0 ? <div className="empty"><div className="big">🎭</div>该分类下还没有公开角色</div> : (
+          chars.length === 0 ? <div className="empty"><div className="big"><Drama size={46} /></div>该分类下还没有公开角色</div> : (
             <div className="grid">
               {chars.map(c => (
                 <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id + '/edit')}>
                   <div className="cover">
-                    {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph">🎭</div>}
+                    {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={40} /></div>}
                     <button className="pill-pub" onClick={e => fav(e, c)} style={{ border: 'none', color: c.faved ? 'var(--accent)' : '#fff' }}>
                       <Heart size={13} fill={c.faved ? 'var(--accent)' : 'none'} /> {c.likes}
                     </button>
@@ -101,9 +102,9 @@ export default function Home() {
               {scripts.map(s => (
                 <div key={s.id} className="char-card" onClick={() => nav('/script/' + s.id)}>
                   <div className="cover">{s.cover ? <img src={s.cover} alt="" /> : <div className="ph"><ScrollText size={34} /></div>}
-                    <div className="pill-pub">{s.price_gold > 0 ? `💰 ${s.price_gold}` : '免费'}</div></div>
+                    <div className="pill-pub">{s.price_gold > 0 ? <><Coins size={12} /> {s.price_gold}</> : '免费'}</div></div>
                   <div className="meta"><h3>{s.title}</h3><p>{s.summary}</p>
-                    <div className="foot"><span>▶ {s.plays}</span><span style={{ marginLeft: 'auto' }} className="muted">{s.author_name}</span></div></div>
+                    <div className="foot"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Play size={11} /> {s.plays}</span><span style={{ marginLeft: 'auto' }} className="muted">{s.author_name}</span></div></div>
                 </div>
               ))}
             </div>

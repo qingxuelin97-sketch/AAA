@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { uploadFile } from './api.jsx';
+import { UploadCloud } from 'lucide-react';
+
+const STATIC_IMG = 'image/png,image/jpeg,image/webp,image/avif';
+const DYNAMIC = 'image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4,video/webm';
 
 const ToastCtx = createContext(null);
 
@@ -18,8 +22,10 @@ export function ToastProvider({ children }) {
 }
 export const useToast = () => useContext(ToastCtx);
 
-// Reusable media uploader (avatar / cover / dynamic background).
-export function Uploader({ value, type = 'image', onChange, variant = 'box', accept, label = '点击上传' }) {
+// Reusable media uploader.
+//  - dynamic={true}  → allows image (incl. GIF) and short video  (chat backgrounds)
+//  - dynamic={false} → static image only — no GIF/video           (avatars, covers)
+export function Uploader({ value, type = 'image', onChange, variant = 'box', dynamic = false, label = '点击上传' }) {
   const ref = useRef();
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -27,6 +33,10 @@ export function Uploader({ value, type = 'image', onChange, variant = 'box', acc
   const pick = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!dynamic && (file.type === 'image/gif' || file.type.startsWith('video'))) {
+      toast('此处仅支持静态图片（PNG / JPG / WebP）', 'err');
+      e.target.value = ''; return;
+    }
     setBusy(true);
     try {
       const d = await uploadFile(file);
@@ -40,14 +50,14 @@ export function Uploader({ value, type = 'image', onChange, variant = 'box', acc
 
   return (
     <div className={'uploader ' + (variant === 'avatar' ? 'avatar-up' : '')} onClick={() => ref.current.click()}>
-      <input ref={ref} type="file" accept={accept || 'image/*,video/mp4,video/webm'} hidden onChange={pick} />
+      <input ref={ref} type="file" accept={dynamic ? DYNAMIC : STATIC_IMG} hidden onChange={pick} />
       {busy ? <div className="muted">上传中…</div> : value ? (
         isVideo
           ? <video className="preview" src={value} muted loop autoPlay playsInline />
           : <img className="preview" src={value} alt="" />
       ) : (
-        <div className="muted">
-          <div style={{ fontSize: 24, marginBottom: 6 }}>⬆️</div>{label}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
+          <UploadCloud size={22} /><span style={{ fontSize: 13 }}>{label}</span>
         </div>
       )}
     </div>

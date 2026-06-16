@@ -26,7 +26,7 @@ export default function ScriptDetail() {
     setBusy(true);
     try {
       await api('/scripts/' + id + '/buy', { method: 'POST' });
-      toast('购买成功，已解锁 🎉');
+      toast('购买成功，已解锁');
       await refreshUser();
       await load();
     } catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }

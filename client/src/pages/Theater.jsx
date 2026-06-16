@@ -24,14 +24,14 @@ export default function Theater() {
       </div>
       <div className="page">
         {theaters.length === 0 ? (
-          <div className="empty"><div className="big">🎭</div>还没有剧场，开一个把你的角色们拉到同一个舞台吧</div>
+          <div className="empty"><div className="big"><Drama size={46} /></div>还没有剧场，开一个把你的角色们拉到同一个舞台吧</div>
         ) : theaters.map(t => (
           <div key={t.id} className="room-row" onClick={() => nav('/theater/' + t.id)}>
             {t.cover ? <img className="ava" src={t.cover} alt="" /> : <div className="ava" style={{ display: 'grid', placeItems: 'center', background: 'var(--panel-2)' }}><Drama size={22} /></div>}
             <div style={{ flex: 1, minWidth: 0 }}>
               <b style={{ fontSize: 15 }}>{t.name}</b>
               <div className="muted" style={{ fontSize: 13, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.scene || '自由发挥的舞台'}</div>
-              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>🎭 {t.cast_count} 位 AI 角色 · <Users size={11} style={{ verticalAlign: -1 }} /> {t.member_count} 人 · 由 {t.owner_name} 创建</div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}><Drama size={11} style={{ verticalAlign: -1 }} /> {t.cast_count} 位 AI 角色 · <Users size={11} style={{ verticalAlign: -1 }} /> {t.member_count} 人 · 由 {t.owner_name} 创建</div>
             </div>
           </div>
         ))}

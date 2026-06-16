@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Uploader } from '../ui.jsx';
+import { CATEGORIES } from '../assets.jsx';
+import { Plus } from 'lucide-react';
 
 const BLANK = {
   name: '', avatar: '', background: '', background_type: 'image',
   tagline: '', intro: '', greeting: '', persona: '', voice_name: '', category: '', tags: '',
   is_public: false, nsfw: false, world: []
 };
-const CATS = [['fantasy', '🪄 奇幻'], ['scifi', '🚀 科幻'], ['romance', '💗 恋爱'], ['healing', '🌿 治愈'], ['mystery', '🔍 悬疑'], ['history', '🏯 历史'], ['game', '🎮 游戏'], ['anime', '🌸 二次元'], ['daily', '☕ 日常'], ['horror', '👻 惊悚'], ['wuxia', '⚔️ 武侠'], ['other', '✨ 其他']];
 
 export default function CharacterEditor() {
   const { id } = useParams();
@@ -38,7 +39,7 @@ export default function CharacterEditor() {
     try {
       if (editing) await api('/characters/' + id, { method: 'PUT', body: c });
       else await api('/characters', { method: 'POST', body: c });
-      toast('已保存 ✓');
+      toast('已保存');
       nav('/library');
     } catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }
   };
@@ -77,7 +78,7 @@ export default function CharacterEditor() {
                 <div className="field"><label>分类</label>
                   <select className="select" value={c.category} onChange={e => set('category', e.target.value)}>
                     <option value="">— 选择分类 —</option>
-                    {CATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    {CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
                   </select></div>
                 <div className="field"><label>标签 <span className="muted">(逗号分隔)</span></label>
                   <input className="input" value={c.tags} onChange={e => set('tags', e.target.value)} placeholder="奇幻, 治愈" /></div>
@@ -88,10 +89,11 @@ export default function CharacterEditor() {
             </div>
             <div className="card">
               <div className="field" style={{ textAlign: 'center' }}>
-                <label>角色立绘 / 头像</label>
+                <label>角色头像 <span className="muted">(静态图)</span></label>
                 <div style={{ display: 'grid', placeItems: 'center' }}>
-                  <Uploader variant="avatar" value={c.avatar} onChange={(url) => set('avatar', url)} accept="image/*" />
+                  <Uploader variant="avatar" value={c.avatar} onChange={(url) => set('avatar', url)} />
                 </div>
+                <div className="hint" style={{ textAlign: 'center' }}>头像仅支持静态图片</div>
               </div>
               <div className="field"><label>语音音色名 <span className="muted">(可选)</span></label>
                 <input className="input" value={c.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder="如 alloy / nova，留空用默认" />
@@ -117,8 +119,8 @@ export default function CharacterEditor() {
         {tab === 'world' && (
           <div>
             <div className="section-title">
-              <h2>📖 世界书</h2>
-              <button className="btn sm" onClick={addWorld}>＋ 添加条目</button>
+              <h2>世界书</h2>
+              <button className="btn sm" onClick={addWorld}><Plus size={14} /> 添加条目</button>
             </div>
             <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>
               当最近的对话中出现「触发关键词」时，对应设定会自动注入提示词，帮助模型记住世界观细节。留空关键词则为常驻设定。
@@ -145,10 +147,10 @@ export default function CharacterEditor() {
         {tab === 'media' && (
           <div className="editor-grid">
             <div className="field">
-              <label>聊天背景图（支持动态 GIF / 视频）</label>
-              <Uploader value={c.background} type={c.background_type}
+              <label>聊天背景（支持动态 GIF / 视频）</label>
+              <Uploader value={c.background} type={c.background_type} dynamic
                 onChange={(url, type) => setC(prev => ({ ...prev, background: url, background_type: type }))} />
-              <div className="hint">将作为对话界面的沉浸式背景。可上传 jpg/png/gif/webp 或 mp4/webm 短视频实现动态背景。</div>
+              <div className="hint">将作为与该角色对话时的沉浸式背景。支持 jpg/png/webp/gif 或 mp4/webm 短视频实现动态背景。</div>
               {c.background && <button className="btn sm ghost" style={{ marginTop: 10 }}
                 onClick={() => setC(prev => ({ ...prev, background: '', background_type: 'image' }))}>清除背景</button>}
             </div>

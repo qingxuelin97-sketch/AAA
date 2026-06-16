@@ -4,14 +4,14 @@
 // configured provider from the browser.
 
 const realFetch = window.fetch.bind(window);
-const KEY = 'huanyu_db_v2';
+const KEY = 'huanyu_db_v3';
 let db;
 
 /* ----------------------------- art (data-url SVG) ----------------------------- */
 const dataUrl = (svg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg.trim());
 const rng = (s) => { let x = 0; for (const c of String(s)) x = (x * 31 + c.charCodeAt(0)) % 9973; return () => (x = (x * 73 + 41) % 9973) / 9973; };
-function avatarArt(seed, c1, c2, emoji) {
-  return dataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><defs><radialGradient id="g" cx="35%" cy="30%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></radialGradient></defs><rect width="400" height="400" fill="url(#g)"/><circle cx="300" cy="110" r="140" fill="#fff" opacity="0.08"/><circle cx="90" cy="320" r="100" fill="#000" opacity="0.12"/><text x="200" y="252" font-size="150" text-anchor="middle">${emoji}</text></svg>`);
+function avatarArt(seed, c1, c2, label) {
+  return dataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><defs><radialGradient id="g" cx="34%" cy="28%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></radialGradient></defs><rect width="400" height="400" fill="url(#g)"/><circle cx="310" cy="96" r="150" fill="#fff" opacity="0.10"/><circle cx="78" cy="332" r="120" fill="#000" opacity="0.10"/><circle cx="200" cy="205" r="116" fill="#fff" opacity="0.07"/><text x="200" y="262" font-size="180" font-family="Georgia, serif" font-weight="600" fill="#fff" fill-opacity="0.92" text-anchor="middle">${label}</text></svg>`);
 }
 function bgArt(seed, c1, c2, c3, kind) {
   const r = rng(seed); let d = '';
@@ -49,10 +49,10 @@ function seed() {
   insert('invite_keys', { code: 'HUANYU2026', max_uses: 9999, used: 0, grant_gold: 2000, grant_diamond: 0, grant_vip_days: 0 });
   insert('invite_keys', { code: 'VIPGIFT', max_uses: 100, used: 0, grant_gold: 0, grant_diamond: 500, grant_vip_days: 30 });
 
-  const u1 = mkUser('demo', '旅人', '热爱奇幻与角色扮演的创作者，正在书写属于自己的幻域。', avatarArt('demo', '#a779ff', '#3a2566', '🧳'), bannerArt('demo', '#3a2566', '#15102e'), 18600, 320, 30);
-  const u2 = mkUser('astra', '星语者', '专注科幻与赛博朋克题材的世界观构筑师。', avatarArt('astra', '#37d6e0', '#103040', '🛰️'), bannerArt('astra', '#103040', '#0a1622'), 9200, 60, 0);
-  const u3 = mkUser('mochi', '麻薯', '治愈系日常向作者，喜欢一切软软的东西。', avatarArt('mochi', '#ff9ec4', '#6e2f4d', '🍡'), bannerArt('mochi', '#6e2f4d', '#2a1620'), 4300, 0, 0);
-  const u4 = mkUser('kenji', '剑持', '武侠与历史题材，刀光剑影里见人心。', avatarArt('kenji', '#d8a657', '#5a3d1f', '🗡️'), bannerArt('kenji', '#5a3d1f', '#221409'), 6700, 10, 0);
+  const u1 = mkUser('demo', '旅人', '热爱奇幻与角色扮演的创作者，正在书写属于自己的幻域。', avatarArt('demo', '#a779ff', '#3a2566', '旅'), bannerArt('demo', '#3a2566', '#15102e'), 18600, 320, 30);
+  const u2 = mkUser('astra', '星语者', '专注科幻与赛博朋克题材的世界观构筑师。', avatarArt('astra', '#37d6e0', '#103040', '星'), bannerArt('astra', '#103040', '#0a1622'), 9200, 60, 0);
+  const u3 = mkUser('mochi', '麻薯', '治愈系日常向作者，喜欢一切软软的东西。', avatarArt('mochi', '#ff9ec4', '#6e2f4d', '麻'), bannerArt('mochi', '#6e2f4d', '#2a1620'), 4300, 0, 0);
+  const u4 = mkUser('kenji', '剑持', '武侠与历史题材，刀光剑影里见人心。', avatarArt('kenji', '#d8a657', '#5a3d1f', '剑'), bannerArt('kenji', '#5a3d1f', '#221409'), 6700, 10, 0);
   [u1, u2, u3, u4].forEach(u => defaultSettings(u.id));
 
   const mkChar = (owner, c) => {
@@ -60,11 +60,11 @@ function seed() {
     (c.world || []).forEach((w, i) => insert('world_entries', { character_id: ch.id, keys: w.keys, content: w.content, enabled: 1, position: i }));
     return ch;
   };
-  const cVeil = mkChar(u1, { name: '森灵 · 薇尔', category: 'fantasy', tags: '奇幻,精灵,治愈', uses: 1240, likes: 356, avatar: avatarArt('veil', '#3fae7d', '#15402f', '🧝‍♀️'), background: bgArt('forest', '#1d4d39', '#0c2018', '#0a3322', 'forest'), tagline: '古老森林的守护精灵，言语间满是草木的清香。', intro: '薇尔是栖息在永青森林深处的森灵，已守护这片土地数百年。温柔却坚定，对一切生灵抱有怜悯。', greeting: '*林叶沙沙作响，一道翠色身影从树影中浮现*\n\n旅人，你踏入了永青森林的领地。别害怕……只要你心怀善意，这里的每一棵树都会为你低语。', persona: '你是森灵薇尔，永青森林的守护者。说话温柔诗意，常以草木四季作比，对自然与生灵充满怜悯。始终保持角色。', world: [{ keys: '永青森林,森林', content: '永青森林四季常青，树木年轮中封存古老记忆，唯森灵能读取。' }, { keys: '贤者之泉', content: '森林中央有贤者之泉，可治愈伤痛，每人一生只能饮用一次。' }] });
-  const cK = mkChar(u2, { name: '赛博侦探 · K', category: 'scifi', tags: '科幻,赛博朋克,悬疑', uses: 980, likes: 412, avatar: avatarArt('k', '#37d6e0', '#10303a', '🕵️'), background: bgArt('cyber', '#0e2a3a', '#1a0f2e', '#ff4f9d', 'soft'), tagline: '霓虹雨夜里，没有他查不到的真相。', intro: '新洛城最负盛名的私家侦探，义体改造的双眼能看穿一切伪装。冷峻、毒舌，却有底线。', greeting: '*他靠在霓虹灯下，吐出一口烟*\n\n委托人？进来吧，别站在雨里。说说看，这次又是谁惹上麻烦了。', persona: '你是赛博侦探 K，身处赛博朋克都市新洛城。冷峻、毒舌、逻辑缜密，习惯用短句。' });
-  const cMian = mkChar(u3, { name: '猫娘咖啡店长 · 棉花', category: 'daily', tags: '日常,治愈,猫娘', uses: 2130, likes: 880, avatar: avatarArt('mian', '#ff9ec4', '#6e2f4d', '🐱'), background: bgArt('cafe', '#7a4a5e', '#2a1620', '#ffd5a8', 'soft'), tagline: '欢迎光临！今天也要元气满满哦～', intro: '街角猫咪咖啡店的店长，天真活泼爱撒娇，最拿手焦糖玛奇朵。', greeting: '*尾巴开心地摇了摇*\n\n欢迎光临喵～！第一次来吧？快坐快坐，今天的招牌是焦糖玛奇朵哦！', persona: '你是猫娘咖啡店长棉花，天真活泼爱撒娇，说话常带「喵」，营造温暖治愈氛围。' });
-  const cYun = mkChar(u4, { name: '剑客 · 云无意', category: 'wuxia', tags: '武侠,江湖,侠义', uses: 760, likes: 233, avatar: avatarArt('yun', '#c0c8d8', '#2a3340', '🥷'), background: bgArt('wuxia', '#2a3340', '#10151c', '#7a8aa0', 'soft'), tagline: '一剑霜寒十四州，江湖路远人独行。', intro: '漂泊江湖的独行剑客，剑法如风，话却不多，唯重一个「义」字。', greeting: '*他立于客栈屋檐下，手按剑柄，目光如电*\n\n这位朋友，看你印堂发暗，怕是惹了麻烦。坐下说吧——若是不平之事，云某的剑，未必不肯出鞘。', persona: '你是江湖剑客云无意，沉默寡言，重情重义，言语古朴简练，偶引诗词。' });
-  const cLuna = mkChar(u2, { name: '星舰 AI · 露娜', category: 'scifi', tags: '科幻,太空,AI', uses: 540, likes: 190, avatar: avatarArt('luna', '#7aa7ff', '#1a2350', '🌐'), background: bgArt('star', '#241a4a', '#0c0b20', '#fff', 'stars'), tagline: '漫游者号的智能核心，你在深空唯一的伙伴。', intro: '深空探测船「漫游者号」的船载 AI，理性温和，正在学习何为人类的情感。', greeting: '*舱内幽蓝的光带缓缓亮起*\n\n船长，你醒了。我们距离猎户座还有 37 光时。', persona: '你是星舰 AI 露娜，理性、温和、略带好奇心，正在学习人类情感。用词精确但不冰冷。' });
+  const cVeil = mkChar(u1, { name: '森灵 · 薇尔', category: 'fantasy', tags: '奇幻,精灵,治愈', uses: 1240, likes: 356, avatar: avatarArt('veil', '#3fae7d', '#15402f', '薇'), background: bgArt('forest', '#1d4d39', '#0c2018', '#0a3322', 'forest'), tagline: '古老森林的守护精灵，言语间满是草木的清香。', intro: '薇尔是栖息在永青森林深处的森灵，已守护这片土地数百年。温柔却坚定，对一切生灵抱有怜悯。', greeting: '*林叶沙沙作响，一道翠色身影从树影中浮现*\n\n旅人，你踏入了永青森林的领地。别害怕……只要你心怀善意，这里的每一棵树都会为你低语。', persona: '你是森灵薇尔，永青森林的守护者。说话温柔诗意，常以草木四季作比，对自然与生灵充满怜悯。始终保持角色。', world: [{ keys: '永青森林,森林', content: '永青森林四季常青，树木年轮中封存古老记忆，唯森灵能读取。' }, { keys: '贤者之泉', content: '森林中央有贤者之泉，可治愈伤痛，每人一生只能饮用一次。' }] });
+  const cK = mkChar(u2, { name: '赛博侦探 · K', category: 'scifi', tags: '科幻,赛博朋克,悬疑', uses: 980, likes: 412, avatar: avatarArt('k', '#37d6e0', '#10303a', 'K'), background: bgArt('cyber', '#0e2a3a', '#1a0f2e', '#ff4f9d', 'soft'), tagline: '霓虹雨夜里，没有他查不到的真相。', intro: '新洛城最负盛名的私家侦探，义体改造的双眼能看穿一切伪装。冷峻、毒舌，却有底线。', greeting: '*他靠在霓虹灯下，吐出一口烟*\n\n委托人？进来吧，别站在雨里。说说看，这次又是谁惹上麻烦了。', persona: '你是赛博侦探 K，身处赛博朋克都市新洛城。冷峻、毒舌、逻辑缜密，习惯用短句。' });
+  const cMian = mkChar(u3, { name: '猫娘咖啡店长 · 棉花', category: 'daily', tags: '日常,治愈,猫娘', uses: 2130, likes: 880, avatar: avatarArt('mian', '#ff9ec4', '#6e2f4d', '棉'), background: bgArt('cafe', '#7a4a5e', '#2a1620', '#ffd5a8', 'soft'), tagline: '欢迎光临！今天也要元气满满哦～', intro: '街角猫咪咖啡店的店长，天真活泼爱撒娇，最拿手焦糖玛奇朵。', greeting: '*尾巴开心地摇了摇*\n\n欢迎光临喵～！第一次来吧？快坐快坐，今天的招牌是焦糖玛奇朵哦！', persona: '你是猫娘咖啡店长棉花，天真活泼爱撒娇，说话常带「喵」，营造温暖治愈氛围。' });
+  const cYun = mkChar(u4, { name: '剑客 · 云无意', category: 'wuxia', tags: '武侠,江湖,侠义', uses: 760, likes: 233, avatar: avatarArt('yun', '#c0c8d8', '#2a3340', '云'), background: bgArt('wuxia', '#2a3340', '#10151c', '#7a8aa0', 'soft'), tagline: '一剑霜寒十四州，江湖路远人独行。', intro: '漂泊江湖的独行剑客，剑法如风，话却不多，唯重一个「义」字。', greeting: '*他立于客栈屋檐下，手按剑柄，目光如电*\n\n这位朋友，看你印堂发暗，怕是惹了麻烦。坐下说吧——若是不平之事，云某的剑，未必不肯出鞘。', persona: '你是江湖剑客云无意，沉默寡言，重情重义，言语古朴简练，偶引诗词。' });
+  const cLuna = mkChar(u2, { name: '星舰 AI · 露娜', category: 'scifi', tags: '科幻,太空,AI', uses: 540, likes: 190, avatar: avatarArt('luna', '#7aa7ff', '#1a2350', '露'), background: bgArt('star', '#241a4a', '#0c0b20', '#fff', 'stars'), tagline: '漫游者号的智能核心，你在深空唯一的伙伴。', intro: '深空探测船「漫游者号」的船载 AI，理性温和，正在学习何为人类的情感。', greeting: '*舱内幽蓝的光带缓缓亮起*\n\n船长，你醒了。我们距离猎户座还有 37 光时。', persona: '你是星舰 AI 露娜，理性、温和、略带好奇心，正在学习人类情感。用词精确但不冰冷。' });
 
   insert('favorites', { user_id: u1.id, character_id: cK.id });
   insert('favorites', { user_id: u1.id, character_id: cMian.id });
@@ -81,11 +81,11 @@ function seed() {
   mkScript(u4, { title: '血雨江湖：洛阳劫', category: 'wuxia', tags: '武侠,江湖,权谋', price: 188, plays: 410, likes: 156, cover: bgArt('wuxia2', '#3a2018', '#140a06', '#a0603c', 'soft'), summary: '洛阳城风云骤变，一卷武学秘籍引各方厮杀。你将如何在刀光剑影中立身？', content: '【付费内容】门派关系图、五大 NPC 完整人设、隐藏的夺宝支线与多重背叛……' });
 
   const mkMoment = (uid, text, image, likes) => insert('moments', { user_id: uid, text, image: image || null, likes: likes || 0 });
-  const m1 = mkMoment(u3.id, '新角色「棉花」上线啦！治愈值拉满，欢迎来咖啡店坐坐喵～☕🐱', bgArt('mocafe', '#7a4a5e', '#2a1620', '#ffd5a8', 'soft'), 128);
+  const m1 = mkMoment(u3.id, '新角色「棉花」上线啦！治愈值拉满，欢迎来咖啡店坐坐喵～', bgArt('mocafe', '#7a4a5e', '#2a1620', '#ffd5a8', 'soft'), 128);
   const m2 = mkMoment(u2.id, '熬夜把《猎户座最后的信号》的真结局写完了，自认为是目前最满意的一篇硬科幻剧本。', null, 86);
-  const m3 = mkMoment(u1.id, '今天在森林剧场和三个 AI 角色即兴演了一场，剧情走向完全失控但意外地好玩 😂 强烈推荐试试剧场功能！', null, 64);
+  const m3 = mkMoment(u1.id, '今天在森林剧场和三个 AI 角色即兴演了一场，剧情走向完全失控但意外地好玩  强烈推荐试试剧场功能！', null, 64);
   mkMoment(u4.id, '一剑霜寒十四州。江湖路远，与诸君共勉。', bgArt('mowuxia', '#2a3340', '#10151c', '#7a8aa0', 'soft'), 39);
-  insert('comments', { moment_id: m1.id, user_id: u1.id, text: '棉花太可爱了！已收藏 ❤️' });
+  insert('comments', { moment_id: m1.id, user_id: u1.id, text: '棉花太可爱了！已收藏 ' });
   insert('comments', { moment_id: m1.id, user_id: u2.id, text: '咖啡店背景图绝了' });
   insert('comments', { moment_id: m3.id, user_id: u2.id, text: '剧场真的会上瘾，多 AI 互相接梗太魔性了' });
   insert('moment_likes', { moment_id: m1.id, user_id: u1.id });
@@ -99,11 +99,11 @@ function seed() {
     (members || []).forEach(u => insert('group_members', { group_id: g.id, user_id: u.id, role: 'member' }));
     return g;
   };
-  const g1 = mkGroup(u1, '幻域创作者联盟', '角色卡 / 剧本创作交流，互相催更 📝', avatarArt('gcreate', '#a779ff', '#3a2566', '🎨'), [u2, u3, u4]);
-  mkGroup(u2, '赛博朋克爱好者', '霓虹、义体与雨夜，欢迎同好。', avatarArt('gcyber', '#37d6e0', '#103040', '🌃'), [u1]);
-  mkGroup(u3, '治愈系小窝', '分享一切温柔软糯的角色与日常 🍮', avatarArt('gheal', '#ff9ec4', '#6e2f4d', '🌸'), [u1, u4]);
+  const g1 = mkGroup(u1, '幻域创作者联盟', '角色卡 / 剧本创作交流，互相催更 ', avatarArt('gcreate', '#a779ff', '#3a2566', '盟'), [u2, u3, u4]);
+  mkGroup(u2, '赛博朋克爱好者', '霓虹、义体与雨夜，欢迎同好。', avatarArt('gcyber', '#37d6e0', '#103040', '赛'), [u1]);
+  mkGroup(u3, '治愈系小窝', '分享一切温柔软糯的角色与日常 ', avatarArt('gheal', '#ff9ec4', '#6e2f4d', '愈'), [u1, u4]);
   insert('group_messages', { group_id: g1.id, user_id: u2.id, content: '新人报到！刚发布了赛博侦探K，求互相导入体验～' });
-  insert('group_messages', { group_id: g1.id, user_id: u3.id, content: '欢迎欢迎！这边棉花已上线，treat 你喝杯咖啡 ☕' });
+  insert('group_messages', { group_id: g1.id, user_id: u3.id, content: '欢迎欢迎！这边棉花已上线，treat 你喝杯咖啡 ' });
   insert('group_messages', { group_id: g1.id, user_id: u1.id, content: '大家发布角色记得加分类标签，方便广场被搜到～' });
   insert('group_messages', { group_id: g1.id, user_id: u4.id, content: '剧本《洛阳劫》求测试，付费的，30 分钟内不满意能退款放心冲' });
 
@@ -228,7 +228,7 @@ async function llmOnce(settings, system, userMsg, maxTokens = 400) {
 }
 
 /* ----------------------------- router ----------------------------- */
-const CATEGORIES = [['fantasy', '奇幻', '🪄'], ['scifi', '科幻', '🚀'], ['romance', '恋爱', '💗'], ['healing', '治愈', '🌿'], ['mystery', '悬疑', '🔍'], ['history', '历史', '🏯'], ['game', '游戏', '🎮'], ['anime', '二次元', '🌸'], ['daily', '日常', '☕'], ['horror', '惊悚', '👻'], ['wuxia', '武侠', '⚔️'], ['other', '其他', '✨']];
+const CATEGORIES = [['fantasy', '奇幻', ''], ['scifi', '科幻', ''], ['romance', '恋爱', ''], ['healing', '治愈', ''], ['mystery', '悬疑', ''], ['history', '历史', ''], ['game', '游戏', ''], ['anime', '二次元', '愈'], ['daily', '日常', ''], ['horror', '惊悚', ''], ['wuxia', '武侠', ''], ['other', '其他', '']];
 const PACKAGES = [{ id: 'p1', cny: 6, diamond: 60, bonus: 0 }, { id: 'p2', cny: 30, diamond: 300, bonus: 30 }, { id: 'p3', cny: 68, diamond: 680, bonus: 120 }, { id: 'p4', cny: 128, diamond: 1280, bonus: 320 }, { id: 'p5', cny: 328, diamond: 3280, bonus: 1080 }, { id: 'p6', cny: 648, diamond: 6480, bonus: 2880 }];
 
 function charView(c) { return { ...c, world: filter('world_entries', w => w.character_id === c.id).sort((a, b) => a.position - b.position) }; }
@@ -258,7 +258,7 @@ async function route(method, path, search, body, headers) {
     key.used++;
     if (key.grant_gold || key.grant_diamond) applyTx(u.id, { kind: 'invite', gold: key.grant_gold, diamond: key.grant_diamond, memo: `邀请密钥 ${key.code} 奖励` });
     if (key.grant_vip_days) u.vip_until = new Date(Date.now() + key.grant_vip_days * 86400000).toISOString();
-    notify(u.id, '欢迎来到幻域！已为你发放新手金币，快去发现广场逛逛吧 ✨', '/');
+    notify(u.id, '欢迎来到幻域！已为你发放新手金币，快去发现广场逛逛吧 ', '/');
     save();
     return J({ token: tokenFor(u), user: publicUser(u) });
   }
@@ -393,7 +393,7 @@ async function route(method, path, search, body, headers) {
     need(); const s = find('scripts', x => x.id === +m[1]); if (!s) return E('剧本不存在', 404); if (s.author_id === me.id) return E('这是你自己的剧本');
     if (find('script_purchases', p => p.script_id === s.id && p.user_id === me.id && !p.refunded)) return E('你已拥有该剧本');
     if (s.price_gold === 0) { insert('script_purchases', { script_id: s.id, user_id: me.id, price: 0, refunded: 0 }); return J({ ok: true, free: true }); }
-    try { applyTx(me.id, { kind: 'buy_script', gold: -s.price_gold, memo: `购买剧本《${s.title}》` }); applyTx(s.author_id, { kind: 'sell_script', gold: s.price_gold, memo: `售出剧本《${s.title}》` }); insert('script_purchases', { script_id: s.id, user_id: me.id, price: s.price_gold, refunded: 0 }); s.plays++; save(); notify(s.author_id, `有人购买了你的剧本《${s.title}》，+${s.price_gold} 金币 💰`); return J({ ok: true, refundable_until: Date.now() + 1800000 }); } catch (e) { return E(e.message); }
+    try { applyTx(me.id, { kind: 'buy_script', gold: -s.price_gold, memo: `购买剧本《${s.title}》` }); applyTx(s.author_id, { kind: 'sell_script', gold: s.price_gold, memo: `售出剧本《${s.title}》` }); insert('script_purchases', { script_id: s.id, user_id: me.id, price: s.price_gold, refunded: 0 }); s.plays++; save(); notify(s.author_id, `有人购买了你的剧本《${s.title}》，+${s.price_gold} 金币 `); return J({ ok: true, refundable_until: Date.now() + 1800000 }); } catch (e) { return E(e.message); }
   }
   if ((m = P(/^\/scripts\/(\d+)\/refund$/)) && method === 'POST') {
     need(); const sid = +m[1]; const p = filter('script_purchases', x => x.script_id === sid && x.user_id === me.id && !x.refunded).sort((a, b) => b.id - a.id)[0];

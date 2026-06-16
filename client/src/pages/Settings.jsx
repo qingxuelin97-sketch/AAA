@@ -25,7 +25,7 @@ export default function Settings() {
 
   const saveModel = async () => {
     setBusy(true);
-    try { const d = await api('/settings', { method: 'PUT', body: s }); setS(d.settings); toast('设置已保存 ✓'); }
+    try { const d = await api('/settings', { method: 'PUT', body: s }); setS(d.settings); toast('设置已保存'); }
     catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
   };
   const saveProfile = async () => {
@@ -51,7 +51,7 @@ export default function Settings() {
 
         {tab === 'model' && (
           <div className="card">
-            <div className="section-title"><h2>🔌 语言模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
+            <div className="section-title"><h2>语言模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
             <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>兼容 OpenAI Chat Completions 格式，可接入任意服务商。密钥仅存于服务端。</p>
             <div className="row">
               <div className="field"><label>服务商预设</label>
@@ -73,7 +73,7 @@ export default function Settings() {
 
         {tab === 'voice' && (
           <div className="card">
-            <div className="section-title"><h2>🔊 语音模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
+            <div className="section-title"><h2>语音模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
             <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>兼容 OpenAI /audio/speech，用于朗读角色台词。</p>
             <div className="row">
               <div className="field"><label>Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} /></div>

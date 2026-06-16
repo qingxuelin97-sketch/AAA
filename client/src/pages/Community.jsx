@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Uploader } from '../ui.jsx';
-import { Heart, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Send, Trash2, Inbox } from 'lucide-react';
 
 function fmtDate(s) {
   if (!s) return '';
@@ -136,7 +136,7 @@ export default function Community() {
 
         {loading ? <div className="empty">载入中…</div> :
           moments.length === 0 ? (
-            <div className="empty"><div className="big">🪶</div>这里还没有动态，来发布第一条吧</div>
+            <div className="empty"><div className="big"><Inbox size={46} /></div>这里还没有动态，来发布第一条吧</div>
           ) : moments.map(m => (
             <div key={m.id} className="moment">
               <Avatar src={m.author_avatar} name={m.author_name} size={42} />

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
-import { Drama, ScrollText, Users, ArrowRight } from 'lucide-react';
+import { Drama, ScrollText, Users, ArrowRight, Globe } from 'lucide-react';
 
 export default function Publish() {
   const nav = useNavigate();
@@ -13,7 +13,7 @@ export default function Publish() {
   useEffect(() => { load(); }, []);
 
   const publish = async (c) => {
-    try { await api('/community/publish-character/' + c.id, { method: 'POST' }); toast('已发布到广场 🎉'); load(); }
+    try { await api('/community/publish-character/' + c.id, { method: 'POST' }); toast('已发布到广场'); load(); }
     catch (e) { toast(e.message, 'err'); }
   };
 
@@ -43,8 +43,8 @@ export default function Publish() {
           <div className="grid">
             {mine.map(c => (
               <div key={c.id} className="char-card">
-                <div className="cover" onClick={() => nav('/character/' + c.id + '/edit')}>{c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph">🎭</div>}
-                  {c.is_public ? <div className="pill-pub">🌐 已公开</div> : null}</div>
+                <div className="cover" onClick={() => nav('/character/' + c.id + '/edit')}>{c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}
+                  {c.is_public ? <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Globe size={12} /> 已公开</div> : null}</div>
                 <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro || '暂无简介'}</p>
                   <div className="foot">
                     {c.is_public ? <span className="muted" style={{ fontSize: 12 }}>已在广场展示</span>

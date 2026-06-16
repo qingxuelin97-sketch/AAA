@@ -36,7 +36,7 @@ export default function Notifications() {
         {loading ? (
           <div className="empty">载入中…</div>
         ) : items.length === 0 ? (
-          <div className="empty"><div className="big">🔔</div>暂时没有新通知</div>
+          <div className="empty"><div className="big"><Bell size={46} /></div>暂时没有新通知</div>
         ) : (
           items.map(n => (
             <div

@@ -11,8 +11,6 @@ import Chat from './pages/Chat.jsx';
 import Settings from './pages/Settings.jsx';
 import Profile from './pages/Profile.jsx';
 import Publish from './pages/Publish.jsx';
-import Inbox from './pages/Inbox.jsx';
-import PostDetail from './pages/PostDetail.jsx';
 import Scripts from './pages/Scripts.jsx';
 import ScriptDetail from './pages/ScriptDetail.jsx';
 import ScriptEditor from './pages/ScriptEditor.jsx';
@@ -62,8 +60,6 @@ export default function App() {
         <Route path="/publish" element={P(<Publish />)} />
         <Route path="/profile" element={P(<Profile />)} />
         <Route path="/user/:id" element={P(<Profile />)} />
-        <Route path="/inbox" element={P(<Inbox />)} />
-        <Route path="/post/:id" element={P(<PostDetail />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ToastProvider>

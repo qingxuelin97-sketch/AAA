@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
 import { Avatar } from '../ui.jsx';
+import { Logo } from '../assets.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User
@@ -71,7 +72,7 @@ function Sidebar({ user, unread }) {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="logo">🜲</div>
+        <Logo size={38} />
         <div><b>幻域</b><small>HUANYU AI</small></div>
       </div>
       <div className="wallet-mini">
@@ -113,7 +114,7 @@ function MobileTop({ user, unread }) {
   const nav = useNavigate();
   return (
     <div className="mobile-topbar mobile-only">
-      <div className="logo-sm">🜲</div>
+      <Logo size={30} radius={9} />
       <b style={{ fontSize: 17, flex: 1 }}>幻域</b>
       <span className="coin gold" onClick={() => nav('/wallet')}><Coins size={13} /> {user?.gold ?? 0}</span>
       <span className="coin diamond" onClick={() => nav('/wallet')}><Gem size={13} /> {user?.diamond ?? 0}</span>
