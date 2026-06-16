@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw } from 'lucide-react';
 
 export default function Chat() {
   const { id } = useParams();
@@ -30,22 +30,15 @@ export default function Chat() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, streaming]);
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || streaming) return;
-    setInput('');
-    setMessages(m => [...m, { role: 'user', content: text }, { role: 'assistant', content: '', _streaming: true }]);
+  // Stream a reply from the given endpoint into the trailing assistant bubble.
+  const streamInto = async (endpoint, payload) => {
     setStreaming(true);
     try {
-      const res = await fetch(`/api/chat/conversations/${id}/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ content: text })
+      const res = await fetch(endpoint, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify(payload || {})
       });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || '请求失败');
-      }
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '请求失败'); }
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = '';
@@ -58,10 +51,10 @@ export default function Chat() {
         for (const line of lines) {
           const t = line.trim();
           if (!t.startsWith('data:')) continue;
-          const payload = t.slice(5).trim();
-          if (payload === '[DONE]') continue;
+          const payload2 = t.slice(5).trim();
+          if (payload2 === '[DONE]') continue;
           try {
-            const j = JSON.parse(payload);
+            const j = JSON.parse(payload2);
             if (j.error) throw new Error(j.error);
             if (j.delta) setMessages(m => {
               const copy = [...m]; copy[copy.length - 1] = { ...copy[copy.length - 1], content: copy[copy.length - 1].content + j.delta };
@@ -77,6 +70,29 @@ export default function Chat() {
       setMessages(m => { const c = [...m]; const last = c[c.length - 1];
         if (last?._streaming) c[c.length - 1] = { role: 'assistant', content: '（连接出错）' + err.message, _streaming: false }; return c; });
     } finally { setStreaming(false); }
+  };
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || streaming) return;
+    setInput('');
+    setMessages(m => [...m, { role: 'user', content: text }, { role: 'assistant', content: '', _streaming: true }]);
+    await streamInto(`/api/chat/conversations/${id}/complete`, { content: text });
+  };
+
+  const regenerate = async () => {
+    if (streaming) return;
+    setMessages(m => {
+      const c = [...m];
+      while (c.length && c[c.length - 1].role === 'assistant') c.pop();
+      return [...c, { role: 'assistant', content: '', _streaming: true }];
+    });
+    await streamInto(`/api/chat/conversations/${id}/regenerate`, {});
+  };
+
+  const copyMsg = async (text) => {
+    try { await navigator.clipboard.writeText(text); toast('已复制'); }
+    catch { toast('复制失败', 'err'); }
   };
 
   const speak = async (text) => {
@@ -102,7 +118,7 @@ export default function Chat() {
   const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
 
   return (
-    <div className="chat-layout">
+    <div className={'chat-layout' + (conv ? ' immersive' : '')}>
       <div className={'chat-list' + (conv ? ' hide-mobile' : '')}>
         <div className="hd">对话 <button className="btn sm" onClick={() => nav('/library')}><Plus size={15} /></button></div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -145,8 +161,14 @@ export default function Chat() {
                     <div className="bubble">
                       {m.content || (m._streaming && <span className="typing"><span></span><span></span><span></span></span>)}
                     </div>
-                    {m.role === 'assistant' && m.content && !m._streaming &&
-                      <button className="speak" onClick={() => speak(m.content)}><Volume2 size={13} /> 朗读</button>}
+                    {m.role === 'assistant' && m.content && !m._streaming && (
+                      <div className="msg-acts">
+                        <button className="speak" onClick={() => speak(m.content)}><Volume2 size={13} /> 朗读</button>
+                        <button className="speak" onClick={() => copyMsg(m.content)}><Copy size={13} /> 复制</button>
+                        {i === messages.length - 1 &&
+                          <button className="speak" onClick={regenerate} disabled={streaming}><RotateCcw size={13} /> 重新生成</button>}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

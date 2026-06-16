@@ -81,7 +81,23 @@ router.post('/conversations/:id/complete', authRequired, async (req, res) => {
   if (userContent) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'user', userContent);
   }
+  await streamReply(res, conv, character, settings, userContent);
+});
 
+// Regenerate: drop the trailing assistant message, then produce a fresh reply.
+router.post('/conversations/:id/regenerate', authRequired, async (req, res) => {
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
+  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
+  const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
+  const settings = getSettings(req.user.id);
+  if (!settings?.llm_api_key) return res.status(400).json({ error: '尚未配置语言模型 API。请前往「设置」填写 API Key。' });
+  const last = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 1').get(conv.id);
+  if (last && last.role === 'assistant') db.prepare('DELETE FROM messages WHERE id = ?').run(last.id);
+  await streamReply(res, conv, character, settings, '');
+});
+
+// Shared SSE streaming of a model reply; persists the assistant message.
+async function streamReply(res, conv, character, settings, userContent) {
   const history = db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
   const recentText = history.slice(-6).map(m => m.content).join(' ');
   const system = buildSystemPrompt(character, recentText + ' ' + userContent);
@@ -98,20 +114,15 @@ router.post('/conversations/:id/complete', authRequired, async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
       body: JSON.stringify({
-        model: settings.llm_model,
-        messages: payloadMessages,
-        temperature: settings.llm_temperature,
-        max_tokens: settings.llm_max_tokens,
-        stream: true
+        model: settings.llm_model, messages: payloadMessages,
+        temperature: settings.llm_temperature, max_tokens: settings.llm_max_tokens, stream: true
       })
     });
-
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => '');
       res.write(`data: ${JSON.stringify({ error: `模型服务返回 ${upstream.status}：${text.slice(0, 300)}` })}\n\n`);
       return res.end();
     }
-
     const reader = upstream.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -129,24 +140,20 @@ router.post('/conversations/:id/complete', authRequired, async (req, res) => {
         try {
           const json = JSON.parse(data);
           const delta = json.choices?.[0]?.delta?.content || '';
-          if (delta) {
-            full += delta;
-            res.write(`data: ${JSON.stringify({ delta })}\n\n`);
-          }
-        } catch { /* partial chunk, ignore */ }
+          if (delta) { full += delta; res.write(`data: ${JSON.stringify({ delta })}\n\n`); }
+        } catch { /* partial chunk */ }
       }
     }
   } catch (err) {
     res.write(`data: ${JSON.stringify({ error: '连接模型服务失败：' + err.message })}\n\n`);
   }
-
   if (full.trim()) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   }
   res.write('data: [DONE]\n\n');
   res.end();
-});
+}
 
 // ---- Text to speech proxy ----
 router.post('/tts', authRequired, async (req, res) => {

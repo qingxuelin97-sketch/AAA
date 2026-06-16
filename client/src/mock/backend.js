@@ -346,6 +346,14 @@ async function route(method, path, search, body, headers) {
     const ch = find('characters', x => x.id === conv.character_id); const s = find('settings', x => x.user_id === me.id);
     return streamCompletion(conv, ch, s, (body.content || '').trim());
   }
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/regenerate$/)) && method === 'POST') {
+    need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
+    const ch = find('characters', x => x.id === conv.character_id); const s = find('settings', x => x.user_id === me.id);
+    const msgs = filter('messages', x => x.conversation_id === conv.id);
+    const last = msgs[msgs.length - 1];
+    if (last && last.role === 'assistant') { db.messages = filter('messages', x => x.id !== last.id); save(); }
+    return streamCompletion(conv, ch, s, '');
+  }
   if (method === 'POST' && path === '/chat/tts') {
     need(); const s = find('settings', x => x.user_id === me.id); if (!s.voice_api_key) return E('尚未配置语音模型 API');
     try {

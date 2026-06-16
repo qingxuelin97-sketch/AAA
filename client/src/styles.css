@@ -422,3 +422,78 @@ h1, h2, h3, h4 { font-family: var(--serif); font-weight: 560; letter-spacing: -0
   .wallet-hero .col:nth-child(3)::before { display: none; }
   .checkin-btn { grid-column: 1 / -1; flex-direction: row; }
 }
+
+/* ============ Motion, glass & immersive (v3) ============ */
+@keyframes riseIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.965); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes auroraA { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(6vw,4vh) scale(1.15); } 100% { transform: translate(0,0) scale(1); } }
+@keyframes auroraB { 0% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-5vw,-3vh) scale(1); } 100% { transform: translate(0,0) scale(1.1); } }
+@keyframes sheen { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(220%) skewX(-18deg); } }
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+/* drifting aurora backdrop */
+body::before { content: ''; position: fixed; inset: -20vmax; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(closest-side, rgba(204,106,68,0.16), transparent 70%) 18% 12% / 52vmax 52vmax no-repeat,
+    radial-gradient(closest-side, rgba(63,129,149,0.13), transparent 70%) 86% 92% / 46vmax 46vmax no-repeat;
+  filter: blur(20px); animation: auroraA 26s ease-in-out infinite; }
+body::after { content: ''; position: fixed; inset: -20vmax; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(179,82,47,0.10), transparent 70%) 70% 20% / 40vmax 40vmax no-repeat;
+  filter: blur(26px); animation: auroraB 32s ease-in-out infinite; }
+
+/* page + element entrances */
+.page { animation: riseIn 0.42s cubic-bezier(0.22,0.61,0.36,1) both; }
+.grid > .char-card { animation: riseIn 0.5s cubic-bezier(0.22,0.61,0.36,1) both; }
+.grid > .char-card:nth-child(1) { animation-delay: 0.02s; }
+.grid > .char-card:nth-child(2) { animation-delay: 0.06s; }
+.grid > .char-card:nth-child(3) { animation-delay: 0.10s; }
+.grid > .char-card:nth-child(4) { animation-delay: 0.14s; }
+.grid > .char-card:nth-child(5) { animation-delay: 0.18s; }
+.grid > .char-card:nth-child(6) { animation-delay: 0.22s; }
+.grid > .char-card:nth-child(7) { animation-delay: 0.26s; }
+.grid > .char-card:nth-child(n+8) { animation-delay: 0.3s; }
+.room-row { animation: riseIn 0.45s ease both; }
+.pkg { animation: popIn 0.4s ease both; }
+.msg { animation: riseIn 0.34s cubic-bezier(0.22,0.61,0.36,1) both; }
+.modal { animation: popIn 0.22s cubic-bezier(0.22,0.61,0.36,1) both; }
+.moment { animation: fadeIn 0.4s ease both; }
+
+/* hover micro-interactions */
+.char-card .cover img, .char-card .cover video { transition: transform 0.5s cubic-bezier(0.22,0.61,0.36,1); }
+.char-card:hover .cover img, .char-card:hover .cover video { transform: scale(1.05); }
+.icon-chip { transition: transform 0.2s ease; }
+.pkg:hover .icon-chip { transform: translateY(-2px) rotate(-4deg); }
+.nav-item, .cat-chip, .seg button, .tag { transition: all 0.18s ease; }
+.checkin-btn:not(:disabled):hover { animation: floaty 1.4s ease-in-out infinite; }
+
+/* primary button sheen */
+.btn.primary { position: relative; overflow: hidden; }
+.btn.primary::after { content: ''; position: absolute; top: 0; left: 0; width: 40%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent); opacity: 0; }
+.btn.primary:hover::after { opacity: 1; animation: sheen 0.9s ease; }
+
+/* subtle glass sheen on key surfaces */
+.card, .room-row, .pkg, .world-entry { position: relative; }
+.wallet-hero, .vip-card { backdrop-filter: saturate(140%) blur(6px); }
+.modal-backdrop .card { backdrop-filter: blur(10px); }
+
+/* ---- mobile immersive rooms (no double header) ---- */
+@media (max-width: 860px) {
+  .app-shell:has(.immersive) .mobile-topbar,
+  .app-shell:has(.immersive) .bottom-nav { display: none; }
+  .app-shell:has(.immersive) .main { padding-bottom: 0; }
+  .immersive { height: 100dvh; }
+  .immersive .chat-head { padding-top: calc(13px + env(safe-area-inset-top)); }
+  .immersive .chat-input-bar { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+  /* the conversation list (browse state) keeps comfortable spacing */
+  .chat-list .hd { padding: 14px 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  body::before, body::after { animation: none; }
+}
+
+.msg-acts { display: flex; gap: 14px; margin-top: 5px; }
+.msg-acts .speak { margin-top: 0; }

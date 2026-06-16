@@ -49,7 +49,7 @@ export default function GroupRoom() {
   if (!group) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
 
   return (
-    <div className="chat-layout">
+    <div className="chat-layout immersive">
       <div className="chat-main">
         <div className="chat-head">
           <button className="btn ghost sm" onClick={() => nav('/groups')}><ArrowLeft size={16} /></button>

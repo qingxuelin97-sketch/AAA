@@ -64,7 +64,7 @@ export default function TheaterRoom() {
   const { theater, cast } = data;
 
   return (
-    <div className="chat-layout">
+    <div className="chat-layout immersive">
       <div className="chat-main">
         {theater.cover && <div className="chat-bg"><img src={theater.cover} alt="" /></div>}
         <div className="chat-head">
