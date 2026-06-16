@@ -5,6 +5,20 @@ import { isVip } from '../wallet.js';
 
 const router = Router();
 
+// Search users by numeric ID or username / display name.
+router.get('/search', authOptional, (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (!q) return res.json({ users: [] });
+  let rows;
+  if (/^\d+$/.test(q)) {
+    rows = db.prepare('SELECT id, username, display_name, avatar, bio FROM users WHERE id = ?').all(Number(q));
+  } else {
+    const k = `%${q}%`;
+    rows = db.prepare('SELECT id, username, display_name, avatar, bio FROM users WHERE username LIKE ? OR display_name LIKE ? LIMIT 30').all(k, k);
+  }
+  res.json({ users: rows });
+});
+
 // Public profile: user info + public characters + scripts + moments + stats
 router.get('/:id', authOptional, (req, res) => {
   const u = db.prepare('SELECT id, username, display_name, avatar, banner, bio, vip_until, created_at FROM users WHERE id = ?').get(req.params.id);

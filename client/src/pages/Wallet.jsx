@@ -67,20 +67,24 @@ export default function Wallet() {
           </button>
         </div>
 
-        {/* recharge */}
+        {/* recharge (disabled in this build) */}
         <div className="section-title" style={{ marginTop: 30 }}>
-          <h2>钻石充值</h2><span className="muted" style={{ fontSize: 13 }}>1 钻石 = {goldPer} 金币（演示支付，即时到账）</span>
+          <h2>钻石充值</h2><span className="muted" style={{ fontSize: 13 }}>1 钻石 = {goldPer} 金币</span>
         </div>
-        <div className="pkg-grid">
-          {packages.map(p => (
-            <div key={p.id} className={'pkg' + (p.id === best.id ? ' featured' : '')} onClick={() => busy !== 'pkg' + p.id && recharge(p)}>
-              {p.id === best.id && <span className="pop"><Sparkles size={11} /> 超值</span>}
-              <span className="icon-chip diamond sm"><Gem size={16} /></span>
-              <div className="d">{p.diamond}</div>
-              <div className="b">{p.bonus ? `再赠 ${p.bonus}` : '无赠送'}</div>
-              <div className="pkg-pay">¥ {p.cny}</div>
-            </div>
-          ))}
+        <div className="recharge-wrap">
+          <div className="pkg-grid">
+            {packages.map(p => (
+              <div key={p.id} className="pkg" aria-disabled="true">
+                <span className="icon-chip diamond sm"><Gem size={16} /></span>
+                <div className="d">{p.diamond}</div>
+                <div className="b">{p.bonus ? `再赠 ${p.bonus}` : '无赠送'}</div>
+                <div className="pkg-pay">¥ {p.cny}</div>
+              </div>
+            ))}
+          </div>
+          <div className="recharge-mask">
+            <Sparkles size={20} /><span>测试版本，暂不提供充值服务</span>
+          </div>
         </div>
 
         {/* exchange + vip */}

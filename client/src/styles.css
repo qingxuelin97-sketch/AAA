@@ -497,3 +497,22 @@ body::after { content: ''; position: fixed; inset: -20vmax; z-index: -1; pointer
 
 .msg-acts { display: flex; gap: 14px; margin-top: 5px; }
 .msg-acts .speak { margin-top: 0; }
+
+/* spinner for model detection */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.9s linear infinite; }
+
+/* disabled recharge (test build) */
+.recharge-wrap { position: relative; }
+.recharge-wrap .pkg { opacity: 0.5; filter: grayscale(0.3); pointer-events: none; }
+.recharge-mask { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px;
+  border-radius: var(--radius); background: rgba(244,242,236,0.55); backdrop-filter: blur(2px);
+  color: var(--muted); font-weight: 600; font-size: 15px; }
+
+/* mobile: prevent iOS input auto-zoom (needs >=16px), comfier hit targets */
+@media (max-width: 860px) {
+  .input, .textarea, .select { font-size: 16px; }
+  .chat-input-bar textarea { font-size: 16px; }
+  .topbar { flex-wrap: wrap; }
+  .topbar .btn { padding: 8px 12px; }
+}

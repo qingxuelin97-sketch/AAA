@@ -290,6 +290,22 @@ async function route(method, path, search, body, headers) {
     }
   }
 
+  // Detect provider models (browser → provider directly).
+  if (method === 'POST' && path === '/settings/models') {
+    need(); const s = find('settings', x => x.user_id === me.id) || {};
+    const base = String(body.base_url || s.llm_base_url || '').replace(/\/$/, '');
+    const key = body.api_key || s.llm_api_key;
+    if (!base) return E('请先填写 API Base URL');
+    if (!key) return E('请先填写 API Key');
+    try {
+      const r = await realFetch(base + '/models', { headers: { Authorization: `Bearer ${key}` } });
+      if (!r.ok) { const t = await r.text().catch(() => ''); return E(`服务商返回 ${r.status}：${t.slice(0, 200)}`, 502); }
+      const d = await r.json();
+      const arr = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : []);
+      return J({ models: arr.map(x => (typeof x === 'string' ? x : (x.id || x.name))).filter(Boolean) });
+    } catch (e) { return E('连接服务商失败（可能是浏览器跨域限制）：' + e.message, 502); }
+  }
+
   // ---------- meta ----------
   if (method === 'GET' && path === '/meta/categories') return J({ categories: CATEGORIES.map(([slug, name, icon]) => ({ slug, name, icon })) });
 
@@ -431,6 +447,14 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/social/notifications/read') { need(); filter('notifications', n => n.user_id === me.id).forEach(n => (n.read = 1)); save(); return J({ ok: true }); }
 
   // ---------- users ----------
+  if (method === 'GET' && path === '/users/search') {
+    const q = (search.get('q') || '').trim();
+    if (!q) return J({ users: [] });
+    let rows;
+    if (/^\d+$/.test(q)) { const u = user(+q); rows = u ? [u] : []; }
+    else { const k = q.toLowerCase(); rows = filter('users', u => (u.username + (u.display_name || '')).toLowerCase().includes(k)).slice(0, 30); }
+    return J({ users: rows.map(u => ({ id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, bio: u.bio })) });
+  }
   if ((m = P(/^\/users\/(\d+)$/)) && method === 'GET') {
     const u = user(+m[1]); if (!u) return E('用户不存在', 404);
     const characters = filter('characters', c => c.owner_id === u.id && c.is_public).sort((a, b) => b.id - a.id);

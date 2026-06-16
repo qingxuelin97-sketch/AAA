@@ -72,17 +72,12 @@ export default function Auth() {
               <div className="field">
                 <label>邀请密钥</label>
                 <input className="input" value={form.invite} onChange={upd('invite')} placeholder="输入邀请密钥以注册" />
-                <div className="hint">体验码：<b style={{ color: 'var(--accent)' }}>HUANYU2026</b>（赠 2000 金币）或 <b style={{ color: 'var(--accent)' }}>VIPGIFT</b>（500 钻 + 30 天 VIP）</div>
+                <div className="hint">注册需要有效邀请密钥，请联系管理员获取。</div>
               </div>
             )}
             <button className="btn primary block" disabled={busy}>
               {busy ? '处理中…' : mode === 'login' ? '登 录' : '注 册'}
             </button>
-            {mode === 'login' && (
-              <div className="hint" style={{ textAlign: 'center', marginTop: 14 }}>
-                体验演示账号：<b style={{ color: 'var(--accent)' }}>demo</b> / <b style={{ color: 'var(--accent)' }}>123456</b>
-              </div>
-            )}
           </form>
         </div>
       </div>

@@ -56,4 +56,22 @@ router.put('/', authRequired, (req, res) => {
   res.json({ settings: publicSettings(next) });
 });
 
+// Detect available models from the provider (OpenAI-compatible GET /models).
+// Uses posted base_url/api_key if given, else the saved ones.
+router.post('/models', authRequired, async (req, res) => {
+  const cur = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id) || {};
+  const base = String(req.body?.base_url || cur.llm_base_url || '').replace(/\/$/, '');
+  const key = req.body?.api_key || cur.llm_api_key;
+  if (!base) return res.status(400).json({ error: '请先填写 API Base URL' });
+  if (!key) return res.status(400).json({ error: '请先填写 API Key' });
+  try {
+    const r = await fetch(base + '/models', { headers: { Authorization: `Bearer ${key}` } });
+    if (!r.ok) { const t = await r.text().catch(() => ''); return res.status(502).json({ error: `服务商返回 ${r.status}：${t.slice(0, 200)}` }); }
+    const d = await r.json();
+    const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : []);
+    const models = list.map(m => (typeof m === 'string' ? m : (m.id || m.name))).filter(Boolean);
+    res.json({ models });
+  } catch (e) { res.status(502).json({ error: '连接服务商失败：' + e.message }); }
+});
+
 export default router;

@@ -5,14 +5,15 @@ import { Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
-  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User
+  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search
 } from 'lucide-react';
 
 const GROUPS = [
   { title: '探索', items: [
     { to: '/', ic: Compass, label: '发现广场', end: true },
     { to: '/scripts', ic: ScrollText, label: '剧本' },
-    { to: '/community', ic: Users, label: '社区' }
+    { to: '/community', ic: Users, label: '社区' },
+    { to: '/search', ic: Search, label: '搜索' }
   ] },
   { title: '互动', items: [
     { to: '/chats', ic: MessageCircle, label: '对话' },
@@ -117,7 +118,7 @@ function MobileTop({ user, unread }) {
       <Logo size={30} radius={9} />
       <b style={{ fontSize: 17, flex: 1 }}>幻域</b>
       <span className="coin gold" onClick={() => nav('/wallet')}><Coins size={13} /> {user?.gold ?? 0}</span>
-      <span className="coin diamond" onClick={() => nav('/wallet')}><Gem size={13} /> {user?.diamond ?? 0}</span>
+      <Search size={20} onClick={() => nav('/search')} />
       <div style={{ position: 'relative' }} onClick={() => nav('/notifications')}>
         <Bell size={20} />
         {unread > 0 && <span className="nb" style={{ position: 'absolute', top: -4, right: -6 }}>{unread}</span>}

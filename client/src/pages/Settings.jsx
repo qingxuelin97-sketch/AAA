@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Avatar } from '../ui.jsx';
-import { Cpu, Volume2, UserCog, SlidersHorizontal } from 'lucide-react';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw } from 'lucide-react';
 
 const LLM_PRESETS = {
   openai: 'https://api.openai.com/v1', deepseek: 'https://api.deepseek.com/v1',
@@ -17,6 +17,8 @@ export default function Settings() {
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState({ display_name: '', bio: '', avatar: '', banner: '' });
   const [pwd, setPwd] = useState({ old_password: '', new_password: '' });
+  const [models, setModels] = useState([]);
+  const [detecting, setDetecting] = useState(false);
 
   useEffect(() => { api('/settings').then(d => setS(d.settings)).catch(e => toast(e.message, 'err')); }, []);
   useEffect(() => { if (user) setProfile({ display_name: user.display_name || '', bio: user.bio || '', avatar: user.avatar || '', banner: user.banner || '' }); }, [user]);
@@ -27,6 +29,15 @@ export default function Settings() {
     setBusy(true);
     try { const d = await api('/settings', { method: 'PUT', body: s }); setS(d.settings); toast('设置已保存'); }
     catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+  };
+  const detectModels = async () => {
+    setDetecting(true);
+    try {
+      const d = await api('/settings/models', { method: 'POST', body: { base_url: s.llm_base_url, api_key: s.llm_api_key || undefined } });
+      if (!d.models?.length) { toast('未返回任何模型', 'err'); return; }
+      setModels(d.models);
+      toast(`检测到 ${d.models.length} 个可用模型`);
+    } catch (e) { toast(e.message, 'err'); } finally { setDetecting(false); }
   };
   const saveProfile = async () => {
     try { const d = await api('/auth/me', { method: 'PUT', body: profile }); setUser(d.user); toast('资料已更新'); }
@@ -59,11 +70,28 @@ export default function Settings() {
                   <option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option><option value="moonshot">Moonshot / Kimi</option>
                   <option value="openrouter">OpenRouter</option><option value="groq">Groq</option><option value="custom">自定义</option>
                 </select></div>
-              <div className="field"><label>模型名称</label><input className="input" value={s.llm_model} onChange={e => set('llm_model', e.target.value)} placeholder="gpt-4o-mini" /></div>
+              <div className="field"><label>模型名称</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input className="input" style={{ flex: 1 }} value={s.llm_model} onChange={e => set('llm_model', e.target.value)} placeholder="gpt-4o-mini" list="model-list" />
+                  <button className="btn" onClick={detectModels} disabled={detecting} title="检测服务商可用模型">
+                    <RefreshCw size={15} className={detecting ? 'spin' : ''} /> {detecting ? '检测中' : '检测模型'}
+                  </button>
+                </div>
+                {models.length > 0 && (
+                  <>
+                    <datalist id="model-list">{models.map(m => <option key={m} value={m} />)}</datalist>
+                    <select className="select" style={{ marginTop: 8 }} value={models.includes(s.llm_model) ? s.llm_model : ''} onChange={e => e.target.value && set('llm_model', e.target.value)}>
+                      <option value="">— 从检测到的 {models.length} 个模型中选择 —</option>
+                      {models.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </>
+                )}
+              </div>
             </div>
             <div className="field"><label>API Base URL</label><input className="input" value={s.llm_base_url} onChange={e => set('llm_base_url', e.target.value)} /></div>
             <div className="field"><label>API Key {s.llm_api_key_set && <span className="tag">已配置</span>}</label>
-              <input className="input" type="password" value={s.llm_api_key || ''} onChange={e => set('llm_api_key', e.target.value)} placeholder={s.llm_api_key_set ? '••••••（留空不修改）' : 'sk-...'} /></div>
+              <input className="input" type="password" value={s.llm_api_key || ''} onChange={e => set('llm_api_key', e.target.value)} placeholder={s.llm_api_key_set ? '••••••（留空不修改）' : 'sk-...'} />
+              <div className="hint">点「检测模型」可向服务商拉取可用模型列表再选择（需先填 Base URL 与 Key）。</div></div>
             <div className="row">
               <div className="field"><label>Temperature：{s.llm_temperature}</label><input type="range" min="0" max="2" step="0.1" value={s.llm_temperature} onChange={e => set('llm_temperature', parseFloat(e.target.value))} style={{ width: '100%' }} /></div>
               <div className="field"><label>最大回复 Token</label><input className="input" type="number" value={s.llm_max_tokens} onChange={e => set('llm_max_tokens', parseInt(e.target.value) || 1024)} /></div>
