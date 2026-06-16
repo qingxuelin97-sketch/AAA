@@ -1,12 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { viteSingleFile } from 'vite-plugin-singlefile';
 import path from 'path';
+
+const SINGLE = process.env.VITE_SINGLEFILE === '1';
 
 export default defineConfig({
   root: path.resolve(__dirname),
   // Relative base so the static build works under any GitHub Pages subpath.
-  base: process.env.VITE_STATIC === '1' ? './' : '/',
-  plugins: [react({ include: /\.(js|jsx)$/ })],
+  base: (process.env.VITE_STATIC === '1' || SINGLE) ? './' : '/',
+  plugins: [react({ include: /\.(js|jsx)$/ }), ...(SINGLE ? [viteSingleFile()] : [])],
   server: {
     port: 5173,
     proxy: {
