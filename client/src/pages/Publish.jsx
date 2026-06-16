@@ -1,69 +1,59 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast, Uploader } from '../ui.jsx';
+import { useToast } from '../ui.jsx';
+import { Drama, ScrollText, Users, ArrowRight } from 'lucide-react';
 
 export default function Publish() {
   const nav = useNavigate();
   const toast = useToast();
-  const [type, setType] = useState('script');
-  const [form, setForm] = useState({ title: '', body: '', cover: '', tags: '', character_id: '' });
   const [mine, setMine] = useState([]);
-  const [busy, setBusy] = useState(false);
 
-  useEffect(() => { api('/characters/mine').then(d => setMine(d.characters)).catch(() => {}); }, []);
-  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const load = () => api('/characters/mine').then(d => setMine(d.characters)).catch(() => {});
+  useEffect(() => { load(); }, []);
 
-  const submit = async () => {
-    if (!form.title.trim()) { toast('请填写标题', 'err'); return; }
-    setBusy(true);
-    try {
-      if (type === 'card' && form.character_id) {
-        await api('/community/publish-character/' + form.character_id, { method: 'POST' });
-      } else {
-        await api('/community/posts', { method: 'POST', body: { ...form, type, character_id: form.character_id || null } });
-      }
-      toast('发布成功 🎉');
-      nav('/');
-    } catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }
+  const publish = async (c) => {
+    try { await api('/community/publish-character/' + c.id, { method: 'POST' }); toast('已发布到广场 🎉'); load(); }
+    catch (e) { toast(e.message, 'err'); }
   };
+
+  const OPTS = [
+    { ic: Drama, t: '创建角色', d: '设计立绘、人设、世界书与动态背景', to: '/character/new', c: '#a779ff' },
+    { ic: ScrollText, t: '创作剧本', d: '编写剧情，可设为免费或金币付费', to: '/script/new', c: '#ffd54a' },
+    { ic: Users, t: '发布动态', d: '在社区分享你的创作与日常', to: '/community', c: '#6fd6ff' }
+  ];
 
   return (
     <>
-      <div className="topbar">
-        <button className="btn ghost sm" onClick={() => nav(-1)}>← 返回</button>
-        <div style={{ flex: 1 }}><h1>发布到广场</h1><div className="sub">分享你的剧本或角色卡，让更多玩家体验</div></div>
-        <button className="btn primary" onClick={submit} disabled={busy}>{busy ? '发布中…' : '发布'}</button>
-      </div>
-      <div className="page" style={{ maxWidth: 720 }}>
-        <div className="tabs-bar">
-          <button className={type === 'script' ? 'active' : ''} onClick={() => setType('script')}>📜 剧本 / 故事</button>
-          <button className={type === 'card' ? 'active' : ''} onClick={() => setType('card')}>🎭 角色卡</button>
+      <div className="topbar"><div style={{ flex: 1 }}><h1>发布作品</h1><div className="sub">把你的创意带给整个幻域社区</div></div></div>
+      <div className="page" style={{ maxWidth: 900 }}>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+          {OPTS.map(o => (
+            <div key={o.t} className="card" style={{ cursor: 'pointer' }} onClick={() => nav(o.to)}>
+              <div style={{ width: 48, height: 48, borderRadius: 13, display: 'grid', placeItems: 'center', background: o.c + '22', color: o.c, marginBottom: 12 }}><o.ic size={24} /></div>
+              <h3 style={{ margin: '0 0 6px' }}>{o.t}</h3>
+              <p className="muted" style={{ fontSize: 13.5, margin: 0, lineHeight: 1.6 }}>{o.d}</p>
+              <div style={{ marginTop: 12, color: o.c, fontSize: 13, fontWeight: 600 }}>开始 <ArrowRight size={13} style={{ verticalAlign: -2 }} /></div>
+            </div>
+          ))}
         </div>
 
-        {type === 'card' && (
-          <div className="field">
-            <label>选择要发布的角色</label>
-            <select className="select" value={form.character_id} onChange={e => {
-              const c = mine.find(x => String(x.id) === e.target.value);
-              setForm(p => ({ ...p, character_id: e.target.value, title: c?.name || p.title, body: c?.tagline || p.body, cover: c?.avatar || p.cover }));
-            }}>
-              <option value="">— 选择我的角色 —</option>
-              {mine.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <div className="hint">发布角色卡会将该角色设为公开，其他玩家可一键导入到自己的角色库。</div>
+        <div className="section-title" style={{ marginTop: 34 }}><h2>把已有角色发布到广场</h2></div>
+        {mine.length === 0 ? <div className="empty" style={{ padding: 40 }}>还没有角色，先去创建一个吧</div> : (
+          <div className="grid">
+            {mine.map(c => (
+              <div key={c.id} className="char-card">
+                <div className="cover" onClick={() => nav('/character/' + c.id + '/edit')}>{c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph">🎭</div>}
+                  {c.is_public ? <div className="pill-pub">🌐 已公开</div> : null}</div>
+                <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro || '暂无简介'}</p>
+                  <div className="foot">
+                    {c.is_public ? <span className="muted" style={{ fontSize: 12 }}>已在广场展示</span>
+                      : <button className="btn sm primary" style={{ marginLeft: 'auto' }} onClick={() => publish(c)}>发布到广场</button>}
+                  </div></div>
+              </div>
+            ))}
           </div>
         )}
-
-        <div className="field"><label>标题</label>
-          <input className="input" value={form.title} onChange={e => set('title', e.target.value)} placeholder={type === 'script' ? '剧本标题' : '角色卡标题'} /></div>
-        <div className="field"><label>简介 / 正文</label>
-          <textarea className="textarea" style={{ minHeight: type === 'script' ? 200 : 100 }} value={form.body} onChange={e => set('body', e.target.value)}
-            placeholder={type === 'script' ? '描述剧情背景、玩法、开场设定…' : '介绍这个角色的亮点'} /></div>
-        <div className="field"><label>标签 <span className="muted">(逗号分隔)</span></label>
-          <input className="input" value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="悬疑, 校园, 多结局" /></div>
-        <div className="field"><label>封面图</label>
-          <Uploader value={form.cover} onChange={url => set('cover', url)} accept="image/*" /></div>
       </div>
     </>
   );

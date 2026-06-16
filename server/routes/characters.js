@@ -20,13 +20,38 @@ router.get('/mine', authRequired, (req, res) => {
   res.json({ characters: rows });
 });
 
-// Public gallery of characters
+// Public gallery of characters, with category + search filters
 router.get('/public', authOptional, (req, res) => {
-  const rows = db.prepare(`
-    SELECT c.*, u.display_name AS owner_name FROM characters c
-    JOIN users u ON u.id = c.owner_id
-    WHERE c.is_public = 1 ORDER BY c.uses DESC, c.created_at DESC LIMIT 60`).all();
+  const { category, q, sort } = req.query;
+  let sql = `SELECT c.*, u.display_name AS owner_name FROM characters c
+    JOIN users u ON u.id = c.owner_id WHERE c.is_public = 1`;
+  const args = [];
+  if (category && category !== 'all') { sql += ' AND c.category = ?'; args.push(category); }
+  if (q) { sql += ' AND (c.name LIKE ? OR c.tags LIKE ? OR c.tagline LIKE ?)'; const k = `%${q}%`; args.push(k, k, k); }
+  sql += sort === 'new' ? ' ORDER BY c.created_at DESC' : ' ORDER BY c.uses DESC, c.likes DESC';
+  sql += ' LIMIT 80';
+  const rows = db.prepare(sql).all(...args);
+  if (req.user) {
+    const fav = new Set(db.prepare('SELECT character_id FROM favorites WHERE user_id = ?').all(req.user.id).map(r => r.character_id));
+    rows.forEach(r => (r.faved = fav.has(r.id)));
+  }
   res.json({ characters: rows });
+});
+
+// Favorites
+router.get('/favorites/list', authRequired, (req, res) => {
+  const rows = db.prepare(`SELECT c.*, u.display_name AS owner_name FROM favorites f
+    JOIN characters c ON c.id = f.character_id JOIN users u ON u.id = c.owner_id
+    WHERE f.user_id = ? ORDER BY c.id DESC`).all(req.user.id);
+  res.json({ characters: rows });
+});
+router.post('/:id/favorite', authRequired, (req, res) => {
+  const has = db.prepare('SELECT 1 FROM favorites WHERE user_id = ? AND character_id = ?').get(req.user.id, req.params.id);
+  if (has) { db.prepare('DELETE FROM favorites WHERE user_id = ? AND character_id = ?').run(req.user.id, req.params.id);
+    db.prepare('UPDATE characters SET likes = MAX(0, likes - 1) WHERE id = ?').run(req.params.id); return res.json({ faved: false }); }
+  db.prepare('INSERT INTO favorites (user_id, character_id) VALUES (?,?)').run(req.user.id, req.params.id);
+  db.prepare('UPDATE characters SET likes = likes + 1 WHERE id = ?').run(req.params.id);
+  res.json({ faved: true });
 });
 
 router.get('/:id', authOptional, (req, res) => {
@@ -40,15 +65,15 @@ router.post('/', authRequired, (req, res) => {
   const b = req.body || {};
   if (!b.name) return res.status(400).json({ error: '角色名必填' });
   const info = db.prepare(`INSERT INTO characters
-    (owner_id, name, avatar, background, background_type, tagline, intro, greeting, persona, voice_name, tags, is_public)
-    VALUES (@owner_id,@name,@avatar,@background,@background_type,@tagline,@intro,@greeting,@persona,@voice_name,@tags,@is_public)`)
+    (owner_id, name, avatar, background, background_type, tagline, intro, greeting, persona, voice_name, category, tags, is_public, nsfw)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@tagline,@intro,@greeting,@persona,@voice_name,@category,@tags,@is_public,@nsfw)`)
     .run({
       owner_id: req.user.id,
       name: b.name, avatar: b.avatar || null,
       background: b.background || null, background_type: b.background_type || 'image',
       tagline: b.tagline || '', intro: b.intro || '', greeting: b.greeting || '',
-      persona: b.persona || '', voice_name: b.voice_name || '', tags: b.tags || '',
-      is_public: b.is_public ? 1 : 0
+      persona: b.persona || '', voice_name: b.voice_name || '', category: b.category || '', tags: b.tags || '',
+      is_public: b.is_public ? 1 : 0, nsfw: b.nsfw ? 1 : 0
     });
   saveWorld(info.lastInsertRowid, b.world);
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);
@@ -62,14 +87,15 @@ router.put('/:id', authRequired, (req, res) => {
   db.prepare(`UPDATE characters SET
     name=@name, avatar=@avatar, background=@background, background_type=@background_type,
     tagline=@tagline, intro=@intro, greeting=@greeting, persona=@persona,
-    voice_name=@voice_name, tags=@tags, is_public=@is_public WHERE id=@id`)
+    voice_name=@voice_name, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw WHERE id=@id`)
     .run({
       id: c.id,
       name: b.name ?? c.name, avatar: b.avatar ?? c.avatar,
       background: b.background ?? c.background, background_type: b.background_type ?? c.background_type,
       tagline: b.tagline ?? c.tagline, intro: b.intro ?? c.intro, greeting: b.greeting ?? c.greeting,
-      persona: b.persona ?? c.persona, voice_name: b.voice_name ?? c.voice_name, tags: b.tags ?? c.tags,
-      is_public: (b.is_public ? 1 : 0)
+      persona: b.persona ?? c.persona, voice_name: b.voice_name ?? c.voice_name,
+      category: b.category ?? c.category, tags: b.tags ?? c.tags,
+      is_public: (b.is_public ? 1 : 0), nsfw: (b.nsfw ? 1 : 0)
     });
   if (b.world) saveWorld(c.id, b.world);
   const updated = db.prepare('SELECT * FROM characters WHERE id = ?').get(c.id);

@@ -11,6 +11,12 @@ import settingsRoutes from './routes/settings.js';
 import chatRoutes from './routes/chat.js';
 import communityRoutes from './routes/community.js';
 import userRoutes from './routes/users.js';
+import economyRoutes from './routes/economy.js';
+import scriptRoutes from './routes/scripts.js';
+import socialRoutes from './routes/social.js';
+import groupRoutes from './routes/groups.js';
+import theaterRoutes from './routes/theater.js';
+import metaRoutes from './routes/meta.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -30,6 +36,12 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/economy', economyRoutes);
+app.use('/api/scripts', scriptRoutes);
+app.use('/api/social', socialRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/theater', theaterRoutes);
+app.use('/api/meta', metaRoutes);
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Serve built client (production) with SPA fallback.

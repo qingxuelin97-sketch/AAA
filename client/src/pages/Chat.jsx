@@ -102,7 +102,7 @@ export default function Chat() {
 
   return (
     <div className="chat-layout">
-      <div className="chat-list">
+      <div className={'chat-list' + (conv ? ' hide-mobile' : '')}>
         <div className="hd">对话 <button className="btn sm" onClick={() => nav('/library')}>＋</button></div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {convs.length === 0 && <div className="empty" style={{ padding: 30, fontSize: 13 }}>从「我的角色」开始一段对话</div>}
@@ -131,6 +131,7 @@ export default function Chat() {
               </div>
             )}
             <div className="chat-head">
+              <button className="btn ghost sm mobile-only" onClick={() => nav('/chats')}>←</button>
               <Avatar src={character?.avatar} name={character?.name} size={42} />
               <div className="nm"><b>{character?.name}</b><br /><span>{character?.tagline || '正在扮演中'}</span></div>
             </div>

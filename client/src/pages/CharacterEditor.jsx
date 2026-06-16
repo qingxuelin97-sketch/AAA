@@ -5,9 +5,10 @@ import { useToast, Uploader } from '../ui.jsx';
 
 const BLANK = {
   name: '', avatar: '', background: '', background_type: 'image',
-  tagline: '', intro: '', greeting: '', persona: '', voice_name: '', tags: '',
-  is_public: false, world: []
+  tagline: '', intro: '', greeting: '', persona: '', voice_name: '', category: '', tags: '',
+  is_public: false, nsfw: false, world: []
 };
+const CATS = [['fantasy', '🪄 奇幻'], ['scifi', '🚀 科幻'], ['romance', '💗 恋爱'], ['healing', '🌿 治愈'], ['mystery', '🔍 悬疑'], ['history', '🏯 历史'], ['game', '🎮 游戏'], ['anime', '🌸 二次元'], ['daily', '☕ 日常'], ['horror', '👻 惊悚'], ['wuxia', '⚔️ 武侠'], ['other', '✨ 其他']];
 
 export default function CharacterEditor() {
   const { id } = useParams();
@@ -72,8 +73,15 @@ export default function CharacterEditor() {
                 <input className="input" value={c.name} onChange={e => set('name', e.target.value)} placeholder="例如：星界旅人 · 莉雅" /></div>
               <div className="field"><label>一句话简介</label>
                 <input className="input" value={c.tagline} onChange={e => set('tagline', e.target.value)} placeholder="广场卡片上展示的短介绍" /></div>
-              <div className="field"><label>标签 <span className="muted">(逗号分隔)</span></label>
-                <input className="input" value={c.tags} onChange={e => set('tags', e.target.value)} placeholder="奇幻, 治愈, 女仆" /></div>
+              <div className="row">
+                <div className="field"><label>分类</label>
+                  <select className="select" value={c.category} onChange={e => set('category', e.target.value)}>
+                    <option value="">— 选择分类 —</option>
+                    {CATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select></div>
+                <div className="field"><label>标签 <span className="muted">(逗号分隔)</span></label>
+                  <input className="input" value={c.tags} onChange={e => set('tags', e.target.value)} placeholder="奇幻, 治愈" /></div>
+              </div>
               <div className="field"><label>开场白</label>
                 <textarea className="textarea" value={c.greeting} onChange={e => set('greeting', e.target.value)}
                   placeholder="对话开始时角色说的第一句话…" /></div>

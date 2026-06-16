@@ -6,7 +6,7 @@ const router = Router();
 
 const PUBLIC_FIELDS = [
   'llm_provider', 'llm_base_url', 'llm_model', 'llm_temperature', 'llm_max_tokens',
-  'voice_provider', 'voice_base_url', 'voice_model', 'voice_name', 'theme'
+  'voice_provider', 'voice_base_url', 'voice_model', 'voice_name', 'theme', 'nsfw', 'notify_email'
 ];
 
 function publicSettings(row) {
@@ -44,13 +44,15 @@ router.put('/', authRequired, (req, res) => {
     voice_api_key: (b.voice_api_key === undefined || b.voice_api_key === '') ? cur.voice_api_key : b.voice_api_key,
     voice_model: b.voice_model ?? cur.voice_model,
     voice_name: b.voice_name ?? cur.voice_name,
-    theme: b.theme ?? cur.theme
+    theme: b.theme ?? cur.theme,
+    nsfw: b.nsfw === undefined ? cur.nsfw : (b.nsfw ? 1 : 0),
+    notify_email: b.notify_email === undefined ? cur.notify_email : (b.notify_email ? 1 : 0)
   };
   db.prepare(`UPDATE settings SET
     llm_provider=@llm_provider, llm_base_url=@llm_base_url, llm_api_key=@llm_api_key, llm_model=@llm_model,
     llm_temperature=@llm_temperature, llm_max_tokens=@llm_max_tokens,
     voice_provider=@voice_provider, voice_base_url=@voice_base_url, voice_api_key=@voice_api_key,
-    voice_model=@voice_model, voice_name=@voice_name, theme=@theme WHERE user_id=@user_id`).run(next);
+    voice_model=@voice_model, voice_name=@voice_name, theme=@theme, nsfw=@nsfw, notify_email=@notify_email WHERE user_id=@user_id`).run(next);
   res.json({ settings: publicSettings(next) });
 });
 

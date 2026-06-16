@@ -8,7 +8,7 @@ export default function Auth() {
   const toast = useToast();
   const nav = useNavigate();
   const [mode, setMode] = useState('login');
-  const [form, setForm] = useState({ username: '', password: '', display_name: '', email: '' });
+  const [form, setForm] = useState({ username: '', password: '', display_name: '', email: '', invite: '' });
   const [busy, setBusy] = useState(false);
 
   const upd = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -65,6 +65,13 @@ export default function Auth() {
               <label>密码</label>
               <input className="input" type="password" value={form.password} onChange={upd('password')} placeholder="至少 4 位" />
             </div>
+            {mode === 'register' && (
+              <div className="field">
+                <label>邀请密钥</label>
+                <input className="input" value={form.invite} onChange={upd('invite')} placeholder="输入邀请密钥以注册" />
+                <div className="hint">体验码：<b style={{ color: 'var(--accent)' }}>HUANYU2026</b>（赠 2000 金币）或 <b style={{ color: 'var(--accent)' }}>VIPGIFT</b>（500 钻 + 30 天 VIP）</div>
+              </div>
+            )}
             <button className="btn primary block" disabled={busy}>
               {busy ? '处理中…' : mode === 'login' ? '登 录' : '注 册'}
             </button>

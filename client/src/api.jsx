@@ -52,9 +52,12 @@ export function AuthProvider({ children }) {
     setToken(d.token); setUser(d.user); return d.user;
   };
   const logout = () => { setToken(null); setUser(null); };
+  const refreshUser = async () => {
+    try { const d = await api('/auth/me'); setUser(d.user); return d.user; } catch { /* */ }
+  };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
