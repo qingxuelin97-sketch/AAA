@@ -18,9 +18,9 @@ export default function Publish() {
   };
 
   const OPTS = [
-    { ic: Drama, t: '创建角色', d: '设计立绘、人设、世界书与动态背景', to: '/character/new', c: '#a779ff' },
-    { ic: ScrollText, t: '创作剧本', d: '编写剧情，可设为免费或金币付费', to: '/script/new', c: '#ffd54a' },
-    { ic: Users, t: '发布动态', d: '在社区分享你的创作与日常', to: '/community', c: '#6fd6ff' }
+    { ic: Drama, t: '创建角色', d: '设计立绘、人设、世界书与动态背景', to: '/character/new', c: '#cc6a44' },
+    { ic: ScrollText, t: '创作剧本', d: '编写剧情，可设为免费或金币付费', to: '/script/new', c: '#b3892f' },
+    { ic: Users, t: '发布动态', d: '在社区分享你的创作与日常', to: '/community', c: '#3f8195' }
   ];
 
   return (

@@ -43,7 +43,7 @@ export default function Profile() {
 
       <div className="page">
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ height: 150, background: u.banner ? `url(${u.banner}) center/cover` : 'linear-gradient(135deg, #2a2140, #181426)' }} />
+          <div style={{ height: 150, background: u.banner ? `url(${u.banner}) center/cover` : 'linear-gradient(135deg, #e7d8c0, #d8c3a4)' }} />
           <div style={{ padding: '0 24px 22px', marginTop: -42 }}>
             <div className="profile-head" style={{ alignItems: 'flex-end' }}>
               <div style={{ border: '4px solid var(--panel)', borderRadius: '50%' }}><Avatar src={u.avatar} name={u.display_name} size={84} /></div>

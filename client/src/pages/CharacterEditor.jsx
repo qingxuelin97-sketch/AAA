@@ -154,7 +154,7 @@ export default function CharacterEditor() {
             </div>
             <div className="card">
               <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>预览</label>
-              <div style={{ height: 220, borderRadius: 12, overflow: 'hidden', marginTop: 8, position: 'relative', background: '#181426' }}>
+              <div style={{ height: 220, borderRadius: 12, overflow: 'hidden', marginTop: 8, position: 'relative', background: 'var(--bg-2)' }}>
                 {c.background ? (c.background_type === 'video'
                   ? <video src={c.background} muted loop autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <img src={c.background} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />

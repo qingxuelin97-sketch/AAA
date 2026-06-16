@@ -23,7 +23,7 @@ export default function Inbox() {
             shares.map(s => (
               <div key={s.id} className="card" style={{ marginBottom: 14, display: 'flex', gap: 16, alignItems: 'center', cursor: 'pointer' }}
                 onClick={() => nav('/post/' + s.post_id)}>
-                <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', flexShrink: 0, background: '#181426', display: 'grid', placeItems: 'center', fontSize: 26 }}>
+                <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-2)', display: 'grid', placeItems: 'center', fontSize: 26 }}>
                   {s.cover ? <img src={s.cover} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : (s.type === 'script' ? '📜' : '🎭')}
                 </div>
                 <div style={{ flex: 1 }}>

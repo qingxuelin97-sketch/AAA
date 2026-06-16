@@ -4,6 +4,7 @@ import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { AuthProvider } from './api.jsx';
 import '@fontsource-variable/inter';
+import '@fontsource-variable/fraunces';
 import './styles.css';
 
 // Static build (GitHub Pages): use an in-browser backend + hash routing so the
