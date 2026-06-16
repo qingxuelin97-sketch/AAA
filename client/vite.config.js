@@ -4,6 +4,8 @@ import path from 'path';
 
 export default defineConfig({
   root: path.resolve(__dirname),
+  // Relative base so the static build works under any GitHub Pages subpath.
+  base: process.env.VITE_STATIC === '1' ? './' : '/',
   plugins: [react({ include: /\.(js|jsx)$/ })],
   server: {
     port: 5173,

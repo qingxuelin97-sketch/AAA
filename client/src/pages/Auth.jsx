@@ -75,6 +75,11 @@ export default function Auth() {
             <button className="btn primary block" disabled={busy}>
               {busy ? '处理中…' : mode === 'login' ? '登 录' : '注 册'}
             </button>
+            {mode === 'login' && (
+              <div className="hint" style={{ textAlign: 'center', marginTop: 14 }}>
+                体验演示账号：<b style={{ color: 'var(--accent)' }}>demo</b> / <b style={{ color: 'var(--accent)' }}>123456</b>
+              </div>
+            )}
           </form>
         </div>
       </div>

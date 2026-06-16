@@ -6,5 +6,6 @@ server/data.sqlite-wal
 server/uploads/*
 !server/uploads/.gitkeep
 shots/
+shots-static/
 .DS_Store
 *.log

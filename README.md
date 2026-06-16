@@ -4,6 +4,17 @@
 
 > 演示账号：**demo / 123456** ｜ 注册邀请码：**HUANYU2026**（赠 2000 金币）、**VIPGIFT**（500 钻 + 30 天 VIP）
 
+## 🌐 在线访问（无需配置环境）
+
+本项目已配置 GitHub Pages 自动部署：推送后 GitHub Actions 会构建**纯浏览器版**并发布，直接点链接即可在手机/电脑浏览器使用：
+
+> **https://qingxuelin97-sketch.github.io/AAA/**
+
+- 纯浏览器版自带一个运行在浏览器内的后端（数据保存在你本地浏览器的 localStorage），首次打开即有完整演示数据。
+- AI 对话 / 剧场为**真实模型**：进入「设置 → 语言模型」填入你自己的 API Key（浏览器直连服务商）即可对话。
+- 首次启用：仓库 Settings → Pages → Source 选择「GitHub Actions」（若工作流未自动开启），等待 Actions 跑完即可访问。
+
+
 ## ✨ 功能总览（20+）
 
 **角色与对话**
