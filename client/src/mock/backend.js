@@ -270,14 +270,16 @@ function buildSystemPrompt(character, recentText) {
 /* ----------------------------- LLM (browser → provider) ----------------------------- */
 async function streamCompletion(conv, character, settings, userContent, me) {
   const eff = effectiveLLM(settings);
-  // When falling back to the platform service, charge the per-conversation fee up-front.
-  let charged = 0;
+  // When falling back to the platform service, verify the user can afford the fee
+  // up-front, but only DEDUCT it after a successful reply (no charge on failure).
+  let feeDue = 0;
   if (eff.platform && me) {
     const count = filter('messages', m => m.conversation_id === conv.id).length;
-    try { charged = chargePlatformFee(me, count, `对话《${character?.name || ''}》平台 AI`); }
-    catch (e) {
+    feeDue = platformFee(me, count);
+    if (me.gold < feeDue) {
       const enc = new TextEncoder();
-      return new Response(new ReadableStream({ start(c) { c.enqueue(enc.encode(`data: ${JSON.stringify({ error: e.message })}\n\n`)); c.enqueue(enc.encode('data: [DONE]\n\n')); c.close(); } }), { headers: { 'content-type': 'text/event-stream' } });
+      const msg = `金币不足，本次平台 AI 服务需 ${feeDue} 金币（当前 ${me.gold}）。可前往钱包签到/兑换，或在设置中填写自己的 API。`;
+      return new Response(new ReadableStream({ start(c) { c.enqueue(enc.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)); c.enqueue(enc.encode('data: [DONE]\n\n')); c.close(); } }), { headers: { 'content-type': 'text/event-stream' } });
     }
   }
   if (userContent) insert('messages', { conversation_id: conv.id, role: 'user', content: userContent });
@@ -294,7 +296,6 @@ async function streamCompletion(conv, character, settings, userContent, me) {
         send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key（浏览器将直连你的服务商）。' });
         controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close(); return;
       }
-      if (charged) send({ fee: charged });
       let full = '';
       try {
         const up = await realFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
@@ -315,7 +316,12 @@ async function streamCompletion(conv, character, settings, userContent, me) {
           }
         }
       } catch (err) { send({ error: '连接模型服务失败：' + err.message + '（可能是服务商的浏览器跨域限制）' }); }
-      if (full.trim()) { insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() }); conv.updated_at = now(); save(); }
+      if (full.trim()) {
+        insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() }); conv.updated_at = now();
+        // Only now deduct the platform fee — successful reply.
+        if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》` }); send({ fee: feeDue }); } catch { /* */ } }
+        save();
+      }
       controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close();
     }
   });
@@ -630,14 +636,14 @@ async function route(method, path, search, body, headers) {
     need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (!t) return E('剧场不存在', 404);
     const s = find('settings', x => x.user_id === me.id);
     const eff = effectiveLLM(s);
-    if (eff.platform) { try { chargePlatformFee(me, 0, '剧场联机 平台 AI'); } catch (e) { return E(e.message); } }
+    if (eff.platform) { const fee = platformFee(me, 0); if (me.gold < fee) return E(`金币不足，剧场联机平台 AI 需 ${fee} 金币（当前 ${me.gold}）`); }
     const cast = filter('theater_cast', x => x.theater_id === tid).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean);
     const transcript = filter('theater_messages', x => x.theater_id === tid).slice(-30); const log = transcript.map(x => `${x.name}：${x.content}`).join('\n');
     const castList = cast.map(c => `「${c.name}」(${c.tagline || '登场角色'})`).join('、');
     let target, system;
     if (body.narrator) { target = { id: null, name: '旁白', avatar: null }; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。你是「旁白」，请用富有画面感的第三人称，推进剧情、描写环境氛围或引出转折，控制在 2-4 句话，不要替具体角色说出对白。`; }
     else { const c = cast.find(x => x.id === body.character_id) || cast[0]; if (!c) return E('剧场没有 AI 角色'); target = c; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`; }
-    try { const content = await llmOnce(s, system, `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请继续：`); if (!content) return E('模型未返回内容', 502); const msg = insert('theater_messages', { theater_id: tid, sender_type: body.narrator ? 'narrator' : 'ai', sender_id: target.id, name: target.name, avatar: target.avatar, content }); return J({ message: msg }); } catch (e) { return E(e.message, 502); }
+    try { const content = await llmOnce(s, system, `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请继续：`); if (!content) return E('模型未返回内容', 502); const msg = insert('theater_messages', { theater_id: tid, sender_type: body.narrator ? 'narrator' : 'ai', sender_id: target.id, name: target.name, avatar: target.avatar, content }); if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 剧场联机' }); } catch { /* */ } } return J({ message: msg }); } catch (e) { return E(e.message, 502); }
   }
   if ((m = P(/^\/theater\/(\d+)\/messages$/)) && method === 'GET') { const tid = +m[1]; const after = parseInt(search.get('after'), 10) || 0; return J({ messages: filter('theater_messages', x => x.theater_id === tid && x.id > after) }); }
   if ((m = P(/^\/theater\/(\d+)$/)) && method === 'GET') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean); const members = filter('theater_members', x => x.theater_id === t.id).map(x => ({ id: x.user_id, display_name: user(x.user_id)?.display_name, avatar: user(x.user_id)?.avatar })); const messages = filter('theater_messages', x => x.theater_id === t.id); return J({ theater: { ...t, owner_name: user(t.owner_id)?.display_name }, cast, members, messages, joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id) }); }
