@@ -20,7 +20,7 @@ const PLATFORM = {
   base_url: 'https://open.bigmodel.cn/api/paas/v4',
   // base64 of the platform key — kept out of plain source / UI.
   _k: 'ZWFmN2MwZDY5MmQzNGY0ZmEzNzUyMjI4NDc2NDE2YmQuQU1DS1ZUcXRQd2Nsa1U3UA==',
-  model: 'glm-4.5',
+  model: 'glm5.2',
   get key() { try { return atob(this._k); } catch { return ''; } }
 };
 // Per-conversation platform usage fee (gold). Heavier (100+ message) sessions cost more.
