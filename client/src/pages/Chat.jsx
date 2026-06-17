@@ -122,7 +122,11 @@ export default function Chat() {
   return (
     <div className={'chat-layout' + (conv ? ' immersive' : '')}>
       <div className={'chat-list' + (conv ? ' hide-mobile' : '')}>
-        <div className="hd">对话 <button className="btn sm" onClick={() => nav('/library')}><Plus size={15} /></button></div>
+        <div className="hd">
+          <button className="btn ghost sm" onClick={() => nav('/')} title="返回发现广场"><ArrowLeft size={15} /></button>
+          <span style={{ flex: 1 }}>对话</span>
+          <button className="btn sm" onClick={() => nav('/library')} title="从角色库新建对话"><Plus size={15} /></button>
+        </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {convs.length === 0 && <div className="empty" style={{ padding: 30, fontSize: 13 }}>从「我的角色」开始一段对话</div>}
           {convs.map(cv => (

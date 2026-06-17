@@ -846,6 +846,19 @@ body::before, body::after { display: none !important; }
 .face-opt:hover { transform: scale(1.07); border-color: var(--border-2); }
 .face-opt.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 
+/* ---- background presets (character editor) ---- */
+.bg-preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-top: 8px; }
+.bg-preset { position: relative; padding: 0; border: 2px solid transparent; border-radius: 11px; overflow: hidden; cursor: pointer;
+  background: none; aspect-ratio: 16 / 10; transition: transform 0.2s var(--spring), border-color 0.15s; }
+.bg-preset img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bg-preset span { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; font-size: 10.5px; font-weight: 700; color: #fff;
+  background: linear-gradient(0deg, rgba(10,8,12,0.6), transparent); text-align: center; }
+.bg-preset:hover { transform: translateY(-2px); border-color: var(--border-2); }
+.bg-preset.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+
+/* chat list header layout */
+.chat-list .hd { display: flex; align-items: center; gap: 8px; }
+
 /* ---- activities (活动中心) ---- */
 .event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: clamp(14px, 1.8vw, 20px); }
 .event-card { position: relative; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 18px;

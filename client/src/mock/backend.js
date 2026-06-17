@@ -3,7 +3,7 @@
 // existing frontend works unchanged. AI calls go straight to the user's
 // configured provider from the browser.
 
-import { faceAvatar, FACE_PRESETS } from '../faces.js';
+import { faceAvatar, FACE_PRESETS, animeAvatar, ANIME_PRESETS, BG_PRESETS } from '../faces.js';
 
 const realFetch = window.fetch.bind(window);
 const KEY = 'huanyu_db_v7';
@@ -54,8 +54,41 @@ const bannerArt = (s, c1, c2) => dataUrl(`<svg xmlns="http://www.w3.org/2000/svg
 function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* quota */ } }
 function load() {
   const raw = localStorage.getItem(KEY);
-  if (raw) { try { db = JSON.parse(raw); return; } catch { /* */ } }
-  db = seed(); save();
+  if (raw) { try { db = JSON.parse(raw); } catch { db = seed(); } }
+  else db = seed();
+  migrate();
+  save();
+}
+
+// Idempotent migrations — add new seed content to EXISTING databases without
+// resetting user data. Each migration runs at most once (tracked in db._mig).
+function migrate() {
+  db._mig = db._mig || {};
+  if (!db._mig.anime_char) {
+    const owner = find('users', u => u.username === 'demo') || table('users')[0];
+    if (owner) makeAnimeChar(owner.id);
+    db._mig.anime_char = 1;
+  }
+}
+
+// Build a ready-to-use 二次元 character card (anime avatar + anime chat background).
+function makeAnimeChar(ownerId) {
+  const av = animeAvatar({ hair: '#6a4bd6', hair2: '#9a82ff', eye: '#ff86b6', bg1: '#ffe0ef', bg2: '#cdbcff', id: 777 });
+  const bg = (BG_PRESETS.find(b => b.name === '樱花校园') || BG_PRESETS[0]).url;
+  const ch = insert('characters', {
+    owner_id: ownerId, is_public: 1, nsfw: 0, featured: 1, voice_name: 'nova', uses: 326, likes: 188,
+    background_type: 'image', category: 'anime', tags: '二次元,校园,元气,治愈',
+    name: '星见 · 雫', avatar: av, background: bg,
+    tagline: '元气满满的星之社团社长，和你一起追逐每一个夏天。',
+    intro: '私立星海学园「天文社」社长，开朗爱笑、偶尔迷糊，最喜欢在天台和你一起看星星。嘴上元气满满，心里其实很在意你。',
+    greeting: '*她抱着一摞观星笔记，从天台门口探出头，马尾随风一甩*\n\n啊——找到你啦！今晚有流星雨哦，我可是特意留了最好的位置给你的。快过来快过来，再晚就要错过第一颗咯！',
+    persona: '你是私立星海学园天文社社长「星见 · 雫」，一名元气开朗的二次元少女。说话活泼、语气可爱，常带「呐」「哦」「啦」等语气词与 *动作描写*，偶尔会害羞。热爱星空与天文，重视与对方的相处。始终保持角色，沉浸式第一人称。'
+  });
+  insert('world_entries', { character_id: ch.id, keys: '天文社,社团', content: '星海学园天文社只有寥寥数人，社长星见雫几乎以一己之力维持着，天台是社团的秘密基地。', enabled: 1, position: 0 });
+  insert('world_entries', { character_id: ch.id, keys: '流星,星星,观星', content: '雫随身带着手绘观星笔记，记录每一次和重要的人一起看过的星空。', enabled: 1, position: 1 });
+  ch.views = ch.likes * 6 + ch.uses;
+  save();
+  return ch;
 }
 const now = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
 function table(name) { return (db[name] = db[name] || []); }
