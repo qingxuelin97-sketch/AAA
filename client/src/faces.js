@@ -150,25 +150,32 @@ const ANIME_RAW = [
 export const ANIME_PRESETS = ANIME_RAW.map((p, i) => ({ id: 'anime-' + i, gender: 'a', url: animeAvatar({ ...p, id: 100 + i }) }));
 
 // ---------------------------------------------------------------------------
-// Chat background presets (incl. 二次元 scenes) — soft gradients with bokeh / petals / stars.
-function bgPreset({ c1, c2, accent, kind, seed }) {
+// Chat background presets — layered anime-style scenery (sky gradient, sun/moon,
+// mountain silhouettes / city skyline, sakura / stars / bokeh).
+function bgPreset({ sky1, sky2, body, bodyOp = 0.9, mtn1, mtn2, kind, accent, seed }) {
   const r = rng(seed); let deco = '';
-  if (kind === 'sakura') {
-    for (let i = 0; i < 26; i++) { const x = r() * 1280, y = r() * 720, s = r() * 10 + 6, rot = r() * 360;
-      deco += `<g transform="translate(${x} ${y}) rotate(${rot})"><path d="M0 -${s} Q${s * 0.6} -${s * 0.3} 0 ${s} Q-${s * 0.6} -${s * 0.3} 0 -${s} Z" fill="${accent}" opacity="${0.25 + r() * 0.45}"/></g>`; }
-  } else if (kind === 'stars') {
-    for (let i = 0; i < 90; i++) deco += `<circle cx="${r() * 1280}" cy="${r() * 720}" r="${r() * 1.8 + 0.4}" fill="#fff" opacity="${r() * 0.8 + 0.2}"/>`;
-    for (let i = 0; i < 6; i++) deco += `<circle cx="${r() * 1280}" cy="${r() * 720}" r="${r() * 90 + 40}" fill="${accent}" opacity="0.10"/>`;
-  } else { // bokeh
-    for (let i = 0; i < 22; i++) deco += `<circle cx="${r() * 1280}" cy="${r() * 720}" r="${r() * 70 + 18}" fill="${accent}" opacity="${0.08 + r() * 0.12}"/>`;
+  if (body) { deco += `<circle cx="1000" cy="172" r="190" fill="${body}" opacity="${0.16 * bodyOp}"/><circle cx="1000" cy="172" r="84" fill="${body}" opacity="${bodyOp}"/>`; }
+  if (kind === 'stars') for (let i = 0; i < 110; i++) deco += `<circle cx="${r() * 1280}" cy="${r() * 440}" r="${r() * 1.7 + 0.3}" fill="#fff" opacity="${r() * 0.8 + 0.2}"/>`;
+  if (kind === 'city') {
+    let bx = 0; while (bx < 1280) { const bw = 42 + r() * 74, bh = 130 + r() * 250, by = 720 - bh;
+      deco += `<rect x="${bx}" y="${by}" width="${bw - 6}" height="${bh}" fill="${mtn2}" opacity="0.94"/>`;
+      for (let wy = by + 16; wy < 706; wy += 22) for (let wx = bx + 9; wx < bx + bw - 14; wx += 16) if (r() > 0.5) deco += `<rect x="${wx}" y="${wy}" width="6" height="8" fill="${accent}" opacity="${0.45 + r() * 0.5}"/>`;
+      bx += bw; }
+  } else if (mtn1) {
+    deco += `<path d="M0 540 L240 410 L440 520 L680 388 L920 540 L1180 450 L1280 520 L1280 720 L0 720 Z" fill="${mtn1}" opacity="0.5"/>`;
+    deco += `<path d="M0 612 L280 510 L560 602 L860 488 L1140 592 L1280 532 L1280 720 L0 720 Z" fill="${mtn2}" opacity="0.86"/>`;
   }
-  return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="bp" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="1280" height="720" fill="url(#bp)"/>${deco}</svg>`);
+  if (kind === 'sakura') for (let i = 0; i < 30; i++) { const x = r() * 1280, y = r() * 720, s = r() * 11 + 6, rot = r() * 360;
+    deco += `<g transform="translate(${x} ${y}) rotate(${rot})"><path d="M0 -${s} Q${s * 0.55} -${s * 0.25} 0 ${s} Q${-s * 0.55} -${s * 0.25} 0 -${s} Z" fill="${accent}" opacity="${0.3 + r() * 0.5}"/></g>`; }
+  if (kind === 'bokeh') for (let i = 0; i < 20; i++) deco += `<circle cx="${r() * 1280}" cy="${r() * 720}" r="${r() * 60 + 16}" fill="${accent}" opacity="${0.08 + r() * 0.14}"/>`;
+  return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="sk" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${sky1}"/><stop offset="100%" stop-color="${sky2}"/></linearGradient></defs><rect width="1280" height="720" fill="url(#sk)"/>${deco}</svg>`);
 }
 // Live anime image galleries from open community APIs. Each endpoint returns a
 // random 二次元 image (used directly as <img> / chat background), so the wallpaper
 // refreshes every time the chat opens — a lightweight "dynamic" effect. Availability
 // depends on these third-party services.
 export const ONLINE_BG = [
+  { name: '精选二次元', url: 'https://pic.re/image' },
   { name: '横屏动漫壁纸', url: 'https://t.mwm.moe/pc' },
   { name: '竖屏动漫壁纸', url: 'https://t.mwm.moe/mp' },
   { name: '随机二次元', url: 'https://www.loliapi.com/acg/' },
@@ -178,17 +185,18 @@ export const ONLINE_BG = [
 ];
 // Live anime avatar galleries (random each load).
 export const ONLINE_AV = [
+  { name: '精选头像', url: 'https://pic.re/image' },
   { name: '二次元头像', url: 'https://www.loliapi.com/acg/pp/' },
   { name: '动漫头像', url: 'https://api.btstu.cn/sjtx/api.php?lx=c1&format=images' }
 ];
 
 export const BG_PRESETS = [
-  { name: '樱花校园', url: bgPreset({ c1: '#ffd9e6', c2: '#c7b6ff', accent: '#ff7fb0', kind: 'sakura', seed: 'sak1' }) },
-  { name: '黄昏教室', url: bgPreset({ c1: '#ffd1a8', c2: '#ff9ec2', accent: '#ffcaa0', kind: 'bokeh', seed: 'dusk1' }) },
-  { name: '星空夜幕', url: bgPreset({ c1: '#2a2360', c2: '#0c0b22', accent: '#7c6bff', kind: 'stars', seed: 'star1' }) },
-  { name: '霓虹都市', url: bgPreset({ c1: '#241046', c2: '#0e1030', accent: '#ff4f9d', kind: 'bokeh', seed: 'neon1' }) },
-  { name: '薄荷晴空', url: bgPreset({ c1: '#bdeee0', c2: '#7ec7ff', accent: '#ffffff', kind: 'bokeh', seed: 'mint1' }) },
-  { name: '梦幻紫境', url: bgPreset({ c1: '#e6d9ff', c2: '#9a7bff', accent: '#ffffff', kind: 'bokeh', seed: 'dream1' }) },
-  { name: '森系治愈', url: bgPreset({ c1: '#cfe8b8', c2: '#5a9e6a', accent: '#eaffd0', kind: 'bokeh', seed: 'forest1' }) },
-  { name: '樱粉甜梦', url: bgPreset({ c1: '#ffe0ee', c2: '#ffb3d4', accent: '#ff6fa8', kind: 'sakura', seed: 'sak2' }) }
+  { name: '樱花校园', url: bgPreset({ sky1: '#ffd9ea', sky2: '#fff0f5', body: '#fff2f8', bodyOp: 0.5, mtn1: '#f3b9d2', mtn2: '#e58ab4', kind: 'sakura', accent: '#ff7fb0', seed: 'sak' }) },
+  { name: '绯色黄昏', url: bgPreset({ sky1: '#ffb86b', sky2: '#ff7e8a', body: '#fff2c4', bodyOp: 0.95, mtn1: '#c95f7a', mtn2: '#8a3d63', kind: 'bokeh', accent: '#ffe0b0', seed: 'dusk' }) },
+  { name: '星空夜幕', url: bgPreset({ sky1: '#1b1d52', sky2: '#090a20', body: '#e2e8ff', bodyOp: 0.92, mtn1: '#2a2a55', mtn2: '#14143a', kind: 'stars', accent: '#9a82ff', seed: 'star' }) },
+  { name: '霓虹都市', url: bgPreset({ sky1: '#2a1350', sky2: '#0c0926', body: '#ff6fae', bodyOp: 0, mtn2: '#110d2c', kind: 'city', accent: '#5ad2ff', seed: 'neon' }) },
+  { name: '薄荷晴空', url: bgPreset({ sky1: '#9fe0ff', sky2: '#ecfcf4', body: '#ffffff', bodyOp: 0.85, mtn1: '#c2e8cb', mtn2: '#86c79a', kind: 'bokeh', accent: '#ffffff', seed: 'mint' }) },
+  { name: '梦幻紫境', url: bgPreset({ sky1: '#caa6ff', sky2: '#f2e9ff', body: '#fff0fb', bodyOp: 0.6, mtn1: '#b78fef', mtn2: '#8a63d8', kind: 'bokeh', accent: '#ffffff', seed: 'dream' }) },
+  { name: '森系治愈', url: bgPreset({ sky1: '#cdeebf', sky2: '#f1fae4', body: '#fcffe0', bodyOp: 0.8, mtn1: '#9ccf86', mtn2: '#5d9e63', kind: 'bokeh', accent: '#eaffd0', seed: 'forest' }) },
+  { name: '海边夏日', url: bgPreset({ sky1: '#7fd0ff', sky2: '#ffe8c0', body: '#fff4cf', bodyOp: 0.95, mtn1: '#5ab4e0', mtn2: '#2f86c4', kind: 'bokeh', accent: '#ffffff', seed: 'sea' }) }
 ];

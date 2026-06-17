@@ -757,7 +757,7 @@ body::before, body::after { display: none !important; }
 .card { box-shadow: var(--shadow-sm); }
 .char-card, .room-row, .pkg, .skel-card, .adm-row, .lb-row, .ann-item, .world-entry { box-shadow: var(--shadow-sm); }
 .chat-head, .chat-input-bar { background: rgba(255,255,255,0.8); }
-.chat-bg::after { background: linear-gradient(180deg, rgba(250,249,245,0.55) 0%, rgba(250,249,245,0.2) 26%, rgba(250,249,245,0.2) 64%, rgba(250,249,245,0.84) 100%); }
+.chat-bg::after { background: linear-gradient(180deg, rgba(250,249,245,0.16) 0%, rgba(250,249,245,0.03) 22%, rgba(250,249,245,0.03) 70%, rgba(250,249,245,0.5) 100%); }
 
 /* clickable avatar wrapper */
 .ava-link { display: inline-flex; align-self: flex-start; line-height: 0; cursor: pointer; border-radius: 50%; transition: transform 0.22s var(--spring), box-shadow 0.2s; flex-shrink: 0; }
