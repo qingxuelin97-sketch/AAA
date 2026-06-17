@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';
+import { BG_PRESETS } from '../faces.js';
 import { Plus } from 'lucide-react';
 
 const BLANK = {
@@ -151,6 +152,16 @@ export default function CharacterEditor() {
               <Uploader value={c.background} type={c.background_type} dynamic
                 onChange={(url, type) => setC(prev => ({ ...prev, background: url, background_type: type }))} />
               <div className="hint">将作为与该角色对话时的沉浸式背景。支持 jpg/png/webp/gif 或 mp4/webm 短视频实现动态背景。</div>
+              <label style={{ marginTop: 14 }}>二次元 / 风景背景预设</label>
+              <div className="bg-preset-grid">
+                {BG_PRESETS.map(b => (
+                  <button key={b.name} type="button" className={'bg-preset' + (c.background === b.url ? ' on' : '')}
+                    onClick={() => setC(prev => ({ ...prev, background: b.url, background_type: 'image' }))} title={b.name}>
+                    <img src={b.url} alt={b.name} />
+                    <span>{b.name}</span>
+                  </button>
+                ))}
+              </div>
               {c.background && <button className="btn sm ghost" style={{ marginTop: 10 }}
                 onClick={() => setC(prev => ({ ...prev, background: '', background_type: 'image' }))}>清除背景</button>}
             </div>

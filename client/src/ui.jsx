@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { uploadFile } from './api.jsx';
 import { UploadCloud, UserRound } from 'lucide-react';
-import { FACE_PRESETS } from './faces.js';
+import { FACE_PRESETS, ANIME_PRESETS } from './faces.js';
 
 const STATIC_IMG = 'image/png,image/jpeg,image/webp,image/avif';
 const DYNAMIC = 'image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4,video/webm';
@@ -99,7 +99,7 @@ export function GridSkeleton({ n = 8 }) {
 export function AvatarPicker({ value, onChange, size = 112 }) {
   const [open, setOpen] = useState(false);
   const [g, setG] = useState('f');
-  const list = FACE_PRESETS.filter(p => p.gender === g);
+  const list = g === 'a' ? ANIME_PRESETS : FACE_PRESETS.filter(p => p.gender === g);
   return (
     <>
       <div style={{ display: 'grid', placeItems: 'center', gap: 8 }}>
@@ -115,6 +115,7 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
           <div className="seg" style={{ marginBottom: 14 }}>
             <button className={g === 'f' ? 'active' : ''} onClick={() => setG('f')}>女生脸模</button>
             <button className={g === 'm' ? 'active' : ''} onClick={() => setG('m')}>男生脸模</button>
+            <button className={g === 'a' ? 'active' : ''} onClick={() => setG('a')}>二次元</button>
           </div>
           <div className="face-grid">
             {list.map(p => (

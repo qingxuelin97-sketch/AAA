@@ -3,6 +3,7 @@
 // Shared by the avatar picker (UI) and the in-browser backend seed.
 
 const svgUrl = (svg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg.replace(/\s+/g, ' ').trim());
+const rng = (s) => { let x = 0; for (const c of String(s)) x = (x * 31 + c.charCodeAt(0)) % 9973; return () => (x = (x * 73 + 41) % 9973) / 9973; };
 
 const SKIN_SHADE = (hex) => {
   // darken a hex skin tone ~12% for neck/jaw shading
@@ -100,3 +101,76 @@ export const FACE_PRESETS = RAW.map((p, i) => ({
   gender: p.gender,
   url: faceAvatar({ ...p, eye: i % 3 === 0 ? '#3a2a20' : i % 3 === 1 ? '#5a3b28' : '#4a6a5a', id: i })
 }));
+
+// ---------------------------------------------------------------------------
+// Anime (二次元) avatars — large expressive eyes, colorful hair, soft shading.
+export function animeAvatar({ bg1 = '#ffd9ec', bg2 = '#c9b8ff', hair = '#6a4bd6', hair2 = '#8f74ff', eye = '#5ad2ff', skin = '#ffe6d4', id = 0, blush = '#ff9ec2' } = {}) {
+  const eyeAt = (cx) => `
+    <g>
+      <ellipse cx="${cx}" cy="212" rx="20" ry="26" fill="#fff"/>
+      <ellipse cx="${cx}" cy="214" rx="17" ry="23" fill="${eye}"/>
+      <ellipse cx="${cx}" cy="220" rx="17" ry="16" fill="#1b2740" opacity="0.45"/>
+      <circle cx="${cx}" cy="216" r="8.5" fill="#15203a"/>
+      <ellipse cx="${cx - 6}" cy="203" rx="7" ry="9" fill="#fff" opacity="0.95"/>
+      <circle cx="${cx + 5}" cy="224" r="3.2" fill="#fff" opacity="0.8"/>
+      <path d="M${cx - 21} 196 Q${cx} 182 ${cx + 21} 196" stroke="#2a2233" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M${cx - 21} 196 L${cx - 23} 189" stroke="#2a2233" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M${cx - 18} 178 Q${cx} 170 ${cx + 18} 178" stroke="${hair}" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+    </g>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+    <defs><radialGradient id="ab${id}" cx="40%" cy="32%"><stop offset="0%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/></radialGradient>
+      <linearGradient id="ah${id}" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0%" stop-color="${hair2}"/><stop offset="100%" stop-color="${hair}"/></linearGradient></defs>
+    <rect width="400" height="400" fill="url(#ab${id})"/>
+    <circle cx="320" cy="80" r="70" fill="#fff" opacity="0.18"/><circle cx="70" cy="330" r="56" fill="#fff" opacity="0.13"/>
+    <path d="M96 250 Q70 150 130 96 Q200 54 270 96 Q330 150 304 250 Q300 210 286 196 L286 150 Q200 120 114 150 L114 196 Q100 210 96 250 Z" fill="url(#ah${id})"/>
+    <path d="M130 175 Q130 118 200 116 Q270 118 270 175 Q272 244 234 284 Q212 305 200 305 Q188 305 166 284 Q128 244 130 175 Z" fill="${skin}"/>
+    <ellipse cx="131" cy="208" rx="8" ry="12" fill="${skin}"/><ellipse cx="269" cy="208" rx="8" ry="12" fill="${skin}"/>
+    ${eyeAt(165)}${eyeAt(235)}
+    <path d="M197 232 Q200 240 203 232" stroke="#caa18a" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+    <path d="M188 258 Q200 268 212 258" stroke="#d77a72" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="150" cy="244" rx="13" ry="7" fill="${blush}" opacity="0.5"/><ellipse cx="250" cy="244" rx="13" ry="7" fill="${blush}" opacity="0.5"/>
+    <path d="M114 150 Q150 120 190 138 Q170 150 150 176 Q146 152 132 150 Z" fill="url(#ah${id})"/>
+    <path d="M286 150 Q250 120 210 138 Q230 150 250 176 Q254 152 268 150 Z" fill="url(#ah${id})"/>
+    <path d="M168 132 Q200 118 232 132 Q214 150 200 150 Q186 150 168 132 Z" fill="url(#ah${id})"/>
+    <path d="M196 116 Q188 96 206 90 Q200 104 210 112 Z" fill="${hair2}"/>
+  </svg>`;
+  return svgUrl(svg);
+}
+
+const ANIME_RAW = [
+  { hair: '#6a4bd6', hair2: '#9a82ff', eye: '#ff86b6', bg1: '#ffe0ef', bg2: '#cdbcff' },
+  { hair: '#e85a8a', hair2: '#ff8fb4', eye: '#7ad7ff', bg1: '#ffe6ee', bg2: '#ffc7dd' },
+  { hair: '#2f9e8f', hair2: '#5fccb8', eye: '#ffce5a', bg1: '#d9f5ec', bg2: '#aee3da' },
+  { hair: '#3a6ad0', hair2: '#6f9cff', eye: '#ff9a5a', bg1: '#dde8ff', bg2: '#b9ccff' },
+  { hair: '#caa23a', hair2: '#ffd96b', eye: '#7c6bff', bg1: '#fff3d6', bg2: '#ffe0a8' },
+  { hair: '#9a9aa8', hair2: '#c7c7d8', eye: '#5ad2ff', bg1: '#eef0f6', bg2: '#d3d8ea' },
+  { hair: '#d05a5a', hair2: '#ff8a8a', eye: '#5ae0a0', bg1: '#ffe3e0', bg2: '#ffc2bd' },
+  { hair: '#5535a8', hair2: '#8a63e0', eye: '#ffd45a', bg1: '#ece0ff', bg2: '#cdb6ff' }
+];
+export const ANIME_PRESETS = ANIME_RAW.map((p, i) => ({ id: 'anime-' + i, gender: 'a', url: animeAvatar({ ...p, id: 100 + i }) }));
+
+// ---------------------------------------------------------------------------
+// Chat background presets (incl. 二次元 scenes) — soft gradients with bokeh / petals / stars.
+function bgPreset({ c1, c2, accent, kind, seed }) {
+  const r = rng(seed); let deco = '';
+  if (kind === 'sakura') {
+    for (let i = 0; i < 26; i++) { const x = r() * 1280, y = r() * 720, s = r() * 10 + 6, rot = r() * 360;
+      deco += `<g transform="translate(${x} ${y}) rotate(${rot})"><path d="M0 -${s} Q${s * 0.6} -${s * 0.3} 0 ${s} Q-${s * 0.6} -${s * 0.3} 0 -${s} Z" fill="${accent}" opacity="${0.25 + r() * 0.45}"/></g>`; }
+  } else if (kind === 'stars') {
+    for (let i = 0; i < 90; i++) deco += `<circle cx="${r() * 1280}" cy="${r() * 720}" r="${r() * 1.8 + 0.4}" fill="#fff" opacity="${r() * 0.8 + 0.2}"/>`;
+    for (let i = 0; i < 6; i++) deco += `<circle cx="${r() * 1280}" cy="${r() * 720}" r="${r() * 90 + 40}" fill="${accent}" opacity="0.10"/>`;
+  } else { // bokeh
+    for (let i = 0; i < 22; i++) deco += `<circle cx="${r() * 1280}" cy="${r() * 720}" r="${r() * 70 + 18}" fill="${accent}" opacity="${0.08 + r() * 0.12}"/>`;
+  }
+  return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="bp" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="1280" height="720" fill="url(#bp)"/>${deco}</svg>`);
+}
+export const BG_PRESETS = [
+  { name: '樱花校园', url: bgPreset({ c1: '#ffd9e6', c2: '#c7b6ff', accent: '#ff7fb0', kind: 'sakura', seed: 'sak1' }) },
+  { name: '黄昏教室', url: bgPreset({ c1: '#ffd1a8', c2: '#ff9ec2', accent: '#ffcaa0', kind: 'bokeh', seed: 'dusk1' }) },
+  { name: '星空夜幕', url: bgPreset({ c1: '#2a2360', c2: '#0c0b22', accent: '#7c6bff', kind: 'stars', seed: 'star1' }) },
+  { name: '霓虹都市', url: bgPreset({ c1: '#241046', c2: '#0e1030', accent: '#ff4f9d', kind: 'bokeh', seed: 'neon1' }) },
+  { name: '薄荷晴空', url: bgPreset({ c1: '#bdeee0', c2: '#7ec7ff', accent: '#ffffff', kind: 'bokeh', seed: 'mint1' }) },
+  { name: '梦幻紫境', url: bgPreset({ c1: '#e6d9ff', c2: '#9a7bff', accent: '#ffffff', kind: 'bokeh', seed: 'dream1' }) },
+  { name: '森系治愈', url: bgPreset({ c1: '#cfe8b8', c2: '#5a9e6a', accent: '#eaffd0', kind: 'bokeh', seed: 'forest1' }) },
+  { name: '樱粉甜梦', url: bgPreset({ c1: '#ffe0ee', c2: '#ffb3d4', accent: '#ff6fa8', kind: 'sakura', seed: 'sak2' }) }
+];
