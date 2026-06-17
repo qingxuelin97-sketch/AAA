@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, GridSkeleton, Modal } from '../ui.jsx';
-import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Gem, Clock, Dices } from 'lucide-react';
+import { api } from '../api.jsx';
+import { useToast, Avatar, GridSkeleton } from '../ui.jsx';
+import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Clock } from 'lucide-react';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 
 function Poster({ c, onView, onFav, onChat }) {
@@ -25,7 +25,6 @@ function Poster({ c, onView, onFav, onChat }) {
 }
 
 export default function Home() {
-  const { refreshUser } = useAuth();
   const [cats, setCats] = useState([]);
   const [cat, setCat] = useState('all');
   const [sort, setSort] = useState('hot');
@@ -36,8 +35,6 @@ export default function Home() {
   const [scripts, setScripts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ann, setAnn] = useState(null);
-  const [gachaRes, setGachaRes] = useState(null);
-  const [rolling, setRolling] = useState(false);
   const toast = useToast();
   const nav = useNavigate();
 
@@ -71,11 +68,6 @@ export default function Home() {
     catch (err) { toast(err.message, 'err'); }
   };
   const dismissAnn = () => { if (ann) localStorage.setItem('ann_seen', String(ann.id)); setAnn(null); };
-  const gacha = async () => {
-    setRolling(true);
-    try { const d = await api('/engage/gacha', { method: 'POST' }); setGachaRes(d); await refreshUser(); }
-    catch (e) { toast(e.message, 'err'); } finally { setRolling(false); }
-  };
 
   return (
     <>
@@ -95,14 +87,6 @@ export default function Home() {
             <button className="ann-x" onClick={e => { e.stopPropagation(); dismissAnn(); }}><X size={16} /></button>
           </div>
         )}
-
-        <div className="gacha-card">
-          <span className="g-ic"><Dices size={24} /></span>
-          <div className="g-tx"><b>命运抽卡</b><p>消耗 50 钻石，随机抽取一位角色加入你的收藏</p></div>
-          <button className="btn" style={{ background: '#fff', color: '#3a2740' }} onClick={gacha} disabled={rolling}>
-            <Gem size={15} style={{ color: '#6fb3d6' }} /> {rolling ? '抽取中…' : '抽一次 · 50'}
-          </button>
-        </div>
 
         {featured.length > 0 && (
           <>
@@ -168,21 +152,6 @@ export default function Home() {
           </>
         )}
       </div>
-
-      {gachaRes && (
-        <Modal onClose={() => setGachaRes(null)}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>{gachaRes.already ? '再次抽到 · 已在收藏中' : '恭喜获得新角色！'}</div>
-            <div style={{ display: 'grid', placeItems: 'center', marginBottom: 12 }}><Avatar src={gachaRes.character.avatar} name={gachaRes.character.name} size={96} /></div>
-            <h2 style={{ margin: '0 0 4px' }}>{gachaRes.character.name}</h2>
-            <p className="muted" style={{ marginTop: 0 }}>{gachaRes.character.tagline}</p>
-            <div className="row" style={{ marginTop: 18 }}>
-              <button className="btn block" onClick={() => setGachaRes(null)}>收下</button>
-              <button className="btn primary block" onClick={() => nav('/character/' + gachaRes.character.id)}>查看角色</button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </>
   );
 }

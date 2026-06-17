@@ -4,6 +4,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import Reviews from '../components/Reviews.jsx';
+import ReportButton from '../components/ReportButton.jsx';
 import { Coins, Heart, Play, Lock, Trash2, Eye } from 'lucide-react';
 
 export default function ScriptDetail() {
@@ -71,6 +72,7 @@ export default function ScriptDetail() {
           <h1>{script.title}</h1>
           <div className="sub">{pid('script', script.id)} · 由 {script.author_name} 创作</div>
         </div>
+        {!isAuthor && <ReportButton type="script" id={script.id} />}
         {isAuthor && <>
           <button className="btn" onClick={() => nav('/script/' + id + '/edit')}>编辑</button>
           <button className="btn danger" onClick={del}><Trash2 size={14} style={{ verticalAlign: 'middle' }} /> 删除</button>

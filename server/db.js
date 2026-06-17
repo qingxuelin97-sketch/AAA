@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS users (
   is_gm INTEGER DEFAULT 0,
   is_banned INTEGER DEFAULT 0,
   ban_reason TEXT DEFAULT '',
+  svip INTEGER DEFAULT 0,
+  verified INTEGER DEFAULT 0,
+  verified_note TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now'))
 );
 

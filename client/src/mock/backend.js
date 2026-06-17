@@ -4,7 +4,7 @@
 // configured provider from the browser.
 
 const realFetch = window.fetch.bind(window);
-const KEY = 'huanyu_db_v5';
+const KEY = 'huanyu_db_v6';
 let db;
 
 /* ----------------------------- art (data-url SVG) ----------------------------- */
@@ -55,6 +55,8 @@ function seed() {
   const u4 = mkUser('kenji', '剑持', '武侠与历史题材，刀光剑影里见人心。', avatarArt('kenji', '#d8a657', '#5a3d1f', '剑'), bannerArt('kenji', '#5a3d1f', '#221409'), 6700, 10, 0);
   const gmu = mkUser('gm', '幻域管理员', '幻域平台官方管理员账号。', avatarArt('gm', '#cc6a44', '#5a2a18', '官'), bannerArt('gm', '#5a2a18', '#2a130b'), 0, 0, 0);
   gmu.is_gm = 1; u1.is_gm = 1;
+  Object.assign(u1, { svip: 1, verified: 1, verified_note: '幻域官方认证', vip_until: new Date(Date.now() + 3650 * 86400000).toISOString(), bio: '幻域官方认证 · 平台超级管理员｜SVIP 尊享会员，欢迎来到幻域。' });
+  Object.assign(gmu, { verified: 1, verified_note: '官方账号' });
   insert('announcements', { author_id: gmu.id, title: '欢迎来到幻域 · 测试版', body: '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。欢迎创建角色、剧本，并在剧场与多位 AI 同台演出。', pinned: 1 });
   insert('announcements', { author_id: gmu.id, title: '新功能：模型自检测', body: '设置 → 语言模型 中新增「检测模型」，可一键拉取你所用服务商的可用模型列表并选择，无需手动填写。', pinned: 0 });
   [u1, u2, u3, u4].forEach(u => defaultSettings(u.id));
@@ -137,7 +139,7 @@ function seed() {
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
 function publicUser(u) {
-  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, created_at: u.created_at };
+  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', created_at: u.created_at };
 }
 function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '' }) {
   const u = user(uid);
@@ -496,7 +498,7 @@ async function route(method, path, search, body, headers) {
     const moments = filter('moments', x => x.user_id === u.id).sort((a, b) => b.id - a.id).slice(0, 20);
     const stats = { characters: filter('characters', c => c.owner_id === u.id).length, scripts: scripts.length, followers: filter('follows', f => f.following_id === u.id).length, following: filter('follows', f => f.follower_id === u.id).length };
     const following = me ? !!find('follows', f => f.follower_id === me.id && f.following_id === u.id) : false;
-    return J({ user: { id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, vip: isVip(u), vip_until: u.vip_until, is_gm: !!u.is_gm, created_at: u.created_at }, characters, scripts, moments, stats, following });
+    return J({ user: { id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, vip: isVip(u), vip_until: u.vip_until, is_gm: !!u.is_gm, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', created_at: u.created_at }, characters, scripts, moments, stats, following });
   }
 
   // ---------- groups ----------

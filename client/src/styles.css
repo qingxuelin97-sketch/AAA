@@ -760,7 +760,7 @@ body::before, body::after { display: none !important; }
 .chat-bg::after { background: linear-gradient(180deg, rgba(250,249,245,0.55) 0%, rgba(250,249,245,0.2) 26%, rgba(250,249,245,0.2) 64%, rgba(250,249,245,0.84) 100%); }
 
 /* clickable avatar wrapper */
-.ava-link { display: inline-flex; cursor: pointer; border-radius: 50%; transition: transform 0.22s var(--spring), box-shadow 0.2s; flex-shrink: 0; }
+.ava-link { display: inline-flex; align-self: flex-start; line-height: 0; cursor: pointer; border-radius: 50%; transition: transform 0.22s var(--spring), box-shadow 0.2s; flex-shrink: 0; }
 .ava-link:hover { transform: scale(1.06); box-shadow: 0 0 0 3px var(--accent-ring); }
 .ava-link:active { transform: scale(0.96); }
 
@@ -773,3 +773,10 @@ body::before, body::after { display: none !important; }
 .person-chip b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .person-chip span { font-size: 11px; }
 .person-chip .btn { margin-top: 4px; padding: 5px 12px; }
+
+/* ===== Identity badges: 蓝V / SVIP / 超级管理员 / 官方认证 ===== */
+.v-badge { display: inline-flex; align-items: center; color: #2b87d9; }
+.v-badge svg { filter: drop-shadow(0 1px 1px rgba(43,135,217,0.25)); }
+.svip-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 800;
+  letter-spacing: 0.5px; background: linear-gradient(135deg, #ffd86b, #e0a52a); color: #4a3206; }
+.cert-line { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: #2b87d9; font-weight: 600; }

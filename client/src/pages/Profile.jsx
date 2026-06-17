@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck } from 'lucide-react';
+import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck } from 'lucide-react';
 import { pid } from '../assets.jsx';
 
 export default function Profile() {
@@ -49,12 +49,14 @@ export default function Profile() {
             <div className="profile-head" style={{ alignItems: 'flex-end' }}>
               <div style={{ border: '4px solid var(--panel)', borderRadius: '50%' }}><Avatar src={u.avatar} name={u.display_name} size={84} /></div>
               <div style={{ flex: 1, paddingBottom: 6 }}>
-                <h2 style={{ margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h2 style={{ margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                   {u.display_name}
-                  {u.is_gm && <span className="gm-tag"><ShieldCheck size={12} /> GM</span>}
-                  {u.vip && <span className="vip-badge"><Crown size={12} /> VIP</span>}
+                  {u.verified && <span className="v-badge" title={u.verified_note || '官方认证'}><BadgeCheck size={18} /></span>}
+                  {u.is_gm && <span className="gm-tag"><ShieldCheck size={12} /> 超级管理员</span>}
+                  {u.svip ? <span className="svip-badge">SVIP</span> : u.vip ? <span className="vip-badge"><Crown size={12} /> VIP</span> : null}
                 </h2>
-                <div className="muted" style={{ fontSize: 14 }}>{u.bio || '这位玩家还没有写简介'}</div>
+                {u.verified && u.verified_note && <div className="cert-line"><BadgeCheck size={13} /> {u.verified_note}</div>}
+                <div className="muted" style={{ fontSize: 14, marginTop: 4 }}>{u.bio || '这位玩家还没有写简介'}</div>
               </div>
             </div>
             <div className="stat-row">

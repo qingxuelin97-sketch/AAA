@@ -5,7 +5,7 @@ import { Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
-  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield
+  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield, BadgeCheck
 } from 'lucide-react';
 
 const GROUPS = [
@@ -81,7 +81,8 @@ function Sidebar({ user, unread }) {
       <div className="wallet-mini">
         <span className="coin gold"><Coins size={14} /> {user?.gold ?? 0}</span>
         <span className="coin diamond"><Gem size={14} /> {user?.diamond ?? 0}</span>
-        {user?.vip && <span className="vip-badge"><Crown size={12} /> VIP</span>}
+        {user?.svip ? <span className="svip-badge">SVIP</span> : user?.vip ? <span className="vip-badge"><Crown size={12} /> VIP</span> : null}
+        {user?.verified && <span className="v-badge" title="官方认证"><BadgeCheck size={16} /></span>}
       </div>
       <div style={{ overflowY: 'auto', flex: 1, margin: '0 -4px', padding: '0 4px' }}>
         {GROUPS.map(g => (

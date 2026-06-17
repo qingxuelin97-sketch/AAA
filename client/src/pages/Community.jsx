@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Uploader } from '../ui.jsx';
+import ReportButton from '../components/ReportButton.jsx';
 import { Heart, MessageCircle, Send, Trash2, Inbox, UserPlus, Check, Sparkles } from 'lucide-react';
 
 function SuggestedPeople() {
@@ -179,10 +180,12 @@ export default function Community() {
                 <div className="head">
                   <b onClick={() => nav('/user/' + m.user_id)} style={{ cursor: 'pointer' }}>{m.author_name}</b>
                   <span className="t">{fmtDate(m.created_at)}</span>
-                  {m.user_id === user?.id && (
+                  {m.user_id === user?.id ? (
                     <button className="btn ghost sm" style={{ marginLeft: 'auto' }} onClick={() => del(m)}>
                       <Trash2 size={14} />
                     </button>
+                  ) : (
+                    <span style={{ marginLeft: 'auto' }}><ReportButton type="moment" id={m.id} label="" /></span>
                   )}
                 </div>
                 {m.text && <div className="text" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>}
