@@ -546,3 +546,70 @@ html { scroll-behavior: smooth; }
 
 .auth-foot { margin-top: 22px; text-align: center; font-size: 11.5px; color: var(--faint); line-height: 1.8; }
 .auth-foot::before { content: ''; display: block; height: 1px; background: var(--border); margin: 0 0 16px; }
+
+/* ============ Lively / fluid interactions (v4) ============ */
+:root { --spring: cubic-bezier(0.34, 1.56, 0.64, 1); --spring-soft: cubic-bezier(0.5, 1.25, 0.6, 1); }
+
+/* base buttons — spring hover lift + tactile press + flowing gradient */
+.btn {
+  transition: transform 0.3s var(--spring), box-shadow 0.28s cubic-bezier(0.22,0.61,0.36,1),
+              background-color 0.2s ease, background-position 0.45s ease, border-color 0.2s ease, color 0.2s ease;
+  will-change: transform;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(-1px) scale(0.95); transition-duration: 0.08s; }
+.btn svg { transition: transform 0.3s var(--spring); }
+.btn:hover svg { transform: scale(1.12); }
+
+.btn.primary {
+  background-image: linear-gradient(135deg, #d6754e, var(--accent-2));
+  background-size: 180% 180%; background-position: 0% 50%;
+}
+.btn.primary:hover { background-position: 100% 50%; box-shadow: 0 4px 12px rgba(179,82,47,0.26), 0 14px 30px rgba(179,82,47,0.32); }
+.btn.primary:active { box-shadow: 0 2px 8px rgba(179,82,47,0.34); }
+.btn.primary::after { width: 55%; }
+.btn.primary:hover::after { opacity: 1; animation: sheen 0.85s cubic-bezier(0.22,0.61,0.36,1); }
+
+/* send button — pops & nudges */
+.send-btn {
+  background-image: linear-gradient(135deg, #d6754e, var(--accent-2)); background-size: 180% 180%;
+  transition: transform 0.3s var(--spring), background-position 0.4s ease, box-shadow 0.25s ease;
+}
+.send-btn:not(:disabled):hover { transform: scale(1.1); background-position: 100% 50%; box-shadow: 0 6px 16px rgba(179,82,47,0.34); }
+.send-btn:not(:disabled):active { transform: scale(0.88); transition-duration: 0.08s; }
+.send-btn svg { transition: transform 0.3s var(--spring); }
+.send-btn:not(:disabled):hover svg { transform: translateX(2px) rotate(-8deg); }
+
+/* checkin / big action buttons */
+.checkin-btn { transition: transform 0.3s var(--spring), background 0.2s, box-shadow 0.25s; }
+.checkin-btn:not(:disabled):hover { transform: translateY(-2px) scale(1.02); }
+.checkin-btn:not(:disabled):active { transform: scale(0.96); transition-duration: 0.08s; }
+
+/* chips, segments, tabs — springy */
+.cat-chip { transition: transform 0.28s var(--spring), background 0.2s, color 0.2s, border-color 0.2s; }
+.cat-chip:hover { transform: translateY(-2px); }
+.cat-chip:active { transform: scale(0.92); transition-duration: 0.08s; }
+.cat-chip.active:hover { transform: translateY(-2px); }
+.seg button { transition: transform 0.25s var(--spring), background 0.18s, color 0.18s, box-shadow 0.18s; }
+.seg button:active { transform: scale(0.93); }
+.cast-chip { transition: transform 0.26s var(--spring), border-color 0.18s, color 0.18s, box-shadow 0.2s; }
+.cast-chip:hover { transform: translateY(-2px) scale(1.03); }
+.cast-chip:active { transform: scale(0.94); transition-duration: 0.08s; }
+
+/* nav items glide */
+.nav-item { transition: background 0.18s, color 0.18s, transform 0.26s var(--spring); }
+.nav-item:hover { transform: translateX(3px); }
+.nav-item:active { transform: translateX(3px) scale(0.98); transition-duration: 0.08s; }
+.bottom-nav a { transition: color 0.18s, transform 0.26s var(--spring); }
+.bottom-nav a:active { transform: scale(0.9); }
+.bottom-nav a:active svg { transform: scale(0.82); }
+
+/* switches & favorite hearts get a pop */
+.switch input:checked + .track::after { transition: transform 0.32s var(--spring); }
+@keyframes heartPop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.moment .acts button.on svg, .btn.danger svg[fill="currentColor"] { animation: heartPop 0.4s var(--spring); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn.primary, .send-btn, .cat-chip, .nav-item, .checkin-btn, .cast-chip, .seg button { transition: none !important; }
+  .btn:hover, .send-btn:hover, .cat-chip:hover, .nav-item:hover, .cast-chip:hover { transform: none !important; }
+}
