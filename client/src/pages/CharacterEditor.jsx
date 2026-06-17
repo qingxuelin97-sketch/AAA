@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast, Uploader } from '../ui.jsx';
+import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';
 import { Plus } from 'lucide-react';
 
@@ -89,11 +89,11 @@ export default function CharacterEditor() {
             </div>
             <div className="card">
               <div className="field" style={{ textAlign: 'center' }}>
-                <label>角色头像 <span className="muted">(静态图)</span></label>
+                <label>角色头像 <span className="muted">(预设脸模或上传)</span></label>
                 <div style={{ display: 'grid', placeItems: 'center' }}>
-                  <Uploader variant="avatar" value={c.avatar} onChange={(url) => set('avatar', url)} />
+                  <AvatarPicker value={c.avatar} onChange={(url) => set('avatar', url)} size={104} />
                 </div>
-                <div className="hint" style={{ textAlign: 'center' }}>头像仅支持静态图片</div>
+                <div className="hint" style={{ textAlign: 'center' }}>可挑选真人风格预设脸模（区分男女），或上传自定义静态图片</div>
               </div>
               <div className="field"><label>语音音色名 <span className="muted">(可选)</span></label>
                 <input className="input" value={c.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder="如 alloy / nova，留空用默认" />

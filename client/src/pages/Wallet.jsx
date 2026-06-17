@@ -52,9 +52,11 @@ export default function Wallet() {
             <div><div className="bal-num">{fmt(wallet.diamond)}</div><div className="bal-lbl">钻石</div></div>
           </div>
           <div className="col">
-            <span className="icon-chip vip"><Crown size={20} /></span>
+            <span className={'icon-chip ' + (wallet.svip ? 'svip' : 'vip')}><Crown size={20} /></span>
             <div>
-              {wallet.vip
+              {wallet.svip
+                ? <><div className="bal-num" style={{ fontSize: 19 }}>SVIP 尊享</div><div className="bal-lbl">平台 AI 5 折 · 至高权益</div></>
+                : wallet.vip
                 ? <><div className="bal-num" style={{ fontSize: 19 }}>VIP 会员</div><div className="bal-lbl">有效期至 {String(wallet.vip_until || '').slice(0, 10)}</div></>
                 : <><div className="bal-num" style={{ fontSize: 19 }}>普通会员</div><div className="bal-lbl">开通享专属权益</div></>}
             </div>
@@ -107,6 +109,7 @@ export default function Wallet() {
             <h2 style={{ margin: '0 0 6px', fontSize: 19 }}>开通 VIP 会员</h2>
             <div style={{ fontSize: 13, opacity: 0.8 }}>{fmt(vipCost)} 金币 / {vipDays} 天</div>
             <div className="perks">
+              <div className="perk"><Check size={15} /> 平台 AI 对话 75 折（SVIP 5 折）</div>
               <div className="perk"><Check size={15} /> 每日签到金币双倍</div>
               <div className="perk"><Check size={15} /> 主页专属 VIP 标识</div>
               <div className="perk"><Check size={15} /> 剧场与群聊无限畅玩</div>

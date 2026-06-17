@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { uploadFile } from './api.jsx';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, UserRound } from 'lucide-react';
+import { FACE_PRESETS } from './faces.js';
 
 const STATIC_IMG = 'image/png,image/jpeg,image/webp,image/avif';
 const DYNAMIC = 'image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4,video/webm';
@@ -91,6 +92,47 @@ export function GridSkeleton({ n = 8 }) {
         </div>
       ))}
     </div>
+  );
+}
+
+// Avatar chooser — pick a realistic human-face preset (男/女) or upload your own.
+export function AvatarPicker({ value, onChange, size = 112 }) {
+  const [open, setOpen] = useState(false);
+  const [g, setG] = useState('f');
+  const list = FACE_PRESETS.filter(p => p.gender === g);
+  return (
+    <>
+      <div style={{ display: 'grid', placeItems: 'center', gap: 8 }}>
+        <div className="avatar-pick" style={{ width: size, height: size }} onClick={() => setOpen(true)} title="选择或上传头像">
+          {value ? <img src={value} alt="" /> : <UserRound size={size * 0.4} />}
+          <span className="avatar-pick-edit">更换</span>
+        </div>
+      </div>
+      {open && (
+        <Modal onClose={() => setOpen(false)}>
+          <h2 style={{ marginTop: 0 }}>选择头像</h2>
+          <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>从真人风格脸模预设中挑选，或上传自定义图片。</p>
+          <div className="seg" style={{ marginBottom: 14 }}>
+            <button className={g === 'f' ? 'active' : ''} onClick={() => setG('f')}>女生脸模</button>
+            <button className={g === 'm' ? 'active' : ''} onClick={() => setG('m')}>男生脸模</button>
+          </div>
+          <div className="face-grid">
+            {list.map(p => (
+              <button key={p.id} className={'face-opt' + (value === p.url ? ' on' : '')} onClick={() => { onChange(p.url); setOpen(false); }}>
+                <img src={p.url} alt="" />
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+            <div style={{ width: 88 }}>
+              <Uploader variant="avatar" value={value} onChange={(url) => { onChange(url); }} />
+            </div>
+            <div className="muted" style={{ fontSize: 12.5, flex: 1 }}>也可上传自定义图片（点击左侧圆形）。上传后点击右上角关闭即可。</div>
+          </div>
+          <button className="btn block" style={{ marginTop: 14 }} onClick={() => setOpen(false)}>完成</button>
+        </Modal>
+      )}
+    </>
   );
 }
 

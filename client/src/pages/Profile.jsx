@@ -4,6 +4,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck } from 'lucide-react';
 import { pid } from '../assets.jsx';
+import ReportButton from '../components/ReportButton.jsx';
 
 export default function Profile() {
   const { id } = useParams();
@@ -36,9 +37,12 @@ export default function Profile() {
             <button className="btn ghost" onClick={logout}><LogOut size={15} /></button>
           </>
         ) : (
-          <button className={'btn ' + (following ? '' : 'primary')} onClick={toggleFollow}>
-            {following ? <><UserCheck size={15} /> 已关注</> : <><UserPlus size={15} /> 关注</>}
-          </button>
+          <>
+            <button className={'btn ' + (following ? '' : 'primary')} onClick={toggleFollow}>
+              {following ? <><UserCheck size={15} /> 已关注</> : <><UserPlus size={15} /> 关注</>}
+            </button>
+            <ReportButton type="user" id={u.id} label="举报用户" />
+          </>
         )}
       </div>
 
