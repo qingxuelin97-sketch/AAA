@@ -164,6 +164,24 @@ function bgPreset({ c1, c2, accent, kind, seed }) {
   }
   return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="bp" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="1280" height="720" fill="url(#bp)"/>${deco}</svg>`);
 }
+// Live anime image galleries from open community APIs. Each endpoint returns a
+// random 二次元 image (used directly as <img> / chat background), so the wallpaper
+// refreshes every time the chat opens — a lightweight "dynamic" effect. Availability
+// depends on these third-party services.
+export const ONLINE_BG = [
+  { name: '横屏动漫壁纸', url: 'https://t.mwm.moe/pc' },
+  { name: '竖屏动漫壁纸', url: 'https://t.mwm.moe/mp' },
+  { name: '随机二次元', url: 'https://www.loliapi.com/acg/' },
+  { name: '二次元竖屏', url: 'https://www.loliapi.com/acg/pe/' },
+  { name: '原神场景', url: 'https://api.dujin.org/pic/yuanshen/' },
+  { name: '动漫风景', url: 'https://api.btstu.cn/sjbz/api.php?lx=dongman&format=images' }
+];
+// Live anime avatar galleries (random each load).
+export const ONLINE_AV = [
+  { name: '二次元头像', url: 'https://www.loliapi.com/acg/pp/' },
+  { name: '动漫头像', url: 'https://api.btstu.cn/sjtx/api.php?lx=c1&format=images' }
+];
+
 export const BG_PRESETS = [
   { name: '樱花校园', url: bgPreset({ c1: '#ffd9e6', c2: '#c7b6ff', accent: '#ff7fb0', kind: 'sakura', seed: 'sak1' }) },
   { name: '黄昏教室', url: bgPreset({ c1: '#ffd1a8', c2: '#ff9ec2', accent: '#ffcaa0', kind: 'bokeh', seed: 'dusk1' }) },

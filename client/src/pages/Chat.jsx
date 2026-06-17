@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+
+const LIST_KEY = 'huanyu_chatlist_mini';
 
 export default function Chat() {
   const { id } = useParams();
@@ -15,7 +17,9 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
+  const [listMini, setListMini] = useState(() => localStorage.getItem(LIST_KEY) === '1');
   const scrollRef = useRef();
+  const toggleList = () => setListMini(v => { const n = !v; localStorage.setItem(LIST_KEY, n ? '1' : '0'); return n; });
 
   const loadConvs = () => api('/chat/conversations').then(d => setConvs(d.conversations)).catch(() => {});
   useEffect(() => { loadConvs(); }, []);
@@ -121,16 +125,18 @@ export default function Chat() {
 
   return (
     <div className={'chat-layout' + (conv ? ' immersive' : '')}>
-      <div className={'chat-list' + (conv ? ' hide-mobile' : '')}>
+      <div className={'chat-list' + (conv ? ' hide-mobile' : '') + (listMini ? ' mini' : '')}>
         <div className="hd">
-          <button className="btn ghost sm" onClick={() => nav('/')} title="返回发现广场"><ArrowLeft size={15} /></button>
-          <span style={{ flex: 1 }}>对话</span>
-          <button className="btn sm" onClick={() => nav('/library')} title="从角色库新建对话"><Plus size={15} /></button>
+          {!listMini && <span style={{ flex: 1 }}>对话</span>}
+          <button className="btn ghost sm" onClick={toggleList} title={listMini ? '展开对话列表' : '收起对话列表'}>
+            {listMini ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+          </button>
+          {!listMini && <button className="btn sm" onClick={() => nav('/library')} title="从角色库新建对话"><Plus size={15} /></button>}
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {convs.length === 0 && <div className="empty" style={{ padding: 30, fontSize: 13 }}>从「我的角色」开始一段对话</div>}
+          {convs.length === 0 && !listMini && <div className="empty" style={{ padding: 30, fontSize: 13 }}>从「我的角色」开始一段对话</div>}
           {convs.map(cv => (
-            <div key={cv.id} className={'conv-item' + (String(cv.id) === String(id) ? ' active' : '')} onClick={() => nav('/chats/' + cv.id)}>
+            <div key={cv.id} className={'conv-item' + (String(cv.id) === String(id) ? ' active' : '')} onClick={() => nav('/chats/' + cv.id)} title={listMini ? cv.character_name : undefined}>
               <Avatar src={cv.character_avatar} name={cv.character_name} size={40} />
               <div className="tx"><b>{cv.character_name}</b><span>{cv.title}</span></div>
               <button className="speak" onClick={e => delConv(e, cv)}><X size={14} /></button>

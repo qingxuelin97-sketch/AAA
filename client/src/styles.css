@@ -856,8 +856,15 @@ body::before, body::after { display: none !important; }
 .bg-preset:hover { transform: translateY(-2px); border-color: var(--border-2); }
 .bg-preset.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 
-/* chat list header layout */
+/* chat list header layout + collapsible (squeeze) like the sidebar */
+.chat-list { transition: width 0.24s cubic-bezier(0.22,0.61,0.36,1); }
 .chat-list .hd { display: flex; align-items: center; gap: 8px; }
+@media (min-width: 861px) {
+  .chat-list.mini { width: 66px; }
+  .chat-list.mini .hd { justify-content: center; padding: 16px 8px; }
+  .chat-list.mini .conv-item { justify-content: center; padding: 11px 0; }
+  .chat-list.mini .conv-item .tx, .chat-list.mini .conv-item .speak { display: none; }
+}
 
 /* ---- activities (活动中心) ---- */
 .event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: clamp(14px, 1.8vw, 20px); }

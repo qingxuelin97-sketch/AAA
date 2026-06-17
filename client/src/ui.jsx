@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { uploadFile } from './api.jsx';
 import { UploadCloud, UserRound } from 'lucide-react';
-import { FACE_PRESETS, ANIME_PRESETS } from './faces.js';
+import { FACE_PRESETS, ANIME_PRESETS, ONLINE_AV } from './faces.js';
 
 const STATIC_IMG = 'image/png,image/jpeg,image/webp,image/avif';
 const DYNAMIC = 'image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4,video/webm';
@@ -124,6 +124,18 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
               </button>
             ))}
           </div>
+          {g === 'a' && (
+            <>
+              <div className="muted" style={{ fontSize: 12, margin: '12px 0 6px' }}>在线二次元头像 · 实时随机（来自开源社区图接口，每次不同）</div>
+              <div className="face-grid">
+                {ONLINE_AV.map(p => (
+                  <button key={p.name} className={'face-opt' + (value === p.url ? ' on' : '')} title={p.name} onClick={() => { onChange(p.url); setOpen(false); }}>
+                    <img src={p.url} alt={p.name} loading="lazy" referrerPolicy="no-referrer" />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
             <div style={{ width: 88 }}>
               <Uploader variant="avatar" value={value} onChange={(url) => { onChange(url); }} />

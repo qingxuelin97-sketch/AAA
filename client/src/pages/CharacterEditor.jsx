@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';
-import { BG_PRESETS } from '../faces.js';
+import { BG_PRESETS, ONLINE_BG } from '../faces.js';
 import { Plus } from 'lucide-react';
 
 const BLANK = {
@@ -162,6 +162,17 @@ export default function CharacterEditor() {
                   </button>
                 ))}
               </div>
+              <label style={{ marginTop: 14 }}>在线二次元图库 · 实时壁纸 <span className="muted">(每次进入随机一张)</span></label>
+              <div className="bg-preset-grid">
+                {ONLINE_BG.map(b => (
+                  <button key={b.name} type="button" className={'bg-preset' + (c.background === b.url ? ' on' : '')}
+                    onClick={() => setC(prev => ({ ...prev, background: b.url, background_type: 'image' }))} title={b.name}>
+                    <img src={b.url} alt={b.name} loading="lazy" referrerPolicy="no-referrer" />
+                    <span>{b.name}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="hint">在线图库来自开源社区随机图接口，由第三方服务提供，可用性取决于其稳定性；选中后每次进入对话会拉取一张新图。需要固定的动态壁纸可在上方直接上传 GIF / MP4。</div>
               {c.background && <button className="btn sm ghost" style={{ marginTop: 10 }}
                 onClick={() => setC(prev => ({ ...prev, background: '', background_type: 'image' }))}>清除背景</button>}
             </div>
