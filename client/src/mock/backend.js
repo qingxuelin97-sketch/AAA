@@ -26,7 +26,8 @@ const PLATFORM_DEFAULTS = {
 };
 // DB-backed, GM-editable platform config (group-wide). Lazily seeded from the defaults.
 function platformCfg() {
-  if (!db.platform) { db.platform = { base_url: PLATFORM_DEFAULTS.base_url, _k: PLATFORM_DEFAULTS._k, model: PLATFORM_DEFAULTS.model }; save(); }
+  if (!db.platform) { db.platform = { base_url: PLATFORM_DEFAULTS.base_url, _k: PLATFORM_DEFAULTS._k, model: PLATFORM_DEFAULTS.model, system_prompt: '' }; save(); }
+  if (db.platform.system_prompt === undefined) db.platform.system_prompt = '';
   return db.platform;
 }
 function platformKey() { try { return atob(platformCfg()._k || '') || ''; } catch { return ''; } }
@@ -285,7 +286,9 @@ async function streamCompletion(conv, character, settings, userContent, me) {
   if (userContent) insert('messages', { conversation_id: conv.id, role: 'user', content: userContent });
   const history = filter('messages', m => m.conversation_id === conv.id);
   const recent = history.slice(-6).map(m => m.content).join(' ');
-  const system = buildSystemPrompt(character, recent + ' ' + userContent);
+  let system = buildSystemPrompt(character, recent + ' ' + userContent);
+  // Platform-wide system prompt (GM-configured) is prepended for no-API users only.
+  if (eff.platform) { const gp = (platformCfg().system_prompt || '').trim(); if (gp) system = gp + '\n\n' + system; }
   const payload = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
   const encoder = new TextEncoder();
@@ -722,16 +725,17 @@ async function route(method, path, search, body, headers) {
   // Platform built-in AI service config — GM only (group-wide for all no-API users).
   if (path === '/admin/platform' && method === 'GET') {
     gmOnly(); const p = platformCfg(); const key = platformKey();
-    return J({ platform: { base_url: p.base_url, model: p.model, key_set: !!key, key_masked: key ? key.slice(0, 6) + '••••••' + key.slice(-4) : '', fee: PLATFORM_FEE } });
+    return J({ platform: { base_url: p.base_url, model: p.model, system_prompt: p.system_prompt || '', key_set: !!key, key_masked: key ? key.slice(0, 6) + '••••••' + key.slice(-4) : '', fee: PLATFORM_FEE } });
   }
   if (path === '/admin/platform' && method === 'PUT') {
     gmOnly(); const p = platformCfg();
     if (typeof body.base_url === 'string' && body.base_url.trim()) p.base_url = body.base_url.trim();
     if (typeof body.model === 'string' && body.model.trim()) p.model = body.model.trim();
+    if (typeof body.system_prompt === 'string') p.system_prompt = body.system_prompt;
     if (typeof body.key === 'string' && body.key.trim()) { try { p._k = btoa(body.key.trim()); } catch { p._k = ''; } }
     save();
     const key = platformKey();
-    return J({ ok: true, platform: { base_url: p.base_url, model: p.model, key_set: !!key, key_masked: key ? key.slice(0, 6) + '••••••' + key.slice(-4) : '' } });
+    return J({ ok: true, platform: { base_url: p.base_url, model: p.model, system_prompt: p.system_prompt || '', key_set: !!key, key_masked: key ? key.slice(0, 6) + '••••••' + key.slice(-4) : '' } });
   }
   if (path === '/admin/stats' && method === 'GET') {
     gmOnly();

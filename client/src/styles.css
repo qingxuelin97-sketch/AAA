@@ -757,7 +757,11 @@ body::before, body::after { display: none !important; }
 .card { box-shadow: var(--shadow-sm); }
 .char-card, .room-row, .pkg, .skel-card, .adm-row, .lb-row, .ann-item, .world-entry { box-shadow: var(--shadow-sm); }
 .chat-head, .chat-input-bar { background: rgba(255,255,255,0.8); }
-.chat-bg::after { background: linear-gradient(180deg, rgba(250,249,245,0.16) 0%, rgba(250,249,245,0.03) 22%, rgba(250,249,245,0.03) 70%, rgba(250,249,245,0.5) 100%); }
+/* When a chat background image/video is set: no scrim, fully transparent top & bottom bars (沉浸) */
+.chat-bg::after { display: none; }
+.has-bg .chat-head, .has-bg .chat-input-bar { background: transparent; backdrop-filter: none; border-color: transparent; }
+.has-bg .chat-head .nm b { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.55); }
+.has-bg .chat-head .nm span { color: rgba(255,255,255,0.88); text-shadow: 0 1px 4px rgba(0,0,0,0.55); }
 
 /* clickable avatar wrapper */
 .ava-link { display: inline-flex; align-self: flex-start; line-height: 0; cursor: pointer; border-radius: 50%; transition: transform 0.22s var(--spring), box-shadow 0.2s; flex-shrink: 0; }

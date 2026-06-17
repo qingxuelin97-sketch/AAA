@@ -254,15 +254,16 @@ function PlatformTab({ toast }) {
   const [baseUrl, setBaseUrl] = useState('');
   const [model, setModel] = useState('');
   const [key, setKey] = useState('');
+  const [sysPrompt, setSysPrompt] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const load = () => api('/admin/platform').then(d => { setCfg(d.platform); setBaseUrl(d.platform.base_url || ''); setModel(d.platform.model || ''); }).catch(e => toast(e.message, 'err'));
+  const load = () => api('/admin/platform').then(d => { setCfg(d.platform); setBaseUrl(d.platform.base_url || ''); setModel(d.platform.model || ''); setSysPrompt(d.platform.system_prompt || ''); }).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const save = async () => {
     setBusy(true);
     try {
-      const body = { base_url: baseUrl, model };
+      const body = { base_url: baseUrl, model, system_prompt: sysPrompt };
       if (key.trim()) body.key = key.trim();
       const d = await api('/admin/platform', { method: 'PUT', body });
       setCfg(d.platform); setKey('');
@@ -285,6 +286,10 @@ function PlatformTab({ toast }) {
         <div className="hint">所有无 API 用户最终调用的模型名，例如 glm-5.2 / glm-4.6。</div></div>
       <div className="field"><label>API Key {cfg.key_set && <span className="tag">已配置 · {cfg.key_masked}</span>}</label>
         <input className="input" type="password" value={key} onChange={e => setKey(e.target.value)} placeholder={cfg.key_set ? '••••••（留空则不修改）' : '填写平台密钥'} /></div>
+      <div className="field"><label>平台系统提示词（全局）</label>
+        <textarea className="input" rows={6} value={sysPrompt} onChange={e => setSysPrompt(e.target.value)} style={{ resize: 'vertical', lineHeight: 1.6 }}
+          placeholder="例如：统一的安全与风格约束、平台世界观设定等。将自动前置注入到所有「无自有 API」用户的每次对话最前面，与角色人设叠加。留空则不注入。" />
+        <div className="hint">仅对使用平台内置服务的用户生效；填写自有 API Key 的用户不受影响。修改后立即对全体生效。</div></div>
       {cfg.fee && <p className="muted" style={{ fontSize: 12.5 }}>计费规则：每次对话 {cfg.fee.base} 金币；单对话互动超 {cfg.fee.heavy_threshold} 条后 {cfg.fee.heavy} 金币（VIP 75 折 / SVIP 5 折，会员折扣在结算时自动应用）。</p>}
       <button className="btn primary" style={{ marginTop: 6 }} disabled={busy} onClick={save}><Check size={15} /> 保存并对全体生效</button>
     </div>

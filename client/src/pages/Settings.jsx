@@ -22,6 +22,20 @@ const PROVIDER_OPTS = [
   ['gemini', 'Google Gemini'], ['openrouter', 'OpenRouter'], ['groq', 'Groq'], ['together', 'Together'], ['custom', '自定义']
 ];
 
+// OpenAI-compatible /audio/speech (TTS) providers. Keys stay on the user side.
+const VOICE_PRESETS = {
+  openai: 'https://api.openai.com/v1', siliconflow: 'https://api.siliconflow.cn/v1',
+  qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1', minimax: 'https://api.minimax.chat/v1',
+  fishaudio: 'https://api.fish.audio/v1', groq: 'https://api.groq.com/openai/v1',
+  deepinfra: 'https://api.deepinfra.com/v1/openai', azure: '', custom: ''
+};
+const VOICE_PROVIDER_OPTS = [
+  ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）'], ['siliconflow', '硅基流动 SiliconFlow（CosyVoice 等）'],
+  ['qwen', '阿里云百炼 Qwen-TTS / CosyVoice'], ['minimax', 'MiniMax 海螺语音'],
+  ['fishaudio', 'Fish Audio'], ['groq', 'Groq（PlayAI TTS）'], ['deepinfra', 'DeepInfra'],
+  ['azure', 'Azure / 自定义兼容端点'], ['custom', '自定义']
+];
+
 export default function Settings() {
   const toast = useToast();
   const { user, setUser, refreshUser } = useAuth();
@@ -32,6 +46,8 @@ export default function Settings() {
   const [pwd, setPwd] = useState({ old_password: '', new_password: '' });
   const [models, setModels] = useState([]);
   const [detecting, setDetecting] = useState(false);
+  const [voiceModels, setVoiceModels] = useState([]);
+  const [detectingVoice, setDetectingVoice] = useState(false);
 
   useEffect(() => { api('/settings').then(d => setS(d.settings)).catch(e => toast(e.message, 'err')); }, []);
   useEffect(() => { if (user) setProfile({ display_name: user.display_name || '', bio: user.bio || '', avatar: user.avatar || '', banner: user.banner || '' }); }, [user]);
@@ -51,6 +67,15 @@ export default function Settings() {
       setModels(d.models);
       toast(`检测到 ${d.models.length} 个可用模型`);
     } catch (e) { toast(e.message, 'err'); } finally { setDetecting(false); }
+  };
+  const detectVoiceModels = async () => {
+    setDetectingVoice(true);
+    try {
+      const d = await api('/settings/models', { method: 'POST', body: { base_url: s.voice_base_url, api_key: s.voice_api_key || undefined } });
+      if (!d.models?.length) { toast('未返回任何模型', 'err'); return; }
+      setVoiceModels(d.models);
+      toast(`检测到 ${d.models.length} 个可用模型`);
+    } catch (e) { toast(e.message, 'err'); } finally { setDetectingVoice(false); }
   };
   const saveProfile = async () => {
     try { const d = await api('/auth/me', { method: 'PUT', body: profile }); setUser(d.user); toast('资料已更新'); }
@@ -125,15 +150,36 @@ export default function Settings() {
         {tab === 'voice' && (
           <div className="card">
             <div className="section-title"><h2>语音模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
-            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>兼容 OpenAI /audio/speech，用于朗读角色台词。</p>
+            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>兼容 OpenAI /audio/speech 格式，可接入任意服务商，用于朗读角色台词。密钥仅存于本地。</p>
             <div className="row">
-              <div className="field"><label>Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} /></div>
-              <div className="field"><label>模型</label><input className="input" value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder="tts-1" /></div>
+              <div className="field"><label>服务商预设</label>
+                <select className="select" value={s.voice_provider || 'openai'} onChange={e => { const p = e.target.value; set('voice_provider', p); if (VOICE_PRESETS[p]) set('voice_base_url', VOICE_PRESETS[p]); }}>
+                  {VOICE_PROVIDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select></div>
+              <div className="field"><label>模型</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input className="input" style={{ flex: 1 }} value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder="tts-1" list="voice-model-list" />
+                  <button className="btn" onClick={detectVoiceModels} disabled={detectingVoice} title="检测服务商可用模型">
+                    <RefreshCw size={15} className={detectingVoice ? 'spin' : ''} /> {detectingVoice ? '检测中' : '检测模型'}
+                  </button>
+                </div>
+                {voiceModels.length > 0 && (
+                  <>
+                    <datalist id="voice-model-list">{voiceModels.map(m => <option key={m} value={m} />)}</datalist>
+                    <select className="select" style={{ marginTop: 8 }} value={voiceModels.includes(s.voice_model) ? s.voice_model : ''} onChange={e => e.target.value && set('voice_model', e.target.value)}>
+                      <option value="">— 从检测到的 {voiceModels.length} 个模型中选择 —</option>
+                      {voiceModels.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </>
+                )}
+              </div>
             </div>
+            <div className="field"><label>API Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} placeholder="https://api.openai.com/v1" /></div>
             <div className="row">
               <div className="field"><label>默认音色</label><input className="input" value={s.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder="alloy / nova" /></div>
               <div className="field"><label>API Key {s.voice_api_key_set && <span className="tag">已配置</span>}</label>
-                <input className="input" type="password" value={s.voice_api_key || ''} onChange={e => set('voice_api_key', e.target.value)} placeholder={s.voice_api_key_set ? '••••••（留空不修改）' : 'sk-...'} /></div>
+                <input className="input" type="password" value={s.voice_api_key || ''} onChange={e => set('voice_api_key', e.target.value)} placeholder={s.voice_api_key_set ? '••••••（留空不修改）' : 'sk-...'} />
+                <div className="hint">点「检测模型」可向服务商拉取可用模型列表再选择（需先填 Base URL 与 Key）。</div></div>
             </div>
           </div>
         )}
