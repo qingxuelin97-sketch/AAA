@@ -25,6 +25,8 @@ import Favorites from './pages/Favorites.jsx';
 import Search from './pages/Search.jsx';
 import CharacterView from './pages/CharacterView.jsx';
 import Announcements from './pages/Announcements.jsx';
+import Leaderboard from './pages/Leaderboard.jsx';
+import Admin from './pages/Admin.jsx';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -49,6 +51,8 @@ export default function App() {
         <Route path="/community" element={P(<Community />)} />
         <Route path="/search" element={P(<Search />)} />
         <Route path="/announcements" element={P(<Announcements />)} />
+        <Route path="/leaderboard" element={P(<Leaderboard />)} />
+        <Route path="/admin" element={P(<Admin />)} />
         <Route path="/chats" element={P(<Chat />)} />
         <Route path="/chats/:id" element={P(<Chat />)} />
         <Route path="/groups" element={P(<Groups />)} />

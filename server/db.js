@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
   last_checkin TEXT,
   checkin_streak INTEGER DEFAULT 0,
   is_gm INTEGER DEFAULT 0,
+  is_banned INTEGER DEFAULT 0,
+  ban_reason TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -92,6 +94,7 @@ CREATE TABLE IF NOT EXISTS characters (
   category TEXT DEFAULT '', tags TEXT DEFAULT '',
   is_public INTEGER DEFAULT 0, nsfw INTEGER DEFAULT 0,
   likes INTEGER DEFAULT 0, uses INTEGER DEFAULT 0,
+  views INTEGER DEFAULT 0, featured INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -130,6 +133,29 @@ CREATE TABLE IF NOT EXISTS scripts (
   price_gold INTEGER DEFAULT 0,     -- 0 = free
   nsfw INTEGER DEFAULT 0,
   plays INTEGER DEFAULT 0, likes INTEGER DEFAULT 0,
+  views INTEGER DEFAULT 0, featured INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Reviews / ratings on characters & scripts
+CREATE TABLE IF NOT EXISTS reviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  target_type TEXT NOT NULL,   -- character | script
+  target_id INTEGER NOT NULL,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  rating INTEGER DEFAULT 5,
+  text TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Content reports queued for GM review
+CREATE TABLE IF NOT EXISTS reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  target_type TEXT NOT NULL,   -- character | script | moment | user
+  target_id INTEGER NOT NULL,
+  reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reason TEXT DEFAULT '',
+  status TEXT DEFAULT 'open',  -- open | resolved
   created_at TEXT DEFAULT (datetime('now'))
 );
 

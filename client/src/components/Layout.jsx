@@ -5,7 +5,7 @@ import { Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
-  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone
+  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield
 } from 'lucide-react';
 
 const GROUPS = [
@@ -13,6 +13,7 @@ const GROUPS = [
     { to: '/', ic: Compass, label: '发现广场', end: true },
     { to: '/scripts', ic: ScrollText, label: '剧本' },
     { to: '/community', ic: Users, label: '社区' },
+    { to: '/leaderboard', ic: Trophy, label: '排行榜' },
     { to: '/announcements', ic: Megaphone, label: '公告' },
     { to: '/search', ic: Search, label: '搜索' }
   ] },
@@ -94,6 +95,14 @@ function Sidebar({ user, unread }) {
             ))}
           </div>
         ))}
+        {user?.is_gm && (
+          <div>
+            <div className="nav-section">管理</div>
+            <NavLink to="/admin" className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
+              <span className="ic"><Shield size={18} /></span>管理后台
+            </NavLink>
+          </div>
+        )}
       </div>
       <NavLink to="/publish" className="nav-item" style={{ color: 'var(--accent)' }}>
         <span className="ic"><Sparkles size={18} /></span>发布作品

@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { pid } from '../assets.jsx';
-import { Coins, Heart, Play, Lock, Trash2 } from 'lucide-react';
+import Reviews from '../components/Reviews.jsx';
+import { Coins, Heart, Play, Lock, Trash2, Eye } from 'lucide-react';
 
 export default function ScriptDetail() {
   const { id } = useParams();
@@ -14,7 +15,7 @@ export default function ScriptDetail() {
   const [busy, setBusy] = useState(false);
 
   const load = () => api('/scripts/' + id).then(d => setScript(d.script)).catch(e => toast(e.message, 'err'));
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+  useEffect(() => { load(); api('/engage/view', { method: 'POST', body: { type: 'script', id: +id } }).catch(() => {}); /* eslint-disable-next-line */ }, [id]);
 
   if (!script) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
 
@@ -88,6 +89,7 @@ export default function ScriptDetail() {
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', fontSize: 13, color: 'var(--faint)' }}>
               <span><Play size={13} style={{ verticalAlign: 'middle' }} /> {script.plays || 0}</span>
+              <span><Eye size={13} style={{ verticalAlign: 'middle' }} /> {script.views || 0}</span>
               <button className="btn sm ghost" onClick={like}><Heart size={14} style={{ verticalAlign: 'middle' }} /> {script.likes || 0}</button>
             </div>
           </div>
@@ -122,6 +124,8 @@ export default function ScriptDetail() {
             </div>
           )}
         </div>
+
+        <Reviews type="script" id={script.id} />
       </div>
     </>
   );

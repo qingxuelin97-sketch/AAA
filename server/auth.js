@@ -13,8 +13,9 @@ export function authRequired(req, res, next) {
   if (!token) return res.status(401).json({ error: '未登录' });
   try {
     const payload = jwt.verify(token, SECRET);
-    const user = db.prepare('SELECT id, username, email, display_name, avatar, bio FROM users WHERE id = ?').get(payload.id);
+    const user = db.prepare('SELECT id, username, email, display_name, avatar, bio, is_banned, ban_reason FROM users WHERE id = ?').get(payload.id);
     if (!user) return res.status(401).json({ error: '账号不存在' });
+    if (user.is_banned) return res.status(403).json({ error: '账号已被封禁' + (user.ban_reason ? '：' + user.ban_reason : '') });
     req.user = user;
     next();
   } catch {

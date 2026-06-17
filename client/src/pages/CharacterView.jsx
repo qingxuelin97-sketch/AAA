@@ -1,9 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar } from '../ui.jsx';
+import { useToast, Avatar, Modal } from '../ui.jsx';
 import { pid } from '../assets.jsx';
-import { MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe } from 'lucide-react';
+import Reviews from '../components/Reviews.jsx';
+import { MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye, Flag } from 'lucide-react';
+
+function recordRecent(c) {
+  try {
+    const prev = JSON.parse(localStorage.getItem('recent_chars') || '[]').filter(x => x.id !== c.id);
+    const item = { id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline, owner_name: c.owner_name, category: c.category, uses: c.uses, featured: c.featured };
+    localStorage.setItem('recent_chars', JSON.stringify([item, ...prev].slice(0, 12)));
+  } catch { /* */ }
+}
 
 export default function CharacterView() {
   const { id } = useParams();
@@ -13,10 +22,12 @@ export default function CharacterView() {
   const [c, setC] = useState(null);
   const [faved, setFaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
-    api('/characters/' + id).then(d => setC(d.character)).catch(e => toast(e.message, 'err'));
+    api('/characters/' + id).then(d => { setC(d.character); recordRecent(d.character); }).catch(e => toast(e.message, 'err'));
     api('/characters/public').then(d => { const hit = d.characters.find(x => x.id === +id); if (hit) setFaved(!!hit.faved); }).catch(() => {});
+    api('/engage/view', { method: 'POST', body: { type: 'character', id: +id } }).catch(() => {});
   }, [id]);
 
   if (!c) return (
@@ -42,6 +53,7 @@ export default function CharacterView() {
       <div className="topbar">
         <button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button>
         <div style={{ flex: 1 }}><h1>{c.name}</h1><div className="sub">角色卡 · {pid('character', c.id)}</div></div>
+        {!isOwner && <button className="btn ghost" onClick={() => setReporting(true)} title="举报"><Flag size={15} /></button>}
         {isOwner && <button className="btn" onClick={() => nav('/character/' + c.id + '/edit')}><Pencil size={15} /> 编辑</button>}
       </div>
       <div className="page" style={{ maxWidth: 860 }}>
@@ -59,6 +71,7 @@ export default function CharacterView() {
               <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                 {(c.tags || '').split(',').filter(Boolean).map(t => <span key={t} className="tag">{t.trim()}</span>)}
                 <span className="muted" style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}><MessageCircle size={12} /> {c.uses} 次对话</span>
+                <span className="muted" style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Eye size={12} /> {c.views || 0} 浏览</span>
                 {c.is_public ? <span className="muted" style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Globe size={12} /> 公开</span> : null}
               </div>
             </div>
@@ -83,12 +96,40 @@ export default function CharacterView() {
           </div>
         )}
         {Array.isArray(c.world) && c.world.length > 0 && (
-          <div className="card">
+          <div className="card" style={{ marginBottom: 16 }}>
             <h3 style={{ margin: '0 0 6px', fontSize: 15 }}><BookOpen size={14} style={{ verticalAlign: -2 }} /> 世界书</h3>
             <div className="muted" style={{ fontSize: 13 }}>包含 {c.world.length} 条世界观设定，对话时会按关键词自动注入。</div>
           </div>
         )}
+
+        <Reviews type="character" id={c.id} />
       </div>
+
+      {reporting && <ReportModal type="character" id={c.id} onClose={() => setReporting(false)} />}
     </>
+  );
+}
+
+function ReportModal({ type, id, onClose }) {
+  const toast = useToast();
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const REASONS = ['色情低俗', '辱骂攻击', '违法违规', '抄袭侵权', '其他'];
+  const submit = async () => {
+    setBusy(true);
+    try { await api('/engage/report', { method: 'POST', body: { type, id, reason } }); toast('举报已提交，感谢反馈'); onClose(); }
+    catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+  };
+  return (
+    <Modal onClose={onClose}>
+      <h2 style={{ marginTop: 0 }}>举报内容</h2>
+      <div className="field"><label>举报理由</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {REASONS.map(r => <button key={r} className={'cat-chip' + (reason === r ? ' active' : '')} onClick={() => setReason(r)}>{r}</button>)}
+        </div>
+      </div>
+      <div className="row"><button className="btn block" onClick={onClose}>取消</button>
+        <button className="btn primary block" onClick={submit} disabled={busy || !reason}>提交举报</button></div>
+    </Modal>
   );
 }

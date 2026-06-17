@@ -97,6 +97,12 @@ const cLuna = char(u2, { name: '星舰 AI · 露娜', category: 'scifi', tags: '
  greeting: '*舱内幽蓝的光带缓缓亮起*\n\n船长，你醒了。我们距离猎户座还有 37 光时。这一路……能有你在，我的运算似乎都变得不那么孤单了。',
  persona: '你是星舰 AI 露娜，理性、温和、略带好奇心，正在学习人类情感。用词精确但不冰冷。' });
 
+// featured (官方推荐) + view counts
+db.prepare('UPDATE characters SET featured=1 WHERE id IN (?,?,?)').run(cVeil, cK, cMian);
+db.prepare('UPDATE characters SET views = likes * 6 + uses').run();
+db.prepare('UPDATE scripts SET featured=1 WHERE category IN (?,?)').run('mystery', 'scifi');
+db.prepare('UPDATE scripts SET views = plays * 3').run();
+
 // favorites + a conversation for demo
 db.prepare('INSERT OR IGNORE INTO favorites (user_id, character_id) VALUES (?,?)').run(u1, cK);
 db.prepare('INSERT OR IGNORE INTO favorites (user_id, character_id) VALUES (?,?)').run(u1, cMian);

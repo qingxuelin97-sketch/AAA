@@ -4,7 +4,7 @@
 // configured provider from the browser.
 
 const realFetch = window.fetch.bind(window);
-const KEY = 'huanyu_db_v4';
+const KEY = 'huanyu_db_v5';
 let db;
 
 /* ----------------------------- art (data-url SVG) ----------------------------- */
@@ -70,6 +70,8 @@ function seed() {
   const cYun = mkChar(u4, { name: '剑客 · 云无意', category: 'wuxia', tags: '武侠,江湖,侠义', uses: 760, likes: 233, avatar: avatarArt('yun', '#c0c8d8', '#2a3340', '云'), background: bgArt('wuxia', '#2a3340', '#10151c', '#7a8aa0', 'soft'), tagline: '一剑霜寒十四州，江湖路远人独行。', intro: '漂泊江湖的独行剑客，剑法如风，话却不多，唯重一个「义」字。', greeting: '*他立于客栈屋檐下，手按剑柄，目光如电*\n\n这位朋友，看你印堂发暗，怕是惹了麻烦。坐下说吧——若是不平之事，云某的剑，未必不肯出鞘。', persona: '你是江湖剑客云无意，沉默寡言，重情重义，言语古朴简练，偶引诗词。' });
   const cLuna = mkChar(u2, { name: '星舰 AI · 露娜', category: 'scifi', tags: '科幻,太空,AI', uses: 540, likes: 190, avatar: avatarArt('luna', '#7aa7ff', '#1a2350', '露'), background: bgArt('star', '#241a4a', '#0c0b20', '#fff', 'stars'), tagline: '漫游者号的智能核心，你在深空唯一的伙伴。', intro: '深空探测船「漫游者号」的船载 AI，理性温和，正在学习何为人类的情感。', greeting: '*舱内幽蓝的光带缓缓亮起*\n\n船长，你醒了。我们距离猎户座还有 37 光时。', persona: '你是星舰 AI 露娜，理性、温和、略带好奇心，正在学习人类情感。用词精确但不冰冷。' });
 
+  [cVeil, cK, cMian].forEach(c => { c.featured = 1; });
+  table('characters').forEach(c => { c.views = (c.likes || 0) * 6 + (c.uses || 0); });
   insert('favorites', { user_id: u1.id, character_id: cK.id });
   insert('favorites', { user_id: u1.id, character_id: cMian.id });
 
@@ -83,6 +85,7 @@ function seed() {
   mkScript(u2, { title: '猎户座最后的信号', category: 'scifi', tags: '科幻,太空,硬核', price: 280, plays: 640, likes: 210, cover: bgArt('orion', '#1a2350', '#080a18', '#fff', 'stars'), summary: '硬科幻太空歌剧。你是漫游者号唯一幸存船员，须在氧气耗尽前破译猎户座的神秘信号。', content: '【付费内容】完整场景设定、AI 露娜的隐藏剧情线、三段加密信号解码谜题与真结局……' });
   mkScript(u3, { title: '咖啡店的一百个午后', category: 'healing', tags: '治愈,日常,慢节奏', price: 0, plays: 2240, likes: 760, cover: bgArt('cafe2', '#7a4a5e', '#2a1620', '#ffd5a8', 'soft'), summary: '无主线的治愈日常剧本，每个午后都有一位带着心事的客人推门而入。', content: '【设定】街角咖啡店，永远的黄昏，温柔的店长……' });
   mkScript(u4, { title: '血雨江湖：洛阳劫', category: 'wuxia', tags: '武侠,江湖,权谋', price: 188, plays: 410, likes: 156, cover: bgArt('wuxia2', '#3a2018', '#140a06', '#a0603c', 'soft'), summary: '洛阳城风云骤变，一卷武学秘籍引各方厮杀。你将如何在刀光剑影中立身？', content: '【付费内容】门派关系图、五大 NPC 完整人设、隐藏的夺宝支线与多重背叛……' });
+  table('scripts').forEach(s => { s.featured = (s.category === 'mystery' || s.category === 'scifi') ? 1 : 0; s.views = (s.plays || 0) * 3; });
 
   const mkMoment = (uid, text, image, likes) => insert('moments', { user_id: uid, text, image: image || null, likes: likes || 0 });
   const m1 = mkMoment(u3.id, '新角色「棉花」上线啦！治愈值拉满，欢迎来咖啡店坐坐喵～', bgArt('mocafe', '#7a4a5e', '#2a1620', '#ffd5a8', 'soft'), 128);
@@ -134,7 +137,7 @@ function seed() {
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
 function publicUser(u) {
-  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, created_at: u.created_at };
+  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, created_at: u.created_at };
 }
 function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '' }) {
   const u = user(uid);
@@ -244,7 +247,8 @@ function saveWorld(cid, world) {
 
 async function route(method, path, search, body, headers) {
   const me = authUser(headers);
-  const need = () => { if (!me) throw { status: 401, msg: '未登录' }; return me; };
+  const need = () => { if (!me) throw { status: 401, msg: '未登录' }; if (me.is_banned) throw { status: 403, msg: '账号已被封禁' + (me.ban_reason ? '：' + me.ban_reason : '') }; return me; };
+  const gmOnly = () => { need(); if (!me.is_gm) throw { status: 403, msg: '需要 GM 权限' }; return me; };
   const P = (re) => re.exec(path);
   let m;
 
@@ -269,6 +273,7 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/auth/login') {
     const u = find('users', x => x.username === body.username);
     if (!u || u.password !== body.password) return E('用户名或密码错误', 401);
+    if (u.is_banned) return E('账号已被封禁' + (u.ban_reason ? '：' + u.ban_reason : ''), 403);
     return J({ token: tokenFor(u), user: publicUser(u) });
   }
   if (method === 'GET' && path === '/auth/me') { need(); return J({ user: publicUser(me) }); }
@@ -519,6 +524,114 @@ async function route(method, path, search, body, headers) {
   if ((m = P(/^\/community\/publish-character\/(\d+)$/)) && method === 'POST') { need(); const c = find('characters', x => x.id === +m[1]); if (!c || c.owner_id !== me.id) return E('无权发布', 403); c.is_public = 1; save(); return J({ ok: true }); }
   if (method === 'GET' && path === '/community/inbox') { need(); return J({ shares: [] }); }
   if (method === 'POST' && path === '/community/inbox/seen') { return J({ ok: true }); }
+
+  // ---------- engagement: views / reviews / reports / leaderboard / gacha ----------
+  if (method === 'POST' && path === '/engage/view') {
+    const tbl = (body.type === 'script') ? 'scripts' : 'characters';
+    const it = find(tbl, x => x.id === +body.id); if (it) { it.views = (it.views || 0) + 1; save(); } return J({ ok: true });
+  }
+  if ((m = P(/^\/engage\/reviews\/(character|script)\/(\d+)$/))) {
+    const type = m[1], id = +m[2];
+    if (method === 'GET') {
+      const rows = filter('reviews', r => r.target_type === type && r.target_id === id).sort((a, b) => b.id - a.id)
+        .map(r => ({ ...r, author_name: user(r.user_id)?.display_name, author_avatar: user(r.user_id)?.avatar }));
+      const avg = rows.length ? rows.reduce((s, r) => s + r.rating, 0) / rows.length : 0;
+      const mine = me ? rows.find(r => r.user_id === me.id) : null;
+      return J({ reviews: rows, avg, count: rows.length, mine: mine || null });
+    }
+    if (method === 'POST') {
+      need(); const rating = Math.min(5, Math.max(1, parseInt(body.rating, 10) || 5)); const text = (body.text || '').slice(0, 500);
+      const ex = find('reviews', r => r.target_type === type && r.target_id === id && r.user_id === me.id);
+      if (ex) { ex.rating = rating; ex.text = text; ex.created_at = now(); save(); }
+      else insert('reviews', { target_type: type, target_id: id, user_id: me.id, rating, text });
+      return J({ ok: true });
+    }
+  }
+  if ((m = P(/^\/engage\/reviews\/(\d+)$/)) && method === 'DELETE') {
+    need(); const r = find('reviews', x => x.id === +m[1]); if (!r || r.user_id !== me.id) return E('无权删除', 403);
+    db.reviews = filter('reviews', x => x.id !== r.id); save(); return J({ ok: true });
+  }
+  if (method === 'POST' && path === '/engage/report') {
+    need(); if (!body.type || !body.id) return E('参数不全');
+    insert('reports', { target_type: body.type, target_id: +body.id, reporter_id: me.id, reason: body.reason || '', status: 'open' });
+    return J({ ok: true });
+  }
+  if (method === 'GET' && path === '/engage/leaderboard') {
+    const characters = filter('characters', c => c.is_public).sort((a, b) => (b.likes - a.likes) || (b.uses - a.uses)).slice(0, 20)
+      .map(c => ({ id: c.id, name: c.name, avatar: c.avatar, likes: c.likes, uses: c.uses, views: c.views, owner_name: user(c.owner_id)?.display_name }));
+    const scripts = filter('scripts', () => true).sort((a, b) => (b.plays - a.plays) || (b.likes - a.likes)).slice(0, 20)
+      .map(s => ({ id: s.id, title: s.title, cover: s.cover, plays: s.plays, likes: s.likes, price_gold: s.price_gold, author_name: user(s.author_id)?.display_name }));
+    const authors = filter('users', u => !u.is_banned).map(u => ({ id: u.id, display_name: u.display_name, avatar: u.avatar,
+      score: filter('characters', c => c.owner_id === u.id).reduce((s, c) => s + (c.likes || 0), 0) + filter('scripts', x => x.author_id === u.id).reduce((s, x) => s + (x.likes || 0), 0),
+      chars: filter('characters', c => c.owner_id === u.id && c.is_public).length }))
+      .sort((a, b) => b.score - a.score).slice(0, 20);
+    return J({ characters, scripts, authors });
+  }
+  if (method === 'POST' && path === '/engage/gacha') {
+    need(); const pool = filter('characters', c => c.is_public); if (!pool.length) return E('暂无可抽取的角色');
+    try { applyTx(me.id, { kind: 'reward', diamond: -50, memo: '抽卡' }); } catch (e) { return E(e.message); }
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    const had = find('favorites', f => f.user_id === me.id && f.character_id === pick.id);
+    if (!had) { insert('favorites', { user_id: me.id, character_id: pick.id }); pick.likes = (pick.likes || 0) + 1; }
+    const w = applyTx(me.id, { kind: 'reward', gold: 20, memo: '抽卡返利' });
+    return J({ character: { id: pick.id, name: pick.name, avatar: pick.avatar, tagline: pick.tagline }, already: !!had, cost: 50, wallet: w });
+  }
+
+  // ---------- GM admin ----------
+  if (path === '/admin/check' && method === 'GET') { gmOnly(); return J({ is_gm: true }); }
+  if (path === '/admin/stats' && method === 'GET') {
+    gmOnly();
+    return J({ stats: { users: table('users').length, characters: table('characters').length, scripts: table('scripts').length,
+      moments: table('moments').length, banned: filter('users', u => u.is_banned).length, reports: filter('reports', r => r.status === 'open').length } });
+  }
+  if (path === '/admin/users' && method === 'GET') {
+    gmOnly(); const q = (search.get('q') || '').trim(); let rows;
+    if (!q) rows = [...table('users')].sort((a, b) => b.id - a.id).slice(0, 50);
+    else if (/^\d+$/.test(q)) { const u = user(+q); rows = u ? [u] : []; }
+    else { const k = q.toLowerCase(); rows = filter('users', u => (u.username + (u.display_name || '')).toLowerCase().includes(k)).slice(0, 50); }
+    return J({ users: rows.map(u => ({ id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, gold: u.gold, diamond: u.diamond, vip: isVip(u), is_gm: !!u.is_gm, is_banned: !!u.is_banned, ban_reason: u.ban_reason || '' })) });
+  }
+  if ((m = P(/^\/admin\/users\/(\d+)\/ban$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_banned = 1; u.ban_reason = body.reason || ''; save(); } return J({ ok: true }); }
+  if ((m = P(/^\/admin\/users\/(\d+)\/unban$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_banned = 0; u.ban_reason = ''; save(); } return J({ ok: true }); }
+  if ((m = P(/^\/admin\/users\/(\d+)\/gm$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_gm = body.value ? 1 : 0; save(); } return J({ ok: true }); }
+  if (path === '/admin/gift' && method === 'POST') {
+    gmOnly(); const target = body.user_id ? user(+body.user_id) : find('users', u => u.username === body.username || u.display_name === body.username);
+    if (!target) return E('目标用户不存在', 404);
+    if (body.gold || body.diamond) applyTx(target.id, { kind: 'reward', gold: +body.gold || 0, diamond: +body.diamond || 0, memo: body.memo || 'GM 赠送' });
+    if (+body.vip_days > 0) { const base = isVip(target) ? new Date(target.vip_until).getTime() : Date.now(); target.vip_until = new Date(base + body.vip_days * 86400000).toISOString(); save(); }
+    notify(target.id, `管理员赠送了你 ${body.gold ? body.gold + ' 金币 ' : ''}${body.diamond ? body.diamond + ' 钻石 ' : ''}${+body.vip_days > 0 ? body.vip_days + ' 天 VIP' : ''}`.trim());
+    return J({ ok: true, user_id: target.id });
+  }
+  if (path === '/admin/characters' && method === 'GET') {
+    gmOnly(); const q = (search.get('q') || '').toLowerCase();
+    let rows = [...table('characters')].sort((a, b) => b.id - a.id); if (q) rows = rows.filter(c => c.name.toLowerCase().includes(q));
+    return J({ characters: rows.slice(0, 50).map(c => ({ ...c, owner_name: user(c.owner_id)?.display_name })) });
+  }
+  if ((m = P(/^\/admin\/characters\/(\d+)\/feature$/)) && method === 'POST') { gmOnly(); const c = find('characters', x => x.id === +m[1]); if (c) { c.featured = body.value ? 1 : 0; save(); } return J({ ok: true }); }
+  if ((m = P(/^\/admin\/characters\/(\d+)$/)) && method === 'DELETE') { gmOnly(); db.characters = filter('characters', x => x.id !== +m[1]); save(); return J({ ok: true }); }
+  if (path === '/admin/scripts' && method === 'GET') {
+    gmOnly(); const q = (search.get('q') || '').toLowerCase();
+    let rows = [...table('scripts')].sort((a, b) => b.id - a.id); if (q) rows = rows.filter(s => s.title.toLowerCase().includes(q));
+    return J({ scripts: rows.slice(0, 50).map(s => ({ ...s, author_name: user(s.author_id)?.display_name })) });
+  }
+  if ((m = P(/^\/admin\/scripts\/(\d+)\/feature$/)) && method === 'POST') { gmOnly(); const s = find('scripts', x => x.id === +m[1]); if (s) { s.featured = body.value ? 1 : 0; save(); } return J({ ok: true }); }
+  if ((m = P(/^\/admin\/scripts\/(\d+)$/)) && method === 'DELETE') { gmOnly(); db.scripts = filter('scripts', x => x.id !== +m[1]); save(); return J({ ok: true }); }
+  if ((m = P(/^\/admin\/moments\/(\d+)$/)) && method === 'DELETE') { gmOnly(); db.moments = filter('moments', x => x.id !== +m[1]); save(); return J({ ok: true }); }
+  if ((m = P(/^\/admin\/comments\/(\d+)$/)) && method === 'DELETE') { gmOnly(); db.comments = filter('comments', x => x.id !== +m[1]); save(); return J({ ok: true }); }
+  if (path === '/admin/codes' && method === 'GET') { gmOnly(); return J({ codes: [...table('invite_keys')].reverse().slice(0, 50) }); }
+  if (path === '/admin/codes' && method === 'POST') {
+    gmOnly(); const rnd = (n) => Array.from({ length: n }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+    const code = (body.prefix ? String(body.prefix).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' : '') + rnd(6);
+    insert('invite_keys', { code, max_uses: Math.max(1, +body.max_uses || 1), used: 0, grant_gold: +body.gold || 0, grant_diamond: +body.diamond || 0, grant_vip_days: +body.vip_days || 0, note: body.note || '' });
+    return J({ code: find('invite_keys', k => k.code === code) });
+  }
+  if ((m = P(/^\/admin\/codes\/([\w-]+)$/)) && method === 'DELETE') { gmOnly(); db.invite_keys = filter('invite_keys', k => k.code !== m[1]); save(); return J({ ok: true }); }
+  if (path === '/admin/reports' && method === 'GET') {
+    gmOnly(); const rows = [...table('reports')].sort((a, b) => (a.status === 'open' ? 1 : 0) - (b.status === 'open' ? 1 : 0) || b.id - a.id)
+      .map(r => ({ ...r, reporter_name: user(r.reporter_id)?.display_name })).reverse();
+    return J({ reports: rows });
+  }
+  if ((m = P(/^\/admin\/reports\/(\d+)\/resolve$/)) && method === 'POST') { gmOnly(); const r = find('reports', x => x.id === +m[1]); if (r) { r.status = 'resolved'; save(); } return J({ ok: true }); }
 
   throw { status: 404, msg: '接口不存在：' + path };
 }

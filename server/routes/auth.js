@@ -48,6 +48,7 @@ router.post('/login', (req, res) => {
   if (!row || !bcrypt.compareSync(password ||'', row.password_hash)) {
     return res.status(401).json({ error:'用户名或密码错误' });
   }
+  if (row.is_banned) return res.status(403).json({ error: '账号已被封禁' + (row.ban_reason ? '：' + row.ban_reason : '') });
   res.json({ token: sign(row), user: publicUser(row) });
 });
 

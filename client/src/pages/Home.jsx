@@ -1,32 +1,53 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
-import { useToast, Avatar, GridSkeleton } from '../ui.jsx';
-import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X } from 'lucide-react';
+import { api, useAuth } from '../api.jsx';
+import { useToast, Avatar, GridSkeleton, Modal } from '../ui.jsx';
+import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Gem, Clock, Dices } from 'lucide-react';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 
+function Poster({ c, onView, onFav, onChat }) {
+  return (
+    <article className="poster" onClick={() => onView(c)}>
+      {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={44} /></div>}
+      {c.featured ? <span className="p-feat"><Star size={11} fill="currentColor" /> 推荐</span>
+        : c.category ? <span className="p-cat"><CategoryIcon slug={c.category} size={12} /> {categoryName(c.category)}</span> : null}
+      <button className={'p-fav' + (c.faved ? ' on' : '')} onClick={e => onFav(e, c)} title="收藏"><Heart size={15} fill={c.faved ? 'currentColor' : 'none'} /></button>
+      <div className="p-info">
+        <h3>{c.name}</h3>
+        <p>{c.tagline || c.intro || '暂无简介'}</p>
+        <div className="p-meta">
+          <div className="author"><Avatar name={c.owner_name} size={17} /><span>{c.owner_name}</span></div>
+          <span className="uses"><MessageCircle size={11} /> {c.uses}</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function Home() {
+  const { refreshUser } = useAuth();
   const [cats, setCats] = useState([]);
   const [cat, setCat] = useState('all');
   const [sort, setSort] = useState('hot');
   const [q, setQ] = useState('');
   const [chars, setChars] = useState([]);
+  const [featured, setFeatured] = useState([]);
+  const [recent, setRecent] = useState([]);
   const [scripts, setScripts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ann, setAnn] = useState(null);
+  const [gachaRes, setGachaRes] = useState(null);
+  const [rolling, setRolling] = useState(false);
   const toast = useToast();
   const nav = useNavigate();
 
   useEffect(() => { api('/meta/categories').then(d => setCats(d.categories)).catch(() => {}); }, []);
   useEffect(() => { api('/scripts?sort=hot').then(d => setScripts(d.scripts.slice(0, 6))).catch(() => {}); }, []);
+  useEffect(() => { api('/characters/public?sort=hot').then(d => setFeatured(d.characters.filter(c => c.featured).slice(0, 12))).catch(() => {}); }, []);
   useEffect(() => {
-    api('/announcements').then(d => {
-      const top = d.announcements?.[0];
-      if (top && localStorage.getItem('ann_seen') !== String(top.id)) setAnn(top);
-    }).catch(() => {});
+    try { setRecent(JSON.parse(localStorage.getItem('recent_chars') || '[]').slice(0, 12)); } catch { /* */ }
+    api('/announcements').then(d => { const t = d.announcements?.[0]; if (t && localStorage.getItem('ann_seen') !== String(t.id)) setAnn(t); }).catch(() => {});
   }, []);
-
-  const dismissAnn = () => { if (ann) localStorage.setItem('ann_seen', String(ann.id)); setAnn(null); };
 
   const load = () => {
     setLoading(true);
@@ -35,16 +56,25 @@ export default function Home() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [cat, sort]);
 
+  const view = (c) => nav('/character/' + c.id);
   const fav = async (e, c) => {
     e.stopPropagation();
-    try { const d = await api(`/characters/${c.id}/favorite`, { method: 'POST' });
-      setChars(chars.map(x => x.id === c.id ? { ...x, faved: d.faved, likes: x.likes + (d.faved ? 1 : -1) } : x)); }
-    catch (err) { toast(err.message, 'err'); }
+    try {
+      const d = await api(`/characters/${c.id}/favorite`, { method: 'POST' });
+      const upd = x => x.id === c.id ? { ...x, faved: d.faved } : x;
+      setChars(cs => cs.map(upd)); setFeatured(cs => cs.map(upd)); setRecent(cs => cs.map(upd));
+    } catch (err) { toast(err.message, 'err'); }
   };
   const chat = async (e, c) => {
     e.stopPropagation();
     try { const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } }); nav('/chats/' + d.conversation.id); }
     catch (err) { toast(err.message, 'err'); }
+  };
+  const dismissAnn = () => { if (ann) localStorage.setItem('ann_seen', String(ann.id)); setAnn(null); };
+  const gacha = async () => {
+    setRolling(true);
+    try { const d = await api('/engage/gacha', { method: 'POST' }); setGachaRes(d); await refreshUser(); }
+    catch (e) { toast(e.message, 'err'); } finally { setRolling(false); }
   };
 
   return (
@@ -66,6 +96,33 @@ export default function Home() {
           </div>
         )}
 
+        <div className="gacha-card">
+          <span className="g-ic"><Dices size={24} /></span>
+          <div className="g-tx"><b>命运抽卡</b><p>消耗 50 钻石，随机抽取一位角色加入你的收藏</p></div>
+          <button className="btn" style={{ background: '#fff', color: '#3a2740' }} onClick={gacha} disabled={rolling}>
+            <Gem size={15} style={{ color: '#6fb3d6' }} /> {rolling ? '抽取中…' : '抽一次 · 50'}
+          </button>
+        </div>
+
+        {featured.length > 0 && (
+          <>
+            <div className="section-title"><h2><Star size={17} style={{ verticalAlign: -3, color: '#d99327' }} /> 官方推荐</h2></div>
+            <div className="rail" style={{ marginBottom: 26 }}>
+              {featured.map(c => <Poster key={c.id} c={c} onView={view} onFav={fav} onChat={chat} />)}
+            </div>
+          </>
+        )}
+
+        {recent.length > 0 && (
+          <>
+            <div className="section-title"><h2><Clock size={16} style={{ verticalAlign: -3 }} /> 最近浏览</h2></div>
+            <div className="rail" style={{ marginBottom: 26 }}>
+              {recent.map(c => <Poster key={c.id} c={c} onView={view} onFav={fav} onChat={chat} />)}
+            </div>
+          </>
+        )}
+
+        <div className="section-title"><h2>全部角色</h2></div>
         <div className="cat-bar">
           <button className={'cat-chip' + (cat === 'all' ? ' active' : '')} onClick={() => setCat('all')}><Flame size={14} /> 全部</button>
           {cats.map(c => (
@@ -87,27 +144,8 @@ export default function Home() {
 
         {loading ? <GridSkeleton n={8} /> :
           chars.length === 0 ? <div className="empty"><div className="big"><Drama size={46} /></div>该分类下还没有公开角色</div> : (
-            <div className="disc-grid">
-              {chars.map(c => (
-                <article key={c.id} className="dcard" onClick={() => nav('/character/' + c.id)}>
-                  <div className="dcard-cover">
-                    {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}
-                    {c.category && <span className="dcard-cat"><CategoryIcon slug={c.category} size={13} /> {categoryName(c.category)}</span>}
-                    <button className={'dcard-fav' + (c.faved ? ' on' : '')} onClick={e => fav(e, c)} title="收藏">
-                      <Heart size={16} fill={c.faved ? 'currentColor' : 'none'} />
-                    </button>
-                    <span className="dcard-uses"><MessageCircle size={12} /> {c.uses}</span>
-                  </div>
-                  <div className="dcard-body">
-                    <h3>{c.name}</h3>
-                    <p>{c.tagline || c.intro || '暂无简介'}</p>
-                    <div className="dcard-foot">
-                      <div className="dcard-author"><Avatar name={c.owner_name} size={20} /><span>{c.owner_name}</span></div>
-                      <button className="btn sm primary" onClick={e => chat(e, c)}><MessageCircle size={13} /> 对话</button>
-                    </div>
-                  </div>
-                </article>
-              ))}
+            <div className="poster-grid">
+              {chars.map(c => <Poster key={c.id} c={c} onView={view} onFav={fav} onChat={chat} />)}
             </div>
           )}
 
@@ -130,6 +168,21 @@ export default function Home() {
           </>
         )}
       </div>
+
+      {gachaRes && (
+        <Modal onClose={() => setGachaRes(null)}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>{gachaRes.already ? '再次抽到 · 已在收藏中' : '恭喜获得新角色！'}</div>
+            <div style={{ display: 'grid', placeItems: 'center', marginBottom: 12 }}><Avatar src={gachaRes.character.avatar} name={gachaRes.character.name} size={96} /></div>
+            <h2 style={{ margin: '0 0 4px' }}>{gachaRes.character.name}</h2>
+            <p className="muted" style={{ marginTop: 0 }}>{gachaRes.character.tagline}</p>
+            <div className="row" style={{ marginTop: 18 }}>
+              <button className="btn block" onClick={() => setGachaRes(null)}>收下</button>
+              <button className="btn primary block" onClick={() => nav('/character/' + gachaRes.character.id)}>查看角色</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }
