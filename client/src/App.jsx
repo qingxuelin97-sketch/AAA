@@ -23,6 +23,7 @@ import Wallet from './pages/Wallet.jsx';
 import Notifications from './pages/Notifications.jsx';
 import Favorites from './pages/Favorites.jsx';
 import Search from './pages/Search.jsx';
+import CharacterView from './pages/CharacterView.jsx';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/notifications" element={P(<Notifications />)} />
         <Route path="/settings" element={P(<Settings />)} />
         <Route path="/character/new" element={P(<CharacterEditor />)} />
+        <Route path="/character/:id" element={P(<CharacterView />)} />
         <Route path="/character/:id/edit" element={P(<CharacterEditor />)} />
         <Route path="/publish" element={P(<Publish />)} />
         <Route path="/profile" element={P(<Profile />)} />

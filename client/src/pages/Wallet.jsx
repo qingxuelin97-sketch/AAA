@@ -18,7 +18,6 @@ export default function Wallet() {
 
   const run = (key, fn) => async () => { setBusy(key); try { await fn(); } catch (e) { toast(e.message, 'err'); } finally { setBusy(''); } };
   const checkin = run('checkin', async () => { const d = await api('/economy/checkin', { method: 'POST' }); toast(`签到成功，+${d.reward} 金币 · 连续 ${d.streak} 天`); await after(); });
-  const recharge = (p) => run('pkg' + p.id, async () => { await api('/economy/recharge', { method: 'POST', body: { package_id: p.id } }); toast(`充值成功，到账 ${p.diamond + p.bonus} 钻石（演示）`); await after(); })();
   const exchange = run('exchange', async () => { const n = parseInt(exDiamond, 10); if (!n || n <= 0) throw new Error('请输入要兑换的钻石数量'); await api('/economy/exchange', { method: 'POST', body: { diamond: n } }); toast('兑换成功'); setExDiamond(''); await after(); });
   const openVip = run('vip', async () => { await api('/economy/vip', { method: 'POST' }); toast('VIP 已开通'); await after(); });
   const redeem = run('redeem', async () => { if (!code.trim()) throw new Error('请输入兑换码'); await api('/economy/redeem', { method: 'POST', body: { code: code.trim() } }); toast('兑换成功'); setCode(''); await after(); });
@@ -36,7 +35,6 @@ export default function Wallet() {
   const exN = parseInt(exDiamond, 10) || 0;
   const today = new Date().toISOString().slice(0, 10);
   const signed = wallet.last_checkin === today;
-  const best = packages.reduce((a, b) => ((b.bonus / b.diamond) > (a.bonus / a.diamond) ? b : a), packages[0] || {});
   const fmt = (n) => (n || 0).toLocaleString('en-US');
 
   return (

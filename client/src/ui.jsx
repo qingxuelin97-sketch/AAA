@@ -76,6 +76,24 @@ export function Avatar({ src, name = '', size = 40 }) {
   );
 }
 
+// Shimmer skeleton grid shown while card lists load.
+export function GridSkeleton({ n = 8 }) {
+  return (
+    <div className="grid">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="skel-card">
+          <div className="skel sk-cover" />
+          <div className="sk-body">
+            <div className="skel sk-line" style={{ width: '70%', height: 14 }} />
+            <div className="skel sk-line" style={{ width: '100%' }} />
+            <div className="skel sk-line" style={{ width: '85%' }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Modal({ children, onClose }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>

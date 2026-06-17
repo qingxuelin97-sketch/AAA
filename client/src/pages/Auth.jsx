@@ -79,6 +79,10 @@ export default function Auth() {
               {busy ? '处理中…' : mode === 'login' ? '登 录' : '注 册'}
             </button>
           </form>
+          <div className="auth-foot">
+            登录即表示同意《用户协议》与《隐私政策》<br />
+            © 2026 幻域 HUANYU · AI 角色扮演平台 · 演示项目
+          </div>
         </div>
       </div>
     </div>

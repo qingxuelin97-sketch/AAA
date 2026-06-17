@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast } from '../ui.jsx';
+import { useToast, GridSkeleton } from '../ui.jsx';
 import { Heart, HeartCrack, Drama } from 'lucide-react';
 
 export default function Favorites() {
@@ -45,13 +45,13 @@ export default function Favorites() {
 
       <div className="page">
         {loading ? (
-          <div className="empty">载入中…</div>
+          <GridSkeleton n={4} />
         ) : chars.length === 0 ? (
           <div className="empty"><div className="big"><HeartCrack size={46} /></div>还没有收藏角色</div>
         ) : (
           <div className="grid">
             {chars.map(c => (
-              <div key={c.id} className="char-card">
+              <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
                 <div className="cover">
                   {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}
                   <button

@@ -83,7 +83,7 @@ export default function Search() {
           res.characters.length === 0 ? <div className="empty"><div className="big"><Drama size={44} /></div>没有找到该角色（可能非公开）</div> : (
             <div className="grid">
               {res.characters.map(c => (
-                <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id + '/edit')}>
+                <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
                   <div className="cover">{c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={40} /></div>}
                     <div className="pill-pub">ID {c.id}</div></div>
                   <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro || '暂无简介'}</p></div>

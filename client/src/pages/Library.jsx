@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast } from '../ui.jsx';
+import { useToast, GridSkeleton } from '../ui.jsx';
 import { Drama, Globe, MessageCircle, Plus, X } from 'lucide-react';
 
 export default function Library() {
@@ -42,7 +42,7 @@ export default function Library() {
         <button className="btn primary" onClick={() => nav('/character/new')}><Plus size={16} style={{ verticalAlign: -3 }} /> 新建角色</button>
       </div>
       <div className="page">
-        {loading ? <div className="empty">载入中…</div> :
+        {loading ? <GridSkeleton n={6} /> :
           chars.length === 0 ? (
             <div className="empty">
               <div className="big"><Drama size={46} /></div>还没有角色

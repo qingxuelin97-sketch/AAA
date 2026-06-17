@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast } from '../ui.jsx';
+import { useToast, GridSkeleton } from '../ui.jsx';
 import { ScrollText, Coins, Play, Plus, Inbox } from 'lucide-react';
 import { CategoryIcon } from '../assets.jsx';
 
@@ -108,7 +108,7 @@ export default function Scripts() {
               </div>
             </div>
 
-            {loading ? <div className="empty">载入中…</div> :
+            {loading ? <GridSkeleton n={8} /> :
               scripts.length === 0 ? (
                 <div className="empty"><div className="big"><ScrollText size={46} /></div>暂无剧本</div>
               ) : (
@@ -120,7 +120,7 @@ export default function Scripts() {
         )}
 
         {tab === 'created' && (
-          loading ? <div className="empty">载入中…</div> :
+          loading ? <GridSkeleton n={6} /> :
             mine.created.length === 0 ? (
               <div className="empty">
                 <div className="big"><ScrollText size={46} /></div>你还没有创建剧本
@@ -134,7 +134,7 @@ export default function Scripts() {
         )}
 
         {tab === 'purchased' && (
-          loading ? <div className="empty">载入中…</div> :
+          loading ? <GridSkeleton n={6} /> :
             mine.purchased.length === 0 ? (
               <div className="empty"><div className="big"><Inbox size={46} /></div>你还没有购买剧本</div>
             ) : (

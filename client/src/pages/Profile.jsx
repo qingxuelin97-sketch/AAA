@@ -79,7 +79,7 @@ export default function Profile() {
         {tab === 'characters' && (data.characters.length === 0 ? <div className="empty" style={{ padding: 40 }}>暂无公开角色</div> : (
           <div className="grid">
             {data.characters.map(c => (
-              <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id + '/edit')}>
+              <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
                 <div className="cover">{c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}</div>
                 <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro}</p></div>
               </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast, Avatar } from '../ui.jsx';
+import { useToast, Avatar, GridSkeleton } from '../ui.jsx';
 import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play } from 'lucide-react';
 import { CategoryIcon } from '../assets.jsx';
 
@@ -68,11 +68,11 @@ export default function Home() {
           </div>
         </div>
 
-        {loading ? <div className="empty">载入中…</div> :
+        {loading ? <GridSkeleton n={8} /> :
           chars.length === 0 ? <div className="empty"><div className="big"><Drama size={46} /></div>该分类下还没有公开角色</div> : (
             <div className="grid">
               {chars.map(c => (
-                <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id + '/edit')}>
+                <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
                   <div className="cover">
                     {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={40} /></div>}
                     <button className="pill-pub" onClick={e => fav(e, c)} style={{ border: 'none', color: c.faved ? 'var(--accent)' : '#fff' }}>
