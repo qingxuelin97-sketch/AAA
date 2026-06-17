@@ -11,18 +11,25 @@ let db;
 
 /* ----------------------------- platform LLM service (hidden) -----------------------------
    When a user has NOT configured their own API key, chats fall back to the platform's
-   built-in language service. The credentials below are decoded at runtime and are NEVER
-   surfaced through any API response or the settings UI for non-GM users — ordinary users
-   can neither see nor edit the provider, base URL, key or model. (Note: in a purely static
-   client build the bundle is ultimately inspectable; this keeps it out of the product UI,
-   which is the strongest guarantee achievable without a server.) */
-const PLATFORM = {
+   built-in language service. These credentials are NEVER surfaced through any API response
+   or the settings UI for non-GM users — ordinary users can neither see nor edit the
+   provider, base URL, key or model. The values below are only DEFAULTS used to seed an
+   editable, DB-backed platform config: the super admin (GM) can change the model / base URL
+   / key from the admin console, and the change applies to ALL no-API users at once.
+   (Note: in a purely static client build the bundle is ultimately inspectable; this keeps
+   the credentials out of the product UI, the strongest guarantee achievable without a server.) */
+const PLATFORM_DEFAULTS = {
   base_url: 'https://open.bigmodel.cn/api/paas/v4',
   // base64 of the platform key — kept out of plain source / UI.
   _k: 'ZWFmN2MwZDY5MmQzNGY0ZmEzNzUyMjI4NDc2NDE2YmQuQU1DS1ZUcXRQd2Nsa1U3UA==',
-  model: 'glm5.2',
-  get key() { try { return atob(this._k); } catch { return ''; } }
+  model: 'glm-5.2'
 };
+// DB-backed, GM-editable platform config (group-wide). Lazily seeded from the defaults.
+function platformCfg() {
+  if (!db.platform) { db.platform = { base_url: PLATFORM_DEFAULTS.base_url, _k: PLATFORM_DEFAULTS._k, model: PLATFORM_DEFAULTS.model }; save(); }
+  return db.platform;
+}
+function platformKey() { try { return atob(platformCfg()._k || '') || ''; } catch { return ''; } }
 // Per-conversation platform usage fee (gold). Heavier (100+ message) sessions cost more.
 const PLATFORM_FEE = { base: 10, heavy: 15, heavy_threshold: 100 };
 // Membership discounts on the platform fee. VIP = 75 折 (0.75), SVIP = 5 折 (0.50).
@@ -179,7 +186,8 @@ const notify = (uid, text, link = '') => insert('notifications', { user_id: uid,
 // use it (no fee). Otherwise transparently fall back to the platform service.
 function effectiveLLM(s) {
   if (s && s.llm_api_key) return { base_url: s.llm_base_url, api_key: s.llm_api_key, model: s.llm_model, temperature: s.llm_temperature, max_tokens: s.llm_max_tokens, platform: false };
-  return { base_url: PLATFORM.base_url, api_key: PLATFORM.key, model: PLATFORM.model, temperature: (s && s.llm_temperature) ?? 0.8, max_tokens: (s && s.llm_max_tokens) || 1024, platform: true };
+  const p = platformCfg();
+  return { base_url: p.base_url, api_key: platformKey(), model: p.model, temperature: (s && s.llm_temperature) ?? 0.8, max_tokens: (s && s.llm_max_tokens) || 1024, platform: true };
 }
 // Compute the platform fee for a conversation given its current message count + membership.
 function platformFee(me, msgCount) {
@@ -672,6 +680,20 @@ async function route(method, path, search, body, headers) {
 
   // ---------- GM admin ----------
   if (path === '/admin/check' && method === 'GET') { gmOnly(); return J({ is_gm: true }); }
+  // Platform built-in AI service config — GM only (group-wide for all no-API users).
+  if (path === '/admin/platform' && method === 'GET') {
+    gmOnly(); const p = platformCfg(); const key = platformKey();
+    return J({ platform: { base_url: p.base_url, model: p.model, key_set: !!key, key_masked: key ? key.slice(0, 6) + '••••••' + key.slice(-4) : '', fee: PLATFORM_FEE } });
+  }
+  if (path === '/admin/platform' && method === 'PUT') {
+    gmOnly(); const p = platformCfg();
+    if (typeof body.base_url === 'string' && body.base_url.trim()) p.base_url = body.base_url.trim();
+    if (typeof body.model === 'string' && body.model.trim()) p.model = body.model.trim();
+    if (typeof body.key === 'string' && body.key.trim()) { try { p._k = btoa(body.key.trim()); } catch { p._k = ''; } }
+    save();
+    const key = platformKey();
+    return J({ ok: true, platform: { base_url: p.base_url, model: p.model, key_set: !!key, key_masked: key ? key.slice(0, 6) + '••••••' + key.slice(-4) : '' } });
+  }
   if (path === '/admin/stats' && method === 'GET') {
     gmOnly();
     return J({ stats: { users: table('users').length, characters: table('characters').length, scripts: table('scripts').length,

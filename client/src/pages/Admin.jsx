@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
-import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle } from 'lucide-react';
+import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu } from 'lucide-react';
 
 export default function Admin() {
   const toast = useToast();
@@ -33,12 +33,14 @@ export default function Admin() {
               <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>
               <button className={tab === 'codes' ? 'active' : ''} onClick={() => setTab('codes')}>兑换码</button>
               <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}>举报</button>
+              <button className={tab === 'platform' ? 'active' : ''} onClick={() => setTab('platform')}>平台AI</button>
             </div>
             {tab === 'overview' && <Overview toast={toast} />}
             {tab === 'users' && <UsersTab toast={toast} />}
             {tab === 'content' && <ContentTab toast={toast} />}
             {tab === 'codes' && <CodesTab toast={toast} />}
             {tab === 'reports' && <ReportsTab toast={toast} />}
+            {tab === 'platform' && <PlatformTab toast={toast} />}
           </>
         )}
       </div>
@@ -244,6 +246,48 @@ function CodesTab({ toast }) {
         </div>
       ))}
     </>
+  );
+}
+
+function PlatformTab({ toast }) {
+  const [cfg, setCfg] = useState(null);
+  const [baseUrl, setBaseUrl] = useState('');
+  const [model, setModel] = useState('');
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = () => api('/admin/platform').then(d => { setCfg(d.platform); setBaseUrl(d.platform.base_url || ''); setModel(d.platform.model || ''); }).catch(e => toast(e.message, 'err'));
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const body = { base_url: baseUrl, model };
+      if (key.trim()) body.key = key.trim();
+      const d = await api('/admin/platform', { method: 'PUT', body });
+      setCfg(d.platform); setKey('');
+      toast('平台 AI 配置已更新，已对全体无 API 用户生效');
+    } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+  };
+
+  if (!cfg) return <div className="empty">载入中…</div>;
+  return (
+    <div className="card">
+      <h2 style={{ margin: '0 0 6px', fontSize: 17 }}><Cpu size={16} style={{ verticalAlign: -3, marginRight: 6 }} />平台内置语言服务</h2>
+      <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+        未配置自有 API 的用户对话时统一调用此服务。<b>这是群体性配置，修改后立即对所有无 API 用户生效。</b>
+        普通用户无法看到此处任何接口或密钥信息。
+      </p>
+      <div className="field"><label>API Base URL</label>
+        <input className="input" value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://open.bigmodel.cn/api/paas/v4" /></div>
+      <div className="field"><label>最终调用模型</label>
+        <input className="input" value={model} onChange={e => setModel(e.target.value)} placeholder="glm-5.2" />
+        <div className="hint">所有无 API 用户最终调用的模型名，例如 glm-5.2 / glm-4.6。</div></div>
+      <div className="field"><label>API Key {cfg.key_set && <span className="tag">已配置 · {cfg.key_masked}</span>}</label>
+        <input className="input" type="password" value={key} onChange={e => setKey(e.target.value)} placeholder={cfg.key_set ? '••••••（留空则不修改）' : '填写平台密钥'} /></div>
+      {cfg.fee && <p className="muted" style={{ fontSize: 12.5 }}>计费规则：每次对话 {cfg.fee.base} 金币；单对话互动超 {cfg.fee.heavy_threshold} 条后 {cfg.fee.heavy} 金币（VIP 75 折 / SVIP 5 折，会员折扣在结算时自动应用）。</p>}
+      <button className="btn primary" style={{ marginTop: 6 }} disabled={busy} onClick={save}><Check size={15} /> 保存并对全体生效</button>
+    </div>
   );
 }
 
