@@ -2,7 +2,40 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Uploader } from '../ui.jsx';
-import { Heart, MessageCircle, Send, Trash2, Inbox } from 'lucide-react';
+import { Heart, MessageCircle, Send, Trash2, Inbox, UserPlus, Check, Sparkles } from 'lucide-react';
+
+function SuggestedPeople() {
+  const nav = useNavigate();
+  const toast = useToast();
+  const [users, setUsers] = useState([]);
+  const [done, setDone] = useState({});
+  useEffect(() => { api('/social/suggested').then(d => setUsers(d.users)).catch(() => {}); }, []);
+  if (!users.length) return null;
+  const follow = async (e, u) => {
+    e.stopPropagation();
+    try { await api('/social/follow/' + u.id, { method: 'POST' }); setDone(d => ({ ...d, [u.id]: true })); toast('已关注 ' + u.display_name); }
+    catch (err) { toast(err.message, 'err'); }
+  };
+  return (
+    <div className="card" style={{ marginBottom: 18 }}>
+      <div className="section-title" style={{ marginBottom: 12 }}>
+        <h2 style={{ fontSize: 16 }}><Sparkles size={15} style={{ verticalAlign: -2, color: 'var(--accent)' }} /> 你可能感兴趣的人</h2>
+      </div>
+      <div className="people-rail">
+        {users.map(u => (
+          <div key={u.id} className="person-chip" onClick={() => nav('/user/' + u.id)}>
+            <Avatar src={u.avatar} name={u.display_name} size={52} />
+            <b>{u.display_name}</b>
+            <span className="muted">{u.followers} 粉丝 · {u.chars} 角色</span>
+            <button className={'btn sm' + (done[u.id] ? '' : ' primary')} onClick={e => follow(e, u)} disabled={done[u.id]}>
+              {done[u.id] ? <><Check size={13} /> 已关注</> : <><UserPlus size={13} /> 关注</>}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function fmtDate(s) {
   if (!s) return '';
@@ -39,7 +72,7 @@ function Comments({ moment, onCount }) {
     <div style={{ marginTop: 10 }}>
       {comments.map(c => (
         <div key={c.id} className="comment">
-          <Avatar src={c.author_avatar} name={c.author_name} size={28} />
+          <span className="ava-link" onClick={() => nav('/user/' + c.user_id)} title="查看主页"><Avatar src={c.author_avatar} name={c.author_name} size={28} /></span>
           <div className="c-body">
             <b onClick={() => nav('/user/' + c.user_id)} style={{ cursor: 'pointer' }}>{c.author_name}</b>
             <span style={{ marginLeft: 6 }}>{c.text}</span>
@@ -118,6 +151,8 @@ export default function Community() {
           <button className={scope === 'following' ? 'active' : ''} onClick={() => setScope('following')}>关注</button>
         </div>
 
+        <SuggestedPeople />
+
         <div className="card" style={{ marginBottom: 18 }}>
           <div className="field">
             <textarea className="textarea" placeholder="分享此刻的想法…" rows={3}
@@ -139,7 +174,7 @@ export default function Community() {
             <div className="empty"><div className="big"><Inbox size={46} /></div>这里还没有动态，来发布第一条吧</div>
           ) : moments.map(m => (
             <div key={m.id} className="moment">
-              <Avatar src={m.author_avatar} name={m.author_name} size={42} />
+              <span className="ava-link" onClick={() => nav('/user/' + m.user_id)} title="查看主页"><Avatar src={m.author_avatar} name={m.author_name} size={42} /></span>
               <div className="body">
                 <div className="head">
                   <b onClick={() => nav('/user/' + m.user_id)} style={{ cursor: 'pointer' }}>{m.author_name}</b>

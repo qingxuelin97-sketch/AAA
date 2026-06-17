@@ -467,6 +467,15 @@ async function route(method, path, search, body, headers) {
     if (method === 'GET') return J({ comments: filter('comments', c => c.moment_id === mid).map(c => ({ ...c, author_name: user(c.user_id)?.display_name, author_avatar: user(c.user_id)?.avatar })) });
     if (method === 'POST') { need(); if (!body.text) return E('评论不能为空'); const mm = find('moments', x => x.id === mid); const c = insert('comments', { moment_id: mid, user_id: me.id, text: body.text }); if (mm && mm.user_id !== me.id) notify(mm.user_id, `${me.display_name} 评论了你的动态：${body.text.slice(0, 20)}`, '/community'); return J({ comment: { ...c, author_name: me.display_name, author_avatar: me.avatar } }); }
   }
+  if (method === 'GET' && path === '/social/suggested') {
+    need(); const followed = new Set(filter('follows', f => f.follower_id === me.id).map(f => f.following_id));
+    const rows = filter('users', u => u.id !== me.id && !u.is_banned && !followed.has(u.id)).map(u => ({
+      id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, bio: u.bio,
+      followers: filter('follows', f => f.following_id === u.id).length,
+      chars: filter('characters', c => c.owner_id === u.id && c.is_public).length
+    })).sort((a, b) => (b.followers - a.followers) || (b.chars - a.chars)).slice(0, 8);
+    return J({ users: rows });
+  }
   if ((m = P(/^\/social\/follow\/(\d+)$/)) && method === 'POST') { need(); const tid = +m[1]; if (tid === me.id) return E('不能关注自己'); const ex = find('follows', f => f.follower_id === me.id && f.following_id === tid); if (ex) { db.follows = filter('follows', f => !(f.follower_id === me.id && f.following_id === tid)); save(); return J({ following: false }); } insert('follows', { follower_id: me.id, following_id: tid }); notify(tid, `${me.display_name} 关注了你`, '/user/' + me.id); return J({ following: true }); }
   if (method === 'GET' && path === '/social/notifications') { need(); const rows = filter('notifications', n => n.user_id === me.id).sort((a, b) => b.id - a.id).slice(0, 50); return J({ notifications: rows, unread: rows.filter(n => !n.read).length }); }
   if (method === 'POST' && path === '/social/notifications/read') { need(); filter('notifications', n => n.user_id === me.id).forEach(n => (n.read = 1)); save(); return J({ ok: true }); }

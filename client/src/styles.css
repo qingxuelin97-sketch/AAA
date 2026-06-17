@@ -3,28 +3,28 @@
    Light "ivory + clay" palette, serif display, fluid layout.
    ============================================================ */
 :root {
-  --bg: #f4f2ec;          /* warm canvas */
-  --bg-2: #ece9df;        /* recessed surface (inputs) */
-  --panel: #fbfaf6;       /* cards / paper */
-  --panel-2: #f2efe6;     /* secondary surface */
-  --border: #e6e1d4;      /* hairline */
-  --border-2: #d8d2c2;    /* stronger border */
-  --text: #1d1c18;        /* ink */
-  --muted: #6f6a5e;       /* secondary text */
-  --faint: #9b9588;       /* tertiary text */
-  --accent: #cc6a44;      /* clay / Claude orange */
-  --accent-2: #b3522f;    /* deeper clay (hover / gradient) */
-  --accent-soft: #f1e4dc; /* clay tint surface */
-  --accent-ring: rgba(204, 106, 68, 0.18);
+  --bg: #faf9f5;          /* Anthropic ivory canvas */
+  --bg-2: #f1efe8;        /* recessed surface (inputs) */
+  --panel: #ffffff;       /* cards / paper */
+  --panel-2: #f6f4ee;     /* secondary surface */
+  --border: #e8e5db;      /* hairline */
+  --border-2: #dcd8ca;    /* stronger border */
+  --text: #191917;        /* ink */
+  --muted: #6b6760;       /* secondary text */
+  --faint: #a39d90;       /* tertiary text */
+  --accent: #d97757;      /* Claude orange */
+  --accent-2: #c25a38;    /* deeper (hover) */
+  --accent-soft: #f7e8e1; /* tint surface */
+  --accent-ring: rgba(217, 119, 87, 0.2);
   --gold: #b3892f;
   --diamond: #3f8195;
   --ok: #5c8a63;
   --danger: #bb4b35;
-  --radius: 18px;
-  --radius-sm: 11px;
-  --shadow-sm: 0 1px 2px rgba(50, 40, 25, 0.05);
-  --shadow: 0 1px 2px rgba(50, 40, 25, 0.04), 0 12px 32px rgba(60, 48, 28, 0.07);
-  --shadow-lg: 0 2px 6px rgba(50, 40, 25, 0.05), 0 24px 60px rgba(60, 48, 28, 0.12);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow-sm: 0 1px 2px rgba(40, 33, 22, 0.04);
+  --shadow: 0 1px 2px rgba(40, 33, 22, 0.03), 0 4px 14px rgba(40, 33, 22, 0.05);
+  --shadow-lg: 0 2px 6px rgba(40, 33, 22, 0.05), 0 16px 42px rgba(40, 33, 22, 0.09);
   --serif: "Fraunces Variable", "Fraunces", "Songti SC", Georgia, "Times New Roman", serif;
   --sans: "Inter Variable", "Inter", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
 }
@@ -735,3 +735,41 @@ html { scroll-behavior: smooth; }
 .adm-actions { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
 .code-chip { font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; background: var(--bg-2); padding: 4px 10px; border-radius: 8px; }
 .ban-flag { font-size: 11px; font-weight: 800; color: #fff; background: var(--danger); padding: 2px 8px; border-radius: 20px; }
+
+/* ============ Anthropic refinement (v5): calmer surfaces & elevation ============ */
+/* tone the animated aurora way down for a clean editorial canvas */
+body { background-image:
+  radial-gradient(1100px 600px at 90% -12%, rgba(217,119,87,0.045), transparent 60%),
+  radial-gradient(820px 520px at -8% 110%, rgba(63,129,149,0.035), transparent 55%); }
+body::before, body::after { display: none !important; }
+
+.sidebar { background: #f6f4ed; border-right-color: var(--border); }
+.topbar { background: rgba(250,249,245,0.85); }
+.nav-item:hover { background: #efece3; }
+.nav-item.active { background: var(--accent-soft); }
+.mobile-topbar { background: rgba(250,249,245,0.9); }
+.bottom-nav { background: rgba(252,251,248,0.94); }
+.chat-list { background: #f6f4ed; }
+.conv-item:hover { background: #efece3; }
+.btn:hover { background: #fbfaf7; border-color: var(--border-2); }
+.btn.ghost:hover { background: #efece3; }
+/* flatter cards: lighter default shadow, lift only on hover */
+.card { box-shadow: var(--shadow-sm); }
+.char-card, .room-row, .pkg, .skel-card, .adm-row, .lb-row, .ann-item, .world-entry { box-shadow: var(--shadow-sm); }
+.chat-head, .chat-input-bar { background: rgba(255,255,255,0.8); }
+.chat-bg::after { background: linear-gradient(180deg, rgba(250,249,245,0.55) 0%, rgba(250,249,245,0.2) 26%, rgba(250,249,245,0.2) 64%, rgba(250,249,245,0.84) 100%); }
+
+/* clickable avatar wrapper */
+.ava-link { display: inline-flex; cursor: pointer; border-radius: 50%; transition: transform 0.22s var(--spring), box-shadow 0.2s; flex-shrink: 0; }
+.ava-link:hover { transform: scale(1.06); box-shadow: 0 0 0 3px var(--accent-ring); }
+.ava-link:active { transform: scale(0.96); }
+
+/* suggested people rail */
+.people-rail { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; }
+.person-chip { flex: 0 0 138px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  padding: 16px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); cursor: pointer;
+  transition: transform 0.26s var(--spring), border-color 0.2s, box-shadow 0.2s; }
+.person-chip:hover { transform: translateY(-3px); border-color: var(--border-2); box-shadow: var(--shadow); }
+.person-chip b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.person-chip span { font-size: 11px; }
+.person-chip .btn { margin-top: 4px; padding: 5px 12px; }

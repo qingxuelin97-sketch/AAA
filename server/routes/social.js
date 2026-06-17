@@ -72,6 +72,18 @@ router.post('/moments/:id/comments', authRequired, (req, res) => {
   res.json({ comment: c });
 });
 
+// ---- Suggested users (你可能感兴趣的人) ----
+router.get('/suggested', authRequired, (req, res) => {
+  const rows = db.prepare(`SELECT u.id, u.username, u.display_name, u.avatar, u.bio,
+      (SELECT COUNT(*) FROM follows f WHERE f.following_id = u.id) AS followers,
+      (SELECT COUNT(*) FROM characters c WHERE c.owner_id = u.id AND c.is_public = 1) AS chars
+    FROM users u
+    WHERE u.id != ? AND u.is_banned = 0
+      AND u.id NOT IN (SELECT following_id FROM follows WHERE follower_id = ?)
+    ORDER BY followers DESC, chars DESC, RANDOM() LIMIT 8`).all(req.user.id, req.user.id);
+  res.json({ users: rows });
+});
+
 // ---- Follow ----
 router.post('/follow/:id', authRequired, (req, res) => {
   const target = parseInt(req.params.id, 10);
