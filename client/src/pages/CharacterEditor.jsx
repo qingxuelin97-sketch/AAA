@@ -6,6 +6,10 @@ import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG } from '../faces.js';
 import { Plus } from 'lucide-react';
 
+// Local fallback shown if a third-party online image fails to hotlink.
+const IMG_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#efd9e6"/><stop offset="100%" stop-color="#c9b8ff"/></linearGradient></defs><rect width="160" height="100" fill="url(#g)"/><text x="80" y="56" font-size="12" fill="#fff" text-anchor="middle" font-family="sans-serif">加载失败</text></svg>');
+const onImgErr = (e) => { if (e.currentTarget.src !== IMG_FALLBACK) { e.currentTarget.src = IMG_FALLBACK; e.currentTarget.closest('.bg-preset')?.classList.add('img-failed'); } };
+
 const BLANK = {
   name: '', avatar: '', background: '', background_type: 'image',
   tagline: '', intro: '', greeting: '', persona: '', voice_name: '', category: '', tags: '',
@@ -167,7 +171,7 @@ export default function CharacterEditor() {
                 {ONLINE_BG.map(b => (
                   <button key={b.name} type="button" className={'bg-preset' + (c.background === b.url ? ' on' : '')}
                     onClick={() => setC(prev => ({ ...prev, background: b.url, background_type: 'image' }))} title={b.name}>
-                    <img src={b.url} alt={b.name} loading="lazy" referrerPolicy="no-referrer" />
+                    <img src={b.url} alt={b.name} loading="lazy" referrerPolicy="no-referrer" onError={onImgErr} />
                     <span>{b.name}</span>
                   </button>
                 ))}
