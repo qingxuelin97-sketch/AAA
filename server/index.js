@@ -17,6 +17,7 @@ import socialRoutes from './routes/social.js';
 import groupRoutes from './routes/groups.js';
 import theaterRoutes from './routes/theater.js';
 import metaRoutes from './routes/meta.js';
+import announcementRoutes from './routes/announcements.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -42,6 +43,7 @@ app.use('/api/social', socialRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/theater', theaterRoutes);
 app.use('/api/meta', metaRoutes);
+app.use('/api/announcements', announcementRoutes);
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Serve built client (production) with SPA fallback.

@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
+import { pid, parsePid } from '../assets.jsx';
 import { Search as SearchIcon, Drama, ScrollText, Coins, Play, User } from 'lucide-react';
 
 const TABS = [
-  { k: 'user', label: '用户', ph: '输入用户 ID 或用户名 / 昵称' },
-  { k: 'character', label: '角色卡', ph: '输入角色 ID 或名称 / 标签' },
-  { k: 'script', label: '剧本卡', ph: '输入剧本 ID 或标题 / 标签' }
+  { k: 'user', label: '用户', ph: '用户 ID（如 U3）或用户名 / 昵称' },
+  { k: 'character', label: '角色卡', ph: '角色 ID（如 C4）或名称 / 标签' },
+  { k: 'script', label: '剧本卡', ph: '剧本 ID（如 S2）或标题 / 标签' }
 ];
 
 export default function Search() {
@@ -21,27 +22,31 @@ export default function Search() {
   const run = async () => {
     const query = q.trim();
     if (!query) { toast('请输入搜索内容', 'err'); return; }
+    const parsed = parsePid(query);
+    const useTab = parsed?.type || tab;     // prefixed id (U/C/S) auto-selects the tab
+    const eff = parsed?.type ? parsed.n : query;
+    const numeric = /^\d+$/.test(eff);
+    if (parsed?.type && parsed.type !== tab) setTab(parsed.type);
     setLoading(true); setRes(null);
-    const numeric = /^\d+$/.test(query);
     try {
-      if (tab === 'user') {
-        const d = await api('/users/search?q=' + encodeURIComponent(query));
-        setRes({ users: d.users });
-      } else if (tab === 'character') {
+      if (useTab === 'user') {
+        const d = await api('/users/search?q=' + encodeURIComponent(eff));
+        setRes({ tab: 'user', users: d.users });
+      } else if (useTab === 'character') {
         if (numeric) {
-          try { const d = await api('/characters/' + query); setRes({ characters: [d.character] }); }
-          catch { setRes({ characters: [] }); }
+          try { const d = await api('/characters/' + eff); setRes({ tab: 'character', characters: [d.character] }); }
+          catch { setRes({ tab: 'character', characters: [] }); }
         } else {
-          const d = await api('/characters/public?q=' + encodeURIComponent(query));
-          setRes({ characters: d.characters });
+          const d = await api('/characters/public?q=' + encodeURIComponent(eff));
+          setRes({ tab: 'character', characters: d.characters });
         }
       } else {
         if (numeric) {
-          try { const d = await api('/scripts/' + query); setRes({ scripts: [d.script] }); }
-          catch { setRes({ scripts: [] }); }
+          try { const d = await api('/scripts/' + eff); setRes({ tab: 'script', scripts: [d.script] }); }
+          catch { setRes({ tab: 'script', scripts: [] }); }
         } else {
-          const d = await api('/scripts?q=' + encodeURIComponent(query));
-          setRes({ scripts: d.scripts });
+          const d = await api('/scripts?q=' + encodeURIComponent(eff));
+          setRes({ tab: 'script', scripts: d.scripts });
         }
       }
     } catch (e) { toast(e.message, 'err'); } finally { setLoading(false); }
@@ -66,26 +71,26 @@ export default function Search() {
 
         {loading ? <div className="empty">搜索中…</div> : !res ? (
           <div className="empty"><div className="big"><SearchIcon size={44} /></div>输入上方关键词或 ID 开始搜索</div>
-        ) : tab === 'user' ? (
+        ) : res.tab === 'user' ? (
           res.users.length === 0 ? <div className="empty"><div className="big"><User size={44} /></div>没有找到匹配的用户</div> : (
             res.users.map(u => (
               <div key={u.id} className="room-row" onClick={() => nav('/user/' + u.id)}>
                 <Avatar src={u.avatar} name={u.display_name} size={50} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontSize: 15 }}>{u.display_name}</b>
-                  <div className="muted" style={{ fontSize: 13 }}>@{u.username} · ID {u.id}</div>
+                  <div className="muted" style={{ fontSize: 13 }}>@{u.username} · {pid('user', u.id)}</div>
                   {u.bio && <div className="muted" style={{ fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.bio}</div>}
                 </div>
               </div>
             ))
           )
-        ) : tab === 'character' ? (
+        ) : res.tab === 'character' ? (
           res.characters.length === 0 ? <div className="empty"><div className="big"><Drama size={44} /></div>没有找到该角色（可能非公开）</div> : (
             <div className="grid">
               {res.characters.map(c => (
                 <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
                   <div className="cover">{c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={40} /></div>}
-                    <div className="pill-pub">ID {c.id}</div></div>
+                    <div className="pill-pub">{pid('character', c.id)}</div></div>
                   <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro || '暂无简介'}</p></div>
                 </div>
               ))}
@@ -97,7 +102,7 @@ export default function Search() {
               {res.scripts.map(s => (
                 <div key={s.id} className="char-card" onClick={() => nav('/script/' + s.id)}>
                   <div className="cover">{s.cover ? <img src={s.cover} alt="" /> : <div className="ph"><ScrollText size={34} /></div>}
-                    <div className="pill-pub">ID {s.id}</div></div>
+                    <div className="pill-pub">{pid('script', s.id)}</div></div>
                   <div className="meta"><h3>{s.title}</h3><p>{s.summary}</p>
                     <div className="foot">
                       <span className="price-tag">{s.price_gold > 0 ? <><Coins size={12} /> {s.price_gold}</> : <span className="free-tag">免费</span>}</span>

@@ -5,7 +5,7 @@ import { Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
-  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search
+  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone
 } from 'lucide-react';
 
 const GROUPS = [
@@ -13,6 +13,7 @@ const GROUPS = [
     { to: '/', ic: Compass, label: '发现广场', end: true },
     { to: '/scripts', ic: ScrollText, label: '剧本' },
     { to: '/community', ic: Users, label: '社区' },
+    { to: '/announcements', ic: Megaphone, label: '公告' },
     { to: '/search', ic: Search, label: '搜索' }
   ] },
   { title: '互动', items: [

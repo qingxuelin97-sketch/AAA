@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar, GridSkeleton } from '../ui.jsx';
-import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play } from 'lucide-react';
-import { CategoryIcon } from '../assets.jsx';
+import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X } from 'lucide-react';
+import { CategoryIcon, categoryName } from '../assets.jsx';
 
 export default function Home() {
   const [cats, setCats] = useState([]);
@@ -13,11 +13,20 @@ export default function Home() {
   const [chars, setChars] = useState([]);
   const [scripts, setScripts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ann, setAnn] = useState(null);
   const toast = useToast();
   const nav = useNavigate();
 
   useEffect(() => { api('/meta/categories').then(d => setCats(d.categories)).catch(() => {}); }, []);
   useEffect(() => { api('/scripts?sort=hot').then(d => setScripts(d.scripts.slice(0, 6))).catch(() => {}); }, []);
+  useEffect(() => {
+    api('/announcements').then(d => {
+      const top = d.announcements?.[0];
+      if (top && localStorage.getItem('ann_seen') !== String(top.id)) setAnn(top);
+    }).catch(() => {});
+  }, []);
+
+  const dismissAnn = () => { if (ann) localStorage.setItem('ann_seen', String(ann.id)); setAnn(null); };
 
   const load = () => {
     setLoading(true);
@@ -49,6 +58,14 @@ export default function Home() {
       </div>
 
       <div className="page">
+        {ann && (
+          <div className="ann-banner" onClick={() => nav('/announcements')} style={{ cursor: 'pointer' }}>
+            <span className="ann-ic"><Megaphone size={19} /></span>
+            <div className="ann-tx"><b>{ann.title}</b><p>{ann.body}</p></div>
+            <button className="ann-x" onClick={e => { e.stopPropagation(); dismissAnn(); }}><X size={16} /></button>
+          </div>
+        )}
+
         <div className="cat-bar">
           <button className={'cat-chip' + (cat === 'all' ? ' active' : '')} onClick={() => setCat('all')}><Flame size={14} /> 全部</button>
           {cats.map(c => (
@@ -56,7 +73,7 @@ export default function Home() {
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
           <div className="seg">
             <button className={sort === 'hot' ? 'active' : ''} onClick={() => setSort('hot')}>热门</button>
             <button className={sort === 'new' ? 'active' : ''} onClick={() => setSort('new')}>最新</button>
@@ -70,31 +87,33 @@ export default function Home() {
 
         {loading ? <GridSkeleton n={8} /> :
           chars.length === 0 ? <div className="empty"><div className="big"><Drama size={46} /></div>该分类下还没有公开角色</div> : (
-            <div className="grid">
+            <div className="disc-grid">
               {chars.map(c => (
-                <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
-                  <div className="cover">
-                    {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={40} /></div>}
-                    <button className="pill-pub" onClick={e => fav(e, c)} style={{ border: 'none', color: c.faved ? 'var(--accent)' : '#fff' }}>
-                      <Heart size={13} fill={c.faved ? 'var(--accent)' : 'none'} /> {c.likes}
+                <article key={c.id} className="dcard" onClick={() => nav('/character/' + c.id)}>
+                  <div className="dcard-cover">
+                    {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}
+                    {c.category && <span className="dcard-cat"><CategoryIcon slug={c.category} size={13} /> {categoryName(c.category)}</span>}
+                    <button className={'dcard-fav' + (c.faved ? ' on' : '')} onClick={e => fav(e, c)} title="收藏">
+                      <Heart size={16} fill={c.faved ? 'currentColor' : 'none'} />
                     </button>
+                    <span className="dcard-uses"><MessageCircle size={12} /> {c.uses}</span>
                   </div>
-                  <div className="meta">
+                  <div className="dcard-body">
                     <h3>{c.name}</h3>
                     <p>{c.tagline || c.intro || '暂无简介'}</p>
-                    <div className="foot">
-                      <span><MessageCircle size={12} /> {c.uses}</span>
-                      <button className="btn sm primary" style={{ marginLeft: 'auto' }} onClick={e => chat(e, c)}>对话</button>
+                    <div className="dcard-foot">
+                      <div className="dcard-author"><Avatar name={c.owner_name} size={20} /><span>{c.owner_name}</span></div>
+                      <button className="btn sm primary" onClick={e => chat(e, c)}><MessageCircle size={13} /> 对话</button>
                     </div>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           )}
 
         {scripts.length > 0 && (
           <>
-            <div className="section-title" style={{ marginTop: 34 }}>
+            <div className="section-title" style={{ marginTop: 36 }}>
               <h2><Flame size={17} style={{ verticalAlign: -3 }} /> 热门剧本</h2>
               <button className="btn sm ghost" onClick={() => nav('/scripts')}>查看全部 →</button>
             </div>

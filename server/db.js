@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   vip_until TEXT,
   last_checkin TEXT,
   checkin_streak INTEGER DEFAULT 0,
+  is_gm INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -41,6 +42,16 @@ CREATE TABLE IF NOT EXISTS settings (
   theme TEXT DEFAULT 'dark',
   nsfw INTEGER DEFAULT 0,
   notify_email INTEGER DEFAULT 0
+);
+
+-- Site-wide announcements (posted by GM users)
+CREATE TABLE IF NOT EXISTS announcements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  body TEXT DEFAULT '',
+  pinned INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
 );
 
 -- Registration invite keys (also usable as gift codes)

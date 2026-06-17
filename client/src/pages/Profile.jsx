@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart } from 'lucide-react';
+import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck } from 'lucide-react';
+import { pid } from '../assets.jsx';
 
 export default function Profile() {
   const { id } = useParams();
@@ -28,7 +29,7 @@ export default function Profile() {
   return (
     <>
       <div className="topbar">
-        <div style={{ flex: 1 }}><h1>{isMe ? '个人中心' : u.display_name}</h1><div className="sub">@{u.username}</div></div>
+        <div style={{ flex: 1 }}><h1>{isMe ? '个人中心' : u.display_name}</h1><div className="sub">@{u.username} · {pid('user', u.id)}</div></div>
         {isMe ? (
           <>
             <button className="btn" onClick={() => nav('/settings')}><Settings size={15} /> 设置</button>
@@ -49,7 +50,9 @@ export default function Profile() {
               <div style={{ border: '4px solid var(--panel)', borderRadius: '50%' }}><Avatar src={u.avatar} name={u.display_name} size={84} /></div>
               <div style={{ flex: 1, paddingBottom: 6 }}>
                 <h2 style={{ margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {u.display_name} {u.vip && <span className="vip-badge"><Crown size={12} /> VIP</span>}
+                  {u.display_name}
+                  {u.is_gm && <span className="gm-tag"><ShieldCheck size={12} /> GM</span>}
+                  {u.vip && <span className="vip-badge"><Crown size={12} /> VIP</span>}
                 </h2>
                 <div className="muted" style={{ fontSize: 14 }}>{u.bio || '这位玩家还没有写简介'}</div>
               </div>

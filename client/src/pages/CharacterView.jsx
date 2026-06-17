@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
+import { pid } from '../assets.jsx';
 import { MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe } from 'lucide-react';
 
 export default function CharacterView() {
@@ -40,7 +41,7 @@ export default function CharacterView() {
     <>
       <div className="topbar">
         <button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button>
-        <div style={{ flex: 1 }}><h1>{c.name}</h1><div className="sub">角色卡 · ID {c.id}</div></div>
+        <div style={{ flex: 1 }}><h1>{c.name}</h1><div className="sub">角色卡 · {pid('character', c.id)}</div></div>
         {isOwner && <button className="btn" onClick={() => nav('/character/' + c.id + '/edit')}><Pencil size={15} /> 编辑</button>}
       </div>
       <div className="page" style={{ maxWidth: 860 }}>

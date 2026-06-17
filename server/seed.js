@@ -49,6 +49,12 @@ const u1 = user('demo', '旅人', '热爱奇幻与角色扮演的创作者，正
 const u2 = user('astra', '星语者', '专注科幻与赛博朋克题材的世界观构筑师。', avatar('u_astra.svg', '#37d6e0', '#103040', '星'), banner('bn_astra.svg', '#103040', '#0a1622'), 9200, 60, 0);
 const u3 = user('mochi', '麻薯', '治愈系日常向作者，喜欢一切软软的东西。', avatar('u_mochi.svg', '#ff9ec4', '#6e2f4d', '麻'), banner('bn_mochi.svg', '#6e2f4d', '#2a1620'), 4300, 0, 0);
 const u4 = user('kenji', '剑持', '武侠与历史题材，刀光剑影里见人心。', avatar('u_kenji.svg', '#d8a657', '#5a3d1f', '剑'), banner('bn_kenji.svg', '#5a3d1f', '#221409'), 6700, 10, 0);
+const gmUser = user('gm', '幻域管理员', '幻域平台官方管理员账号。', avatar('u_gm.svg', '#cc6a44', '#5a2a18', '官'), banner('bn_gm.svg', '#5a2a18', '#2a130b'), 0, 0, 0);
+// GM privileges (demo is also GM so it can be tested on the live demo)
+db.prepare("UPDATE users SET is_gm = 1 WHERE username IN ('gm','demo')").run();
+const annStmt = db.prepare('INSERT INTO announcements (author_id, title, body, pinned) VALUES (?,?,?,?)');
+annStmt.run(gmUser, '欢迎来到幻域 · 测试版', '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。欢迎创建角色、剧本，并在剧场与多位 AI 同台演出。', 1);
+annStmt.run(gmUser, '新功能：模型自检测', '设置 → 语言模型 中新增「检测模型」，可一键拉取你所用服务商的可用模型列表并选择，无需手动填写。', 0);
 
 function char(owner, c) {
  const info = db.prepare(`INSERT INTO characters

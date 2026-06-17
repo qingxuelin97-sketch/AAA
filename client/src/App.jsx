@@ -24,6 +24,7 @@ import Notifications from './pages/Notifications.jsx';
 import Favorites from './pages/Favorites.jsx';
 import Search from './pages/Search.jsx';
 import CharacterView from './pages/CharacterView.jsx';
+import Announcements from './pages/Announcements.jsx';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/script/:id/edit" element={P(<ScriptEditor />)} />
         <Route path="/community" element={P(<Community />)} />
         <Route path="/search" element={P(<Search />)} />
+        <Route path="/announcements" element={P(<Announcements />)} />
         <Route path="/chats" element={P(<Chat />)} />
         <Route path="/chats/:id" element={P(<Chat />)} />
         <Route path="/groups" element={P(<Groups />)} />

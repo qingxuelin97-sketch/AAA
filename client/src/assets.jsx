@@ -22,6 +22,19 @@ export function CategoryIcon({ slug, size = 15, ...rest }) {
   const Icon = CAT_ICONS[slug] || Sparkles;
   return <Icon size={size} {...rest} />;
 }
+export const categoryName = (slug) => CATEGORIES.find(c => c.slug === slug)?.name || '';
+
+// Namespaced public IDs so users / characters / scripts don't visually collide.
+const PREFIX = { user: 'U', character: 'C', script: 'S' };
+export const pid = (type, id) => (PREFIX[type] || '') + id;
+// Parse a possibly-prefixed id, returning { type, n } or null.
+export function parsePid(raw) {
+  const s = String(raw || '').trim().toUpperCase();
+  const m = /^([UCS])\s*[-#]?\s*(\d+)$/.exec(s);
+  if (m) return { type: { U: 'user', C: 'character', S: 'script' }[m[1]], n: m[2] };
+  if (/^\d+$/.test(s)) return { type: null, n: s };
+  return null;
+}
 
 // Brand mark — a clay crescent + spark, drawn as crisp SVG (replaces emoji logo).
 export function Logo({ size = 38, radius = 11 }) {

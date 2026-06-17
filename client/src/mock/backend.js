@@ -4,7 +4,7 @@
 // configured provider from the browser.
 
 const realFetch = window.fetch.bind(window);
-const KEY = 'huanyu_db_v3';
+const KEY = 'huanyu_db_v4';
 let db;
 
 /* ----------------------------- art (data-url SVG) ----------------------------- */
@@ -53,6 +53,10 @@ function seed() {
   const u2 = mkUser('astra', '星语者', '专注科幻与赛博朋克题材的世界观构筑师。', avatarArt('astra', '#37d6e0', '#103040', '星'), bannerArt('astra', '#103040', '#0a1622'), 9200, 60, 0);
   const u3 = mkUser('mochi', '麻薯', '治愈系日常向作者，喜欢一切软软的东西。', avatarArt('mochi', '#ff9ec4', '#6e2f4d', '麻'), bannerArt('mochi', '#6e2f4d', '#2a1620'), 4300, 0, 0);
   const u4 = mkUser('kenji', '剑持', '武侠与历史题材，刀光剑影里见人心。', avatarArt('kenji', '#d8a657', '#5a3d1f', '剑'), bannerArt('kenji', '#5a3d1f', '#221409'), 6700, 10, 0);
+  const gmu = mkUser('gm', '幻域管理员', '幻域平台官方管理员账号。', avatarArt('gm', '#cc6a44', '#5a2a18', '官'), bannerArt('gm', '#5a2a18', '#2a130b'), 0, 0, 0);
+  gmu.is_gm = 1; u1.is_gm = 1;
+  insert('announcements', { author_id: gmu.id, title: '欢迎来到幻域 · 测试版', body: '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。欢迎创建角色、剧本，并在剧场与多位 AI 同台演出。', pinned: 1 });
+  insert('announcements', { author_id: gmu.id, title: '新功能：模型自检测', body: '设置 → 语言模型 中新增「检测模型」，可一键拉取你所用服务商的可用模型列表并选择，无需手动填写。', pinned: 0 });
   [u1, u2, u3, u4].forEach(u => defaultSettings(u.id));
 
   const mkChar = (owner, c) => {
@@ -130,7 +134,7 @@ function seed() {
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
 function publicUser(u) {
-  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, created_at: u.created_at };
+  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, created_at: u.created_at };
 }
 function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '' }) {
   const u = user(uid);
@@ -309,6 +313,22 @@ async function route(method, path, search, body, headers) {
   // ---------- meta ----------
   if (method === 'GET' && path === '/meta/categories') return J({ categories: CATEGORIES.map(([slug, name, icon]) => ({ slug, name, icon })) });
 
+  // ---------- announcements ----------
+  if (path === '/announcements' && method === 'GET') {
+    const rows = filter('announcements', () => true).sort((a, b) => (b.pinned - a.pinned) || (b.id - a.id))
+      .map(a => ({ ...a, author_name: user(a.author_id)?.display_name }));
+    return J({ announcements: rows, is_gm: !!me?.is_gm });
+  }
+  if (path === '/announcements' && method === 'POST') {
+    need(); if (!me.is_gm) return E('仅 GM 可发布公告', 403);
+    if (!body.title) return E('公告标题必填');
+    return J({ announcement: insert('announcements', { author_id: me.id, title: body.title, body: body.body || '', pinned: body.pinned ? 1 : 0 }) });
+  }
+  if ((m = P(/^\/announcements\/(\d+)$/)) && method === 'DELETE') {
+    need(); if (!me.is_gm) return E('仅 GM 可删除公告', 403);
+    db.announcements = filter('announcements', a => a.id !== +m[1]); save(); return J({ ok: true });
+  }
+
   // ---------- upload ----------
   if (method === 'POST' && path === '/upload') {
     const file = body && body.get && body.get('file'); if (!file) return E('未收到文件');
@@ -462,7 +482,7 @@ async function route(method, path, search, body, headers) {
     const moments = filter('moments', x => x.user_id === u.id).sort((a, b) => b.id - a.id).slice(0, 20);
     const stats = { characters: filter('characters', c => c.owner_id === u.id).length, scripts: scripts.length, followers: filter('follows', f => f.following_id === u.id).length, following: filter('follows', f => f.follower_id === u.id).length };
     const following = me ? !!find('follows', f => f.follower_id === me.id && f.following_id === u.id) : false;
-    return J({ user: { id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, vip: isVip(u), vip_until: u.vip_until, created_at: u.created_at }, characters, scripts, moments, stats, following });
+    return J({ user: { id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, vip: isVip(u), vip_until: u.vip_until, is_gm: !!u.is_gm, created_at: u.created_at }, characters, scripts, moments, stats, following });
   }
 
   // ---------- groups ----------

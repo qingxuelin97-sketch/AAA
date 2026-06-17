@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
+import { pid } from '../assets.jsx';
 import { Coins, Heart, Play, Lock, Trash2 } from 'lucide-react';
 
 export default function ScriptDetail() {
@@ -67,7 +68,7 @@ export default function ScriptDetail() {
         <button className="btn ghost sm" onClick={() => nav(-1)}>← 返回</button>
         <div style={{ flex: 1 }}>
           <h1>{script.title}</h1>
-          <div className="sub">{script.category || '剧本'} · 由 {script.author_name} 创作</div>
+          <div className="sub">{pid('script', script.id)} · 由 {script.author_name} 创作</div>
         </div>
         {isAuthor && <>
           <button className="btn" onClick={() => nav('/script/' + id + '/edit')}>编辑</button>

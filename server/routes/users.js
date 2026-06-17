@@ -21,9 +21,10 @@ router.get('/search', authOptional, (req, res) => {
 
 // Public profile: user info + public characters + scripts + moments + stats
 router.get('/:id', authOptional, (req, res) => {
-  const u = db.prepare('SELECT id, username, display_name, avatar, banner, bio, vip_until, created_at FROM users WHERE id = ?').get(req.params.id);
+  const u = db.prepare('SELECT id, username, display_name, avatar, banner, bio, vip_until, is_gm, created_at FROM users WHERE id = ?').get(req.params.id);
   if (!u) return res.status(404).json({ error: '用户不存在' });
   u.vip = isVip(u);
+  u.is_gm = !!u.is_gm;
   const characters = db.prepare('SELECT * FROM characters WHERE owner_id = ? AND is_public = 1 ORDER BY created_at DESC').all(u.id);
   const scripts = db.prepare('SELECT * FROM scripts WHERE author_id = ? ORDER BY created_at DESC').all(u.id);
   const moments = db.prepare('SELECT * FROM moments WHERE user_id = ? ORDER BY created_at DESC LIMIT 20').all(u.id);
