@@ -3,14 +3,17 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
 import { Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
+import WelcomePopup from './WelcomePopup.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
-  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield, BadgeCheck
+  Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 
 const GROUPS = [
   { title: '探索', items: [
     { to: '/', ic: Compass, label: '发现广场', end: true },
+    { to: '/events', ic: PartyPopper, label: '活动' },
     { to: '/scripts', ic: ScrollText, label: '剧本' },
     { to: '/community', ic: Users, label: '社区' },
     { to: '/leaderboard', ic: Trophy, label: '排行榜' },
@@ -20,7 +23,7 @@ const GROUPS = [
   { title: '互动', items: [
     { to: '/chats', ic: MessageCircle, label: '对话' },
     { to: '/groups', ic: Users, label: '群聊' },
-    { to: '/theater', ic: Drama, label: '剧场' }
+    { to: '/theater', ic: Drama, label: '剧场 · 联机' }
   ] },
   { title: '我的', items: [
     { to: '/library', ic: Library, label: '我的角色' },
@@ -33,15 +36,20 @@ const GROUPS = [
 
 const TABS = [
   { to: '/', ic: Compass, label: '发现', end: true },
-  { to: '/scripts', ic: ScrollText, label: '剧本' },
+  { to: '/events', ic: PartyPopper, label: '活动' },
   { to: '/community', ic: Users, label: '社区' },
   { to: '/theater', ic: Drama, label: '剧场' },
   { to: '/profile', ic: User, label: '我的' }
 ];
 
+const COLLAPSE_KEY = 'huanyu_sidebar_collapsed';
+
 export default function Layout({ children }) {
   const { user } = useAuth();
   const [unread, setUnread] = useState(0);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
+
+  const toggle = () => setCollapsed(c => { const n = !c; localStorage.setItem(COLLAPSE_KEY, n ? '1' : '0'); return n; });
 
   useEffect(() => {
     let alive = true;
@@ -52,8 +60,8 @@ export default function Layout({ children }) {
   }, []);
 
   return (
-    <div className="app-shell">
-      <Sidebar user={user} unread={unread} />
+    <div className={'app-shell' + (collapsed ? ' sb-collapsed' : '')}>
+      <Sidebar user={user} unread={unread} collapsed={collapsed} toggle={toggle} />
       <MobileTop user={user} unread={unread} />
       <main className="main">{children}</main>
       <nav className="bottom-nav">
@@ -65,32 +73,40 @@ export default function Layout({ children }) {
           </NavLink>
         ))}
       </nav>
+      <WelcomePopup />
     </div>
   );
 }
 
-function Sidebar({ user, unread }) {
+function Sidebar({ user, unread, collapsed, toggle }) {
   const { logout } = useAuth();
   const nav = useNavigate();
   return (
-    <aside className="sidebar">
+    <aside className={'sidebar' + (collapsed ? ' collapsed' : '')}>
       <div className="brand">
-        <Logo size={38} />
-        <div><b>幻域</b><small>HUANYU AI</small></div>
+        <Logo size={36} />
+        {!collapsed && <div className="brand-tx"><b>幻域</b><small>HUANYU AI</small></div>}
+        <button className="sb-toggle" onClick={toggle} title={collapsed ? '展开侧边栏' : '收起侧边栏'} aria-label="切换侧边栏">
+          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+        </button>
       </div>
-      <div className="wallet-mini">
-        <span className="coin gold"><Coins size={14} /> {user?.gold ?? 0}</span>
-        <span className="coin diamond"><Gem size={14} /> {user?.diamond ?? 0}</span>
-        {user?.svip ? <span className="svip-badge">SVIP</span> : user?.vip ? <span className="vip-badge"><Crown size={12} /> VIP</span> : null}
-        {user?.verified && <span className="v-badge" title="官方认证"><BadgeCheck size={16} /></span>}
-      </div>
-      <div style={{ overflowY: 'auto', flex: 1, margin: '0 -4px', padding: '0 4px' }}>
+      {!collapsed && (
+        <div className="wallet-mini">
+          <span className="coin gold"><Coins size={14} /> {user?.gold ?? 0}</span>
+          <span className="coin diamond"><Gem size={14} /> {user?.diamond ?? 0}</span>
+          {user?.svip ? <span className="svip-badge">SVIP</span> : user?.vip ? <span className="vip-badge"><Crown size={12} /> VIP</span> : null}
+          {user?.verified && <span className="v-badge" title="官方认证"><BadgeCheck size={16} /></span>}
+        </div>
+      )}
+      <div className="sb-scroll" style={{ overflowY: 'auto', flex: 1, margin: '0 -4px', padding: '0 4px' }}>
         {GROUPS.map(g => (
           <div key={g.title}>
-            <div className="nav-section">{g.title}</div>
+            {!collapsed && <div className="nav-section">{g.title}</div>}
+            {collapsed && <div className="nav-divider" />}
             {g.items.map(n => (
-              <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
-                <span className="ic"><n.ic size={18} /></span>{n.label}
+              <NavLink key={n.to} to={n.to} end={n.end} title={collapsed ? n.label : undefined} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
+                <span className="ic"><n.ic size={18} /></span>
+                {!collapsed && n.label}
                 {n.badge === 'noti' && unread > 0 && <span className="nav-badge">{unread}</span>}
               </NavLink>
             ))}
@@ -98,24 +114,28 @@ function Sidebar({ user, unread }) {
         ))}
         {user?.is_gm && (
           <div>
-            <div className="nav-section">管理</div>
-            <NavLink to="/admin" className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
-              <span className="ic"><Shield size={18} /></span>管理后台
+            {!collapsed ? <div className="nav-section">管理</div> : <div className="nav-divider" />}
+            <NavLink to="/admin" title={collapsed ? '管理后台' : undefined} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
+              <span className="ic"><Shield size={18} /></span>{!collapsed && '管理后台'}
             </NavLink>
           </div>
         )}
       </div>
-      <NavLink to="/publish" className="nav-item" style={{ color: 'var(--accent)' }}>
-        <span className="ic"><Sparkles size={18} /></span>发布作品
+      <NavLink to="/publish" className="nav-item" title={collapsed ? '发布作品' : undefined} style={{ color: 'var(--accent)' }}>
+        <span className="ic"><Sparkles size={18} /></span>{!collapsed && '发布作品'}
       </NavLink>
       <div className="sidebar-foot">
-        <div className="user-chip" onClick={() => nav('/profile')}>
-          <Avatar src={user?.avatar} name={user?.display_name} size={36} />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <b style={{ fontSize: 13.5, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.display_name}</b>
-            <span style={{ fontSize: 11.5, color: 'var(--faint)' }}>@{user?.username}</span>
-          </div>
-          <LogOut size={16} className="muted" onClick={(e) => { e.stopPropagation(); logout(); }} />
+        <div className={'user-chip' + (collapsed ? ' compact' : '')} onClick={() => nav('/profile')} title={collapsed ? user?.display_name : undefined}>
+          <Avatar src={user?.avatar} name={user?.display_name} size={collapsed ? 32 : 36} />
+          {!collapsed && (
+            <>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <b style={{ fontSize: 13.5, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.display_name}</b>
+                <span style={{ fontSize: 11.5, color: 'var(--faint)' }}>@{user?.username}</span>
+              </div>
+              <LogOut size={16} className="muted" onClick={(e) => { e.stopPropagation(); logout(); }} />
+            </>
+          )}
         </div>
       </div>
     </aside>

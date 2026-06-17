@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, getToken } from '../api.jsx';
+import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw } from 'lucide-react';
 
@@ -8,6 +8,7 @@ export default function Chat() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
+  const { refreshUser } = useAuth();
   const [convs, setConvs] = useState([]);
   const [conv, setConv] = useState(null);
   const [character, setCharacter] = useState(null);
@@ -65,6 +66,7 @@ export default function Chat() {
       }
       setMessages(m => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], _streaming: false }; return c; });
       loadConvs();
+      refreshUser?.();
     } catch (err) {
       toast(err.message, 'err');
       setMessages(m => { const c = [...m]; const last = c[c.length - 1];

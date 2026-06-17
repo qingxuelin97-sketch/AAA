@@ -1,13 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Uploader, Avatar } from '../ui.jsx';
-import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { useToast, Uploader, Avatar, AvatarPicker } from '../ui.jsx';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins } from 'lucide-react';
 
+// Well-known OpenAI-compatible providers (base URLs). Keys stay on the user side.
 const LLM_PRESETS = {
   openai: 'https://api.openai.com/v1', deepseek: 'https://api.deepseek.com/v1',
-  moonshot: 'https://api.moonshot.cn/v1', openrouter: 'https://openrouter.ai/api/v1',
-  groq: 'https://api.groq.com/openai/v1', custom: ''
+  moonshot: 'https://api.moonshot.cn/v1', zhipu: 'https://open.bigmodel.cn/api/paas/v4',
+  qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1', doubao: 'https://ark.cn-beijing.volces.com/api/v3',
+  yi: 'https://api.lingyiwanwu.com/v1', stepfun: 'https://api.stepfun.com/v1',
+  minimax: 'https://api.minimax.chat/v1', siliconflow: 'https://api.siliconflow.cn/v1',
+  spark: 'https://spark-api-open.xf-yun.com/v1', baidu: 'https://qianfan.baidubce.com/v2',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai', openrouter: 'https://openrouter.ai/api/v1',
+  groq: 'https://api.groq.com/openai/v1', together: 'https://api.together.xyz/v1', custom: ''
 };
+const PROVIDER_OPTS = [
+  ['openai', 'OpenAI'], ['deepseek', 'DeepSeek 深度求索'], ['moonshot', 'Moonshot / Kimi'],
+  ['zhipu', '智谱 GLM（清言）'], ['qwen', '通义千问 Qwen'], ['doubao', '字节豆包 Doubao'],
+  ['yi', '零一万物 Yi'], ['stepfun', '阶跃星辰 StepFun'], ['minimax', 'MiniMax'],
+  ['siliconflow', '硅基流动 SiliconFlow'], ['spark', '讯飞星火'], ['baidu', '百度文心一言'],
+  ['gemini', 'Google Gemini'], ['openrouter', 'OpenRouter'], ['groq', 'Groq'], ['together', 'Together'], ['custom', '自定义']
+];
 
 export default function Settings() {
   const toast = useToast();
@@ -63,12 +76,22 @@ export default function Settings() {
         {tab === 'model' && (
           <div className="card">
             <div className="section-title"><h2>语言模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
-            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>兼容 OpenAI Chat Completions 格式，可接入任意服务商。密钥仅存于服务端。</p>
+            {s.using_platform && (
+              <div className="platform-note">
+                <span className="pn-ic"><ShieldCheck size={18} /></span>
+                <div className="pn-tx">
+                  <b>当前正在使用平台内置语言服务</b>
+                  <p>未填写自己的 API Key 时，对话将自动由平台官方模型提供，无需任何配置即可开聊。
+                  {s.platform_fee && <> 每次对话扣除 <b><Coins size={12} style={{ verticalAlign: -2 }} /> {s.platform_fee.base} 金币</b>；同一对话互动超过 {s.platform_fee.heavy_threshold} 条后按 <b>{s.platform_fee.heavy} 金币</b>计费{s.platform_fee.discount < 1 && <>（会员已享 {Math.round(s.platform_fee.discount * 10)} 折优惠）</>}。</>}
+                  填写下方自己的 API Key 即可改用自有额度、免平台扣费。</p>
+                </div>
+              </div>
+            )}
+            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>兼容 OpenAI Chat Completions 格式，可接入任意服务商。密钥仅存于本地。</p>
             <div className="row">
               <div className="field"><label>服务商预设</label>
                 <select className="select" value={s.llm_provider} onChange={e => { const p = e.target.value; set('llm_provider', p); if (LLM_PRESETS[p]) set('llm_base_url', LLM_PRESETS[p]); }}>
-                  <option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option><option value="moonshot">Moonshot / Kimi</option>
-                  <option value="openrouter">OpenRouter</option><option value="groq">Groq</option><option value="custom">自定义</option>
+                  {PROVIDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select></div>
               <div className="field"><label>模型名称</label>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -120,7 +143,7 @@ export default function Settings() {
             <div className="card" style={{ marginBottom: 20 }}>
               <div className="section-title"><h2>个人资料</h2><button className="btn sm primary" onClick={saveProfile}>保存资料</button></div>
               <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginBottom: 14 }}>
-                <Uploader variant="avatar" value={profile.avatar} onChange={url => setProfile({ ...profile, avatar: url })} accept="image/*" />
+                <AvatarPicker value={profile.avatar} onChange={url => setProfile({ ...profile, avatar: url })} size={92} />
                 <div style={{ flex: 1 }}>
                   <div className="field" style={{ marginBottom: 10 }}><label>昵称</label><input className="input" value={profile.display_name} onChange={e => setProfile({ ...profile, display_name: e.target.value })} /></div>
                   <div className="muted" style={{ fontSize: 12 }}>用户名 @{user?.username}（不可更改）</div>

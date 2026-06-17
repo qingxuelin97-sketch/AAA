@@ -3,9 +3,30 @@
 // existing frontend works unchanged. AI calls go straight to the user's
 // configured provider from the browser.
 
+import { faceAvatar, FACE_PRESETS } from '../faces.js';
+
 const realFetch = window.fetch.bind(window);
-const KEY = 'huanyu_db_v6';
+const KEY = 'huanyu_db_v7';
 let db;
+
+/* ----------------------------- platform LLM service (hidden) -----------------------------
+   When a user has NOT configured their own API key, chats fall back to the platform's
+   built-in language service. The credentials below are decoded at runtime and are NEVER
+   surfaced through any API response or the settings UI for non-GM users — ordinary users
+   can neither see nor edit the provider, base URL, key or model. (Note: in a purely static
+   client build the bundle is ultimately inspectable; this keeps it out of the product UI,
+   which is the strongest guarantee achievable without a server.) */
+const PLATFORM = {
+  base_url: 'https://open.bigmodel.cn/api/paas/v4',
+  // base64 of the platform key — kept out of plain source / UI.
+  _k: 'ZWFmN2MwZDY5MmQzNGY0ZmEzNzUyMjI4NDc2NDE2YmQuQU1DS1ZUcXRQd2Nsa1U3UA==',
+  model: 'glm5.2',
+  get key() { try { return atob(this._k); } catch { return ''; } }
+};
+// Per-conversation platform usage fee (gold). Heavier (100+ message) sessions cost more.
+const PLATFORM_FEE = { base: 10, heavy: 15, heavy_threshold: 100 };
+// Membership discounts on the platform fee. VIP = 75 折 (0.75), SVIP = 5 折 (0.50).
+const memberDiscount = (u) => (u?.svip ? 0.5 : isVip(u) ? 0.75 : 1);
 
 /* ----------------------------- art (data-url SVG) ----------------------------- */
 const dataUrl = (svg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg.trim());
@@ -49,16 +70,18 @@ function seed() {
   insert('invite_keys', { code: 'HUANYU2026', max_uses: 9999, used: 0, grant_gold: 2000, grant_diamond: 0, grant_vip_days: 0 });
   insert('invite_keys', { code: 'VIPGIFT', max_uses: 100, used: 0, grant_gold: 0, grant_diamond: 500, grant_vip_days: 30 });
 
-  const u1 = mkUser('demo', '旅人', '热爱奇幻与角色扮演的创作者，正在书写属于自己的幻域。', avatarArt('demo', '#a779ff', '#3a2566', '旅'), bannerArt('demo', '#3a2566', '#15102e'), 18600, 320, 30);
-  const u2 = mkUser('astra', '星语者', '专注科幻与赛博朋克题材的世界观构筑师。', avatarArt('astra', '#37d6e0', '#103040', '星'), bannerArt('astra', '#103040', '#0a1622'), 9200, 60, 0);
-  const u3 = mkUser('mochi', '麻薯', '治愈系日常向作者，喜欢一切软软的东西。', avatarArt('mochi', '#ff9ec4', '#6e2f4d', '麻'), bannerArt('mochi', '#6e2f4d', '#2a1620'), 4300, 0, 0);
-  const u4 = mkUser('kenji', '剑持', '武侠与历史题材，刀光剑影里见人心。', avatarArt('kenji', '#d8a657', '#5a3d1f', '剑'), bannerArt('kenji', '#5a3d1f', '#221409'), 6700, 10, 0);
-  const gmu = mkUser('gm', '幻域管理员', '幻域平台官方管理员账号。', avatarArt('gm', '#cc6a44', '#5a2a18', '官'), bannerArt('gm', '#5a2a18', '#2a130b'), 0, 0, 0);
+  const face = (g, n) => FACE_PRESETS.filter(p => p.gender === g)[n].url;
+  const u1 = mkUser('demo', '旅人', '热爱奇幻与角色扮演的创作者，正在书写属于自己的幻域。', face('m', 0), bannerArt('demo', '#3a2566', '#15102e'), 18600, 320, 30);
+  const u2 = mkUser('astra', '星语者', '专注科幻与赛博朋克题材的世界观构筑师。', face('f', 1), bannerArt('astra', '#103040', '#0a1622'), 9200, 60, 0);
+  const u3 = mkUser('mochi', '麻薯', '治愈系日常向作者，喜欢一切软软的东西。', face('f', 0), bannerArt('mochi', '#6e2f4d', '#2a1620'), 4300, 0, 0);
+  const u4 = mkUser('kenji', '剑持', '武侠与历史题材，刀光剑影里见人心。', face('m', 2), bannerArt('kenji', '#5a3d1f', '#221409'), 6700, 10, 0);
+  const gmu = mkUser('gm', '幻域管理员', '幻域平台官方管理员账号。', face('m', 4), bannerArt('gm', '#5a2a18', '#2a130b'), 0, 0, 0);
   gmu.is_gm = 1; u1.is_gm = 1;
   Object.assign(u1, { svip: 1, verified: 1, verified_note: '幻域官方认证', vip_until: new Date(Date.now() + 3650 * 86400000).toISOString(), bio: '幻域官方认证 · 平台超级管理员｜SVIP 尊享会员，欢迎来到幻域。' });
   Object.assign(gmu, { verified: 1, verified_note: '官方账号' });
-  insert('announcements', { author_id: gmu.id, title: '欢迎来到幻域 · 测试版', body: '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。欢迎创建角色、剧本，并在剧场与多位 AI 同台演出。', pinned: 1 });
-  insert('announcements', { author_id: gmu.id, title: '新功能：模型自检测', body: '设置 → 语言模型 中新增「检测模型」，可一键拉取你所用服务商的可用模型列表并选择，无需手动填写。', pinned: 0 });
+  insert('announcements', { author_id: gmu.id, title: '欢迎来到幻域 · 测试版', body: '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。未配置自己 API 的用户将自动使用平台内置语言服务，每次对话按金币计费（VIP/SVIP 享折扣）。欢迎创建角色、剧本，并在剧场与多位 AI 同台联机演出。', pinned: 1 });
+  insert('announcements', { author_id: gmu.id, title: 'Bug 赏金计划上线', body: '发现任何 bug 或体验问题，请提交至官方技术 QQ：3487923507，一经采纳奖励 100 金币起，重大问题另有钻石与 VIP 加码。你的每一条反馈都在帮幻域变得更好。', pinned: 1 });
+  insert('announcements', { author_id: gmu.id, title: '新功能：活动中心 / 联机狂欢', body: '左侧新增「活动」入口：新人见面礼、限时联机狂欢、创作者联机大厅等你来领。剧场支持多位 AI 角色同台即兴联机演出。', pinned: 0 });
   [u1, u2, u3, u4].forEach(u => defaultSettings(u.id));
 
   const mkChar = (owner, c) => {
@@ -151,6 +174,26 @@ function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '' }) {
   return { gold: u.gold, diamond: u.diamond };
 }
 const notify = (uid, text, link = '') => insert('notifications', { user_id: uid, text, link, read: 0 });
+
+// Resolve which LLM credentials a request should use. If the user set their own key,
+// use it (no fee). Otherwise transparently fall back to the platform service.
+function effectiveLLM(s) {
+  if (s && s.llm_api_key) return { base_url: s.llm_base_url, api_key: s.llm_api_key, model: s.llm_model, temperature: s.llm_temperature, max_tokens: s.llm_max_tokens, platform: false };
+  return { base_url: PLATFORM.base_url, api_key: PLATFORM.key, model: PLATFORM.model, temperature: (s && s.llm_temperature) ?? 0.8, max_tokens: (s && s.llm_max_tokens) || 1024, platform: true };
+}
+// Compute the platform fee for a conversation given its current message count + membership.
+function platformFee(me, msgCount) {
+  const raw = msgCount > PLATFORM_FEE.heavy_threshold ? PLATFORM_FEE.heavy : PLATFORM_FEE.base;
+  return Math.max(1, Math.round(raw * memberDiscount(me)));
+}
+// Charge the platform fee up-front; throws if the balance is insufficient.
+function chargePlatformFee(me, msgCount, memo) {
+  const fee = platformFee(me, msgCount);
+  if (me.gold < fee) throw new Error(`金币不足，本次平台服务需 ${fee} 金币（当前 ${me.gold}）。可前往钱包签到/兑换获取金币，或在设置中填写自己的 API。`);
+  applyTx(me.id, { kind: 'ai_fee', gold: -fee, memo: memo || `平台 AI 服务（${msgCount > PLATFORM_FEE.heavy_threshold ? '深度' : '标准'}）` });
+  return fee;
+}
+
 const J = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
 const E = (msg, status = 400) => J({ error: msg }, status);
 
@@ -184,7 +227,18 @@ function buildSystemPrompt(character, recentText) {
 }
 
 /* ----------------------------- LLM (browser → provider) ----------------------------- */
-async function streamCompletion(conv, character, settings, userContent) {
+async function streamCompletion(conv, character, settings, userContent, me) {
+  const eff = effectiveLLM(settings);
+  // When falling back to the platform service, charge the per-conversation fee up-front.
+  let charged = 0;
+  if (eff.platform && me) {
+    const count = filter('messages', m => m.conversation_id === conv.id).length;
+    try { charged = chargePlatformFee(me, count, `对话《${character?.name || ''}》平台 AI`); }
+    catch (e) {
+      const enc = new TextEncoder();
+      return new Response(new ReadableStream({ start(c) { c.enqueue(enc.encode(`data: ${JSON.stringify({ error: e.message })}\n\n`)); c.enqueue(enc.encode('data: [DONE]\n\n')); c.close(); } }), { headers: { 'content-type': 'text/event-stream' } });
+    }
+  }
   if (userContent) insert('messages', { conversation_id: conv.id, role: 'user', content: userContent });
   const history = filter('messages', m => m.conversation_id === conv.id);
   const recent = history.slice(-6).map(m => m.content).join(' ');
@@ -195,15 +249,16 @@ async function streamCompletion(conv, character, settings, userContent) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = (o) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(o)}\n\n`));
-      if (!settings.llm_api_key) {
+      if (!eff.api_key) {
         send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key（浏览器将直连你的服务商）。' });
         controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close(); return;
       }
+      if (charged) send({ fee: charged });
       let full = '';
       try {
-        const up = await realFetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
-          body: JSON.stringify({ model: settings.llm_model, messages: payload, temperature: settings.llm_temperature, max_tokens: settings.llm_max_tokens, stream: true })
+        const up = await realFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
+          body: JSON.stringify({ model: eff.model, messages: payload, temperature: eff.temperature, max_tokens: eff.max_tokens, stream: true })
         });
         if (!up.ok || !up.body) { const t = await up.text().catch(() => ''); send({ error: `模型服务返回 ${up.status}：${t.slice(0, 300)}` }); }
         else {
@@ -227,9 +282,11 @@ async function streamCompletion(conv, character, settings, userContent) {
 }
 
 async function llmOnce(settings, system, userMsg, maxTokens = 400) {
-  const r = await realFetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
-    body: JSON.stringify({ model: settings.llm_model, temperature: settings.llm_temperature, max_tokens: maxTokens, messages: [{ role: 'system', content: system }, { role: 'user', content: userMsg }] })
+  const eff = effectiveLLM(settings);
+  if (!eff.api_key) throw new Error('请先在设置中配置语言模型 API');
+  const r = await realFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
+    body: JSON.stringify({ model: eff.model, temperature: eff.temperature, max_tokens: maxTokens, messages: [{ role: 'system', content: system }, { role: 'user', content: userMsg }] })
   });
   if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(`模型返回 ${r.status}：${t.slice(0, 200)}`); }
   const data = await r.json();
@@ -239,6 +296,17 @@ async function llmOnce(settings, system, userMsg, maxTokens = 400) {
 /* ----------------------------- router ----------------------------- */
 const CATEGORIES = [['fantasy', '奇幻', ''], ['scifi', '科幻', ''], ['romance', '恋爱', ''], ['healing', '治愈', ''], ['mystery', '悬疑', ''], ['history', '历史', ''], ['game', '游戏', ''], ['anime', '二次元', '愈'], ['daily', '日常', ''], ['horror', '惊悚', ''], ['wuxia', '武侠', ''], ['other', '其他', '']];
 const PACKAGES = [{ id: 'p1', cny: 6, diamond: 60, bonus: 0 }, { id: 'p2', cny: 30, diamond: 300, bonus: 30 }, { id: 'p3', cny: 68, diamond: 680, bonus: 120 }, { id: 'p4', cny: 128, diamond: 1280, bonus: 320 }, { id: 'p5', cny: 328, diamond: 3280, bonus: 1080 }, { id: 'p6', cny: 648, diamond: 6480, bonus: 2880 }];
+
+// Platform activities (活动中心). `claim` events grant a one-time reward; others are
+// informational or link to a multiplayer (联机) destination.
+const EVENTS = [
+  { id: 'newbie', kind: 'claim', tag: '新人', title: '新人见面礼', desc: '初入幻域，领取启程礼包：500 金币 + 20 钻石，立刻开启你的第一段角色扮演。', reward: { gold: 500, diamond: 20 }, accent: '#d97757' },
+  { id: 'coop_carnival', kind: 'claim', tag: '联机', title: '限时联机狂欢', desc: '进入「剧场」与多位 AI 角色同台即兴演出，领取联机狂欢礼：60 钻石，并解锁多人同屏剧情。', reward: { gold: 0, diamond: 60 }, link: '/theater', linkText: '前往联机剧场', accent: '#7c5cff' },
+  { id: 'group_party', kind: 'link', tag: '联机', title: '创作者联机大厅', desc: '加入群聊与其他创作者实时联机交流、互相导入角色、组队共创剧本。', link: '/groups', linkText: '进入联机大厅', accent: '#3f8195' },
+  { id: 'checkin', kind: 'link', tag: '日常', title: '每日签到瓜分金币', desc: '连续签到奖励翻倍递增，VIP 再享双倍。坚持登录，金币越攒越多。', link: '/wallet', linkText: '去签到', accent: '#b3892f' },
+  { id: 'bugbounty', kind: 'info', tag: '赏金', title: 'Bug 赏金猎人', desc: '发现任何 bug 或体验问题，提交至官方技术 QQ：3487923507，一经采纳奖励 100 金币起，重大问题另有钻石与 VIP 加码。', accent: '#5c8a63', qq: '3487923507' },
+  { id: 'invite', kind: 'info', tag: '裂变', title: '邀请好友共创', desc: '在「设置 / 钱包」使用邀请密钥，邀请越多奖励越丰厚。与好友一起把幻域写满故事。', link: '/wallet', linkText: '查看兑换码', accent: '#c25a38' }
+];
 
 function charView(c) { return { ...c, world: filter('world_entries', w => w.character_id === c.id).sort((a, b) => a.position - b.position) }; }
 function saveWorld(cid, world) {
@@ -290,14 +358,14 @@ async function route(method, path, search, body, headers) {
   // ---------- settings ----------
   if (path === '/settings') {
     need(); const s = find('settings', x => x.user_id === me.id);
-    if (method === 'GET') return J({ settings: pubSettings(s) });
+    if (method === 'GET') return J({ settings: pubSettings(s, me) });
     if (method === 'PUT') {
       ['llm_provider', 'llm_base_url', 'llm_model', 'llm_temperature', 'llm_max_tokens', 'voice_provider', 'voice_base_url', 'voice_model', 'voice_name', 'theme'].forEach(k => { if (body[k] !== undefined) s[k] = body[k]; });
       if (body.llm_api_key) s.llm_api_key = body.llm_api_key;
       if (body.voice_api_key) s.voice_api_key = body.voice_api_key;
       if (body.nsfw !== undefined) s.nsfw = body.nsfw ? 1 : 0;
       if (body.notify_email !== undefined) s.notify_email = body.notify_email ? 1 : 0;
-      save(); return J({ settings: pubSettings(s) });
+      save(); return J({ settings: pubSettings(s, me) });
     }
   }
 
@@ -387,7 +455,7 @@ async function route(method, path, search, body, headers) {
   if ((m = P(/^\/chat\/conversations\/(\d+)\/complete$/)) && method === 'POST') {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
     const ch = find('characters', x => x.id === conv.character_id); const s = find('settings', x => x.user_id === me.id);
-    return streamCompletion(conv, ch, s, (body.content || '').trim());
+    return streamCompletion(conv, ch, s, (body.content || '').trim(), me);
   }
   if ((m = P(/^\/chat\/conversations\/(\d+)\/regenerate$/)) && method === 'POST') {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
@@ -519,7 +587,9 @@ async function route(method, path, search, body, headers) {
   if ((m = P(/^\/theater\/(\d+)\/say$/)) && method === 'POST') { need(); const tid = +m[1]; if (!body.content) return E('内容不能为空'); if (!find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) insert('theater_members', { theater_id: tid, user_id: me.id }); const msg = insert('theater_messages', { theater_id: tid, sender_type: 'user', sender_id: me.id, name: me.display_name, avatar: me.avatar, content: body.content }); return J({ message: msg }); }
   if ((m = P(/^\/theater\/(\d+)\/act$/)) && method === 'POST') {
     need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (!t) return E('剧场不存在', 404);
-    const s = find('settings', x => x.user_id === me.id); if (!s.llm_api_key) return E('请先在设置中配置语言模型 API');
+    const s = find('settings', x => x.user_id === me.id);
+    const eff = effectiveLLM(s);
+    if (eff.platform) { try { chargePlatformFee(me, 0, '剧场联机 平台 AI'); } catch (e) { return E(e.message); } }
     const cast = filter('theater_cast', x => x.theater_id === tid).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean);
     const transcript = filter('theater_messages', x => x.theater_id === tid).slice(-30); const log = transcript.map(x => `${x.name}：${x.content}`).join('\n');
     const castList = cast.map(c => `「${c.name}」(${c.tagline || '登场角色'})`).join('、');
@@ -536,7 +606,19 @@ async function route(method, path, search, body, headers) {
   if (method === 'GET' && path === '/community/inbox') { need(); return J({ shares: [] }); }
   if (method === 'POST' && path === '/community/inbox/seen') { return J({ ok: true }); }
 
-  // ---------- engagement: views / reviews / reports / leaderboard / gacha ----------
+  // ---------- engagement: views / reviews / reports / leaderboard ----------
+  if (method === 'GET' && path === '/engage/events') {
+    const claims = me ? filter('event_claims', c => c.user_id === me.id).map(c => c.event_id) : [];
+    return J({ events: EVENTS.map(e => ({ id: e.id, kind: e.kind, tag: e.tag, title: e.title, desc: e.desc, reward: e.reward || null, link: e.link || '', linkText: e.linkText || '', accent: e.accent, qq: e.qq || '', claimed: claims.includes(e.id) })) });
+  }
+  if ((m = P(/^\/engage\/events\/([\w-]+)\/claim$/)) && method === 'POST') {
+    need(); const ev = EVENTS.find(e => e.id === m[1]); if (!ev || ev.kind !== 'claim') return E('该活动无可领取奖励');
+    if (find('event_claims', c => c.user_id === me.id && c.event_id === ev.id)) return E('该活动奖励已领取');
+    insert('event_claims', { user_id: me.id, event_id: ev.id });
+    const w = applyTx(me.id, { kind: 'event', gold: ev.reward?.gold || 0, diamond: ev.reward?.diamond || 0, memo: `活动奖励 · ${ev.title}` });
+    notify(me.id, `已领取活动「${ev.title}」奖励`, '/events');
+    return J({ ok: true, wallet: w });
+  }
   if (method === 'POST' && path === '/engage/view') {
     const tbl = (body.type === 'script') ? 'scripts' : 'characters';
     const it = find(tbl, x => x.id === +body.id); if (it) { it.views = (it.views || 0) + 1; save(); } return J({ ok: true });
@@ -647,7 +729,13 @@ async function route(method, path, search, body, headers) {
   throw { status: 404, msg: '接口不存在：' + path };
 }
 
-function pubSettings(s) { return { llm_provider: s.llm_provider, llm_base_url: s.llm_base_url, llm_model: s.llm_model, llm_temperature: s.llm_temperature, llm_max_tokens: s.llm_max_tokens, voice_provider: s.voice_provider, voice_base_url: s.voice_base_url, voice_model: s.voice_model, voice_name: s.voice_name, theme: s.theme, nsfw: s.nsfw, notify_email: s.notify_email, llm_api_key_set: !!s.llm_api_key, voice_api_key_set: !!s.voice_api_key }; }
+function pubSettings(s, me) {
+  const usingPlatform = !s.llm_api_key;
+  return { llm_provider: s.llm_provider, llm_base_url: s.llm_base_url, llm_model: s.llm_model, llm_temperature: s.llm_temperature, llm_max_tokens: s.llm_max_tokens, voice_provider: s.voice_provider, voice_base_url: s.voice_base_url, voice_model: s.voice_model, voice_name: s.voice_name, theme: s.theme, nsfw: s.nsfw, notify_email: s.notify_email, llm_api_key_set: !!s.llm_api_key, voice_api_key_set: !!s.voice_api_key,
+    // Platform service status — surfaced to the UI, but never the credentials.
+    using_platform: usingPlatform,
+    platform_fee: usingPlatform ? { base: platformFee(me, 0), heavy: platformFee(me, PLATFORM_FEE.heavy_threshold + 1), heavy_threshold: PLATFORM_FEE.heavy_threshold, discount: memberDiscount(me) } : null };
+}
 
 /* ----------------------------- install ----------------------------- */
 export function installMockBackend() {

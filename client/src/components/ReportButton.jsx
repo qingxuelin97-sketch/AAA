@@ -4,12 +4,15 @@ import { useToast, Modal } from '../ui.jsx';
 import { Flag } from 'lucide-react';
 
 const REASONS = ['色情低俗', '辱骂攻击', '违法违规', '抄袭侵权', '垃圾广告', '其他'];
+const USER_REASONS = ['辱骂骚扰', '色情低俗', '违法违规', '抄袭搬运', '垃圾广告', '冒充他人', '其他'];
 
 export default function ReportButton({ type, id, label = '举报', variant = 'ghost', size = 14 }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const isUser = type === 'user';
+  const reasons = isUser ? USER_REASONS : REASONS;
 
   const submit = async () => {
     setBusy(true);
@@ -24,10 +27,10 @@ export default function ReportButton({ type, id, label = '举报', variant = 'gh
       </button>
       {open && (
         <Modal onClose={() => setOpen(false)}>
-          <h2 style={{ marginTop: 0 }}>举报内容</h2>
+          <h2 style={{ marginTop: 0 }}>{isUser ? '举报用户' : '举报内容'}</h2>
           <div className="field"><label>请选择举报理由</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {REASONS.map(r => <button key={r} className={'cat-chip' + (reason === r ? ' active' : '')} onClick={() => setReason(r)}>{r}</button>)}
+              {reasons.map(r => <button key={r} className={'cat-chip' + (reason === r ? ' active' : '')} onClick={() => setReason(r)}>{r}</button>)}
             </div>
           </div>
           <div className="row"><button className="btn block" onClick={() => setOpen(false)}>取消</button>
