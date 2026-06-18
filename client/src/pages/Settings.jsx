@@ -25,17 +25,19 @@ const PROVIDER_OPTS = [
 // Providers that genuinely expose an OpenAI-compatible POST /audio/speech
 // endpoint with `Authorization: Bearer` (the exact call the backend makes).
 // Anything else can be reached via 自定义 if it implements the same protocol.
-const VOICE_PRESETS = {
-  openai: 'https://api.openai.com/v1', groq: 'https://api.groq.com/openai/v1',
-  siliconflow: 'https://api.siliconflow.cn/v1', deepinfra: 'https://api.deepinfra.com/v1/openai',
-  lemonfox: 'https://api.lemonfox.ai/v1', custom: ''
-};
+// [value, label, baseUrl, protocol]. The backend has an adapter per protocol,
+// so this genuinely spans multiple vendor APIs — not just one format.
 const VOICE_PROVIDER_OPTS = [
-  ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）'], ['groq', 'Groq · PlayAI TTS（playai-tts）'],
-  ['siliconflow', '硅基流动 SiliconFlow（CosyVoice2 / Fish-Speech）'], ['deepinfra', 'DeepInfra（Kokoro 等）'],
-  ['lemonfox', 'Lemonfox.ai（OpenAI 兼容）'],
-  ['custom', '自定义（任意兼容 /audio/speech 的服务）']
+  ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）', 'https://api.openai.com/v1', 'openai'],
+  ['groq', 'Groq · PlayAI TTS（playai-tts）', 'https://api.groq.com/openai/v1', 'openai'],
+  ['siliconflow', '硅基流动 SiliconFlow（CosyVoice2 / Fish-Speech）', 'https://api.siliconflow.cn/v1', 'openai'],
+  ['deepinfra', 'DeepInfra（Kokoro 等）', 'https://api.deepinfra.com/v1/openai', 'openai'],
+  ['lemonfox', 'Lemonfox.ai（OpenAI 兼容）', 'https://api.lemonfox.ai/v1', 'openai'],
+  ['elevenlabs', 'ElevenLabs（多语种角色配音）', 'https://api.elevenlabs.io/v1', 'elevenlabs'],
+  ['minimax', 'MiniMax 海螺语音（需 GroupId）', 'https://api.minimax.chat/v1', 'minimax'],
+  ['custom', '自定义（OpenAI /audio/speech 兼容）', '', 'openai']
 ];
+const VOICE_BY_VALUE = Object.fromEntries(VOICE_PROVIDER_OPTS.map(([v, , b, p]) => [v, { base: b, proto: p }]));
 
 export default function Settings() {
   const toast = useToast();
@@ -151,20 +153,27 @@ export default function Settings() {
         {tab === 'voice' && (
           <div className="card">
             <div className="section-title"><h2>语音模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
-            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>调用 OpenAI <code>/audio/speech</code> 协议（Bearer 鉴权）朗读台词。已内置 OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox 等兼容服务商；其它自建或兼容端点可选「自定义」填 Base URL。密钥仅存于本地。</p>
+            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>按服务商各自的 TTS 协议朗读台词，后端已为每种协议内置适配器。支持 OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox（OpenAI 协议）、ElevenLabs、MiniMax 海螺等；其它兼容 <code>/audio/speech</code> 的端点可选「自定义」。密钥仅存于本地。</p>
+            {(() => {
+              const vproto = s.voice_protocol || 'openai';
+              const MODEL_PH = { openai: 'tts-1 / gpt-4o-mini-tts', elevenlabs: 'eleven_multilingual_v2', minimax: 'speech-01-turbo' };
+              const VOICE_LB = { openai: '默认音色', elevenlabs: 'Voice ID', minimax: 'voice_id' };
+              const VOICE_PH = { openai: 'alloy / nova / onyx', elevenlabs: '21m00Tcm4TlvDq8ikWAM', minimax: 'male-qn-qingse' };
+              const KEY_PH = vproto === 'elevenlabs' ? 'xi-api-key' : 'sk-...';
+              return (<>
             <div className="row">
               <div className="field"><label>服务商预设</label>
-                <select className="select" value={s.voice_provider || 'openai'} onChange={e => { const p = e.target.value; set('voice_provider', p); if (VOICE_PRESETS[p]) set('voice_base_url', VOICE_PRESETS[p]); }}>
+                <select className="select" value={s.voice_provider || 'openai'} onChange={e => { const p = e.target.value; const info = VOICE_BY_VALUE[p] || {}; set('voice_provider', p); set('voice_protocol', info.proto || 'openai'); if (info.base) set('voice_base_url', info.base); }}>
                   {VOICE_PROVIDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select></div>
               <div className="field"><label>模型</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="input" style={{ flex: 1 }} value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder="tts-1" list="voice-model-list" />
-                  <button className="btn" onClick={detectVoiceModels} disabled={detectingVoice} title="检测服务商可用模型">
+                  <input className="input" style={{ flex: 1 }} value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder={MODEL_PH[vproto]} list="voice-model-list" />
+                  {vproto === 'openai' && <button className="btn" onClick={detectVoiceModels} disabled={detectingVoice} title="检测服务商可用模型">
                     <RefreshCw size={15} className={detectingVoice ? 'spin' : ''} /> {detectingVoice ? '检测中' : '检测模型'}
-                  </button>
+                  </button>}
                 </div>
-                {voiceModels.length > 0 && (
+                {vproto === 'openai' && voiceModels.length > 0 && (
                   <>
                     <datalist id="voice-model-list">{voiceModels.map(m => <option key={m} value={m} />)}</datalist>
                     <select className="select" style={{ marginTop: 8 }} value={voiceModels.includes(s.voice_model) ? s.voice_model : ''} onChange={e => e.target.value && set('voice_model', e.target.value)}>
@@ -175,13 +184,16 @@ export default function Settings() {
                 )}
               </div>
             </div>
-            <div className="field"><label>API Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} placeholder="https://api.openai.com/v1" /></div>
+            <div className="field"><label>API Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} placeholder="https://api.openai.com/v1" />
+              {vproto === 'minimax' && <div className="hint">MiniMax 需在 Base URL 后附上你的 GroupId，例如 <code>https://api.minimax.chat/v1?GroupId=你的GroupId</code>。</div>}</div>
             <div className="row">
-              <div className="field"><label>默认音色</label><input className="input" value={s.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder="alloy / nova" /></div>
+              <div className="field"><label>{VOICE_LB[vproto]}</label><input className="input" value={s.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder={VOICE_PH[vproto]} /></div>
               <div className="field"><label>API Key {s.voice_api_key_set && <span className="tag">已配置</span>}</label>
-                <input className="input" type="password" value={s.voice_api_key || ''} onChange={e => set('voice_api_key', e.target.value)} placeholder={s.voice_api_key_set ? '••••••（留空不修改）' : 'sk-...'} />
-                <div className="hint">点「检测模型」可向服务商拉取可用模型列表再选择（需先填 Base URL 与 Key）。</div></div>
+                <input className="input" type="password" value={s.voice_api_key || ''} onChange={e => set('voice_api_key', e.target.value)} placeholder={s.voice_api_key_set ? '••••••（留空不修改）' : KEY_PH} />
+                <div className="hint">{vproto === 'openai' ? '点「检测模型」可向服务商拉取可用模型列表再选择（需先填 Base URL 与 Key）。' : '浏览器将直连该服务商；若其未开放跨域(CORS)，纯静态站点可能无法播放，建议优先选 OpenAI 协议族或 ElevenLabs。'}</div></div>
             </div>
+              </>);
+            })()}
           </div>
         )}
 

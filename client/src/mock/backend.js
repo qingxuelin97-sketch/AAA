@@ -106,7 +106,7 @@ function seed() {
     gold, diamond, vip_until: vipDays ? new Date(Date.now() + vipDays * 86400000).toISOString() : null,
     last_checkin: null, checkin_streak: 0, email: ''
   });
-  const defaultSettings = (uid) => insert('settings', { user_id: uid, llm_provider: 'openai', llm_base_url: 'https://api.openai.com/v1', llm_api_key: '', llm_model: 'gpt-4o-mini', llm_temperature: 0.8, llm_max_tokens: 1024, voice_provider: 'openai', voice_base_url: 'https://api.openai.com/v1', voice_api_key: '', voice_model: 'tts-1', voice_name: 'alloy', theme: 'dark', nsfw: 0, notify_email: 0 });
+  const defaultSettings = (uid) => insert('settings', { user_id: uid, llm_provider: 'openai', llm_base_url: 'https://api.openai.com/v1', llm_api_key: '', llm_model: 'gpt-4o-mini', llm_temperature: 0.8, llm_max_tokens: 1024, voice_provider: 'openai', voice_protocol: 'openai', voice_base_url: 'https://api.openai.com/v1', voice_api_key: '', voice_model: 'tts-1', voice_name: 'alloy', theme: 'dark', nsfw: 0, notify_email: 0 });
 
   insert('invite_keys', { code: 'HUANYU2026', max_uses: 9999, used: 0, grant_gold: 2000, grant_diamond: 0, grant_vip_days: 0 });
   insert('invite_keys', { code: 'VIPGIFT', max_uses: 100, used: 0, grant_gold: 0, grant_diamond: 500, grant_vip_days: 30 });
@@ -382,7 +382,7 @@ async function route(method, path, search, body, headers) {
     if (key.used >= key.max_uses) return E('该邀请密钥已被使用完');
     if (find('users', u => u.username === username)) return E('该用户名已被注册', 409);
     const u = insert('users', { username, password, display_name: display_name || username, email: email || '', avatar: null, banner: null, bio: '', gold: 1000, diamond: 0, vip_until: null, last_checkin: null, checkin_streak: 0 });
-    insert('settings', { user_id: u.id, llm_provider: 'openai', llm_base_url: 'https://api.openai.com/v1', llm_api_key: '', llm_model: 'gpt-4o-mini', llm_temperature: 0.8, llm_max_tokens: 1024, voice_provider: 'openai', voice_base_url: 'https://api.openai.com/v1', voice_api_key: '', voice_model: 'tts-1', voice_name: 'alloy', theme: 'dark', nsfw: 0, notify_email: 0 });
+    insert('settings', { user_id: u.id, llm_provider: 'openai', llm_base_url: 'https://api.openai.com/v1', llm_api_key: '', llm_model: 'gpt-4o-mini', llm_temperature: 0.8, llm_max_tokens: 1024, voice_provider: 'openai', voice_protocol: 'openai', voice_base_url: 'https://api.openai.com/v1', voice_api_key: '', voice_model: 'tts-1', voice_name: 'alloy', theme: 'dark', nsfw: 0, notify_email: 0 });
     key.used++;
     if (key.grant_gold || key.grant_diamond) applyTx(u.id, { kind: 'invite', gold: key.grant_gold, diamond: key.grant_diamond, memo: `邀请密钥 ${key.code} 奖励` });
     if (key.grant_vip_days) u.vip_until = new Date(Date.now() + key.grant_vip_days * 86400000).toISOString();
@@ -410,7 +410,7 @@ async function route(method, path, search, body, headers) {
     need(); const s = find('settings', x => x.user_id === me.id);
     if (method === 'GET') return J({ settings: pubSettings(s, me) });
     if (method === 'PUT') {
-      ['llm_provider', 'llm_base_url', 'llm_model', 'llm_temperature', 'llm_max_tokens', 'voice_provider', 'voice_base_url', 'voice_model', 'voice_name', 'theme'].forEach(k => { if (body[k] !== undefined) s[k] = body[k]; });
+      ['llm_provider', 'llm_base_url', 'llm_model', 'llm_temperature', 'llm_max_tokens', 'voice_provider', 'voice_protocol', 'voice_base_url', 'voice_model', 'voice_name', 'theme'].forEach(k => { if (body[k] !== undefined) s[k] = body[k]; });
       if (body.llm_api_key) s.llm_api_key = body.llm_api_key;
       if (body.voice_api_key) s.voice_api_key = body.voice_api_key;
       if (body.nsfw !== undefined) s.nsfw = body.nsfw ? 1 : 0;
@@ -517,8 +517,40 @@ async function route(method, path, search, body, headers) {
   }
   if (method === 'POST' && path === '/chat/tts') {
     need(); const s = find('settings', x => x.user_id === me.id); if (!s.voice_api_key) return E('尚未配置语音模型 API');
+    const base = (s.voice_base_url || '').replace(/\/$/, '');
+    const text = (body.text || '').slice(0, 4000);
+    const voice = body.voice || s.voice_name;
+    const proto = s.voice_protocol || 'openai';
     try {
-      const up = await realFetch(s.voice_base_url.replace(/\/$/, '') + '/audio/speech', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.voice_api_key}` }, body: JSON.stringify({ model: s.voice_model, input: (body.text || '').slice(0, 4000), voice: body.voice || s.voice_name }) });
+      // Protocol adapters: translate to each vendor's TTS API, return audio/* to the player.
+      if (proto === 'elevenlabs') {
+        // ElevenLabs: POST /v1/text-to-speech/{voice_id}, xi-api-key header, JSON in / mp3 out.
+        const vid = voice || '21m00Tcm4TlvDq8ikWAM';
+        const up = await realFetch(`${base}/text-to-speech/${encodeURIComponent(vid)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'xi-api-key': s.voice_api_key, Accept: 'audio/mpeg' },
+          body: JSON.stringify({ text, model_id: s.voice_model || 'eleven_multilingual_v2' })
+        });
+        if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
+        return up;
+      }
+      if (proto === 'minimax') {
+        // MiniMax T2A v2: GroupId goes in query (?GroupId=...), audio returned as hex in JSON.
+        const up = await realFetch(`${base}/t2a_v2`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.voice_api_key}` },
+          body: JSON.stringify({ model: s.voice_model || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: 1, vol: 1, pitch: 0 }, audio_setting: { format: 'mp3', sample_rate: 32000 } })
+        });
+        if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
+        const d = await up.json().catch(() => null);
+        const hex = d?.data?.audio;
+        if (!hex) return E('语音服务未返回音频（MiniMax 需在 Base URL 后附 ?GroupId=你的GroupId）', 502);
+        const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(h => parseInt(h, 16)));
+        return new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } });
+      }
+      // Default: OpenAI-compatible /audio/speech (OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox …)
+      const up = await realFetch(base + '/audio/speech', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.voice_api_key}` },
+        body: JSON.stringify({ model: s.voice_model, input: text, voice })
+      });
       if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
       return up;
     } catch (e) { return E('语音服务连接失败：' + e.message, 502); }
@@ -796,7 +828,7 @@ async function route(method, path, search, body, headers) {
 
 function pubSettings(s, me) {
   const usingPlatform = !s.llm_api_key;
-  return { llm_provider: s.llm_provider, llm_base_url: s.llm_base_url, llm_model: s.llm_model, llm_temperature: s.llm_temperature, llm_max_tokens: s.llm_max_tokens, voice_provider: s.voice_provider, voice_base_url: s.voice_base_url, voice_model: s.voice_model, voice_name: s.voice_name, theme: s.theme, nsfw: s.nsfw, notify_email: s.notify_email, llm_api_key_set: !!s.llm_api_key, voice_api_key_set: !!s.voice_api_key,
+  return { llm_provider: s.llm_provider, llm_base_url: s.llm_base_url, llm_model: s.llm_model, llm_temperature: s.llm_temperature, llm_max_tokens: s.llm_max_tokens, voice_provider: s.voice_provider, voice_protocol: s.voice_protocol || 'openai', voice_base_url: s.voice_base_url, voice_model: s.voice_model, voice_name: s.voice_name, theme: s.theme, nsfw: s.nsfw, notify_email: s.notify_email, llm_api_key_set: !!s.llm_api_key, voice_api_key_set: !!s.voice_api_key,
     // Platform service status — surfaced to the UI, but never the credentials.
     using_platform: usingPlatform,
     platform_fee: usingPlatform ? { base: platformFee(me, 0), heavy: platformFee(me, PLATFORM_FEE.heavy_threshold + 1), heavy_threshold: PLATFORM_FEE.heavy_threshold, discount: memberDiscount(me) } : null };
