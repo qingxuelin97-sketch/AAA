@@ -74,7 +74,7 @@ export default function Settings() {
   const detectVoiceModels = async () => {
     setDetectingVoice(true);
     try {
-      const d = await api('/settings/models', { method: 'POST', body: { base_url: s.voice_base_url, api_key: s.voice_api_key || undefined } });
+      const d = await api('/settings/models', { method: 'POST', body: { base_url: s.voice_base_url, api_key: s.voice_api_key || undefined, protocol: s.voice_protocol || 'openai' } });
       if (!d.models?.length) { toast('未返回任何模型', 'err'); return; }
       setVoiceModels(d.models);
       toast(`检测到 ${d.models.length} 个可用模型`);
@@ -169,11 +169,11 @@ export default function Settings() {
               <div className="field"><label>模型</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input className="input" style={{ flex: 1 }} value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder={MODEL_PH[vproto]} list="voice-model-list" />
-                  {vproto === 'openai' && <button className="btn" onClick={detectVoiceModels} disabled={detectingVoice} title="检测服务商可用模型">
+                  <button className="btn" onClick={detectVoiceModels} disabled={detectingVoice} title="检测服务商可用模型">
                     <RefreshCw size={15} className={detectingVoice ? 'spin' : ''} /> {detectingVoice ? '检测中' : '检测模型'}
-                  </button>}
+                  </button>
                 </div>
-                {vproto === 'openai' && voiceModels.length > 0 && (
+                {voiceModels.length > 0 && (
                   <>
                     <datalist id="voice-model-list">{voiceModels.map(m => <option key={m} value={m} />)}</datalist>
                     <select className="select" style={{ marginTop: 8 }} value={voiceModels.includes(s.voice_model) ? s.voice_model : ''} onChange={e => e.target.value && set('voice_model', e.target.value)}>

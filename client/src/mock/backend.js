@@ -419,19 +419,24 @@ async function route(method, path, search, body, headers) {
     }
   }
 
-  // Detect provider models (browser → provider directly).
+  // Detect provider models (browser → provider directly). Protocol-aware.
   if (method === 'POST' && path === '/settings/models') {
     need(); const s = find('settings', x => x.user_id === me.id) || {};
-    const base = String(body.base_url || s.llm_base_url || '').replace(/\/$/, '');
+    const raw = String(body.base_url || s.llm_base_url || '');
+    const base = raw.split('?')[0].replace(/\/$/, '');
     const key = body.api_key || s.llm_api_key;
+    const proto = body.protocol || 'openai';
+    // MiniMax has no public model-list endpoint; return the known TTS models.
+    if (proto === 'minimax') return J({ models: ['speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo', 'speech-01-240228'] });
     if (!base) return E('请先填写 API Base URL');
     if (!key) return E('请先填写 API Key');
+    const headers = proto === 'elevenlabs' ? { 'xi-api-key': key } : { Authorization: `Bearer ${key}` };
     try {
-      const r = await realFetch(base + '/models', { headers: { Authorization: `Bearer ${key}` } });
+      const r = await realFetch(base + '/models', { headers });
       if (!r.ok) { const t = await r.text().catch(() => ''); return E(`服务商返回 ${r.status}：${t.slice(0, 200)}`, 502); }
       const d = await r.json();
-      const arr = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : []);
-      return J({ models: arr.map(x => (typeof x === 'string' ? x : (x.id || x.name))).filter(Boolean) });
+      const arr = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : (Array.isArray(d) ? d : []));
+      return J({ models: arr.map(x => (typeof x === 'string' ? x : (x.model_id || x.id || x.name))).filter(Boolean) });
     } catch (e) { return E('连接服务商失败（可能是浏览器跨域限制）：' + e.message, 502); }
   }
 
