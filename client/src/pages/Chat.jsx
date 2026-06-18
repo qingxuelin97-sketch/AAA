@@ -145,7 +145,7 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="chat-main">
+      <div className={'chat-main' + (character?.background ? ' has-bg' : '')}>
         {!conv ? (
           <div className="empty" style={{ margin: 'auto' }}>
             <div className="big"><MessageCircle size={46} /></div>选择左侧对话，或从角色库开启新对话

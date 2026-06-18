@@ -10,6 +10,23 @@ import { Plus } from 'lucide-react';
 const IMG_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#efd9e6"/><stop offset="100%" stop-color="#c9b8ff"/></linearGradient></defs><rect width="160" height="100" fill="url(#g)"/><text x="80" y="56" font-size="12" fill="#fff" text-anchor="middle" font-family="sans-serif">加载失败</text></svg>');
 const onImgErr = (e) => { if (e.currentTarget.src !== IMG_FALLBACK) { e.currentTarget.src = IMG_FALLBACK; e.currentTarget.closest('.bg-preset')?.classList.add('img-failed'); } };
 
+// Resolve a (possibly random) online image endpoint into ONE fixed image and
+// store it as a stable data URL, so the chat background never changes again.
+// Adds a cache-buster so we capture a fresh pick, then freezes that exact frame.
+async function lockImage(url) {
+  const bust = url + (url.includes('?') ? '&' : '?') + 'lock=' + Date.now();
+  const res = await fetch(bust, { mode: 'cors', referrerPolicy: 'no-referrer' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const blob = await res.blob();
+  if (!blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') throw new Error('非图片响应');
+  return await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = () => reject(new Error('读取失败'));
+    fr.readAsDataURL(blob);
+  });
+}
+
 const BLANK = {
   name: '', avatar: '', background: '', background_type: 'image',
   tagline: '', intro: '', greeting: '', persona: '', voice_name: '', category: '', tags: '',
@@ -24,6 +41,20 @@ export default function CharacterEditor() {
   const [tab, setTab] = useState('basic');
   const [c, setC] = useState(BLANK);
   const [busy, setBusy] = useState(false);
+  const [locking, setLocking] = useState('');
+
+  // Pick an online image but freeze it to one fixed frame (no more random swaps).
+  const pickOnline = async (b) => {
+    setLocking(b.name);
+    try {
+      const dataUrl = await lockImage(b.url);
+      setC(prev => ({ ...prev, background: dataUrl, background_type: 'image' }));
+      toast('已锁定为固定背景');
+    } catch (err) {
+      setC(prev => ({ ...prev, background: b.url, background_type: 'image' }));
+      toast('该图源不支持锁定，已存随机链接（每次可能变化）', 'err');
+    } finally { setLocking(''); }
+  };
 
   useEffect(() => {
     if (editing) {
@@ -166,17 +197,17 @@ export default function CharacterEditor() {
                   </button>
                 ))}
               </div>
-              <label style={{ marginTop: 14 }}>在线二次元图库 · 实时壁纸 <span className="muted">(每次进入随机一张)</span></label>
+              <label style={{ marginTop: 14 }}>在线二次元图库 <span className="muted">(点击即抓取并永久锁定一张)</span></label>
               <div className="bg-preset-grid">
                 {ONLINE_BG.map(b => (
-                  <button key={b.name} type="button" className={'bg-preset' + (c.background === b.url ? ' on' : '')}
-                    onClick={() => setC(prev => ({ ...prev, background: b.url, background_type: 'image' }))} title={b.name}>
+                  <button key={b.name} type="button" className={'bg-preset' + (locking === b.name ? ' loading' : '')}
+                    disabled={!!locking} onClick={() => pickOnline(b)} title={b.name}>
                     <img src={b.url} alt={b.name} loading="lazy" referrerPolicy="no-referrer" onError={onImgErr} />
-                    <span>{b.name}</span>
+                    <span>{locking === b.name ? '锁定中…' : b.name}</span>
                   </button>
                 ))}
               </div>
-              <div className="hint">在线图库来自开源社区随机图接口，由第三方服务提供，可用性取决于其稳定性；选中后每次进入对话会拉取一张新图。需要固定的动态壁纸可在上方直接上传 GIF / MP4。</div>
+              <div className="hint">在线图库来自开源社区随机图接口。点击后会立即抓取其中一张并保存为固定背景，之后进入对话不会再变化。若该图源不支持跨域抓取，将退回为随机链接（每次进入可能不同）；需要稳定背景建议直接在上方上传图片 / GIF / MP4。</div>
               {c.background && <button className="btn sm ghost" style={{ marginTop: 10 }}
                 onClick={() => setC(prev => ({ ...prev, background: '', background_type: 'image' }))}>清除背景</button>}
             </div>
