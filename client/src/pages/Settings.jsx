@@ -22,18 +22,19 @@ const PROVIDER_OPTS = [
   ['gemini', 'Google Gemini'], ['openrouter', 'OpenRouter'], ['groq', 'Groq'], ['together', 'Together'], ['custom', '自定义']
 ];
 
-// OpenAI-compatible /audio/speech (TTS) providers. Keys stay on the user side.
+// Providers that genuinely expose an OpenAI-compatible POST /audio/speech
+// endpoint with `Authorization: Bearer` (the exact call the backend makes).
+// Anything else can be reached via 自定义 if it implements the same protocol.
 const VOICE_PRESETS = {
-  openai: 'https://api.openai.com/v1', siliconflow: 'https://api.siliconflow.cn/v1',
-  qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1', minimax: 'https://api.minimax.chat/v1',
-  fishaudio: 'https://api.fish.audio/v1', groq: 'https://api.groq.com/openai/v1',
-  deepinfra: 'https://api.deepinfra.com/v1/openai', azure: '', custom: ''
+  openai: 'https://api.openai.com/v1', groq: 'https://api.groq.com/openai/v1',
+  siliconflow: 'https://api.siliconflow.cn/v1', deepinfra: 'https://api.deepinfra.com/v1/openai',
+  lemonfox: 'https://api.lemonfox.ai/v1', custom: ''
 };
 const VOICE_PROVIDER_OPTS = [
-  ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）'], ['siliconflow', '硅基流动 SiliconFlow（CosyVoice 等）'],
-  ['qwen', '阿里云百炼 Qwen-TTS / CosyVoice'], ['minimax', 'MiniMax 海螺语音'],
-  ['fishaudio', 'Fish Audio'], ['groq', 'Groq（PlayAI TTS）'], ['deepinfra', 'DeepInfra'],
-  ['azure', 'Azure / 自定义兼容端点'], ['custom', '自定义']
+  ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）'], ['groq', 'Groq · PlayAI TTS（playai-tts）'],
+  ['siliconflow', '硅基流动 SiliconFlow（CosyVoice2 / Fish-Speech）'], ['deepinfra', 'DeepInfra（Kokoro 等）'],
+  ['lemonfox', 'Lemonfox.ai（OpenAI 兼容）'],
+  ['custom', '自定义（任意兼容 /audio/speech 的服务）']
 ];
 
 export default function Settings() {
@@ -150,7 +151,7 @@ export default function Settings() {
         {tab === 'voice' && (
           <div className="card">
             <div className="section-title"><h2>语音模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
-            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>兼容 OpenAI /audio/speech 格式，可接入任意服务商，用于朗读角色台词。密钥仅存于本地。</p>
+            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>调用 OpenAI <code>/audio/speech</code> 协议（Bearer 鉴权）朗读台词。已内置 OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox 等兼容服务商；其它自建或兼容端点可选「自定义」填 Base URL。密钥仅存于本地。</p>
             <div className="row">
               <div className="field"><label>服务商预设</label>
                 <select className="select" value={s.voice_provider || 'openai'} onChange={e => { const p = e.target.value; set('voice_provider', p); if (VOICE_PRESETS[p]) set('voice_base_url', VOICE_PRESETS[p]); }}>
