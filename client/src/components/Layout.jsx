@@ -7,13 +7,14 @@ import WelcomePopup from './WelcomePopup.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices
 } from 'lucide-react';
 
 const GROUPS = [
   { title: '探索', items: [
     { to: '/', ic: Compass, label: '发现广场', end: true },
     { to: '/events', ic: PartyPopper, label: '活动' },
+    { to: '/gacha', ic: Dices, label: '扭蛋机' },
     { to: '/scripts', ic: ScrollText, label: '剧本' },
     { to: '/community', ic: Users, label: '社区' },
     { to: '/leaderboard', ic: Trophy, label: '排行榜' },

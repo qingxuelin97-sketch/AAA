@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';
-import { BG_PRESETS, ONLINE_BG } from '../faces.js';
-import { Plus } from 'lucide-react';
+import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
+import { Plus, Dices } from 'lucide-react';
 
 // Local fallback shown if a third-party online image fails to hotlink.
 const IMG_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#efd9e6"/><stop offset="100%" stop-color="#c9b8ff"/></linearGradient></defs><rect width="160" height="100" fill="url(#g)"/><text x="80" y="56" font-size="12" fill="#fff" text-anchor="middle" font-family="sans-serif">加载失败</text></svg>');
@@ -51,10 +51,15 @@ export default function CharacterEditor() {
       setC(prev => ({ ...prev, background: dataUrl, background_type: 'image' }));
       toast('已锁定为固定背景');
     } catch (err) {
-      setC(prev => ({ ...prev, background: b.url, background_type: 'image' }));
-      toast('该图源不支持锁定，已存随机链接（每次可能变化）', 'err');
+      // Never store a live random endpoint — that's what caused cards to keep
+      // re-randomising after creation. Leave the current background untouched.
+      toast('该图源无法锁定（跨域限制）。请改用下方「随机生成」或预设/上传，确保固定一张', 'err');
     } finally { setLocking(''); }
   };
+
+  // Draw a random scenery background, frozen as a fixed image (never re-randomises).
+  const rollBg = () => { setC(prev => ({ ...prev, background: randomBg(), background_type: 'image' })); toast('已抽到一张并锁定 🎲'); };
+  const rollAvatar = () => { set('avatar', randomAnimeAvatar()); toast('已抽到一个头像 🎲'); };
 
   useEffect(() => {
     if (editing) {
@@ -129,7 +134,8 @@ export default function CharacterEditor() {
                 <div style={{ display: 'grid', placeItems: 'center' }}>
                   <AvatarPicker value={c.avatar} onChange={(url) => set('avatar', url)} size={104} />
                 </div>
-                <div className="hint" style={{ textAlign: 'center' }}>可挑选真人风格预设脸模（区分男女），或上传自定义静态图片</div>
+                <button type="button" className="btn sm ghost" style={{ margin: '8px auto 0' }} onClick={rollAvatar}><Dices size={14} /> 随机二次元头像</button>
+                <div className="hint" style={{ textAlign: 'center' }}>可挑选真人风格预设脸模（区分男女）、随机二次元头像，或上传自定义静态图片</div>
               </div>
               <div className="field"><label>语音音色名 <span className="muted">(可选)</span></label>
                 <input className="input" value={c.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder="如 alloy / nova，留空用默认" />
@@ -187,7 +193,10 @@ export default function CharacterEditor() {
               <Uploader value={c.background} type={c.background_type} dynamic
                 onChange={(url, type) => setC(prev => ({ ...prev, background: url, background_type: type }))} />
               <div className="hint">将作为与该角色对话时的沉浸式背景。支持 jpg/png/webp/gif 或 mp4/webm 短视频实现动态背景。</div>
-              <label style={{ marginTop: 14 }}>二次元 / 风景背景预设</label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+                <label style={{ margin: 0 }}>二次元 / 风景背景预设</label>
+                <button type="button" className="btn sm primary" onClick={rollBg}><Dices size={14} /> 随机生成一张（锁定）</button>
+              </div>
               <div className="bg-preset-grid">
                 {BG_PRESETS.map(b => (
                   <button key={b.name} type="button" className={'bg-preset' + (c.background === b.url ? ' on' : '')}

@@ -149,6 +149,14 @@ const ANIME_RAW = [
 ];
 export const ANIME_PRESETS = ANIME_RAW.map((p, i) => ({ id: 'anime-' + i, gender: 'a', url: animeAvatar({ ...p, id: 100 + i }) }));
 
+// Draw ONE random anime avatar and return it as a fixed data URL — the result never
+// changes again (a "gacha" that locks on draw, no live/random endpoints involved).
+export function randomAnimeAvatar() {
+  const p = ANIME_RAW[Math.floor(Math.random() * ANIME_RAW.length)];
+  const eyes = ['#5ad2ff', '#ff6fa8', '#9a82ff', '#5fd6a0', '#ffb04f', '#ff5a6e'];
+  return animeAvatar({ ...p, eye: eyes[Math.floor(Math.random() * eyes.length)], id: Math.floor(Math.random() * 1e6) });
+}
+
 // ---------------------------------------------------------------------------
 // Chat background presets — layered anime-style scenery (sky gradient, sun/moon,
 // mountain silhouettes / city skyline, sakura / stars / bokeh).
@@ -200,3 +208,22 @@ export const BG_PRESETS = [
   { name: '森系治愈', url: bgPreset({ sky1: '#cdeebf', sky2: '#f1fae4', body: '#fcffe0', bodyOp: 0.8, mtn1: '#9ccf86', mtn2: '#5d9e63', kind: 'bokeh', accent: '#eaffd0', seed: 'forest' }) },
   { name: '海边夏日', url: bgPreset({ sky1: '#7fd0ff', sky2: '#ffe8c0', body: '#fff4cf', bodyOp: 0.95, mtn1: '#5ab4e0', mtn2: '#2f86c4', kind: 'bokeh', accent: '#ffffff', seed: 'sea' }) }
 ];
+
+// Palette themes used by the "随机生成（锁定）" draw — each draw randomises particle
+// layout via a fresh seed, then returns a fixed data URL so it never re-randomises.
+const BG_THEMES = [
+  { sky1: '#ffd9ea', sky2: '#fff0f5', body: '#fff2f8', bodyOp: 0.5, mtn1: '#f3b9d2', mtn2: '#e58ab4', kind: 'sakura', accent: '#ff7fb0' },
+  { sky1: '#ffb86b', sky2: '#ff7e8a', body: '#fff2c4', bodyOp: 0.95, mtn1: '#c95f7a', mtn2: '#8a3d63', kind: 'bokeh', accent: '#ffe0b0' },
+  { sky1: '#1b1d52', sky2: '#090a20', body: '#e2e8ff', bodyOp: 0.92, mtn1: '#2a2a55', mtn2: '#14143a', kind: 'stars', accent: '#9a82ff' },
+  { sky1: '#2a1350', sky2: '#0c0926', body: '#ff6fae', bodyOp: 0, mtn2: '#110d2c', kind: 'city', accent: '#5ad2ff' },
+  { sky1: '#9fe0ff', sky2: '#ecfcf4', body: '#ffffff', bodyOp: 0.85, mtn1: '#c2e8cb', mtn2: '#86c79a', kind: 'bokeh', accent: '#ffffff' },
+  { sky1: '#caa6ff', sky2: '#f2e9ff', body: '#fff0fb', bodyOp: 0.6, mtn1: '#b78fef', mtn2: '#8a63d8', kind: 'sakura', accent: '#ffd0ec' },
+  { sky1: '#cdeebf', sky2: '#f1fae4', body: '#fcffe0', bodyOp: 0.8, mtn1: '#9ccf86', mtn2: '#5d9e63', kind: 'bokeh', accent: '#eaffd0' },
+  { sky1: '#7fd0ff', sky2: '#ffe8c0', body: '#fff4cf', bodyOp: 0.95, mtn1: '#5ab4e0', mtn2: '#2f86c4', kind: 'bokeh', accent: '#ffffff' },
+  { sky1: '#12233f', sky2: '#0a1326', body: '#bfe0ff', bodyOp: 0.9, mtn1: '#1f3a5c', mtn2: '#102036', kind: 'stars', accent: '#7fd6ff' }
+];
+// Draw ONE random scenery background, frozen as a fixed data URL.
+export function randomBg() {
+  const t = BG_THEMES[Math.floor(Math.random() * BG_THEMES.length)];
+  return bgPreset({ ...t, seed: 'r' + Math.random().toString(36).slice(2, 9) });
+}
