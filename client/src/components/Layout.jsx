@@ -7,7 +7,7 @@ import WelcomePopup from './WelcomePopup.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight
 } from 'lucide-react';
 
 const GROUPS = [
@@ -89,7 +89,10 @@ export default function Layout({ children }) {
     <div className={'app-shell' + (mode !== 'expanded' ? ' sb-' + mode : '')}>
       <Sidebar user={user} unread={unread} mode={mode} peek={peek} cycle={cycle} onLeave={closePeek} />
       {mode === 'hidden' && peek === 'closed' && (
-        <div className="sb-edge-trigger" onMouseEnter={openPeek} aria-hidden="true"><span className="grip" /></div>
+        <button className="sb-edge-trigger" onMouseEnter={openPeek} onClick={cycle}
+          title="展开侧边栏（鼠标移入可快速预览）" aria-label="展开侧边栏">
+          <ChevronRight size={16} />
+        </button>
       )}
       {mode === 'hidden' && peek !== 'closed' && (
         <div className="sb-peek-backdrop" onMouseEnter={closePeek} onClick={closePeek} aria-hidden="true" />
