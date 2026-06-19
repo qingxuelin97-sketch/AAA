@@ -790,7 +790,7 @@ body::before, body::after { display: none !important; }
    ============================================================ */
 
 /* ---- collapsible sidebar ---- */
-.sidebar { transition: width 0.24s cubic-bezier(0.22,0.61,0.36,1), padding 0.24s ease; }
+.sidebar { transition: width 0.34s cubic-bezier(0.22,0.61,0.36,1), padding 0.34s cubic-bezier(0.22,0.61,0.36,1); }
 .brand { position: relative; }
 .brand .brand-tx { min-width: 0; }
 .sb-toggle { margin-left: auto; flex-shrink: 0; background: none; border: none; color: var(--faint);
@@ -810,6 +810,39 @@ body::before, body::after { display: none !important; }
 .sidebar.collapsed .user-chip.compact { justify-content: center; padding: 7px; }
 @media (min-width: 861px) {
   .app-shell.sb-collapsed .page { max-width: 1280px; }
+  .app-shell.sb-hidden .page { max-width: 1340px; }
+}
+
+/* ---- third state: fully hidden off-canvas + left-edge hover reveal ---- */
+.sidebar.hidden { width: 0; min-width: 0; padding-left: 0; padding-right: 0; border-right: none; overflow: hidden; gap: 0; }
+.sidebar.hidden.peek {
+  position: fixed; left: 0; top: 0; height: 100vh; width: 244px; min-width: 244px;
+  padding: 20px 14px; gap: 4px; overflow: visible; z-index: 60;
+  border-right: 1px solid var(--border); border-radius: 0 18px 18px 0;
+  box-shadow: 0 24px 64px rgba(40, 24, 12, 0.22);
+}
+/* spring slide-in (overshoot) on reveal, snappy ease-in on retract */
+.sidebar.hidden.peek-open { animation: sbSlideIn 0.46s var(--spring-soft) both; }
+.sidebar.hidden.peek-closing { animation: sbSlideOut 0.24s cubic-bezier(0.4, 0, 1, 1) both; }
+.sidebar.hidden.peek-open .sb-scroll { animation: sbFadeIn 0.5s var(--spring-soft) both; animation-delay: 0.05s; }
+.sidebar.hidden.peek-open .wallet-mini { animation: sbFadeIn 0.5s var(--spring-soft) both; }
+@keyframes sbSlideIn { from { transform: translateX(-103%); } to { transform: translateX(0); } }
+@keyframes sbSlideOut { from { transform: translateX(0); } to { transform: translateX(-103%); } }
+@keyframes sbFadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+.sb-edge-trigger { position: fixed; left: 0; top: 0; width: 16px; height: 100vh; z-index: 55; cursor: pointer; display: flex; align-items: center; }
+.sb-edge-trigger .grip {
+  width: 4px; height: 56px; margin-left: 3px; border-radius: 4px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  transition: width 0.25s var(--spring), opacity 0.25s ease, box-shadow 0.25s ease;
+  animation: gripPulse 2.6s ease-in-out infinite;
+}
+.sb-edge-trigger:hover .grip { width: 6px; opacity: 1; box-shadow: 0 0 14px 1px var(--accent-ring); }
+@keyframes gripPulse { 0%, 100% { transform: scaleY(0.62); opacity: 0.42; } 50% { transform: scaleY(1.05); opacity: 0.85; } }
+@media (max-width: 860px) { .sb-edge-trigger { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar.hidden.peek-open, .sidebar.hidden.peek-closing, .sb-edge-trigger .grip,
+  .sidebar.hidden.peek-open .sb-scroll, .sidebar.hidden.peek-open .wallet-mini { animation: none; }
 }
 
 /* ---- tiered membership badges: VIP (gold) vs SVIP (regal violet) ---- */

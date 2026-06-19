@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
 import { Avatar } from '../ui.jsx';
@@ -7,7 +7,7 @@ import WelcomePopup from './WelcomePopup.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft
 } from 'lucide-react';
 
 const GROUPS = [
@@ -42,14 +42,34 @@ const TABS = [
   { to: '/profile', ic: User, label: '我的' }
 ];
 
-const COLLAPSE_KEY = 'huanyu_sidebar_collapsed';
+const MODE_KEY = 'huanyu_sidebar_mode';
+// Sidebar has three widths: expanded (full) → collapsed (icon rail) → hidden (off-canvas).
+const MODES = ['expanded', 'collapsed', 'hidden'];
+function initialMode() {
+  const m = localStorage.getItem(MODE_KEY);
+  if (MODES.includes(m)) return m;
+  return localStorage.getItem('huanyu_sidebar_collapsed') === '1' ? 'collapsed' : 'expanded'; // migrate old flag
+}
 
 export default function Layout({ children }) {
   const { user } = useAuth();
   const [unread, setUnread] = useState(0);
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
+  const [mode, setMode] = useState(initialMode);
+  const [peek, setPeek] = useState('closed'); // closed | open | closing (left-edge hover reveal when hidden)
+  const closeTimer = useRef();
 
-  const toggle = () => setCollapsed(c => { const n = !c; localStorage.setItem(COLLAPSE_KEY, n ? '1' : '0'); return n; });
+  const cycle = () => setMode(m => {
+    const n = m === 'expanded' ? 'collapsed' : m === 'collapsed' ? 'hidden' : 'expanded';
+    localStorage.setItem(MODE_KEY, n); return n;
+  });
+  const openPeek = () => { clearTimeout(closeTimer.current); setPeek('open'); };
+  const closePeek = () => setPeek(p => {
+    if (p === 'closed') return p;
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setPeek('closed'), 280);
+    return 'closing';
+  });
+  useEffect(() => { if (mode !== 'hidden') { clearTimeout(closeTimer.current); setPeek('closed'); } }, [mode]);
 
   useEffect(() => {
     let alive = true;
@@ -60,10 +80,12 @@ export default function Layout({ children }) {
   }, []);
 
   return (
-    <div className={'app-shell' + (collapsed ? ' sb-collapsed' : '')}>
-      <Sidebar user={user} unread={unread} collapsed={collapsed} toggle={toggle} />
+    <div className={'app-shell' + (mode !== 'expanded' ? ' sb-' + mode : '')}>
+      <Sidebar user={user} unread={unread} mode={mode} peek={peek} cycle={cycle} onLeave={closePeek} />
+      {mode === 'hidden' && peek === 'closed' && (
+        <div className="sb-edge-trigger" onMouseEnter={openPeek} aria-hidden="true"><span className="grip" /></div>
+      )}
       <MobileTop user={user} unread={unread} />
-      <main className="main">{children}</main>
       <nav className="bottom-nav">
         {TABS.map(t => (
           <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => isActive ? 'active' : ''}>
@@ -78,16 +100,26 @@ export default function Layout({ children }) {
   );
 }
 
-function Sidebar({ user, unread, collapsed, toggle }) {
+function Sidebar({ user, unread, mode, peek, cycle, onLeave }) {
   const { logout } = useAuth();
   const nav = useNavigate();
+  const collapsed = mode === 'collapsed'; // icon-only rail (peek always shows full layout)
+  const hidden = mode === 'hidden';
+  const cls = 'sidebar'
+    + (collapsed ? ' collapsed' : '')
+    + (hidden ? ' hidden' : '')
+    + (hidden && peek !== 'closed' ? ' peek' : '')
+    + (peek === 'open' ? ' peek-open' : '')
+    + (peek === 'closing' ? ' peek-closing' : '');
+  const toggleTitle = mode === 'expanded' ? '收起为图标栏' : mode === 'collapsed' ? '完全隐藏（移到最左侧可唤出）' : '固定展开';
+  const ToggleIcon = mode === 'expanded' ? PanelLeftClose : mode === 'collapsed' ? ChevronsLeft : PanelLeftOpen;
   return (
-    <aside className={'sidebar' + (collapsed ? ' collapsed' : '')}>
+    <aside className={cls} onMouseLeave={hidden ? onLeave : undefined}>
       <div className="brand">
         <Logo size={36} />
         {!collapsed && <div className="brand-tx"><b>幻域</b><small>HUANYU AI</small></div>}
-        <button className="sb-toggle" onClick={toggle} title={collapsed ? '展开侧边栏' : '收起侧边栏'} aria-label="切换侧边栏">
-          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+        <button className="sb-toggle" onClick={cycle} title={toggleTitle} aria-label="切换侧边栏宽度">
+          <ToggleIcon size={18} />
         </button>
       </div>
       {!collapsed && (
