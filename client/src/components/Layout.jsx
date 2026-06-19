@@ -98,6 +98,7 @@ export default function Layout({ children }) {
         <div className="sb-peek-backdrop" onMouseEnter={closePeek} onClick={closePeek} aria-hidden="true" />
       )}
       <MobileTop user={user} unread={unread} />
+      <main className="main">{children}</main>
       <nav className="bottom-nav">
         {TABS.map(t => (
           <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => isActive ? 'active' : ''}>
