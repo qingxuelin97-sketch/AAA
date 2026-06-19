@@ -830,6 +830,10 @@ body::before, body::after { display: none !important; }
 @keyframes sbSlideOut { from { transform: translateX(0); } to { transform: translateX(-103%); } }
 @keyframes sbFadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
+/* invisible catcher to the RIGHT of the drawer: entering it (pointer moves onto content) closes
+   the drawer reliably. It must NOT cover the drawer's own 244px footprint, otherwise it would sit
+   under the cursor while the drawer is still sliding in and close it instantly. */
+.sb-peek-backdrop { position: fixed; top: 0; right: 0; bottom: 0; left: 244px; z-index: 58; background: transparent; }
 .sb-edge-trigger { position: fixed; left: 0; top: 0; width: 16px; height: 100vh; z-index: 55; cursor: pointer; display: flex; align-items: center; }
 .sb-edge-trigger .grip {
   width: 4px; height: 56px; margin-left: 3px; border-radius: 4px;
@@ -839,7 +843,7 @@ body::before, body::after { display: none !important; }
 }
 .sb-edge-trigger:hover .grip { width: 6px; opacity: 1; box-shadow: 0 0 14px 1px var(--accent-ring); }
 @keyframes gripPulse { 0%, 100% { transform: scaleY(0.62); opacity: 0.42; } 50% { transform: scaleY(1.05); opacity: 0.85; } }
-@media (max-width: 860px) { .sb-edge-trigger { display: none; } }
+@media (max-width: 860px) { .sb-edge-trigger, .sb-peek-backdrop { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .sidebar.hidden.peek-open, .sidebar.hidden.peek-closing, .sb-edge-trigger .grip,
   .sidebar.hidden.peek-open .sb-scroll, .sidebar.hidden.peek-open .wallet-mini { animation: none; }

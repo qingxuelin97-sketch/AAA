@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
 import { Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
@@ -53,23 +53,29 @@ function initialMode() {
 
 export default function Layout({ children }) {
   const { user } = useAuth();
+  const loc = useLocation();
   const [unread, setUnread] = useState(0);
   const [mode, setMode] = useState(initialMode);
   const [peek, setPeek] = useState('closed'); // closed | open | closing (left-edge hover reveal when hidden)
+  const peekRef = useRef('closed');
   const closeTimer = useRef();
+  useEffect(() => { peekRef.current = peek; }, [peek]);
 
   const cycle = () => setMode(m => {
     const n = m === 'expanded' ? 'collapsed' : m === 'collapsed' ? 'hidden' : 'expanded';
     localStorage.setItem(MODE_KEY, n); return n;
   });
   const openPeek = () => { clearTimeout(closeTimer.current); setPeek('open'); };
-  const closePeek = () => setPeek(p => {
-    if (p === 'closed') return p;
+  const closePeek = () => {
+    if (peekRef.current !== 'open') return;     // guard: never flash open when already closed
     clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setPeek('closed'), 280);
-    return 'closing';
-  });
+    setPeek('closing');
+    closeTimer.current = setTimeout(() => setPeek('closed'), 240);
+  };
+  // Reset when leaving hidden mode, and snap the drawer shut on navigation.
   useEffect(() => { if (mode !== 'hidden') { clearTimeout(closeTimer.current); setPeek('closed'); } }, [mode]);
+  useEffect(() => { if (peekRef.current !== 'closed') { clearTimeout(closeTimer.current); setPeek('closed'); } }, [loc.pathname]);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   useEffect(() => {
     let alive = true;
@@ -84,6 +90,9 @@ export default function Layout({ children }) {
       <Sidebar user={user} unread={unread} mode={mode} peek={peek} cycle={cycle} onLeave={closePeek} />
       {mode === 'hidden' && peek === 'closed' && (
         <div className="sb-edge-trigger" onMouseEnter={openPeek} aria-hidden="true"><span className="grip" /></div>
+      )}
+      {mode === 'hidden' && peek !== 'closed' && (
+        <div className="sb-peek-backdrop" onMouseEnter={closePeek} onClick={closePeek} aria-hidden="true" />
       )}
       <MobileTop user={user} unread={unread} />
       <nav className="bottom-nav">
