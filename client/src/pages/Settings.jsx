@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker } from '../ui.jsx';
-import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins } from 'lucide-react';
+import { getThemeMode, setThemeMode } from '../theme.js';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor } from 'lucide-react';
 
 // Well-known OpenAI-compatible providers (base URLs). Keys stay on the user side.
 const LLM_PRESETS = {
@@ -51,6 +52,8 @@ export default function Settings() {
   const [detecting, setDetecting] = useState(false);
   const [voiceModels, setVoiceModels] = useState([]);
   const [detectingVoice, setDetectingVoice] = useState(false);
+  const [theme, setTheme] = useState(getThemeMode());
+  const changeTheme = (mode) => { setTheme(mode); setThemeMode(mode); setS(p => p ? { ...p, theme: mode } : p); };
 
   useEffect(() => { api('/settings').then(d => setS(d.settings)).catch(e => toast(e.message, 'err')); }, []);
   useEffect(() => { if (user) setProfile({ display_name: user.display_name || '', bio: user.bio || '', avatar: user.avatar || '', banner: user.banner || '' }); }, [user]);
@@ -224,6 +227,17 @@ export default function Settings() {
         {tab === 'pref' && (
           <div className="card">
             <div className="section-title"><h2>偏好设置</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
+            <div className="field">
+              <label>外观主题</label>
+              <div className="theme-seg">
+                {[['light', '浅色', Sun], ['dark', '深色', Moon], ['system', '跟随系统', Monitor]].map(([v, l, Ic]) => (
+                  <button key={v} type="button" className={theme === v ? 'active' : ''} onClick={() => changeTheme(v)}>
+                    <Ic size={15} /> {l}
+                  </button>
+                ))}
+              </div>
+              <div className="hint">即时生效并记忆在本机；「跟随系统」会随设备深/浅色自动切换。</div>
+            </div>
             <label className="switch" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
               <div><b style={{ fontSize: 14 }}>显示成人 (NSFW) 内容</b><div className="muted" style={{ fontSize: 12.5 }}>开启后广场将展示标记为成人的角色与剧本</div></div>
               <span><input type="checkbox" checked={!!s.nsfw} onChange={e => set('nsfw', e.target.checked ? 1 : 0)} /><span className="track" /></span>

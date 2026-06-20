@@ -3,9 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { AuthProvider } from './api.jsx';
+import { initTheme } from './theme.js';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/fraunces';
 import './styles.css';
+
+initTheme(); // apply saved theme before first paint (no flash)
 
 // Static build (GitHub Pages): use an in-browser backend + hash routing so the
 // app works as pure static files with no server.
