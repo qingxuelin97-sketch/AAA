@@ -289,6 +289,8 @@ async function streamCompletion(conv, character, settings, userContent, me) {
   let system = buildSystemPrompt(character, recent + ' ' + userContent);
   // Platform-wide system prompt (GM-configured) is prepended for no-API users only.
   if (eff.platform) { const gp = (platformCfg().system_prompt || '').trim(); if (gp) system = gp + '\n\n' + system; }
+  // Conversation memories (user-curated) are injected so the character "remembers".
+  if (conv.memories && conv.memories.length) system += '\n\n【对话记忆 · 请始终记住这些事实】\n' + conv.memories.map(x => '- ' + x.content).join('\n');
   const payload = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
   const encoder = new TextEncoder();
@@ -321,6 +323,7 @@ async function streamCompletion(conv, character, settings, userContent, me) {
       } catch (err) { send({ error: '连接模型服务失败：' + err.message + '（可能是服务商的浏览器跨域限制）' }); }
       if (full.trim()) {
         insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() }); conv.updated_at = now();
+        if (userContent) conv.affinity = (conv.affinity || 0) + 3; // 好感度随有效互动增长
         // Only now deduct the platform fee — successful reply.
         if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》` }); send({ fee: feeDue }); } catch { /* */ } }
         save();
@@ -504,7 +507,7 @@ async function route(method, path, search, body, headers) {
   }
   if ((m = P(/^\/chat\/conversations\/(\d+)$/))) {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
-    if (method === 'GET') return J({ conversation: conv, character: find('characters', x => x.id === conv.character_id), messages: filter('messages', x => x.conversation_id === conv.id) });
+    if (method === 'GET') { if (conv.affinity === undefined) conv.affinity = 0; if (!conv.memories) conv.memories = []; const ch = find('characters', x => x.id === conv.character_id); return J({ conversation: conv, character: ch ? charView(ch) : null, messages: filter('messages', x => x.conversation_id === conv.id) }); }
     if (method === 'DELETE') { db.conversations = filter('conversations', c => c.id !== conv.id); db.messages = filter('messages', x => x.conversation_id !== conv.id); save(); return J({ ok: true }); }
   }
   if ((m = P(/^\/chat\/conversations\/(\d+)\/complete$/)) && method === 'POST') {
@@ -525,6 +528,19 @@ async function route(method, path, search, body, headers) {
     const msg = find('messages', x => x.id === +m[2] && x.conversation_id === conv.id); if (!msg) return E('消息不存在', 404);
     if (method === 'PATCH') { const c = (body.content || '').trim(); if (!c) return E('内容不能为空'); msg.content = c; save(); return J({ message: msg }); }
     if (method === 'DELETE') { db.messages = filter('messages', x => x.id !== msg.id); save(); return J({ ok: true }); }
+  }
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/memories$/)) && method === 'POST') {
+    need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
+    const c = (body.content || '').trim(); if (!c) return E('记忆内容不能为空');
+    if (!conv.memories) conv.memories = [];
+    const mid = conv.memories.reduce((mx, x) => Math.max(mx, x.id || 0), 0) + 1;
+    conv.memories.push({ id: mid, content: c.slice(0, 300) }); save();
+    return J({ memories: conv.memories });
+  }
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/memories\/(\d+)$/)) && method === 'DELETE') {
+    need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
+    conv.memories = (conv.memories || []).filter(x => x.id !== +m[2]); save();
+    return J({ memories: conv.memories });
   }
   if (method === 'POST' && path === '/chat/tts') {
     need(); const s = find('settings', x => x.user_id === me.id); if (!s.voice_api_key) return E('尚未配置语音模型 API');

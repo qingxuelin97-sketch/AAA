@@ -2,9 +2,24 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain } from 'lucide-react';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
+
+// Relationship tiers driven by accumulated affinity (grows ~+3 per exchange).
+const AFFINITY_LEVELS = [
+  { min: 0, name: '初识', icon: '🌱' }, { min: 10, name: '相识', icon: '🌿' },
+  { min: 30, name: '熟悉', icon: '☕' }, { min: 60, name: '友好', icon: '😊' },
+  { min: 100, name: '亲近', icon: '💗' }, { min: 160, name: '信赖', icon: '✨' },
+  { min: 250, name: '挚爱', icon: '💖' }
+];
+function affinityInfo(v) {
+  v = v || 0; let idx = 0;
+  for (let i = 0; i < AFFINITY_LEVELS.length; i++) if (v >= AFFINITY_LEVELS[i].min) idx = i;
+  const cur = AFFINITY_LEVELS[idx], next = AFFINITY_LEVELS[idx + 1];
+  const pct = next ? Math.min(100, Math.round((v - cur.min) / (next.min - cur.min) * 100)) : 100;
+  return { level: idx + 1, name: cur.name, icon: cur.icon, pct, value: v, nextAt: next ? next.min : null };
+}
 
 export default function Chat() {
   const { id } = useParams();
@@ -21,9 +36,23 @@ export default function Chat() {
   const [atBottom, setAtBottom] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState('');
+  const [affinity, setAffinity] = useState(0);
+  const [memories, setMemories] = useState([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [newMem, setNewMem] = useState('');
   const scrollRef = useRef();
   const abortRef = useRef(null);
-  const syncMessages = () => api('/chat/conversations/' + id).then(d => setMessages(d.messages)).catch(() => {});
+  const syncMessages = () => api('/chat/conversations/' + id).then(d => { setMessages(d.messages); setAffinity(d.conversation.affinity || 0); setMemories(d.conversation.memories || []); }).catch(() => {});
+
+  const addMemory = async () => {
+    const c = newMem.trim(); if (!c) return;
+    try { const d = await api(`/chat/conversations/${id}/memories`, { method: 'POST', body: { content: c } }); setMemories(d.memories); setNewMem(''); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  const delMemory = async (mid) => {
+    try { const d = await api(`/chat/conversations/${id}/memories/${mid}`, { method: 'DELETE' }); setMemories(d.memories); }
+    catch (e) { toast(e.message, 'err'); }
+  };
 
   const startEdit = (msg) => { setEditingId(msg.id); setEditText(msg.content); };
   const saveEdit = async (msg) => {
@@ -47,8 +76,10 @@ export default function Chat() {
 
   useEffect(() => {
     if (!id) { setConv(null); setCharacter(null); setMessages([]); return; }
+    setDrawerOpen(false);
     api('/chat/conversations/' + id).then(d => {
       setConv(d.conversation); setCharacter(d.character); setMessages(d.messages);
+      setAffinity(d.conversation.affinity || 0); setMemories(d.conversation.memories || []);
     }).catch(e => toast(e.message, 'err'));
   }, [id]);
 
@@ -201,6 +232,12 @@ export default function Chat() {
               <button className="btn ghost sm mobile-only" onClick={() => nav('/chats')}><ArrowLeft size={16} /></button>
               <Avatar src={character?.avatar} name={character?.name} size={42} />
               <div className="nm"><b>{character?.name}</b><br /><span>{character?.tagline || '正在扮演中'}</span></div>
+              {(() => { const af = affinityInfo(affinity); return (
+                <button className="affinity-badge" onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
+                  <span className="af-ic">{af.icon}</span>
+                  <span className="af-tx"><b>{af.name}</b><i><em style={{ width: af.pct + '%' }} /></i></span>
+                </button>
+              ); })()}
             </div>
 
             <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
@@ -252,6 +289,50 @@ export default function Chat() {
                   : <button className="send-btn" onClick={send} disabled={!input.trim()}><Send size={17} /></button>}
               </div>
             </div>
+
+            {drawerOpen && (() => { const af = affinityInfo(affinity); return (
+              <>
+                <div className="chat-drawer-mask" onClick={() => setDrawerOpen(false)} />
+                <aside className="chat-drawer">
+                  <div className="cd-head">
+                    <Avatar src={character?.avatar} name={character?.name} size={36} />
+                    <b style={{ flex: 1 }}>{character?.name} · 档案</b>
+                    <button className="speak" onClick={() => setDrawerOpen(false)}><X size={16} /></button>
+                  </div>
+                  <div className="cd-body">
+                    <section>
+                      <h4><Heart size={14} /> 好感度</h4>
+                      <div className="af-big">{af.icon} Lv.{af.level} · {af.name}</div>
+                      <div className="af-bar"><span style={{ width: af.pct + '%' }} /></div>
+                      <p className="muted">好感值 {af.value}{af.nextAt ? ` · 距「${AFFINITY_LEVELS[af.level]?.name}」还需 ${af.nextAt - af.value}` : ' · 已是最高羁绊'}</p>
+                    </section>
+                    <section>
+                      <h4><Brain size={14} /> 对话记忆 <span className="muted">角色会始终记住</span></h4>
+                      {memories.length === 0 && <p className="muted" style={{ fontSize: 13 }}>还没有记忆。添加后会注入到每次对话，角色将牢记。</p>}
+                      {memories.map(mm => (
+                        <div className="mem-item" key={mm.id}><span>{mm.content}</span><button onClick={() => delMemory(mm.id)} title="删除"><X size={13} /></button></div>
+                      ))}
+                      <div className="mem-add">
+                        <input className="input" value={newMem} placeholder="如：我叫小明，养了一只叫奶糖的猫"
+                          onChange={e => setNewMem(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMemory(); } }} />
+                        <button className="btn sm primary" onClick={addMemory}><Plus size={14} /> 记住</button>
+                      </div>
+                    </section>
+                    <section>
+                      <h4><BookOpen size={14} /> 世界书 / 设定</h4>
+                      {(!character?.world || character.world.length === 0)
+                        ? <p className="muted" style={{ fontSize: 13 }}>该角色未设置世界书条目。</p>
+                        : character.world.map((w, i) => (
+                          <div className="wb-item" key={i}>
+                            <div className="wb-keys">{(w.keys || '常驻').split(',').map(k => k.trim()).filter(Boolean).map((k, j) => <span key={j}>{k}</span>)}</div>
+                            <p>{w.content}</p>
+                          </div>
+                        ))}
+                    </section>
+                  </div>
+                </aside>
+              </>
+            ); })()}
           </>
         )}
       </div>
