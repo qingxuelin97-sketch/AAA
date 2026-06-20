@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Send, Sparkles, ArrowLeft, Wand2 } from 'lucide-react';
+import { Send, Sparkles, ArrowLeft, Wand2, Users, LogOut } from 'lucide-react';
 
 export default function TheaterRoom() {
   const { id } = useParams();
@@ -13,6 +13,12 @@ export default function TheaterRoom() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [acting, setActing] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const leave = async () => {
+    if (!confirm('确定退出该剧场？')) return;
+    try { await api('/theater/' + id + '/leave', { method: 'POST' }); toast('已退出剧场'); nav('/theater'); }
+    catch (e) { toast(e.message, 'err'); }
+  };
   const scrollRef = useRef();
   const lastId = useRef(0);
 
@@ -71,7 +77,20 @@ export default function TheaterRoom() {
           <button className="btn ghost sm" onClick={() => nav('/theater')}><ArrowLeft size={16} /></button>
           <Avatar src={theater.cover} name={theater.name} size={40} />
           <div className="nm"><b>{theater.name}</b><br /><span>{cast.length} 位 AI 角色同台 · {data.members.length} 名玩家</span></div>
+          <button className="btn ghost sm" onClick={() => setShowMembers(v => !v)} title="玩家列表"><Users size={15} /> {data.members.length}</button>
+          <button className="btn ghost sm" onClick={leave} title="退出剧场"><LogOut size={15} /></button>
         </div>
+        {showMembers && (
+          <div className="group-members">
+            {data.members.map((mb, i) => (
+              <div key={i} className="gm-row">
+                <Avatar src={mb.avatar} name={mb.display_name} size={30} />
+                <span>{mb.display_name || '玩家'}</span>
+                {mb.id === theater.owner_id && <span className="gm-owner">房主</span>}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="theater-stage">
           <span className="muted" style={{ fontSize: 12, alignSelf: 'center', marginRight: 4 }}>让其登场：</span>
