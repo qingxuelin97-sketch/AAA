@@ -1074,3 +1074,10 @@ body::before, body::after { display: none !important; }
 .send-btn.stop { background: #b5483a; color: #fff; animation: stopPulse 1.3s ease-in-out infinite; }
 @keyframes stopPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(181,72,58,0.4); } 50% { box-shadow: 0 0 0 6px transparent; } }
 @media (prefers-reduced-motion: reduce) { .send-btn.stop { animation: none; } }
+
+/* group room: members panel */
+.group-members { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px;
+  border-bottom: 1px solid var(--border); background: var(--bg-2); animation: riseIn 0.3s var(--spring-soft) both; }
+.gm-row { display: flex; align-items: center; gap: 7px; padding: 5px 11px 5px 5px; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 999px; font-size: 13px; }
+.gm-row .gm-owner { font-size: 10.5px; font-weight: 700; color: #fff; background: var(--accent); padding: 1px 7px; border-radius: 999px; }

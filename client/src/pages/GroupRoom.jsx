@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Send, ArrowLeft, Users } from 'lucide-react';
+import { Send, ArrowLeft, Users, LogOut, MessageCircle } from 'lucide-react';
 
 export default function GroupRoom() {
   const { id } = useParams();
@@ -13,8 +13,15 @@ export default function GroupRoom() {
   const [members, setMembers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [showMembers, setShowMembers] = useState(false);
   const scrollRef = useRef();
   const lastId = useRef(0);
+
+  const leave = async () => {
+    if (!confirm('确定退出该群聊？')) return;
+    try { await api('/groups/' + id + '/leave', { method: 'POST' }); toast('已退出群聊'); nav('/groups'); }
+    catch (e) { toast(e.message, 'err'); }
+  };
 
   const load = async () => {
     try {
@@ -54,9 +61,25 @@ export default function GroupRoom() {
         <div className="chat-head">
           <button className="btn ghost sm" onClick={() => nav('/groups')}><ArrowLeft size={16} /></button>
           <Avatar src={group.avatar} name={group.name} size={40} />
-          <div className="nm"><b>{group.name}</b><br /><span><Users size={11} style={{ verticalAlign: -1 }} /> {members.length} 名成员</span></div>
+          <div className="nm"><b>{group.name}</b><br /><span>{group.owner_name} 创建 · {group.description || '同好交流'}</span></div>
+          <button className="btn ghost sm" onClick={() => setShowMembers(v => !v)} title="成员列表"><Users size={15} /> {members.length}</button>
+          <button className="btn ghost sm" onClick={leave} title="退出群聊"><LogOut size={15} /></button>
         </div>
+        {showMembers && (
+          <div className="group-members">
+            {members.map((mb, i) => (
+              <div key={i} className="gm-row">
+                <Avatar src={mb.avatar} name={mb.display_name} size={30} />
+                <span>{mb.display_name || '匿名'}</span>
+                {mb.role === 'owner' && <span className="gm-owner">群主</span>}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="chat-scroll" ref={scrollRef}>
+          {messages.length === 0 && (
+            <div className="empty" style={{ margin: 'auto' }}><div className="big"><MessageCircle size={42} /></div>还没有人发言，来打个招呼吧～</div>
+          )}
           {messages.map((m, i) => {
             const mine = m.user_id === user.id;
             return (
