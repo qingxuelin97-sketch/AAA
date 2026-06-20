@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
-import { useToast } from '../ui.jsx';
+import { useToast, CountUp } from '../ui.jsx';
 import { Coins, Gem, Crown, CalendarCheck, Gift, ArrowRight, Check, Sparkles, Wallet as WalletIcon } from 'lucide-react';
 
 export default function Wallet() {
@@ -45,11 +45,11 @@ export default function Wallet() {
         <div className="wallet-hero">
           <div className="col">
             <span className="icon-chip gold"><Coins size={20} /></span>
-            <div><div className="bal-num">{fmt(wallet.gold)}</div><div className="bal-lbl">金币</div></div>
+            <div><div className="bal-num"><CountUp value={wallet.gold} /></div><div className="bal-lbl">金币</div></div>
           </div>
           <div className="col">
             <span className="icon-chip diamond"><Gem size={20} /></span>
-            <div><div className="bal-num">{fmt(wallet.diamond)}</div><div className="bal-lbl">钻石</div></div>
+            <div><div className="bal-num"><CountUp value={wallet.diamond} /></div><div className="bal-lbl">钻石</div></div>
           </div>
           <div className="col">
             <span className={'icon-chip ' + (wallet.svip ? 'svip' : 'vip')}><Crown size={20} /></span>

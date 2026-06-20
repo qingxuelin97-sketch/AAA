@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar } from '../ui.jsx';
+import { useToast, Avatar, CountUp } from '../ui.jsx';
 import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck, X, Pencil } from 'lucide-react';
 import { pid } from '../assets.jsx';
 import ReportButton from '../components/ReportButton.jsx';
@@ -74,10 +74,10 @@ export default function Profile() {
               </div>
             </div>
             <div className="stat-row">
-              <div className="s" onClick={() => setTab('characters')} style={{ cursor: 'pointer' }}><b>{data.stats.characters}</b><span>角色</span></div>
-              <div className="s" onClick={() => setTab('scripts')} style={{ cursor: 'pointer' }}><b>{data.stats.scripts}</b><span>剧本</span></div>
-              <div className="s" onClick={() => openList('followers')} style={{ cursor: 'pointer' }}><b>{data.stats.followers}</b><span>粉丝</span></div>
-              <div className="s" onClick={() => openList('following')} style={{ cursor: 'pointer' }}><b>{data.stats.following}</b><span>关注</span></div>
+              <div className="s" onClick={() => setTab('characters')} style={{ cursor: 'pointer' }}><b><CountUp value={data.stats.characters} /></b><span>角色</span></div>
+              <div className="s" onClick={() => setTab('scripts')} style={{ cursor: 'pointer' }}><b><CountUp value={data.stats.scripts} /></b><span>剧本</span></div>
+              <div className="s" onClick={() => openList('followers')} style={{ cursor: 'pointer' }}><b><CountUp value={data.stats.followers} /></b><span>粉丝</span></div>
+              <div className="s" onClick={() => openList('following')} style={{ cursor: 'pointer' }}><b><CountUp value={data.stats.following} /></b><span>关注</span></div>
             </div>
             {isMe && (
               <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>

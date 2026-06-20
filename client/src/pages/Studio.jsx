@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast, Avatar } from '../ui.jsx';
+import { useToast, Avatar, CountUp } from '../ui.jsx';
 import { Eye, Heart, Star, Play, Coins, Users, Drama, ScrollText, TrendingUp, Sparkles } from 'lucide-react';
 
 const fmt = (n) => (n >= 10000 ? (n / 10000).toFixed(1) + 'w' : String(n ?? 0));
@@ -38,7 +38,7 @@ export default function Studio() {
           {cards.map((c, i) => (
             <div key={i} className="studio-card">
               <span className="sc-ic" style={{ background: c.accent + '22', color: c.accent }}><c.ic size={18} /></span>
-              <div><b className={c.gold ? 'gold-num' : ''}>{fmt(c.val)}</b><span>{c.label}</span></div>
+              <div><b className={c.gold ? 'gold-num' : ''}><CountUp value={c.val} /></b><span>{c.label}</span></div>
             </div>
           ))}
         </div>

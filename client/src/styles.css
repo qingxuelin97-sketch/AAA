@@ -1283,3 +1283,27 @@ body::before, body::after { display: none !important; }
 .tk-reward { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--gold); flex-shrink: 0; }
 .task-row .btn { flex-shrink: 0; min-width: 64px; }
 @media (max-width: 560px) { .task-row { gap: 10px; } .tk-reward { display: none; } }
+
+/* ============ 手感优化 (tactile pass v7) ============ */
+/* kill the ugly mobile tap-flash, add our own press feedback */
+* { -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; }
+.chat-scroll, .mnav-scroll, .cd-body, .user-list, .sb-scroll { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+/* press feedback on tappable surfaces */
+.char-card:active, .studio-row:active, .conv-item:active, .ul-row:active, .lb-row:active,
+.event-card:active, .poster:active, .gm-row:active, .task-row .btn:active, .cast-chip:active,
+.affinity-badge:active, .mem-item:active, .nav-item:active, .bottom-nav a:active {
+  transform: scale(0.975); transition: transform 0.08s ease;
+}
+.bottom-nav a { transition: color 0.18s, transform 0.12s var(--spring); }
+/* active route in bottom nav gets a lift */
+.bottom-nav a.active { transform: translateY(-1px); }
+.bottom-nav a.active svg { transform: scale(1.08); transition: transform 0.25s var(--spring); }
+/* smoother focus ring */
+.input:focus, .textarea:focus, .select:focus, .chat-input-bar .box:focus-within { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+/* page transition: gentle directional fade-rise on every route */
+.page { animation: pageEnter 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+@keyframes pageEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* count-up numbers use tabular figures so width doesn't jump while animating */
+.bal-num, .studio-card b, .stat-row .s b, .af-big, .gx-pity p { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .page { animation: none; } }

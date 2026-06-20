@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { uploadFile } from './api.jsx';
 import { UploadCloud, UserRound } from 'lucide-react';
 import { FACE_PRESETS, ANIME_PRESETS, ONLINE_AV } from './faces.js';
@@ -78,6 +78,29 @@ export function Avatar({ src, name = '', size = 40 }) {
 }
 
 // Shimmer skeleton grid shown while card lists load.
+// Smoothly counts a number up to `value` on mount/update — adds tactile heft to stats.
+export function CountUp({ value, dur = 900, format = true }) {
+  const [n, setN] = useState(0);
+  const raf = useRef();
+  const prev = useRef(0);
+  useEffect(() => {
+    const to = Number(value) || 0; const from = prev.current;
+    if (to === from) { setN(to); return; }
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setN(to); prev.current = to; return; }
+    const start = performance.now();
+    cancelAnimationFrame(raf.current);
+    const tick = (t) => {
+      const p = Math.min(1, (t - start) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      setN(Math.round(from + (to - from) * e));
+      if (p < 1) raf.current = requestAnimationFrame(tick); else prev.current = to;
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [value, dur]);
+  return <>{format ? n.toLocaleString() : n}</>;
+}
+
 export function GridSkeleton({ n = 8 }) {
   return (
     <div className="grid">
