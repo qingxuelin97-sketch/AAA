@@ -523,7 +523,16 @@ async function route(method, path, search, body, headers) {
   }
   if ((m = P(/^\/characters\/(\d+)$/))) {
     const cid = +m[1]; const c = find('characters', x => x.id === cid);
-    if (method === 'GET') { if (!c) return E('角色不存在', 404); if (!c.is_public && (!me || me.id !== c.owner_id)) return E('无权访问', 403); return J({ character: charView(c) }); }
+    if (method === 'GET') {
+      if (!c) return E('角色不存在', 404); if (!c.is_public && (!me || me.id !== c.owner_id)) return E('无权访问', 403);
+      const owner = user(c.owner_id);
+      const fav_count = filter('favorites', f => f.character_id === c.id).length;
+      const related = filter('characters', x => x.is_public && x.id !== c.id && !x.from_script && (x.category === c.category || x.owner_id === c.owner_id))
+        .map(x => ({ id: x.id, name: x.name, avatar: x.avatar, tagline: x.tagline, uses: x.uses || 0, category: x.category }))
+        .sort((a, b) => b.uses - a.uses).slice(0, 6);
+      const author_char_count = filter('characters', x => x.is_public && x.owner_id === c.owner_id && x.id !== c.id && !x.from_script).length;
+      return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, fav_count, author_char_count }, related });
+    }
     if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0; if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
     if (method === 'DELETE') { need(); if (!c || c.owner_id !== me.id) return E('无权删除', 403); db.characters = filter('characters', x => x.id !== cid); save(); return J({ ok: true }); }
   }
