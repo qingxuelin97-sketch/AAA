@@ -7,7 +7,7 @@ import WelcomePopup from './WelcomePopup.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp
 } from 'lucide-react';
 
 const GROUPS = [
@@ -28,6 +28,7 @@ const GROUPS = [
   ] },
   { title: '我的', items: [
     { to: '/library', ic: Library, label: '我的角色' },
+    { to: '/studio', ic: TrendingUp, label: '创作中心' },
     { to: '/favorites', ic: Heart, label: '收藏' },
     { to: '/wallet', ic: Wallet, label: '钱包 / 充值' },
     { to: '/notifications', ic: Bell, label: '通知', badge: 'noti' },

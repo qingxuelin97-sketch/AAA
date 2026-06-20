@@ -29,6 +29,7 @@ import Leaderboard from './pages/Leaderboard.jsx';
 import Events from './pages/Events.jsx';
 import Admin from './pages/Admin.jsx';
 import Gacha from './pages/Gacha.jsx';
+import Studio from './pages/Studio.jsx';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="/theater" element={P(<Theater />)} />
         <Route path="/theater/:id" element={P(<TheaterRoom />)} />
         <Route path="/library" element={P(<Library />)} />
+        <Route path="/studio" element={P(<Studio />)} />
         <Route path="/favorites" element={P(<Favorites />)} />
         <Route path="/wallet" element={P(<Wallet />)} />
         <Route path="/notifications" element={P(<Notifications />)} />

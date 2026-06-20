@@ -470,6 +470,25 @@ async function route(method, path, search, body, headers) {
 
   // ---------- characters ----------
   if (method === 'GET' && path === '/characters/mine') { need(); return J({ characters: filter('characters', c => c.owner_id === me.id && !c.from_script).sort((a, b) => b.id - a.id) }); }
+  if (method === 'GET' && path === '/me/studio') {
+    need();
+    const charRows = filter('characters', c => c.owner_id === me.id && !c.from_script).map(c => ({
+      id: c.id, name: c.name, avatar: c.avatar, is_public: !!c.is_public, uses: c.uses || 0, likes: c.likes || 0,
+      favs: filter('favorites', f => f.character_id === c.id).length
+    }));
+    const scriptRows = filter('scripts', s => s.author_id === me.id).map(s => {
+      const purchases = filter('script_purchases', p => p.script_id === s.id && !p.refunded);
+      return { id: s.id, title: s.title, cover: s.cover, price_gold: s.price_gold || 0, plays: s.plays || 0, likes: s.likes || 0,
+        sales: purchases.filter(p => (p.price || 0) > 0).length, revenue: purchases.reduce((a, p) => a + (p.price || 0), 0) };
+    });
+    const sum = (arr, k) => arr.reduce((a, x) => a + x[k], 0);
+    const totals = {
+      char_count: charRows.length, char_uses: sum(charRows, 'uses'), char_likes: sum(charRows, 'likes'), char_favs: sum(charRows, 'favs'),
+      script_count: scriptRows.length, script_plays: sum(scriptRows, 'plays'), script_sales: sum(scriptRows, 'sales'),
+      gold_earned: sum(scriptRows, 'revenue'), followers: filter('follows', f => f.following_id === me.id).length
+    };
+    return J({ totals, characters: charRows.sort((a, b) => b.uses - a.uses), scripts: scriptRows.sort((a, b) => b.revenue - a.revenue) });
+  }
   if (method === 'GET' && path === '/characters/public') {
     const cat = search.get('category'), q = (search.get('q') || '').toLowerCase(), sort = search.get('sort');
     let rows = filter('characters', c => c.is_public);

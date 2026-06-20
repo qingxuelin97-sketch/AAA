@@ -1246,3 +1246,27 @@ body::before, body::after { display: none !important; }
 
 /* prevent the chat drawer's slide-in from briefly causing horizontal page scroll */
 .chat-main { overflow-x: clip; }
+
+/* ============ 创作中心 (Studio) ============ */
+.studio-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr)); gap: 12px; }
+.studio-card { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow-sm); transition: transform 0.25s var(--spring), box-shadow 0.25s ease; }
+.studio-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.sc-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
+.studio-card b { font-size: 22px; font-family: var(--serif); display: block; line-height: 1.1; }
+.studio-card span { font-size: 12.5px; color: var(--muted); }
+.gold-num { color: var(--gold); }
+.studio-list { display: flex; flex-direction: column; gap: 8px; }
+.studio-row { display: flex; align-items: center; gap: 13px; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; padding: 12px 16px; cursor: pointer; transition: transform 0.2s var(--spring), box-shadow 0.2s ease, border-color 0.2s; }
+.studio-row:hover { transform: translateX(3px); box-shadow: var(--shadow-sm); border-color: var(--border-2); }
+.sr-cover { width: 44px; height: 44px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: var(--bg-2); display: grid; place-items: center; color: var(--faint); }
+.sr-cover img { width: 100%; height: 100%; object-fit: cover; }
+.sr-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sr-name b { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-name .tag { align-self: flex-start; }
+.tag-pub { background: var(--accent-soft); color: var(--accent-2); }
+.tag-draft { background: var(--bg-2); color: var(--faint); }
+.sr-stats { display: flex; gap: 14px; flex-shrink: 0; font-size: 12.5px; color: var(--muted); }
+.sr-stats span { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 560px) { .sr-stats { gap: 9px; font-size: 11.5px; } .studio-row { padding: 11px 13px; gap: 10px; } }
