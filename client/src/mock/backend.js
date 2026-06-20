@@ -466,7 +466,7 @@ async function route(method, path, search, body, headers) {
   }
 
   // ---------- characters ----------
-  if (method === 'GET' && path === '/characters/mine') { need(); return J({ characters: filter('characters', c => c.owner_id === me.id).sort((a, b) => b.id - a.id) }); }
+  if (method === 'GET' && path === '/characters/mine') { need(); return J({ characters: filter('characters', c => c.owner_id === me.id && !c.from_script).sort((a, b) => b.id - a.id) }); }
   if (method === 'GET' && path === '/characters/public') {
     const cat = search.get('category'), q = (search.get('q') || '').toLowerCase(), sort = search.get('sort');
     let rows = filter('characters', c => c.is_public);
@@ -600,6 +600,22 @@ async function route(method, path, search, body, headers) {
     if (find('script_purchases', p => p.script_id === s.id && p.user_id === me.id && !p.refunded)) return E('你已拥有该剧本');
     if (s.price_gold === 0) { insert('script_purchases', { script_id: s.id, user_id: me.id, price: 0, refunded: 0 }); return J({ ok: true, free: true }); }
     try { applyTx(me.id, { kind: 'buy_script', gold: -s.price_gold, memo: `购买剧本《${s.title}》` }); applyTx(s.author_id, { kind: 'sell_script', gold: s.price_gold, memo: `售出剧本《${s.title}》` }); insert('script_purchases', { script_id: s.id, user_id: me.id, price: s.price_gold, refunded: 0 }); s.plays++; save(); notify(s.author_id, `有人购买了你的剧本《${s.title}》，+${s.price_gold} 金币 `); return J({ ok: true, refundable_until: Date.now() + 1800000 }); } catch (e) { return E(e.message); }
+  }
+  if ((m = P(/^\/scripts\/(\d+)\/play$/)) && method === 'POST') {
+    need(); const sid = +m[1]; const s = find('scripts', x => x.id === sid); if (!s) return E('剧本不存在', 404);
+    const owns = s.price_gold === 0 || s.author_id === me.id || find('script_purchases', p => p.script_id === sid && p.user_id === me.id && !p.refunded);
+    if (!owns) return E('请先解锁该剧本再开始扮演', 403);
+    // Reuse a hidden script-runner character per user+script, else create one seeded from the script.
+    let ch = find('characters', x => x.owner_id === me.id && x.from_script === sid);
+    if (!ch) {
+      const persona = `你是互动剧本《${s.title}》的主持人(GM)兼剧中所有角色与旁白的扮演者。\n【剧本设定】\n${s.content || s.summary}\n\n请基于以上设定，以沉浸式第一人称推进剧情：扮演剧中登场的角色与旁白，描写场景与氛围，引导玩家在关键处做出选择。每次回复简洁有画面感（2-4 句），并在合适时给出 2-3 个可选的行动方向。始终保持在剧本世界观内，不要跳出角色。`;
+      ch = insert('characters', { owner_id: me.id, name: s.title, avatar: s.cover || null, background: s.cover || null, background_type: 'image', tagline: s.summary || '', intro: s.summary || '', greeting: `*【${s.title}】*\n\n${(s.content || s.summary || '').split('\n')[0]}\n\n（你想如何开始？）`, persona, category: s.category || '', tags: s.tags || '', is_public: 0, nsfw: s.nsfw || 0, likes: 0, uses: 0, from_script: sid });
+    }
+    const conv = insert('conversations', { user_id: me.id, character_id: ch.id, title: s.title, updated_at: now() }); ch.uses++;
+    if (ch.greeting) insert('messages', { conversation_id: conv.id, role: 'assistant', content: ch.greeting });
+    if (s.author_id !== me.id) s.plays++;
+    save();
+    return J({ conversation: conv });
   }
   if ((m = P(/^\/scripts\/(\d+)\/refund$/)) && method === 'POST') {
     need(); const sid = +m[1]; const p = filter('script_purchases', x => x.script_id === sid && x.user_id === me.id && !x.refunded).sort((a, b) => b.id - a.id)[0];

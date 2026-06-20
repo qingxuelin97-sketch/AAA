@@ -35,6 +35,14 @@ export default function ScriptDetail() {
     } catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }
   };
 
+  const play = async () => {
+    setBusy(true);
+    try {
+      const d = await api('/scripts/' + id + '/play', { method: 'POST' });
+      nav('/chats/' + d.conversation.id);
+    } catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }
+  };
+
   const refund = async () => {
     if (!confirm('确认申请退款？退款后将无法继续阅读本剧本。')) return;
     setBusy(true);
@@ -115,8 +123,11 @@ export default function ScriptDetail() {
             </div>
           ) : (
             <div className="card" style={{ background: 'var(--bg-2)', marginTop: 18 }}>
-              <div className="section-title"><h2>剧情设定</h2></div>
-              <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, marginBottom: 0 }}>{script.content || '暂无正文'}</p>
+              <div className="section-title"><h2>剧情设定</h2>
+                <button className="btn primary sm" onClick={play} disabled={busy}><Play size={14} /> {busy ? '准备中…' : '开始扮演'}</button>
+              </div>
+              <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, marginBottom: 14 }}>{script.content || '暂无正文'}</p>
+              <button className="btn primary block" onClick={play} disabled={busy}><Play size={15} /> {busy ? '准备中…' : '进入剧本 · 开始互动扮演'}</button>
             </div>
           )}
 
