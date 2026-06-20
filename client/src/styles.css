@@ -1219,3 +1219,12 @@ body::before, body::after { display: none !important; }
 .wb-keys { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; }
 .wb-keys span { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-2); }
 .wb-item p { margin: 0; font-size: 13px; line-height: 1.65; color: var(--muted); white-space: pre-wrap; }
+
+/* profile: followers/following list modal */
+.user-list { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+.ul-row { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 12px; transition: background 0.15s; }
+.ul-row:hover { background: var(--bg-2); }
+.ul-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; cursor: pointer; }
+.ul-info b { font-size: 14px; }
+.stat-row .s { transition: transform 0.18s var(--spring); }
+.stat-row .s:hover { transform: translateY(-2px); }

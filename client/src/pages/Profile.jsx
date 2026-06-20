@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck, X, Pencil } from 'lucide-react';
 import { pid } from '../assets.jsx';
 import ReportButton from '../components/ReportButton.jsx';
 
@@ -16,6 +16,7 @@ export default function Profile() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState('characters');
   const [following, setFollowing] = useState(false);
+  const [listModal, setListModal] = useState(null); // { kind, title, users }
 
   const load = () => api('/users/' + targetId).then(d => { setData(d); setFollowing(d.following); }).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [targetId]);
@@ -24,6 +25,15 @@ export default function Profile() {
 
   const toggleFollow = async () => {
     try { const d = await api('/social/follow/' + targetId, { method: 'POST' }); setFollowing(d.following); load(); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  const openList = async (kind) => {
+    try { const d = await api(`/users/${targetId}/${kind}`); setListModal({ kind, title: kind === 'followers' ? '粉丝' : '关注', users: d.users }); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  const followInList = async (uid) => {
+    try { const d = await api('/social/follow/' + uid, { method: 'POST' });
+      setListModal(lm => lm ? { ...lm, users: lm.users.map(x => x.id === uid ? { ...x, following: d.following } : x) } : lm); }
     catch (e) { toast(e.message, 'err'); }
   };
 
@@ -64,16 +74,17 @@ export default function Profile() {
               </div>
             </div>
             <div className="stat-row">
-              <div className="s"><b>{data.stats.characters}</b><span>角色</span></div>
-              <div className="s"><b>{data.stats.scripts}</b><span>剧本</span></div>
-              <div className="s"><b>{data.stats.followers}</b><span>粉丝</span></div>
-              <div className="s"><b>{data.stats.following}</b><span>关注</span></div>
+              <div className="s" onClick={() => setTab('characters')} style={{ cursor: 'pointer' }}><b>{data.stats.characters}</b><span>角色</span></div>
+              <div className="s" onClick={() => setTab('scripts')} style={{ cursor: 'pointer' }}><b>{data.stats.scripts}</b><span>剧本</span></div>
+              <div className="s" onClick={() => openList('followers')} style={{ cursor: 'pointer' }}><b>{data.stats.followers}</b><span>粉丝</span></div>
+              <div className="s" onClick={() => openList('following')} style={{ cursor: 'pointer' }}><b>{data.stats.following}</b><span>关注</span></div>
             </div>
             {isMe && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span className="coin gold"><Coins size={14} /> {user.gold} 金币</span>
                 <span className="coin diamond"><Gem size={14} /> {user.diamond} 钻石</span>
                 <button className="btn sm" onClick={() => nav('/wallet')}><Wallet size={14} /> 钱包 / 充值</button>
+                <button className="btn sm" onClick={() => nav('/settings')}><Pencil size={14} /> 编辑资料</button>
               </div>
             )}
           </div>
@@ -116,6 +127,37 @@ export default function Profile() {
           ))
         ))}
       </div>
+
+      {listModal && (
+        <div className="modal-backdrop" onClick={() => setListModal(null)}>
+          <div className="card modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="section-title"><h2>{listModal.title} · {listModal.users.length}</h2>
+              <button className="btn ghost sm" onClick={() => setListModal(null)}><X size={16} /></button></div>
+            {listModal.users.length === 0 ? <div className="empty" style={{ padding: 30 }}>还没有{listModal.title}</div> : (
+              <div className="user-list">
+                {listModal.users.map(uu => (
+                  <div key={uu.id} className="ul-row">
+                    <div className="ul-info" onClick={() => { setListModal(null); nav('/user/' + uu.id); }}>
+                      <Avatar src={uu.avatar} name={uu.display_name} size={40} />
+                      <div style={{ minWidth: 0 }}>
+                        <b style={{ display: 'flex', alignItems: 'center', gap: 5 }}>{uu.display_name}
+                          {uu.verified && <BadgeCheck size={13} style={{ color: 'var(--diamond)' }} />}
+                          {uu.svip ? <span className="svip-badge">SVIP</span> : uu.vip ? <span className="vip-badge"><Crown size={10} /> VIP</span> : null}</b>
+                        <span className="muted" style={{ fontSize: 12.5, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uu.bio || '@' + uu.username}</span>
+                      </div>
+                    </div>
+                    {uu.id !== user?.id && (
+                      <button className={'btn sm' + (uu.following ? '' : ' primary')} onClick={() => followInList(uu.id)}>
+                        {uu.following ? '已关注' : '关注'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

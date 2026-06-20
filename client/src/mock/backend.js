@@ -684,6 +684,18 @@ async function route(method, path, search, body, headers) {
     else { const k = q.toLowerCase(); rows = filter('users', u => (u.username + (u.display_name || '')).toLowerCase().includes(k)).slice(0, 30); }
     return J({ users: rows.map(u => ({ id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, bio: u.bio })) });
   }
+  if ((m = P(/^\/users\/(\d+)\/(followers|following)$/)) && method === 'GET') {
+    const uid = +m[1]; const kind = m[2];
+    const ids = kind === 'followers'
+      ? filter('follows', f => f.following_id === uid).map(f => f.follower_id)
+      : filter('follows', f => f.follower_id === uid).map(f => f.following_id);
+    const users = ids.map(i => { const u = user(i); return u && !u.is_banned ? {
+      id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, bio: u.bio,
+      vip: isVip(u), svip: !!u.svip, verified: !!u.verified,
+      following: me ? !!find('follows', f => f.follower_id === me.id && f.following_id === u.id) : false
+    } : null; }).filter(Boolean).reverse();
+    return J({ users });
+  }
   if ((m = P(/^\/users\/(\d+)$/)) && method === 'GET') {
     const u = user(+m[1]); if (!u) return E('用户不存在', 404);
     const characters = filter('characters', c => c.owner_id === u.id && c.is_public).sort((a, b) => b.id - a.id);
