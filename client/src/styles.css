@@ -1003,3 +1003,63 @@ body::before, body::after { display: none !important; }
 .gx-ssr .gx-rarity { background: linear-gradient(135deg, #ffd24a, #ff8a3c); color: #4a2d00; }
 @keyframes gxSsrGlow { 0%,100% { box-shadow: 0 0 0 1px #ffb347, 0 16px 44px rgba(255,150,60,0.36); } 50% { box-shadow: 0 0 0 2px #ffcf6a, 0 20px 56px rgba(255,170,70,0.6); } }
 @media (prefers-reduced-motion: reduce) { .gx-orb.rolling, .gx-ssr { animation: none; } }
+
+/* ============ Motion polish pass (v6) — entrances · hover lift · press · feedback ============ */
+/* staggered list/grid entrances */
+.lb-row, .event-card, .poster, .room-row, .moment, .adm-row, .group-row, .notif-row, .script-row {
+  animation: riseIn 0.46s cubic-bezier(0.22,0.61,0.36,1) both;
+}
+.lb-row:nth-child(2), .event-card:nth-child(2), .poster:nth-child(2), .room-row:nth-child(2), .moment:nth-child(2), .adm-row:nth-child(2) { animation-delay: 0.04s; }
+.lb-row:nth-child(3), .event-card:nth-child(3), .poster:nth-child(3), .room-row:nth-child(3), .moment:nth-child(3), .adm-row:nth-child(3) { animation-delay: 0.08s; }
+.lb-row:nth-child(4), .event-card:nth-child(4), .poster:nth-child(4), .room-row:nth-child(4), .moment:nth-child(4), .adm-row:nth-child(4) { animation-delay: 0.12s; }
+.lb-row:nth-child(5), .event-card:nth-child(5), .poster:nth-child(5), .room-row:nth-child(5), .moment:nth-child(5), .adm-row:nth-child(5) { animation-delay: 0.16s; }
+.lb-row:nth-child(6), .event-card:nth-child(6), .poster:nth-child(6), .room-row:nth-child(6), .moment:nth-child(6), .adm-row:nth-child(6) { animation-delay: 0.2s; }
+.lb-row:nth-child(n+7), .event-card:nth-child(n+7), .poster:nth-child(n+7), .room-row:nth-child(n+7), .moment:nth-child(n+7), .adm-row:nth-child(n+7) { animation-delay: 0.24s; }
+
+/* hover lift on interactive cards/rows */
+.char-card, .event-card, .poster, .room-row, .lb-row, .pkg, .group-row {
+  transition: transform 0.26s var(--spring), box-shadow 0.26s ease, border-color 0.2s ease;
+}
+.char-card:hover, .event-card:hover, .poster:hover, .room-row:hover, .pkg:hover {
+  transform: translateY(-4px); box-shadow: var(--shadow-lg);
+}
+.lb-row:hover, .group-row:hover, .adm-row:hover { transform: translateX(3px); }
+
+/* tactile button / chip press feedback */
+.btn:active:not(:disabled), .seg button:active, .cat-chip:active, .send-btn:active, .checkin-btn:active:not(:disabled) { transform: scale(0.96); }
+.nav-item:active { transform: scale(0.98); }
+
+/* avatars gently pop on hover within rows */
+.lb-row .avatar, .moment .avatar, .room-row .avatar, .user-chip .avatar { transition: transform 0.25s var(--spring); }
+.lb-row:hover .avatar, .moment:hover .avatar, .user-chip:hover .avatar { transform: scale(1.08) rotate(-2deg); }
+
+/* toast slide-in */
+.toast { animation: toastIn 0.4s var(--spring-soft) both; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.94); } to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
+
+/* modal backdrop fade */
+.modal-backdrop { animation: fadeIn 0.22s ease both; }
+
+/* empty-state icon gentle float */
+.empty .big { animation: floaty 3.2s ease-in-out infinite; }
+
+/* tab underline glide */
+.tabs-bar button { transition: color 0.2s ease, background 0.2s ease, transform 0.2s var(--spring); }
+.tabs-bar button.active { animation: tabPop 0.3s var(--spring); }
+@keyframes tabPop { 0% { transform: translateY(1px) scale(0.97); } 100% { transform: none; } }
+
+/* link/section title shimmer underline on hover */
+.section-title h2 { position: relative; }
+
+/* count-up friendly: balances scale-in when they mount */
+.wallet-hero .bal-num, .adm-stat b { animation: popIn 0.5s var(--spring-soft) both; }
+
+/* unread badges gently pulse for attention */
+.nav-badge, .bottom-nav .nb { animation: badgePulse 2s ease-in-out infinite; }
+@keyframes badgePulse { 0%,100% { box-shadow: 0 0 0 0 var(--accent-ring); } 50% { box-shadow: 0 0 0 5px transparent; } }
+/* chips & tags lift slightly on hover */
+.tag, .cat-bar button, .seg button { transition: transform 0.2s var(--spring), background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
+.tag:hover, .cat-bar button:hover { transform: translateY(-1px); }
+/* send button springs on hover */
+.send-btn { transition: transform 0.28s var(--spring), background 0.2s ease, box-shadow 0.25s ease; }
+.send-btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.04); }
