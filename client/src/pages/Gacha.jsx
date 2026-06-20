@@ -56,6 +56,7 @@ export default function Gacha() {
     const cand = POOL.filter(p => p.tier === tier);
     const base = pick(cand.length ? cand : POOL);
     const r = { ...base, name: pick(base.names), avatar: randomAnimeAvatar(), background: randomBg() };
+    api('/engage/track', { method: 'POST', body: { action: 'gacha' } }).catch(() => {}); // 每日任务计数
     // brief suspense before the reveal
     setTimeout(() => {
       setResult(r); setRolling(false); setCount(c => c + 1);

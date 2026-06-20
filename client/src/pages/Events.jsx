@@ -2,17 +2,25 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast } from '../ui.jsx';
-import { PartyPopper, Coins, Gem, Gift, Check, ArrowRight, Copy, Users } from 'lucide-react';
+import { PartyPopper, Coins, Gem, Gift, Check, ArrowRight, Copy, Users, ListChecks } from 'lucide-react';
 
 export default function Events() {
   const [events, setEvents] = useState(null);
+  const [tasks, setTasks] = useState(null);
   const [busy, setBusy] = useState('');
   const nav = useNavigate();
   const toast = useToast();
   const { refreshUser } = useAuth();
 
   const load = () => api('/engage/events').then(d => setEvents(d.events)).catch(e => toast(e.message, 'err'));
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  const loadTasks = () => api('/engage/tasks').then(d => setTasks(d.tasks)).catch(() => {});
+  useEffect(() => { load(); loadTasks(); /* eslint-disable-next-line */ }, []);
+
+  const claimTask = (t) => async () => {
+    setBusy('t-' + t.id);
+    try { const d = await api(`/engage/tasks/${t.id}/claim`, { method: 'POST' }); toast(`领取成功！+${d.reward} 金币`); await refreshUser(); await loadTasks(); }
+    catch (e) { toast(e.message, 'err'); } finally { setBusy(''); }
+  };
 
   const claim = (ev) => async () => {
     setBusy(ev.id);
@@ -34,6 +42,24 @@ export default function Events() {
         <div style={{ flex: 1 }}><h1>活动中心</h1><div className="sub">领奖励 · 玩联机 · 提反馈，幻域因你更精彩</div></div>
       </div>
       <div className="page">
+        {tasks && (
+          <div className="card daily-tasks">
+            <div className="section-title"><h2><ListChecks size={17} style={{ verticalAlign: -3, marginRight: 6 }} />每日任务</h2>
+              <span className="muted" style={{ fontSize: 12.5 }}>每日 0 点刷新</span></div>
+            {tasks.map(t => (
+              <div key={t.id} className={'task-row' + (t.claimed ? ' claimed' : '')}>
+                <div className="tk-tx">
+                  <b>{t.name}</b>
+                  <div className="tk-bar"><span style={{ width: Math.round(t.progress / t.target * 100) + '%' }} /></div>
+                </div>
+                <span className="tk-reward"><Coins size={13} /> {t.reward}</span>
+                <button className="btn sm primary" disabled={!t.done || t.claimed || busy === 't-' + t.id} onClick={claimTask(t)}>
+                  {t.claimed ? '已领取' : t.done ? '领取' : `${t.progress}/${t.target}`}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         {!events ? <div className="empty">载入中…</div> : (
           <div className="event-grid">
             {events.map(ev => (

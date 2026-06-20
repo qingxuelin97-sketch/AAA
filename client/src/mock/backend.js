@@ -199,6 +199,23 @@ function seed() {
   return db;
 }
 
+/* ----------------------------- daily tasks ----------------------------- */
+const DAILY_TASKS = [
+  { id: 'checkin', name: '完成每日签到', target: 1, reward: 30, key: 'checkin' },
+  { id: 'chat', name: '发起 1 次角色对话', target: 1, reward: 40, key: 'chat' },
+  { id: 'gacha', name: '在扭蛋机抽卡 1 次', target: 1, reward: 30, key: 'gacha' },
+  { id: 'fav', name: '收藏 1 个喜欢的角色', target: 1, reward: 20, key: 'fav' },
+  { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 20, key: 'like' }
+];
+const todayStr = () => new Date().toISOString().slice(0, 10);
+function dailyOf(uid) {
+  let d = find('daily_progress', x => x.user_id === uid);
+  if (!d) d = insert('daily_progress', { user_id: uid, date: todayStr(), counts: {}, claimed: [] });
+  if (d.date !== todayStr()) { d.date = todayStr(); d.counts = {}; d.claimed = []; save(); }
+  return d;
+}
+function bumpDaily(uid, key) { if (!uid) return; const d = dailyOf(uid); d.counts[key] = (d.counts[key] || 0) + 1; save(); }
+
 /* ----------------------------- helpers ----------------------------- */
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
@@ -502,7 +519,7 @@ async function route(method, path, search, body, headers) {
   if ((m = P(/^\/characters\/(\d+)\/favorite$/)) && method === 'POST') {
     need(); const cid = +m[1]; const ex = find('favorites', f => f.user_id === me.id && f.character_id === cid); const c = find('characters', x => x.id === cid);
     if (ex) { db.favorites = filter('favorites', f => !(f.user_id === me.id && f.character_id === cid)); if (c) c.likes = Math.max(0, c.likes - 1); save(); return J({ faved: false }); }
-    insert('favorites', { user_id: me.id, character_id: cid }); if (c) c.likes++; save(); return J({ faved: true });
+    insert('favorites', { user_id: me.id, character_id: cid }); if (c) c.likes++; bumpDaily(me.id, 'fav'); save(); return J({ faved: true });
   }
   if ((m = P(/^\/characters\/(\d+)$/))) {
     const cid = +m[1]; const c = find('characters', x => x.id === cid);
@@ -521,6 +538,7 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/chat/conversations') {
     need(); const ch = find('characters', x => x.id === body.character_id); if (!ch) return E('角色不存在', 404);
     const conv = insert('conversations', { user_id: me.id, character_id: ch.id, title: ch.name, updated_at: now() }); ch.uses++;
+    bumpDaily(me.id, 'chat');
     if (ch.greeting) insert('messages', { conversation_id: conv.id, role: 'assistant', content: ch.greeting }); save();
     return J({ conversation: conv });
   }
@@ -611,7 +629,7 @@ async function route(method, path, search, body, headers) {
     need(); const today = new Date().toISOString().slice(0, 10); if (me.last_checkin === today) return E('今天已经签到过啦');
     const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10); const streak = me.last_checkin === y ? (me.checkin_streak || 0) + 1 : 1;
     let reward = 100 + Math.min(streak, 7) * 20; if (isVip(me)) reward *= 2; me.last_checkin = today; me.checkin_streak = streak;
-    const w = applyTx(me.id, { kind: 'checkin', gold: reward, memo: `第 ${streak} 天签到` }); return J({ wallet: w, reward, streak });
+    const w = applyTx(me.id, { kind: 'checkin', gold: reward, memo: `第 ${streak} 天签到` }); bumpDaily(me.id, 'checkin'); return J({ wallet: w, reward, streak });
   }
   if (method === 'POST' && path === '/economy/redeem') { need(); const key = find('invite_keys', k => k.code === String(body.code || '').trim()); if (!key) return E('密钥无效'); if (key.used >= key.max_uses) return E('该密钥已用完'); key.used++; if (key.grant_gold || key.grant_diamond) applyTx(me.id, { kind: 'reward', gold: key.grant_gold, diamond: key.grant_diamond, memo: `兑换码 ${key.code}` }); if (key.grant_vip_days) { const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + key.grant_vip_days * 86400000).toISOString(); } save(); return J({ wallet: publicUser(me) }); }
 
@@ -675,7 +693,7 @@ async function route(method, path, search, body, headers) {
   }
   if (method === 'POST' && path === '/social/moments') { need(); if (!body.text && !body.image) return E('说点什么或配张图吧'); return J({ moment: insert('moments', { user_id: me.id, text: body.text || '', image: body.image || null, likes: 0 }) }); }
   if ((m = P(/^\/social\/moments\/(\d+)$/)) && method === 'DELETE') { need(); const mm = find('moments', x => x.id === +m[1]); if (!mm || mm.user_id !== me.id) return E('无权删除', 403); db.moments = filter('moments', x => x.id !== mm.id); save(); return J({ ok: true }); }
-  if ((m = P(/^\/social\/moments\/(\d+)\/like$/)) && method === 'POST') { need(); const mm = find('moments', x => x.id === +m[1]); if (!mm) return E('动态不存在', 404); const ex = find('moment_likes', l => l.moment_id === mm.id && l.user_id === me.id); if (ex) { db.moment_likes = filter('moment_likes', l => !(l.moment_id === mm.id && l.user_id === me.id)); mm.likes = Math.max(0, mm.likes - 1); save(); return J({ liked: false, likes: mm.likes }); } insert('moment_likes', { moment_id: mm.id, user_id: me.id }); mm.likes++; save(); if (mm.user_id !== me.id) notify(mm.user_id, `${me.display_name} 赞了你的动态`, '/community'); return J({ liked: true, likes: mm.likes }); }
+  if ((m = P(/^\/social\/moments\/(\d+)\/like$/)) && method === 'POST') { need(); const mm = find('moments', x => x.id === +m[1]); if (!mm) return E('动态不存在', 404); const ex = find('moment_likes', l => l.moment_id === mm.id && l.user_id === me.id); if (ex) { db.moment_likes = filter('moment_likes', l => !(l.moment_id === mm.id && l.user_id === me.id)); mm.likes = Math.max(0, mm.likes - 1); save(); return J({ liked: false, likes: mm.likes }); } insert('moment_likes', { moment_id: mm.id, user_id: me.id }); mm.likes++; bumpDaily(me.id, 'like'); save(); if (mm.user_id !== me.id) notify(mm.user_id, `${me.display_name} 赞了你的动态`, '/community'); return J({ liked: true, likes: mm.likes }); }
   if ((m = P(/^\/social\/moments\/(\d+)\/comments$/))) {
     const mid = +m[1];
     if (method === 'GET') return J({ comments: filter('comments', c => c.moment_id === mid).map(c => ({ ...c, author_name: user(c.user_id)?.display_name, author_avatar: user(c.user_id)?.avatar })) });
@@ -764,6 +782,19 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/community/inbox/seen') { return J({ ok: true }); }
 
   // ---------- engagement: views / reviews / reports / leaderboard ----------
+  if (method === 'POST' && path === '/engage/track') { need(); const a = String(body.action || ''); if (['gacha', 'chat', 'fav', 'like', 'checkin'].includes(a)) bumpDaily(me.id, a); return J({ ok: true }); }
+  if (method === 'GET' && path === '/engage/tasks') {
+    need(); const d = dailyOf(me.id);
+    const tasks = DAILY_TASKS.map(t => { const cnt = d.counts[t.key] || 0; return { id: t.id, name: t.name, target: t.target, reward: t.reward, progress: Math.min(cnt, t.target), done: cnt >= t.target, claimed: d.claimed.includes(t.id) }; });
+    return J({ tasks, all_claimed: tasks.every(t => t.claimed), claimable: tasks.filter(t => t.done && !t.claimed).length });
+  }
+  if ((m = P(/^\/engage\/tasks\/([a-z]+)\/claim$/)) && method === 'POST') {
+    need(); const t = DAILY_TASKS.find(x => x.id === m[1]); if (!t) return E('任务不存在', 404);
+    const d = dailyOf(me.id); const cnt = d.counts[t.key] || 0;
+    if (cnt < t.target) return E('任务尚未完成'); if (d.claimed.includes(t.id)) return E('该奖励已领取');
+    d.claimed.push(t.id); applyTx(me.id, { kind: 'reward', gold: t.reward, memo: `每日任务：${t.name}` }); save();
+    return J({ ok: true, reward: t.reward });
+  }
   if (method === 'GET' && path === '/engage/events') {
     const claims = me ? filter('event_claims', c => c.user_id === me.id).map(c => c.event_id) : [];
     return J({ events: EVENTS.map(e => ({ id: e.id, kind: e.kind, tag: e.tag, title: e.title, desc: e.desc, reward: e.reward || null, link: e.link || '', linkText: e.linkText || '', accent: e.accent, qq: e.qq || '', claimed: claims.includes(e.id) })) });
