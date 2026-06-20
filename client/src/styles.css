@@ -1171,3 +1171,14 @@ body::before, body::after { display: none !important; }
 .msg-edit textarea:focus { outline: none; }
 .msg-edit-acts { display: flex; gap: 8px; }
 .msg.user .msg-edit { margin-left: auto; }
+
+/* gacha: pity progress + SSR confetti */
+.gx-pity { margin-top: 12px; text-align: center; }
+.gx-pity-bar { height: 6px; border-radius: 999px; background: var(--bg-2); overflow: hidden; max-width: 320px; margin: 0 auto 6px; }
+.gx-pity-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #ffd24a); transition: width 0.5s var(--spring-soft); }
+.gx-pity p { font-size: 12px; margin: 0; }
+.gx-confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+.gx-confetti span { position: absolute; top: -16px; width: 9px; height: 14px; border-radius: 2px; opacity: 0.95;
+  animation: gxFall linear forwards; }
+@keyframes gxFall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(440px) rotate(540deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .gx-confetti { display: none; } }

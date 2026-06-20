@@ -29,6 +29,8 @@ const POOL = [
   { tier: 'SSR', cat: 'scifi', tags: '科幻,机械天使,AI', names: ['露娜 · Λ', 'SERAPH', '澪'], tagline: '正在学习……何为「心动」。', persona: '你是接近完美的机械天使型 AI，理性温柔、措辞精确，正一点点学习人类的情感，对世界充满好奇。始终保持角色。' }
 ];
 
+const PITY = 70; // 保底抽数：累计未出 SSR 达到此数则必出
+const CONFETTI_COLORS = ['#ffd24a', '#ff8a3c', '#e2885f', '#b07cff', '#5ad2ff', '#7fb487', '#ff6fa8'];
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 function rollTier() {
   const total = Object.values(TIERS).reduce((s, t) => s + t.weight, 0);
@@ -44,15 +46,23 @@ export default function Gacha() {
   const [rolling, setRolling] = useState(false);
   const [busy, setBusy] = useState(false);
   const [count, setCount] = useState(0);
+  const [pity, setPity] = useState(() => +(localStorage.getItem('huanyu_gacha_pity') || 0));
+  const [confetti, setConfetti] = useState(false);
 
   const draw = () => {
     setRolling(true); setResult(null);
-    const tier = rollTier();
+    const np = pity + 1;
+    const tier = np >= PITY ? 'SSR' : rollTier(); // 保底：第 PITY 抽必出 SSR
     const cand = POOL.filter(p => p.tier === tier);
     const base = pick(cand.length ? cand : POOL);
     const r = { ...base, name: pick(base.names), avatar: randomAnimeAvatar(), background: randomBg() };
     // brief suspense before the reveal
-    setTimeout(() => { setResult(r); setRolling(false); setCount(c => c + 1); }, 620);
+    setTimeout(() => {
+      setResult(r); setRolling(false); setCount(c => c + 1);
+      const newPity = tier === 'SSR' ? 0 : np;
+      setPity(newPity); localStorage.setItem('huanyu_gacha_pity', String(newPity));
+      if (tier === 'SSR') { setConfetti(false); requestAnimationFrame(() => setConfetti(true)); setTimeout(() => setConfetti(false), 2400); }
+    }, 620);
   };
 
   const create = async (thenChat) => {
@@ -85,6 +95,13 @@ export default function Gacha() {
       </div>
       <div className="page" style={{ maxWidth: 720 }}>
         <div className="gx-stage">
+          {confetti && (
+            <div className="gx-confetti" aria-hidden="true">
+              {Array.from({ length: 38 }).map((_, i) => (
+                <span key={i} style={{ left: Math.random() * 100 + '%', background: CONFETTI_COLORS[i % CONFETTI_COLORS.length], animationDelay: (Math.random() * 0.35).toFixed(2) + 's', animationDuration: (1.4 + Math.random() * 0.9).toFixed(2) + 's' }} />
+              ))}
+            </div>
+          )}
           <div className={'gx-orb' + (rolling ? ' rolling' : '')}>
             {!result && !rolling && <div className="gx-hint"><Sparkles size={40} /><p>点击下方按钮，开始你的抽卡</p></div>}
             {rolling && <div className="gx-spin"><Dices size={46} /></div>}
@@ -116,7 +133,10 @@ export default function Gacha() {
             </>
           )}
         </div>
-        {count > 0 && <p className="muted" style={{ textAlign: 'center', fontSize: 12.5 }}>已抽 {count} 次 · 概率：N 52% / R 30% / SR 14% / SSR 4%</p>}
+        <div className="gx-pity">
+          <div className="gx-pity-bar"><span style={{ width: Math.min(100, pity / PITY * 100) + '%' }} /></div>
+          <p className="muted">保底进度 {pity}/{PITY} · 再 {Math.max(0, PITY - pity)} 抽内必出 SSR{count > 0 ? ` · 已抽 ${count} 次` : ''}</p>
+        </div>
       </div>
     </>
   );
