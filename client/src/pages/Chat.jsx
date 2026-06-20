@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown } from 'lucide-react';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
 
@@ -18,7 +18,9 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [listMini, setListMini] = useState(() => localStorage.getItem(LIST_KEY) === '1');
+  const [atBottom, setAtBottom] = useState(true);
   const scrollRef = useRef();
+  const abortRef = useRef(null);
   const toggleList = () => setListMini(v => { const n = !v; localStorage.setItem(LIST_KEY, n ? '1' : '0'); return n; });
 
   const loadConvs = () => api('/chat/conversations').then(d => setConvs(d.conversations)).catch(() => {});
@@ -31,17 +33,25 @@ export default function Chat() {
     }).catch(e => toast(e.message, 'err'));
   }, [id]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, streaming]);
+  const scrollToBottom = (behavior = 'smooth') => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
+  // Only auto-stick to the bottom when the user is already near it (don't yank them
+  // away while they scroll back to read history).
+  useEffect(() => { if (atBottom) scrollToBottom(); }, [messages, streaming]);
+  const onScroll = () => {
+    const el = scrollRef.current; if (!el) return;
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+  };
 
   // Stream a reply from the given endpoint into the trailing assistant bubble.
   const streamInto = async (endpoint, payload) => {
     setStreaming(true);
+    setAtBottom(true);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     try {
       const res = await fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(payload || {})
+        body: JSON.stringify(payload || {}), signal: ctrl.signal
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '请求失败'); }
       const reader = res.body.getReader();
@@ -72,11 +82,19 @@ export default function Chat() {
       loadConvs();
       refreshUser?.();
     } catch (err) {
-      toast(err.message, 'err');
-      setMessages(m => { const c = [...m]; const last = c[c.length - 1];
-        if (last?._streaming) c[c.length - 1] = { role: 'assistant', content: '（连接出错）' + err.message, _streaming: false }; return c; });
-    } finally { setStreaming(false); }
+      // User-initiated stop: keep whatever streamed so far, no error toast.
+      if (err.name === 'AbortError') {
+        setMessages(m => { const c = [...m]; const last = c[c.length - 1];
+          if (last?._streaming) c[c.length - 1] = { ...last, content: last.content || '（已停止）', _streaming: false }; return c; });
+      } else {
+        toast(err.message, 'err');
+        setMessages(m => { const c = [...m]; const last = c[c.length - 1];
+          if (last?._streaming) c[c.length - 1] = { role: 'assistant', content: '（连接出错）' + err.message, _streaming: false }; return c; });
+      }
+    } finally { setStreaming(false); abortRef.current = null; }
   };
+
+  const stop = () => { abortRef.current?.abort(); };
 
   const send = async () => {
     const text = input.trim();
@@ -165,7 +183,7 @@ export default function Chat() {
               <div className="nm"><b>{character?.name}</b><br /><span>{character?.tagline || '正在扮演中'}</span></div>
             </div>
 
-            <div className="chat-scroll" ref={scrollRef}>
+            <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
               {messages.map((m, i) => (
                 <div key={i} className={'msg ' + m.role}>
                   {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={36} />}
@@ -186,11 +204,18 @@ export default function Chat() {
               ))}
             </div>
 
+            {!atBottom && (
+              <button className="scroll-bottom-btn" onClick={() => scrollToBottom()} title="回到底部" aria-label="回到底部">
+                <ArrowDown size={18} />
+              </button>
+            )}
             <div className="chat-input-bar">
               <div className="box">
                 <textarea rows={1} value={input} placeholder={`对 ${character?.name} 说点什么…（Enter 发送，Shift+Enter 换行）`}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
-                <button className="send-btn" onClick={send} disabled={streaming || !input.trim()}><Send size={17} /></button>
+                {streaming
+                  ? <button className="send-btn stop" onClick={stop} title="停止生成"><Square size={15} fill="currentColor" /></button>
+                  : <button className="send-btn" onClick={send} disabled={!input.trim()}><Send size={17} /></button>}
               </div>
             </div>
           </>

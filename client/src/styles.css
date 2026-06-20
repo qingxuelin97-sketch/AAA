@@ -1063,3 +1063,14 @@ body::before, body::after { display: none !important; }
 /* send button springs on hover */
 .send-btn { transition: transform 0.28s var(--spring), background 0.2s ease, box-shadow 0.25s ease; }
 .send-btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.04); }
+
+/* chat: scroll-to-bottom FAB + stop-generation button */
+.scroll-bottom-btn { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 3;
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); display: grid; place-items: center; cursor: pointer;
+  box-shadow: var(--shadow); animation: sbtIn 0.3s var(--spring-soft) both; transition: transform 0.2s var(--spring), box-shadow 0.2s ease; }
+.scroll-bottom-btn:hover { transform: translateX(-50%) translateY(-2px); box-shadow: var(--shadow-lg); }
+@keyframes sbtIn { from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.8); } to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
+.send-btn.stop { background: #b5483a; color: #fff; animation: stopPulse 1.3s ease-in-out infinite; }
+@keyframes stopPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(181,72,58,0.4); } 50% { box-shadow: 0 0 0 6px transparent; } }
+@media (prefers-reduced-motion: reduce) { .send-btn.stop { animation: none; } }
