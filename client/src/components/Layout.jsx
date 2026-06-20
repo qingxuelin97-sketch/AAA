@@ -7,7 +7,7 @@ import WelcomePopup from './WelcomePopup.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X
 } from 'lucide-react';
 
 const GROUPS = [
@@ -58,6 +58,7 @@ export default function Layout({ children }) {
   const [unread, setUnread] = useState(0);
   const [mode, setMode] = useState(initialMode);
   const [peek, setPeek] = useState('closed'); // closed | open | closing (left-edge hover reveal when hidden)
+  const [mobileNav, setMobileNav] = useState(false);
   const peekRef = useRef('closed');
   const closeTimer = useRef();
   useEffect(() => { peekRef.current = peek; }, [peek]);
@@ -75,7 +76,7 @@ export default function Layout({ children }) {
   };
   // Reset when leaving hidden mode, and snap the drawer shut on navigation.
   useEffect(() => { if (mode !== 'hidden') { clearTimeout(closeTimer.current); setPeek('closed'); } }, [mode]);
-  useEffect(() => { if (peekRef.current !== 'closed') { clearTimeout(closeTimer.current); setPeek('closed'); } }, [loc.pathname]);
+  useEffect(() => { if (peekRef.current !== 'closed') { clearTimeout(closeTimer.current); setPeek('closed'); } setMobileNav(false); }, [loc.pathname]);
   useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   useEffect(() => {
@@ -98,7 +99,8 @@ export default function Layout({ children }) {
       {mode === 'hidden' && peek !== 'closed' && (
         <div className="sb-peek-backdrop" onMouseEnter={closePeek} onClick={closePeek} aria-hidden="true" />
       )}
-      <MobileTop user={user} unread={unread} />
+      <MobileTop user={user} unread={unread} onMenu={() => setMobileNav(true)} />
+      {mobileNav && <MobileNav user={user} unread={unread} onClose={() => setMobileNav(false)} />}
       <main className="main">{children}</main>
       <nav className="bottom-nav">
         {TABS.map(t => (
@@ -188,11 +190,11 @@ function Sidebar({ user, unread, mode, peek, cycle, onLeave }) {
   );
 }
 
-function MobileTop({ user, unread }) {
+function MobileTop({ user, unread, onMenu }) {
   const nav = useNavigate();
   return (
     <div className="mobile-topbar mobile-only">
-      <Logo size={30} radius={9} />
+      <button className="mt-menu" onClick={onMenu} aria-label="菜单"><Menu size={22} /></button>
       <b style={{ fontSize: 17, flex: 1 }}>幻域</b>
       <span className="coin gold" onClick={() => nav('/wallet')}><Coins size={13} /> {user?.gold ?? 0}</span>
       <Search size={20} onClick={() => nav('/search')} />
@@ -200,6 +202,51 @@ function MobileTop({ user, unread }) {
         <Bell size={20} />
         {unread > 0 && <span className="nb" style={{ position: 'absolute', top: -4, right: -6 }}>{unread}</span>}
       </div>
+    </div>
+  );
+}
+
+// Full navigation drawer for mobile — surfaces every desktop sidebar entry.
+function MobileNav({ user, unread, onClose }) {
+  const { logout } = useAuth();
+  const nav = useNavigate();
+  const go = (to) => { nav(to); onClose(); };
+  return (
+    <div className="mnav-mask mobile-only" onClick={onClose}>
+      <aside className="mnav" onClick={e => e.stopPropagation()}>
+        <div className="mnav-head">
+          <div className="user-chip" onClick={() => go('/profile')} style={{ flex: 1 }}>
+            <Avatar src={user?.avatar} name={user?.display_name} size={40} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <b style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.display_name}</b>
+              <span style={{ fontSize: 11.5, color: 'var(--faint)' }}>@{user?.username}</span>
+            </div>
+          </div>
+          <button className="mnav-x" onClick={onClose} aria-label="关闭"><X size={20} /></button>
+        </div>
+        <div className="wallet-mini" style={{ margin: '0 16px 8px' }}>
+          <span className="coin gold" onClick={() => go('/wallet')}><Coins size={14} /> {user?.gold ?? 0}</span>
+          <span className="coin diamond" onClick={() => go('/wallet')}><Gem size={14} /> {user?.diamond ?? 0}</span>
+          {user?.svip ? <span className="svip-badge">SVIP</span> : user?.vip ? <span className="vip-badge"><Crown size={12} /> VIP</span> : null}
+        </div>
+        <div className="mnav-scroll">
+          {GROUPS.map(g => (
+            <div key={g.title}>
+              <div className="nav-section">{g.title}</div>
+              {g.items.map(n => (
+                <button key={n.to} className="nav-item" onClick={() => go(n.to)}>
+                  <span className="ic"><n.ic size={18} /></span>{n.label}
+                  {n.badge === 'noti' && unread > 0 && <span className="nav-badge">{unread}</span>}
+                </button>
+              ))}
+            </div>
+          ))}
+          {user?.is_gm && (<div><div className="nav-section">管理</div>
+            <button className="nav-item" onClick={() => go('/admin')}><span className="ic"><Shield size={18} /></span>管理后台</button></div>)}
+          <button className="nav-item" style={{ color: 'var(--accent)' }} onClick={() => go('/publish')}><span className="ic"><Sparkles size={18} /></span>发布作品</button>
+          <button className="nav-item" onClick={() => { logout(); onClose(); }}><span className="ic"><LogOut size={18} /></span>退出登录</button>
+        </div>
+      </aside>
     </div>
   );
 }
