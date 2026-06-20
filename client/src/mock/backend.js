@@ -520,6 +520,12 @@ async function route(method, path, search, body, headers) {
     if (last && last.role === 'assistant') { db.messages = filter('messages', x => x.id !== last.id); save(); }
     return streamCompletion(conv, ch, s, '');
   }
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/messages\/(\d+)$/))) {
+    need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
+    const msg = find('messages', x => x.id === +m[2] && x.conversation_id === conv.id); if (!msg) return E('消息不存在', 404);
+    if (method === 'PATCH') { const c = (body.content || '').trim(); if (!c) return E('内容不能为空'); msg.content = c; save(); return J({ message: msg }); }
+    if (method === 'DELETE') { db.messages = filter('messages', x => x.id !== msg.id); save(); return J({ ok: true }); }
+  }
   if (method === 'POST' && path === '/chat/tts') {
     need(); const s = find('settings', x => x.user_id === me.id); if (!s.voice_api_key) return E('尚未配置语音模型 API');
     const base = (s.voice_base_url || '').replace(/\/$/, '');

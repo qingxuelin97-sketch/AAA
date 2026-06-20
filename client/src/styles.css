@@ -1162,3 +1162,12 @@ body::before, body::after { display: none !important; }
 [data-theme="dark"] .icon-chip.diamond { background: #14323a; color: #79d0e4; }
 [data-theme="dark"] .vip-card { background: linear-gradient(140deg, #2e2616, #241d12); border-color: #4a3c22; }
 [data-theme="dark"] .wallet-hero { background: linear-gradient(135deg, #262019, #1d1812); }
+
+/* chat: inline message edit */
+.msg-edit { display: flex; flex-direction: column; gap: 8px; min-width: min(420px, 70vw); }
+.msg-edit textarea { width: 100%; min-height: 64px; padding: 11px 13px; border-radius: 14px; border: 1px solid var(--accent);
+  background: var(--panel); color: var(--text); font-size: 14.5px; line-height: 1.6; resize: vertical;
+  box-shadow: 0 0 0 3px var(--accent-ring); font-family: inherit; }
+.msg-edit textarea:focus { outline: none; }
+.msg-edit-acts { display: flex; gap: 8px; }
+.msg.user .msg-edit { margin-left: auto; }

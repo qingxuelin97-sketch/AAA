@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check } from 'lucide-react';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
 
@@ -19,8 +19,27 @@ export default function Chat() {
   const [streaming, setStreaming] = useState(false);
   const [listMini, setListMini] = useState(() => localStorage.getItem(LIST_KEY) === '1');
   const [atBottom, setAtBottom] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
   const scrollRef = useRef();
   const abortRef = useRef(null);
+  const syncMessages = () => api('/chat/conversations/' + id).then(d => setMessages(d.messages)).catch(() => {});
+
+  const startEdit = (msg) => { setEditingId(msg.id); setEditText(msg.content); };
+  const saveEdit = async (msg) => {
+    const c = editText.trim(); if (!c) return;
+    try {
+      await api(`/chat/conversations/${id}/messages/${msg.id}`, { method: 'PATCH', body: { content: c } });
+      setMessages(ms => ms.map(x => x.id === msg.id ? { ...x, content: c } : x));
+      setEditingId(null);
+    } catch (e) { toast(e.message, 'err'); }
+  };
+  const delMsg = async (msg) => {
+    if (!msg.id) return;
+    if (!confirm('删除这条消息？')) return;
+    try { await api(`/chat/conversations/${id}/messages/${msg.id}`, { method: 'DELETE' }); setMessages(ms => ms.filter(x => x.id !== msg.id)); }
+    catch (e) { toast(e.message, 'err'); }
+  };
   const toggleList = () => setListMini(v => { const n = !v; localStorage.setItem(LIST_KEY, n ? '1' : '0'); return n; });
 
   const loadConvs = () => api('/chat/conversations').then(d => setConvs(d.conversations)).catch(() => {});
@@ -81,6 +100,7 @@ export default function Chat() {
       setMessages(m => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], _streaming: false }; return c; });
       loadConvs();
       refreshUser?.();
+      syncMessages(); // pull server IDs so edit/delete work on the new turn
     } catch (err) {
       // User-initiated stop: keep whatever streamed so far, no error toast.
       if (err.name === 'AbortError') {
@@ -185,18 +205,32 @@ export default function Chat() {
 
             <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
               {messages.map((m, i) => (
-                <div key={i} className={'msg ' + m.role}>
+                <div key={m.id || i} className={'msg ' + m.role}>
                   {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={36} />}
                   <div>
-                    <div className="bubble">
-                      {m.content || (m._streaming && <span className="typing"><span></span><span></span><span></span></span>)}
-                    </div>
-                    {m.role === 'assistant' && m.content && !m._streaming && (
+                    {editingId === m.id ? (
+                      <div className="msg-edit">
+                        <textarea value={editText} autoFocus onChange={e => setEditText(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(m); } if (e.key === 'Escape') setEditingId(null); }} />
+                        <div className="msg-edit-acts">
+                          <button className="btn sm primary" onClick={() => saveEdit(m)}><Check size={13} /> 保存</button>
+                          <button className="btn sm ghost" onClick={() => setEditingId(null)}>取消</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bubble">
+                        {m.content || (m._streaming && <span className="typing"><span></span><span></span><span></span></span>)}
+                      </div>
+                    )}
+                    {!m._streaming && m.content && editingId !== m.id && (
                       <div className="msg-acts">
-                        <button className="speak" onClick={() => speak(m.content)}><Volume2 size={13} /> 朗读</button>
-                        <button className="speak" onClick={() => copyMsg(m.content)}><Copy size={13} /> 复制</button>
-                        {i === messages.length - 1 &&
-                          <button className="speak" onClick={regenerate} disabled={streaming}><RotateCcw size={13} /> 重新生成</button>}
+                        {m.role === 'assistant' && <>
+                          <button className="speak" onClick={() => speak(m.content)}><Volume2 size={13} /> 朗读</button>
+                          <button className="speak" onClick={() => copyMsg(m.content)}><Copy size={13} /> 复制</button>
+                          {i === messages.length - 1 && <button className="speak" onClick={regenerate} disabled={streaming}><RotateCcw size={13} /> 重新生成</button>}
+                        </>}
+                        {m.role === 'user' && <button className="speak" onClick={() => startEdit(m)} disabled={streaming}><Pencil size={13} /> 编辑</button>}
+                        {m.id && <button className="speak" onClick={() => delMsg(m)} disabled={streaming}><Trash2 size={13} /> 删除</button>}
                       </div>
                     )}
                   </div>
