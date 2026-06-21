@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, CountUp, CreatorV } from '../ui.jsx';
+import { useToast, Avatar, CountUp, CreatorV, CouncilorBadge } from '../ui.jsx';
 import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck, X, Pencil } from 'lucide-react';
 import { pid } from '../assets.jsx';
 import ReportButton from '../components/ReportButton.jsx';
@@ -68,7 +68,7 @@ export default function Profile() {
                   {u.verified && <span className="v-badge" title={u.verified_note || '官方认证'}><BadgeCheck size={18} /></span>}
                   <CreatorV tier={u.creator_tier} size={18} />
                   {u.is_gm && <span className="gm-tag"><ShieldCheck size={12} /> 超级管理员</span>}
-                  {u.is_councilor && <span className="gm-tag councilor-tag">议员</span>}
+                  {u.is_councilor && <CouncilorBadge size={14} />}
                   {u.svip ? <span className="svip-badge">SVIP</span> : u.vip ? <span className="vip-badge"><Crown size={12} /> VIP</span> : null}
                 </h2>
                 {u.creator_tier && <div className={'cert-line cv-line ' + u.creator_tier}><CreatorV tier={u.creator_tier} size={13} /> {u.creator_tier === 'gold' ? '殿堂创作者 · 全站 TOP 1' : u.creator_tier === 'yellow' ? '知名创作者' : '创作者认证'}</div>}

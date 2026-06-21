@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast, Avatar } from '../ui.jsx';
+import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { Heart, Play, Flame, ScrollText, Trophy } from 'lucide-react';
 
 export default function Leaderboard() {
@@ -31,10 +31,10 @@ export default function Leaderboard() {
         <div style={{ flex: 1 }}><h1>排行榜</h1><div className="sub">最受欢迎的角色 · 剧本 · 作者</div></div>
       </div>
       <div className="page">
-        <div className="seg" style={{ marginBottom: 18 }}>
+        <div className="seg seg-3" style={{ marginBottom: 18 }}>
           <button className={tab === 'characters' ? 'active' : ''} onClick={() => setTab('characters')}>角色榜</button>
           <button className={tab === 'scripts' ? 'active' : ''} onClick={() => setTab('scripts')}>剧本榜</button>
-          <button className={tab === 'authors' ? 'active' : ''} onClick={() => setTab('authors')}>作者榜</button>
+          <button className={tab === 'authors' ? 'active' : ''} onClick={() => setTab('authors')}>创作者榜</button>
         </div>
 
         {loading ? <div className="empty">载入中…</div> : (
@@ -76,8 +76,8 @@ export default function Leaderboard() {
                 <div className={rankClass(i)}>{i + 1}</div>
                 <Avatar src={a.avatar} name={a.display_name} size={44} />
                 <div className="grow" style={{ flex: 1, minWidth: 0 }}>
-                  <b>{a.display_name}</b>
-                  <div className="muted" style={{ fontSize: 12.5 }}>{a.chars} 个角色</div>
+                  <b style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>{a.display_name}<CreatorV tier={a.creator_tier} size={13} /></b>
+                  <div className="muted" style={{ fontSize: 12.5 }}>{a.chars} 角色 · {a.scripts} 剧本</div>
                 </div>
                 <span className="lb-num"><Flame size={14} /> {a.score} 人气</span>
               </div>

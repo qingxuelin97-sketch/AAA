@@ -91,6 +91,11 @@ function migrate() {
     ['demo', 'gm'].forEach(n => { const u = find('users', x => x.username === n); if (u) u.is_gm = 1; });
     db._mig.restore_demo_gm = 1;
   }
+  if (!db._mig.official_gm) {
+    // Mark the platform's official account so it never receives creator certification.
+    const g = find('users', x => x.username === 'gm'); if (g) g.official = 1;
+    db._mig.official_gm = 1;
+  }
 }
 
 // Build a ready-to-use 二次元 character card (anime avatar + anime chat background).
@@ -140,7 +145,7 @@ function seed() {
   const gmu = mkUser('gm', '幻域管理员', '幻域平台官方管理员账号。', face('m', 4), bannerArt('gm', '#5a2a18', '#2a130b'), 0, 0, 0);
   gmu.is_gm = 1; u1.is_gm = 1;
   Object.assign(u1, { svip: 1, verified: 1, verified_note: '幻域官方认证', vip_until: new Date(Date.now() + 3650 * 86400000).toISOString(), bio: '幻域官方认证 · 平台超级管理员｜SVIP 尊享会员，欢迎来到幻域。' });
-  Object.assign(gmu, { verified: 1, verified_note: '官方账号' });
+  Object.assign(gmu, { verified: 1, verified_note: '官方账号', official: 1 });
   insert('announcements', { author_id: gmu.id, title: '欢迎来到幻域 · 测试版', body: '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。未配置自己 API 的用户将自动使用平台内置语言服务，每次对话按金币计费（VIP/SVIP 享折扣）。欢迎创建角色、剧本，并在剧场与多位 AI 同台联机演出。', pinned: 1 });
   insert('announcements', { author_id: gmu.id, title: 'Bug 赏金计划上线', body: '发现任何 bug 或体验问题，请提交至官方技术 QQ：3487923507，一经采纳奖励 100 金币起，重大问题另有钻石与 VIP 加码。你的每一条反馈都在帮幻域变得更好。', pinned: 1 });
   insert('announcements', { author_id: gmu.id, title: '新功能：活动中心 / 联机狂欢', body: '左侧新增「活动」入口：新人见面礼、限时联机狂欢、创作者联机大厅等你来领。剧场支持多位 AI 角色同台即兴联机演出。', pinned: 0 });
@@ -241,7 +246,7 @@ function bumpDaily(uid, key) { if (!uid) return; const d = dailyOf(uid); d.count
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
 function publicUser(u) {
-  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, creator_tier: creatorTier(u), created_at: u.created_at };
+  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, official: !!u.official, creator_tier: creatorTier(u), created_at: u.created_at };
 }
 function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '' }) {
   const u = user(uid);
@@ -416,11 +421,12 @@ function creatorScore(uid) {
 function creatorWorks(uid) { return filter('characters', c => c.owner_id === uid && c.is_public).length + filter('scripts', s => s.author_id === uid).length; }
 function topCreatorId() {
   let best = null, bestScore = 0;
-  table('users').forEach(u => { if (creatorWorks(u.id) > 0) { const sc = creatorScore(u.id); if (sc > bestScore) { bestScore = sc; best = u.id; } } });
+  table('users').forEach(u => { if (!u.official && creatorWorks(u.id) > 0) { const sc = creatorScore(u.id); if (sc > bestScore) { bestScore = sc; best = u.id; } } });
   return best;
 }
 function creatorTier(u) {
-  if (!u || creatorWorks(u.id) === 0) return null;
+  // Official accounts (官号) never carry creator certification.
+  if (!u || u.official || creatorWorks(u.id) === 0) return null;
   if (u.id === topCreatorId()) return 'gold';
   if (creatorScore(u.id) >= KNOWN_CREATOR_SCORE) return 'yellow';
   return 'bronze';
@@ -433,6 +439,8 @@ function councilCfg() { if (!db.council) { db.council = { seats_override: null, 
 function baseSeats() { return Math.floor(table('users').length / USERS_PER_SEAT); }
 // Effective seats: GM override wins; otherwise auto from population (floored to a minimum).
 function councilSeats() { const c = councilCfg(); return c.seats_override != null ? c.seats_override : Math.max(MIN_SEATS, baseSeats()); }
+// When the chamber is locked (GM 封锁), the parliament is suspended indefinitely.
+function parliamentLocked() { return !!councilCfg().locked; }
 
 /* ----------------------------- parliament ----------------------------- */
 function councilSize() { return filter('users', u => u.is_councilor).length; }
@@ -956,9 +964,10 @@ async function route(method, path, search, body, headers) {
       .map(c => ({ id: c.id, name: c.name, avatar: c.avatar, likes: c.likes, uses: c.uses, views: c.views, owner_name: user(c.owner_id)?.display_name }));
     const scripts = filter('scripts', () => true).sort((a, b) => (b.plays - a.plays) || (b.likes - a.likes)).slice(0, 20)
       .map(s => ({ id: s.id, title: s.title, cover: s.cover, plays: s.plays, likes: s.likes, price_gold: s.price_gold, author_name: user(s.author_id)?.display_name }));
-    const authors = filter('users', u => !u.is_banned).map(u => ({ id: u.id, display_name: u.display_name, avatar: u.avatar,
-      score: filter('characters', c => c.owner_id === u.id).reduce((s, c) => s + (c.likes || 0), 0) + filter('scripts', x => x.author_id === u.id).reduce((s, x) => s + (x.likes || 0), 0),
-      chars: filter('characters', c => c.owner_id === u.id && c.is_public).length }))
+    const authors = filter('users', u => !u.is_banned && !u.official && creatorWorks(u.id) > 0).map(u => ({ id: u.id, display_name: u.display_name, avatar: u.avatar,
+      verified: !!u.verified, creator_tier: creatorTier(u), score: creatorScore(u.id),
+      chars: filter('characters', c => c.owner_id === u.id && c.is_public).length,
+      scripts: filter('scripts', x => x.author_id === u.id).length }))
       .sort((a, b) => b.score - a.score).slice(0, 20);
     return J({ characters, scripts, authors });
   }
@@ -976,7 +985,11 @@ async function route(method, path, search, body, headers) {
   // ---------- parliament (议会提案系统) ----------
   if (path === '/parliament/overview' && method === 'GET') {
     need(); const c = councilCfg();
-    return J({ is_councilor: !!me.is_councilor, is_gm: !!me.is_gm, council_size: councilSize(), seats: councilSeats(), term: c.term || 1, me_id: me.id, thresholds: { general: 0.5, special: 2 / 3 } });
+    return J({ is_councilor: !!me.is_councilor, is_gm: !!me.is_gm, council_size: councilSize(), seats: councilSeats(), term: c.term || 1, locked: !!c.locked, locked_at: c.locked_at || null, me_id: me.id, thresholds: { general: 0.5, special: 2 / 3 } });
+  }
+  // While the chamber is locked, every proposal/vote mutation is suspended.
+  if (path.startsWith('/parliament/proposals') && method !== 'GET' && parliamentLocked()) {
+    return E('幻域议会当前已休会（GM 封锁中），暂停受理一切提案与表决，静待复会。', 423);
   }
   if (path === '/parliament/proposals' && method === 'GET') {
     need();
@@ -1097,7 +1110,12 @@ async function route(method, path, search, body, headers) {
   if (path === '/admin/council' && method === 'GET') {
     gmOnly(); const c = councilCfg(); const seats = councilSeats(); const cur = councilSize();
     return J({ council: { total_users: table('users').length, per_seat: USERS_PER_SEAT, min_seats: MIN_SEATS, base_seats: baseSeats(),
-      seats, seats_override: c.seats_override, councilors: cur, vacancies: Math.max(0, seats - cur), over: cur > seats, term: c.term || 1, term_started_at: c.term_started_at } });
+      seats, seats_override: c.seats_override, councilors: cur, vacancies: Math.max(0, seats - cur), over: cur > seats, term: c.term || 1, term_started_at: c.term_started_at, locked: !!c.locked, locked_at: c.locked_at || null } });
+  }
+  if (path === '/admin/council/lock' && method === 'POST') {
+    gmOnly(); const c = councilCfg(); c.locked = !!body.value; c.locked_at = c.locked ? now() : null; save();
+    filter('users', u => u.is_councilor).forEach(u => notify(u.id, c.locked ? '幻域议会已被管理层宣布无限期休会，暂停一切议事，静待复会通知。' : '幻域议会已恢复运作，现可正常提交提案与表决。', '/parliament'));
+    return J({ ok: true, locked: c.locked });
   }
   if (path === '/admin/council' && method === 'PUT') {
     gmOnly(); const c = councilCfg();

@@ -327,6 +327,7 @@ export default function Chat() {
             )}
 
             <div className={'chat-scroll font-' + fontSize} ref={scrollRef} onScroll={onScroll}>
+              <div className="chat-thread">
               {messages.map((m, i) => {
                 const q = searchQ.trim().toLowerCase();
                 if (q && !(m.content || '').toLowerCase().includes(q)) return null;
@@ -377,6 +378,7 @@ export default function Chat() {
                 </div>
                 );
               })}
+              </div>
             </div>
 
             {!atBottom && (

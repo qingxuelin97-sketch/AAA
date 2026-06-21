@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { uploadFile } from './api.jsx';
-import { UploadCloud, UserRound, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { UploadCloud, UserRound, CheckCircle2, AlertTriangle, Info, Scale } from 'lucide-react';
 import { FACE_PRESETS, ANIME_PRESETS, ONLINE_AV } from './faces.js';
 
 const STATIC_IMG = 'image/png,image/jpeg,image/webp,image/avif';
@@ -89,6 +89,15 @@ export function CreatorV({ tier, size = 15 }) {
   if (!info) return null;
   return (
     <span className={'creator-v ' + info.cls} title={info.label} style={{ width: size, height: size, fontSize: Math.round(size * 0.62) }}>V</span>
+  );
+}
+
+// Refined councilor (议员) insignia — navy & gold with a scales-of-justice glyph.
+export function CouncilorBadge({ size = 13 }) {
+  return (
+    <span className="council-badge" title="幻域议会议员">
+      <Scale size={Math.round(size * 0.82)} /> 议员
+    </span>
   );
 }
 

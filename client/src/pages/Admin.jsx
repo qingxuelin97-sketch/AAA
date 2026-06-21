@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, Modal } from '../ui.jsx';
+import { useToast, Avatar, Modal, CouncilorBadge } from '../ui.jsx';
 import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp } from 'lucide-react';
 
 export default function Admin() {
@@ -111,7 +111,7 @@ function UsersTab({ toast }) {
         <div key={u.id} className="adm-row">
           <Avatar src={u.avatar} name={u.display_name} size={40} />
           <div className="grow">
-            <b>{u.display_name} {u.is_gm && <span className="gm-tag">GM</span>} {u.is_councilor && <span className="gm-tag councilor-tag">议员</span>} {u.is_banned && <span className="ban-flag">已封禁</span>}</b>
+            <b>{u.display_name} {u.is_gm && <span className="gm-tag">GM</span>} {u.is_councilor && <CouncilorBadge size={12} />} {u.is_banned && <span className="ban-flag">已封禁</span>}</b>
             <div className="sub2">@{u.username} · U{u.id} · 金{u.gold}/钻{u.diamond}</div>
           </div>
           <div className="adm-actions">
@@ -390,7 +390,7 @@ function CouncilTab({ toast }) {
         {found.map(u => (
           <div key={u.id} className="adm-row">
             <Avatar src={u.avatar} name={u.display_name} size={36} />
-            <div className="grow"><b>{u.display_name} {u.is_councilor && <span className="gm-tag councilor-tag">议员</span>}</b><div className="sub2">@{u.username} · U{u.id}</div></div>
+            <div className="grow"><b>{u.display_name} {u.is_councilor && <CouncilorBadge size={12} />}</b><div className="sub2">@{u.username} · U{u.id}</div></div>
             <div className="adm-actions">
               <button className={'btn sm' + (u.is_councilor ? '' : ' primary')} onClick={() => setCouncil(u, !u.is_councilor)}>
                 <Landmark size={13} /> {u.is_councilor ? '免去议员' : '任命议员'}
