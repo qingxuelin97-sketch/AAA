@@ -30,6 +30,7 @@ import Events from './pages/Events.jsx';
 import Admin from './pages/Admin.jsx';
 import Gacha from './pages/Gacha.jsx';
 import Studio from './pages/Studio.jsx';
+import Parliament from './pages/Parliament.jsx';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/leaderboard" element={P(<Leaderboard />)} />
         <Route path="/events" element={P(<Events />)} />
         <Route path="/gacha" element={P(<Gacha />)} />
+        <Route path="/parliament" element={P(<Parliament />)} />
         <Route path="/admin" element={P(<Admin />)} />
         <Route path="/chats" element={P(<Chat />)} />
         <Route path="/chats/:id" element={P(<Chat />)} />

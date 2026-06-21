@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker } from '../ui.jsx';
 import { getThemeMode, setThemeMode } from '../theme.js';
-import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor } from 'lucide-react';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity } from 'lucide-react';
 
 // Well-known OpenAI-compatible providers (base URLs). Keys stay on the user side.
 const LLM_PRESETS = {
@@ -92,7 +92,16 @@ export default function Settings() {
     catch (e) { toast(e.message, 'err'); }
   };
 
-  const TABS = [['model', '语言模型', Cpu], ['voice', '语音模型', Volume2], ['account', '账号安全', UserCog], ['pref', '偏好', SlidersHorizontal]];
+  const clearConvs = async () => {
+    if (!confirm('确定清空你的全部对话记录？此操作不可撤销。')) return;
+    try { const d = await api('/settings/clear-conversations', { method: 'POST' }); toast(`已清空 ${d.removed} 段对话`); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  const clearLocal = () => {
+    try { localStorage.removeItem('recent_chars'); toast('已清除本机浏览痕迹'); } catch { toast('清除失败', 'err'); }
+  };
+
+  const TABS = [['model', '语言模型', Cpu], ['voice', '语音模型', Volume2], ['account', '账号安全', UserCog], ['privacy', '隐私', Lock], ['pref', '偏好', SlidersHorizontal]];
 
   return (
     <>
@@ -219,6 +228,61 @@ export default function Settings() {
               <div className="row">
                 <div className="field"><label>原密码</label><input className="input" type="password" value={pwd.old_password} onChange={e => setPwd({ ...pwd, old_password: e.target.value })} /></div>
                 <div className="field"><label>新密码</label><input className="input" type="password" value={pwd.new_password} onChange={e => setPwd({ ...pwd, new_password: e.target.value })} /></div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {tab === 'privacy' && (
+          <>
+            <div className="card" style={{ marginBottom: 20 }}>
+              <div className="section-title"><h2><ShieldCheck size={17} style={{ verticalAlign: -3, marginRight: 6 }} />隐私与可见性</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
+              <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>掌控谁能看到你、谁能联系你，以及你的数据如何被使用。设置即时保存于账号。</p>
+
+              <div className="field">
+                <label><Globe size={13} style={{ verticalAlign: -2, marginRight: 5 }} />主页可见范围</label>
+                <div className="seg seg-3">
+                  {[['public', '所有人'], ['followers', '仅关注者'], ['private', '仅自己']].map(([v, l]) => (
+                    <button key={v} type="button" className={(s.privacy_profile || 'public') === v ? 'active' : ''} onClick={() => set('privacy_profile', v)}>{l}</button>
+                  ))}
+                </div>
+                <div className="hint">控制谁可以浏览你的个人主页、作品与资料。</div>
+              </div>
+
+              <div className="field">
+                <label><Users size={13} style={{ verticalAlign: -2, marginRight: 5 }} />谁可以私信我</label>
+                <div className="seg seg-3">
+                  {[['all', '所有人'], ['followers', '仅关注者'], ['none', '关闭私信']].map(([v, l]) => (
+                    <button key={v} type="button" className={(s.allow_dm || 'all') === v ? 'active' : ''} onClick={() => set('allow_dm', v)}>{l}</button>
+                  ))}
+                </div>
+              </div>
+
+              {[
+                ['show_online', '显示在线状态', '允许他人看到你当前是否在线', Activity],
+                ['discoverable', '允许被搜索与推荐', '关闭后你的角色与主页不会出现在搜索 / 推荐中', Eye],
+                ['activity_visible', '公开我的动态', '在社区与主页展示我发布的动态与互动', Globe],
+                ['leaderboard_visible', '出现在排行榜', '关闭后你不会出现在任何排行榜上', Users],
+                ['read_receipts', '已读回执', '关闭后不向对方发送 / 显示已读状态', EyeOff],
+                ['personalize', '个性化推荐', '依据你的浏览与互动优化广场推荐内容', SlidersHorizontal],
+              ].map(([k, t, d, Ic]) => (
+                <label className="switch priv-row" key={k}>
+                  <div className="priv-tx"><span className="priv-ic"><Ic size={15} /></span><div><b>{t}</b><div className="muted" style={{ fontSize: 12.5 }}>{d}</div></div></div>
+                  <span><input type="checkbox" checked={!!s[k]} onChange={e => set(k, e.target.checked ? 1 : 0)} /><span className="track" /></span>
+                </label>
+              ))}
+            </div>
+
+            <div className="card priv-danger">
+              <div className="section-title"><h2><Trash2 size={16} style={{ verticalAlign: -3, marginRight: 6 }} />数据管理</h2></div>
+              <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>这些操作不可撤销，请谨慎执行。</p>
+              <div className="priv-data-row">
+                <div><b>清除本机浏览痕迹</b><div className="muted" style={{ fontSize: 12.5 }}>清空「最近浏览」等仅存于本设备的记录</div></div>
+                <button className="btn sm" onClick={clearLocal}><EyeOff size={14} /> 清除痕迹</button>
+              </div>
+              <div className="priv-data-row">
+                <div><b>清空全部对话记录</b><div className="muted" style={{ fontSize: 12.5 }}>永久删除你与所有角色的对话与消息</div></div>
+                <button className="btn sm danger" onClick={clearConvs}><Trash2 size={14} /> 清空对话</button>
               </div>
             </div>
           </>

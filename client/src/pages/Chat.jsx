@@ -2,9 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3 } from 'lucide-react';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
+const FONT_KEY = 'huanyu_chat_font';
+const AUTOREAD_KEY = 'huanyu_chat_autoread';
+const REACTIONS = ['❤️', '😂', '👍', '😮', '😢', '🔥'];
 const STARTERS = ['你好呀～', '很高兴认识你！', '*微笑着向你打招呼*', '今天过得怎么样？', '我们聊点什么好呢？'];
 const QUICK_ACTIONS = ['*微笑*', '*点头*', '*脸红*', '*轻笑*', '*歪头*', '*叹气*', '*眨眨眼*', '*沉默不语*', '*牵起你的手*', '*轻轻拥抱*', '😊', '😳', '🥰', '😢'];
 
@@ -43,8 +46,18 @@ export default function Chat() {
   const [memories, setMemories] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [newMem, setNewMem] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState('');
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem(FONT_KEY) || 'md');
+  const [autoRead, setAutoRead] = useState(() => localStorage.getItem(AUTOREAD_KEY) === '1');
+  const [reactFor, setReactFor] = useState(null);
   const scrollRef = useRef();
   const abortRef = useRef(null);
+  const autoReadRef = useRef(autoRead);
+  useEffect(() => { autoReadRef.current = autoRead; }, [autoRead]);
+  const setFont = (v) => { setFontSize(v); localStorage.setItem(FONT_KEY, v); };
+  const toggleAutoRead = () => setAutoRead(v => { const n = !v; localStorage.setItem(AUTOREAD_KEY, n ? '1' : '0'); return n; });
   const syncMessages = () => api('/chat/conversations/' + id).then(d => { setMessages(d.messages); setAffinity(d.conversation.affinity || 0); setMemories(d.conversation.memories || []); }).catch(() => {});
 
   const addMemory = async () => {
@@ -73,6 +86,36 @@ export default function Chat() {
     catch (e) { toast(e.message, 'err'); }
   };
   const toggleList = () => setListMini(v => { const n = !v; localStorage.setItem(LIST_KEY, n ? '1' : '0'); return n; });
+
+  const renameConv = async () => {
+    const t = window.prompt('重命名对话', conv?.title || ''); if (t == null) return;
+    const v = t.trim(); if (!v) return;
+    try { await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { title: v } }); setConv(c => ({ ...c, title: v })); loadConvs(); toast('已重命名'); }
+    catch (e) { toast(e.message, 'err'); } finally { setMenuOpen(false); }
+  };
+  const clearConv = async () => {
+    setMenuOpen(false);
+    if (!confirm('清空本对话的全部消息？将保留角色开场白，好感度归零。')) return;
+    try { const d = await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { clear: true } }); setMessages(d.messages); setAffinity(0); toast('对话已清空'); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  const exportConv = () => {
+    setMenuOpen(false);
+    const md = `# 与「${character?.name || '角色'}」的对话\n\n` +
+      messages.filter(m => m.content).map(m => `**${m.role === 'user' ? '我' : (character?.name || '角色')}：**\n\n${m.content}`).join('\n\n---\n\n');
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `${character?.name || '对话'}-${id}.md`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast('已导出 Markdown');
+  };
+  const react = async (msg, emoji) => {
+    setReactFor(null);
+    if (!msg.id) return;
+    try { const d = await api(`/chat/conversations/${id}/messages/${msg.id}/react`, { method: 'POST', body: { reaction: emoji } });
+      setMessages(ms => ms.map(x => x.id === msg.id ? { ...x, reaction: d.message.reaction } : x)); }
+    catch (e) { toast(e.message, 'err'); }
+  };
 
   const loadConvs = () => api('/chat/conversations').then(d => setConvs(d.conversations)).catch(() => {});
   useEffect(() => { loadConvs(); }, []);
@@ -131,7 +174,12 @@ export default function Chat() {
           } catch (err) { if (err.message && !err.message.includes('JSON')) throw err; }
         }
       }
-      setMessages(m => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], _streaming: false }; return c; });
+      setMessages(m => {
+        const c = [...m]; const last = c[c.length - 1];
+        c[c.length - 1] = { ...last, _streaming: false };
+        if (autoReadRef.current && last?.content) setTimeout(() => speak(last.content), 120);
+        return c;
+      });
       loadConvs();
       refreshUser?.();
       syncMessages(); // pull server IDs so edit/delete work on the new turn
@@ -243,10 +291,46 @@ export default function Chat() {
                   <span className="af-tx"><b>{af.name}</b><i><em style={{ width: af.pct + '%' }} /></i></span>
                 </button>
               ); })()}
+              <div className="chat-tools">
+                <button className={'speak chat-tool' + (searchOpen ? ' on' : '')} onClick={() => { setSearchOpen(o => !o); setSearchQ(''); }} title="对话内搜索"><Search size={17} /></button>
+                <div className="chat-menu-wrap">
+                  <button className={'speak chat-tool' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
+                  {menuOpen && (
+                    <>
+                      <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />
+                      <div className="chat-menu">
+                        <button onClick={renameConv}><Edit3 size={15} /> 重命名对话</button>
+                        <button onClick={exportConv}><Download size={15} /> 导出为 Markdown</button>
+                        <button className="danger" onClick={clearConv}><Eraser size={15} /> 清空消息</button>
+                        <div className="chat-menu-sep" />
+                        <div className="chat-menu-row"><span><Type size={15} /> 字号</span>
+                          <div className="seg seg-mini">
+                            {[['sm', '小'], ['md', '中'], ['lg', '大']].map(([v, l]) => (
+                              <button key={v} className={fontSize === v ? 'active' : ''} onClick={() => setFont(v)}>{l}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <button onClick={toggleAutoRead}><Volume2 size={15} /> 自动朗读 <span className={'chat-menu-toggle' + (autoRead ? ' on' : '')}>{autoRead ? '已开启' : '已关闭'}</span></button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
+            {searchOpen && (
+              <div className="chat-search">
+                <Search size={15} className="muted" />
+                <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="在本对话中搜索…" onKeyDown={e => e.key === 'Escape' && (setSearchOpen(false), setSearchQ(''))} />
+                {searchQ && <span className="muted" style={{ fontSize: 12 }}>{messages.filter(mm => mm.content?.toLowerCase().includes(searchQ.toLowerCase())).length} 条</span>}
+                <button className="speak" onClick={() => { setSearchOpen(false); setSearchQ(''); }}><X size={15} /></button>
+              </div>
+            )}
 
-            <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
-              {messages.map((m, i) => (
+            <div className={'chat-scroll font-' + fontSize} ref={scrollRef} onScroll={onScroll}>
+              {messages.map((m, i) => {
+                const q = searchQ.trim().toLowerCase();
+                if (q && !(m.content || '').toLowerCase().includes(q)) return null;
+                return (
                 <div key={m.id || i} className={'msg ' + m.role}>
                   {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={36} />}
                   <div>
@@ -262,6 +346,7 @@ export default function Chat() {
                     ) : (
                       <div className="bubble">
                         {m.content || (m._streaming && <span className="typing"><span></span><span></span><span></span></span>)}
+                        {m.reaction && <span className="msg-reaction" title="我的反应">{m.reaction}</span>}
                       </div>
                     )}
                     {!m._streaming && m.content && editingId !== m.id && (
@@ -270,6 +355,19 @@ export default function Chat() {
                           <button className="speak" onClick={() => speak(m.content)}><Volume2 size={13} /> 朗读</button>
                           <button className="speak" onClick={() => copyMsg(m.content)}><Copy size={13} /> 复制</button>
                           {i === messages.length - 1 && <button className="speak" onClick={regenerate} disabled={streaming}><RotateCcw size={13} /> 重新生成</button>}
+                          {m.id && (
+                            <div className="react-wrap">
+                              <button className="speak" onClick={() => setReactFor(reactFor === m.id ? null : m.id)}><Smile size={13} /> 反应</button>
+                              {reactFor === m.id && (
+                                <>
+                                  <div className="react-mask" onClick={() => setReactFor(null)} />
+                                  <div className="react-pop">
+                                    {REACTIONS.map(e => <button key={e} className={m.reaction === e ? 'on' : ''} onClick={() => react(m, e)}>{e}</button>)}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </>}
                         {m.role === 'user' && <button className="speak" onClick={() => startEdit(m)} disabled={streaming}><Pencil size={13} /> 编辑</button>}
                         {m.id && <button className="speak" onClick={() => delMsg(m)} disabled={streaming}><Trash2 size={13} /> 删除</button>}
@@ -277,7 +375,8 @@ export default function Chat() {
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {!atBottom && (

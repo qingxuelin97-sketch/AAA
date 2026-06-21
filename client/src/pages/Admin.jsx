@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
-import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu } from 'lucide-react';
+import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp } from 'lucide-react';
 
 export default function Admin() {
   const toast = useToast();
@@ -20,24 +20,22 @@ export default function Admin() {
   return (
     <>
       <div className="topbar">
-        <div style={{ flex: 1 }}><h1><Shield size={18} style={{ verticalAlign: '-3px' }} /> GM 控制台</h1><div className="sub">用户 · 内容 · 兑换码 · 举报</div></div>
+        <div style={{ flex: 1 }}><h1><Shield size={18} style={{ verticalAlign: '-3px' }} /> GM 控制台</h1><div className="sub">总览 · 用户 · 内容 · 议会 · 兑换码 · 举报 · 平台</div></div>
       </div>
       <div className="page">
         {!ready ? <div className="empty">载入中…</div> : denied ? (
           <div className="empty"><div className="big"><Shield size={46} /></div>需要 GM 权限</div>
         ) : (
           <>
-            <div className="seg" style={{ marginBottom: 18 }}>
-              <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>总览</button>
-              <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>用户</button>
-              <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>
-              <button className={tab === 'codes' ? 'active' : ''} onClick={() => setTab('codes')}>兑换码</button>
-              <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}>举报</button>
-              <button className={tab === 'platform' ? 'active' : ''} onClick={() => setTab('platform')}>平台AI</button>
+            <div className="tabs-bar adm-tabs" style={{ marginBottom: 18 }}>
+              {[['overview', '总览', TrendingUp], ['users', '用户', Users], ['content', '内容', ScrollText], ['council', '议会', Landmark], ['codes', '兑换码', Tag], ['reports', '举报', AlertTriangle], ['platform', '平台AI', Cpu]].map(([k, l, Ic]) => (
+                <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}><Ic size={14} style={{ verticalAlign: -2, marginRight: 5 }} />{l}</button>
+              ))}
             </div>
             {tab === 'overview' && <Overview toast={toast} />}
             {tab === 'users' && <UsersTab toast={toast} />}
             {tab === 'content' && <ContentTab toast={toast} />}
+            {tab === 'council' && <CouncilTab toast={toast} />}
             {tab === 'codes' && <CodesTab toast={toast} />}
             {tab === 'reports' && <ReportsTab toast={toast} />}
             {tab === 'platform' && <PlatformTab toast={toast} />}
@@ -50,21 +48,41 @@ export default function Admin() {
 
 function Overview({ toast }) {
   const [stats, setStats] = useState(null);
+  const [msg, setMsg] = useState('');
+  const [link, setLink] = useState('');
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     api('/admin/stats').then(d => setStats(d.stats)).catch(e => toast(e.message, 'err'));
     /* eslint-disable-next-line */
   }, []);
   if (!stats) return <div className="empty">载入中…</div>;
   const items = [
-    [stats.users, '用户'], [stats.characters, '角色'], [stats.scripts, '剧本'],
-    [stats.moments, '动态'], [stats.banned, '封禁'], [stats.reports, '待处理举报'],
+    [stats.users, '用户', Users], [stats.characters, '角色', Crown], [stats.scripts, '剧本', ScrollText],
+    [stats.conversations, '对话', MessageSquare], [stats.councilors, '议员', Landmark], [stats.proposals, '待办提案', Gavel],
+    [stats.checkins_today, '今日签到', UserCheck], [stats.banned, '封禁', Ban], [stats.reports, '待处理举报', AlertTriangle],
   ];
+  const broadcast = async () => {
+    if (!msg.trim()) { toast('请输入广播内容', 'err'); return; }
+    if (!confirm('向全体未封禁用户推送这条系统通知？')) return;
+    setBusy(true);
+    try { const d = await api('/admin/broadcast', { method: 'POST', body: { text: msg.trim(), link: link.trim() } }); toast(`已推送给 ${d.count} 位用户`); setMsg(''); setLink(''); }
+    catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+  };
   return (
-    <div className="adm-stats">
-      {items.map(([n, label]) => (
-        <div key={label} className="adm-stat"><b>{n ?? 0}</b><span>{label}</span></div>
-      ))}
-    </div>
+    <>
+      <div className="adm-stats adm-stats-rich">
+        {items.map(([n, label, Ic]) => (
+          <div key={label} className="adm-stat"><span className="adm-stat-ic"><Ic size={16} /></span><b>{n ?? 0}</b><span>{label}</span></div>
+        ))}
+      </div>
+      <div className="card" style={{ marginTop: 18 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 17 }}><Radio size={16} style={{ verticalAlign: -3, marginRight: 6 }} />全站广播</h2>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>向所有用户推送一条系统通知（出现在每个人的通知中心）。</p>
+        <div className="field"><label>通知内容</label><textarea className="textarea" rows={3} value={msg} onChange={e => setMsg(e.target.value)} placeholder="例如：今晚 20:00 联机狂欢开启，登录即领限时礼包！" style={{ resize: 'vertical' }} /></div>
+        <div className="field"><label>跳转链接 <span className="muted">(可选)</span></label><input className="input" value={link} onChange={e => setLink(e.target.value)} placeholder="/events" /></div>
+        <button className="btn primary" disabled={busy} onClick={broadcast}><Radio size={15} /> 推送给全体</button>
+      </div>
+    </>
   );
 }
 
@@ -80,6 +98,7 @@ function UsersTab({ toast }) {
   const ban = (u) => { const reason = window.prompt('封禁理由'); if (reason === null) return; act(() => api(`/admin/users/${u.id}/ban`, { method: 'POST', body: { reason } })); };
   const unban = (u) => act(() => api(`/admin/users/${u.id}/unban`, { method: 'POST' }));
   const toggleGm = (u) => act(() => api(`/admin/users/${u.id}/gm`, { method: 'POST', body: { value: !u.is_gm } }));
+  const toggleCouncil = (u) => act(() => api(`/admin/users/${u.id}/councilor`, { method: 'POST', body: { value: !u.is_councilor } }));
 
   return (
     <>
@@ -91,7 +110,7 @@ function UsersTab({ toast }) {
         <div key={u.id} className="adm-row">
           <Avatar src={u.avatar} name={u.display_name} size={40} />
           <div className="grow">
-            <b>{u.display_name} {u.is_gm && <span className="gm-tag">GM</span>} {u.is_banned && <span className="ban-flag">已封禁</span>}</b>
+            <b>{u.display_name} {u.is_gm && <span className="gm-tag">GM</span>} {u.is_councilor && <span className="gm-tag councilor-tag">议员</span>} {u.is_banned && <span className="ban-flag">已封禁</span>}</b>
             <div className="sub2">@{u.username} · U{u.id} · 金{u.gold}/钻{u.diamond}</div>
           </div>
           <div className="adm-actions">
@@ -99,6 +118,7 @@ function UsersTab({ toast }) {
             {u.is_banned
               ? <button className="btn sm" onClick={() => unban(u)}><Check size={13} /> 解封</button>
               : <button className="btn sm danger" onClick={() => ban(u)}><Ban size={13} /> 封禁</button>}
+            <button className="btn sm" onClick={() => toggleCouncil(u)}><Landmark size={13} /> {u.is_councilor ? '免去议员' : '任命议员'}</button>
             <button className="btn sm" onClick={() => toggleGm(u)}><Crown size={13} /> {u.is_gm ? '撤销GM' : '设为GM'}</button>
           </div>
         </div>
@@ -293,6 +313,83 @@ function PlatformTab({ toast }) {
       {cfg.fee && <p className="muted" style={{ fontSize: 12.5 }}>计费规则：每次对话 {cfg.fee.base} 金币；单对话互动超 {cfg.fee.heavy_threshold} 条后 {cfg.fee.heavy} 金币（VIP 75 折 / SVIP 5 折，会员折扣在结算时自动应用）。</p>}
       <button className="btn primary" style={{ marginTop: 6 }} disabled={busy} onClick={save}><Check size={15} /> 保存并对全体生效</button>
     </div>
+  );
+}
+
+function CouncilTab({ toast }) {
+  const [councilors, setCouncilors] = useState([]);
+  const [proposals, setProposals] = useState([]);
+  const [q, setQ] = useState('');
+  const [found, setFound] = useState([]);
+
+  const load = () => {
+    api('/admin/councilors').then(d => setCouncilors(d.councilors || [])).catch(e => toast(e.message, 'err'));
+    api('/parliament/proposals').then(d => setProposals(d.proposals || [])).catch(e => toast(e.message, 'err'));
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+
+  const search = async () => { if (!q.trim()) { setFound([]); return; } try { const d = await api('/admin/users?q=' + encodeURIComponent(q)); setFound(d.users || []); } catch (e) { toast(e.message, 'err'); } };
+  const setCouncil = async (u, value) => { try { await api(`/admin/users/${u.id}/councilor`, { method: 'POST', body: { value } }); toast(value ? '已任命议员' : '已免去议员'); load(); search(); } catch (e) { toast(e.message, 'err'); } };
+  const pact = async (id, action) => { try { await api(`/parliament/proposals/${id}/${action}`, { method: 'POST' }); toast('已操作'); load(); } catch (e) { toast(e.message, 'err'); } };
+
+  const STLABEL = { pending: '待采纳', voting: '表决中', passed_general: '一般决议通过', passed_special: '特别决议通过', failed: '未通过', rejected: '已驳回' };
+  const pending = proposals.filter(p => p.status === 'pending' || p.status === 'voting');
+
+  return (
+    <>
+      <div className="card" style={{ marginBottom: 18 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 17 }}><Landmark size={16} style={{ verticalAlign: -3, marginRight: 6 }} />议员任命</h2>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>议员可发起公共提案并参与议会表决。当前共 <b>{councilors.length}</b> 位议员。</p>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+          <input className="input" placeholder="搜索用户名 / 昵称以任命" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()} style={{ flex: 1 }} />
+          <button className="btn" onClick={search}><Search size={15} /> 搜索</button>
+        </div>
+        {found.map(u => (
+          <div key={u.id} className="adm-row">
+            <Avatar src={u.avatar} name={u.display_name} size={36} />
+            <div className="grow"><b>{u.display_name} {u.is_councilor && <span className="gm-tag councilor-tag">议员</span>}</b><div className="sub2">@{u.username} · U{u.id}</div></div>
+            <div className="adm-actions">
+              <button className={'btn sm' + (u.is_councilor ? '' : ' primary')} onClick={() => setCouncil(u, !u.is_councilor)}>
+                <Landmark size={13} /> {u.is_councilor ? '免去议员' : '任命议员'}
+              </button>
+            </div>
+          </div>
+        ))}
+        <div style={{ marginTop: found.length ? 14 : 0 }}>
+          {councilors.length === 0 ? <div className="empty" style={{ padding: 20 }}>暂无议员</div> : (
+            <div className="council-chips">
+              {councilors.map(u => (
+                <span key={u.id} className="council-chip">
+                  <Avatar src={u.avatar} name={u.display_name} size={22} /> {u.display_name}
+                  <button onClick={() => setCouncil(u, false)} title="免去议员"><X size={12} /></button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 style={{ margin: '0 0 4px', fontSize: 17 }}><Gavel size={16} style={{ verticalAlign: -3, marginRight: 6 }} />提案审议</h2>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>采纳「待采纳」提案使其进入议员表决；表决中可随时计票公布结果（&gt;50% 一般决议，&gt;67% 特别决议）。</p>
+        {pending.length === 0 ? <div className="empty" style={{ padding: 20 }}>当前没有待处理的提案</div> : pending.map(p => {
+          const t = p.live_tally || { for: 0, against: 0, abstain: 0, total: 0, ratio: 0 };
+          return (
+            <div key={p.id} className="adm-row" style={{ alignItems: 'flex-start' }}>
+              <div className="grow">
+                <b>{p.title} <span className={'pl-status ' + (p.status === 'voting' ? 'voting' : 'pending')} style={{ marginLeft: 4 }}>{STLABEL[p.status]}</span></b>
+                <div className="sub2">提案人 {p.author_name} · 赞成 {t.for} / 反对 {t.against} / 弃权 {t.abstain}（{Math.round((t.ratio || 0) * 100)}%）</div>
+              </div>
+              <div className="adm-actions">
+                {p.status === 'pending' && <button className="btn sm primary" onClick={() => pact(p.id, 'adopt')}><Check size={13} /> 采纳</button>}
+                {p.status === 'voting' && <button className="btn sm primary" onClick={() => pact(p.id, 'close')}><Scale size={13} /> 计票</button>}
+                <button className="btn sm" onClick={() => pact(p.id, 'reject')}><X size={13} /> 驳回</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 

@@ -6,7 +6,7 @@ import { getThemeMode, resolveTheme, setThemeMode } from '../theme.js';
 import {
   Search, Compass, PartyPopper, Dices, ScrollText, Users, Trophy, Megaphone,
   MessageCircle, Drama, Library, TrendingUp, Heart, Wallet, Bell, Settings,
-  Sparkles, UserPlus, Moon, Sun, LogOut, CornerDownLeft, Command, ArrowUp, ArrowDown
+  Sparkles, UserPlus, Moon, Sun, LogOut, CornerDownLeft, Command, ArrowUp, ArrowDown, Landmark
 } from 'lucide-react';
 
 // Flat list of navigable destinations (mirrors the sidebar) + quick actions.
@@ -17,6 +17,7 @@ const NAV = [
   { to: '/scripts', ic: ScrollText, label: '剧本', kw: 'scripts juben' },
   { to: '/community', ic: Users, label: '社区', kw: 'community shequ' },
   { to: '/leaderboard', ic: Trophy, label: '排行榜', kw: 'leaderboard paihang' },
+  { to: '/parliament', ic: Landmark, label: '议会 · 提案', kw: 'parliament yihui tian proposal' },
   { to: '/announcements', ic: Megaphone, label: '公告', kw: 'announcements gonggao' },
   { to: '/chats', ic: MessageCircle, label: '对话', kw: 'chats duihua' },
   { to: '/groups', ic: Users, label: '群聊', kw: 'groups qunliao' },

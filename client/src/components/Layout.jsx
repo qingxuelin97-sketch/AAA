@@ -9,7 +9,7 @@ import ScrollChrome from './ScrollChrome.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -22,6 +22,7 @@ const GROUPS = [
     { to: '/scripts', ic: ScrollText, label: '剧本' },
     { to: '/community', ic: Users, label: '社区' },
     { to: '/leaderboard', ic: Trophy, label: '排行榜' },
+    { to: '/parliament', ic: Landmark, label: '议会' },
     { to: '/announcements', ic: Megaphone, label: '公告' },
     { to: '/search', ic: Search, label: '搜索' }
   ] },

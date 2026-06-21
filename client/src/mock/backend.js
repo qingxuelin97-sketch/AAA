@@ -70,6 +70,22 @@ function migrate() {
     if (owner) makeAnimeChar(owner.id);
     db._mig.anime_char = 1;
   }
+  if (!db._mig.parliament) {
+    // Seed a starter council + a few public proposals so the chamber isn't empty.
+    const byName = (n) => find('users', u => u.username === n);
+    const council = ['demo', 'astra', 'mochi', 'kenji'].map(byName).filter(Boolean);
+    council.forEach(u => { u.is_councilor = 1; });
+    const demo = byName('demo'), astra = byName('astra'), mochi = byName('mochi'), kenji = byName('kenji');
+    if (demo) {
+      const p1 = insert('proposals', { author_id: astra?.id || demo.id, title: '设立「创作者激励金」每月评选优秀角色', body: '建议平台每月从公开角色中评选 10 个高口碑作品，向作者发放金币与钻石激励，鼓励高质量创作，繁荣广场生态。', status: 'voting', adopted_at: now() });
+      // a couple of seed votes so tallies are visible
+      [['demo', 'for'], ['mochi', 'for'], ['kenji', 'against']].forEach(([n, c]) => { const u = byName(n); if (u) insert('proposal_votes', { proposal_id: p1.id, user_id: u.id, choice: c }); });
+      insert('proposals', { author_id: mochi?.id || demo.id, title: '公约：广场禁止发布引战与人身攻击内容', body: '为维护社区氛围，提议将「禁止引战、人身攻击、恶意刷屏」写入社区公约，违者由管理员依据举报处理。此为社区基本行为规范，建议作为特别决议确立。', status: 'pending' });
+      const p3 = insert('proposals', { author_id: kenji?.id || demo.id, title: '新增「武侠」专题活动月', body: '建议举办为期一个月的武侠题材专题活动，期间相关角色与剧本获得广场流量加权及专属徽章。', status: 'passed_general', adopted_at: now(), decided_at: now(), tally: { for: 3, against: 1, abstain: 1, total: 5, ratio: 0.6 } });
+      if (astra) insert('proposal_endorse', { proposal_id: p3.id, user_id: astra.id });
+    }
+    db._mig.parliament = 1;
+  }
 }
 
 // Build a ready-to-use 二次元 character card (anime avatar + anime chat background).
@@ -220,7 +236,7 @@ function bumpDaily(uid, key) { if (!uid) return; const d = dailyOf(uid); d.count
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
 function publicUser(u) {
-  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', created_at: u.created_at };
+  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, created_at: u.created_at };
 }
 function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '' }) {
   const u = user(uid);
@@ -379,6 +395,26 @@ const EVENTS = [
 ];
 
 function charView(c) { return { ...c, world: filter('world_entries', w => w.character_id === c.id).sort((a, b) => a.position - b.position) }; }
+
+/* ----------------------------- parliament ----------------------------- */
+function councilSize() { return filter('users', u => u.is_councilor).length; }
+// Build a public view of a proposal with live tallies + the caller's vote/endorsement.
+function proposalView(p, meId) {
+  const votes = filter('proposal_votes', v => v.proposal_id === p.id);
+  const live = { for: 0, against: 0, abstain: 0 };
+  votes.forEach(v => { live[v.choice] = (live[v.choice] || 0) + 1; });
+  const total = votes.length; live.total = total; live.ratio = total ? live.for / total : 0;
+  const endorses = filter('proposal_endorse', e => e.proposal_id === p.id);
+  const author = user(p.author_id);
+  return {
+    id: p.id, title: p.title, body: p.body, status: p.status,
+    author_id: p.author_id, author_name: author?.display_name || '已注销', author_avatar: author?.avatar, author_verified: !!author?.verified,
+    created_at: p.created_at, adopted_at: p.adopted_at || null, decided_at: p.decided_at || null,
+    live_tally: live, tally: p.tally || null, council_size: councilSize(),
+    my_vote: meId ? (votes.find(v => v.user_id === meId)?.choice || null) : null,
+    endorsements: endorses.length, my_endorsed: meId ? endorses.some(e => e.user_id === meId) : false,
+  };
+}
 function saveWorld(cid, world) {
   db.world_entries = filter('world_entries', w => w.character_id !== cid);
   if (Array.isArray(world)) world.forEach((w, i) => { if (w && (w.content || w.keys)) insert('world_entries', { character_id: cid, keys: w.keys || '', content: w.content || '', enabled: w.enabled === false ? 0 : 1, position: i }); });
@@ -435,8 +471,19 @@ async function route(method, path, search, body, headers) {
       if (body.voice_api_key) s.voice_api_key = body.voice_api_key;
       if (body.nsfw !== undefined) s.nsfw = body.nsfw ? 1 : 0;
       if (body.notify_email !== undefined) s.notify_email = body.notify_email ? 1 : 0;
+      // privacy
+      ['privacy_profile', 'allow_dm'].forEach(k => { if (typeof body[k] === 'string') s[k] = body[k]; });
+      ['show_online', 'discoverable', 'activity_visible', 'leaderboard_visible', 'read_receipts', 'personalize'].forEach(k => { if (body[k] !== undefined) s[k] = body[k] ? 1 : 0; });
       save(); return J({ settings: pubSettings(s, me) });
     }
+  }
+
+  // Privacy / data management — wipe all of the caller's conversations.
+  if (method === 'POST' && path === '/settings/clear-conversations') {
+    need(); const ids = filter('conversations', c => c.user_id === me.id).map(c => c.id);
+    db.conversations = filter('conversations', c => c.user_id !== me.id);
+    db.messages = filter('messages', x => !ids.includes(x.conversation_id));
+    save(); return J({ ok: true, removed: ids.length });
   }
 
   // Detect provider models (browser → provider directly). Protocol-aware.
@@ -554,7 +601,26 @@ async function route(method, path, search, body, headers) {
   if ((m = P(/^\/chat\/conversations\/(\d+)$/))) {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
     if (method === 'GET') { if (conv.affinity === undefined) conv.affinity = 0; if (!conv.memories) conv.memories = []; const ch = find('characters', x => x.id === conv.character_id); return J({ conversation: conv, character: ch ? charView(ch) : null, messages: filter('messages', x => x.conversation_id === conv.id) }); }
+    if (method === 'PATCH') {
+      if (typeof body.title === 'string' && body.title.trim()) conv.title = body.title.trim().slice(0, 60);
+      if (body.clear) {
+        // wipe the transcript but keep the character greeting as a fresh start
+        const ch = find('characters', x => x.id === conv.character_id);
+        db.messages = filter('messages', x => x.conversation_id !== conv.id);
+        if (ch?.greeting) insert('messages', { conversation_id: conv.id, role: 'assistant', content: ch.greeting });
+        conv.affinity = 0;
+      }
+      conv.updated_at = now(); save();
+      return J({ conversation: conv, messages: filter('messages', x => x.conversation_id === conv.id) });
+    }
     if (method === 'DELETE') { db.conversations = filter('conversations', c => c.id !== conv.id); db.messages = filter('messages', x => x.conversation_id !== conv.id); save(); return J({ ok: true }); }
+  }
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/messages\/(\d+)\/react$/)) && method === 'POST') {
+    need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
+    const msg = find('messages', x => x.id === +m[2] && x.conversation_id === conv.id); if (!msg) return E('消息不存在', 404);
+    const r = String(body.reaction || '').slice(0, 8);
+    msg.reaction = msg.reaction === r ? '' : r; save();
+    return J({ message: msg });
   }
   if ((m = P(/^\/chat\/conversations\/(\d+)\/complete$/)) && method === 'POST') {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
@@ -869,6 +935,79 @@ async function route(method, path, search, body, headers) {
   }
 
   // ---------- GM admin ----------
+  // ---------- parliament (议会提案系统) ----------
+  if (path === '/parliament/overview' && method === 'GET') {
+    need();
+    return J({ is_councilor: !!me.is_councilor, is_gm: !!me.is_gm, council_size: councilSize(), me_id: me.id, thresholds: { general: 0.5, special: 2 / 3 } });
+  }
+  if (path === '/parliament/proposals' && method === 'GET') {
+    need();
+    const order = { voting: 0, pending: 1, passed_special: 2, passed_general: 3, failed: 4, rejected: 5 };
+    const rows = [...table('proposals')].sort((a, b) => (order[a.status] - order[b.status]) || b.id - a.id).map(p => proposalView(p, me.id));
+    return J({ proposals: rows });
+  }
+  if (path === '/parliament/proposals' && method === 'POST') {
+    need(); if (!me.is_councilor) return E('仅议员可提交提案', 403);
+    const title = String(body.title || '').trim(); const text = String(body.body || '').trim();
+    if (!title) return E('请填写提案标题'); if (!text) return E('请填写提案内容');
+    const p = insert('proposals', { author_id: me.id, title: title.slice(0, 80), body: text.slice(0, 2000), status: 'pending' });
+    filter('users', u => u.is_gm).forEach(g => notify(g.id, `议员「${me.display_name}」提交了新提案，待采纳：${title.slice(0, 20)}`, '/parliament'));
+    return J({ proposal: proposalView(p, me.id) });
+  }
+  if ((m = P(/^\/parliament\/proposals\/(\d+)\/endorse$/)) && method === 'POST') {
+    need(); const p = find('proposals', x => x.id === +m[1]); if (!p) return E('提案不存在', 404);
+    const ex = find('proposal_endorse', e => e.proposal_id === p.id && e.user_id === me.id);
+    if (ex) db.proposal_endorse = filter('proposal_endorse', e => !(e.proposal_id === p.id && e.user_id === me.id));
+    else insert('proposal_endorse', { proposal_id: p.id, user_id: me.id });
+    save(); return J({ proposal: proposalView(p, me.id) });
+  }
+  if ((m = P(/^\/parliament\/proposals\/(\d+)\/vote$/)) && method === 'POST') {
+    need(); if (!me.is_councilor) return E('仅议员可参与表决', 403);
+    const p = find('proposals', x => x.id === +m[1]); if (!p) return E('提案不存在', 404);
+    if (p.status !== 'voting') return E('该提案当前不在表决阶段');
+    const choice = body.choice; if (!['for', 'against', 'abstain'].includes(choice)) return E('无效的表决选项');
+    const ex = find('proposal_votes', v => v.proposal_id === p.id && v.user_id === me.id);
+    if (ex) ex.choice = choice; else insert('proposal_votes', { proposal_id: p.id, user_id: me.id, choice });
+    save(); return J({ proposal: proposalView(p, me.id) });
+  }
+  if ((m = P(/^\/parliament\/proposals\/(\d+)\/adopt$/)) && method === 'POST') {
+    gmOnly(); const p = find('proposals', x => x.id === +m[1]); if (!p) return E('提案不存在', 404);
+    if (p.status !== 'pending') return E('只有「待采纳」状态的提案可被采纳');
+    p.status = 'voting'; p.adopted_at = now(); save();
+    notify(p.author_id, `你的提案「${p.title.slice(0, 20)}」已被采纳，进入议会表决阶段。`, '/parliament');
+    filter('users', u => u.is_councilor).forEach(c => notify(c.id, `新提案进入表决：「${p.title.slice(0, 20)}」，请前往议会投票。`, '/parliament'));
+    return J({ proposal: proposalView(p, me.id) });
+  }
+  if ((m = P(/^\/parliament\/proposals\/(\d+)\/reject$/)) && method === 'POST') {
+    gmOnly(); const p = find('proposals', x => x.id === +m[1]); if (!p) return E('提案不存在', 404);
+    if (p.status !== 'pending' && p.status !== 'voting') return E('该提案无法驳回');
+    p.status = 'rejected'; p.decided_at = now(); save();
+    notify(p.author_id, `你的提案「${p.title.slice(0, 20)}」未获采纳。`, '/parliament');
+    return J({ proposal: proposalView(p, me.id) });
+  }
+  if ((m = P(/^\/parliament\/proposals\/(\d+)\/close$/)) && method === 'POST') {
+    gmOnly(); const p = find('proposals', x => x.id === +m[1]); if (!p) return E('提案不存在', 404);
+    if (p.status !== 'voting') return E('只有表决中的提案可以计票结束');
+    const votes = filter('proposal_votes', v => v.proposal_id === p.id);
+    const tally = { for: 0, against: 0, abstain: 0 }; votes.forEach(v => { tally[v.choice]++; });
+    const total = votes.length; const ratio = total ? tally.for / total : 0;
+    let status = 'failed';
+    if (total > 0 && ratio > 2 / 3) status = 'passed_special';
+    else if (total > 0 && ratio > 0.5) status = 'passed_general';
+    p.status = status; p.tally = { ...tally, total, ratio }; p.decided_at = now(); save();
+    const label = status === 'passed_special' ? '特别决议通过' : status === 'passed_general' ? '一般决议通过' : '未获通过';
+    notify(p.author_id, `提案「${p.title.slice(0, 20)}」表决结束：${label}（赞成率 ${Math.round(ratio * 100)}%）。`, '/parliament');
+    return J({ proposal: proposalView(p, me.id) });
+  }
+  if ((m = P(/^\/parliament\/proposals\/(\d+)$/)) && method === 'DELETE') {
+    need(); const p = find('proposals', x => x.id === +m[1]); if (!p) return E('提案不存在', 404);
+    if (!me.is_gm && !(p.author_id === me.id && p.status === 'pending')) return E('无权删除该提案', 403);
+    db.proposals = filter('proposals', x => x.id !== p.id);
+    db.proposal_votes = filter('proposal_votes', v => v.proposal_id !== p.id);
+    db.proposal_endorse = filter('proposal_endorse', e => e.proposal_id !== p.id);
+    save(); return J({ ok: true });
+  }
+
   if (path === '/admin/check' && method === 'GET') { gmOnly(); return J({ is_gm: true }); }
   // Platform built-in AI service config — GM only (group-wide for all no-API users).
   if (path === '/admin/platform' && method === 'GET') {
@@ -887,19 +1026,38 @@ async function route(method, path, search, body, headers) {
   }
   if (path === '/admin/stats' && method === 'GET') {
     gmOnly();
+    const today = new Date().toISOString().slice(0, 10);
     return J({ stats: { users: table('users').length, characters: table('characters').length, scripts: table('scripts').length,
-      moments: table('moments').length, banned: filter('users', u => u.is_banned).length, reports: filter('reports', r => r.status === 'open').length } });
+      moments: table('moments').length, banned: filter('users', u => u.is_banned).length, reports: filter('reports', r => r.status === 'open').length,
+      conversations: table('conversations').length, councilors: filter('users', u => u.is_councilor).length,
+      proposals: filter('proposals', p => p.status === 'pending' || p.status === 'voting').length,
+      checkins_today: filter('users', u => u.last_checkin === today).length } });
   }
   if (path === '/admin/users' && method === 'GET') {
     gmOnly(); const q = (search.get('q') || '').trim(); let rows;
     if (!q) rows = [...table('users')].sort((a, b) => b.id - a.id).slice(0, 50);
     else if (/^\d+$/.test(q)) { const u = user(+q); rows = u ? [u] : []; }
     else { const k = q.toLowerCase(); rows = filter('users', u => (u.username + (u.display_name || '')).toLowerCase().includes(k)).slice(0, 50); }
-    return J({ users: rows.map(u => ({ id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, gold: u.gold, diamond: u.diamond, vip: isVip(u), is_gm: !!u.is_gm, is_banned: !!u.is_banned, ban_reason: u.ban_reason || '' })) });
+    return J({ users: rows.map(u => ({ id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, gold: u.gold, diamond: u.diamond, vip: isVip(u), is_gm: !!u.is_gm, is_councilor: !!u.is_councilor, is_banned: !!u.is_banned, ban_reason: u.ban_reason || '' })) });
   }
   if ((m = P(/^\/admin\/users\/(\d+)\/ban$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_banned = 1; u.ban_reason = body.reason || ''; save(); } return J({ ok: true }); }
   if ((m = P(/^\/admin\/users\/(\d+)\/unban$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_banned = 0; u.ban_reason = ''; save(); } return J({ ok: true }); }
   if ((m = P(/^\/admin\/users\/(\d+)\/gm$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_gm = body.value ? 1 : 0; save(); } return J({ ok: true }); }
+  if ((m = P(/^\/admin\/users\/(\d+)\/councilor$/)) && method === 'POST') {
+    gmOnly(); const u = user(+m[1]);
+    if (u) { u.is_councilor = body.value ? 1 : 0; save(); if (body.value) notify(u.id, '你已被任命为「幻域议会」议员，现在可以提交公共提案并参与议会表决。', '/parliament'); }
+    return J({ ok: true });
+  }
+  if (path === '/admin/councilors' && method === 'GET') {
+    gmOnly(); const rows = filter('users', u => u.is_councilor).map(u => ({ id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, verified: !!u.verified }));
+    return J({ councilors: rows });
+  }
+  if (path === '/admin/broadcast' && method === 'POST') {
+    gmOnly(); const text = String(body.text || '').trim(); if (!text) return E('广播内容不能为空');
+    const link = String(body.link || '').trim(); let n = 0;
+    table('users').forEach(u => { if (!u.is_banned) { notify(u.id, '📢 ' + text, link); n++; } });
+    return J({ ok: true, count: n });
+  }
   if (path === '/admin/gift' && method === 'POST') {
     gmOnly(); const target = body.user_id ? user(+body.user_id) : find('users', u => u.username === body.username || u.display_name === body.username);
     if (!target) return E('目标用户不存在', 404);
@@ -945,6 +1103,11 @@ async function route(method, path, search, body, headers) {
 function pubSettings(s, me) {
   const usingPlatform = !s.llm_api_key;
   return { llm_provider: s.llm_provider, llm_base_url: s.llm_base_url, llm_model: s.llm_model, llm_temperature: s.llm_temperature, llm_max_tokens: s.llm_max_tokens, voice_provider: s.voice_provider, voice_protocol: s.voice_protocol || 'openai', voice_base_url: s.voice_base_url, voice_model: s.voice_model, voice_name: s.voice_name, theme: s.theme, nsfw: s.nsfw, notify_email: s.notify_email, llm_api_key_set: !!s.llm_api_key, voice_api_key_set: !!s.voice_api_key,
+    // privacy (sensible defaults when unset)
+    privacy_profile: s.privacy_profile || 'public', allow_dm: s.allow_dm || 'all',
+    show_online: s.show_online === undefined ? 1 : s.show_online, discoverable: s.discoverable === undefined ? 1 : s.discoverable,
+    activity_visible: s.activity_visible === undefined ? 1 : s.activity_visible, leaderboard_visible: s.leaderboard_visible === undefined ? 1 : s.leaderboard_visible,
+    read_receipts: s.read_receipts === undefined ? 1 : s.read_receipts, personalize: s.personalize === undefined ? 1 : s.personalize,
     // Platform service status — surfaced to the UI, but never the credentials.
     using_platform: usingPlatform,
     platform_fee: usingPlatform ? { base: platformFee(me, 0), heavy: platformFee(me, PLATFORM_FEE.heavy_threshold + 1), heavy_threshold: PLATFORM_FEE.heavy_threshold, discount: memberDiscount(me) } : null };
