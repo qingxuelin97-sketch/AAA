@@ -1906,3 +1906,88 @@ body { -webkit-touch-callout: none; }
   border: 1px solid rgba(214,170,80,0.5); box-shadow: 0 1px 3px rgba(15,18,30,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
   vertical-align: middle; }
 .council-badge svg { color: #e8c878; filter: drop-shadow(0 0 3px rgba(232,200,120,0.4)); }
+
+/* ============================================================
+   议会 · 全局沉浸（整页化身议事殿堂）+ 礼乐
+   ============================================================ */
+/* 整页变样：在容器层覆盖主题变量，所有子组件自动换肤为殿堂配色 */
+.pl-immersive {
+  --panel: rgba(30,37,64,0.62);
+  --panel-2: rgba(22,28,50,0.55);
+  --bg-2: rgba(12,16,32,0.5);
+  --border: rgba(216,173,78,0.20);
+  --border-2: rgba(216,173,78,0.38);
+  --text: #f2ecd9;
+  --muted: #c5bda3;
+  --faint: #8e96ad;
+  color: #f2ecd9;
+  position: relative;
+  min-height: 100vh;
+}
+/* 殿堂背景（固定全屏，沉于内容之下） */
+.pl-atmos { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% -20%, #20294c 0%, #141a33 45%, #0b1022 100%);
+}
+.pl-atmos::before { content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(216,173,78,0.12), transparent 60%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 10px); }
+.pl-atmos-col { position: absolute; top: -4%; bottom: 18%; width: clamp(70px, 11vw, 150px); opacity: 0.5;
+  background:
+    linear-gradient(90deg, rgba(216,173,78,0.05), rgba(245,230,200,0.10) 18%, rgba(255,255,255,0.05) 32%, rgba(0,0,0,0.18) 52%, rgba(245,230,200,0.08) 70%, rgba(216,173,78,0.04));
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 8px, rgba(0,0,0,0.55) 9px 13px);
+  mask: repeating-linear-gradient(90deg, #000 0 8px, rgba(0,0,0,0.55) 9px 13px);
+  filter: blur(0.4px); }
+.pl-atmos-col.left { left: -2%; transform: skewX(-0.5deg); }
+.pl-atmos-col.right { right: -2%; transform: skewX(0.5deg); }
+.pl-atmos-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 30%;
+  background: linear-gradient(180deg, transparent, rgba(8,11,22,0.7) 60%, #070a16);
+  box-shadow: 0 -1px 60px rgba(216,173,78,0.06); }
+.pl-atmos-floor::after { content: ''; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+  width: 70%; height: 60%; background: radial-gradient(ellipse at bottom, rgba(216,173,78,0.14), transparent 70%); }
+.pl-atmos-vig { position: absolute; inset: 0; box-shadow: inset 0 0 220px 40px rgba(5,7,16,0.8); }
+
+/* 让主内容区透出殿堂背景（现代浏览器） */
+.main:has(.pl-immersive) { background: transparent; }
+body:has(.pl-immersive) { background: #0b1022; }
+
+/* 顶栏融入殿堂 */
+.pl-immersive .pl-topbar { background: linear-gradient(180deg, rgba(9,12,26,0.92), rgba(9,12,26,0.4) 70%, transparent); border-bottom: none; backdrop-filter: blur(8px); }
+.pl-immersive .pl-h1 { color: #fbf3df; }
+.pl-immersive .pl-sub { color: var(--au); }
+
+/* 玻璃质感卡片 + 文字换肤 */
+.pl-immersive .pl-doc { backdrop-filter: blur(10px) saturate(120%); box-shadow: 0 10px 34px rgba(5,8,18,0.4); }
+.pl-immersive .pl-charter, .pl-immersive .pl-tabs { backdrop-filter: blur(8px); }
+.pl-immersive .pl-tabs button.active { color: var(--au-hi); background: rgba(216,173,78,0.14); }
+.pl-immersive .btn:hover { background: rgba(255,255,255,0.08) !important; border-color: var(--border-2) !important; }
+.pl-immersive .btn.primary:hover { background-position: 100% 50%; }
+.pl-immersive .pl-charter-body li em { color: var(--au-hi); }
+.pl-immersive .pl-more, .pl-immersive .pl-gm-tag { color: var(--au-hi); }
+.pl-immersive .pl-modal-title { color: var(--text); }
+/* 议案标题/正文在玻璃卡上保持温润 */
+.pl-immersive .pl-title { color: #fbf3df; }
+.pl-immersive .pl-no { color: #b6ad8e; }
+
+/* ---------- 议会礼乐控件 ---------- */
+.pl-music { position: fixed; left: 22px; bottom: 26px; z-index: 46; display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 15px 9px 12px; border-radius: 30px; cursor: pointer; color: #f3e6c4;
+  background: linear-gradient(135deg, rgba(36,44,74,0.92), rgba(18,23,44,0.92)); border: 1px solid rgba(216,173,78,0.45);
+  box-shadow: 0 8px 24px rgba(6,9,20,0.45), inset 0 1px 0 rgba(255,255,255,0.06); backdrop-filter: blur(8px);
+  transition: transform 0.2s var(--spring), border-color 0.2s; animation: plMusicIn 0.6s 0.3s var(--spring) both; }
+@keyframes plMusicIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.pl-music:hover { transform: translateY(-2px); border-color: rgba(216,173,78,0.8); }
+.pl-music svg { color: #e8c878; flex-shrink: 0; }
+.pl-music-tx { font-size: 12.5px; font-family: var(--serif); letter-spacing: 0.04em; }
+.pl-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 13px; }
+.pl-eq i { width: 2.5px; height: 100%; border-radius: 2px; background: linear-gradient(180deg, #f3d68f, #c69a3e); transform-origin: bottom;
+  animation: plEq 0.9s ease-in-out infinite; }
+.pl-eq i:nth-child(1) { animation-delay: -0.1s; } .pl-eq i:nth-child(2) { animation-delay: -0.4s; }
+.pl-eq i:nth-child(3) { animation-delay: -0.7s; } .pl-eq i:nth-child(4) { animation-delay: -0.25s; }
+@keyframes plEq { 0%,100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+.pl-music.muted .pl-eq i { animation-play-state: paused; transform: scaleY(0.28); opacity: 0.5; }
+.pl-music.muted { color: #b6b0a0; border-color: var(--border); }
+.pl-music.muted svg { color: #9a9888; }
+@media (max-width: 760px) { .pl-music { bottom: 80px; left: 14px; padding: 8px 13px 8px 11px; } .pl-music-tx { display: none; } }
+@media (prefers-reduced-motion: reduce) { .pl-eq i { animation: none; } }

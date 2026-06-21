@@ -1,10 +1,42 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal, CountUp } from '../ui.jsx';
+import { startBgm, stopBgm, resume as resumeBgm, setMuted as setBgmMuted } from '../parliamentBgm.js';
 import {
   Gavel, Scale, ThumbsUp, ThumbsDown, MinusCircle, Check, X, Plus,
-  Users, Sparkles, BadgeCheck, Trash2, ChevronDown, ChevronUp, Lock, ScrollText, Feather
+  Users, Sparkles, BadgeCheck, Trash2, ChevronDown, ChevronUp, Lock, ScrollText, Feather, Music, VolumeX
 } from 'lucide-react';
+
+const BGM_KEY = 'huanyu_pl_bgm';
+
+// Forced ceremonial BGM for the chamber, with a tasteful mute control.
+function ChamberMusic() {
+  const [muted, setMuted] = useState(() => localStorage.getItem(BGM_KEY) === 'off');
+  useEffect(() => {
+    startBgm();
+    setBgmMuted(muted);
+    // Autoplay policy: resume the audio context on the first user gesture.
+    const kick = () => resumeBgm();
+    window.addEventListener('pointerdown', kick);
+    window.addEventListener('keydown', kick);
+    return () => {
+      window.removeEventListener('pointerdown', kick);
+      window.removeEventListener('keydown', kick);
+      stopBgm();
+    };
+  }, []); // eslint-disable-line
+  const toggle = () => {
+    const n = !muted; setMuted(n); setBgmMuted(n); resumeBgm();
+    localStorage.setItem(BGM_KEY, n ? 'off' : 'on');
+  };
+  return (
+    <button className={'pl-music' + (muted ? ' muted' : '')} onClick={toggle} title={muted ? '奏礼乐' : '止礼乐'} aria-label="议会礼乐">
+      {muted ? <VolumeX size={16} /> : <Music size={16} />}
+      <span className="pl-eq" aria-hidden="true"><i /><i /><i /><i /></span>
+      <span className="pl-music-tx">{muted ? '礼乐已止' : '议会礼乐'}</span>
+    </button>
+  );
+}
 
 // Grand council crest — scales of justice within a laurel wreath beneath a star,
 // drawn in gold leaf. Sits behind a slowly-rotating dotted ring + glow.
@@ -209,7 +241,14 @@ export default function Parliament() {
   })), []);
 
   return (
-    <div className="pl-root">
+    <div className="pl-root pl-immersive">
+      <div className="pl-atmos" aria-hidden="true">
+        <span className="pl-atmos-floor" />
+        <span className="pl-atmos-col left" />
+        <span className="pl-atmos-col right" />
+        <span className="pl-atmos-vig" />
+      </div>
+      <ChamberMusic />
       <div className="topbar pl-topbar">
         <div style={{ flex: 1 }}>
           <h1 className="pl-h1">幻域议会</h1>
