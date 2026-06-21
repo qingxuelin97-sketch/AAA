@@ -1345,3 +1345,36 @@ body { -webkit-touch-callout: none; }
 }
 .mnav-install { color: #fff !important; background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important; margin-top: 6px; font-weight: 600; }
 .mnav-install .ic { color: #fff; }
+
+/* ============ 画风升级 (visual polish v8) ============ */
+/* cinematic cover scrim + light sheen sweep on hover */
+.char-card .cover::after, .dcard-cover::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 52%, rgba(0,0,0,0.18) 100%);
+}
+.char-card .cover::before, .dcard-cover::before, .poster::before {
+  content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,0.22) 48%, transparent 62%);
+  transform: translateX(-130%); transition: transform 0.75s cubic-bezier(0.22,0.61,0.36,1);
+}
+.char-card:hover .cover::before, .dcard:hover .dcard-cover::before, .poster:hover::before { transform: translateX(130%); }
+/* warm accent glow on hover */
+.char-card:hover { box-shadow: 0 14px 34px rgba(217,119,87,0.15), var(--shadow-lg); border-color: rgba(217,119,87,0.35); }
+.dcard:hover { box-shadow: 0 16px 40px rgba(217,119,87,0.16), var(--shadow-lg); border-color: rgba(217,119,87,0.32); }
+.poster:hover { box-shadow: 0 18px 44px rgba(217,119,87,0.2), var(--shadow-lg); }
+[data-theme="dark"] .char-card:hover, [data-theme="dark"] .dcard:hover { box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(226,136,95,0.3); border-color: rgba(226,136,95,0.34); }
+/* featured poster: subtle golden ring + glow */
+.poster:has(.p-feat) { box-shadow: 0 0 0 1.5px rgba(201,150,47,0.5), var(--shadow); }
+.poster:has(.p-feat):hover { box-shadow: 0 0 0 2px rgba(201,150,47,0.7), 0 18px 46px rgba(201,150,47,0.28); }
+/* richer primary buttons (gradient) */
+.btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.send-btn { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+/* nicer placeholders */
+.char-card .cover .ph, .dcard-cover .ph { background: radial-gradient(120% 120% at 30% 20%, rgba(217,119,87,0.12), transparent 60%); }
+/* section titles get a small accent bar */
+.section-title h2 { display: flex; align-items: center; gap: 9px; }
+.section-title h2::before { content: ''; width: 4px; height: 1.05em; border-radius: 3px; background: linear-gradient(180deg, var(--accent), var(--accent-2)); flex-shrink: 0; }
+/* glassy category chips on covers */
+.dcard-cat, .poster .p-cat, .poster .p-feat { backdrop-filter: blur(8px) saturate(160%); }
+/* avatar gets a faint ring for depth */
+.avatar { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.14); }
