@@ -4,11 +4,15 @@ import { useAuth, api } from '../api.jsx';
 import { Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
+import CommandPalette from './CommandPalette.jsx';
+import ScrollChrome from './ScrollChrome.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
   BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download
 } from 'lucide-react';
+
+const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
 const GROUPS = [
   { title: '探索', items: [
@@ -110,7 +114,11 @@ export default function Layout({ children }) {
       )}
       <MobileTop user={user} unread={unread} onMenu={() => setMobileNav(true)} />
       {mobileNav && <MobileNav user={user} unread={unread} onClose={() => setMobileNav(false)} installEvt={installEvt} doInstall={doInstall} />}
-      <main className="main">{children}</main>
+      <main className="main">
+        <ScrollChrome />
+        <div className="route-fade" key={loc.pathname}>{children}</div>
+      </main>
+      <CommandPalette />
       <nav className="bottom-nav">
         {TABS.map(t => (
           <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => isActive ? 'active' : ''}>
@@ -155,6 +163,9 @@ function Sidebar({ user, unread, mode, peek, cycle, onLeave }) {
           {user?.verified && <span className="v-badge" title="官方认证"><BadgeCheck size={16} /></span>}
         </div>
       )}
+      {collapsed
+        ? <button className="nav-item sb-search-ic" onClick={openCmdk} title="搜索 (⌘K)" aria-label="搜索"><span className="ic"><Search size={18} /></span></button>
+        : <button className="sb-search" onClick={openCmdk}><Search size={15} /><span>搜索角色、页面…</span><kbd>⌘K</kbd></button>}
       <div className="sb-scroll" style={{ overflowY: 'auto', flex: 1, margin: '0 -4px', padding: '0 4px' }}>
         {GROUPS.map(g => (
           <div key={g.title}>
@@ -206,7 +217,7 @@ function MobileTop({ user, unread, onMenu }) {
       <button className="mt-menu" onClick={onMenu} aria-label="菜单"><Menu size={22} /></button>
       <b style={{ fontSize: 17, flex: 1 }}>幻域</b>
       <span className="coin gold" onClick={() => nav('/wallet')}><Coins size={13} /> {user?.gold ?? 0}</span>
-      <Search size={20} onClick={() => nav('/search')} />
+      <Search size={20} onClick={openCmdk} aria-label="搜索" />
       <div style={{ position: 'relative' }} onClick={() => nav('/notifications')}>
         <Bell size={20} />
         {unread > 0 && <span className="nb" style={{ position: 'absolute', top: -4, right: -6 }}>{unread}</span>}
