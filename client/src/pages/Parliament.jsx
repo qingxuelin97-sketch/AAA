@@ -1,66 +1,71 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, Modal } from '../ui.jsx';
+import { useToast, Avatar, Modal, CountUp } from '../ui.jsx';
 import {
   Gavel, Scale, ThumbsUp, ThumbsDown, MinusCircle, Check, X, Plus,
-  ShieldCheck, Users, Sparkles, BadgeCheck, Trash2, ChevronDown, ChevronUp, Lock, ScrollText
+  Users, Sparkles, BadgeCheck, Trash2, ChevronDown, ChevronUp, Lock, ScrollText, Feather
 } from 'lucide-react';
 
-// Formal council crest — scales of justice within a laurel wreath beneath a star.
-function Crest({ size = 64 }) {
+// Grand council crest — scales of justice within a laurel wreath beneath a star,
+// drawn in gold leaf. Sits behind a slowly-rotating dotted ring + glow.
+function Crest({ size = 92 }) {
   return (
-    <svg className="pl-crest" width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
-      <defs>
-        <linearGradient id="plg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f4d488" /><stop offset="55%" stopColor="#dca73a" /><stop offset="100%" stopColor="#b07d1e" />
-        </linearGradient>
-      </defs>
-      <g fill="none" stroke="url(#plg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="50" cy="50" r="46" strokeWidth="1.4" />
-        <circle cx="50" cy="50" r="41" strokeWidth="2.4" />
-        {/* star */}
-        <path d="M50 14 l2.6 5.4 5.9 .8 -4.3 4.1 1 5.9 -5.2 -2.8 -5.2 2.8 1-5.9 -4.3-4.1 5.9-.8z" fill="url(#plg)" stroke="none" />
-        {/* scales */}
-        <path d="M50 32 v40 M36 78 h28" />
-        <path d="M50 38 L30 46 M50 38 L70 46" />
-        <path d="M22 46 a8 8 0 0 0 16 0 z" fill="url(#plg)" fillOpacity="0.18" />
-        <path d="M62 46 a8 8 0 0 0 16 0 z" fill="url(#plg)" fillOpacity="0.18" />
-        {/* laurels */}
-        <path d="M30 74 C20 70 16 60 18 50" />
-        <path d="M70 74 C80 70 84 60 82 50" />
-        <path d="M22 56 q-4 1 -5 5 M21 63 q-4 1 -5 5 M24 49 q-4 0 -6 4" />
-        <path d="M78 56 q4 1 5 5 M79 63 q4 1 5 5 M76 49 q4 0 6 4" />
-      </g>
-    </svg>
+    <div className="pl-emblem" style={{ width: size, height: size }}>
+      <span className="pl-emblem-glow" />
+      <svg className="pl-emblem-ring" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="47" fill="none" stroke="url(#plgr)" strokeWidth="0.8" strokeDasharray="1.4 3.4" />
+        <defs><linearGradient id="plgr" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#f4d488" /><stop offset="100%" stopColor="#9c6f1c" /></linearGradient></defs>
+      </svg>
+      <svg className="pl-crest" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id="plg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fbe9b0" /><stop offset="48%" stopColor="#e2b54e" /><stop offset="100%" stopColor="#a9781f" />
+          </linearGradient>
+        </defs>
+        <g fill="none" stroke="url(#plg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="50" cy="50" r="40" strokeWidth="2.4" />
+          <path d="M50 13 l2.9 6 6.6 .9 -4.8 4.6 1.1 6.6 -5.8 -3.1 -5.8 3.1 1.1-6.6 -4.8-4.6 6.6-.9z" fill="url(#plg)" stroke="none" />
+          <path d="M50 32 v40 M36 78 h28" />
+          <path d="M50 38 L29 47 M50 38 L71 47" />
+          <path d="M21 47 a8.5 8.5 0 0 0 16 0 z" fill="url(#plg)" fillOpacity="0.2" />
+          <path d="M63 47 a8.5 8.5 0 0 0 16 0 z" fill="url(#plg)" fillOpacity="0.2" />
+          <path d="M30 74 C19 70 15 59 17 48 M70 74 C81 70 85 59 83 48" />
+          <path d="M21 55 q-4 1 -5 5 M20 62 q-4 1 -5 5 M23 48 q-4 0 -6 4" />
+          <path d="M79 55 q4 1 5 5 M80 62 q4 1 5 5 M77 48 q4 0 6 4" />
+        </g>
+      </svg>
+    </div>
   );
 }
 
 const STATUS = {
-  pending: { label: '征集中', seal: '待\n采', cls: 'pending', desc: '已公开，等待管理层采纳后付诸议员表决' },
-  voting: { label: '审议表决', seal: '表\n决', cls: 'voting', desc: '议员表决中：赞成 >50% 通过一般决议，>67% 通过特别决议' },
-  passed_general: { label: '一般决议 · 通过', seal: '通\n过', cls: 'g', desc: '赞成率逾半数，已作为一般决议通过' },
-  passed_special: { label: '特别决议 · 通过', seal: '特\n别', cls: 's', desc: '赞成率逾三分之二，已作为特别决议通过' },
-  failed: { label: '未获通过', seal: '未\n通', cls: 'failed', desc: '赞成率未达半数' },
-  rejected: { label: '未予采纳', seal: '驳\n回', cls: 'rejected', desc: '管理层未予采纳' },
+  pending: { label: '征集中', seal: '待\n采', cls: 'pending', desc: '已公开陈列，候主席团采纳付诸表决' },
+  voting: { label: '审议表决', seal: '表\n决', cls: 'voting', desc: '议员表决中：赞成逾半数成一般决议，逾三分之二成特别决议' },
+  passed_general: { label: '一般决议', seal: '通\n过', cls: 'g', desc: '赞成逾二分之一，已成一般决议' },
+  passed_special: { label: '特别决议', seal: '特\n别', cls: 's', desc: '赞成逾三分之二，已成特别决议' },
+  failed: { label: '未获通过', seal: '未\n通', cls: 'failed', desc: '赞成未达半数' },
+  rejected: { label: '未予采纳', seal: '驳\n回', cls: 'rejected', desc: '主席团未予采纳' },
 };
 
-function SupportBar({ ratio, total }) {
+function SupportBar({ ratio, total, animate }) {
   const pct = Math.round((ratio || 0) * 100);
   const tier = ratio > 2 / 3 ? 's' : ratio > 0.5 ? 'g' : 'f';
   return (
     <div className="pl-bar-wrap">
       <div className={'pl-bar tier-' + tier}>
-        <span className="pl-bar-fill" style={{ width: pct + '%' }} />
+        <span className="pl-bar-fill" style={{ width: (animate ? pct : 0) + '%' }}><i className="pl-bar-shine" /></span>
         <i className="pl-mark m50"><em>过半</em></i>
         <i className="pl-mark m67"><em>三分二</em></i>
       </div>
-      <div className="pl-bar-legend"><span>赞成率 <b>{pct}%</b></span><span className="muted">{total} 名议员参与表决</span></div>
+      <div className="pl-bar-legend"><span>赞成率 <b>{pct}%</b></span><span className="muted">{total} 名议员参与</span></div>
     </div>
   );
 }
 
 function ProposalCard({ p, ov, idx, onChange, toast }) {
   const [expanded, setExpanded] = useState(false);
+  const [shown, setShown] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setShown(true), 60 + idx * 80); return () => clearTimeout(t); }, [idx]);
   const st = STATUS[p.status] || STATUS.pending;
   const t = p.status === 'voting' ? p.live_tally : (p.tally || p.live_tally);
   const canVote = ov.is_councilor && p.status === 'voting' && !ov.locked;
@@ -75,7 +80,8 @@ function ProposalCard({ p, ov, idx, onChange, toast }) {
   const endorse = () => act(`/parliament/proposals/${p.id}/endorse`, { method: 'POST' });
 
   return (
-    <article className={'pl-doc st-' + st.cls}>
+    <article className={'pl-doc st-' + st.cls + (shown ? ' in' : '')} style={{ '--d': idx }}>
+      <span className="pl-corner tl" /><span className="pl-corner tr" /><span className="pl-corner bl" /><span className="pl-corner br" />
       <div className={'pl-seal ' + st.cls}><span>{st.seal}</span></div>
       <div className="pl-doc-head">
         <span className="pl-no">第 {String(p.id).padStart(3, '0')} 号议案</span>
@@ -86,7 +92,7 @@ function ProposalCard({ p, ov, idx, onChange, toast }) {
         <Avatar src={p.author_avatar} name={p.author_name} size={22} />
         <span>提案人 · {p.author_name}{p.author_verified && <BadgeCheck size={13} className="pl-verif" />}</span>
         <span className="pl-rule" />
-        <span className="muted"><Sparkles size={12} /> {p.endorsements} 人联署</span>
+        <span className="muted"><Sparkles size={12} /> {p.endorsements} 联署</span>
       </div>
       <div className="pl-divider" />
       <p className={'pl-body' + (long && !expanded ? ' clamp' : '')}>{p.body}</p>
@@ -94,7 +100,7 @@ function ProposalCard({ p, ov, idx, onChange, toast }) {
 
       {(p.status === 'voting' || decided) && (
         <div className="pl-tally">
-          <SupportBar ratio={t.ratio} total={t.total} />
+          <SupportBar ratio={t.ratio} total={t.total} animate={shown} />
           <div className="pl-votes">
             <span className="v-for"><ThumbsUp size={13} /> 赞成 {t.for}</span>
             <span className="v-against"><ThumbsDown size={13} /> 反对 {t.against}</span>
@@ -105,7 +111,7 @@ function ProposalCard({ p, ov, idx, onChange, toast }) {
 
       {canVote && (
         <div className="pl-vote-acts">
-          <span className="pl-vote-label">议员表决：</span>
+          <span className="pl-vote-label">议员表决</span>
           <button className={'btn sm' + (p.my_vote === 'for' ? ' primary' : '')} onClick={() => vote('for')}><ThumbsUp size={14} /> 赞成</button>
           <button className={'btn sm' + (p.my_vote === 'against' ? ' danger' : '')} onClick={() => vote('against')}><ThumbsDown size={14} /> 反对</button>
           <button className={'btn sm' + (p.my_vote === 'abstain' ? ' active' : '')} onClick={() => vote('abstain')}><MinusCircle size={14} /> 弃权</button>
@@ -144,8 +150,8 @@ function NewProposal({ onClose, onCreated, toast }) {
   };
   return (
     <Modal onClose={onClose}>
-      <h2 style={{ marginTop: 0, fontFamily: 'var(--serif)' }}><Gavel size={18} style={{ verticalAlign: -3, marginRight: 6 }} />提交议案</h2>
-      <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>议案将<b>公开陈列于议事厅</b>，全体公民可见并可联署。经主席团采纳后付诸议员表决：赞成逾 <b>50%</b> 成一般决议，逾 <b>67%</b> 成特别决议。</p>
+      <h2 className="pl-modal-title"><Feather size={18} style={{ verticalAlign: -3, marginRight: 6 }} />起草议案</h2>
+      <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>议案将<b>公开陈列于议事殿</b>，全体公民可见并可联署。经主席团采纳后付诸议员表决：赞成逾 <b>50%</b> 成一般决议，逾 <b>67%</b> 成特别决议。</p>
       <div className="field"><label>议案标题</label><input className="input" value={title} maxLength={80} onChange={e => setTitle(e.target.value)} placeholder="一句话陈明动议" /></div>
       <div className="field"><label>议案正文</label><textarea className="textarea" rows={6} value={body} maxLength={2000} onChange={e => setBody(e.target.value)} placeholder="详述背景、条款与预期影响…" style={{ resize: 'vertical' }} /></div>
       <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
@@ -198,40 +204,50 @@ export default function Parliament() {
   }), [list]);
 
   const locked = !!ov?.locked;
+  const particles = useMemo(() => Array.from({ length: 16 }, (_, i) => ({
+    l: Math.round(Math.random() * 100), d: (Math.random() * 8).toFixed(1), dur: (7 + Math.random() * 8).toFixed(1), s: (1 + Math.random() * 2).toFixed(1),
+  })), []);
 
   return (
-    <>
+    <div className="pl-root">
       <div className="topbar pl-topbar">
         <div style={{ flex: 1 }}>
           <h1 className="pl-h1">幻域议会</h1>
-          <div className="sub">PARLIAMENT OF HUANYU · 议事厅</div>
+          <div className="sub pl-sub">PARLIAMENT&nbsp;OF&nbsp;HUANYU</div>
         </div>
         {ov?.is_gm && (
-          <button className={'btn' + (locked ? ' primary' : '')} onClick={toggleLock} title={locked ? '恢复议会运作' : '封锁议会（无限期休会）'}>
+          <button className={'btn pl-lockbtn' + (locked ? ' primary' : '')} onClick={toggleLock} title={locked ? '恢复议会运作' : '封锁议会（无限期休会）'}>
             <Lock size={15} /> {locked ? '恢复议会' : '封锁议会'}
           </button>
         )}
-        {ov?.is_councilor && !locked && <button className="btn primary" onClick={() => setCreating(true)}><Plus size={16} /> 提交议案</button>}
+        {ov?.is_councilor && !locked && <button className="btn primary pl-draftbtn" onClick={() => setCreating(true)}><Feather size={16} /> 起草议案</button>}
       </div>
 
-      <div className="page pl-page" style={{ maxWidth: 940 }}>
-        {/* 议事厅横幅 */}
-        <section className={'pl-chamber' + (locked ? ' locked' : '')}>
-          <div className="pl-chamber-bg" aria-hidden="true" />
-          <Crest size={72} />
-          <div className="pl-chamber-tx">
-            <h2>幻域议会 · 议事厅</h2>
-            <p>公议立邦 · 众智共治　—　提案出于议员，决议成于公论</p>
-            <div className="pl-chamber-stats">
-              <div><b>第 {ov?.term ?? '—'} 届</b><span>当前届次</span></div>
-              <div className="pl-stat-sep" />
-              <div><b>{ov?.council_size ?? '—'}<i> / {ov?.seats ?? '—'}</i></b><span>在任议员 / 议席</span></div>
-              <div className="pl-stat-sep" />
-              <div><b>{counts.voting}</b><span>表决进行中</span></div>
-              <div className="pl-stat-sep" />
-              <div><b>{counts.passed}</b><span>决议达成</span></div>
-            </div>
+      <div className="page pl-page" style={{ maxWidth: 980 }}>
+        {/* 议事殿堂 */}
+        <section className={'pl-hall' + (locked ? ' locked' : '')}>
+          <div className="pl-hall-rays" aria-hidden="true" />
+          <div className="pl-hall-grain" aria-hidden="true" />
+          <div className="pl-dust" aria-hidden="true">
+            {particles.map((p, i) => <span key={i} style={{ left: p.l + '%', width: p.s + 'px', height: p.s + 'px', animationDelay: p.d + 's', animationDuration: p.dur + 's' }} />)}
           </div>
+          <Crest size={96} />
+          <div className="pl-hall-tx">
+            <div className="pl-eyebrow">EST · 幻域 · 公议立邦</div>
+            <h2 className="pl-hall-title">幻域议会</h2>
+            <div className="pl-hall-latin">SENATVS · POPVLVSQVE</div>
+            <p className="pl-motto">提案出于议员　决议成于公论　众智共治　立纲陈纪</p>
+          </div>
+          <div className="pl-hall-stats">
+            <div className="pl-stat"><b><CountUp value={ov?.term ?? 0} format={false} /></b><span>届</span><i>当前届次</i></div>
+            <span className="pl-stat-rule" />
+            <div className="pl-stat"><b><CountUp value={ov?.council_size ?? 0} format={false} /><u>/{ov?.seats ?? '—'}</u></b><span>席</span><i>在任 / 议席</i></div>
+            <span className="pl-stat-rule" />
+            <div className="pl-stat"><b><CountUp value={counts.voting} format={false} /></b><span>案</span><i>表决进行</i></div>
+            <span className="pl-stat-rule" />
+            <div className="pl-stat"><b><CountUp value={counts.passed} format={false} /></b><span>决</span><i>决议达成</i></div>
+          </div>
+          {locked && <div className="pl-recess-stamp">休<br />会</div>}
         </section>
 
         {locked && (
@@ -242,20 +258,20 @@ export default function Parliament() {
         )}
 
         {/* 议事规则 */}
-        <div className="pl-charter">
+        <div className={'pl-charter' + (charterOpen ? ' open' : '')}>
           <button className="pl-charter-head" onClick={() => setCharterOpen(o => !o)}>
-            <ScrollText size={15} /> <b>议事规则</b>
-            <span className="muted" style={{ marginLeft: 'auto', fontSize: 12.5 }}>{charterOpen ? '收起' : '展开'} {charterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+            <ScrollText size={15} /> <b>议事章程</b>
+            <span className="muted" style={{ marginLeft: 'auto', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{charterOpen ? '收起' : '展开'} {charterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
           </button>
-          {charterOpen && (
+          <div className="pl-charter-wrap">
             <ol className="pl-charter-body">
               <li><b>议员之设。</b>议员由管理层任命，名额按注册公民规模核定，每满百人增一席。</li>
               <li><b>提案之权。</b>唯议员得提交公共议案；议案一经提交即公开陈列，全体公民皆可查阅并联署。</li>
               <li><b>采纳之序。</b>议案须经主席团采纳，方付诸议员表决。</li>
-              <li><b>表决之制。</b>以参与表决之议员为基数：赞成<b>逾二分之一</b>者，成<em>一般决议</em>；<b>逾三分之二</b>者，成<em>特别决议</em>；未及半数则不予通过。</li>
+              <li><b>表决之制。</b>以参与表决之议员为基数：赞成<b>逾二分之一</b>者成<em>一般决议</em>；<b>逾三分之二</b>者成<em>特别决议</em>；未及半数则不予通过。</li>
               <li><b>休会之权。</b>管理层得宣布议会无限期休会，期间一切议事暂停，静待复会。</li>
             </ol>
-          )}
+          </div>
         </div>
 
         {/* 身份 */}
@@ -277,8 +293,8 @@ export default function Parliament() {
         {loading ? <div className="empty">载入中…</div> :
           shown.length === 0 ? (
             <div className="empty"><div className="big"><ScrollText size={42} /></div>
-              {filter === 'all' ? '议事厅暂无议案' : '该类目下暂无议案'}
-              {ov?.is_councilor && !locked && filter === 'all' && <div style={{ marginTop: 12 }}><button className="btn primary" onClick={() => setCreating(true)}><Plus size={15} /> 提交首份议案</button></div>}
+              {filter === 'all' ? '议事殿暂无议案' : '该类目下暂无议案'}
+              {ov?.is_councilor && !locked && filter === 'all' && <div style={{ marginTop: 12 }}><button className="btn primary" onClick={() => setCreating(true)}><Feather size={15} /> 起草首份议案</button></div>}
             </div>
           ) : (
             <div className="pl-list">
@@ -288,6 +304,6 @@ export default function Parliament() {
       </div>
 
       {creating && <NewProposal onClose={() => setCreating(false)} onCreated={onCreated} toast={toast} />}
-    </>
+    </div>
   );
 }
