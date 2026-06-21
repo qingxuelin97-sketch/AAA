@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, Modal } from '../ui.jsx';
+import { useToast, Avatar, Modal, CreatorV } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
@@ -121,7 +121,8 @@ export default function CharacterView() {
           <Avatar src={c.owner_avatar} name={c.owner_name} size={44} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <b style={{ display: 'flex', alignItems: 'center', gap: 5 }}>{c.owner_name || '匿名作者'}
-              {c.owner_verified && <BadgeCheck size={14} style={{ color: 'var(--diamond)' }} />}</b>
+              {c.owner_verified && <BadgeCheck size={14} style={{ color: 'var(--diamond)' }} />}
+              <CreatorV tier={c.owner_tier} size={14} /></b>
             <span className="muted" style={{ fontSize: 12.5 }}>作者 · 另有 {c.author_char_count || 0} 个公开角色</span>
           </div>
           <ChevronRight size={18} className="muted" />

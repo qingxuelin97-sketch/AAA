@@ -183,9 +183,10 @@ export default function Parliament() {
             <p>任何被任命的<strong>议员</strong>都可提交公共提案，全体用户均可查看并<strong>联署</strong>支持。提案被管理员采纳后进入议员表决——参与表决者中赞成<strong>超过 50%</strong> 通过<em>一般决议</em>，<strong>超过 67%</strong> 通过<em>特别决议</em>。</p>
           </div>
           <div className="pl-hero-stats">
-            <div><b>{ov?.council_size ?? '—'}</b><span><Users size={12} /> 议员</span></div>
+            <div><b>{ov?.council_size ?? '—'}{ov?.seats != null && <span className="pl-seat-cap"> / {ov.seats}</span>}</b><span><Users size={12} /> 议员 / 议席</span></div>
             <div><b>{counts.voting}</b><span><Gavel size={12} /> 表决中</span></div>
             <div><b>{counts.passed}</b><span><Check size={12} /> 已通过</span></div>
+            {ov?.term != null && <div><b>第 {ov.term} 届</b><span><Landmark size={12} /> 当前届次</span></div>}
           </div>
         </div>
 

@@ -77,6 +77,21 @@ export function Uploader({ value, type = 'image', onChange, variant = 'box', dyn
   );
 }
 
+// Tiered creator verification badge (V).
+//  bronze 铜V 创作者 · yellow 黄V 知名创作者 · gold 金V 殿堂创作者(top1)
+const CREATOR_V = {
+  bronze: { label: '创作者认证', cls: 'cv-bronze' },
+  yellow: { label: '知名创作者', cls: 'cv-yellow' },
+  gold: { label: '殿堂创作者 · TOP 1', cls: 'cv-gold' },
+};
+export function CreatorV({ tier, size = 15 }) {
+  const info = CREATOR_V[tier];
+  if (!info) return null;
+  return (
+    <span className={'creator-v ' + info.cls} title={info.label} style={{ width: size, height: size, fontSize: Math.round(size * 0.62) }}>V</span>
+  );
+}
+
 export function Avatar({ src, name = '', size = 40 }) {
   const initial = (name || '?').trim().charAt(0).toUpperCase();
   if (src) return <img className="avatar" src={src} style={{ width: size, height: size }} alt="" />;

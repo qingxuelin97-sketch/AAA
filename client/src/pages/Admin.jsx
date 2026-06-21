@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../api.jsx';
+import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp } from 'lucide-react';
 
@@ -87,6 +87,7 @@ function Overview({ toast }) {
 }
 
 function UsersTab({ toast }) {
+  const { user: meUser } = useAuth();
   const [q, setQ] = useState('');
   const [users, setUsers] = useState([]);
   const [gifting, setGifting] = useState(null);
@@ -119,7 +120,9 @@ function UsersTab({ toast }) {
               ? <button className="btn sm" onClick={() => unban(u)}><Check size={13} /> 解封</button>
               : <button className="btn sm danger" onClick={() => ban(u)}><Ban size={13} /> 封禁</button>}
             <button className="btn sm" onClick={() => toggleCouncil(u)}><Landmark size={13} /> {u.is_councilor ? '免去议员' : '任命议员'}</button>
-            <button className="btn sm" onClick={() => toggleGm(u)}><Crown size={13} /> {u.is_gm ? '撤销GM' : '设为GM'}</button>
+            {u.is_gm && u.id === meUser?.id
+              ? <button className="btn sm" disabled title="不能撤销自己的 GM 权限"><Crown size={13} /> 当前账号</button>
+              : <button className="btn sm" onClick={() => toggleGm(u)}><Crown size={13} /> {u.is_gm ? '撤销GM' : '设为GM'}</button>}
           </div>
         </div>
       ))}
@@ -319,14 +322,27 @@ function PlatformTab({ toast }) {
 function CouncilTab({ toast }) {
   const [councilors, setCouncilors] = useState([]);
   const [proposals, setProposals] = useState([]);
+  const [council, setCouncilInfo] = useState(null);
+  const [override, setOverrideVal] = useState('');
   const [q, setQ] = useState('');
   const [found, setFound] = useState([]);
 
   const load = () => {
     api('/admin/councilors').then(d => setCouncilors(d.councilors || [])).catch(e => toast(e.message, 'err'));
     api('/parliament/proposals').then(d => setProposals(d.proposals || [])).catch(e => toast(e.message, 'err'));
+    api('/admin/council').then(d => { setCouncilInfo(d.council); setOverrideVal(d.council.seats_override == null ? '' : String(d.council.seats_override)); }).catch(e => toast(e.message, 'err'));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+
+  const saveSeats = async () => {
+    try { await api('/admin/council', { method: 'PUT', body: { seats_override: override.trim() === '' ? null : Number(override) } }); toast('席位设置已更新'); load(); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  const reapportion = async () => {
+    if (!confirm('执行换届？将清除手动席位设置，按当前注册规模重新核定席位，并通知全体议员。')) return;
+    try { const d = await api('/admin/council/reapportion', { method: 'POST' }); toast(`已完成第 ${d.term} 届换届，核定 ${d.seats} 席`); load(); }
+    catch (e) { toast(e.message, 'err'); }
+  };
 
   const search = async () => { if (!q.trim()) { setFound([]); return; } try { const d = await api('/admin/users?q=' + encodeURIComponent(q)); setFound(d.users || []); } catch (e) { toast(e.message, 'err'); } };
   const setCouncil = async (u, value) => { try { await api(`/admin/users/${u.id}/councilor`, { method: 'POST', body: { value } }); toast(value ? '已任命议员' : '已免去议员'); load(); search(); } catch (e) { toast(e.message, 'err'); } };
@@ -337,6 +353,33 @@ function CouncilTab({ toast }) {
 
   return (
     <>
+      <div className="card" style={{ marginBottom: 18 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 17 }}><Scale size={16} style={{ verticalAlign: -3, marginRight: 6 }} />议席与换届</h2>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>平均每 <b>{council?.per_seat ?? 100}</b> 名注册用户对应 1 个议会席位（下限 {council?.min_seats ?? 5} 席）。特殊情况下可手动覆盖席位、超额任命议员。</p>
+        {council && (
+          <>
+            <div className="seat-grid">
+              <div className="seat-cell"><b>{council.total_users}</b><span>注册用户</span></div>
+              <div className="seat-cell"><b>{council.base_seats}</b><span>按人口应得</span></div>
+              <div className="seat-cell"><b>{council.seats}</b><span>当前议席{council.seats_override != null ? '（手动）' : ''}</span></div>
+              <div className="seat-cell"><b>{council.councilors}</b><span>现任议员</span></div>
+              <div className={'seat-cell ' + (council.over ? 'over' : council.vacancies > 0 ? 'vac' : 'full')}>
+                <b>{council.over ? '超额 ' + (council.councilors - council.seats) : council.vacancies > 0 ? '缺 ' + council.vacancies : '满员'}</b><span>第 {council.term} 届</span>
+              </div>
+            </div>
+            <div className="seat-controls">
+              <div className="field" style={{ flex: 1, margin: 0 }}>
+                <label>手动覆盖席位 <span className="muted">(留空则按人口自动核定)</span></label>
+                <input className="input" type="number" min="0" value={override} onChange={e => setOverrideVal(e.target.value)} placeholder={`自动：${Math.max(council.min_seats, council.base_seats)} 席`} />
+              </div>
+              <button className="btn" onClick={saveSeats}><Check size={14} /> 保存席位</button>
+              <button className="btn primary" onClick={reapportion} title="清除手动设置并重新按人口核定"><Scale size={14} /> 执行换届</button>
+            </div>
+            {council.over && <div className="seat-warn"><AlertTriangle size={14} /> 现任议员已超出核定席位，属 GM 特别超额任命。</div>}
+          </>
+        )}
+      </div>
+
       <div className="card" style={{ marginBottom: 18 }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 17 }}><Landmark size={16} style={{ verticalAlign: -3, marginRight: 6 }} />议员任命</h2>
         <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>议员可发起公共提案并参与议会表决。当前共 <b>{councilors.length}</b> 位议员。</p>

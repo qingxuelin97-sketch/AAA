@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast, Avatar, GridSkeleton } from '../ui.jsx';
+import { useToast, Avatar, GridSkeleton, CreatorV } from '../ui.jsx';
 import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare } from 'lucide-react';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 
@@ -33,7 +33,7 @@ function Spotlight({ items, onView, onChat }) {
           <h2 key={c.id}>{c.name}</h2>
           <p>{c.tagline || c.intro || '一个等待被开启的故事。'}</p>
           <div className="sp-meta">
-            <span className="sp-author"><Avatar src={c.owner_avatar} name={c.owner_name} size={20} /> {c.owner_name}</span>
+            <span className="sp-author"><Avatar src={c.owner_avatar} name={c.owner_name} size={20} /> {c.owner_name}<CreatorV tier={c.owner_tier} size={13} /></span>
             <span><MessageCircle size={13} /> {c.uses}</span>
             {c.category && <span><CategoryIcon slug={c.category} size={13} /> {categoryName(c.category)}</span>}
           </div>
@@ -67,7 +67,7 @@ function Poster({ c, onView, onFav, onChat }) {
         <h3>{c.name}</h3>
         <p>{c.tagline || c.intro || '暂无简介'}</p>
         <div className="p-meta">
-          <div className="author"><Avatar name={c.owner_name} size={17} /><span>{c.owner_name}</span></div>
+          <div className="author"><Avatar name={c.owner_name} size={17} /><span>{c.owner_name}</span><CreatorV tier={c.owner_tier} size={13} /></div>
           <span className="uses"><MessageCircle size={11} /> {c.uses}</span>
         </div>
       </div>

@@ -86,6 +86,11 @@ function migrate() {
     }
     db._mig.parliament = 1;
   }
+  if (!db._mig.restore_demo_gm) {
+    // Restore GM on the primary demo accounts (in case it was accidentally revoked).
+    ['demo', 'gm'].forEach(n => { const u = find('users', x => x.username === n); if (u) u.is_gm = 1; });
+    db._mig.restore_demo_gm = 1;
+  }
 }
 
 // Build a ready-to-use 二次元 character card (anime avatar + anime chat background).
@@ -236,7 +241,7 @@ function bumpDaily(uid, key) { if (!uid) return; const d = dailyOf(uid); d.count
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
 function publicUser(u) {
-  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, created_at: u.created_at };
+  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, creator_tier: creatorTier(u), created_at: u.created_at };
 }
 function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '' }) {
   const u = user(uid);
@@ -395,6 +400,39 @@ const EVENTS = [
 ];
 
 function charView(c) { return { ...c, world: filter('world_entries', w => w.character_id === c.id).sort((a, b) => a.position - b.position) }; }
+
+/* ----------------------------- creator V tiers ----------------------------- */
+// Creators earn a tiered V badge by their public works' popularity:
+//  铜V 创作者  — has ≥1 public work
+//  黄V 知名创作者 — combined score ≥ KNOWN_CREATOR_SCORE
+//  金V 殿堂创作者 — the single #1 creator by score (top 1)
+const KNOWN_CREATOR_SCORE = 1500;
+function creatorScore(uid) {
+  let s = 0;
+  filter('characters', c => c.owner_id === uid && c.is_public).forEach(c => { s += (c.uses || 0) + (c.likes || 0) * 2; });
+  filter('scripts', sc => sc.author_id === uid).forEach(sc => { s += (sc.plays || 0) + (sc.likes || 0) * 2; });
+  return s;
+}
+function creatorWorks(uid) { return filter('characters', c => c.owner_id === uid && c.is_public).length + filter('scripts', s => s.author_id === uid).length; }
+function topCreatorId() {
+  let best = null, bestScore = 0;
+  table('users').forEach(u => { if (creatorWorks(u.id) > 0) { const sc = creatorScore(u.id); if (sc > bestScore) { bestScore = sc; best = u.id; } } });
+  return best;
+}
+function creatorTier(u) {
+  if (!u || creatorWorks(u.id) === 0) return null;
+  if (u.id === topCreatorId()) return 'gold';
+  if (creatorScore(u.id) >= KNOWN_CREATOR_SCORE) return 'yellow';
+  return 'bronze';
+}
+
+/* ----------------------------- council apportionment ----------------------------- */
+const USERS_PER_SEAT = 100; // 平均每 100 名注册用户对应一个议会席位
+const MIN_SEATS = 5;        // 席位下限，保证小规模社区也有可运作的议会
+function councilCfg() { if (!db.council) { db.council = { seats_override: null, term: 1, term_started_at: now() }; save(); } return db.council; }
+function baseSeats() { return Math.floor(table('users').length / USERS_PER_SEAT); }
+// Effective seats: GM override wins; otherwise auto from population (floored to a minimum).
+function councilSeats() { const c = councilCfg(); return c.seats_override != null ? c.seats_override : Math.max(MIN_SEATS, baseSeats()); }
 
 /* ----------------------------- parliament ----------------------------- */
 function councilSize() { return filter('users', u => u.is_councilor).length; }
@@ -559,7 +597,7 @@ async function route(method, path, search, body, headers) {
     if (cat && cat !== 'all') rows = rows.filter(c => c.category === cat);
     if (q) rows = rows.filter(c => (c.name + c.tags + c.tagline).toLowerCase().includes(q));
     rows = rows.sort((a, b) => sort === 'new' ? b.id - a.id : (b.uses - a.uses) || (b.likes - a.likes)).slice(0, 80);
-    rows = rows.map(c => ({ ...c, owner_name: user(c.owner_id)?.display_name, faved: me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false }));
+    rows = rows.map(c => ({ ...c, owner_name: user(c.owner_id)?.display_name, owner_tier: creatorTier(user(c.owner_id)), faved: me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false }));
     return J({ characters: rows });
   }
   if (method === 'GET' && path === '/characters/favorites/list') { need(); const rows = filter('favorites', f => f.user_id === me.id).map(f => { const c = find('characters', x => x.id === f.character_id); return c && { ...c, owner_name: user(c.owner_id)?.display_name }; }).filter(Boolean).reverse(); return J({ characters: rows }); }
@@ -578,7 +616,7 @@ async function route(method, path, search, body, headers) {
         .map(x => ({ id: x.id, name: x.name, avatar: x.avatar, tagline: x.tagline, uses: x.uses || 0, category: x.category }))
         .sort((a, b) => b.uses - a.uses).slice(0, 6);
       const author_char_count = filter('characters', x => x.is_public && x.owner_id === c.owner_id && x.id !== c.id && !x.from_script).length;
-      return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, fav_count, author_char_count }, related });
+      return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(owner), fav_count, author_char_count }, related });
     }
     if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0; if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
     if (method === 'DELETE') { need(); if (!c || c.owner_id !== me.id) return E('无权删除', 403); db.characters = filter('characters', x => x.id !== cid); save(); return J({ ok: true }); }
@@ -815,7 +853,7 @@ async function route(method, path, search, body, headers) {
     const moments = filter('moments', x => x.user_id === u.id).sort((a, b) => b.id - a.id).slice(0, 20);
     const stats = { characters: filter('characters', c => c.owner_id === u.id).length, scripts: scripts.length, followers: filter('follows', f => f.following_id === u.id).length, following: filter('follows', f => f.follower_id === u.id).length };
     const following = me ? !!find('follows', f => f.follower_id === me.id && f.following_id === u.id) : false;
-    return J({ user: { id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, vip: isVip(u), vip_until: u.vip_until, is_gm: !!u.is_gm, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', created_at: u.created_at }, characters, scripts, moments, stats, following });
+    return J({ user: { id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, vip: isVip(u), vip_until: u.vip_until, is_gm: !!u.is_gm, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, creator_tier: creatorTier(u), created_at: u.created_at }, characters, scripts, moments, stats, following });
   }
 
   // ---------- groups ----------
@@ -937,8 +975,8 @@ async function route(method, path, search, body, headers) {
   // ---------- GM admin ----------
   // ---------- parliament (议会提案系统) ----------
   if (path === '/parliament/overview' && method === 'GET') {
-    need();
-    return J({ is_councilor: !!me.is_councilor, is_gm: !!me.is_gm, council_size: councilSize(), me_id: me.id, thresholds: { general: 0.5, special: 2 / 3 } });
+    need(); const c = councilCfg();
+    return J({ is_councilor: !!me.is_councilor, is_gm: !!me.is_gm, council_size: councilSize(), seats: councilSeats(), term: c.term || 1, me_id: me.id, thresholds: { general: 0.5, special: 2 / 3 } });
   }
   if (path === '/parliament/proposals' && method === 'GET') {
     need();
@@ -1042,15 +1080,35 @@ async function route(method, path, search, body, headers) {
   }
   if ((m = P(/^\/admin\/users\/(\d+)\/ban$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_banned = 1; u.ban_reason = body.reason || ''; save(); } return J({ ok: true }); }
   if ((m = P(/^\/admin\/users\/(\d+)\/unban$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_banned = 0; u.ban_reason = ''; save(); } return J({ ok: true }); }
-  if ((m = P(/^\/admin\/users\/(\d+)\/gm$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_gm = body.value ? 1 : 0; save(); } return J({ ok: true }); }
+  if ((m = P(/^\/admin\/users\/(\d+)\/gm$/)) && method === 'POST') {
+    gmOnly();
+    if (+m[1] === me.id && !body.value) return E('不能撤销自己的 GM 权限，以防误操作锁定后台。请由另一位 GM 操作。', 400);
+    const u = user(+m[1]); if (u) { u.is_gm = body.value ? 1 : 0; save(); } return J({ ok: true });
+  }
   if ((m = P(/^\/admin\/users\/(\d+)\/councilor$/)) && method === 'POST') {
     gmOnly(); const u = user(+m[1]);
     if (u) { u.is_councilor = body.value ? 1 : 0; save(); if (body.value) notify(u.id, '你已被任命为「幻域议会」议员，现在可以提交公共提案并参与议会表决。', '/parliament'); }
     return J({ ok: true });
   }
   if (path === '/admin/councilors' && method === 'GET') {
-    gmOnly(); const rows = filter('users', u => u.is_councilor).map(u => ({ id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, verified: !!u.verified }));
+    gmOnly(); const rows = filter('users', u => u.is_councilor).map(u => ({ id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, verified: !!u.verified, creator_tier: creatorTier(u) }));
     return J({ councilors: rows });
+  }
+  if (path === '/admin/council' && method === 'GET') {
+    gmOnly(); const c = councilCfg(); const seats = councilSeats(); const cur = councilSize();
+    return J({ council: { total_users: table('users').length, per_seat: USERS_PER_SEAT, min_seats: MIN_SEATS, base_seats: baseSeats(),
+      seats, seats_override: c.seats_override, councilors: cur, vacancies: Math.max(0, seats - cur), over: cur > seats, term: c.term || 1, term_started_at: c.term_started_at } });
+  }
+  if (path === '/admin/council' && method === 'PUT') {
+    gmOnly(); const c = councilCfg();
+    if (body.seats_override === null || body.seats_override === '' || body.seats_override === undefined) c.seats_override = null;
+    else { const n = parseInt(body.seats_override, 10); if (isNaN(n) || n < 0) return E('席位数必须是非负整数'); if (n > 9999) return E('席位数过大'); c.seats_override = n; }
+    save(); return J({ ok: true, seats: councilSeats(), seats_override: c.seats_override });
+  }
+  if (path === '/admin/council/reapportion' && method === 'POST') {
+    gmOnly(); const c = councilCfg(); c.seats_override = null; c.term = (c.term || 1) + 1; c.term_started_at = now(); save();
+    filter('users', u => u.is_councilor).forEach(u => notify(u.id, `幻域议会已完成第 ${c.term} 届换届，席位按注册规模重新核定为 ${councilSeats()} 席。`, '/parliament'));
+    return J({ ok: true, term: c.term, seats: councilSeats() });
   }
   if (path === '/admin/broadcast' && method === 'POST') {
     gmOnly(); const text = String(body.text || '').trim(); if (!text) return E('广播内容不能为空');
