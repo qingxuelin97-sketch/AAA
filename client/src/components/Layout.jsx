@@ -7,7 +7,7 @@ import WelcomePopup from './WelcomePopup.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download
 } from 'lucide-react';
 
 const GROUPS = [
@@ -60,8 +60,16 @@ export default function Layout({ children }) {
   const [mode, setMode] = useState(initialMode);
   const [peek, setPeek] = useState('closed'); // closed | open | closing (left-edge hover reveal when hidden)
   const [mobileNav, setMobileNav] = useState(false);
+  const [installEvt, setInstallEvt] = useState(null);
   const peekRef = useRef('closed');
   const closeTimer = useRef();
+
+  useEffect(() => {
+    const h = (e) => { e.preventDefault(); setInstallEvt(e); };
+    window.addEventListener('beforeinstallprompt', h);
+    return () => window.removeEventListener('beforeinstallprompt', h);
+  }, []);
+  const doInstall = () => { if (!installEvt) return; installEvt.prompt(); installEvt.userChoice.finally(() => setInstallEvt(null)); };
   useEffect(() => { peekRef.current = peek; }, [peek]);
 
   const cycle = () => setMode(m => {
@@ -101,7 +109,7 @@ export default function Layout({ children }) {
         <div className="sb-peek-backdrop" onMouseEnter={closePeek} onClick={closePeek} aria-hidden="true" />
       )}
       <MobileTop user={user} unread={unread} onMenu={() => setMobileNav(true)} />
-      {mobileNav && <MobileNav user={user} unread={unread} onClose={() => setMobileNav(false)} />}
+      {mobileNav && <MobileNav user={user} unread={unread} onClose={() => setMobileNav(false)} installEvt={installEvt} doInstall={doInstall} />}
       <main className="main">{children}</main>
       <nav className="bottom-nav">
         {TABS.map(t => (
@@ -208,7 +216,7 @@ function MobileTop({ user, unread, onMenu }) {
 }
 
 // Full navigation drawer for mobile — surfaces every desktop sidebar entry.
-function MobileNav({ user, unread, onClose }) {
+function MobileNav({ user, unread, onClose, installEvt, doInstall }) {
   const { logout } = useAuth();
   const nav = useNavigate();
   const go = (to) => { nav(to); onClose(); };
@@ -245,6 +253,7 @@ function MobileNav({ user, unread, onClose }) {
           {user?.is_gm && (<div><div className="nav-section">管理</div>
             <button className="nav-item" onClick={() => go('/admin')}><span className="ic"><Shield size={18} /></span>管理后台</button></div>)}
           <button className="nav-item" style={{ color: 'var(--accent)' }} onClick={() => go('/publish')}><span className="ic"><Sparkles size={18} /></span>发布作品</button>
+          {installEvt && <button className="nav-item mnav-install" onClick={() => { doInstall(); onClose(); }}><span className="ic"><Download size={18} /></span>安装到桌面</button>}
           <button className="nav-item" onClick={() => { logout(); onClose(); }}><span className="ic"><LogOut size={18} /></span>退出登录</button>
         </div>
       </aside>

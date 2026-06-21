@@ -1311,3 +1311,19 @@ html { scroll-behavior: smooth; }
 /* character detail: author card */
 .author-card { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.2s var(--spring), box-shadow 0.2s ease, border-color 0.2s; }
 .author-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--border-2); }
+
+/* ============ PWA / 移动 App 原生化 ============ */
+html, body { overscroll-behavior-y: none; }
+body { -webkit-touch-callout: none; }
+/* native-feeling: don't select chrome, but keep message/content selectable */
+.sidebar, .mobile-topbar, .bottom-nav, .mnav, .topbar, .btn, .nav-item, .tabs-bar, .seg, .cat-bar { user-select: none; -webkit-user-select: none; }
+.bubble, .gx-meta, .wb-item, .card p, .mem-item, p, h1, h2, h3 { -webkit-user-select: text; user-select: text; }
+.btn, .nav-item, .bottom-nav a, .cast-chip, .cat-bar button, .seg button, .send-btn, .affinity-badge { touch-action: manipulation; }
+/* installed standalone app: pad for status bar & home indicator */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  .mobile-topbar { padding-top: calc(10px + env(safe-area-inset-top)); }
+  .bottom-nav { padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+  .topbar { top: env(safe-area-inset-top); }
+}
+.mnav-install { color: #fff !important; background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important; margin-top: 6px; font-weight: 600; }
+.mnav-install .ic { color: #fff; }

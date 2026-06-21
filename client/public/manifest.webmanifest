@@ -1,0 +1,19 @@
+{
+  "name": "幻域 · AI 角色扮演",
+  "short_name": "幻域",
+  "description": "自定义角色、世界书、好感度与对话记忆，与你创造的二次元角色沉浸对话。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#faf9f5",
+  "theme_color": "#f4f2ec",
+  "categories": ["entertainment", "social", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
