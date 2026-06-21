@@ -1,23 +1,35 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { uploadFile } from './api.jsx';
-import { UploadCloud, UserRound } from 'lucide-react';
+import { UploadCloud, UserRound, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { FACE_PRESETS, ANIME_PRESETS, ONLINE_AV } from './faces.js';
 
 const STATIC_IMG = 'image/png,image/jpeg,image/webp,image/avif';
 const DYNAMIC = 'image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4,video/webm';
 
 const ToastCtx = createContext(null);
+const TOAST_IC = { ok: CheckCircle2, err: AlertTriangle, info: Info };
 
 export function ToastProvider({ children }) {
-  const [toast, setToast] = useState(null);
+  const [toasts, setToasts] = useState([]);
   const show = useCallback((msg, type = 'ok') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 2600);
+    const id = Date.now() + Math.random();
+    setToasts((t) => [...t.slice(-3), { id, msg, type }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2800);
   }, []);
   return (
     <ToastCtx.Provider value={show}>
       {children}
-      {toast && <div className={'toast ' + (toast.type === 'err' ? 'err' : '')}>{toast.msg}</div>}
+      <div className="toast-stack">
+        {toasts.map((t) => {
+          const Ic = TOAST_IC[t.type] || TOAST_IC.ok;
+          return (
+            <div key={t.id} className={'toast toast-' + (t.type === 'err' ? 'err' : t.type === 'info' ? 'info' : 'ok')}>
+              <span className="toast-ic"><Ic size={17} /></span>
+              <span className="toast-msg">{t.msg}</span>
+            </div>
+          );
+        })}
+      </div>
     </ToastCtx.Provider>
   );
 }

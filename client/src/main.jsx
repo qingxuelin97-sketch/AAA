@@ -4,11 +4,13 @@ import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { AuthProvider } from './api.jsx';
 import { initTheme } from './theme.js';
+import { initFx } from './fx.js';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/fraunces';
 import './styles.css';
 
 initTheme(); // apply saved theme before first paint (no flash)
+initFx();    // global click ripples + tap bursts
 
 // Register the PWA service worker (web only; Capacitor serves from a native scheme).
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {

@@ -150,14 +150,33 @@ h1, h2, h3, h4 { font-family: var(--serif); font-weight: 560; letter-spacing: -0
 .muted { color: var(--muted); }
 .empty { text-align: center; padding: clamp(40px, 8vw, 72px) 20px; color: var(--faint); }
 .empty .big { font-size: 46px; margin-bottom: 12px; opacity: 0.7; }
+.toast-stack { position: fixed; bottom: calc(26px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; flex-direction: column; gap: 9px; align-items: center; pointer-events: none; }
 .toast {
-  position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
-  background: #2a2722; color: #f7f4ec; border: 1px solid #3a352d; padding: 12px 22px;
-  border-radius: 12px; box-shadow: var(--shadow-lg); z-index: 1000; font-size: 14px; font-weight: 500;
-  animation: pop 0.22s ease; max-width: calc(100vw - 32px);
+  display: flex; align-items: center; gap: 9px; padding: 11px 18px 11px 14px;
+  background: rgba(42, 39, 34, 0.92); color: #f7f4ec; border: 1px solid #3a352d;
+  border-radius: 13px; box-shadow: var(--shadow-lg); font-size: 14px; font-weight: 500;
+  backdrop-filter: blur(10px) saturate(140%); max-width: calc(100vw - 32px);
+  animation: toastIn 0.42s var(--spring-soft) both;
 }
-.toast.err { background: #5a2a22; border-color: #6e352b; }
-@keyframes pop { from { opacity: 0; transform: translate(-50%, 12px); } }
+.toast-ic { display: inline-flex; flex-shrink: 0; }
+.toast-msg { line-height: 1.45; }
+.toast-ok .toast-ic { color: #7fd29a; }
+.toast-err { background: rgba(74, 32, 26, 0.94); border-color: #6e352b; }
+.toast-err .toast-ic { color: #ff9a86; }
+.toast-info .toast-ic { color: #79c6e0; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* ============ click ripple + tap burst (fx.js) ============ */
+.ripple-dot { position: absolute; border-radius: 50%; background: currentColor; opacity: 0.22;
+  transform: scale(0); pointer-events: none; animation: rippleOut 0.6s cubic-bezier(0.22,0.61,0.36,1) forwards; }
+.btn.primary .ripple-dot, .send-btn .ripple-dot { background: #fff; opacity: 0.3; }
+@keyframes rippleOut { to { transform: scale(1); opacity: 0; } }
+.burst-layer { position: fixed; z-index: 2000; pointer-events: none; }
+.burst-layer span { position: absolute; width: 8px; height: 8px; border-radius: 50%; left: 0; top: 0;
+  animation: burstOut 0.62s cubic-bezier(0.18,0.7,0.32,1) forwards; }
+@keyframes burstOut { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ripple-dot, .burst-layer { display: none; } }
 
 /* ---------- Auth ---------- */
 .auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.05fr 0.95fr; }
@@ -1034,8 +1053,7 @@ body::before, body::after { display: none !important; }
 .lb-row:hover .avatar, .moment:hover .avatar, .user-chip:hover .avatar { transform: scale(1.08) rotate(-2deg); }
 
 /* toast slide-in */
-.toast { animation: toastIn 0.4s var(--spring-soft) both; }
-@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.94); } to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
+/* (toast styles consolidated into the toast-stack block above) */
 
 /* modal backdrop fade */
 .modal-backdrop { animation: fadeIn 0.22s ease both; }
