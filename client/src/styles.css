@@ -1378,3 +1378,20 @@ body { -webkit-touch-callout: none; }
 .dcard-cat, .poster .p-cat, .poster .p-feat { backdrop-filter: blur(8px) saturate(160%); }
 /* avatar gets a faint ring for depth */
 .avatar { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.14); }
+
+/* ============ 对话互动：开场建议 + 动作面板 ============ */
+.starter-chips { position: relative; z-index: 2; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 0 clamp(16px, 6%, 80px) 10px; animation: riseIn 0.4s var(--spring-soft) both; }
+.starter-chips .muted { font-size: 12.5px; }
+.starter-chip { padding: 7px 13px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--panel);
+  color: var(--text); font-size: 13px; cursor: pointer; transition: transform 0.2s var(--spring), border-color 0.2s, background 0.2s, box-shadow 0.2s; }
+.starter-chip:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.action-panel { position: relative; z-index: 2; display: flex; flex-wrap: wrap; gap: 7px;
+  padding: 12px clamp(16px, 6%, 80px); animation: riseIn 0.3s var(--spring-soft) both; }
+.action-panel button { padding: 7px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-2);
+  color: var(--text); font-size: 13.5px; cursor: pointer; transition: transform 0.18s var(--spring), background 0.18s, border-color 0.18s; }
+.action-panel button:hover { transform: translateY(-2px); background: var(--accent-soft); border-color: var(--accent); color: var(--accent-2); }
+.act-btn { flex-shrink: 0; background: none; border: none; color: var(--faint); padding: 6px; margin-left: 2px; border-radius: 9px;
+  cursor: pointer; display: grid; place-items: center; transition: color 0.18s, background 0.18s, transform 0.2s var(--spring); }
+.act-btn:hover, .act-btn.on { color: var(--accent); background: var(--accent-soft); }
+.act-btn.on { transform: rotate(8deg); }

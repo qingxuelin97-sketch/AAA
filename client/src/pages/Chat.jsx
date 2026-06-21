@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile } from 'lucide-react';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
+const STARTERS = ['你好呀～', '很高兴认识你！', '*微笑着向你打招呼*', '今天过得怎么样？', '我们聊点什么好呢？'];
+const QUICK_ACTIONS = ['*微笑*', '*点头*', '*脸红*', '*轻笑*', '*歪头*', '*叹气*', '*眨眨眼*', '*沉默不语*', '*牵起你的手*', '*轻轻拥抱*', '😊', '😳', '🥰', '😢'];
 
 // Relationship tiers driven by accumulated affinity (grows ~+3 per exchange).
 const AFFINITY_LEVELS = [
@@ -31,6 +33,7 @@ export default function Chat() {
   const [character, setCharacter] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [listMini, setListMini] = useState(() => localStorage.getItem(LIST_KEY) === '1');
   const [atBottom, setAtBottom] = useState(true);
@@ -147,13 +150,15 @@ export default function Chat() {
 
   const stop = () => { abortRef.current?.abort(); };
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (override) => {
+    const text = (override ?? input).trim();
     if (!text || streaming) return;
-    setInput('');
+    if (override === undefined) setInput('');
+    setActionsOpen(false);
     setMessages(m => [...m, { role: 'user', content: text }, { role: 'assistant', content: '', _streaming: true }]);
     await streamInto(`/api/chat/conversations/${id}/complete`, { content: text });
   };
+  const insertAction = (a) => { setInput(v => (v ? v.replace(/\s*$/, '') + ' ' : '') + a + ' '); setActionsOpen(false); };
 
   const regenerate = async () => {
     if (streaming) return;
@@ -280,13 +285,25 @@ export default function Chat() {
                 <ArrowDown size={18} />
               </button>
             )}
+            {messages.length <= 1 && !streaming && (
+              <div className="starter-chips">
+                <span className="muted">试试开口：</span>
+                {STARTERS.map(s => <button key={s} className="starter-chip" onClick={() => send(s)}>{s}</button>)}
+              </div>
+            )}
+            {actionsOpen && (
+              <div className="action-panel">
+                {QUICK_ACTIONS.map(a => <button key={a} onClick={() => insertAction(a)}>{a}</button>)}
+              </div>
+            )}
             <div className="chat-input-bar">
               <div className="box">
+                <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => setActionsOpen(o => !o)} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
                 <textarea rows={1} value={input} placeholder={`对 ${character?.name} 说点什么…（Enter 发送，Shift+Enter 换行）`}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
                 {streaming
                   ? <button className="send-btn stop" onClick={stop} title="停止生成"><Square size={15} fill="currentColor" /></button>
-                  : <button className="send-btn" onClick={send} disabled={!input.trim()}><Send size={17} /></button>}
+                  : <button className="send-btn" onClick={() => send()} disabled={!input.trim()}><Send size={17} /></button>}
               </div>
             </div>
 
