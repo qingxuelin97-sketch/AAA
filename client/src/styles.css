@@ -1991,3 +1991,100 @@ body:has(.pl-immersive) { background: #0b1022; }
 .pl-music.muted svg { color: #9a9888; }
 @media (max-width: 760px) { .pl-music { bottom: 80px; left: 14px; padding: 8px 13px 8px 11px; } .pl-music-tx { display: none; } }
 @media (prefers-reduced-motion: reduce) { .pl-eq i { animation: none; } }
+
+/* ============================================================
+   议会 · 入场大门 / 无限动效 / 议论 / 名册 / 检索
+   ============================================================ */
+/* ---------- 入场：开启殿门 ---------- */
+.pl-enter { position: fixed; inset: 0; z-index: 300; pointer-events: none; overflow: hidden; perspective: 1500px; }
+.pl-enter-veil { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, #11162b, #060912 70%);
+  animation: plVeil 0.9s 1.0s ease forwards; }
+@keyframes plVeil { to { opacity: 0; } }
+.pl-door { position: absolute; top: -2%; bottom: -2%; width: 51%; backface-visibility: hidden;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,0.5), transparent 14%, transparent 86%, rgba(0,0,0,0.5)),
+    repeating-linear-gradient(0deg, #1c2138 0 18px, #161a2e 18px 38px),
+    linear-gradient(180deg, #20253f, #11152a);
+  box-shadow: inset 0 0 80px rgba(0,0,0,0.6); }
+.pl-door::before { content: ''; position: absolute; inset: 22px; border: 2px solid rgba(216,173,78,0.28);
+  border-radius: 4px; box-shadow: inset 0 0 0 6px rgba(0,0,0,0.18), inset 0 0 40px rgba(0,0,0,0.4); }
+.pl-door-stud { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translateY(-50%);
+  background: radial-gradient(circle at 36% 32%, #f3d68f, #9a6c19); box-shadow: 0 0 8px rgba(216,173,78,0.5); }
+.pl-door.l { left: 0; transform-origin: left center; animation: plDoorL 1.0s 0.5s cubic-bezier(0.7,0,0.3,1) forwards; }
+.pl-door.r { right: 0; transform-origin: right center; animation: plDoorR 1.0s 0.5s cubic-bezier(0.7,0,0.3,1) forwards; }
+.pl-door.l .pl-door-stud { right: 16px; } .pl-door.r .pl-door-stud { left: 16px; }
+@keyframes plDoorL { from { transform: rotateY(0deg); } to { transform: rotateY(-120deg); } }
+@keyframes plDoorR { from { transform: rotateY(0deg); } to { transform: rotateY(120deg); } }
+.pl-enter-seam { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; transform: translateX(-50%);
+  background: linear-gradient(180deg, transparent, #f6e3a6 20%, #ffedb0 50%, #f6e3a6 80%, transparent);
+  box-shadow: 0 0 24px 6px rgba(246,227,166,0.7); animation: plSeam 1.5s ease forwards; }
+@keyframes plSeam { 0% { opacity: 0; transform: translateX(-50%) scaleY(0.2); } 22% { opacity: 1; transform: translateX(-50%) scaleY(1); }
+  46% { opacity: 1; width: 8px; } 60% { opacity: 0; width: 2px; } 100% { opacity: 0; } }
+.pl-enter-burst { position: absolute; top: 45%; left: 50%; width: 40px; height: 40px; transform: translate(-50%,-50%);
+  border-radius: 50%; background: radial-gradient(circle, rgba(255,245,210,0.95), rgba(246,214,143,0.4) 40%, transparent 70%);
+  opacity: 0; animation: plBurst 1.2s 0.42s ease-out forwards; }
+@keyframes plBurst { 0% { opacity: 0; transform: translate(-50%,-50%) scale(0.2); } 18% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(34); } }
+.pl-enter-crest { position: absolute; top: 45%; left: 50%; transform: translate(-50%,-50%); z-index: 2;
+  animation: plEnterCrest 1.7s cubic-bezier(0.22,0.61,0.36,1) forwards; }
+@keyframes plEnterCrest { 0% { opacity: 0; transform: translate(-50%,-50%) scale(0.5) rotate(-8deg); }
+  22% { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(0); }
+  62% { opacity: 1; transform: translate(-50%,-50%) scale(1.04); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.5); } }
+.pl-enter-word { position: absolute; top: calc(45% + 100px); left: 50%; transform: translateX(-50%); z-index: 2;
+  font-family: var(--serif); font-weight: 600; font-size: 34px; letter-spacing: 0.45em; color: #fbf3df; white-space: nowrap;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.6), 0 0 30px rgba(216,173,78,0.35); animation: plEnterWord 1.7s ease forwards; }
+@keyframes plEnterWord { 0% { opacity: 0; letter-spacing: 0.9em; } 26% { opacity: 1; letter-spacing: 0.32em; }
+  64% { opacity: 1; } 100% { opacity: 0; letter-spacing: 0.55em; } }
+@media (prefers-reduced-motion: reduce) { .pl-enter { display: none; } }
+
+/* ---------- 无限动效 ---------- */
+.pl-hall-sweep { position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(246,227,166,0.10) 48%, rgba(255,255,255,0.05) 52%, transparent 62%);
+  transform: translateX(-60%); animation: plSweep 9s ease-in-out infinite; }
+@keyframes plSweep { 0% { transform: translateX(-70%); } 45%,100% { transform: translateX(70%); } }
+.pl-atmos-col { animation: plColBreathe 8s ease-in-out infinite; }
+.pl-atmos-col.right { animation-delay: -4s; }
+@keyframes plColBreathe { 0%,100% { opacity: 0.42; } 50% { opacity: 0.6; } }
+/* 表决进行中的议案：金边呼吸光 */
+.pl-doc.live { animation: plDocIn 0.6s cubic-bezier(0.22,0.61,0.36,1) both, plLive 3.4s ease-in-out 0.6s infinite; }
+@keyframes plLive { 0%,100% { box-shadow: 0 10px 30px rgba(5,8,18,0.4), 0 0 0 0 rgba(63,129,149,0); }
+  50% { box-shadow: 0 12px 34px rgba(5,8,18,0.45), 0 0 22px 1px rgba(102,196,218,0.28); } }
+
+/* ---------- 工具条 / 检索 ---------- */
+.pl-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.pl-toolbar .pl-tabs { margin-bottom: 0; }
+.pl-search { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; padding: 7px 13px; border-radius: 11px;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--muted); }
+.pl-search input { border: none; outline: none; background: none; color: var(--text); font-size: 13px; width: 160px; }
+.pl-search input::placeholder { color: var(--faint); }
+.pl-rosterbtn { font-family: var(--serif); }
+
+/* ---------- 议论 ---------- */
+.pl-discuss-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 30px; cursor: pointer;
+  border: 1px solid var(--border-2); background: var(--panel); color: var(--muted); font-size: 13px; transition: 0.18s; }
+.pl-discuss-btn:hover { border-color: var(--au); color: var(--au-hi); }
+.pl-discuss-btn.on { background: rgba(216,173,78,0.12); border-color: var(--au); color: var(--au-hi); }
+.pl-discuss { margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-2); animation: plDocIn 0.4s ease both; }
+.pl-discuss-load, .pl-discuss-empty { font-size: 12.5px; color: var(--faint); padding: 4px 0 10px; }
+.pl-cmt { display: flex; gap: 10px; padding: 8px 0; }
+.pl-cmt-body { flex: 1; min-width: 0; }
+.pl-cmt-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.pl-cmt-head b { font-weight: 600; }
+.pl-cmt-time { color: var(--faint); font-size: 11px; }
+.pl-cmt-del { margin-left: auto; background: none; border: none; color: var(--faint); cursor: pointer; padding: 2px; border-radius: 6px; display: grid; place-items: center; }
+.pl-cmt-del:hover { color: var(--danger); background: var(--bg-2); }
+.pl-cmt-body p { margin: 3px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.pl-cmt-post { display: flex; gap: 8px; margin-top: 10px; }
+.pl-cmt-post .input { flex: 1; }
+
+/* ---------- 名册 ---------- */
+.pl-roster { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; margin-top: 6px; }
+.pl-roster-row { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 11px; transition: background 0.15s; }
+.pl-roster-row:hover { background: var(--bg-2); }
+.pl-roster-tx { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px; }
+.pl-roster-tx b { font-size: 14px; }
+
+/* Immersive parliament uses viewport-fixed layers (atmos / entrance / music);
+   the global route transform would trap them in a containing block — use opacity only. */
+.route-fade:has(.pl-immersive) { animation-name: plFadeOnly !important; }
+@keyframes plFadeOnly { from { opacity: 0; } to { opacity: 1; } }

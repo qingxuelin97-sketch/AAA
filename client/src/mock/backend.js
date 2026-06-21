@@ -459,6 +459,7 @@ function proposalView(p, meId) {
     live_tally: live, tally: p.tally || null, council_size: councilSize(),
     my_vote: meId ? (votes.find(v => v.user_id === meId)?.choice || null) : null,
     endorsements: endorses.length, my_endorsed: meId ? endorses.some(e => e.user_id === meId) : false,
+    comment_count: filter('proposal_comments', c => c.proposal_id === p.id).length,
   };
 }
 function saveWorld(cid, world) {
@@ -987,9 +988,35 @@ async function route(method, path, search, body, headers) {
     need(); const c = councilCfg();
     return J({ is_councilor: !!me.is_councilor, is_gm: !!me.is_gm, council_size: councilSize(), seats: councilSeats(), term: c.term || 1, locked: !!c.locked, locked_at: c.locked_at || null, me_id: me.id, thresholds: { general: 0.5, special: 2 / 3 } });
   }
-  // While the chamber is locked, every proposal/vote mutation is suspended.
-  if (path.startsWith('/parliament/proposals') && method !== 'GET' && parliamentLocked()) {
+  // Public roster of sitting councilors (anyone may view).
+  if (path === '/parliament/councilors' && method === 'GET') {
+    need();
+    const rows = filter('users', u => u.is_councilor).map(u => ({ id: u.id, display_name: u.display_name, avatar: u.avatar, verified: !!u.verified, creator_tier: creatorTier(u) }));
+    return J({ councilors: rows, seats: councilSeats() });
+  }
+  // While the chamber is locked, proposal/vote mutations are suspended — but public 议论 (comments) continue.
+  if (path.startsWith('/parliament/proposals') && method !== 'GET' && !path.includes('/comments') && parliamentLocked()) {
     return E('幻域议会当前已休会（GM 封锁中），暂停受理一切提案与表决，静待复会。', 423);
+  }
+  // Proposal discussion — open to all citizens.
+  if ((m = P(/^\/parliament\/proposals\/(\d+)\/comments$/))) {
+    const pid = +m[1]; const p = find('proposals', x => x.id === pid); if (!p) return E('议案不存在', 404);
+    if (method === 'GET') {
+      const rows = filter('proposal_comments', c => c.proposal_id === pid).sort((a, b) => a.id - b.id)
+        .map(c => { const u = user(c.user_id); return { id: c.id, text: c.text, created_at: c.created_at, user_id: c.user_id, author_name: u?.display_name || '已注销', author_avatar: u?.avatar, author_councilor: !!u?.is_councilor, author_tier: creatorTier(u) }; });
+      return J({ comments: rows });
+    }
+    if (method === 'POST') {
+      need(); const text = String(body.text || '').trim(); if (!text) return E('议论内容不能为空');
+      const c = insert('proposal_comments', { proposal_id: pid, user_id: me.id, text: text.slice(0, 600) });
+      if (p.author_id !== me.id) notify(p.author_id, `${me.display_name} 在你的议案「${p.title.slice(0, 16)}」下发表了议论`, '/parliament');
+      return J({ comment: { id: c.id, text: c.text, created_at: c.created_at, user_id: me.id, author_name: me.display_name, author_avatar: me.avatar, author_councilor: !!me.is_councilor, author_tier: creatorTier(me) } });
+    }
+  }
+  if ((m = P(/^\/parliament\/proposals\/(\d+)\/comments\/(\d+)$/)) && method === 'DELETE') {
+    need(); const c = find('proposal_comments', x => x.id === +m[2]); if (!c) return E('议论不存在', 404);
+    if (c.user_id !== me.id && !me.is_gm) return E('无权删除', 403);
+    db.proposal_comments = filter('proposal_comments', x => x.id !== c.id); save(); return J({ ok: true });
   }
   if (path === '/parliament/proposals' && method === 'GET') {
     need();

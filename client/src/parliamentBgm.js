@@ -1,67 +1,45 @@
-// Procedural ceremonial ambience for the parliament chamber — synthesized with
-// the Web Audio API so it needs no external asset and works fully offline.
-// A solemn sustained organ-like pad + sparse bell motif, kept quiet & dignified.
+// Chamber background music — a pre-rendered, mixed ceremonial track bundled with
+// the app (client/public/audio/senate.ogg), loaded as a looping HTMLAudioElement.
+// No external network, works offline. Handles autoplay policy via gesture resume.
 
-let ctx = null, master = null, lp = null, nodes = [], timer = null, started = false;
-const LEVEL = 0.085;
+const SRC = (import.meta.env.BASE_URL || '/') + 'audio/senate.ogg';
+const LEVEL = 0.55;
+let audio = null, started = false, fadeTimer = null, muted = false;
 
-function bellTone() {
-  if (!ctx) return;
-  const scale = [293.66, 329.63, 392.0, 440.0, 587.33, 659.25]; // D 五声音阶
-  const t = ctx.currentTime;
-  const f = scale[Math.floor(Math.random() * scale.length)];
-  const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
-  const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 2;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(0.07, t + 0.05);
-  g.gain.exponentialRampToValueAtTime(0.0006, t + 2.8);
-  o.connect(g); o2.connect(g); g.connect(lp);
-  o.start(t); o2.start(t); o.stop(t + 3); o2.stop(t + 3);
+function fadeTo(target, ms) {
+  if (!audio) return;
+  clearInterval(fadeTimer);
+  const steps = 30, start = audio.volume, dv = target - start;
+  let i = 0;
+  fadeTimer = setInterval(() => {
+    if (!audio) { clearInterval(fadeTimer); return; }
+    i++; audio.volume = Math.max(0, Math.min(1, start + dv * (i / steps)));
+    if (i >= steps) clearInterval(fadeTimer);
+  }, Math.max(16, ms / steps));
 }
 
 export function startBgm() {
   if (started) return;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return;
-  try { _start(AC); } catch { try { if (ctx) ctx.close(); } catch { /* */ } ctx = null; started = false; }
+  try {
+    audio = new Audio(SRC);
+    audio.loop = true; audio.preload = 'auto'; audio.volume = 0;
+    started = true;
+    if (!muted) audio.play().then(() => fadeTo(LEVEL, 2600)).catch(() => { /* awaits a user gesture */ });
+  } catch { started = false; audio = null; }
 }
-function _start(AC) {
-  ctx = new AC();
-  master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
-  lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.5; lp.connect(master);
-
-  // sustained pad — a low, open chord (D2 · A2 · D3 · F3)
-  const chord = [73.42, 110.0, 146.83, 174.61];
-  chord.forEach((f, i) => {
-    const o = ctx.createOscillator(); o.type = i % 2 ? 'sine' : 'triangle'; o.frequency.value = f;
-    const g = ctx.createGain(); g.gain.value = 0.16 / (i + 1.2);
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.045 + i * 0.017;
-    const lg = ctx.createGain(); lg.gain.value = 3.2;
-    lfo.connect(lg); lg.connect(o.detune); lfo.start();
-    o.connect(g); g.connect(lp); o.start();
-    nodes.push(o, lfo);
-  });
-  // gentle breathing tremolo on the master
-  const trem = ctx.createOscillator(); trem.frequency.value = 0.1;
-  const tg = ctx.createGain(); tg.gain.value = 0.02;
-  trem.connect(tg); tg.connect(master.gain); trem.start(); nodes.push(trem);
-
-  timer = setInterval(bellTone, 4600);
-  setTimeout(bellTone, 900);
-  master.gain.linearRampToValueAtTime(LEVEL, ctx.currentTime + 3.5); // slow swell-in
-  started = true;
-  resume();
+export function resume() {
+  if (audio && !muted && audio.paused) audio.play().then(() => fadeTo(LEVEL, 2000)).catch(() => { /* */ });
 }
-
-export function resume() { try { if (ctx && ctx.state === 'suspended') ctx.resume(); } catch { /* */ } }
-export function setMuted(m) { try { if (master && ctx) master.gain.setTargetAtTime(m ? 0 : LEVEL, ctx.currentTime, 0.25); } catch { /* */ } }
+export function setMuted(m) {
+  muted = m;
+  if (!audio) return;
+  if (m) { fadeTo(0, 320); setTimeout(() => { if (audio && muted) try { audio.pause(); } catch { /* */ } }, 360); }
+  else { try { if (audio.paused) audio.play().catch(() => {}); } catch { /* */ } fadeTo(LEVEL, 900); }
+}
 export function isStarted() { return started; }
 export function stopBgm() {
   if (!started) return;
-  clearInterval(timer); timer = null;
-  try { master.gain.setTargetAtTime(0, ctx.currentTime, 0.4); } catch { /* */ }
-  const c = ctx;
-  setTimeout(() => { try { c.close(); } catch { /* */ } }, 700);
-  ctx = master = lp = null; nodes = []; started = false;
+  clearInterval(fadeTimer);
+  const a = audio; audio = null; started = false;
+  if (a) { try { a.pause(); a.src = ''; a.load(); } catch { /* */ } }
 }
