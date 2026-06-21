@@ -1971,7 +1971,7 @@ body:has(.pl-immersive) { background: #0b1022; }
 .pl-immersive .pl-no { color: #b6ad8e; }
 
 /* ---------- 议会礼乐控件 ---------- */
-.pl-music { position: fixed; left: 22px; bottom: 26px; z-index: 46; display: inline-flex; align-items: center; gap: 9px;
+.pl-music { position: fixed; right: 22px; bottom: 84px; left: auto; z-index: 46; display: inline-flex; align-items: center; gap: 9px;
   padding: 9px 15px 9px 12px; border-radius: 30px; cursor: pointer; color: #f3e6c4;
   background: linear-gradient(135deg, rgba(36,44,74,0.92), rgba(18,23,44,0.92)); border: 1px solid rgba(216,173,78,0.45);
   box-shadow: 0 8px 24px rgba(6,9,20,0.45), inset 0 1px 0 rgba(255,255,255,0.06); backdrop-filter: blur(8px);
@@ -1989,7 +1989,7 @@ body:has(.pl-immersive) { background: #0b1022; }
 .pl-music.muted .pl-eq i { animation-play-state: paused; transform: scaleY(0.28); opacity: 0.5; }
 .pl-music.muted { color: #b6b0a0; border-color: var(--border); }
 .pl-music.muted svg { color: #9a9888; }
-@media (max-width: 760px) { .pl-music { bottom: 80px; left: 14px; padding: 8px 13px 8px 11px; } .pl-music-tx { display: none; } }
+@media (max-width: 760px) { .pl-music { right: auto; left: 14px; bottom: 80px; padding: 8px 13px 8px 11px; } .pl-music-tx { display: none; } }
 @media (prefers-reduced-motion: reduce) { .pl-eq i { animation: none; } }
 
 /* ============================================================
