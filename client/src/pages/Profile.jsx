@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CountUp, CreatorV, CouncilorBadge } from '../ui.jsx';
-import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck, X, Pencil, Share2 } from 'lucide-react';
+import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck, X, Pencil, Share2, Check, MessageSquare } from 'lucide-react';
 import { pid } from '../assets.jsx';
 import ReportButton from '../components/ReportButton.jsx';
 
@@ -17,9 +17,19 @@ export default function Profile() {
   const [tab, setTab] = useState('characters');
   const [following, setFollowing] = useState(false);
   const [listModal, setListModal] = useState(null); // { kind, title, users }
+  const [fr, setFr] = useState({ state: 'none', can_dm: false });
 
   const load = () => api('/users/' + targetId).then(d => { setData(d); setFollowing(d.following); }).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [targetId]);
+  useEffect(() => { if (!isMe && targetId) api('/friends/state/' + targetId).then(setFr).catch(() => {}); /* eslint-disable-next-line */ }, [targetId, isMe]);
+  const friendAction = async () => {
+    try {
+      if (fr.state === 'pending_in') { /* accept: find the request — simplest: send request back which auto-accepts */ await api('/friends/request/' + targetId, { method: 'POST' }); toast('已添加为好友'); }
+      else if (fr.state === 'friends') { if (!confirm('解除好友关系？')) return; await api('/friends/' + targetId, { method: 'DELETE' }); toast('已解除好友'); }
+      else { const d = await api('/friends/request/' + targetId, { method: 'POST' }); toast(d.state === 'friends' ? '已成为好友' : '好友申请已发送'); }
+      api('/friends/state/' + targetId).then(setFr).catch(() => {});
+    } catch (e) { toast(e.message, 'err'); }
+  };
   if (!data) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
   const u = data.user;
 
@@ -54,7 +64,14 @@ export default function Profile() {
           </>
         ) : (
           <>
-            <button className={'btn ' + (following ? '' : 'primary')} onClick={toggleFollow}>
+            <button className={'btn ' + (fr.state === 'friends' ? '' : 'primary')} onClick={friendAction}>
+              {fr.state === 'friends' ? <><Check size={15} /> 已是好友</>
+                : fr.state === 'pending_out' ? <><UserPlus size={15} /> 待通过</>
+                  : fr.state === 'pending_in' ? <><UserPlus size={15} /> 接受申请</>
+                    : <><UserPlus size={15} /> 加好友</>}
+            </button>
+            {(fr.state === 'friends' || fr.can_dm) && <button className="btn" onClick={() => nav('/friends?dm=' + u.id)}><MessageSquare size={15} /> 私信</button>}
+            <button className={'btn ' + (following ? 'ghost' : '')} onClick={toggleFollow}>
               {following ? <><UserCheck size={15} /> 已关注</> : <><UserPlus size={15} /> 关注</>}
             </button>
             <ReportButton type="user" id={u.id} label="举报用户" />

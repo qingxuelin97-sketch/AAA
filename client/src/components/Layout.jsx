@@ -10,7 +10,7 @@ import QuickCreate from './QuickCreate.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark, UserRound
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -29,6 +29,7 @@ const GROUPS = [
   ] },
   { title: '互动', items: [
     { to: '/chats', ic: MessageCircle, label: '对话' },
+    { to: '/friends', ic: UserRound, label: '好友', badge: 'dm' },
     { to: '/groups', ic: Users, label: '群聊' },
     { to: '/theater', ic: Drama, label: '剧场 · 联机' }
   ] },
@@ -64,6 +65,7 @@ export default function Layout({ children }) {
   const { user } = useAuth();
   const loc = useLocation();
   const [unread, setUnread] = useState(0);
+  const [dmUnread, setDmUnread] = useState(0);
   const [mode, setMode] = useState(initialMode);
   const [peek, setPeek] = useState('closed'); // closed | open | closing (left-edge hover reveal when hidden)
   const [mobileNav, setMobileNav] = useState(false);
@@ -97,7 +99,11 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     let alive = true;
-    const load = () => api('/social/notifications').then(d => alive && setUnread(d.unread)).catch(() => {});
+    const load = () => {
+      api('/social/notifications').then(d => alive && setUnread(d.unread)).catch(() => {});
+      api('/dm').then(d => alive && setDmUnread(d.unread_total || 0)).catch(() => {});
+      api('/social/heartbeat', { method: 'POST' }).catch(() => {}); // 在线心跳
+    };
     load();
     const t = setInterval(load, 20000);
     return () => { alive = false; clearInterval(t); };
@@ -105,7 +111,7 @@ export default function Layout({ children }) {
 
   return (
     <div className={'app-shell' + (mode !== 'expanded' ? ' sb-' + mode : '')}>
-      <Sidebar user={user} unread={unread} mode={mode} peek={peek} cycle={cycle} onLeave={closePeek} />
+      <Sidebar user={user} unread={unread} dmUnread={dmUnread} mode={mode} peek={peek} cycle={cycle} onLeave={closePeek} />
       {mode === 'hidden' && peek === 'closed' && (
         <button className="sb-edge-trigger" onMouseEnter={openPeek} onClick={cycle}
           title="展开侧边栏（鼠标移入可快速预览）" aria-label="展开侧边栏">
@@ -116,7 +122,7 @@ export default function Layout({ children }) {
         <div className="sb-peek-backdrop" onMouseEnter={closePeek} onClick={closePeek} aria-hidden="true" />
       )}
       <MobileTop user={user} unread={unread} onMenu={() => setMobileNav(true)} />
-      {mobileNav && <MobileNav user={user} unread={unread} onClose={() => setMobileNav(false)} installEvt={installEvt} doInstall={doInstall} />}
+      {mobileNav && <MobileNav user={user} unread={unread} dmUnread={dmUnread} onClose={() => setMobileNav(false)} installEvt={installEvt} doInstall={doInstall} />}
       <main className="main">
         <ScrollChrome />
         <div className="route-fade" key={loc.pathname}>{children}</div>
@@ -137,7 +143,7 @@ export default function Layout({ children }) {
   );
 }
 
-function Sidebar({ user, unread, mode, peek, cycle, onLeave }) {
+function Sidebar({ user, unread, dmUnread, mode, peek, cycle, onLeave }) {
   const { logout } = useAuth();
   const nav = useNavigate();
   const collapsed = mode === 'collapsed'; // icon-only rail (peek always shows full layout)
@@ -180,6 +186,7 @@ function Sidebar({ user, unread, mode, peek, cycle, onLeave }) {
                 <span className="ic"><n.ic size={18} /></span>
                 {!collapsed && n.label}
                 {n.badge === 'noti' && unread > 0 && <span className="nav-badge">{unread}</span>}
+                {n.badge === 'dm' && dmUnread > 0 && <span className="nav-badge">{dmUnread}</span>}
               </NavLink>
             ))}
           </div>
@@ -231,7 +238,7 @@ function MobileTop({ user, unread, onMenu }) {
 }
 
 // Full navigation drawer for mobile — surfaces every desktop sidebar entry.
-function MobileNav({ user, unread, onClose, installEvt, doInstall }) {
+function MobileNav({ user, unread, dmUnread, onClose, installEvt, doInstall }) {
   const { logout } = useAuth();
   const nav = useNavigate();
   const go = (to) => { nav(to); onClose(); };
@@ -261,6 +268,7 @@ function MobileNav({ user, unread, onClose, installEvt, doInstall }) {
                 <button key={n.to} className="nav-item" onClick={() => go(n.to)}>
                   <span className="ic"><n.ic size={18} /></span>{n.label}
                   {n.badge === 'noti' && unread > 0 && <span className="nav-badge">{unread}</span>}
+                {n.badge === 'dm' && dmUnread > 0 && <span className="nav-badge">{dmUnread}</span>}
                 </button>
               ))}
             </div>

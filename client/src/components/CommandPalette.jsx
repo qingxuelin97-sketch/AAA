@@ -6,7 +6,7 @@ import { getThemeMode, resolveTheme, setThemeMode } from '../theme.js';
 import {
   Search, Compass, PartyPopper, Dices, ScrollText, Users, Trophy, Megaphone,
   MessageCircle, Drama, Library, TrendingUp, Heart, Wallet, Bell, Settings,
-  Sparkles, UserPlus, Moon, Sun, LogOut, CornerDownLeft, Command, ArrowUp, ArrowDown, Landmark
+  Sparkles, UserPlus, Moon, Sun, LogOut, CornerDownLeft, Command, ArrowUp, ArrowDown, Landmark, UserRound
 } from 'lucide-react';
 
 // Flat list of navigable destinations (mirrors the sidebar) + quick actions.
@@ -20,6 +20,7 @@ const NAV = [
   { to: '/parliament', ic: Landmark, label: '议会 · 提案', kw: 'parliament yihui tian proposal' },
   { to: '/announcements', ic: Megaphone, label: '公告', kw: 'announcements gonggao' },
   { to: '/chats', ic: MessageCircle, label: '对话', kw: 'chats duihua' },
+  { to: '/friends', ic: UserRound, label: '好友 · 私信', kw: 'friends haoyou sixin dm' },
   { to: '/groups', ic: Users, label: '群聊', kw: 'groups qunliao' },
   { to: '/theater', ic: Drama, label: '剧场 · 联机', kw: 'theater juchang' },
   { to: '/library', ic: Library, label: '我的角色', kw: 'library wodejuese' },

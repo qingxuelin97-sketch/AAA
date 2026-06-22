@@ -96,6 +96,22 @@ function migrate() {
     const g = find('users', x => x.username === 'gm'); if (g) g.official = 1;
     db._mig.official_gm = 1;
   }
+  if (!db._mig.friends) {
+    // Seed a small friend graph + a sample DM so the friend system isn't empty.
+    const byName = (n) => find('users', x => x.username === n);
+    const demo = byName('demo'), astra = byName('astra'), mochi = byName('mochi'), kenji = byName('kenji');
+    const mkFriend = (a, b) => { if (a && b && !areFriends(a.id, b.id)) { const [x, y] = pairKey(a.id, b.id); insert('friendships', { a_id: x, b_id: y }); } };
+    mkFriend(demo, astra); mkFriend(demo, mochi);
+    if (kenji && demo && !areFriends(kenji.id, demo.id)) insert('friend_requests', { from_id: kenji.id, to_id: demo.id, status: 'pending' });
+    if (astra && demo) {
+      insert('dm_messages', { from_id: astra.id, to_id: demo.id, text: '嘿！你那个森灵角色做得太惊艳了～', read: 0 });
+      insert('dm_messages', { from_id: demo.id, to_id: astra.id, text: '哈哈谢谢，要不要一起开个剧场联机？', read: 1 });
+      insert('dm_messages', { from_id: astra.id, to_id: demo.id, text: '好啊，今晚八点剧场见！', read: 0 });
+    }
+    if (astra) astra.last_active = Date.now(); // 在线
+    if (mochi) mochi.last_active = Date.now() - 20 * 60 * 1000; // 离线
+    db._mig.friends = 1;
+  }
 }
 
 // Build a ready-to-use 二次元 character card (anime avatar + anime chat background).
@@ -260,6 +276,8 @@ const ACHIEVEMENTS = [
   { id: 'creator_v', name: '创作者认证', desc: '获得创作者 V 认证', icon: 'BadgeCheck', cat: '创作', goal: 1, reward: 120, metric: 'creator_bronze', link: '/studio' },
   { id: 'creator_hall', name: '殿堂创作者', desc: '登顶创作者榜成为 TOP 1', icon: 'Crown', cat: '创作', goal: 1, reward: 1000, metric: 'creator_gold', link: '/leaderboard' },
   // 社交
+  { id: 'first_friend', name: '初识好友', desc: '结交你的第一位好友', icon: 'UserPlus', cat: '社交', goal: 1, reward: 60, metric: 'friends', link: '/friends' },
+  { id: 'friends_5', name: '高朋满座', desc: '结交 5 位好友', icon: 'Users', cat: '社交', goal: 5, reward: 180, metric: 'friends', link: '/friends' },
   { id: 'first_fav', name: '一见倾心', desc: '收藏 1 个喜欢的角色', icon: 'Star', cat: '社交', goal: 1, reward: 20, metric: 'favorites', link: '/' },
   { id: 'fav_10', name: '收藏家', desc: '收藏 10 个角色', icon: 'Bookmark', cat: '社交', goal: 10, reward: 120, metric: 'favorites', link: '/favorites' },
   { id: 'first_moment', name: '初次发声', desc: '在社区发布 1 条动态', icon: 'PenLine', cat: '社交', goal: 1, reward: 40, metric: 'moments', link: '/community' },
@@ -293,6 +311,7 @@ function achMetric(me, metric) {
     case 'groups': return filter('group_members', x => x.user_id === uid).length;
     case 'theaters': return filter('theater_members', x => x.user_id === uid).length;
     case 'followers': return filter('follows', f => f.following_id === uid).length;
+    case 'friends': return friendIds(uid).length;
     case 'councilor': return me.is_councilor ? 1 : 0;
     case 'proposals': return filter('proposals', p => p.author_id === uid).length;
     case 'votes': return filter('proposal_votes', v => v.user_id === uid).length;
@@ -305,6 +324,29 @@ function achMetric(me, metric) {
   }
 }
 function achUnlockedCount(u) { return ACHIEVEMENTS.filter(a => achMetric(u, a.metric) >= a.goal).length; }
+
+/* ----------------------------- friends / DM / presence ----------------------------- */
+const ONLINE_MS = 5 * 60 * 1000;
+function pairKey(a, b) { return a < b ? [a, b] : [b, a]; }
+function areFriends(a, b) { const [x, y] = pairKey(a, b); return !!find('friendships', f => f.a_id === x && f.b_id === y); }
+function friendIds(uid) { return filter('friendships', f => f.a_id === uid || f.b_id === uid).map(f => (f.a_id === uid ? f.b_id : f.a_id)); }
+function isOnline(u) { if (!u) return false; const s = find('settings', x => x.user_id === u.id); if (s && s.show_online === 0) return false; return !!u.last_active && (Date.now() - u.last_active) < ONLINE_MS; }
+function dmAllowed(me, target) {
+  if (!target) return false;
+  if (areFriends(me.id, target.id)) return true; // friends may always DM
+  const s = find('settings', x => x.user_id === target.id) || {}; const mode = s.allow_dm || 'all';
+  if (mode === 'none') return false;
+  if (mode === 'followers') return !!find('follows', f => f.follower_id === me.id && f.following_id === target.id);
+  return true;
+}
+function friendState(me, tid) {
+  if (tid === me.id) return 'self';
+  if (areFriends(me.id, tid)) return 'friends';
+  if (find('friend_requests', r => r.from_id === me.id && r.to_id === tid && r.status === 'pending')) return 'pending_out';
+  if (find('friend_requests', r => r.from_id === tid && r.to_id === me.id && r.status === 'pending')) return 'pending_in';
+  return 'none';
+}
+function dmThreadOf(meId, otherId) { return filter('dm_messages', d => (d.from_id === meId && d.to_id === otherId) || (d.from_id === otherId && d.to_id === meId)); }
 
 /* ----------------------------- helpers ----------------------------- */
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
@@ -619,6 +661,7 @@ async function route(method, path, search, body, headers) {
     const u = find('users', x => x.username === body.username);
     if (!u || u.password !== body.password) return E('用户名或密码错误', 401);
     if (u.is_banned) return E('账号已被封禁' + (u.ban_reason ? '：' + u.ban_reason : ''), 403);
+    u.last_active = Date.now(); save();
     return J({ token: tokenFor(u), user: publicUser(u) });
   }
   if (method === 'GET' && path === '/auth/me') { need(); return J({ user: publicUser(me) }); }
@@ -1016,6 +1059,75 @@ async function route(method, path, search, body, headers) {
     return J({ users: rows });
   }
   if ((m = P(/^\/social\/follow\/(\d+)$/)) && method === 'POST') { need(); const tid = +m[1]; if (tid === me.id) return E('不能关注自己'); const ex = find('follows', f => f.follower_id === me.id && f.following_id === tid); if (ex) { db.follows = filter('follows', f => !(f.follower_id === me.id && f.following_id === tid)); save(); return J({ following: false }); } insert('follows', { follower_id: me.id, following_id: tid }); notify(tid, `${me.display_name} 关注了你`, '/user/' + me.id); return J({ following: true }); }
+  // ---------- presence ----------
+  if (method === 'POST' && path === '/social/heartbeat') { need(); me.last_active = Date.now(); save(); return J({ ok: true }); }
+
+  // ---------- friends ----------
+  if (path === '/friends' && method === 'GET') {
+    need();
+    const rows = friendIds(me.id).map(id => {
+      const u = user(id); if (!u) return null;
+      const msgs = dmThreadOf(me.id, id); const last = msgs.sort((a, b) => b.id - a.id)[0];
+      const unread = msgs.filter(d => d.from_id === id && !d.read).length;
+      return { id: u.id, display_name: u.display_name, avatar: u.avatar, online: isOnline(u), creator_tier: creatorTier(u), is_councilor: !!u.is_councilor, verified: !!u.verified, last_message: last ? { text: last.text.slice(0, 44), at: last.created_at, mine: last.from_id === me.id } : null, unread };
+    }).filter(Boolean).sort((a, b) => (b.unread - a.unread) || (b.online - a.online) || ((b.last_message?.at || '').localeCompare(a.last_message?.at || '')));
+    return J({ friends: rows, count: rows.length });
+  }
+  if (path === '/friends/requests' && method === 'GET') {
+    need();
+    const incoming = filter('friend_requests', r => r.to_id === me.id && r.status === 'pending').map(r => { const u = user(r.from_id); return u && { req_id: r.id, id: u.id, display_name: u.display_name, avatar: u.avatar, creator_tier: creatorTier(u), bio: u.bio || '', at: r.created_at }; }).filter(Boolean).reverse();
+    const outgoing = filter('friend_requests', r => r.from_id === me.id && r.status === 'pending').map(r => { const u = user(r.to_id); return u && { req_id: r.id, id: u.id, display_name: u.display_name, avatar: u.avatar }; }).filter(Boolean).reverse();
+    return J({ incoming, outgoing });
+  }
+  if ((m = P(/^\/friends\/request\/(\d+)$/)) && method === 'POST') {
+    need(); const tid = +m[1]; if (tid === me.id) return E('不能添加自己为好友'); const target = user(tid); if (!target) return E('用户不存在', 404);
+    if (areFriends(me.id, tid)) return E('你们已经是好友了');
+    const incoming = find('friend_requests', r => r.from_id === tid && r.to_id === me.id && r.status === 'pending');
+    if (incoming) { incoming.status = 'accepted'; const [a, b] = pairKey(me.id, tid); insert('friendships', { a_id: a, b_id: b }); save(); notify(tid, `${me.display_name} 接受了你的好友申请 🎉`, '/friends'); return J({ state: 'friends' }); }
+    if (find('friend_requests', r => r.from_id === me.id && r.to_id === tid && r.status === 'pending')) return E('已发送过好友申请，等待对方通过');
+    insert('friend_requests', { from_id: me.id, to_id: tid, status: 'pending' });
+    notify(tid, `${me.display_name} 申请加你为好友`, '/friends');
+    return J({ state: 'pending_out' });
+  }
+  if ((m = P(/^\/friends\/requests\/(\d+)\/(accept|reject)$/)) && method === 'POST') {
+    need(); const r = find('friend_requests', x => x.id === +m[1]); if (!r || r.to_id !== me.id) return E('申请不存在', 404); if (r.status !== 'pending') return E('该申请已处理');
+    if (m[2] === 'accept') { r.status = 'accepted'; if (!areFriends(me.id, r.from_id)) { const [a, b] = pairKey(me.id, r.from_id); insert('friendships', { a_id: a, b_id: b }); } save(); notify(r.from_id, `${me.display_name} 通过了你的好友申请，开始聊天吧～`, '/friends'); return J({ ok: true, state: 'friends' }); }
+    r.status = 'rejected'; save(); return J({ ok: true, state: 'none' });
+  }
+  if ((m = P(/^\/friends\/(\d+)$/)) && method === 'DELETE') {
+    need(); const tid = +m[1]; const [a, b] = pairKey(me.id, tid);
+    db.friendships = filter('friendships', f => !(f.a_id === a && f.b_id === b));
+    db.friend_requests = filter('friend_requests', r => !((r.from_id === me.id && r.to_id === tid) || (r.from_id === tid && r.to_id === me.id)));
+    save(); return J({ ok: true });
+  }
+  if ((m = P(/^\/friends\/state\/(\d+)$/)) && method === 'GET') {
+    need(); const tid = +m[1]; const t = user(tid);
+    return J({ state: friendState(me, tid), can_dm: t ? dmAllowed(me, t) : false, online: isOnline(t) });
+  }
+
+  // ---------- direct messages ----------
+  if (path === '/dm' && method === 'GET') {
+    need(); const partners = new Set();
+    filter('dm_messages', d => d.from_id === me.id || d.to_id === me.id).forEach(d => partners.add(d.from_id === me.id ? d.to_id : d.from_id));
+    const rows = [...partners].map(id => { const u = user(id); if (!u) return null; const msgs = dmThreadOf(me.id, id); const last = msgs.sort((a, b) => b.id - a.id)[0]; const unread = msgs.filter(d => d.from_id === id && !d.read).length; return { id: u.id, display_name: u.display_name, avatar: u.avatar, online: isOnline(u), friend: areFriends(me.id, id), last_message: last ? { text: last.text.slice(0, 50), at: last.created_at, mine: last.from_id === me.id } : null, unread }; }).filter(Boolean).sort((a, b) => (b.last_message?.at || '').localeCompare(a.last_message?.at || ''));
+    return J({ threads: rows, unread_total: rows.reduce((s, r) => s + r.unread, 0) });
+  }
+  if ((m = P(/^\/dm\/(\d+)$/))) {
+    need(); const tid = +m[1]; const target = user(tid); if (!target) return E('用户不存在', 404);
+    if (method === 'GET') {
+      const msgs = dmThreadOf(me.id, tid).sort((a, b) => a.id - b.id);
+      let changed = false; msgs.forEach(d => { if (d.to_id === me.id && !d.read) { d.read = 1; changed = true; } }); if (changed) save();
+      return J({ messages: msgs.map(d => ({ id: d.id, from_id: d.from_id, text: d.text, created_at: d.created_at, mine: d.from_id === me.id })), peer: { id: target.id, display_name: target.display_name, avatar: target.avatar, online: isOnline(target), creator_tier: creatorTier(target), is_councilor: !!target.is_councilor, verified: !!target.verified }, can_dm: dmAllowed(me, target), friend: areFriends(me.id, tid) });
+    }
+    if (method === 'POST') {
+      const text = String(body.text || '').trim(); if (!text) return E('消息不能为空');
+      if (!dmAllowed(me, target)) return E('对方的隐私设置不允许你私信，需先成为好友或关注', 403);
+      const msg = insert('dm_messages', { from_id: me.id, to_id: tid, text: text.slice(0, 2000), read: 0 });
+      notify(tid, `${me.display_name} 发来私信：${text.slice(0, 24)}`, '/friends');
+      return J({ message: { id: msg.id, from_id: me.id, text: msg.text, created_at: msg.created_at, mine: true } });
+    }
+  }
+
   if (method === 'GET' && path === '/social/notifications') { need(); const rows = filter('notifications', n => n.user_id === me.id).sort((a, b) => b.id - a.id).slice(0, 50); return J({ notifications: rows, unread: rows.filter(n => !n.read).length }); }
   if (method === 'POST' && path === '/social/notifications/read') { need(); filter('notifications', n => n.user_id === me.id).forEach(n => (n.read = 1)); save(); return J({ ok: true }); }
 

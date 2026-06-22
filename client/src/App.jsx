@@ -32,6 +32,7 @@ import Gacha from './pages/Gacha.jsx';
 import Studio from './pages/Studio.jsx';
 import Parliament from './pages/Parliament.jsx';
 import Achievements from './pages/Achievements.jsx';
+import Friends from './pages/Friends.jsx';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/gacha" element={P(<Gacha />)} />
         <Route path="/parliament" element={P(<Parliament />)} />
         <Route path="/achievements" element={P(<Achievements />)} />
+        <Route path="/friends" element={P(<Friends />)} />
         <Route path="/admin" element={P(<Admin />)} />
         <Route path="/chats" element={P(<Chat />)} />
         <Route path="/chats/:id" element={P(<Chat />)} />
