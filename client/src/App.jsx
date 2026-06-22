@@ -1,38 +1,42 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './api.jsx';
 import { ToastProvider } from './ui.jsx';
 import Layout from './components/Layout.jsx';
 import Auth from './pages/Auth.jsx';
-import Home from './pages/Home.jsx';
-import Library from './pages/Library.jsx';
-import CharacterEditor from './pages/CharacterEditor.jsx';
-import Chat from './pages/Chat.jsx';
-import Settings from './pages/Settings.jsx';
-import Profile from './pages/Profile.jsx';
-import Publish from './pages/Publish.jsx';
-import Scripts from './pages/Scripts.jsx';
-import ScriptDetail from './pages/ScriptDetail.jsx';
-import ScriptEditor from './pages/ScriptEditor.jsx';
-import Community from './pages/Community.jsx';
-import Groups from './pages/Groups.jsx';
-import GroupRoom from './pages/GroupRoom.jsx';
-import Theater from './pages/Theater.jsx';
-import TheaterRoom from './pages/TheaterRoom.jsx';
-import Wallet from './pages/Wallet.jsx';
-import Notifications from './pages/Notifications.jsx';
-import Favorites from './pages/Favorites.jsx';
-import Search from './pages/Search.jsx';
-import CharacterView from './pages/CharacterView.jsx';
-import Announcements from './pages/Announcements.jsx';
-import Leaderboard from './pages/Leaderboard.jsx';
-import Events from './pages/Events.jsx';
-import Admin from './pages/Admin.jsx';
-import Gacha from './pages/Gacha.jsx';
-import Studio from './pages/Studio.jsx';
-import Parliament from './pages/Parliament.jsx';
-import Achievements from './pages/Achievements.jsx';
-import Friends from './pages/Friends.jsx';
+
+// Route-level code splitting — each page is fetched on demand so the initial
+// bundle stays small and the discover page paints fast. The login screen and
+// Layout shell stay eager (they're on the critical path for first paint).
+const Home = lazy(() => import('./pages/Home.jsx'));
+const Library = lazy(() => import('./pages/Library.jsx'));
+const CharacterEditor = lazy(() => import('./pages/CharacterEditor.jsx'));
+const Chat = lazy(() => import('./pages/Chat.jsx'));
+const Settings = lazy(() => import('./pages/Settings.jsx'));
+const Profile = lazy(() => import('./pages/Profile.jsx'));
+const Publish = lazy(() => import('./pages/Publish.jsx'));
+const Scripts = lazy(() => import('./pages/Scripts.jsx'));
+const ScriptDetail = lazy(() => import('./pages/ScriptDetail.jsx'));
+const ScriptEditor = lazy(() => import('./pages/ScriptEditor.jsx'));
+const Community = lazy(() => import('./pages/Community.jsx'));
+const Groups = lazy(() => import('./pages/Groups.jsx'));
+const GroupRoom = lazy(() => import('./pages/GroupRoom.jsx'));
+const Theater = lazy(() => import('./pages/Theater.jsx'));
+const TheaterRoom = lazy(() => import('./pages/TheaterRoom.jsx'));
+const Wallet = lazy(() => import('./pages/Wallet.jsx'));
+const Notifications = lazy(() => import('./pages/Notifications.jsx'));
+const Favorites = lazy(() => import('./pages/Favorites.jsx'));
+const Search = lazy(() => import('./pages/Search.jsx'));
+const CharacterView = lazy(() => import('./pages/CharacterView.jsx'));
+const Announcements = lazy(() => import('./pages/Announcements.jsx'));
+const Leaderboard = lazy(() => import('./pages/Leaderboard.jsx'));
+const Events = lazy(() => import('./pages/Events.jsx'));
+const Admin = lazy(() => import('./pages/Admin.jsx'));
+const Gacha = lazy(() => import('./pages/Gacha.jsx'));
+const Studio = lazy(() => import('./pages/Studio.jsx'));
+const Parliament = lazy(() => import('./pages/Parliament.jsx'));
+const Achievements = lazy(() => import('./pages/Achievements.jsx'));
+const Friends = lazy(() => import('./pages/Friends.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -47,43 +51,45 @@ export default function App() {
   const { user } = useAuth();
   return (
     <ToastProvider>
-      <Routes>
-        <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
-        <Route path="/" element={P(<Home />)} />
-        <Route path="/scripts" element={P(<Scripts />)} />
-        <Route path="/script/new" element={P(<ScriptEditor />)} />
-        <Route path="/script/:id" element={P(<ScriptDetail />)} />
-        <Route path="/script/:id/edit" element={P(<ScriptEditor />)} />
-        <Route path="/community" element={P(<Community />)} />
-        <Route path="/search" element={P(<Search />)} />
-        <Route path="/announcements" element={P(<Announcements />)} />
-        <Route path="/leaderboard" element={P(<Leaderboard />)} />
-        <Route path="/events" element={P(<Events />)} />
-        <Route path="/gacha" element={P(<Gacha />)} />
-        <Route path="/parliament" element={P(<Parliament />)} />
-        <Route path="/achievements" element={P(<Achievements />)} />
-        <Route path="/friends" element={P(<Friends />)} />
-        <Route path="/admin" element={P(<Admin />)} />
-        <Route path="/chats" element={P(<Chat />)} />
-        <Route path="/chats/:id" element={P(<Chat />)} />
-        <Route path="/groups" element={P(<Groups />)} />
-        <Route path="/group/:id" element={P(<GroupRoom />)} />
-        <Route path="/theater" element={P(<Theater />)} />
-        <Route path="/theater/:id" element={P(<TheaterRoom />)} />
-        <Route path="/library" element={P(<Library />)} />
-        <Route path="/studio" element={P(<Studio />)} />
-        <Route path="/favorites" element={P(<Favorites />)} />
-        <Route path="/wallet" element={P(<Wallet />)} />
-        <Route path="/notifications" element={P(<Notifications />)} />
-        <Route path="/settings" element={P(<Settings />)} />
-        <Route path="/character/new" element={P(<CharacterEditor />)} />
-        <Route path="/character/:id" element={P(<CharacterView />)} />
-        <Route path="/character/:id/edit" element={P(<CharacterEditor />)} />
-        <Route path="/publish" element={P(<Publish />)} />
-        <Route path="/profile" element={P(<Profile />)} />
-        <Route path="/user/:id" element={P(<Profile />)} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<div className="empty" style={{ paddingTop: 160 }}>载入中…</div>}>
+        <Routes>
+          <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
+          <Route path="/" element={P(<Home />)} />
+          <Route path="/scripts" element={P(<Scripts />)} />
+          <Route path="/script/new" element={P(<ScriptEditor />)} />
+          <Route path="/script/:id" element={P(<ScriptDetail />)} />
+          <Route path="/script/:id/edit" element={P(<ScriptEditor />)} />
+          <Route path="/community" element={P(<Community />)} />
+          <Route path="/search" element={P(<Search />)} />
+          <Route path="/announcements" element={P(<Announcements />)} />
+          <Route path="/leaderboard" element={P(<Leaderboard />)} />
+          <Route path="/events" element={P(<Events />)} />
+          <Route path="/gacha" element={P(<Gacha />)} />
+          <Route path="/parliament" element={P(<Parliament />)} />
+          <Route path="/achievements" element={P(<Achievements />)} />
+          <Route path="/friends" element={P(<Friends />)} />
+          <Route path="/admin" element={P(<Admin />)} />
+          <Route path="/chats" element={P(<Chat />)} />
+          <Route path="/chats/:id" element={P(<Chat />)} />
+          <Route path="/groups" element={P(<Groups />)} />
+          <Route path="/group/:id" element={P(<GroupRoom />)} />
+          <Route path="/theater" element={P(<Theater />)} />
+          <Route path="/theater/:id" element={P(<TheaterRoom />)} />
+          <Route path="/library" element={P(<Library />)} />
+          <Route path="/studio" element={P(<Studio />)} />
+          <Route path="/favorites" element={P(<Favorites />)} />
+          <Route path="/wallet" element={P(<Wallet />)} />
+          <Route path="/notifications" element={P(<Notifications />)} />
+          <Route path="/settings" element={P(<Settings />)} />
+          <Route path="/character/new" element={P(<CharacterEditor />)} />
+          <Route path="/character/:id" element={P(<CharacterView />)} />
+          <Route path="/character/:id/edit" element={P(<CharacterEditor />)} />
+          <Route path="/publish" element={P(<Publish />)} />
+          <Route path="/profile" element={P(<Profile />)} />
+          <Route path="/user/:id" element={P(<Profile />)} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </ToastProvider>
   );
 }

@@ -38,6 +38,28 @@ router.get('/public', authOptional, (req, res) => {
   res.json({ characters: rows });
 });
 
+// Personalized recommendations — rank public characters by the categories the
+// caller has favorited / chatted with, blended with popularity. Excludes the
+// caller's own characters and ones already favorited.
+router.get('/recommended', authRequired, (req, res) => {
+  const uid = req.user.id;
+  const favIds = new Set(db.prepare('SELECT character_id FROM favorites WHERE user_id = ?').all(uid).map(r => r.character_id));
+  const weight = {};
+  const bump = (cat, w) => { if (cat) weight[cat] = (weight[cat] || 0) + w; };
+  db.prepare(`SELECT c.category FROM favorites f JOIN characters c ON c.id = f.character_id WHERE f.user_id = ?`).all(uid).forEach(r => bump(r.category, 2));
+  db.prepare(`SELECT c.category FROM conversations cv JOIN characters c ON c.id = cv.character_id WHERE cv.user_id = ?`).all(uid).forEach(r => bump(r.category, 1));
+  const personalized = Object.keys(weight).length > 0;
+  const pool = db.prepare(`SELECT c.*, u.display_name AS owner_name FROM characters c
+    JOIN users u ON u.id = c.owner_id
+    WHERE c.is_public = 1 AND c.owner_id != ?`).all(uid);
+  const rows = pool
+    .filter(c => !favIds.has(c.id))
+    .map(c => ({ c, score: (weight[c.category] || 0) * 3 + Math.log10((c.uses || 0) + (c.likes || 0) + 1) + (c.featured ? 0.4 : 0) }))
+    .sort((a, b) => b.score - a.score).slice(0, 12)
+    .map(({ c }) => ({ ...c, faved: false }));
+  res.json({ characters: rows, personalized });
+});
+
 // Favorites
 router.get('/favorites/list', authRequired, (req, res) => {
   const rows = db.prepare(`SELECT c.*, u.display_name AS owner_name FROM favorites f

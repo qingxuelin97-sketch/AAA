@@ -811,6 +811,26 @@ async function route(method, path, search, body, headers) {
     rows = rows.map(c => ({ ...c, owner_name: user(c.owner_id)?.display_name, owner_tier: creatorTier(user(c.owner_id)), faved: me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false }));
     return J({ characters: rows });
   }
+  // Personalized recommendations — rank public characters by the categories the
+  // caller has favorited / chatted with, blended with popularity. Excludes the
+  // caller's own characters and ones they already favorited.
+  if (method === 'GET' && path === '/characters/recommended') {
+    need();
+    const favRows = filter('favorites', f => f.user_id === me.id);
+    const favIds = new Set(favRows.map(f => f.character_id));
+    const myConvs = filter('conversations', c => c.user_id === me.id);
+    const weight = {}; // category -> taste score
+    const bump = (cat, w) => { if (cat) weight[cat] = (weight[cat] || 0) + w; };
+    favRows.forEach(f => bump(find('characters', x => x.id === f.character_id)?.category, 2));
+    myConvs.forEach(cv => bump(find('characters', x => x.id === cv.character_id)?.category, 1));
+    const personalized = Object.keys(weight).length > 0;
+    const pool = filter('characters', c => c.is_public && c.owner_id !== me.id && !favIds.has(c.id) && !c.from_script);
+    const rows = pool
+      .map(c => ({ c, score: (weight[c.category] || 0) * 3 + Math.log10((c.uses || 0) + (c.likes || 0) + 1) + (c.featured ? 0.4 : 0) }))
+      .sort((a, b) => b.score - a.score).slice(0, 12)
+      .map(({ c }) => ({ ...c, owner_name: user(c.owner_id)?.display_name, owner_tier: creatorTier(user(c.owner_id)), faved: false }));
+    return J({ characters: rows, personalized });
+  }
   if (method === 'GET' && path === '/characters/favorites/list') { need(); const rows = filter('favorites', f => f.user_id === me.id).map(f => { const c = find('characters', x => x.id === f.character_id); return c && { ...c, owner_name: user(c.owner_id)?.display_name }; }).filter(Boolean).reverse(); return J({ characters: rows }); }
   if ((m = P(/^\/characters\/(\d+)\/favorite$/)) && method === 'POST') {
     need(); const cid = +m[1]; const ex = find('favorites', f => f.user_id === me.id && f.character_id === cid); const c = find('characters', x => x.id === cid);

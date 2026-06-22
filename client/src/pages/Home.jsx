@@ -83,6 +83,7 @@ export default function Home() {
   const [chars, setChars] = useState([]);
   const [featured, setFeatured] = useState([]);
   const [recent, setRecent] = useState([]);
+  const [recommended, setRecommended] = useState([]);
   const [scripts, setScripts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ann, setAnn] = useState(null);
@@ -103,6 +104,7 @@ export default function Home() {
   useEffect(() => { api('/meta/categories').then(d => setCats(d.categories)).catch(() => {}); }, []);
   useEffect(() => { api('/scripts?sort=hot').then(d => setScripts(d.scripts.slice(0, 6))).catch(() => {}); }, []);
   useEffect(() => { api('/characters/public?sort=hot').then(d => setFeatured(d.characters.filter(c => c.featured).slice(0, 12))).catch(() => {}); }, []);
+  useEffect(() => { api('/characters/recommended').then(d => { if (d.personalized) setRecommended(d.characters || []); }).catch(() => {}); }, []);
   useEffect(() => {
     try { setRecent(JSON.parse(localStorage.getItem('recent_chars') || '[]').slice(0, 12)); } catch { /* */ }
     api('/announcements').then(d => { const t = d.announcements?.[0]; if (t && localStorage.getItem('ann_seen') !== String(t.id)) setAnn(t); }).catch(() => {});
@@ -121,7 +123,7 @@ export default function Home() {
     try {
       const d = await api(`/characters/${c.id}/favorite`, { method: 'POST' });
       const upd = x => x.id === c.id ? { ...x, faved: d.faved } : x;
-      setChars(cs => cs.map(upd)); setFeatured(cs => cs.map(upd)); setRecent(cs => cs.map(upd));
+      setChars(cs => cs.map(upd)); setFeatured(cs => cs.map(upd)); setRecent(cs => cs.map(upd)); setRecommended(cs => cs.map(upd));
     } catch (err) { toast(err.message, 'err'); }
   };
   const chat = async (e, c) => {
@@ -180,6 +182,15 @@ export default function Home() {
         )}
 
         {featured.length > 0 && <Spotlight items={featured} onView={view} onChat={chat} />}
+
+        {recommended.length > 0 && (
+          <>
+            <div className="section-title"><h2><Sparkles size={16} style={{ verticalAlign: -3, color: 'var(--accent)' }} /> 为你推荐</h2></div>
+            <div className="rail" style={{ marginBottom: 26 }}>
+              {recommended.map(c => <Poster key={c.id} c={c} onView={view} onFav={fav} onChat={chat} />)}
+            </div>
+          </>
+        )}
 
         {featured.length > 0 && (
           <>
