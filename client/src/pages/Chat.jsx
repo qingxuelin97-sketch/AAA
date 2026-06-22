@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
+import { speakBrowser } from '../voice.js';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3 } from 'lucide-react';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
@@ -119,6 +120,9 @@ export default function Chat() {
 
   const loadConvs = () => api('/chat/conversations').then(d => setConvs(d.conversations)).catch(() => {});
   useEffect(() => { loadConvs(); }, []);
+  // know the user's voice protocol so we can use browser TTS without a server call
+  const [voiceCfg, setVoiceCfg] = useState(null);
+  useEffect(() => { api('/settings').then(d => setVoiceCfg({ voice_protocol: d.settings.voice_protocol, voice_name: d.settings.voice_name })).catch(() => {}); }, []);
 
   useEffect(() => {
     if (!id) { setConv(null); setCharacter(null); setMessages([]); return; }
@@ -224,6 +228,8 @@ export default function Chat() {
   };
 
   const speak = async (text) => {
+    // Browser Web Speech needs no server round-trip (offline / no CORS).
+    if (voiceCfg?.voice_protocol === 'browser') { speakBrowser(text, voiceCfg.voice_name); return; }
     try {
       const res = await fetch('/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },

@@ -262,9 +262,55 @@ const notify = (uid, text, link = '') => insert('notifications', { user_id: uid,
 // Resolve which LLM credentials a request should use. If the user set their own key,
 // use it (no fee). Otherwise transparently fall back to the platform service.
 function effectiveLLM(s) {
-  if (s && s.llm_api_key) return { base_url: s.llm_base_url, api_key: s.llm_api_key, model: s.llm_model, temperature: s.llm_temperature, max_tokens: s.llm_max_tokens, platform: false };
+  if (s && s.llm_api_key) return { base_url: s.llm_base_url, api_key: s.llm_api_key, model: s.llm_model, temperature: s.llm_temperature, max_tokens: s.llm_max_tokens, protocol: s.llm_protocol || 'openai', platform: false };
   const p = platformCfg();
-  return { base_url: p.base_url, api_key: platformKey(), model: p.model, temperature: (s && s.llm_temperature) ?? 0.8, max_tokens: (s && s.llm_max_tokens) || 1024, platform: true };
+  return { base_url: p.base_url, api_key: platformKey(), model: p.model, temperature: (s && s.llm_temperature) ?? 0.8, max_tokens: (s && s.llm_max_tokens) || 1024, protocol: 'openai', platform: true };
+}
+
+// Normalise a base URL for a given protocol so users can paste either the bare host
+// or one already ending in /v1 etc.
+function llmEndpoint(base, protocol) {
+  const b = String(base || '').replace(/\/+$/, '');
+  if (protocol === 'anthropic') return b.replace(/\/v1$/, '') + '/v1/messages';
+  if (protocol === 'gemini') return b.replace(/\/$/, ''); // handled specially (model in path)
+  return b + '/chat/completions';
+}
+// Build an Anthropic-style message list from OpenAI-style history (system pulled out,
+// roles mapped, consecutive same-role merged, leading non-user trimmed).
+function toAnthropicMessages(history) {
+  const msgs = history.filter(m => m.content).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content) }));
+  const merged = [];
+  for (const mm of msgs) { const last = merged[merged.length - 1]; if (last && last.role === mm.role) last.content += '\n\n' + mm.content; else merged.push({ ...mm }); }
+  while (merged.length && merged[0].role !== 'user') merged.shift();
+  return merged.length ? merged : [{ role: 'user', content: '（请开始）' }];
+}
+// Parse one SSE data payload for either protocol → returns delta text (or '').
+function parseDelta(json, protocol) {
+  try {
+    const j = typeof json === 'string' ? JSON.parse(json) : json;
+    if (protocol === 'anthropic') {
+      if (j.type === 'content_block_delta') return j.delta?.text || '';
+      if (j.type === 'error') throw new Error(j.error?.message || 'anthropic error');
+      return '';
+    }
+    if (j.error) throw new Error(j.error.message || j.error);
+    return j.choices?.[0]?.delta?.content || '';
+  } catch (e) { if (e.message && !/JSON/.test(e.message)) throw e; return ''; }
+}
+// Headers + body for a streaming chat request, per protocol.
+function llmRequest(eff, system, history) {
+  if (eff.protocol === 'anthropic') {
+    return {
+      url: llmEndpoint(eff.base_url, 'anthropic'),
+      headers: { 'content-type': 'application/json', 'x-api-key': eff.api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: { model: eff.model, max_tokens: eff.max_tokens || 1024, temperature: eff.temperature ?? 0.8, system, messages: toAnthropicMessages(history), stream: true },
+    };
+  }
+  return {
+    url: llmEndpoint(eff.base_url, 'openai'),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
+    body: { model: eff.model, messages: [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))], temperature: eff.temperature, max_tokens: eff.max_tokens, stream: true },
+  };
 }
 // Compute the platform fee for a conversation given its current message count + membership.
 function platformFee(me, msgCount) {
@@ -334,7 +380,6 @@ async function streamCompletion(conv, character, settings, userContent, me) {
   if (eff.platform) { const gp = (platformCfg().system_prompt || '').trim(); if (gp) system = gp + '\n\n' + system; }
   // Conversation memories (user-curated) are injected so the character "remembers".
   if (conv.memories && conv.memories.length) system += '\n\n【对话记忆 · 请始终记住这些事实】\n' + conv.memories.map(x => '- ' + x.content).join('\n');
-  const payload = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -346,24 +391,28 @@ async function streamCompletion(conv, character, settings, userContent, me) {
       }
       let full = '';
       try {
-        const up = await realFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
-          body: JSON.stringify({ model: eff.model, messages: payload, temperature: eff.temperature, max_tokens: eff.max_tokens, stream: true })
-        });
-        if (!up.ok || !up.body) { const t = await up.text().catch(() => ''); send({ error: `模型服务返回 ${up.status}：${t.slice(0, 300)}` }); }
-        else {
+        const req = llmRequest(eff, system, history);
+        let up = await realFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify(req.body) });
+        // Graceful fallback: if a streaming request is rejected, retry once without streaming.
+        if (!up.ok && eff.protocol === 'openai') {
+          const t1 = await up.text().catch(() => '');
+          const up2 = await realFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify({ ...req.body, stream: false }) }).catch(() => null);
+          if (up2 && up2.ok) { const d = await up2.json().catch(() => ({})); const txt = d.choices?.[0]?.message?.content || ''; if (txt) { full = txt; send({ delta: txt }); } up = { ok: true, body: null, _handled: true }; }
+          else { send({ error: `模型服务返回 ${up.status}：${t1.slice(0, 300)}` }); up = { ok: false }; }
+        }
+        if (up.ok && up.body) {
           const reader = up.body.getReader(); const dec = new TextDecoder(); let buf = '';
           while (true) {
             const { done, value } = await reader.read(); if (done) break;
-            buf += dec.decode(value, { stream: true }); const lines = buf.split('\n'); buf = lines.pop() || '';
+            buf += dec.decode(value, { stream: true }); const lines = buf.split(/\r?\n/); buf = lines.pop() || '';
             for (const line of lines) {
               const t = line.trim(); if (!t.startsWith('data:')) continue;
               const d = t.slice(5).trim(); if (d === '[DONE]') continue;
-              try { const j = JSON.parse(d); const delta = j.choices?.[0]?.delta?.content || ''; if (delta) { full += delta; send({ delta }); } } catch { /* */ }
+              const delta = parseDelta(d, eff.protocol); if (delta) { full += delta; send({ delta }); }
             }
           }
-        }
-      } catch (err) { send({ error: '连接模型服务失败：' + err.message + '（可能是服务商的浏览器跨域限制）' }); }
+        } else if (!up.ok && !up._handled) { const t = await (up.text ? up.text().catch(() => '') : Promise.resolve('')); if (t || !full) send({ error: `模型服务返回 ${up.status || ''}：${(t || '').slice(0, 300)}` }); }
+      } catch (err) { send({ error: '连接模型服务失败：' + err.message + '（可能是服务商的浏览器跨域限制；可尝试在设置中更换协议或服务商）' }); }
       if (full.trim()) {
         insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() }); conv.updated_at = now();
         if (userContent) conv.affinity = (conv.affinity || 0) + 3; // 好感度随有效互动增长
@@ -380,7 +429,16 @@ async function streamCompletion(conv, character, settings, userContent, me) {
 async function llmOnce(settings, system, userMsg, maxTokens = 400) {
   const eff = effectiveLLM(settings);
   if (!eff.api_key) throw new Error('请先在设置中配置语言模型 API');
-  const r = await realFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
+  if (eff.protocol === 'anthropic') {
+    const r = await realFetch(llmEndpoint(eff.base_url, 'anthropic'), {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': eff.api_key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: eff.model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: userMsg }] })
+    });
+    if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(`模型返回 ${r.status}：${t.slice(0, 200)}`); }
+    const data = await r.json();
+    return (data.content?.[0]?.text || '').trim();
+  }
+  const r = await realFetch(llmEndpoint(eff.base_url, 'openai'), {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
     body: JSON.stringify({ model: eff.model, temperature: eff.temperature, max_tokens: maxTokens, messages: [{ role: 'system', content: system }, { role: 'user', content: userMsg }] })
   });
@@ -513,7 +571,7 @@ async function route(method, path, search, body, headers) {
     need(); const s = find('settings', x => x.user_id === me.id);
     if (method === 'GET') return J({ settings: pubSettings(s, me) });
     if (method === 'PUT') {
-      ['llm_provider', 'llm_base_url', 'llm_model', 'llm_temperature', 'llm_max_tokens', 'voice_provider', 'voice_protocol', 'voice_base_url', 'voice_model', 'voice_name', 'theme'].forEach(k => { if (body[k] !== undefined) s[k] = body[k]; });
+      ['llm_provider', 'llm_protocol', 'llm_base_url', 'llm_model', 'llm_temperature', 'llm_max_tokens', 'voice_provider', 'voice_protocol', 'voice_base_url', 'voice_model', 'voice_name', 'theme'].forEach(k => { if (body[k] !== undefined) s[k] = body[k]; });
       if (body.llm_api_key) s.llm_api_key = body.llm_api_key;
       if (body.voice_api_key) s.voice_api_key = body.voice_api_key;
       if (body.nsfw !== undefined) s.nsfw = body.nsfw ? 1 : 0;
@@ -542,16 +600,31 @@ async function route(method, path, search, body, headers) {
     const proto = body.protocol || 'openai';
     // MiniMax has no public model-list endpoint; return the known TTS models.
     if (proto === 'minimax') return J({ models: ['speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo', 'speech-01-240228'] });
+    if (proto === 'browser') return J({ models: [] }); // browser TTS has no remote models
     if (!base) return E('请先填写 API Base URL');
     if (!key) return E('请先填写 API Key');
-    const headers = proto === 'elevenlabs' ? { 'xi-api-key': key } : { Authorization: `Bearer ${key}` };
+    const url = proto === 'anthropic' ? base.replace(/\/v1$/, '') + '/v1/models' : base + '/models';
+    const headers = proto === 'elevenlabs' ? { 'xi-api-key': key }
+      : proto === 'anthropic' ? { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+        : { Authorization: `Bearer ${key}` };
     try {
-      const r = await realFetch(base + '/models', { headers });
+      const r = await realFetch(url, { headers });
       if (!r.ok) { const t = await r.text().catch(() => ''); return E(`服务商返回 ${r.status}：${t.slice(0, 200)}`, 502); }
       const d = await r.json();
       const arr = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : (Array.isArray(d) ? d : []));
       return J({ models: arr.map(x => (typeof x === 'string' ? x : (x.model_id || x.id || x.name))).filter(Boolean) });
     } catch (e) { return E('连接服务商失败（可能是浏览器跨域限制）：' + e.message, 502); }
+  }
+
+  // Connection test — verify the configured LLM credentials actually respond.
+  if (method === 'POST' && path === '/settings/test-llm') {
+    need(); const s = find('settings', x => x.user_id === me.id) || {};
+    const eff = { base_url: body.base_url || s.llm_base_url, api_key: body.api_key || s.llm_api_key, model: body.model || s.llm_model, temperature: 0.5, max_tokens: 16, protocol: body.protocol || s.llm_protocol || 'openai', platform: false };
+    if (!eff.api_key) return E('请先填写 API Key');
+    try {
+      const reply = await llmOnce({ llm_base_url: eff.base_url, llm_api_key: eff.api_key, llm_model: eff.model, llm_protocol: eff.protocol, llm_temperature: 0.5 }, '你是连接测试助手。', '请只回复两个字：在线', 16);
+      return J({ ok: true, reply: reply.slice(0, 40) });
+    } catch (e) { return E('连接失败：' + e.message, 502); }
   }
 
   // ---------- meta ----------
@@ -731,6 +804,38 @@ async function route(method, path, search, body, headers) {
         if (!hex) return E('语音服务未返回音频（MiniMax 需在 Base URL 后附 ?GroupId=你的GroupId）', 502);
         const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(h => parseInt(h, 16)));
         return new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } });
+      }
+      if (proto === 'azure') {
+        // Azure Cognitive TTS: SSML in, audio out. Base URL = https://{region}.tts.speech.microsoft.com
+        const ssml = `<speak version='1.0' xml:lang='zh-CN'><voice xml:lang='zh-CN' name='${voice || 'zh-CN-XiaoxiaoNeural'}'>${text.replace(/[<&>]/g, '')}</voice></speak>`;
+        const up = await realFetch(`${base}/cognitiveservices/v1`, {
+          method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': s.voice_api_key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3' },
+          body: ssml
+        });
+        if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
+        return up;
+      }
+      if (proto === 'google') {
+        // Google Cloud TTS: text:synthesize?key=KEY, base64 audio in JSON.
+        const sep = base.includes('?') ? '&' : '?';
+        const up = await realFetch(`${base}/v1/text:synthesize${sep}key=${encodeURIComponent(s.voice_api_key)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: { text }, voice: { languageCode: (voice || 'cmn-CN-Wavenet-A').split('-').slice(0, 2).join('-') || 'cmn-CN', name: voice || 'cmn-CN-Wavenet-A' }, audioConfig: { audioEncoding: 'MP3' } })
+        });
+        if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
+        const d = await up.json().catch(() => null);
+        if (!d?.audioContent) return E('语音服务未返回音频', 502);
+        const bin = atob(d.audioContent); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } });
+      }
+      if (proto === 'deepgram') {
+        // Deepgram Aura: /v1/speak?model=..., Token auth, audio out.
+        const up = await realFetch(`${base}/v1/speak?model=${encodeURIComponent(s.voice_model || 'aura-asteria-en')}`, {
+          method: 'POST', headers: { Authorization: `Token ${s.voice_api_key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
+        return up;
       }
       // Default: OpenAI-compatible /audio/speech (OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox …)
       const up = await realFetch(base + '/audio/speech', {
@@ -1205,7 +1310,7 @@ async function route(method, path, search, body, headers) {
 
 function pubSettings(s, me) {
   const usingPlatform = !s.llm_api_key;
-  return { llm_provider: s.llm_provider, llm_base_url: s.llm_base_url, llm_model: s.llm_model, llm_temperature: s.llm_temperature, llm_max_tokens: s.llm_max_tokens, voice_provider: s.voice_provider, voice_protocol: s.voice_protocol || 'openai', voice_base_url: s.voice_base_url, voice_model: s.voice_model, voice_name: s.voice_name, theme: s.theme, nsfw: s.nsfw, notify_email: s.notify_email, llm_api_key_set: !!s.llm_api_key, voice_api_key_set: !!s.voice_api_key,
+  return { llm_provider: s.llm_provider, llm_protocol: s.llm_protocol || 'openai', llm_base_url: s.llm_base_url, llm_model: s.llm_model, llm_temperature: s.llm_temperature, llm_max_tokens: s.llm_max_tokens, voice_provider: s.voice_provider, voice_protocol: s.voice_protocol || 'openai', voice_base_url: s.voice_base_url, voice_model: s.voice_model, voice_name: s.voice_name, theme: s.theme, nsfw: s.nsfw, notify_email: s.notify_email, llm_api_key_set: !!s.llm_api_key, voice_api_key_set: !!s.voice_api_key,
     // privacy (sensible defaults when unset)
     privacy_profile: s.privacy_profile || 'public', allow_dm: s.allow_dm || 'all',
     show_online: s.show_online === undefined ? 1 : s.show_online, discoverable: s.discoverable === undefined ? 1 : s.discoverable,

@@ -1970,26 +1970,19 @@ body:has(.pl-immersive) { background: #0b1022; }
 .pl-immersive .pl-title { color: #fbf3df; }
 .pl-immersive .pl-no { color: #b6ad8e; }
 
-/* ---------- 议会礼乐控件 ---------- */
-.pl-music { position: fixed; right: 22px; bottom: 84px; left: auto; z-index: 46; display: inline-flex; align-items: center; gap: 9px;
-  padding: 9px 15px 9px 12px; border-radius: 30px; cursor: pointer; color: #f3e6c4;
-  background: linear-gradient(135deg, rgba(36,44,74,0.92), rgba(18,23,44,0.92)); border: 1px solid rgba(216,173,78,0.45);
-  box-shadow: 0 8px 24px rgba(6,9,20,0.45), inset 0 1px 0 rgba(255,255,255,0.06); backdrop-filter: blur(8px);
-  transition: transform 0.2s var(--spring), border-color 0.2s; animation: plMusicIn 0.6s 0.3s var(--spring) both; }
-@keyframes plMusicIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-.pl-music:hover { transform: translateY(-2px); border-color: rgba(216,173,78,0.8); }
-.pl-music svg { color: #e8c878; flex-shrink: 0; }
-.pl-music-tx { font-size: 12.5px; font-family: var(--serif); letter-spacing: 0.04em; }
+/* ---------- 议会顶栏：返回 / 礼乐 ---------- */
+.pl-back { flex-shrink: 0; }
+.pl-musicbtn { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.pl-musicbtn svg { color: #e8c878; }
+.pl-musicbtn.muted svg { color: var(--faint); }
 .pl-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 13px; }
 .pl-eq i { width: 2.5px; height: 100%; border-radius: 2px; background: linear-gradient(180deg, #f3d68f, #c69a3e); transform-origin: bottom;
   animation: plEq 0.9s ease-in-out infinite; }
 .pl-eq i:nth-child(1) { animation-delay: -0.1s; } .pl-eq i:nth-child(2) { animation-delay: -0.4s; }
 .pl-eq i:nth-child(3) { animation-delay: -0.7s; } .pl-eq i:nth-child(4) { animation-delay: -0.25s; }
 @keyframes plEq { 0%,100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
-.pl-music.muted .pl-eq i { animation-play-state: paused; transform: scaleY(0.28); opacity: 0.5; }
-.pl-music.muted { color: #b6b0a0; border-color: var(--border); }
-.pl-music.muted svg { color: #9a9888; }
-@media (max-width: 760px) { .pl-music { right: auto; left: 14px; bottom: 80px; padding: 8px 13px 8px 11px; } .pl-music-tx { display: none; } }
+.pl-musicbtn.muted .pl-eq i { animation-play-state: paused; transform: scaleY(0.28); opacity: 0.5; }
+@media (max-width: 600px) { .pl-btn-tx { display: none; } .pl-back-tx { display: none; } .pl-musicbtn .pl-eq { display: none; } }
 @media (prefers-reduced-motion: reduce) { .pl-eq i { animation: none; } }
 
 /* ============================================================

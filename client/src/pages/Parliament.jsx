@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal, CountUp, CreatorV, CouncilorBadge } from '../ui.jsx';
 import { startBgm, stopBgm, resume as resumeBgm, setMuted as setBgmMuted } from '../parliamentBgm.js';
 import {
   Gavel, Scale, ThumbsUp, ThumbsDown, MinusCircle, Check, X, Plus,
   Users, Sparkles, BadgeCheck, Trash2, ChevronDown, ChevronUp, Lock, ScrollText, Feather,
-  Music, VolumeX, MessageSquare, Search, Send
+  Music, VolumeX, MessageSquare, Search, Send, ArrowLeft
 } from 'lucide-react';
 
 const BGM_KEY = 'huanyu_pl_bgm';
@@ -49,25 +50,6 @@ function Entrance() {
       <div className="pl-enter-crest"><Crest size={132} /></div>
       <div className="pl-enter-word">幻域议会</div>
     </div>
-  );
-}
-
-/* --------------------------------------------------------- music control */
-function ChamberMusic() {
-  const [muted, setMuted] = useState(() => localStorage.getItem(BGM_KEY) === 'off');
-  useEffect(() => {
-    startBgm(); setBgmMuted(muted);
-    const kick = () => resumeBgm();
-    window.addEventListener('pointerdown', kick); window.addEventListener('keydown', kick);
-    return () => { window.removeEventListener('pointerdown', kick); window.removeEventListener('keydown', kick); stopBgm(); };
-  }, []); // eslint-disable-line
-  const toggle = () => { const n = !muted; setMuted(n); setBgmMuted(n); resumeBgm(); localStorage.setItem(BGM_KEY, n ? 'off' : 'on'); };
-  return (
-    <button className={'pl-music' + (muted ? ' muted' : '')} onClick={toggle} title={muted ? '奏礼乐' : '止礼乐'} aria-label="议会礼乐">
-      {muted ? <VolumeX size={16} /> : <Music size={16} />}
-      <span className="pl-eq" aria-hidden="true"><i /><i /><i /><i /></span>
-      <span className="pl-music-tx">{muted ? '礼乐已止' : '议会礼乐'}</span>
-    </button>
   );
 }
 
@@ -269,6 +251,7 @@ const FILTERS = [['all', '全部'], ['voting', '表决中'], ['pending', '待采
 export default function Parliament() {
   const toast = useToast();
   const { user } = useAuth();
+  const nav = useNavigate();
   const [ov, setOv] = useState(null);
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -278,9 +261,19 @@ export default function Parliament() {
   const [roster, setRoster] = useState(false);
   const [charterOpen, setCharterOpen] = useState(false);
   const [enter, setEnter] = useState(true);
+  const [muted, setMutedState] = useState(() => localStorage.getItem(BGM_KEY) === 'off');
   const hallRef = useRef(null);
   const colLRef = useRef(null);
   const colRRef = useRef(null);
+
+  // ceremonial BGM lifecycle (no floating overlay — control lives in the topbar)
+  useEffect(() => {
+    startBgm(); setBgmMuted(localStorage.getItem(BGM_KEY) === 'off');
+    const kick = () => resumeBgm();
+    window.addEventListener('pointerdown', kick); window.addEventListener('keydown', kick);
+    return () => { window.removeEventListener('pointerdown', kick); window.removeEventListener('keydown', kick); stopBgm(); };
+  }, []);
+  const toggleMusic = () => { const n = !muted; setMutedState(n); setBgmMuted(n); resumeBgm(); localStorage.setItem(BGM_KEY, n ? 'off' : 'on'); };
 
   const load = () => Promise.all([
     api('/parliament/overview').then(d => setOv(d)).catch(() => setOv({})),
@@ -351,20 +344,23 @@ export default function Parliament() {
         <span className="pl-atmos-col right" ref={colRRef} />
         <span className="pl-atmos-vig" />
       </div>
-      <ChamberMusic />
-
       <div className="topbar pl-topbar">
-        <div style={{ flex: 1 }}>
+        <button className="btn ghost pl-back" onClick={() => nav('/')} title="返回发现广场"><ArrowLeft size={16} /> <span className="pl-back-tx">广场</span></button>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 className="pl-h1">幻域议会</h1>
           <div className="sub pl-sub">PARLIAMENT&nbsp;OF&nbsp;HUANYU</div>
         </div>
-        <button className="btn pl-rosterbtn" onClick={() => setRoster(true)} title="议员名册"><Users size={15} /> 名册</button>
+        <button className={'btn pl-musicbtn' + (muted ? ' muted' : '')} onClick={toggleMusic} title={muted ? '奏礼乐' : '止礼乐'} aria-label="议会礼乐">
+          {muted ? <VolumeX size={15} /> : <Music size={15} />}
+          <span className="pl-eq" aria-hidden="true"><i /><i /><i /><i /></span>
+        </button>
+        <button className="btn pl-rosterbtn" onClick={() => setRoster(true)} title="议员名册"><Users size={15} /> <span className="pl-btn-tx">名册</span></button>
         {ov?.is_gm && (
           <button className={'btn pl-lockbtn' + (locked ? ' primary' : '')} onClick={toggleLock} title={locked ? '恢复议会运作' : '封锁议会（无限期休会）'}>
-            <Lock size={15} /> {locked ? '恢复议会' : '封锁议会'}
+            <Lock size={15} /> <span className="pl-btn-tx">{locked ? '恢复议会' : '封锁议会'}</span>
           </button>
         )}
-        {ov?.is_councilor && !locked && <button className="btn primary pl-draftbtn" onClick={() => setCreating(true)}><Feather size={16} /> 起草议案</button>}
+        {ov?.is_councilor && !locked && <button className="btn primary pl-draftbtn" onClick={() => setCreating(true)}><Feather size={16} /> <span className="pl-btn-tx">起草议案</span></button>}
       </div>
 
       <div className="page pl-page" style={{ maxWidth: 980 }}>

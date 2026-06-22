@@ -2,25 +2,31 @@ import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker } from '../ui.jsx';
 import { getThemeMode, setThemeMode } from '../theme.js';
+import { browserVoices, speakBrowser } from '../voice.js';
 import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity } from 'lucide-react';
 
-// Well-known OpenAI-compatible providers (base URLs). Keys stay on the user side.
+// Providers' base URLs + wire protocol. Keys stay on the user side.
+// [base, protocol]. Protocol 'openai' = OpenAI-compatible Chat Completions;
+// 'anthropic' = Claude Messages API (distinct format, adapted server-side).
 const LLM_PRESETS = {
-  openai: 'https://api.openai.com/v1', deepseek: 'https://api.deepseek.com/v1',
-  moonshot: 'https://api.moonshot.cn/v1', zhipu: 'https://open.bigmodel.cn/api/paas/v4',
-  qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1', doubao: 'https://ark.cn-beijing.volces.com/api/v3',
-  yi: 'https://api.lingyiwanwu.com/v1', stepfun: 'https://api.stepfun.com/v1',
-  minimax: 'https://api.minimax.chat/v1', siliconflow: 'https://api.siliconflow.cn/v1',
-  spark: 'https://spark-api-open.xf-yun.com/v1', baidu: 'https://qianfan.baidubce.com/v2',
-  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai', openrouter: 'https://openrouter.ai/api/v1',
-  groq: 'https://api.groq.com/openai/v1', together: 'https://api.together.xyz/v1', custom: ''
+  openai: ['https://api.openai.com/v1', 'openai'], anthropic: ['https://api.anthropic.com', 'anthropic'],
+  deepseek: ['https://api.deepseek.com/v1', 'openai'], moonshot: ['https://api.moonshot.cn/v1', 'openai'],
+  zhipu: ['https://open.bigmodel.cn/api/paas/v4', 'openai'], qwen: ['https://dashscope.aliyuncs.com/compatible-mode/v1', 'openai'],
+  doubao: ['https://ark.cn-beijing.volces.com/api/v3', 'openai'], yi: ['https://api.lingyiwanwu.com/v1', 'openai'],
+  stepfun: ['https://api.stepfun.com/v1', 'openai'], minimax: ['https://api.minimax.chat/v1', 'openai'],
+  siliconflow: ['https://api.siliconflow.cn/v1', 'openai'], spark: ['https://spark-api-open.xf-yun.com/v1', 'openai'],
+  baidu: ['https://qianfan.baidubce.com/v2', 'openai'], gemini: ['https://generativelanguage.googleapis.com/v1beta/openai', 'openai'],
+  openrouter: ['https://openrouter.ai/api/v1', 'openai'], groq: ['https://api.groq.com/openai/v1', 'openai'],
+  together: ['https://api.together.xyz/v1', 'openai'], mistral: ['https://api.mistral.ai/v1', 'openai'],
+  ollama: ['http://localhost:11434/v1', 'openai'], lmstudio: ['http://localhost:1234/v1', 'openai'], custom: ['', 'openai']
 };
 const PROVIDER_OPTS = [
-  ['openai', 'OpenAI'], ['deepseek', 'DeepSeek 深度求索'], ['moonshot', 'Moonshot / Kimi'],
+  ['openai', 'OpenAI'], ['anthropic', 'Anthropic Claude'], ['deepseek', 'DeepSeek 深度求索'], ['moonshot', 'Moonshot / Kimi'],
   ['zhipu', '智谱 GLM（清言）'], ['qwen', '通义千问 Qwen'], ['doubao', '字节豆包 Doubao'],
   ['yi', '零一万物 Yi'], ['stepfun', '阶跃星辰 StepFun'], ['minimax', 'MiniMax'],
   ['siliconflow', '硅基流动 SiliconFlow'], ['spark', '讯飞星火'], ['baidu', '百度文心一言'],
-  ['gemini', 'Google Gemini'], ['openrouter', 'OpenRouter'], ['groq', 'Groq'], ['together', 'Together'], ['custom', '自定义']
+  ['gemini', 'Google Gemini'], ['mistral', 'Mistral AI'], ['openrouter', 'OpenRouter'], ['groq', 'Groq'],
+  ['together', 'Together'], ['ollama', 'Ollama 本地'], ['lmstudio', 'LM Studio 本地'], ['custom', '自定义']
 ];
 
 // Providers that genuinely expose an OpenAI-compatible POST /audio/speech
@@ -29,6 +35,7 @@ const PROVIDER_OPTS = [
 // [value, label, baseUrl, protocol]. The backend has an adapter per protocol,
 // so this genuinely spans multiple vendor APIs — not just one format.
 const VOICE_PROVIDER_OPTS = [
+  ['browser', '浏览器内置语音（免配置 · 离线 · 无需密钥）', '', 'browser'],
   ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）', 'https://api.openai.com/v1', 'openai'],
   ['groq', 'Groq · PlayAI TTS（playai-tts）', 'https://api.groq.com/openai/v1', 'openai'],
   ['siliconflow', '硅基流动 SiliconFlow（CosyVoice2 / Fish-Speech）', 'https://api.siliconflow.cn/v1', 'openai'],
@@ -36,6 +43,9 @@ const VOICE_PROVIDER_OPTS = [
   ['lemonfox', 'Lemonfox.ai（OpenAI 兼容）', 'https://api.lemonfox.ai/v1', 'openai'],
   ['elevenlabs', 'ElevenLabs（多语种角色配音）', 'https://api.elevenlabs.io/v1', 'elevenlabs'],
   ['minimax', 'MiniMax 海螺语音（需 GroupId）', 'https://api.minimax.chat/v1', 'minimax'],
+  ['azure', 'Azure 认知语音（Neural · SSML）', 'https://eastus.tts.speech.microsoft.com', 'azure'],
+  ['google', 'Google Cloud TTS（Wavenet / Neural2）', 'https://texttospeech.googleapis.com', 'google'],
+  ['deepgram', 'Deepgram Aura', 'https://api.deepgram.com', 'deepgram'],
   ['custom', '自定义（OpenAI /audio/speech 兼容）', '', 'openai']
 ];
 const VOICE_BY_VALUE = Object.fromEntries(VOICE_PROVIDER_OPTS.map(([v, , b, p]) => [v, { base: b, proto: p }]));
@@ -52,7 +62,14 @@ export default function Settings() {
   const [detecting, setDetecting] = useState(false);
   const [voiceModels, setVoiceModels] = useState([]);
   const [detectingVoice, setDetectingVoice] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [theme, setTheme] = useState(getThemeMode());
+  const [bvoices, setBvoices] = useState(() => browserVoices());
+  useEffect(() => {
+    const upd = () => setBvoices(browserVoices());
+    upd(); try { window.speechSynthesis?.addEventListener?.('voiceschanged', upd); } catch { /* */ }
+    return () => { try { window.speechSynthesis?.removeEventListener?.('voiceschanged', upd); } catch { /* */ } };
+  }, []);
   const changeTheme = (mode) => { setTheme(mode); setThemeMode(mode); setS(p => p ? { ...p, theme: mode } : p); };
 
   useEffect(() => { api('/settings').then(d => setS(d.settings)).catch(e => toast(e.message, 'err')); }, []);
@@ -68,11 +85,30 @@ export default function Settings() {
   const detectModels = async () => {
     setDetecting(true);
     try {
-      const d = await api('/settings/models', { method: 'POST', body: { base_url: s.llm_base_url, api_key: s.llm_api_key || undefined } });
+      const d = await api('/settings/models', { method: 'POST', body: { base_url: s.llm_base_url, api_key: s.llm_api_key || undefined, protocol: s.llm_protocol || 'openai' } });
       if (!d.models?.length) { toast('未返回任何模型', 'err'); return; }
       setModels(d.models);
       toast(`检测到 ${d.models.length} 个可用模型`);
     } catch (e) { toast(e.message, 'err'); } finally { setDetecting(false); }
+  };
+  const testLLM = async () => {
+    setTesting(true);
+    try {
+      await api('/settings', { method: 'PUT', body: s }); // persist first so the test uses current creds
+      const d = await api('/settings/test-llm', { method: 'POST', body: { base_url: s.llm_base_url, api_key: s.llm_api_key || undefined, model: s.llm_model, protocol: s.llm_protocol || 'openai' } });
+      toast('连接成功 · 模型回复：' + (d.reply || 'OK'));
+    } catch (e) { toast('连接失败：' + e.message, 'err'); } finally { setTesting(false); }
+  };
+  const testVoice = async () => {
+    const proto = s.voice_protocol || 'openai';
+    if (proto === 'browser') { speakBrowser('你好，这是浏览器内置语音的试听。', s.voice_name); toast('正在试听浏览器语音'); return; }
+    setTesting(true);
+    try {
+      await api('/settings', { method: 'PUT', body: s });
+      const res = await fetch('/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('huanyu_token') || '') }, body: JSON.stringify({ text: '你好，这是语音试听。' }) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || ('HTTP ' + res.status)); }
+      const blob = await res.blob(); new Audio(URL.createObjectURL(blob)).play(); toast('语音试听已播放');
+    } catch (e) { toast('语音失败：' + e.message, 'err'); } finally { setTesting(false); }
   };
   const detectVoiceModels = async () => {
     setDetectingVoice(true);
@@ -115,7 +151,7 @@ export default function Settings() {
 
         {tab === 'model' && (
           <div className="card">
-            <div className="section-title"><h2>语言模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
+            <div className="section-title"><h2>语言模型 API</h2><div style={{ display: 'flex', gap: 8 }}><button className="btn sm" onClick={testLLM} disabled={testing || !s.llm_api_key}>{testing ? '测试中…' : '测试连接'}</button><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div></div>
             {s.using_platform && (
               <div className="platform-note">
                 <span className="pn-ic"><ShieldCheck size={18} /></span>
@@ -127,10 +163,10 @@ export default function Settings() {
                 </div>
               </div>
             )}
-            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>兼容 OpenAI Chat Completions 格式，可接入任意服务商。密钥仅存于本地。</p>
+            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>兼容 OpenAI Chat Completions 与 Anthropic Claude 两套协议，可接入任意服务商（含本地 Ollama / LM Studio）。密钥仅存于本地。当前协议：<b>{(s.llm_protocol || 'openai') === 'anthropic' ? 'Anthropic Messages' : 'OpenAI Compatible'}</b>。</p>
             <div className="row">
               <div className="field"><label>服务商预设</label>
-                <select className="select" value={s.llm_provider} onChange={e => { const p = e.target.value; set('llm_provider', p); if (LLM_PRESETS[p]) set('llm_base_url', LLM_PRESETS[p]); }}>
+                <select className="select" value={s.llm_provider} onChange={e => { const p = e.target.value; const pr = LLM_PRESETS[p]; set('llm_provider', p); if (pr) { set('llm_base_url', pr[0]); set('llm_protocol', pr[1]); } }}>
                   {PROVIDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select></div>
               <div className="field"><label>模型名称</label>
@@ -164,14 +200,33 @@ export default function Settings() {
 
         {tab === 'voice' && (
           <div className="card">
-            <div className="section-title"><h2>语音模型 API</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
-            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>按服务商各自的 TTS 协议朗读台词，后端已为每种协议内置适配器。支持 OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox（OpenAI 协议）、ElevenLabs、MiniMax 海螺等；其它兼容 <code>/audio/speech</code> 的端点可选「自定义」。密钥仅存于本地。</p>
+            <div className="section-title"><h2>语音模型 API</h2><div style={{ display: 'flex', gap: 8 }}><button className="btn sm" onClick={testVoice} disabled={testing}>{testing ? '试听中…' : '试听'}</button><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div></div>
+            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>后端为每种 TTS 协议内置适配器：浏览器内置语音（免配置·离线）、OpenAI 协议族（OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox）、ElevenLabs、MiniMax 海螺、Azure 认知语音、Google Cloud TTS、Deepgram Aura 等。密钥仅存于本地。</p>
             {(() => {
               const vproto = s.voice_protocol || 'openai';
-              const MODEL_PH = { openai: 'tts-1 / gpt-4o-mini-tts', elevenlabs: 'eleven_multilingual_v2', minimax: 'speech-01-turbo' };
-              const VOICE_LB = { openai: '默认音色', elevenlabs: 'Voice ID', minimax: 'voice_id' };
-              const VOICE_PH = { openai: 'alloy / nova / onyx', elevenlabs: '21m00Tcm4TlvDq8ikWAM', minimax: 'male-qn-qingse' };
+              const MODEL_PH = { openai: 'tts-1 / gpt-4o-mini-tts', elevenlabs: 'eleven_multilingual_v2', minimax: 'speech-01-turbo', deepgram: 'aura-asteria-en', google: '（在音色处填完整 voice）', azure: '（无需填，音色即模型）' };
+              const VOICE_LB = { openai: '默认音色', elevenlabs: 'Voice ID', minimax: 'voice_id', azure: 'Neural 音色名', google: 'voice name', deepgram: 'aura 音色' };
+              const VOICE_PH = { openai: 'alloy / nova / onyx', elevenlabs: '21m00Tcm4TlvDq8ikWAM', minimax: 'male-qn-qingse', azure: 'zh-CN-XiaoxiaoNeural', google: 'cmn-CN-Wavenet-A', deepgram: 'aura-asteria-en' };
+              const KEY_LB = { azure: '订阅密钥（Ocp-Apim-Subscription-Key）', google: 'API Key', deepgram: 'API Key（Token）' };
               const KEY_PH = vproto === 'elevenlabs' ? 'xi-api-key' : 'sk-...';
+              const BASE_PH = { azure: 'https://eastus.tts.speech.microsoft.com', google: 'https://texttospeech.googleapis.com', deepgram: 'https://api.deepgram.com' };
+
+              // ---- Browser Web Speech: zero-config, no key/base ----
+              if (vproto === 'browser') {
+                return (<>
+                  <div className="field"><label>服务商预设</label>
+                    <select className="select" value={s.voice_provider || 'openai'} onChange={e => { const p = e.target.value; const info = VOICE_BY_VALUE[p] || {}; set('voice_provider', p); set('voice_protocol', info.proto || 'openai'); if (info.base) set('voice_base_url', info.base); }}>
+                      {VOICE_PROVIDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select></div>
+                  <div className="field"><label>音色（系统语音 · 共 {bvoices.length} 个）</label>
+                    <select className="select" value={s.voice_name || ''} onChange={e => set('voice_name', e.target.value)}>
+                      <option value="">自动（优先中文）</option>
+                      {bvoices.map(v => <option key={v.name} value={v.name}>{v.name} · {v.lang}</option>)}
+                    </select>
+                    <div className="hint">使用浏览器/系统自带的语音合成，<b>无需 API Key、无跨域限制、可离线</b>。不同系统可用音色不同（移动端可能较少）。</div></div>
+                  <button className="btn" onClick={() => speakBrowser('幻域欢迎你，这是浏览器内置语音的试听。', s.voice_name)}><Volume2 size={15} /> 试听当前音色</button>
+                </>);
+              }
               return (<>
             <div className="row">
               <div className="field"><label>服务商预设</label>
@@ -180,7 +235,7 @@ export default function Settings() {
                 </select></div>
               <div className="field"><label>模型</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="input" style={{ flex: 1 }} value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder={MODEL_PH[vproto]} list="voice-model-list" />
+                  <input className="input" style={{ flex: 1 }} value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder={MODEL_PH[vproto] || 'model'} list="voice-model-list" />
                   <button className="btn" onClick={detectVoiceModels} disabled={detectingVoice} title="检测服务商可用模型">
                     <RefreshCw size={15} className={detectingVoice ? 'spin' : ''} /> {detectingVoice ? '检测中' : '检测模型'}
                   </button>
@@ -196,13 +251,14 @@ export default function Settings() {
                 )}
               </div>
             </div>
-            <div className="field"><label>API Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} placeholder="https://api.openai.com/v1" />
-              {vproto === 'minimax' && <div className="hint">MiniMax 需在 Base URL 后附上你的 GroupId，例如 <code>https://api.minimax.chat/v1?GroupId=你的GroupId</code>。</div>}</div>
+            <div className="field"><label>API Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} placeholder={BASE_PH[vproto] || 'https://api.openai.com/v1'} />
+              {vproto === 'minimax' && <div className="hint">MiniMax 需在 Base URL 后附上你的 GroupId，例如 <code>https://api.minimax.chat/v1?GroupId=你的GroupId</code>。</div>}
+              {vproto === 'azure' && <div className="hint">Base URL 中的区域需与你的资源一致，例如 <code>https://eastus.tts.speech.microsoft.com</code>。</div>}</div>
             <div className="row">
-              <div className="field"><label>{VOICE_LB[vproto]}</label><input className="input" value={s.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder={VOICE_PH[vproto]} /></div>
-              <div className="field"><label>API Key {s.voice_api_key_set && <span className="tag">已配置</span>}</label>
+              <div className="field"><label>{VOICE_LB[vproto] || '音色'}</label><input className="input" value={s.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder={VOICE_PH[vproto] || ''} /></div>
+              <div className="field"><label>{KEY_LB[vproto] || 'API Key'} {s.voice_api_key_set && <span className="tag">已配置</span>}</label>
                 <input className="input" type="password" value={s.voice_api_key || ''} onChange={e => set('voice_api_key', e.target.value)} placeholder={s.voice_api_key_set ? '••••••（留空不修改）' : KEY_PH} />
-                <div className="hint">{vproto === 'openai' ? '点「检测模型」可向服务商拉取可用模型列表再选择（需先填 Base URL 与 Key）。' : '浏览器将直连该服务商；若其未开放跨域(CORS)，纯静态站点可能无法播放，建议优先选 OpenAI 协议族或 ElevenLabs。'}</div></div>
+                <div className="hint">浏览器将直连该服务商；若其未开放跨域(CORS)，纯静态站点可能无法播放，建议优先选「浏览器内置语音」、OpenAI 协议族或 ElevenLabs。</div></div>
             </div>
               </>);
             })()}
