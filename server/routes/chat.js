@@ -2,12 +2,28 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx } from '../wallet.js';
-import { getPlatform, voiceReady, featureFee, VOICE_FEE } from '../platform.js';
+import { getPlatform, voiceReady, featureFee, platformFee, VOICE_FEE } from '../platform.js';
 
 const router = Router();
 
 function getSettings(userId) {
   return db.prepare('SELECT * FROM settings WHERE user_id = ?').get(userId);
+}
+
+// Resolve which LLM creds a request uses: the user's own key (free) takes priority,
+// otherwise fall back to the platform language service (billed per reply).
+function effectiveLLM(settings) {
+  if (settings?.llm_api_key) {
+    return { base_url: settings.llm_base_url, api_key: settings.llm_api_key, model: settings.llm_model,
+      temperature: settings.llm_temperature, max_tokens: settings.llm_max_tokens, system_prompt: '', platform: false };
+  }
+  const p = getPlatform();
+  if (p.key && p.base_url) {
+    return { base_url: p.base_url, api_key: p.key, model: p.model,
+      temperature: settings?.llm_temperature ?? 0.8, max_tokens: settings?.llm_max_tokens || 1024,
+      system_prompt: p.system_prompt || '', platform: true };
+  }
+  return null;
 }
 
 // Synthesize speech via the right vendor adapter. Returns { ok, contentType, buffer } or { ok:false, status, error }.
@@ -122,9 +138,6 @@ router.post('/conversations/:id/complete', authRequired, async (req, res) => {
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
   const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
   const settings = getSettings(req.user.id);
-  if (!settings?.llm_api_key) {
-    return res.status(400).json({ error: '尚未配置语言模型 API。请前往「设置」填写 API Key。' });
-  }
 
   const userContent = (req.body?.content || '').trim();
   if (userContent) {
@@ -139,7 +152,6 @@ router.post('/conversations/:id/regenerate', authRequired, async (req, res) => {
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
   const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
   const settings = getSettings(req.user.id);
-  if (!settings?.llm_api_key) return res.status(400).json({ error: '尚未配置语言模型 API。请前往「设置」填写 API Key。' });
   const last = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 1').get(conv.id);
   if (last && last.role === 'assistant') db.prepare('DELETE FROM messages WHERE id = ?').run(last.id);
   await streamReply(res, conv, character, settings, '');
@@ -147,24 +159,37 @@ router.post('/conversations/:id/regenerate', authRequired, async (req, res) => {
 
 // Shared SSE streaming of a model reply; persists the assistant message.
 async function streamReply(res, conv, character, settings, userContent) {
-  const history = db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
-  const recentText = history.slice(-6).map(m => m.content).join(' ');
-  const system = buildSystemPrompt(character, recentText + ' ' + userContent);
-  const payloadMessages = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
+  const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
+  const eff = effectiveLLM(settings);
 
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
+  const sse = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
+
+  if (!eff) { sse({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' }); sse('[DONE]'); return res.end(); }
+
+  const history = db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
+  // Platform service is billed per reply — verify balance up-front, deduct only on success.
+  let feeDue = 0;
+  if (eff.platform) {
+    feeDue = platformFee(me, history.length);
+    if (me.gold < feeDue) { sse({ error: `金币不足，本次平台 AI 服务需 ${feeDue} 金币（当前 ${me.gold}）。可前往钱包签到/兑换，或在设置中填写自己的 API。` }); sse('[DONE]'); return res.end(); }
+  }
+  const recentText = history.slice(-6).map(m => m.content).join(' ');
+  let system = buildSystemPrompt(character, recentText + ' ' + userContent);
+  if (eff.platform && eff.system_prompt.trim()) system = eff.system_prompt.trim() + '\n\n' + system;
+  const payloadMessages = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
   let full = '';
   try {
-    const upstream = await fetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
+    const upstream = await fetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
       body: JSON.stringify({
-        model: settings.llm_model, messages: payloadMessages,
-        temperature: settings.llm_temperature, max_tokens: settings.llm_max_tokens, stream: true
+        model: eff.model, messages: payloadMessages,
+        temperature: eff.temperature, max_tokens: eff.max_tokens, stream: true
       })
     });
     if (!upstream.ok || !upstream.body) {
@@ -199,6 +224,8 @@ async function streamReply(res, conv, character, settings, userContent) {
   if (full.trim()) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+    // Deduct the platform fee only after a successful reply (no charge on failure).
+    if (feeDue) { try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》` }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ } }
   }
   res.write('data: [DONE]\n\n');
   res.end();

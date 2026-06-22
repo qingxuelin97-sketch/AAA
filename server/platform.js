@@ -7,11 +7,19 @@ export const IMAGE_FEE = 20;  // per generated image
 export const PLATFORM_FEE = { base: 10, heavy: 15, heavy_threshold: 100 };
 export const memberDiscount = (u) => (u?.svip ? 0.5 : isVip(u) ? 0.75 : 1);
 export const featureFee = (u, base) => Math.max(1, Math.round(base * memberDiscount(u)));
+// Per-reply platform chat fee: heavier (100+ message) sessions cost more.
+export const platformFee = (u, msgCount) =>
+  Math.max(1, Math.round((msgCount > PLATFORM_FEE.heavy_threshold ? PLATFORM_FEE.heavy : PLATFORM_FEE.base) * memberDiscount(u)));
 
 // Group-wide platform AI config (language / voice / image). Stored as JSON in
 // app_config. Keys live only in the server DB and are never returned unmasked.
+// Default platform language service (same provider the browser build ships with),
+// so a fresh self-hosted server can chat out-of-the-box. GM can change it anytime.
 const DEFAULTS = {
-  base_url: '', model: '', protocol: 'openai', key: '', system_prompt: '',
+  base_url: 'https://open.bigmodel.cn/api/paas/v4',
+  model: 'glm-5.2', protocol: 'openai',
+  key: 'eaf7c0d692d34f4fa3752228476416bd.AMCKVTqtPwclkU7P',
+  system_prompt: '',
   voice: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'tts-1', voice_name: 'alloy' },
   image: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'gpt-image-1', size: '1024x1024' },
 };
