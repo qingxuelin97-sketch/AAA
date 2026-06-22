@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal, CouncilorBadge } from '../ui.jsx';
-import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2 } from 'lucide-react';
+import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw } from 'lucide-react';
 
 export default function Admin() {
   const toast = useToast();
@@ -275,10 +275,16 @@ function CodesTab({ toast }) {
 // Provider presets shared with the user-facing Settings page (kept in sync conceptually).
 const PF_LLM_PRESETS = [
   ['openai', 'OpenAI', 'https://api.openai.com/v1', 'openai'], ['anthropic', 'Anthropic Claude', 'https://api.anthropic.com', 'anthropic'],
-  ['zhipu', '智谱 GLM', 'https://open.bigmodel.cn/api/paas/v4', 'openai'], ['deepseek', 'DeepSeek', 'https://api.deepseek.com/v1', 'openai'],
-  ['moonshot', 'Moonshot / Kimi', 'https://api.moonshot.cn/v1', 'openai'], ['qwen', '通义千问', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'openai'],
-  ['siliconflow', '硅基流动', 'https://api.siliconflow.cn/v1', 'openai'], ['openrouter', 'OpenRouter', 'https://openrouter.ai/api/v1', 'openai'],
-  ['custom', '自定义', '', 'openai'],
+  ['zhipu', '智谱 GLM（清言）', 'https://open.bigmodel.cn/api/paas/v4', 'openai'], ['deepseek', 'DeepSeek 深度求索', 'https://api.deepseek.com/v1', 'openai'],
+  ['moonshot', 'Moonshot / Kimi', 'https://api.moonshot.cn/v1', 'openai'], ['qwen', '通义千问 Qwen', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'openai'],
+  ['doubao', '字节豆包 Doubao', 'https://ark.cn-beijing.volces.com/api/v3', 'openai'], ['yi', '零一万物 Yi', 'https://api.lingyiwanwu.com/v1', 'openai'],
+  ['stepfun', '阶跃星辰 StepFun', 'https://api.stepfun.com/v1', 'openai'], ['minimax', 'MiniMax', 'https://api.minimax.chat/v1', 'openai'],
+  ['spark', '讯飞星火', 'https://spark-api-open.xf-yun.com/v1', 'openai'], ['baidu', '百度文心一言', 'https://qianfan.baidubce.com/v2', 'openai'],
+  ['gemini', 'Google Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'openai'],
+  ['siliconflow', '硅基流动 SiliconFlow', 'https://api.siliconflow.cn/v1', 'openai'], ['openrouter', 'OpenRouter', 'https://openrouter.ai/api/v1', 'openai'],
+  ['groq', 'Groq', 'https://api.groq.com/openai/v1', 'openai'], ['together', 'Together', 'https://api.together.xyz/v1', 'openai'],
+  ['mistral', 'Mistral AI', 'https://api.mistral.ai/v1', 'openai'], ['ollama', 'Ollama 本地', 'http://localhost:11434/v1', 'openai'],
+  ['lmstudio', 'LM Studio 本地', 'http://localhost:1234/v1', 'openai'], ['custom', '自定义', '', 'openai'],
 ];
 const PF_VOICE_PRESETS = [
   ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）', 'https://api.openai.com/v1', 'openai'],
@@ -307,6 +313,21 @@ function PlatformTab({ toast }) {
   const [voice, setVoice] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', voice_name: '', key: '' });
   // image
   const [image, setImage] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', size: '1024x1024', key: '' });
+  const [llmModels, setLlmModels] = useState([]);
+  const [voiceModels, setVoiceModels] = useState([]);
+  const [det, setDet] = useState('');
+
+  const detect = async (kind) => {
+    const cfg = kind === 'voice' ? voice : llm;
+    if (!cfg.base_url) { toast('请先填写该服务的 Base URL', 'err'); return; }
+    setDet(kind);
+    try {
+      const d = await api('/settings/models', { method: 'POST', body: { base_url: cfg.base_url, api_key: cfg.key || undefined, protocol: cfg.protocol } });
+      if (!d.models?.length) { toast('未返回任何模型（请在下方先填入该服务的密钥再检测）', 'err'); return; }
+      (kind === 'voice' ? setVoiceModels : setLlmModels)(d.models);
+      toast(`检测到 ${d.models.length} 个可用模型`);
+    } catch (e) { toast(e.message, 'err'); } finally { setDet(''); }
+  };
 
   const load = () => api('/admin/platform').then(d => {
     const p = d.platform; setCfg(p);
@@ -348,7 +369,18 @@ function PlatformTab({ toast }) {
             </select></div>
         </div>
         <div className="field"><label>API Base URL</label><input className="input" value={llm.base_url} onChange={e => setLlm(l => ({ ...l, base_url: e.target.value }))} placeholder="https://open.bigmodel.cn/api/paas/v4" /></div>
-        <div className="field"><label>最终调用模型</label><input className="input" value={llm.model} onChange={e => setLlm(l => ({ ...l, model: e.target.value }))} placeholder="glm-5.2" /></div>
+        <div className="field"><label>最终调用模型</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input className="input" style={{ flex: 1 }} value={llm.model} onChange={e => setLlm(l => ({ ...l, model: e.target.value }))} placeholder="glm-5.2" list="pf-llm-models" />
+            <button className="btn" type="button" onClick={() => detect('llm')} disabled={det === 'llm'}><RefreshCw size={15} className={det === 'llm' ? 'spin' : ''} /> {det === 'llm' ? '检测中' : '检测模型'}</button>
+          </div>
+          {llmModels.length > 0 && (<>
+            <datalist id="pf-llm-models">{llmModels.map(m => <option key={m} value={m} />)}</datalist>
+            <select className="select" style={{ marginTop: 8 }} value={llmModels.includes(llm.model) ? llm.model : ''} onChange={e => e.target.value && setLlm(l => ({ ...l, model: e.target.value }))}>
+              <option value="">— 从检测到的 {llmModels.length} 个模型中选择 —</option>
+              {llmModels.map(m => <option key={m} value={m}>{m}</option>)}
+            </select></>)}
+          <div className="hint">检测前请先在下方填入该服务的密钥（检测需要密钥）。</div></div>
         <div className="field"><label>API Key {cfg.key_set && <span className="tag">已配置 · {cfg.key_masked}</span>}</label>
           <input className="input" type="password" value={llm.key} onChange={e => setLlm(l => ({ ...l, key: e.target.value }))} placeholder={cfg.key_set ? '••••••（留空则不修改）' : '填写平台密钥'} /></div>
         <div className="field"><label>平台系统提示词（全局）</label>
@@ -367,7 +399,18 @@ function PlatformTab({ toast }) {
             <select className="select" value={voice.provider} onChange={e => { const v = e.target.value; const pr = PF_VOICE_PRESETS.find(x => x[0] === v); setVoice(s => ({ ...s, provider: v, ...(pr ? { base_url: pr[2] || s.base_url, protocol: pr[3] } : {}) })); }}>
               {PF_VOICE_PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select></div>
-          <div className="field"><label>模型</label><input className="input" value={voice.model} onChange={e => setVoice(s => ({ ...s, model: e.target.value }))} placeholder="tts-1 / eleven_multilingual_v2" /></div>
+          <div className="field"><label>模型</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" style={{ flex: 1 }} value={voice.model} onChange={e => setVoice(s => ({ ...s, model: e.target.value }))} placeholder="tts-1 / eleven_multilingual_v2" list="pf-voice-models" />
+              <button className="btn" type="button" onClick={() => detect('voice')} disabled={det === 'voice'}><RefreshCw size={15} className={det === 'voice' ? 'spin' : ''} /></button>
+            </div>
+            {voiceModels.length > 0 && (<>
+              <datalist id="pf-voice-models">{voiceModels.map(m => <option key={m} value={m} />)}</datalist>
+              <select className="select" style={{ marginTop: 8 }} value={voiceModels.includes(voice.model) ? voice.model : ''} onChange={e => e.target.value && setVoice(s => ({ ...s, model: e.target.value }))}>
+                <option value="">— 选择检测到的 {voiceModels.length} 个模型 —</option>
+                {voiceModels.map(m => <option key={m} value={m}>{m}</option>)}
+              </select></>)}
+          </div>
         </div>
         <div className="field"><label>API Base URL</label><input className="input" value={voice.base_url} onChange={e => setVoice(s => ({ ...s, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" />
           {voice.protocol === 'minimax' && <div className="hint">MiniMax 需在 Base URL 后附 <code>?GroupId=你的GroupId</code>。</div>}</div>

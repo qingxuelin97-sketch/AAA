@@ -288,6 +288,50 @@ CREATE TABLE IF NOT EXISTS event_claims (
   event_id TEXT NOT NULL,
   created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS proposals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL, body TEXT DEFAULT '', status TEXT DEFAULT 'pending',
+  adopted_at TEXT, decided_at TEXT, tally TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS proposal_votes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  proposal_id INTEGER REFERENCES proposals(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  choice TEXT, created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS proposal_endorse (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  proposal_id INTEGER REFERENCES proposals(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS proposal_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  proposal_id INTEGER REFERENCES proposals(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS friendships (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  a_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  b_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS friend_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  to_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS dm_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  to_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL, read INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
 `);
 
 // Lightweight column migrations (add new columns to existing DBs; ignore if present).
@@ -295,6 +339,20 @@ for (const sql of [
   "ALTER TABLE users ADD COLUMN ach_claimed TEXT DEFAULT '[]'",
   'ALTER TABLE users ADD COLUMN gacha_pulls INTEGER DEFAULT 0',
   'ALTER TABLE users ADD COLUMN is_councilor INTEGER DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN last_active INTEGER',
+  'ALTER TABLE conversations ADD COLUMN affinity INTEGER DEFAULT 0',
+  "ALTER TABLE conversations ADD COLUMN memories TEXT DEFAULT '[]'",
+  'ALTER TABLE messages ADD COLUMN reaction TEXT',
+  "ALTER TABLE settings ADD COLUMN llm_protocol TEXT DEFAULT 'openai'",
+  "ALTER TABLE settings ADD COLUMN voice_protocol TEXT DEFAULT 'openai'",
+  "ALTER TABLE settings ADD COLUMN privacy_profile TEXT DEFAULT 'public'",
+  "ALTER TABLE settings ADD COLUMN allow_dm TEXT DEFAULT 'all'",
+  'ALTER TABLE settings ADD COLUMN show_online INTEGER DEFAULT 1',
+  'ALTER TABLE settings ADD COLUMN discoverable INTEGER DEFAULT 1',
+  'ALTER TABLE settings ADD COLUMN activity_visible INTEGER DEFAULT 1',
+  'ALTER TABLE settings ADD COLUMN leaderboard_visible INTEGER DEFAULT 1',
+  'ALTER TABLE settings ADD COLUMN read_receipts INTEGER DEFAULT 1',
+  'ALTER TABLE settings ADD COLUMN personalize INTEGER DEFAULT 1',
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 export default db;

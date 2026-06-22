@@ -15,7 +15,7 @@ export function publicUser(u) {
     avatar: u.avatar, banner: u.banner, bio: u.bio,
     gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u),
     checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned,
-    svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', created_at: u.created_at
+    svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, created_at: u.created_at
   };
 }
 

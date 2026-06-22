@@ -3,6 +3,8 @@ import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx, isVip, notify } from '../wallet.js';
 import { adminView, updatePlatform } from '../platform.js';
+import { creatorTier } from '../creator.js';
+import { councilCfg, saveCouncil, councilSeats, councilSize, baseSeats, totalUsers, USERS_PER_SEAT, MIN_SEATS } from '../council.js';
 
 const router = Router();
 const isGm = (uid) => !!db.prepare('SELECT is_gm FROM users WHERE id = ?').get(uid)?.is_gm;
@@ -18,6 +20,54 @@ router.get('/check', (req, res) => res.json({ is_gm: true }));
 // ---- platform AI config (language / voice / image) ----
 router.get('/platform', (req, res) => res.json({ platform: adminView() }));
 router.put('/platform', (req, res) => res.json({ ok: true, platform: updatePlatform(req.body || {}) }));
+
+// ---- broadcast ----
+router.post('/broadcast', (req, res) => {
+  const text = String(req.body?.text || '').trim();
+  if (!text) return res.status(400).json({ error: '广播内容不能为空' });
+  const link = String(req.body?.link || '').trim();
+  const users = db.prepare('SELECT id FROM users WHERE is_banned = 0').all();
+  users.forEach(u => notify(u.id, '📢 ' + text, link));
+  res.json({ ok: true, count: users.length });
+});
+
+// ---- council / parliament administration ----
+router.get('/councilors', (req, res) => {
+  const rows = db.prepare('SELECT id, username, display_name, avatar, verified FROM users WHERE is_councilor = 1').all()
+    .map(u => ({ ...u, verified: !!u.verified, creator_tier: creatorTier(u.id) }));
+  res.json({ councilors: rows });
+});
+router.get('/council', (req, res) => {
+  const c = councilCfg(); const seats = councilSeats(); const cur = councilSize();
+  res.json({ council: { total_users: totalUsers(), per_seat: USERS_PER_SEAT, min_seats: MIN_SEATS, base_seats: baseSeats(),
+    seats, seats_override: c.seats_override, councilors: cur, vacancies: Math.max(0, seats - cur), over: cur > seats,
+    term: c.term || 1, term_started_at: c.term_started_at, locked: !!c.locked, locked_at: c.locked_at || null } });
+});
+router.put('/council', (req, res) => {
+  const c = councilCfg(); const v = req.body?.seats_override;
+  if (v === null || v === '' || v === undefined) c.seats_override = null;
+  else { const n = parseInt(v, 10); if (isNaN(n) || n < 0) return res.status(400).json({ error: '席位数必须是非负整数' }); if (n > 9999) return res.status(400).json({ error: '席位数过大' }); c.seats_override = n; }
+  saveCouncil(c);
+  res.json({ ok: true, seats: councilSeats(), seats_override: c.seats_override });
+});
+router.post('/council/lock', (req, res) => {
+  const c = councilCfg(); c.locked = !!req.body?.value; c.locked_at = c.locked ? new Date().toISOString() : null; saveCouncil(c);
+  db.prepare('SELECT id FROM users WHERE is_councilor = 1').all().forEach(u => notify(u.id, c.locked ? '幻域议会已被管理层宣布无限期休会，暂停一切议事，静待复会通知。' : '幻域议会已恢复运作，现可正常提交提案与表决。', '/parliament'));
+  res.json({ ok: true, locked: c.locked });
+});
+router.post('/council/reapportion', (req, res) => {
+  const c = councilCfg(); c.seats_override = null; c.term = (c.term || 1) + 1; c.term_started_at = new Date().toISOString(); saveCouncil(c);
+  db.prepare('SELECT id FROM users WHERE is_councilor = 1').all().forEach(u => notify(u.id, `幻域议会已完成第 ${c.term} 届换届，席位按注册规模重新核定为 ${councilSeats()} 席。`, '/parliament'));
+  res.json({ ok: true, term: c.term, seats: councilSeats() });
+});
+router.post('/users/:id/councilor', (req, res) => {
+  const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!u) return res.status(404).json({ error: '用户不存在' });
+  const val = req.body?.value ? 1 : 0;
+  db.prepare('UPDATE users SET is_councilor = ? WHERE id = ?').run(val, u.id);
+  notify(u.id, val ? '🏛 恭喜！你已被任命为幻域议会议员，可发起提案并参与表决。' : '你的议员身份已被免去。', '/parliament');
+  res.json({ ok: true });
+});
 
 router.get('/stats', (req, res) => {
   const c = (t) => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;

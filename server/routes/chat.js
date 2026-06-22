@@ -119,19 +119,81 @@ router.post('/conversations', authRequired, (req, res) => {
   res.json({ conversation: conv });
 });
 
+const parseMem = (conv) => { try { conv.memories = JSON.parse(conv.memories || '[]'); } catch { conv.memories = []; } return conv; };
+const withWorld = (c) => { if (c) c.world = db.prepare('SELECT * FROM world_entries WHERE character_id = ? ORDER BY position, id').all(c.id); return c; };
+
 router.get('/conversations/:id', authRequired, (req, res) => {
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
-  const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
+  const character = withWorld(db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id));
   const messages = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
-  res.json({ conversation: conv, character, messages });
+  res.json({ conversation: parseMem(conv), character, messages });
+});
+
+router.patch('/conversations/:id', authRequired, (req, res) => {
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
+  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
+  if (typeof req.body?.title === 'string' && req.body.title.trim()) db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(req.body.title.trim().slice(0, 60), conv.id);
+  if (req.body?.clear) {
+    const ch = db.prepare('SELECT greeting FROM characters WHERE id = ?').get(conv.character_id);
+    db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(conv.id);
+    if (ch?.greeting) db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', ch.greeting);
+    db.prepare('UPDATE conversations SET affinity = 0 WHERE id = ?').run(conv.id);
+  }
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  const updated = parseMem(db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id));
+  res.json({ conversation: updated, messages: db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id) });
 });
 
 router.delete('/conversations/:id', authRequired, (req, res) => {
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权删除' });
+  db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(conv.id);
   db.prepare('DELETE FROM conversations WHERE id = ?').run(conv.id);
   res.json({ ok: true });
+});
+
+// ---- memories ----
+const ownConv = (req, res) => { const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id); if (!conv || conv.user_id !== req.user.id) { res.status(403).json({ error: '无权访问' }); return null; } return conv; };
+router.post('/conversations/:id/memories', authRequired, (req, res) => {
+  const conv = ownConv(req, res); if (!conv) return;
+  const text = String(req.body?.content || '').trim(); if (!text) return res.status(400).json({ error: '记忆内容不能为空' });
+  let mem = []; try { mem = JSON.parse(conv.memories || '[]'); } catch { /* */ }
+  const mid = mem.reduce((mx, x) => Math.max(mx, x.id || 0), 0) + 1;
+  mem.push({ id: mid, content: text.slice(0, 300) });
+  db.prepare('UPDATE conversations SET memories = ? WHERE id = ?').run(JSON.stringify(mem), conv.id);
+  res.json({ memories: mem });
+});
+router.delete('/conversations/:id/memories/:mid', authRequired, (req, res) => {
+  const conv = ownConv(req, res); if (!conv) return;
+  let mem = []; try { mem = JSON.parse(conv.memories || '[]'); } catch { /* */ }
+  mem = mem.filter(x => x.id !== +req.params.mid);
+  db.prepare('UPDATE conversations SET memories = ? WHERE id = ?').run(JSON.stringify(mem), conv.id);
+  res.json({ memories: mem });
+});
+
+// ---- message edit / delete / react ----
+router.patch('/conversations/:id/messages/:mid', authRequired, (req, res) => {
+  const conv = ownConv(req, res); if (!conv) return;
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ? AND conversation_id = ?').get(req.params.mid, conv.id);
+  if (!msg) return res.status(404).json({ error: '消息不存在' });
+  const c = String(req.body?.content || '').trim(); if (!c) return res.status(400).json({ error: '内容不能为空' });
+  db.prepare('UPDATE messages SET content = ? WHERE id = ?').run(c, msg.id);
+  res.json({ message: { ...msg, content: c } });
+});
+router.delete('/conversations/:id/messages/:mid', authRequired, (req, res) => {
+  const conv = ownConv(req, res); if (!conv) return;
+  db.prepare('DELETE FROM messages WHERE id = ? AND conversation_id = ?').run(req.params.mid, conv.id);
+  res.json({ ok: true });
+});
+router.post('/conversations/:id/messages/:mid/react', authRequired, (req, res) => {
+  const conv = ownConv(req, res); if (!conv) return;
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ? AND conversation_id = ?').get(req.params.mid, conv.id);
+  if (!msg) return res.status(404).json({ error: '消息不存在' });
+  const r = String(req.body?.reaction || '').slice(0, 8);
+  const next = msg.reaction === r ? '' : r;
+  db.prepare('UPDATE messages SET reaction = ? WHERE id = ?').run(next, msg.id);
+  res.json({ message: { ...msg, reaction: next } });
 });
 
 // ---- Streaming completion ----
@@ -226,6 +288,7 @@ async function streamReply(res, conv, character, settings, userContent) {
   if (full.trim()) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+    if (userContent) { try { db.prepare('UPDATE conversations SET affinity = COALESCE(affinity,0) + 3 WHERE id = ?').run(conv.id); } catch { /* */ } }
     // Deduct the platform fee only after a successful reply (no charge on failure).
     if (feeDue) { try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》` }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ } }
   }

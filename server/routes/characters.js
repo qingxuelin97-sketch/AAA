@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { bumpDaily } from '../daily.js';
+import { creatorTier } from '../creator.js';
 
 const router = Router();
 
@@ -82,7 +83,14 @@ router.get('/:id', authOptional, (req, res) => {
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).json({ error: '角色不存在' });
   if (!c.is_public && (!req.user || req.user.id !== c.owner_id)) return res.status(403).json({ error: '无权访问' });
-  res.json({ character: ownerView(c) });
+  const owner = db.prepare('SELECT id, display_name, avatar, verified FROM users WHERE id = ?').get(c.owner_id);
+  const fav_count = db.prepare('SELECT COUNT(*) n FROM favorites WHERE character_id = ?').get(c.id).n;
+  const related = db.prepare(`SELECT id, name, avatar, tagline, uses, category FROM characters
+    WHERE is_public = 1 AND id != ? AND (category = ? OR owner_id = ?) ORDER BY uses DESC LIMIT 6`).all(c.id, c.category, c.owner_id);
+  const author_char_count = db.prepare('SELECT COUNT(*) n FROM characters WHERE is_public = 1 AND owner_id = ? AND id != ?').get(c.owner_id, c.id).n;
+  const character = { ...ownerView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(c.owner_id), fav_count, author_char_count };
+  if (req.user) character.faved = !!db.prepare('SELECT 1 FROM favorites WHERE user_id=? AND character_id=?').get(req.user.id, c.id);
+  res.json({ character, related });
 });
 
 router.post('/', authRequired, (req, res) => {

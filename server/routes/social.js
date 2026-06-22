@@ -5,6 +5,12 @@ import { notify } from '../wallet.js';
 
 const router = Router();
 
+// ---- presence heartbeat (powers online status for friends/DM) ----
+router.post('/heartbeat', authRequired, (req, res) => {
+  db.prepare('UPDATE users SET last_active = ? WHERE id = ?').run(Date.now(), req.user.id);
+  res.json({ ok: true });
+});
+
 // ---- Moments feed ----
 router.get('/moments', authOptional, (req, res) => {
   const scope = req.query.scope; // 'following' for followed users only
