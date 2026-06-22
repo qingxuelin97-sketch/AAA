@@ -18,7 +18,8 @@
 
 GitHub Pages 只能托管纯浏览器版（静态）。要部署带真实数据库的**全栈服务端**（Express + SQLite，单服务同时提供 API 与前端），用本仓库自带的 Docker / Render 配置即可：
 
-- **Docker**：`docker build -t huanyu . && docker run -p 4000:4000 -v huanyu-data:/data -e DB_PATH=/data/data.sqlite huanyu` → 打开 `http://localhost:4000`
+- **Docker**：`docker build -t huanyu . && docker run -p 4000:80 -v huanyu-data:/data -e DB_PATH=/data/data.sqlite huanyu` → 打开 `http://localhost:4000`（容器内监听 80）
+- **微信云托管 / 腾讯云**：关联本仓库、用根目录 Dockerfile 构建，服务端口填 **80** 即可。
 - **Render（一键）**：新建 Blueprint 指向本仓库，自动读取 `render.yaml`（已含持久化磁盘挂载到 `/data`、健康检查 `/api/health`）。
 - 任意支持 Docker 的平台（Railway / Fly.io / VPS）同理。容器首启会在数据库为空时自动灌入演示数据，重启保留数据。
 - 平台 AI（语言 / 语音 / 生图）在 **GM 控制台 → 平台AI** 配置；服务端密钥仅存于服务器数据库，接口返回一律掩码。

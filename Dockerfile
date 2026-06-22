@@ -16,10 +16,12 @@ COPY . .
 RUN npm run build
 
 ENV NODE_ENV=production
-ENV PORT=4000
+# Listen on 80 by default (matches 微信云托管 default port). Hosts that inject their
+# own PORT env (e.g. Render) override this automatically at runtime.
+ENV PORT=80
 # Optional: point at a mounted volume for a persistent database
 # ENV DB_PATH=/data/data.sqlite
-EXPOSE 4000
+EXPOSE 80
 
 # Seed demo data ONLY when the database has no users yet (seed.js is destructive),
 # then start the server. Subsequent restarts keep existing data.
