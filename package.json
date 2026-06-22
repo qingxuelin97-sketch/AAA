@@ -12,6 +12,7 @@
     "build:single": "VITE_STATIC=1 VITE_SINGLEFILE=1 vite build --config client/vite.config.js",
     "start": "node server/index.js",
     "seed": "node server/seed.js",
+    "smoke": "node server/smoke.mjs",
     "app:build": "npm run build:static && npx cap sync",
     "app:android": "npm run build:static && npx cap sync android && npx cap open android",
     "app:ios": "npm run build:static && npx cap sync ios && npx cap open ios",

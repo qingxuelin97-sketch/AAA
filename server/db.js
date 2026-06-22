@@ -332,6 +332,12 @@ CREATE TABLE IF NOT EXISTS dm_messages (
   text TEXT NOT NULL, read INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS post_likes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now'))
+);
 `);
 
 // Lightweight column migrations (add new columns to existing DBs; ignore if present).

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar, GridSkeleton, CreatorV } from '../ui.jsx';
-import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare, ListChecks, Check } from 'lucide-react';
+import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare, ListChecks, Check, Shuffle } from 'lucide-react';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 
 // Auto-rotating spotlight of featured characters — the hero of the discover page.
@@ -132,6 +132,12 @@ export default function Home() {
     catch (err) { toast(err.message, 'err'); }
   };
   const dismissAnn = () => { if (ann) localStorage.setItem('ann_seen', String(ann.id)); setAnn(null); };
+  // 手气不错：从当前公开角色中随机挑一个，带你去意外邂逅。
+  const lucky = () => {
+    const pool = (chars.length ? chars : featured);
+    if (!pool.length) { toast('还没有可漫游的角色', 'err'); return; }
+    nav('/character/' + pool[Math.floor(Math.random() * pool.length)].id);
+  };
 
   return (
     <>
@@ -140,6 +146,7 @@ export default function Home() {
           <h1>发现广场</h1>
           <div className="sub">挑选一个角色，开启属于你的沉浸故事</div>
         </div>
+        <button className="btn ghost" onClick={lucky} title="随机漫游一个角色"><Shuffle size={16} /> 手气不错</button>
         <button className="btn primary" onClick={() => nav('/publish')}><Sparkles size={16} /> 发布作品</button>
       </div>
 
