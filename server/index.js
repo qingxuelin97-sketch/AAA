@@ -21,6 +21,8 @@ import announcementRoutes from './routes/announcements.js';
 import adminRoutes from './routes/admin.js';
 import engageRoutes from './routes/engage.js';
 import aiRoutes from './routes/ai.js';
+import achievementRoutes from './routes/achievements.js';
+import meRoutes from './routes/me.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -50,6 +52,8 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/engage', engageRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/achievements', achievementRoutes);
+app.use('/api/me', meRoutes);
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Serve built client (production) with SPA fallback.

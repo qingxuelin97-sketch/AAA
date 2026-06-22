@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
+import { bumpDaily } from '../daily.js';
 
 const router = Router();
 
@@ -73,6 +74,7 @@ router.post('/:id/favorite', authRequired, (req, res) => {
     db.prepare('UPDATE characters SET likes = MAX(0, likes - 1) WHERE id = ?').run(req.params.id); return res.json({ faved: false }); }
   db.prepare('INSERT INTO favorites (user_id, character_id) VALUES (?,?)').run(req.user.id, req.params.id);
   db.prepare('UPDATE characters SET likes = likes + 1 WHERE id = ?').run(req.params.id);
+  bumpDaily(req.user.id, 'fav');
   res.json({ faved: true });
 });
 

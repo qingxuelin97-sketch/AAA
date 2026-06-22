@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
+import { bumpDaily } from '../daily.js';
 
 const router = Router();
 
@@ -75,6 +76,7 @@ router.post('/posts/:id/like', authRequired, (req, res) => {
   }
   db.prepare('INSERT INTO post_likes (post_id, user_id) VALUES (?,?)').run(p.id, req.user.id);
   db.prepare('UPDATE posts SET likes = likes + 1 WHERE id = ?').run(p.id);
+  bumpDaily(req.user.id, 'like');
   res.json({ liked: true, likes: p.likes + 1 });
 });
 

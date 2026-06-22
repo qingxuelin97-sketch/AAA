@@ -2674,3 +2674,14 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   .msg.assistant.run-cont { padding-left: 0; }
   .msg.assistant.run-cont > .avatar { display: block; visibility: hidden; }
 }
+
+/* ---- 登录/注册：协议勾选 + 协议/隐私弹窗 ---- */
+.auth-agree { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 14px; font-size: 12.5px; color: var(--muted); line-height: 1.5; cursor: pointer; }
+.auth-agree input { margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
+.auth-agree button, .auth-link { background: none; border: none; padding: 0; color: var(--accent-2); font-weight: 600; cursor: pointer; font-size: inherit; }
+.auth-agree button:hover, .auth-link:hover { text-decoration: underline; }
+.legal-intro { font-size: 13px; color: var(--muted); line-height: 1.7; margin: 0 0 6px; }
+.legal-body { max-height: 52vh; overflow-y: auto; padding-right: 6px; margin: 0 -2px; }
+.legal-body section { margin-bottom: 12px; }
+.legal-body h4 { margin: 0 0 4px; font-size: 14px; color: var(--text); }
+.legal-body p { margin: 0; font-size: 12.8px; line-height: 1.75; color: var(--muted); }

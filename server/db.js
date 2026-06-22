@@ -278,6 +278,23 @@ CREATE TABLE IF NOT EXISTS ai_images (
   prompt TEXT NOT NULL, size TEXT DEFAULT '1024x1024', url TEXT NOT NULL,
   created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS daily_progress (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  date TEXT, counts TEXT DEFAULT '{}', claimed TEXT DEFAULT '[]'
+);
+CREATE TABLE IF NOT EXISTS event_claims (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  event_id TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
 `);
+
+// Lightweight column migrations (add new columns to existing DBs; ignore if present).
+for (const sql of [
+  "ALTER TABLE users ADD COLUMN ach_claimed TEXT DEFAULT '[]'",
+  'ALTER TABLE users ADD COLUMN gacha_pulls INTEGER DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN is_councilor INTEGER DEFAULT 0',
+]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 export default db;

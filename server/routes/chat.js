@@ -3,6 +3,7 @@ import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx } from '../wallet.js';
 import { getPlatform, voiceReady, featureFee, platformFee, VOICE_FEE } from '../platform.js';
+import { bumpDaily } from '../daily.js';
 
 const router = Router();
 
@@ -113,6 +114,7 @@ router.post('/conversations', authRequired, (req, res) => {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)')
       .run(info.lastInsertRowid, 'assistant', c.greeting);
   }
+  bumpDaily(req.user.id, 'chat');
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(info.lastInsertRowid);
   res.json({ conversation: conv });
 });

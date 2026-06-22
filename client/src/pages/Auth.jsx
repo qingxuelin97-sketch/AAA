@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../api.jsx';
-import { useToast } from '../ui.jsx';
+import { useToast, Modal } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
-import { Drama, BookOpen, Plug, Volume2, Users, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare } from 'lucide-react';
+import { LEGAL } from '../legal.js';
+import { Drama, BookOpen, Plug, Volume2, Users, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare, X } from 'lucide-react';
 
 const TAGLINES = [
   ['与你创造的', '角色一同呼吸'],
@@ -30,12 +31,15 @@ export default function Auth() {
   const [busy, setBusy] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [tl, setTl] = useState(0);
+  const [agree, setAgree] = useState(false);
+  const [legal, setLegal] = useState(null); // null | 'terms' | 'privacy'
 
   useEffect(() => { const t = setInterval(() => setTl(i => (i + 1) % TAGLINES.length), 3600); return () => clearInterval(t); }, []);
   const upd = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const submit = async (e) => {
     e.preventDefault();
+    if (mode === 'register' && !agree) { toast('请先阅读并勾选同意《用户协议》与《隐私政策》', 'err'); return; }
     setBusy(true);
     try {
       if (mode === 'login') await login(form.username, form.password);
@@ -46,8 +50,6 @@ export default function Auth() {
       toast(err.message, 'err');
     } finally { setBusy(false); }
   };
-
-  const fillDemo = () => { setMode('login'); setForm(f => ({ ...f, username: 'demo', password: '123456' })); };
 
   return (
     <div className="auth-wrap v2">
@@ -116,19 +118,47 @@ export default function Auth() {
                 <div className="hint">注册需要有效邀请密钥，请联系管理员获取。</div>
               </div>
             )}
-            <button className="btn primary block auth-submit" disabled={busy}>
+            {mode === 'register' && (
+              <label className="auth-agree">
+                <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} />
+                <span>我已阅读并同意
+                  <button type="button" onClick={() => setLegal('terms')}>《用户协议》</button>与
+                  <button type="button" onClick={() => setLegal('privacy')}>《隐私政策》</button>
+                </span>
+              </label>
+            )}
+            <button className="btn primary block auth-submit" disabled={busy || (mode === 'register' && !agree)}>
               {busy ? '处理中…' : <>{mode === 'login' ? '登 录' : '注 册'} <ArrowRight size={16} /></>}
             </button>
           </form>
-          {mode === 'login' && (
-            <button type="button" className="auth-demo" onClick={fillDemo}>体验账号：一键填入 demo / 123456</button>
-          )}
           <div className="auth-foot">
-            登录即表示同意《用户协议》与《隐私政策》<br />
-            © 2026 幻域 HUANYU · AI 角色扮演平台 · 演示项目
+            {mode === 'login' && <>登录即表示同意
+              <button type="button" className="auth-link" onClick={() => setLegal('terms')}>《用户协议》</button>与
+              <button type="button" className="auth-link" onClick={() => setLegal('privacy')}>《隐私政策》</button><br /></>}
+            © 2026 幻域 HUANYU · AI 角色扮演平台
           </div>
         </div>
       </div>
+
+      {legal && (() => { const doc = LEGAL[legal]; return (
+        <Modal onClose={() => setLegal(null)}>
+          <button className="modal-x" onClick={() => setLegal(null)} aria-label="关闭"><X size={18} /></button>
+          <h2 style={{ margin: '0 0 4px' }}>{doc.title}</h2>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>最近更新：{doc.updated}</div>
+          <p className="legal-intro">{doc.intro}</p>
+          <div className="legal-body">
+            {doc.sections.map((s, i) => (
+              <section key={i}><h4>{s.h}</h4><p>{s.p}</p></section>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            {legal === 'terms'
+              ? <button className="btn ghost" style={{ flex: 1 }} onClick={() => setLegal('privacy')}>查看隐私政策</button>
+              : <button className="btn ghost" style={{ flex: 1 }} onClick={() => setLegal('terms')}>查看用户协议</button>}
+            <button className="btn primary" style={{ flex: 1 }} onClick={() => setLegal(null)}>我已知悉</button>
+          </div>
+        </Modal>
+      ); })()}
     </div>
   );
 }

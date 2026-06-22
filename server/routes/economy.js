@@ -2,6 +2,7 @@ import { Router } from'express';
 import db from'../db.js';
 import { authRequired } from'../auth.js';
 import { applyTx, isVip, publicUser, GOLD_PER_DIAMOND, VIP_COST_GOLD, VIP_DAYS, notify } from'../wallet.js';
+import { bumpDaily } from '../daily.js';
 
 const router = Router();
 
@@ -67,6 +68,7 @@ router.post('/checkin', authRequired, (req, res) => {
   if (isVip(u)) reward *= 2;
   db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ?').run(today, streak, req.user.id);
   const w = applyTx(req.user.id, { kind:'checkin', gold: reward, memo:`第 ${streak} 天签到` });
+  bumpDaily(req.user.id, 'checkin');
   res.json({ wallet: w, reward, streak });
 });
 
