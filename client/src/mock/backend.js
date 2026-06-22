@@ -22,19 +22,40 @@ const PLATFORM_DEFAULTS = {
   base_url: 'https://open.bigmodel.cn/api/paas/v4',
   // base64 of the platform key — kept out of plain source / UI.
   _k: 'ZWFmN2MwZDY5MmQzNGY0ZmEzNzUyMjI4NDc2NDE2YmQuQU1DS1ZUcXRQd2Nsa1U3UA==',
-  model: 'glm-5.2'
+  model: 'glm-5.2', protocol: 'openai',
+  // Platform voice (TTS) service — used by no-key users, billed per sentence.
+  voice: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', _vk: '', model: 'tts-1', voice_name: 'alloy' },
+  // Platform image (text-to-image) service — billed per image.
+  image: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', _ik: '', model: 'gpt-image-1', size: '1024x1024' },
 };
 // DB-backed, GM-editable platform config (group-wide). Lazily seeded from the defaults.
 function platformCfg() {
-  if (!db.platform) { db.platform = { base_url: PLATFORM_DEFAULTS.base_url, _k: PLATFORM_DEFAULTS._k, model: PLATFORM_DEFAULTS.model, system_prompt: '' }; save(); }
-  if (db.platform.system_prompt === undefined) db.platform.system_prompt = '';
-  return db.platform;
+  if (!db.platform) db.platform = {};
+  const p = db.platform; let changed = false;
+  if (p.base_url === undefined) { p.base_url = PLATFORM_DEFAULTS.base_url; changed = true; }
+  if (p._k === undefined) { p._k = PLATFORM_DEFAULTS._k; changed = true; }
+  if (p.model === undefined) { p.model = PLATFORM_DEFAULTS.model; changed = true; }
+  if (p.protocol === undefined) { p.protocol = PLATFORM_DEFAULTS.protocol; changed = true; }
+  if (p.system_prompt === undefined) { p.system_prompt = ''; changed = true; }
+  if (!p.voice) { p.voice = { ...PLATFORM_DEFAULTS.voice }; changed = true; }
+  if (!p.image) { p.image = { ...PLATFORM_DEFAULTS.image }; changed = true; }
+  if (changed) save();
+  return p;
 }
 function platformKey() { try { return atob(platformCfg()._k || '') || ''; } catch { return ''; } }
+function platformVoiceKey() { try { return atob(platformCfg().voice._vk || '') || ''; } catch { return ''; } }
+function platformImageKey() { try { return atob(platformCfg().image._ik || '') || ''; } catch { return ''; } }
+const platformVoiceReady = () => !!(platformVoiceKey() && platformCfg().voice.base_url);
+const platformImageReady = () => !!(platformImageKey() && platformCfg().image.base_url);
 // Per-conversation platform usage fee (gold). Heavier (100+ message) sessions cost more.
 const PLATFORM_FEE = { base: 10, heavy: 15, heavy_threshold: 100 };
+// Pay-per-use platform feature fees (gold). VIP / SVIP get the membership discount.
+const VOICE_FEE = 10;  // per spoken sentence (platform voice)
+const IMAGE_FEE = 20;  // per generated image
 // Membership discounts on the platform fee. VIP = 75 折 (0.75), SVIP = 5 折 (0.50).
 const memberDiscount = (u) => (u?.svip ? 0.5 : isVip(u) ? 0.75 : 1);
+// Round a base fee down by the caller's membership discount (min 1 gold).
+const featureFee = (u, base) => Math.max(1, Math.round(base * memberDiscount(u)));
 
 /* ----------------------------- art (data-url SVG) ----------------------------- */
 const dataUrl = (svg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg.trim());
@@ -376,7 +397,7 @@ const notify = (uid, text, link = '') => insert('notifications', { user_id: uid,
 function effectiveLLM(s) {
   if (s && s.llm_api_key) return { base_url: s.llm_base_url, api_key: s.llm_api_key, model: s.llm_model, temperature: s.llm_temperature, max_tokens: s.llm_max_tokens, protocol: s.llm_protocol || 'openai', platform: false };
   const p = platformCfg();
-  return { base_url: p.base_url, api_key: platformKey(), model: p.model, temperature: (s && s.llm_temperature) ?? 0.8, max_tokens: (s && s.llm_max_tokens) || 1024, protocol: 'openai', platform: true };
+  return { base_url: p.base_url, api_key: platformKey(), model: p.model, temperature: (s && s.llm_temperature) ?? 0.8, max_tokens: (s && s.llm_max_tokens) || 1024, protocol: p.protocol || 'openai', platform: true };
 }
 
 // Normalise a base URL for a given protocol so users can paste either the bare host
@@ -924,50 +945,70 @@ async function route(method, path, search, body, headers) {
     return J({ memories: conv.memories });
   }
   if (method === 'POST' && path === '/chat/tts') {
-    need(); const s = find('settings', x => x.user_id === me.id); if (!s.voice_api_key) return E('尚未配置语音模型 API');
-    const base = (s.voice_base_url || '').replace(/\/$/, '');
+    need(); const s = find('settings', x => x.user_id === me.id);
+    // Pick credentials: the user's own voice API (free) takes priority; otherwise
+    // fall back to the platform voice service, billed per sentence (VIP discount).
+    let vbase, vkey, vmodel, vname, vproto, fee = 0;
+    if (s && s.voice_api_key) {
+      vbase = s.voice_base_url; vkey = s.voice_api_key; vmodel = s.voice_model; vname = body.voice || s.voice_name; vproto = s.voice_protocol || 'openai';
+    } else if (platformVoiceReady()) {
+      const pv = platformCfg().voice; vbase = pv.base_url; vkey = platformVoiceKey(); vmodel = pv.model; vname = body.voice || pv.voice_name; vproto = pv.protocol || 'openai';
+      fee = featureFee(me, VOICE_FEE);
+      if (me.gold < fee) return E(`金币不足，平台语音每句需 ${fee} 金币（当前 ${me.gold}）。可前往钱包签到/兑换金币，或在「设置 → 语音模型」填写自己的语音 API 即可免费朗读。`, 402);
+    } else {
+      return E('尚未配置语音模型 API，且平台语音服务暂未开启。可在「设置 → 语音模型」填写自己的语音 API。', 503);
+    }
+    const base = (vbase || '').replace(/\/$/, '');
     const text = (body.text || '').slice(0, 4000);
-    const voice = body.voice || s.voice_name;
-    const proto = s.voice_protocol || 'openai';
+    const voice = vname;
+    const proto = vproto;
+    // On a successful audio response, deduct the per-sentence fee (only when using the
+    // platform service) and surface the charge + new balance via response headers.
+    const finalize = (res) => {
+      if (!fee || !res || !res.ok) return res;
+      let w; try { w = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}` }); } catch { return res; }
+      const ct = res.headers.get('content-type') || 'audio/mpeg';
+      return new Response(res.body, { headers: { 'content-type': ct, 'X-Gold-Fee': String(fee), 'X-Gold-Balance': String(w.gold) } });
+    };
     try {
       // Protocol adapters: translate to each vendor's TTS API, return audio/* to the player.
       if (proto === 'elevenlabs') {
         // ElevenLabs: POST /v1/text-to-speech/{voice_id}, xi-api-key header, JSON in / mp3 out.
         const vid = voice || '21m00Tcm4TlvDq8ikWAM';
         const up = await realFetch(`${base}/text-to-speech/${encodeURIComponent(vid)}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'xi-api-key': s.voice_api_key, Accept: 'audio/mpeg' },
-          body: JSON.stringify({ text, model_id: s.voice_model || 'eleven_multilingual_v2' })
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'xi-api-key': vkey, Accept: 'audio/mpeg' },
+          body: JSON.stringify({ text, model_id: vmodel || 'eleven_multilingual_v2' })
         });
         if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
-        return up;
+        return finalize(up);
       }
       if (proto === 'minimax') {
         // MiniMax T2A v2: GroupId goes in query (?GroupId=...), audio returned as hex in JSON.
         const up = await realFetch(`${base}/t2a_v2`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.voice_api_key}` },
-          body: JSON.stringify({ model: s.voice_model || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: 1, vol: 1, pitch: 0 }, audio_setting: { format: 'mp3', sample_rate: 32000 } })
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${vkey}` },
+          body: JSON.stringify({ model: vmodel || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: 1, vol: 1, pitch: 0 }, audio_setting: { format: 'mp3', sample_rate: 32000 } })
         });
         if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
         const d = await up.json().catch(() => null);
         const hex = d?.data?.audio;
         if (!hex) return E('语音服务未返回音频（MiniMax 需在 Base URL 后附 ?GroupId=你的GroupId）', 502);
         const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(h => parseInt(h, 16)));
-        return new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } });
+        return finalize(new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } }));
       }
       if (proto === 'azure') {
         // Azure Cognitive TTS: SSML in, audio out. Base URL = https://{region}.tts.speech.microsoft.com
         const ssml = `<speak version='1.0' xml:lang='zh-CN'><voice xml:lang='zh-CN' name='${voice || 'zh-CN-XiaoxiaoNeural'}'>${text.replace(/[<&>]/g, '')}</voice></speak>`;
         const up = await realFetch(`${base}/cognitiveservices/v1`, {
-          method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': s.voice_api_key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3' },
+          method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': vkey, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3' },
           body: ssml
         });
         if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
-        return up;
+        return finalize(up);
       }
       if (proto === 'google') {
         // Google Cloud TTS: text:synthesize?key=KEY, base64 audio in JSON.
         const sep = base.includes('?') ? '&' : '?';
-        const up = await realFetch(`${base}/v1/text:synthesize${sep}key=${encodeURIComponent(s.voice_api_key)}`, {
+        const up = await realFetch(`${base}/v1/text:synthesize${sep}key=${encodeURIComponent(vkey)}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ input: { text }, voice: { languageCode: (voice || 'cmn-CN-Wavenet-A').split('-').slice(0, 2).join('-') || 'cmn-CN', name: voice || 'cmn-CN-Wavenet-A' }, audioConfig: { audioEncoding: 'MP3' } })
         });
@@ -975,25 +1016,61 @@ async function route(method, path, search, body, headers) {
         const d = await up.json().catch(() => null);
         if (!d?.audioContent) return E('语音服务未返回音频', 502);
         const bin = atob(d.audioContent); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        return new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } });
+        return finalize(new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } }));
       }
       if (proto === 'deepgram') {
         // Deepgram Aura: /v1/speak?model=..., Token auth, audio out.
-        const up = await realFetch(`${base}/v1/speak?model=${encodeURIComponent(s.voice_model || 'aura-asteria-en')}`, {
-          method: 'POST', headers: { Authorization: `Token ${s.voice_api_key}`, 'Content-Type': 'application/json' },
+        const up = await realFetch(`${base}/v1/speak?model=${encodeURIComponent(vmodel || 'aura-asteria-en')}`, {
+          method: 'POST', headers: { Authorization: `Token ${vkey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ text })
         });
         if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
-        return up;
+        return finalize(up);
       }
       // Default: OpenAI-compatible /audio/speech (OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox …)
       const up = await realFetch(base + '/audio/speech', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.voice_api_key}` },
-        body: JSON.stringify({ model: s.voice_model, input: text, voice })
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${vkey}` },
+        body: JSON.stringify({ model: vmodel, input: text, voice })
       });
       if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
-      return up;
+      return finalize(up);
     } catch (e) { return E('语音服务连接失败：' + e.message, 502); }
+  }
+
+  // ---------- AI image generation (text-to-image) — billed per image ----------
+  if (method === 'POST' && path === '/ai/image') {
+    need();
+    const cfg = platformCfg().image; const key = platformImageKey();
+    if (!platformImageReady()) return E('平台 AI 生图服务尚未开启，请联系管理员在后台配置生图 API。', 503);
+    const prompt = (body.prompt || '').trim();
+    if (!prompt) return E('请先输入画面描述');
+    if (prompt.length > 1500) return E('画面描述过长（上限 1500 字）');
+    const fee = featureFee(me, IMAGE_FEE);
+    if (me.gold < fee) return E(`金币不足，生成一张图需 ${fee} 金币（当前 ${me.gold}）。可前往钱包签到/兑换金币。`, 402);
+    const size = ['1024x1024', '1024x1536', '1536x1024', '512x512', '768x1024', '1024x768'].includes(body.size) ? body.size : (cfg.size || '1024x1024');
+    const base = (cfg.base_url || '').replace(/\/$/, '');
+    try {
+      const up = await realFetch(base + '/images/generations', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: cfg.model, prompt, size, n: 1 })
+      });
+      if (!up.ok) { const t = await up.text().catch(() => ''); return E(`生图服务返回 ${up.status}：${t.slice(0, 240)}`, 502); }
+      const d = await up.json().catch(() => null);
+      const item = d?.data?.[0] || {};
+      const image = item.b64_json ? 'data:image/png;base64,' + item.b64_json : item.url;
+      if (!image) return E('生图服务未返回图片', 502);
+      let w; try { w = applyTx(me.id, { kind: 'image_fee', gold: -fee, memo: `AI 生图 · ${prompt.slice(0, 18)}` }); } catch (e) { return E(e.message); }
+      const rec = insert('ai_images', { user_id: me.id, prompt, size, url: image });
+      return J({ image, id: rec.id, fee, size, prompt, wallet: w });
+    } catch (e) { return E('生图服务连接失败：' + e.message + '（可能是服务商的浏览器跨域限制）', 502); }
+  }
+  if (method === 'GET' && path === '/ai/images') {
+    need();
+    const rows = filter('ai_images', x => x.user_id === me.id).sort((a, b) => b.id - a.id).slice(0, 60);
+    return J({ images: rows, fee: featureFee(me, IMAGE_FEE), base_fee: IMAGE_FEE, ready: platformImageReady() });
+  }
+  if ((m = P(/^\/ai\/images\/(\d+)$/)) && method === 'DELETE') {
+    need(); db.ai_images = filter('ai_images', x => !(x.id === +m[1] && x.user_id === me.id)); save(); return J({ ok: true });
   }
 
   // ---------- economy ----------
@@ -1429,18 +1506,28 @@ async function route(method, path, search, body, headers) {
   if (path === '/admin/check' && method === 'GET') { gmOnly(); return J({ is_gm: true }); }
   // Platform built-in AI service config — GM only (group-wide for all no-API users).
   if (path === '/admin/platform' && method === 'GET') {
-    gmOnly(); const p = platformCfg(); const key = platformKey();
-    return J({ platform: { base_url: p.base_url, model: p.model, system_prompt: p.system_prompt || '', key_set: !!key, key_masked: key ? key.slice(0, 6) + '••••••' + key.slice(-4) : '', fee: PLATFORM_FEE } });
+    gmOnly(); return J({ platform: platformAdminView() });
   }
   if (path === '/admin/platform' && method === 'PUT') {
     gmOnly(); const p = platformCfg();
+    // Language model
     if (typeof body.base_url === 'string' && body.base_url.trim()) p.base_url = body.base_url.trim();
     if (typeof body.model === 'string' && body.model.trim()) p.model = body.model.trim();
+    if (typeof body.protocol === 'string' && body.protocol.trim()) p.protocol = body.protocol.trim();
     if (typeof body.system_prompt === 'string') p.system_prompt = body.system_prompt;
     if (typeof body.key === 'string' && body.key.trim()) { try { p._k = btoa(body.key.trim()); } catch { p._k = ''; } }
+    // Voice service
+    if (body.voice && typeof body.voice === 'object') {
+      ['provider', 'protocol', 'base_url', 'model', 'voice_name'].forEach(k => { if (typeof body.voice[k] === 'string') p.voice[k] = body.voice[k].trim(); });
+      if (typeof body.voice.key === 'string' && body.voice.key.trim()) { try { p.voice._vk = btoa(body.voice.key.trim()); } catch { p.voice._vk = ''; } }
+    }
+    // Image service
+    if (body.image && typeof body.image === 'object') {
+      ['provider', 'protocol', 'base_url', 'model', 'size'].forEach(k => { if (typeof body.image[k] === 'string') p.image[k] = body.image[k].trim(); });
+      if (typeof body.image.key === 'string' && body.image.key.trim()) { try { p.image._ik = btoa(body.image.key.trim()); } catch { p.image._ik = ''; } }
+    }
     save();
-    const key = platformKey();
-    return J({ ok: true, platform: { base_url: p.base_url, model: p.model, system_prompt: p.system_prompt || '', key_set: !!key, key_masked: key ? key.slice(0, 6) + '••••••' + key.slice(-4) : '' } });
+    return J({ ok: true, platform: platformAdminView() });
   }
   if (path === '/admin/stats' && method === 'GET') {
     gmOnly();
@@ -1543,8 +1630,21 @@ async function route(method, path, search, body, headers) {
   throw { status: 404, msg: '接口不存在：' + path };
 }
 
+// GM-only view of the full platform config (masks every secret key).
+function mask(k) { return k ? k.slice(0, 6) + '••••••' + k.slice(-4) : ''; }
+function platformAdminView() {
+  const p = platformCfg(); const key = platformKey(), vk = platformVoiceKey(), ik = platformImageKey();
+  return {
+    base_url: p.base_url, model: p.model, protocol: p.protocol || 'openai', system_prompt: p.system_prompt || '',
+    key_set: !!key, key_masked: mask(key), fee: PLATFORM_FEE,
+    voice: { provider: p.voice.provider, protocol: p.voice.protocol, base_url: p.voice.base_url, model: p.voice.model, voice_name: p.voice.voice_name, key_set: !!vk, key_masked: mask(vk), fee: VOICE_FEE },
+    image: { provider: p.image.provider, protocol: p.image.protocol, base_url: p.image.base_url, model: p.image.model, size: p.image.size, key_set: !!ik, key_masked: mask(ik), fee: IMAGE_FEE },
+  };
+}
+
 function pubSettings(s, me) {
   const usingPlatform = !s.llm_api_key;
+  const usingPlatformVoice = !s.voice_api_key && platformVoiceReady();
   return { llm_provider: s.llm_provider, llm_protocol: s.llm_protocol || 'openai', llm_base_url: s.llm_base_url, llm_model: s.llm_model, llm_temperature: s.llm_temperature, llm_max_tokens: s.llm_max_tokens, voice_provider: s.voice_provider, voice_protocol: s.voice_protocol || 'openai', voice_base_url: s.voice_base_url, voice_model: s.voice_model, voice_name: s.voice_name, theme: s.theme, nsfw: s.nsfw, notify_email: s.notify_email, llm_api_key_set: !!s.llm_api_key, voice_api_key_set: !!s.voice_api_key,
     // privacy (sensible defaults when unset)
     privacy_profile: s.privacy_profile || 'public', allow_dm: s.allow_dm || 'all',
@@ -1553,7 +1653,11 @@ function pubSettings(s, me) {
     read_receipts: s.read_receipts === undefined ? 1 : s.read_receipts, personalize: s.personalize === undefined ? 1 : s.personalize,
     // Platform service status — surfaced to the UI, but never the credentials.
     using_platform: usingPlatform,
-    platform_fee: usingPlatform ? { base: platformFee(me, 0), heavy: platformFee(me, PLATFORM_FEE.heavy_threshold + 1), heavy_threshold: PLATFORM_FEE.heavy_threshold, discount: memberDiscount(me) } : null };
+    platform_fee: usingPlatform ? { base: platformFee(me, 0), heavy: platformFee(me, PLATFORM_FEE.heavy_threshold + 1), heavy_threshold: PLATFORM_FEE.heavy_threshold, discount: memberDiscount(me) } : null,
+    // Pay-per-use feature pricing (after the caller's membership discount).
+    using_platform_voice: usingPlatformVoice,
+    voice_fee: usingPlatformVoice ? { per: featureFee(me, VOICE_FEE), base: VOICE_FEE, discount: memberDiscount(me) } : null,
+    image_fee: { per: featureFee(me, IMAGE_FEE), base: IMAGE_FEE, discount: memberDiscount(me), ready: platformImageReady() } };
 }
 
 /* ----------------------------- install ----------------------------- */

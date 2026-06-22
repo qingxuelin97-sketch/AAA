@@ -37,6 +37,7 @@ const Studio = lazy(() => import('./pages/Studio.jsx'));
 const Parliament = lazy(() => import('./pages/Parliament.jsx'));
 const Achievements = lazy(() => import('./pages/Achievements.jsx'));
 const Friends = lazy(() => import('./pages/Friends.jsx'));
+const Draw = lazy(() => import('./pages/Draw.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/gacha" element={P(<Gacha />)} />
           <Route path="/parliament" element={P(<Parliament />)} />
           <Route path="/achievements" element={P(<Achievements />)} />
+          <Route path="/draw" element={P(<Draw />)} />
           <Route path="/friends" element={P(<Friends />)} />
           <Route path="/admin" element={P(<Admin />)} />
           <Route path="/chats" element={P(<Chat />)} />

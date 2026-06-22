@@ -211,6 +211,16 @@ export default function Settings() {
         {tab === 'voice' && (
           <div className="card">
             <div className="section-title"><h2>语音模型 API</h2><div style={{ display: 'flex', gap: 8 }}><button className="btn sm" onClick={testVoice} disabled={testing}>{testing ? '试听中…' : '试听'}</button><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div></div>
+            {s.using_platform_voice && s.voice_fee && (
+              <div className="platform-note">
+                <span className="pn-ic"><ShieldCheck size={18} /></span>
+                <div className="pn-tx">
+                  <b>当前使用平台语音服务</b>
+                  <p>未填写自己的语音 API 时，朗读由平台语音提供，每句扣除 <b><Coins size={12} style={{ verticalAlign: -2 }} /> {s.voice_fee.per} 金币</b>
+                  {s.voice_fee.discount < 1 && <>（会员已享 {Math.round(s.voice_fee.discount * 10)} 折）</>}。填写下方自己的语音 API Key 即可改用自有额度、免平台扣费。</p>
+                </div>
+              </div>
+            )}
             <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>后端为每种 TTS 协议内置适配器：浏览器内置语音（免配置·离线）、OpenAI 协议族（OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox）、ElevenLabs、MiniMax 海螺、Azure 认知语音、Google Cloud TTS、Deepgram Aura 等。密钥仅存于本地。</p>
             {(() => {
               const vproto = s.voice_protocol || 'openai';

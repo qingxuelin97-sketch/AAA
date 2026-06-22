@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal, CouncilorBadge } from '../ui.jsx';
-import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp } from 'lucide-react';
+import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2 } from 'lucide-react';
 
 export default function Admin() {
   const toast = useToast();
@@ -272,50 +272,137 @@ function CodesTab({ toast }) {
   );
 }
 
+// Provider presets shared with the user-facing Settings page (kept in sync conceptually).
+const PF_LLM_PRESETS = [
+  ['openai', 'OpenAI', 'https://api.openai.com/v1', 'openai'], ['anthropic', 'Anthropic Claude', 'https://api.anthropic.com', 'anthropic'],
+  ['zhipu', '智谱 GLM', 'https://open.bigmodel.cn/api/paas/v4', 'openai'], ['deepseek', 'DeepSeek', 'https://api.deepseek.com/v1', 'openai'],
+  ['moonshot', 'Moonshot / Kimi', 'https://api.moonshot.cn/v1', 'openai'], ['qwen', '通义千问', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'openai'],
+  ['siliconflow', '硅基流动', 'https://api.siliconflow.cn/v1', 'openai'], ['openrouter', 'OpenRouter', 'https://openrouter.ai/api/v1', 'openai'],
+  ['custom', '自定义', '', 'openai'],
+];
+const PF_VOICE_PRESETS = [
+  ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）', 'https://api.openai.com/v1', 'openai'],
+  ['groq', 'Groq · PlayAI TTS', 'https://api.groq.com/openai/v1', 'openai'],
+  ['siliconflow', '硅基流动（CosyVoice / Fish-Speech）', 'https://api.siliconflow.cn/v1', 'openai'],
+  ['elevenlabs', 'ElevenLabs', 'https://api.elevenlabs.io/v1', 'elevenlabs'],
+  ['minimax', 'MiniMax 海螺（需 GroupId）', 'https://api.minimax.chat/v1', 'minimax'],
+  ['azure', 'Azure 认知语音', 'https://eastus.tts.speech.microsoft.com', 'azure'],
+  ['google', 'Google Cloud TTS', 'https://texttospeech.googleapis.com', 'google'],
+  ['deepgram', 'Deepgram Aura', 'https://api.deepgram.com', 'deepgram'],
+  ['custom', '自定义（OpenAI /audio/speech 兼容）', '', 'openai'],
+];
+const PF_IMAGE_PRESETS = [
+  ['openai', 'OpenAI（gpt-image-1 / dall-e-3）', 'https://api.openai.com/v1'],
+  ['siliconflow', '硅基流动（Kolors / SD）', 'https://api.siliconflow.cn/v1'],
+  ['custom', '自定义（OpenAI /images/generations 兼容）', ''],
+];
+const IMG_SIZES = ['1024x1024', '1024x1536', '1536x1024', '512x512', '768x1024', '1024x768'];
+
 function PlatformTab({ toast }) {
   const [cfg, setCfg] = useState(null);
-  const [baseUrl, setBaseUrl] = useState('');
-  const [model, setModel] = useState('');
-  const [key, setKey] = useState('');
-  const [sysPrompt, setSysPrompt] = useState('');
   const [busy, setBusy] = useState(false);
+  // language
+  const [llm, setLlm] = useState({ provider: 'custom', base_url: '', model: '', protocol: 'openai', system_prompt: '', key: '' });
+  // voice
+  const [voice, setVoice] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', voice_name: '', key: '' });
+  // image
+  const [image, setImage] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', size: '1024x1024', key: '' });
 
-  const load = () => api('/admin/platform').then(d => { setCfg(d.platform); setBaseUrl(d.platform.base_url || ''); setModel(d.platform.model || ''); setSysPrompt(d.platform.system_prompt || ''); }).catch(e => toast(e.message, 'err'));
+  const load = () => api('/admin/platform').then(d => {
+    const p = d.platform; setCfg(p);
+    setLlm({ provider: 'custom', base_url: p.base_url || '', model: p.model || '', protocol: p.protocol || 'openai', system_prompt: p.system_prompt || '', key: '' });
+    setVoice({ provider: p.voice?.provider || 'openai', base_url: p.voice?.base_url || '', model: p.voice?.model || '', protocol: p.voice?.protocol || 'openai', voice_name: p.voice?.voice_name || '', key: '' });
+    setImage({ provider: p.image?.provider || 'openai', base_url: p.image?.base_url || '', model: p.image?.model || '', protocol: p.image?.protocol || 'openai', size: p.image?.size || '1024x1024', key: '' });
+  }).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
-  const save = async () => {
+  const save = async (section) => {
     setBusy(true);
     try {
-      const body = { base_url: baseUrl, model, system_prompt: sysPrompt };
-      if (key.trim()) body.key = key.trim();
+      let body = {};
+      if (section === 'llm') { body = { base_url: llm.base_url, model: llm.model, protocol: llm.protocol, system_prompt: llm.system_prompt }; if (llm.key.trim()) body.key = llm.key.trim(); }
+      if (section === 'voice') { body = { voice: { provider: voice.provider, base_url: voice.base_url, model: voice.model, protocol: voice.protocol, voice_name: voice.voice_name } }; if (voice.key.trim()) body.voice.key = voice.key.trim(); }
+      if (section === 'image') { body = { image: { provider: image.provider, base_url: image.base_url, model: image.model, protocol: image.protocol, size: image.size } }; if (image.key.trim()) body.image.key = image.key.trim(); }
       const d = await api('/admin/platform', { method: 'PUT', body });
-      setCfg(d.platform); setKey('');
-      toast('平台 AI 配置已更新，已对全体无 API 用户生效');
+      setCfg(d.platform); setLlm(l => ({ ...l, key: '' })); setVoice(v => ({ ...v, key: '' })); setImage(i => ({ ...i, key: '' }));
+      toast('已保存，立即对全体生效');
     } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
   };
 
   if (!cfg) return <div className="empty">载入中…</div>;
   return (
-    <div className="card">
-      <h2 style={{ margin: '0 0 6px', fontSize: 17 }}><Cpu size={16} style={{ verticalAlign: -3, marginRight: 6 }} />平台内置语言服务</h2>
-      <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-        未配置自有 API 的用户对话时统一调用此服务。<b>这是群体性配置，修改后立即对所有无 API 用户生效。</b>
-        普通用户无法看到此处任何接口或密钥信息。
-      </p>
-      <div className="field"><label>API Base URL</label>
-        <input className="input" value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://open.bigmodel.cn/api/paas/v4" /></div>
-      <div className="field"><label>最终调用模型</label>
-        <input className="input" value={model} onChange={e => setModel(e.target.value)} placeholder="glm-5.2" />
-        <div className="hint">所有无 API 用户最终调用的模型名，例如 glm-5.2 / glm-4.6。</div></div>
-      <div className="field"><label>API Key {cfg.key_set && <span className="tag">已配置 · {cfg.key_masked}</span>}</label>
-        <input className="input" type="password" value={key} onChange={e => setKey(e.target.value)} placeholder={cfg.key_set ? '••••••（留空则不修改）' : '填写平台密钥'} /></div>
-      <div className="field"><label>平台系统提示词（全局）</label>
-        <textarea className="input" rows={6} value={sysPrompt} onChange={e => setSysPrompt(e.target.value)} style={{ resize: 'vertical', lineHeight: 1.6 }}
-          placeholder="例如：统一的安全与风格约束、平台世界观设定等。将自动前置注入到所有「无自有 API」用户的每次对话最前面，与角色人设叠加。留空则不注入。" />
-        <div className="hint">仅对使用平台内置服务的用户生效；填写自有 API Key 的用户不受影响。修改后立即对全体生效。</div></div>
-      {cfg.fee && <p className="muted" style={{ fontSize: 12.5 }}>计费规则：每次对话 {cfg.fee.base} 金币；单对话互动超 {cfg.fee.heavy_threshold} 条后 {cfg.fee.heavy} 金币（VIP 75 折 / SVIP 5 折，会员折扣在结算时自动应用）。</p>}
-      <button className="btn primary" style={{ marginTop: 6 }} disabled={busy} onClick={save}><Check size={15} /> 保存并对全体生效</button>
-    </div>
+    <>
+      {/* ---- 语言模型 ---- */}
+      <div className="card" style={{ marginBottom: 18 }}>
+        <div className="section-title"><h2 style={{ fontSize: 17 }}><Cpu size={16} style={{ verticalAlign: -3, marginRight: 6 }} />平台内置语言服务</h2>
+          <button className="btn sm primary" disabled={busy} onClick={() => save('llm')}><Check size={14} /> 保存</button></div>
+        <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>未配置自有 API 的用户对话时统一调用此服务。<b>群体性配置，修改后立即对全体无 API 用户生效</b>，普通用户看不到任何接口或密钥。</p>
+        <div className="row">
+          <div className="field"><label>服务商预设</label>
+            <select className="select" value={llm.provider} onChange={e => { const v = e.target.value; const pr = PF_LLM_PRESETS.find(x => x[0] === v); setLlm(l => ({ ...l, provider: v, ...(pr ? { base_url: pr[2] || l.base_url, protocol: pr[3] } : {}) })); }}>
+              {PF_LLM_PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select></div>
+          <div className="field"><label>协议</label>
+            <select className="select" value={llm.protocol} onChange={e => setLlm(l => ({ ...l, protocol: e.target.value }))}>
+              <option value="openai">OpenAI 兼容</option><option value="anthropic">Anthropic Messages</option>
+            </select></div>
+        </div>
+        <div className="field"><label>API Base URL</label><input className="input" value={llm.base_url} onChange={e => setLlm(l => ({ ...l, base_url: e.target.value }))} placeholder="https://open.bigmodel.cn/api/paas/v4" /></div>
+        <div className="field"><label>最终调用模型</label><input className="input" value={llm.model} onChange={e => setLlm(l => ({ ...l, model: e.target.value }))} placeholder="glm-5.2" /></div>
+        <div className="field"><label>API Key {cfg.key_set && <span className="tag">已配置 · {cfg.key_masked}</span>}</label>
+          <input className="input" type="password" value={llm.key} onChange={e => setLlm(l => ({ ...l, key: e.target.value }))} placeholder={cfg.key_set ? '••••••（留空则不修改）' : '填写平台密钥'} /></div>
+        <div className="field"><label>平台系统提示词（全局）</label>
+          <textarea className="input" rows={5} value={llm.system_prompt} onChange={e => setLlm(l => ({ ...l, system_prompt: e.target.value }))} style={{ resize: 'vertical', lineHeight: 1.6 }}
+            placeholder="统一的安全 / 风格约束、平台世界观等。自动前置注入到所有「无自有 API」用户的每次对话，与角色人设叠加。留空则不注入。" /></div>
+        {cfg.fee && <p className="muted" style={{ fontSize: 12.5 }}>对话计费：每次 {cfg.fee.base} 金币；单对话超 {cfg.fee.heavy_threshold} 条后 {cfg.fee.heavy} 金币（VIP 75 折 / SVIP 5 折，结算自动应用）。</p>}
+      </div>
+
+      {/* ---- 语音合成 ---- */}
+      <div className="card" style={{ marginBottom: 18 }}>
+        <div className="section-title"><h2 style={{ fontSize: 17 }}><Volume2 size={16} style={{ verticalAlign: -3, marginRight: 6 }} />平台语音合成服务</h2>
+          <button className="btn sm primary" disabled={busy} onClick={() => save('voice')}><Check size={14} /> 保存</button></div>
+        <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>未配置自有语音 API 的用户朗读时调用此服务，<b>每句扣费 {cfg.voice?.fee ?? 10} 金币</b>（VIP 75 折 / SVIP 5 折）。配置后用户即可付费朗读。</p>
+        <div className="row">
+          <div className="field"><label>服务商预设</label>
+            <select className="select" value={voice.provider} onChange={e => { const v = e.target.value; const pr = PF_VOICE_PRESETS.find(x => x[0] === v); setVoice(s => ({ ...s, provider: v, ...(pr ? { base_url: pr[2] || s.base_url, protocol: pr[3] } : {}) })); }}>
+              {PF_VOICE_PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select></div>
+          <div className="field"><label>模型</label><input className="input" value={voice.model} onChange={e => setVoice(s => ({ ...s, model: e.target.value }))} placeholder="tts-1 / eleven_multilingual_v2" /></div>
+        </div>
+        <div className="field"><label>API Base URL</label><input className="input" value={voice.base_url} onChange={e => setVoice(s => ({ ...s, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" />
+          {voice.protocol === 'minimax' && <div className="hint">MiniMax 需在 Base URL 后附 <code>?GroupId=你的GroupId</code>。</div>}</div>
+        <div className="row">
+          <div className="field"><label>默认音色</label><input className="input" value={voice.voice_name} onChange={e => setVoice(s => ({ ...s, voice_name: e.target.value }))} placeholder="alloy / 21m00Tcm... / zh-CN-XiaoxiaoNeural" /></div>
+          <div className="field"><label>API Key {cfg.voice?.key_set && <span className="tag">已配置 · {cfg.voice.key_masked}</span>}</label>
+            <input className="input" type="password" value={voice.key} onChange={e => setVoice(s => ({ ...s, key: e.target.value }))} placeholder={cfg.voice?.key_set ? '••••••（留空则不修改）' : '填写平台语音密钥'} /></div>
+        </div>
+        <p className="muted" style={{ fontSize: 12.5 }}>留空密钥则平台语音关闭，用户需自备语音 API 才能朗读（自备则免费）。</p>
+      </div>
+
+      {/* ---- AI 生图 ---- */}
+      <div className="card">
+        <div className="section-title"><h2 style={{ fontSize: 17 }}><Cpu size={16} style={{ verticalAlign: -3, marginRight: 6 }} />平台 AI 生图服务</h2>
+          <button className="btn sm primary" disabled={busy} onClick={() => save('image')}><Check size={14} /> 保存</button></div>
+        <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>「AI 绘图」页与聊天插图调用此服务，<b>每张扣费 {cfg.image?.fee ?? 20} 金币</b>（VIP 75 折 / SVIP 5 折）。需兼容 OpenAI <code>/images/generations</code>。</p>
+        <div className="row">
+          <div className="field"><label>服务商预设</label>
+            <select className="select" value={image.provider} onChange={e => { const v = e.target.value; const pr = PF_IMAGE_PRESETS.find(x => x[0] === v); setImage(s => ({ ...s, provider: v, ...(pr ? { base_url: pr[2] || s.base_url } : {}) })); }}>
+              {PF_IMAGE_PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select></div>
+          <div className="field"><label>模型</label><input className="input" value={image.model} onChange={e => setImage(s => ({ ...s, model: e.target.value }))} placeholder="gpt-image-1 / dall-e-3 / Kwai-Kolors/Kolors" /></div>
+        </div>
+        <div className="field"><label>API Base URL</label><input className="input" value={image.base_url} onChange={e => setImage(s => ({ ...s, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" /></div>
+        <div className="row">
+          <div className="field"><label>默认画幅</label>
+            <select className="select" value={image.size} onChange={e => setImage(s => ({ ...s, size: e.target.value }))}>
+              {IMG_SIZES.map(z => <option key={z} value={z}>{z}</option>)}
+            </select></div>
+          <div className="field"><label>API Key {cfg.image?.key_set && <span className="tag">已配置 · {cfg.image.key_masked}</span>}</label>
+            <input className="input" type="password" value={image.key} onChange={e => setImage(s => ({ ...s, key: e.target.value }))} placeholder={cfg.image?.key_set ? '••••••（留空则不修改）' : '填写平台生图密钥'} /></div>
+        </div>
+        <p className="muted" style={{ fontSize: 12.5 }}>留空密钥则生图服务关闭，「AI 绘图」页会提示未开启。</p>
+      </div>
+    </>
   );
 }
 

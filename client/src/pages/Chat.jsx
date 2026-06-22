@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { speakBrowser } from '../voice.js';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3 } from 'lucide-react';
+import IllustrateModal from '../components/IllustrateModal.jsx';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2 } from 'lucide-react';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
 const FONT_KEY = 'huanyu_chat_font';
@@ -123,6 +124,13 @@ export default function Chat() {
   // know the user's voice protocol so we can use browser TTS without a server call
   const [voiceCfg, setVoiceCfg] = useState(null);
   useEffect(() => { api('/settings').then(d => setVoiceCfg({ voice_protocol: d.settings.voice_protocol, voice_name: d.settings.voice_name })).catch(() => {}); }, []);
+  const [illusOpen, setIllusOpen] = useState(false);
+  // Seed the illustration prompt from the latest scene so one tap describes "this moment".
+  const illusSeed = () => {
+    const lastAsst = [...messages].reverse().find(m => m.role === 'assistant');
+    const scene = (lastAsst?.content || '').replace(/[*_>#`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 220);
+    return [character?.name && `角色：${character.name}`, character?.tagline, scene].filter(Boolean).join('，');
+  };
   // celebrate when the relationship tier rises (ties into 成就 / affinity milestones)
   const prevAffLevel = useRef(null);
   useEffect(() => {
@@ -247,8 +255,11 @@ export default function Chat() {
         body: JSON.stringify({ text, voice: character?.voice_name || undefined })
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
+      // Platform voice is billed per sentence — the server reports the charge via headers.
+      const charged = res.headers.get('X-Gold-Fee');
       const blob = await res.blob();
       new Audio(URL.createObjectURL(blob)).play();
+      if (charged) { toast(`平台语音 · 本次消耗 ${charged} 金币`); refreshUser?.(); }
     } catch (err) { toast(err.message, 'err'); }
   };
 
@@ -309,6 +320,7 @@ export default function Chat() {
                 </button>
               ); })()}
               <div className="chat-tools">
+                <button className="speak chat-tool" onClick={() => setIllusOpen(true)} title="为当前剧情生成插图"><Wand2 size={17} /></button>
                 <button className={'speak chat-tool' + (searchOpen ? ' on' : '')} onClick={() => { setSearchOpen(o => !o); setSearchQ(''); }} title="对话内搜索"><Search size={17} /></button>
                 <div className="chat-menu-wrap">
                   <button className={'speak chat-tool' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
@@ -471,6 +483,7 @@ export default function Chat() {
           </>
         )}
       </div>
+      {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
     </div>
   );
 }
