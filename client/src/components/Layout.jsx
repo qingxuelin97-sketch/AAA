@@ -6,7 +6,6 @@ import { Logo } from '../assets.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import ScrollChrome from './ScrollChrome.jsx';
-import Shortcuts from './Shortcuts.jsx';
 import QuickCreate from './QuickCreate.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
@@ -122,7 +121,6 @@ export default function Layout({ children }) {
         <div className="route-fade" key={loc.pathname}>{children}</div>
       </main>
       <CommandPalette />
-      <Shortcuts />
       <QuickCreate />
       <nav className="bottom-nav">
         {TABS.map(t => (

@@ -1480,22 +1480,7 @@ body { -webkit-touch-callout: none; }
 .qc-item:hover .qc-item-ic { background: var(--accent); color: #fff; border-color: transparent; }
 .qc-item:hover .qc-item-tx { border-color: var(--accent); color: var(--accent-2); }
 
-/* ---------- 键盘快捷键帮助 ---------- */
-.sc-backdrop { position: fixed; inset: 0; z-index: 210; background: rgba(15,12,9,0.42); backdrop-filter: blur(5px);
-  display: grid; place-items: center; padding: 20px; animation: cmdkFade 0.18s ease both; }
-.sc-card { width: min(460px, 100%); background: var(--panel); border: 1px solid var(--border-2); border-radius: 18px;
-  box-shadow: var(--shadow-lg); overflow: hidden; animation: cmdkPop 0.24s var(--spring) both; }
-.sc-head { display: flex; align-items: center; gap: 9px; padding: 16px 18px; border-bottom: 1px solid var(--border); font-size: 15px; }
-.sc-head b { flex: 1; }
-.sc-x { background: none; border: none; color: var(--faint); cursor: pointer; padding: 4px; border-radius: 8px; display: grid; place-items: center; }
-.sc-x:hover { background: var(--bg-2); color: var(--text); }
-.sc-grid { padding: 10px 18px; }
-.sc-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; font-size: 13.5px; border-bottom: 1px solid var(--border); }
-.sc-row:last-child { border-bottom: none; }
-.sc-keys { display: inline-flex; gap: 5px; }
-.sc-card kbd { font-family: var(--sans); font-size: 11.5px; font-weight: 700; color: var(--muted); background: var(--bg-2);
-  border: 1px solid var(--border-2); border-bottom-width: 2px; border-radius: 6px; padding: 2px 8px; min-width: 22px; text-align: center; }
-.sc-foot { padding: 12px 18px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); background: var(--panel-2); }
+
 
 /* ---- 侧栏搜索触发 ---- */
 .sb-search { display: flex; align-items: center; gap: 9px; width: 100%; margin: 2px 0 10px; padding: 9px 12px;
@@ -2205,3 +2190,79 @@ img[loading="lazy"] { background: var(--panel-2); }
 .noti-item.unread .noti-body { font-weight: 600; }
 .noti-time { font-size: 12px; color: var(--faint); margin-top: 4px; }
 .noti-dot { position: absolute; top: 16px; right: 16px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ============================================================
+   议会沉浸锁定：进入议事殿堂后隐去侧边栏与外部导航，
+   仅可经顶栏「返回广场」离开（专注·仪式感）
+   ============================================================ */
+.app-shell:has(.pl-immersive) .sidebar,
+.app-shell:has(.pl-immersive) .sb-edge-trigger,
+.app-shell:has(.pl-immersive) .sb-peek-backdrop,
+.app-shell:has(.pl-immersive) .mobile-topbar,
+.app-shell:has(.pl-immersive) .bottom-nav,
+.app-shell:has(.pl-immersive) .qc,
+.app-shell:has(.pl-immersive) .to-top { display: none !important; }
+/* 返回广场按钮：殿堂金边，醒目而克制 */
+.pl-back { border-color: rgba(216,173,78,0.4); }
+.pl-back:hover { border-color: var(--au); color: var(--au-hi); background: rgba(216,173,78,0.1); }
+
+/* ============================================================
+   质感精修 v3 · 表面深度 · 柔光阴影 · 细腻纹理
+   ============================================================ */
+/* 极细腻的画布颗粒（提升纸感，避免大色块平淡） */
+body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.022'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply; }
+[data-theme="dark"] body::after { mix-blend-mode: screen; opacity: 0.5; }
+.app-shell, .auth-wrap { position: relative; z-index: 1; }
+
+/* 柔和的多层投影体系（更高级的悬浮感） */
+:root {
+  --shadow-sm: 0 1px 2px rgba(38, 31, 22, 0.05);
+  --shadow: 0 1px 2px rgba(38, 31, 22, 0.04), 0 5px 16px rgba(38, 31, 22, 0.06);
+  --shadow-lg: 0 2px 5px rgba(38, 31, 22, 0.05), 0 18px 44px rgba(38, 31, 22, 0.11);
+}
+[data-theme="dark"] {
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 14px 32px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.5), 0 28px 60px rgba(0, 0, 0, 0.62);
+}
+
+/* 卡片表面：一抹顶光 + 极淡竖向渐变，带来瓷釉般的深度 */
+.card, .char-card, .poster, .pkg, .ann-item, .adm-row, .lb-row, .studio-card, .noti-item,
+.wallet-hero, .vip-card, .modal {
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0) 42%);
+}
+[data-theme="dark"] .card, [data-theme="dark"] .char-card, [data-theme="dark"] .poster,
+[data-theme="dark"] .pkg, [data-theme="dark"] .ann-item, [data-theme="dark"] .adm-row,
+[data-theme="dark"] .lb-row, [data-theme="dark"] .studio-card, [data-theme="dark"] .noti-item, [data-theme="dark"] .modal {
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0) 46%);
+}
+/* 卡片描边内嵌高光（瓷釉边） */
+.card, .char-card, .pkg, .studio-card, .noti-item, .ann-item {
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.55); }
+[data-theme="dark"] .card, [data-theme="dark"] .char-card, [data-theme="dark"] .pkg,
+[data-theme="dark"] .studio-card, [data-theme="dark"] .noti-item, [data-theme="dark"] .ann-item {
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.04); }
+
+/* 角色卡 / 海报：悬停时带品牌色柔光，更有“呼吸” */
+.char-card:hover { box-shadow: var(--shadow-lg), 0 0 0 1px var(--accent-ring); transform: translateY(-4px); }
+.poster:hover { box-shadow: var(--shadow-lg), 0 14px 40px rgba(217,119,87,0.18); }
+
+/* 顶栏玻璃质感细化（更通透的毛玻璃 + 底缘微光） */
+.topbar { backdrop-filter: saturate(150%) blur(14px); -webkit-backdrop-filter: saturate(150%) blur(14px);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 1px 12px rgba(38,31,22,0.03); }
+[data-theme="dark"] .topbar { box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 12px rgba(0,0,0,0.3); }
+
+/* 分隔线改为渐隐发丝线，去除生硬 */
+.section-title { position: relative; }
+
+/* 主按钮：更细腻的立体与高光扫过 */
+.btn.primary { box-shadow: 0 1px 2px rgba(179,82,47,0.2), 0 6px 16px rgba(179,82,47,0.22), inset 0 1px 0 rgba(255,255,255,0.18); }
+.btn.primary:hover { box-shadow: 0 2px 4px rgba(179,82,47,0.24), 0 10px 26px rgba(179,82,47,0.3), inset 0 1px 0 rgba(255,255,255,0.22); }
+
+/* 输入聚焦光圈更柔 */
+.input:focus, .select:focus, .textarea:focus { box-shadow: 0 0 0 3px var(--accent-ring), inset 0 1px 2px rgba(0,0,0,0.03); }
+
+/* 头像描边更精致 */
+.avatar { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.18), 0 1px 3px rgba(0,0,0,0.08); }
