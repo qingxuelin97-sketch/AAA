@@ -3,7 +3,9 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const db = new Database(path.join(__dirname, 'data.sqlite'));
+// DB_PATH lets hosted deploys point at a persistent volume (e.g. a mounted disk).
+const dbFile = process.env.DB_PATH || path.join(__dirname, 'data.sqlite');
+const db = new Database(dbFile);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -260,6 +262,20 @@ CREATE TABLE IF NOT EXISTS theater_messages (
   sender_type TEXT NOT NULL,        -- user | ai | narrator
   sender_id INTEGER,                -- user id or character id
   name TEXT, avatar TEXT, content TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+`);
+
+// Key-value store for group-wide config (platform AI services) + AI image gallery.
+db.exec(`
+CREATE TABLE IF NOT EXISTS app_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ai_images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  prompt TEXT NOT NULL, size TEXT DEFAULT '1024x1024', url TEXT NOT NULL,
   created_at TEXT DEFAULT (datetime('now'))
 );
 `);

@@ -1,11 +1,60 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
+import { applyTx } from '../wallet.js';
+import { getPlatform, voiceReady, featureFee, VOICE_FEE } from '../platform.js';
 
 const router = Router();
 
 function getSettings(userId) {
   return db.prepare('SELECT * FROM settings WHERE user_id = ?').get(userId);
+}
+
+// Synthesize speech via the right vendor adapter. Returns { ok, contentType, buffer } or { ok:false, status, error }.
+async function synthesize({ proto, base, key, model, voice, text }) {
+  const b = (base || '').replace(/\/$/, '');
+  try {
+    if (proto === 'elevenlabs') {
+      const r = await fetch(`${b}/text-to-speech/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'xi-api-key': key, Accept: 'audio/mpeg' },
+        body: JSON.stringify({ text, model_id: model || 'eleven_multilingual_v2' }) });
+      if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
+      return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
+    }
+    if (proto === 'minimax') {
+      const r = await fetch(`${b}/t2a_v2`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: model || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: 1, vol: 1, pitch: 0 }, audio_setting: { format: 'mp3', sample_rate: 32000 } }) });
+      if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
+      const d = await r.json().catch(() => null); const hex = d?.data?.audio;
+      if (!hex) return { ok: false, status: 502, error: '语音服务未返回音频（MiniMax 需在 Base URL 后附 ?GroupId=）' };
+      return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(hex, 'hex') };
+    }
+    if (proto === 'azure') {
+      const ssml = `<speak version='1.0' xml:lang='zh-CN'><voice xml:lang='zh-CN' name='${voice || 'zh-CN-XiaoxiaoNeural'}'>${text.replace(/[<&>]/g, '')}</voice></speak>`;
+      const r = await fetch(`${b}/cognitiveservices/v1`, { method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3' }, body: ssml });
+      if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
+      return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
+    }
+    if (proto === 'google') {
+      const sep = b.includes('?') ? '&' : '?';
+      const r = await fetch(`${b}/v1/text:synthesize${sep}key=${encodeURIComponent(key)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: { text }, voice: { languageCode: (voice || 'cmn-CN-Wavenet-A').split('-').slice(0, 2).join('-') || 'cmn-CN', name: voice || 'cmn-CN-Wavenet-A' }, audioConfig: { audioEncoding: 'MP3' } }) });
+      if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
+      const d = await r.json().catch(() => null);
+      if (!d?.audioContent) return { ok: false, status: 502, error: '语音服务未返回音频' };
+      return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(d.audioContent, 'base64') };
+    }
+    if (proto === 'deepgram') {
+      const r = await fetch(`${b}/v1/speak?model=${encodeURIComponent(model || 'aura-asteria-en')}`, { method: 'POST', headers: { Authorization: `Token ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+      if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
+      return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
+    }
+    // OpenAI-compatible /audio/speech
+    const r = await fetch(b + '/audio/speech', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model, input: text, voice }) });
+    if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
+    return { ok: true, contentType: r.headers.get('content-type') || 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
+  } catch (e) { return { ok: false, status: 502, error: '语音服务连接失败：' + e.message }; }
 }
 
 // Build the system prompt from persona, intro and triggered world-book entries.
@@ -158,25 +207,32 @@ async function streamReply(res, conv, character, settings, userContent) {
 // ---- Text to speech proxy ----
 router.post('/tts', authRequired, async (req, res) => {
   const settings = getSettings(req.user.id);
-  if (!settings?.voice_api_key) return res.status(400).json({ error: '尚未配置语音模型 API' });
-  const { text, voice } = req.body || {};
-  if (!text) return res.status(400).json({ error: '缺少文本' });
-  try {
-    const upstream = await fetch(settings.voice_base_url.replace(/\/$/, '') + '/audio/speech', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.voice_api_key}` },
-      body: JSON.stringify({ model: settings.voice_model, input: text.slice(0, 4000), voice: voice || settings.voice_name })
-    });
-    if (!upstream.ok) {
-      const t = await upstream.text().catch(() => '');
-      return res.status(502).json({ error: `语音服务返回 ${upstream.status}：${t.slice(0, 200)}` });
-    }
-    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'audio/mpeg');
-    const buf = Buffer.from(await upstream.arrayBuffer());
-    res.send(buf);
-  } catch (err) {
-    res.status(502).json({ error: '语音服务连接失败：' + err.message });
+  const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(req.user.id);
+  const { text: rawText, voice: reqVoice } = req.body || {};
+  if (!rawText) return res.status(400).json({ error: '缺少文本' });
+  const text = String(rawText).slice(0, 4000);
+
+  // Own voice API (free) takes priority; otherwise fall back to the platform service, billed per sentence.
+  let proto, base, key, model, voice, fee = 0;
+  if (settings?.voice_api_key) {
+    proto = settings.voice_protocol || 'openai'; base = settings.voice_base_url; key = settings.voice_api_key;
+    model = settings.voice_model; voice = reqVoice || settings.voice_name;
+  } else if (voiceReady()) {
+    const pv = getPlatform().voice; proto = pv.protocol || 'openai'; base = pv.base_url; key = pv.key; model = pv.model; voice = reqVoice || pv.voice_name;
+    fee = featureFee(me, VOICE_FEE);
+    if (me.gold < fee) return res.status(402).json({ error: `金币不足，平台语音每句需 ${fee} 金币（当前 ${me.gold}）。可在「设置 → 语音模型」填写自己的语音 API 免费朗读。` });
+  } else {
+    return res.status(503).json({ error: '尚未配置语音模型 API，且平台语音服务暂未开启。' });
   }
+
+  const out = await synthesize({ proto, base, key, model, voice, text });
+  if (!out.ok) return res.status(out.status || 502).json({ error: out.error });
+  if (fee) {
+    try { const w = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}` }); res.setHeader('X-Gold-Fee', String(fee)); res.setHeader('X-Gold-Balance', String(w.gold)); }
+    catch (e) { return res.status(402).json({ error: e.message }); }
+  }
+  res.setHeader('Content-Type', out.contentType);
+  res.send(out.buffer);
 });
 
 export default router;

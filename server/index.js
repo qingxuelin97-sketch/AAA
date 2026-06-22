@@ -20,6 +20,7 @@ import metaRoutes from './routes/meta.js';
 import announcementRoutes from './routes/announcements.js';
 import adminRoutes from './routes/admin.js';
 import engageRoutes from './routes/engage.js';
+import aiRoutes from './routes/ai.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/meta', metaRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/engage', engageRoutes);
+app.use('/api/ai', aiRoutes);
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Serve built client (production) with SPA fallback.

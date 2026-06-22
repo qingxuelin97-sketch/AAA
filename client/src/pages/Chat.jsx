@@ -309,10 +309,11 @@ export default function Chat() {
                   : <img src={character.background} alt="" />}
               </div>
             )}
+            {!character?.background && <div className="chat-aura" aria-hidden="true"><span /><span /><span /></div>}
             <div className="chat-head">
               <button className="btn ghost sm mobile-only" onClick={() => nav('/chats')}><ArrowLeft size={16} /></button>
-              <Avatar src={character?.avatar} name={character?.name} size={42} />
-              <div className="nm"><b>{character?.name}</b><br /><span>{character?.tagline || '正在扮演中'}</span></div>
+              <div className={'ch-av' + (streaming ? ' live' : '')}><Avatar src={character?.avatar} name={character?.name} size={44} /></div>
+              <div className="nm"><b>{character?.name}</b><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : (character?.tagline || '在线 · 沉浸扮演中')}</span></div>
               {(() => { const af = affinityInfo(affinity); return (
                 <button className="affinity-badge" onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
                   <span className="af-ic">{af.icon}</span>
@@ -360,10 +361,12 @@ export default function Chat() {
               {messages.map((m, i) => {
                 const q = searchQ.trim().toLowerCase();
                 if (q && !(m.content || '').toLowerCase().includes(q)) return null;
+                const firstOfRun = i === 0 || messages[i - 1].role !== m.role;
                 return (
-                <div key={m.id || i} className={'msg ' + m.role}>
-                  {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={36} />}
-                  <div>
+                <div key={m.id || i} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}>
+                  {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={38} />}
+                  <div className="msg-col">
+                    {m.role === 'assistant' && firstOfRun && <div className="msg-name">{character?.name}</div>}
                     {editingId === m.id ? (
                       <div className="msg-edit">
                         <textarea value={editText} autoFocus onChange={e => setEditText(e.target.value)}

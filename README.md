@@ -14,6 +14,15 @@
 - AI 对话 / 剧场为**真实模型**：进入「设置 → 语言模型」填入你自己的 API Key（浏览器直连服务商）即可对话。
 - 首次启用：仓库 Settings → Pages → Source 选择「GitHub Actions」（若工作流未自动开启），等待 Actions 跑完即可访问。
 
+## 🖥 服务端部署（全栈版 · 含数据库）
+
+GitHub Pages 只能托管纯浏览器版（静态）。要部署带真实数据库的**全栈服务端**（Express + SQLite，单服务同时提供 API 与前端），用本仓库自带的 Docker / Render 配置即可：
+
+- **Docker**：`docker build -t huanyu . && docker run -p 4000:4000 -v huanyu-data:/data -e DB_PATH=/data/data.sqlite huanyu` → 打开 `http://localhost:4000`
+- **Render（一键）**：新建 Blueprint 指向本仓库，自动读取 `render.yaml`（已含持久化磁盘挂载到 `/data`、健康检查 `/api/health`）。
+- 任意支持 Docker 的平台（Railway / Fly.io / VPS）同理。容器首启会在数据库为空时自动灌入演示数据，重启保留数据。
+- 平台 AI（语言 / 语音 / 生图）在 **GM 控制台 → 平台AI** 配置；服务端密钥仅存于服务器数据库，接口返回一律掩码。
+
 
 ## ✨ 功能总览（20+）
 

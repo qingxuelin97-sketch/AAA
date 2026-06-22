@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx, isVip, notify } from '../wallet.js';
+import { adminView, updatePlatform } from '../platform.js';
 
 const router = Router();
 const isGm = (uid) => !!db.prepare('SELECT is_gm FROM users WHERE id = ?').get(uid)?.is_gm;
@@ -13,6 +14,10 @@ router.use(authRequired, gm);
 const rnd = (n = 6) => Array.from({ length: n }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
 
 router.get('/check', (req, res) => res.json({ is_gm: true }));
+
+// ---- platform AI config (language / voice / image) ----
+router.get('/platform', (req, res) => res.json({ platform: adminView() }));
+router.put('/platform', (req, res) => res.json({ ok: true, platform: updatePlatform(req.body || {}) }));
 
 router.get('/stats', (req, res) => {
   const c = (t) => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;

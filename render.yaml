@@ -1,0 +1,21 @@
+# Render.com 蓝图：一键部署幻域全栈服务（Express API + SQLite + 前端）
+# 用法：在 Render 新建 Blueprint，指向本仓库；或参考此配置部署到任意支持 Docker 的平台。
+services:
+  - type: web
+    name: huanyu
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DB_PATH
+        value: /data/data.sqlite
+      - key: JWT_SECRET
+        generateValue: true
+    disk:
+      name: huanyu-data
+      mountPath: /data
+      sizeGB: 1
