@@ -123,6 +123,17 @@ export default function Chat() {
   // know the user's voice protocol so we can use browser TTS without a server call
   const [voiceCfg, setVoiceCfg] = useState(null);
   useEffect(() => { api('/settings').then(d => setVoiceCfg({ voice_protocol: d.settings.voice_protocol, voice_name: d.settings.voice_name })).catch(() => {}); }, []);
+  // celebrate when the relationship tier rises (ties into 成就 / affinity milestones)
+  const prevAffLevel = useRef(null);
+  useEffect(() => {
+    const info = affinityInfo(affinity); const lvl = info.level;
+    if (prevAffLevel.current !== null && lvl > prevAffLevel.current) {
+      toast(`${info.icon} 羁绊加深！与${character?.name || 'TA'}的关系进入「${info.name}」`);
+    }
+    prevAffLevel.current = lvl;
+    /* eslint-disable-next-line */
+  }, [affinity]);
+  useEffect(() => { prevAffLevel.current = null; }, [id]);
 
   useEffect(() => {
     if (!id) { setConv(null); setCharacter(null); setMessages([]); return; }

@@ -87,6 +87,7 @@ export default function Profile() {
               <div className="s" onClick={() => setTab('scripts')} style={{ cursor: 'pointer' }}><b><CountUp value={data.stats.scripts} /></b><span>剧本</span></div>
               <div className="s" onClick={() => openList('followers')} style={{ cursor: 'pointer' }}><b><CountUp value={data.stats.followers} /></b><span>粉丝</span></div>
               <div className="s" onClick={() => openList('following')} style={{ cursor: 'pointer' }}><b><CountUp value={data.stats.following} /></b><span>关注</span></div>
+              {data.stats.achievements != null && <div className="s" onClick={() => isMe && nav('/achievements')} style={{ cursor: isMe ? 'pointer' : 'default' }}><b><CountUp value={data.stats.achievements} /></b><span>成就</span></div>}
             </div>
             {isMe && (
               <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>

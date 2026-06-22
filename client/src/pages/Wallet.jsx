@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp } from '../ui.jsx';
-import { Coins, Gem, Crown, CalendarCheck, Gift, ArrowRight, Check, Sparkles, Wallet as WalletIcon } from 'lucide-react';
+import { Coins, Gem, Crown, CalendarCheck, Gift, ArrowRight, Check, Sparkles, Wallet as WalletIcon, Trophy } from 'lucide-react';
 
 export default function Wallet() {
   const [data, setData] = useState(null);
@@ -9,11 +10,15 @@ export default function Wallet() {
   const [exDiamond, setExDiamond] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState('');
+  const [achPending, setAchPending] = useState(0);
+  const [achGold, setAchGold] = useState(0);
   const toast = useToast();
+  const nav = useNavigate();
   const { refreshUser } = useAuth();
 
   const load = () => api('/economy/wallet').then(setData).catch(e => toast(e.message, 'err')).finally(() => setLoading(false));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { api('/achievements').then(d => { setAchPending(d.summary?.claimable || 0); setAchGold(d.summary?.gold_pending || 0); }).catch(() => {}); }, []);
   const after = async () => { await load(); await refreshUser(); };
 
   const run = (key, fn) => async () => { setBusy(key); try { await fn(); } catch (e) { toast(e.message, 'err'); } finally { setBusy(''); } };
@@ -41,6 +46,13 @@ export default function Wallet() {
     <>
       <Head />
       <div className="page">
+        {achPending > 0 && (
+          <div className="wallet-ach" onClick={() => nav('/achievements')}>
+            <span className="icon-chip gold"><Trophy size={18} /></span>
+            <div style={{ flex: 1 }}><b>有 {achPending} 项成就奖励待领取</b><p>累计可领 {achGold} 金币 · 前往成就殿堂一键领取</p></div>
+            <ArrowRight size={18} className="muted" />
+          </div>
+        )}
         {/* balance hero */}
         <div className="wallet-hero">
           <div className="col">

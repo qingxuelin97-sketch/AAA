@@ -242,6 +242,70 @@ function dailyOf(uid) {
 }
 function bumpDaily(uid, key) { if (!uid) return; const d = dailyOf(uid); d.counts[key] = (d.counts[key] || 0) + 1; save(); }
 
+/* ----------------------------- achievements (成就 · 全功能联动) -----------------------------
+   每条成就的进度都从既有数据实时计算，让对话/创作/社交/议会/财富/探索等
+   旧功能在此重新发热——使用任意板块都会推进成就并可领取金币奖励。 */
+const ACHIEVEMENTS = [
+  // 对话
+  { id: 'first_chat', name: '初次邂逅', desc: '发起你的第一次角色对话', icon: 'MessageCircle', cat: '对话', goal: 1, reward: 50, metric: 'chats', link: '/library' },
+  { id: 'chat_10', name: '健谈之人', desc: '累计发起 10 次对话', icon: 'MessagesSquare', cat: '对话', goal: 10, reward: 150, metric: 'chats', link: '/chats' },
+  { id: 'msg_100', name: '妙语连珠', desc: '累计发送 100 条消息', icon: 'Send', cat: '对话', goal: 100, reward: 220, metric: 'messages', link: '/chats' },
+  { id: 'aff_close', name: '心有灵犀', desc: '与角色好感度达到「亲近」', icon: 'Heart', cat: '对话', goal: 100, reward: 180, metric: 'affinity_max', link: '/chats' },
+  { id: 'aff_love', name: '情比金坚', desc: '与角色好感度达到「挚爱」', icon: 'Sparkles', cat: '对话', goal: 250, reward: 420, metric: 'affinity_max', link: '/chats' },
+  // 创作
+  { id: 'first_char', name: '造物之始', desc: '创建你的第一个角色', icon: 'UserPlus', cat: '创作', goal: 1, reward: 80, metric: 'characters', link: '/character/new' },
+  { id: 'char_5', name: '角色匠人', desc: '创建 5 个角色', icon: 'Drama', cat: '创作', goal: 5, reward: 240, metric: 'characters', link: '/character/new' },
+  { id: 'go_public', name: '广场首秀', desc: '公开 1 个角色到发现广场', icon: 'Globe', cat: '创作', goal: 1, reward: 60, metric: 'public_characters', link: '/publish' },
+  { id: 'first_script', name: '编剧入门', desc: '创作你的第一个剧本', icon: 'ScrollText', cat: '创作', goal: 1, reward: 80, metric: 'scripts', link: '/script/new' },
+  { id: 'creator_v', name: '创作者认证', desc: '获得创作者 V 认证', icon: 'BadgeCheck', cat: '创作', goal: 1, reward: 120, metric: 'creator_bronze', link: '/studio' },
+  { id: 'creator_hall', name: '殿堂创作者', desc: '登顶创作者榜成为 TOP 1', icon: 'Crown', cat: '创作', goal: 1, reward: 1000, metric: 'creator_gold', link: '/leaderboard' },
+  // 社交
+  { id: 'first_fav', name: '一见倾心', desc: '收藏 1 个喜欢的角色', icon: 'Star', cat: '社交', goal: 1, reward: 20, metric: 'favorites', link: '/' },
+  { id: 'fav_10', name: '收藏家', desc: '收藏 10 个角色', icon: 'Bookmark', cat: '社交', goal: 10, reward: 120, metric: 'favorites', link: '/favorites' },
+  { id: 'first_moment', name: '初次发声', desc: '在社区发布 1 条动态', icon: 'PenLine', cat: '社交', goal: 1, reward: 40, metric: 'moments', link: '/community' },
+  { id: 'first_group', name: '群英荟萃', desc: '加入 1 个群聊', icon: 'Users', cat: '社交', goal: 1, reward: 50, metric: 'groups', link: '/groups' },
+  { id: 'first_theater', name: '登台亮相', desc: '参与 1 次剧场联机', icon: 'Drama', cat: '社交', goal: 1, reward: 60, metric: 'theaters', link: '/theater' },
+  { id: 'fans_5', name: '小有名气', desc: '获得 5 位粉丝', icon: 'UserCheck', cat: '社交', goal: 5, reward: 150, metric: 'followers', link: '/profile' },
+  // 议会
+  { id: 'councilor', name: '当选议员', desc: '成为幻域议会议员', icon: 'Scale', cat: '议会', goal: 1, reward: 200, metric: 'councilor', link: '/parliament' },
+  { id: 'first_proposal', name: '议政之始', desc: '提交 1 份公共议案', icon: 'Gavel', cat: '议会', goal: 1, reward: 120, metric: 'proposals', link: '/parliament' },
+  { id: 'vote_5', name: '恪尽职守', desc: '参与 5 次议会表决', icon: 'CheckSquare', cat: '议会', goal: 5, reward: 130, metric: 'votes', link: '/parliament' },
+  { id: 'endorse_3', name: '民意所向', desc: '联署 3 份议案', icon: 'Landmark', cat: '议会', goal: 3, reward: 70, metric: 'endorsements', link: '/parliament' },
+  // 财富 / 探索
+  { id: 'checkin_7', name: '持之以恒', desc: '连续签到 7 天', icon: 'CalendarCheck', cat: '财富', goal: 7, reward: 200, metric: 'checkin_streak', link: '/wallet' },
+  { id: 'gold_10k', name: '腰缠万贯', desc: '累计赚取 10000 金币', icon: 'Coins', cat: '财富', goal: 10000, reward: 300, metric: 'gold_earned', link: '/wallet' },
+  { id: 'gacha_10', name: '欧皇之路', desc: '在扭蛋机抽卡 10 次', icon: 'Dices', cat: '财富', goal: 10, reward: 160, metric: 'gacha_pulls', link: '/gacha' },
+  { id: 'become_vip', name: '尊享会员', desc: '开通 VIP 会员', icon: 'Crown', cat: '财富', goal: 1, reward: 120, metric: 'vip', link: '/wallet' },
+];
+function achMetric(me, metric) {
+  const uid = me.id;
+  switch (metric) {
+    case 'chats': return filter('conversations', c => c.user_id === uid).length;
+    case 'messages': { const ids = filter('conversations', c => c.user_id === uid).map(c => c.id); return filter('messages', x => ids.includes(x.conversation_id) && x.role === 'user').length; }
+    case 'affinity_max': return filter('conversations', c => c.user_id === uid).reduce((mx, c) => Math.max(mx, c.affinity || 0), 0);
+    case 'characters': return filter('characters', c => c.owner_id === uid && !c.from_script).length;
+    case 'public_characters': return filter('characters', c => c.owner_id === uid && c.is_public).length;
+    case 'scripts': return filter('scripts', s => s.author_id === uid).length;
+    case 'creator_bronze': return creatorTier(me) ? 1 : 0;
+    case 'creator_gold': return creatorTier(me) === 'gold' ? 1 : 0;
+    case 'favorites': return filter('favorites', f => f.user_id === uid).length;
+    case 'moments': return filter('moments', x => x.user_id === uid).length;
+    case 'groups': return filter('group_members', x => x.user_id === uid).length;
+    case 'theaters': return filter('theater_members', x => x.user_id === uid).length;
+    case 'followers': return filter('follows', f => f.following_id === uid).length;
+    case 'councilor': return me.is_councilor ? 1 : 0;
+    case 'proposals': return filter('proposals', p => p.author_id === uid).length;
+    case 'votes': return filter('proposal_votes', v => v.user_id === uid).length;
+    case 'endorsements': return filter('proposal_endorse', e => e.user_id === uid).length;
+    case 'checkin_streak': return me.checkin_streak || 0;
+    case 'gold_earned': return filter('transactions', t => t.user_id === uid && t.gold > 0).reduce((s, t) => s + t.gold, 0);
+    case 'gacha_pulls': return me.gacha_pulls || 0;
+    case 'vip': return isVip(me) ? 1 : 0;
+    default: return 0;
+  }
+}
+function achUnlockedCount(u) { return ACHIEVEMENTS.filter(a => achMetric(u, a.metric) >= a.goal).length; }
+
 /* ----------------------------- helpers ----------------------------- */
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
@@ -981,7 +1045,7 @@ async function route(method, path, search, body, headers) {
     const characters = filter('characters', c => c.owner_id === u.id && c.is_public).sort((a, b) => b.id - a.id);
     const scripts = filter('scripts', s => s.author_id === u.id).sort((a, b) => b.id - a.id);
     const moments = filter('moments', x => x.user_id === u.id).sort((a, b) => b.id - a.id).slice(0, 20);
-    const stats = { characters: filter('characters', c => c.owner_id === u.id).length, scripts: scripts.length, followers: filter('follows', f => f.following_id === u.id).length, following: filter('follows', f => f.follower_id === u.id).length };
+    const stats = { characters: filter('characters', c => c.owner_id === u.id).length, scripts: scripts.length, followers: filter('follows', f => f.following_id === u.id).length, following: filter('follows', f => f.follower_id === u.id).length, achievements: achUnlockedCount(u) };
     const following = me ? !!find('follows', f => f.follower_id === me.id && f.following_id === u.id) : false;
     return J({ user: { id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, vip: isVip(u), vip_until: u.vip_until, is_gm: !!u.is_gm, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, creator_tier: creatorTier(u), created_at: u.created_at }, characters, scripts, moments, stats, following });
   }
@@ -1039,6 +1103,22 @@ async function route(method, path, search, body, headers) {
     d.claimed.push(t.id); applyTx(me.id, { kind: 'reward', gold: t.reward, memo: `每日任务：${t.name}` }); save();
     return J({ ok: true, reward: t.reward });
   }
+  // ---------- achievements (成就) ----------
+  if (path === '/achievements' && method === 'GET') {
+    need(); const claimed = me.ach_claimed || [];
+    const list = ACHIEVEMENTS.map(a => { const raw = achMetric(me, a.metric); const unlocked = raw >= a.goal; return { id: a.id, name: a.name, desc: a.desc, icon: a.icon, cat: a.cat, goal: a.goal, reward: a.reward, link: a.link, value: Math.min(raw, a.goal), unlocked, claimed: claimed.includes(a.id), claimable: unlocked && !claimed.includes(a.id) }; });
+    return J({ achievements: list, summary: { unlocked: list.filter(x => x.unlocked).length, total: list.length, claimable: list.filter(x => x.claimable).length, gold_pending: list.filter(x => x.claimable).reduce((s, x) => s + x.reward, 0) } });
+  }
+  if ((m = P(/^\/achievements\/([\w-]+)\/claim$/)) && method === 'POST') {
+    need(); const a = ACHIEVEMENTS.find(x => x.id === m[1]); if (!a) return E('成就不存在', 404);
+    me.ach_claimed = me.ach_claimed || [];
+    if (me.ach_claimed.includes(a.id)) return E('该成就奖励已领取');
+    if (achMetric(me, a.metric) < a.goal) return E('成就尚未达成');
+    me.ach_claimed.push(a.id); applyTx(me.id, { kind: 'achievement', gold: a.reward, memo: `成就奖励 · ${a.name}` }); save();
+    notify(me.id, `🏆 达成成就「${a.name}」，奖励 ${a.reward} 金币已入账！`, '/achievements');
+    return J({ ok: true, reward: a.reward, gold: me.gold });
+  }
+
   if (method === 'GET' && path === '/engage/events') {
     const claims = me ? filter('event_claims', c => c.user_id === me.id).map(c => c.event_id) : [];
     return J({ events: EVENTS.map(e => ({ id: e.id, kind: e.kind, tag: e.tag, title: e.title, desc: e.desc, reward: e.reward || null, link: e.link || '', linkText: e.linkText || '', accent: e.accent, qq: e.qq || '', claimed: claims.includes(e.id) })) });
@@ -1096,6 +1176,7 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/engage/gacha') {
     need(); const pool = filter('characters', c => c.is_public); if (!pool.length) return E('暂无可抽取的角色');
     try { applyTx(me.id, { kind: 'reward', diamond: -50, memo: '抽卡' }); } catch (e) { return E(e.message); }
+    me.gacha_pulls = (me.gacha_pulls || 0) + 1;
     const pick = pool[Math.floor(Math.random() * pool.length)];
     const had = find('favorites', f => f.user_id === me.id && f.character_id === pick.id);
     if (!had) { insert('favorites', { user_id: me.id, character_id: pick.id }); pick.likes = (pick.likes || 0) + 1; }

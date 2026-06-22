@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar, GridSkeleton, CreatorV } from '../ui.jsx';
-import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare } from 'lucide-react';
+import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare, ListChecks, Check } from 'lucide-react';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 
 // Auto-rotating spotlight of featured characters — the hero of the discover page.
@@ -87,9 +87,18 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [ann, setAnn] = useState(null);
   const [resume, setResume] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const toast = useToast();
   const nav = useNavigate();
 
+  const TASK_LINK = { checkin: '/wallet', chat: '/library', gacha: '/gacha', fav: '/', like: '/community' };
+  useEffect(() => { api('/engage/tasks').then(d => setTasks(d.tasks || [])).catch(() => {}); }, []);
+  const claimTask = async (t) => {
+    if (t.claimed) return;
+    if (!t.done) { nav(TASK_LINK[t.id] || '/events'); return; }
+    try { await api(`/engage/tasks/${t.id}/claim`, { method: 'POST' }); toast(`领取成功！+${t.reward} 金币`); api('/engage/tasks').then(d => setTasks(d.tasks || [])); }
+    catch (e) { toast(e.message, 'err'); }
+  };
   useEffect(() => { api('/chat/conversations').then(d => setResume((d.conversations || []).slice(0, 8))).catch(() => {}); }, []);
   useEffect(() => { api('/meta/categories').then(d => setCats(d.categories)).catch(() => {}); }, []);
   useEffect(() => { api('/scripts?sort=hot').then(d => setScripts(d.scripts.slice(0, 6))).catch(() => {}); }, []);
@@ -138,6 +147,21 @@ export default function Home() {
             <span className="ann-ic"><Megaphone size={19} /></span>
             <div className="ann-tx"><b>{ann.title}</b><p>{ann.body}</p></div>
             <button className="ann-x" onClick={e => { e.stopPropagation(); dismissAnn(); }}><X size={16} /></button>
+          </div>
+        )}
+
+        {tasks.length > 0 && (
+          <div className="daily-strip">
+            <div className="ds-head"><ListChecks size={15} /> <b>每日任务</b><button className="ds-more" onClick={() => nav('/events')}>全部活动 →</button></div>
+            <div className="ds-track">
+              {tasks.map(t => (
+                <button key={t.id} className={'ds-task' + (t.claimed ? ' claimed' : t.done ? ' done' : '')} onClick={() => claimTask(t)}
+                  title={t.claimed ? '已领取' : t.done ? '点击领取奖励' : '去完成'}>
+                  <span className="ds-task-tx">{t.name}</span>
+                  <span className="ds-task-meta">{t.claimed ? <><Check size={12} /> 已领</> : t.done ? <><Coins size={12} /> 领 {t.reward}</> : <>{t.progress}/{t.target}</>}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

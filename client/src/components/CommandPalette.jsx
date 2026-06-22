@@ -24,6 +24,7 @@ const NAV = [
   { to: '/theater', ic: Drama, label: '剧场 · 联机', kw: 'theater juchang' },
   { to: '/library', ic: Library, label: '我的角色', kw: 'library wodejuese' },
   { to: '/studio', ic: TrendingUp, label: '创作中心', kw: 'studio chuangzuo' },
+  { to: '/achievements', ic: Trophy, label: '成就', kw: 'achievements chengjiu trophy' },
   { to: '/favorites', ic: Heart, label: '收藏', kw: 'favorites shoucang' },
   { to: '/wallet', ic: Wallet, label: '钱包 / 充值', kw: 'wallet qianbao chongzhi recharge' },
   { to: '/notifications', ic: Bell, label: '通知', kw: 'notifications tongzhi' },

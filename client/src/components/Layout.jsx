@@ -35,6 +35,7 @@ const GROUPS = [
   { title: '我的', items: [
     { to: '/library', ic: Library, label: '我的角色' },
     { to: '/studio', ic: TrendingUp, label: '创作中心' },
+    { to: '/achievements', ic: Trophy, label: '成就' },
     { to: '/favorites', ic: Heart, label: '收藏' },
     { to: '/wallet', ic: Wallet, label: '钱包 / 充值' },
     { to: '/notifications', ic: Bell, label: '通知', badge: 'noti' },
