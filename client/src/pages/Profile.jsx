@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CountUp, CreatorV, CouncilorBadge } from '../ui.jsx';
-import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck, X, Pencil } from 'lucide-react';
+import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck, X, Pencil, Share2 } from 'lucide-react';
 import { pid } from '../assets.jsx';
 import ReportButton from '../components/ReportButton.jsx';
 
@@ -23,6 +23,11 @@ export default function Profile() {
   if (!data) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
   const u = data.user;
 
+  const shareProfile = async () => {
+    const url = location.origin + location.pathname + '#/user/' + u.id;
+    try { await navigator.clipboard.writeText(url); toast('主页链接已复制'); }
+    catch { toast('复制失败：' + url, 'err'); }
+  };
   const toggleFollow = async () => {
     try { const d = await api('/social/follow/' + targetId, { method: 'POST' }); setFollowing(d.following); load(); }
     catch (e) { toast(e.message, 'err'); }
@@ -41,6 +46,7 @@ export default function Profile() {
     <>
       <div className="topbar">
         <div style={{ flex: 1 }}><h1>{isMe ? '个人中心' : u.display_name}</h1><div className="sub">@{u.username} · {pid('user', u.id)}</div></div>
+        <button className="btn ghost" onClick={shareProfile} title="复制主页链接"><Share2 size={15} /></button>
         {isMe ? (
           <>
             <button className="btn" onClick={() => nav('/settings')}><Settings size={15} /> 设置</button>

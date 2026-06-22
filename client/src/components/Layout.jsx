@@ -6,6 +6,8 @@ import { Logo } from '../assets.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import ScrollChrome from './ScrollChrome.jsx';
+import Shortcuts from './Shortcuts.jsx';
+import QuickCreate from './QuickCreate.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, Gem, Coins, User, Search, Megaphone, Trophy, Shield,
@@ -120,6 +122,8 @@ export default function Layout({ children }) {
         <div className="route-fade" key={loc.pathname}>{children}</div>
       </main>
       <CommandPalette />
+      <Shortcuts />
+      <QuickCreate />
       <nav className="bottom-nav">
         {TABS.map(t => (
           <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => isActive ? 'active' : ''}>

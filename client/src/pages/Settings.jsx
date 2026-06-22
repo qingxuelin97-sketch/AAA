@@ -3,7 +3,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker } from '../ui.jsx';
 import { getThemeMode, setThemeMode } from '../theme.js';
 import { browserVoices, speakBrowser } from '../voice.js';
-import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity } from 'lucide-react';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download } from 'lucide-react';
 
 // Providers' base URLs + wire protocol. Keys stay on the user side.
 // [base, protocol]. Protocol 'openai' = OpenAI-compatible Chat Completions;
@@ -135,6 +135,16 @@ export default function Settings() {
   };
   const clearLocal = () => {
     try { localStorage.removeItem('recent_chars'); toast('已清除本机浏览痕迹'); } catch { toast('清除失败', 'err'); }
+  };
+  const exportData = async () => {
+    try {
+      const d = await api('/settings/export');
+      const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `huanyu-export-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast('已导出你的数据');
+    } catch (e) { toast(e.message, 'err'); }
   };
 
   const TABS = [['model', '语言模型', Cpu], ['voice', '语音模型', Volume2], ['account', '账号安全', UserCog], ['privacy', '隐私', Lock], ['pref', '偏好', SlidersHorizontal]];
@@ -331,7 +341,11 @@ export default function Settings() {
 
             <div className="card priv-danger">
               <div className="section-title"><h2><Trash2 size={16} style={{ verticalAlign: -3, marginRight: 6 }} />数据管理</h2></div>
-              <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>这些操作不可撤销，请谨慎执行。</p>
+              <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>导出你的全部数据，或清理本机/服务端记录。删除类操作不可撤销，请谨慎执行。</p>
+              <div className="priv-data-row">
+                <div><b>导出我的数据</b><div className="muted" style={{ fontSize: 12.5 }}>下载包含资料、设置、角色、剧本与对话的 JSON 备份</div></div>
+                <button className="btn sm" onClick={exportData}><Download size={14} /> 导出 JSON</button>
+              </div>
               <div className="priv-data-row">
                 <div><b>清除本机浏览痕迹</b><div className="muted" style={{ fontSize: 12.5 }}>清空「最近浏览」等仅存于本设备的记录</div></div>
                 <button className="btn sm" onClick={clearLocal}><EyeOff size={14} /> 清除痕迹</button>

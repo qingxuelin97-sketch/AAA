@@ -59,7 +59,7 @@ function Spotlight({ items, onView, onChat }) {
 function Poster({ c, onView, onFav, onChat }) {
   return (
     <article className="poster" onClick={() => onView(c)}>
-      {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={44} /></div>}
+      {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={44} /></div>}
       {c.featured ? <span className="p-feat"><Star size={11} fill="currentColor" /> 推荐</span>
         : c.category ? <span className="p-cat"><CategoryIcon slug={c.category} size={12} /> {categoryName(c.category)}</span> : null}
       <button className={'p-fav' + (c.faved ? ' on' : '')} onClick={e => onFav(e, c)} title="收藏"><Heart size={15} fill={c.faved ? 'currentColor' : 'none'} /></button>
@@ -86,9 +86,11 @@ export default function Home() {
   const [scripts, setScripts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ann, setAnn] = useState(null);
+  const [resume, setResume] = useState([]);
   const toast = useToast();
   const nav = useNavigate();
 
+  useEffect(() => { api('/chat/conversations').then(d => setResume((d.conversations || []).slice(0, 8))).catch(() => {}); }, []);
   useEffect(() => { api('/meta/categories').then(d => setCats(d.categories)).catch(() => {}); }, []);
   useEffect(() => { api('/scripts?sort=hot').then(d => setScripts(d.scripts.slice(0, 6))).catch(() => {}); }, []);
   useEffect(() => { api('/characters/public?sort=hot').then(d => setFeatured(d.characters.filter(c => c.featured).slice(0, 12))).catch(() => {}); }, []);
@@ -136,6 +138,20 @@ export default function Home() {
             <span className="ann-ic"><Megaphone size={19} /></span>
             <div className="ann-tx"><b>{ann.title}</b><p>{ann.body}</p></div>
             <button className="ann-x" onClick={e => { e.stopPropagation(); dismissAnn(); }}><X size={16} /></button>
+          </div>
+        )}
+
+        {resume.length > 0 && (
+          <div className="resume-rail">
+            <div className="rr-head"><Clock size={15} /> <b>继续聊天</b></div>
+            <div className="rr-track">
+              {resume.map(cv => (
+                <button key={cv.id} className="rr-item" onClick={() => nav('/chats/' + cv.id)} title={cv.character_name}>
+                  <Avatar src={cv.character_avatar} name={cv.character_name} size={48} />
+                  <span>{cv.character_name}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

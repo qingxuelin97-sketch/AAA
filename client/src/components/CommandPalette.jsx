@@ -35,6 +35,7 @@ export default function CommandPalette() {
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const [chars, setChars] = useState([]);
+  const [recents, setRecents] = useState([]);
   const nav = useNavigate();
   const { logout } = useAuth();
   const inputRef = useRef(null);
@@ -55,7 +56,11 @@ export default function CommandPalette() {
 
   // Reset + focus when opened.
   useEffect(() => {
-    if (open) { setQ(''); setActive(0); setChars([]); setTimeout(() => inputRef.current?.focus(), 30); }
+    if (open) {
+      setQ(''); setActive(0); setChars([]);
+      try { setRecents(JSON.parse(localStorage.getItem('recent_chars') || '[]').filter(c => c && c.id).slice(0, 5)); } catch { setRecents([]); }
+      setTimeout(() => inputRef.current?.focus(), 30);
+    }
   }, [open]);
 
   // Live character search (debounced).
@@ -92,14 +97,16 @@ export default function CommandPalette() {
     return actions.filter((a) => a.label.toLowerCase().includes(term));
   }, [term, actions]);
 
+  const showRecents = !term && recents.length > 0;
   // Flatten into one indexed list for keyboard navigation.
   const flat = useMemo(() => {
     const rows = [];
+    if (showRecents) recents.forEach((c) => rows.push({ kind: 'char', c }));
     chars.forEach((c) => rows.push({ kind: 'char', c }));
     navHits.forEach((n) => rows.push({ kind: 'nav', n }));
     actionHits.forEach((a) => rows.push({ kind: 'action', a }));
     return rows;
-  }, [chars, navHits, actionHits]);
+  }, [chars, navHits, actionHits, recents, showRecents]);
 
   useEffect(() => { if (active >= flat.length) setActive(0); }, [flat.length, active]);
 
@@ -149,6 +156,14 @@ export default function CommandPalette() {
         </div>
         <div className="cmdk-list" ref={listRef}>
           {flat.length === 0 && <div className="cmdk-empty">没有找到「{q}」相关结果</div>}
+
+          {showRecents && <div className="cmdk-group">最近浏览</div>}
+          {showRecents && recents.map((c) => (
+            <Row key={'r' + c.id} row={{ kind: 'char', c }} icon={<Avatar src={c.avatar} name={c.name} size={26} />}>
+              <b>{c.name}</b>
+              <small className="muted">{c.tagline || c.intro || '角色'}</small>
+            </Row>
+          ))}
 
           {chars.length > 0 && <div className="cmdk-group">角色</div>}
           {chars.map((c) => (

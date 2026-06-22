@@ -590,6 +590,22 @@ async function route(method, path, search, body, headers) {
     db.messages = filter('messages', x => !ids.includes(x.conversation_id));
     save(); return J({ ok: true, removed: ids.length });
   }
+  // Export everything the caller owns as a portable JSON bundle.
+  if (method === 'GET' && path === '/settings/export') {
+    need();
+    const myConvs = filter('conversations', c => c.user_id === me.id);
+    const convIds = myConvs.map(c => c.id);
+    return J({
+      exported_at: now(), app: '幻域 HUANYU',
+      profile: publicUser(me),
+      settings: pubSettings(find('settings', x => x.user_id === me.id) || {}, me),
+      characters: filter('characters', c => c.owner_id === me.id).map(c => charView(c)),
+      scripts: filter('scripts', sc => sc.author_id === me.id),
+      conversations: myConvs.map(c => ({ ...c, messages: filter('messages', x => x.conversation_id === c.id) })),
+      favorites: filter('favorites', f => f.user_id === me.id).map(f => f.character_id),
+      stats: { characters: filter('characters', c => c.owner_id === me.id).length, conversations: convIds.length, messages: filter('messages', x => convIds.includes(x.conversation_id)).length },
+    });
+  }
 
   // Detect provider models (browser → provider directly). Protocol-aware.
   if (method === 'POST' && path === '/settings/models') {
