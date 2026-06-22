@@ -96,6 +96,12 @@ function migrate() {
     const g = find('users', x => x.username === 'gm'); if (g) g.official = 1;
     db._mig.official_gm = 1;
   }
+  if (!db._mig.official_demo) {
+    // 旅人 is a platform-operated account (super admin + official verification) —
+    // official accounts must never carry creator certification.
+    const d = find('users', x => x.username === 'demo'); if (d) d.official = 1;
+    db._mig.official_demo = 1;
+  }
   if (!db._mig.friends) {
     // Seed a small friend graph + a sample DM so the friend system isn't empty.
     const byName = (n) => find('users', x => x.username === n);
@@ -160,7 +166,7 @@ function seed() {
   const u4 = mkUser('kenji', '剑持', '武侠与历史题材，刀光剑影里见人心。', face('m', 2), bannerArt('kenji', '#5a3d1f', '#221409'), 6700, 10, 0);
   const gmu = mkUser('gm', '幻域管理员', '幻域平台官方管理员账号。', face('m', 4), bannerArt('gm', '#5a2a18', '#2a130b'), 0, 0, 0);
   gmu.is_gm = 1; u1.is_gm = 1;
-  Object.assign(u1, { svip: 1, verified: 1, verified_note: '幻域官方认证', vip_until: new Date(Date.now() + 3650 * 86400000).toISOString(), bio: '幻域官方认证 · 平台超级管理员｜SVIP 尊享会员，欢迎来到幻域。' });
+  Object.assign(u1, { svip: 1, verified: 1, official: 1, verified_note: '幻域官方认证', vip_until: new Date(Date.now() + 3650 * 86400000).toISOString(), bio: '幻域官方认证 · 平台超级管理员｜SVIP 尊享会员，欢迎来到幻域。' });
   Object.assign(gmu, { verified: 1, verified_note: '官方账号', official: 1 });
   insert('announcements', { author_id: gmu.id, title: '欢迎来到幻域 · 测试版', body: '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。未配置自己 API 的用户将自动使用平台内置语言服务，每次对话按金币计费（VIP/SVIP 享折扣）。欢迎创建角色、剧本，并在剧场与多位 AI 同台联机演出。', pinned: 1 });
   insert('announcements', { author_id: gmu.id, title: 'Bug 赏金计划上线', body: '发现任何 bug 或体验问题，请提交至官方技术 QQ：3487923507，一经采纳奖励 100 金币起，重大问题另有钻石与 VIP 加码。你的每一条反馈都在帮幻域变得更好。', pinned: 1 });

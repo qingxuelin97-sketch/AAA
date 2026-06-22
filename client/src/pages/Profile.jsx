@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, CountUp, CreatorV, CouncilorBadge } from '../ui.jsx';
-import { Crown, Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, ShieldCheck, BadgeCheck, X, Pencil, Share2, Check, MessageSquare } from 'lucide-react';
+import { useToast, Avatar, CountUp, IdentityBadges } from '../ui.jsx';
+import { Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, BadgeCheck, Crown, X, Pencil, Share2, Check, MessageSquare } from 'lucide-react';
 import { pid } from '../assets.jsx';
 import ReportButton from '../components/ReportButton.jsx';
 
@@ -85,18 +85,10 @@ export default function Profile() {
           <div style={{ padding: '0 24px 22px', marginTop: -42 }}>
             <div className="profile-head" style={{ alignItems: 'flex-end' }}>
               <div style={{ border: '4px solid var(--panel)', borderRadius: '50%' }}><Avatar src={u.avatar} name={u.display_name} size={84} /></div>
-              <div style={{ flex: 1, paddingBottom: 6 }}>
-                <h2 style={{ margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                  {u.display_name}
-                  {u.verified && <span className="v-badge" title={u.verified_note || '官方认证'}><BadgeCheck size={18} /></span>}
-                  <CreatorV tier={u.creator_tier} size={18} />
-                  {u.is_gm && <span className="gm-tag"><ShieldCheck size={12} /> 超级管理员</span>}
-                  {u.is_councilor && <CouncilorBadge size={14} />}
-                  {u.svip ? <span className="svip-badge">SVIP</span> : u.vip ? <span className="vip-badge"><Crown size={12} /> VIP</span> : null}
-                </h2>
-                {u.creator_tier && <div className={'cert-line cv-line ' + u.creator_tier}><CreatorV tier={u.creator_tier} size={13} /> {u.creator_tier === 'gold' ? '殿堂创作者 · 全站 TOP 1' : u.creator_tier === 'yellow' ? '知名创作者' : '创作者认证'}</div>}
-                {u.verified && u.verified_note && <div className="cert-line"><BadgeCheck size={13} /> {u.verified_note}</div>}
-                <div className="muted" style={{ fontSize: 14, marginTop: 4 }}>{u.bio || '这位玩家还没有写简介'}</div>
+              <div style={{ flex: 1, paddingBottom: 6, minWidth: 0 }}>
+                <h2 className="pf-name">{u.display_name}</h2>
+                <IdentityBadges u={u} />
+                <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{u.bio || '这位玩家还没有写简介'}</div>
               </div>
             </div>
             <div className="stat-row">

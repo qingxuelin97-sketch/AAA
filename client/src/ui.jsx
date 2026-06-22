@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { uploadFile } from './api.jsx';
-import { UploadCloud, UserRound, CheckCircle2, AlertTriangle, Info, Scale } from 'lucide-react';
+import { UploadCloud, UserRound, CheckCircle2, AlertTriangle, Info, Scale, BadgeCheck, ShieldCheck, Crown } from 'lucide-react';
 import { FACE_PRESETS, ANIME_PRESETS, ONLINE_AV } from './faces.js';
 
 const STATIC_IMG = 'image/png,image/jpeg,image/webp,image/avif';
@@ -99,6 +99,32 @@ export function CouncilorBadge({ size = 13 }) {
       <Scale size={Math.round(size * 0.82)} /> 议员
     </span>
   );
+}
+
+// Unified identity chip row for profiles — every badge shares one chip shape and
+// size so the header reads as a tidy, deliberate set rather than a jumble. Order
+// is fixed (官方 → 管理 → 议员 → 创作者 → 会员) and official accounts never show a
+// creator chip (creator_tier is already nulled server-side for official users).
+const CREATOR_CHIP = {
+  bronze: { label: '创作者认证', cls: 'idb-cv-bronze' },
+  yellow: { label: '知名创作者', cls: 'idb-cv-yellow' },
+  gold: { label: '殿堂创作者', cls: 'idb-cv-gold' },
+};
+export function IdentityBadges({ u, className = '' }) {
+  if (!u) return null;
+  const tier = !u.official ? CREATOR_CHIP[u.creator_tier] : null;
+  const chips = [];
+  if (u.verified || u.official) chips.push(
+    <span key="official" className="idb idb-official" title={u.verified_note || '官方认证'}>
+      <BadgeCheck size={13} /> {u.verified_note || (u.official ? '官方账号' : '官方认证')}
+    </span>);
+  if (u.is_gm) chips.push(<span key="gm" className="idb idb-gm"><ShieldCheck size={13} /> 超级管理员</span>);
+  if (u.is_councilor) chips.push(<span key="council" className="idb idb-council"><Scale size={12} /> 议员</span>);
+  if (tier) chips.push(<span key="cv" className={'idb ' + tier.cls}><span className="idb-v">V</span> {tier.label}</span>);
+  if (u.svip) chips.push(<span key="svip" className="idb idb-svip">SVIP</span>);
+  else if (u.vip) chips.push(<span key="vip" className="idb idb-vip"><Crown size={12} /> VIP</span>);
+  if (!chips.length) return null;
+  return <div className={'idb-row ' + className}>{chips}</div>;
 }
 
 export function Avatar({ src, name = '', size = 40 }) {

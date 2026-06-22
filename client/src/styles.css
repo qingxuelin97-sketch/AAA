@@ -2418,3 +2418,51 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   .friends-layout.has-dm .fr-list { display: none; }
   .friends-layout:not(.has-dm) .fr-dm { display: none; }
 }
+
+/* ============ Unified identity badges (profile header) ============ */
+/* One chip shape for every credential — same height, radius, weight — so the
+   header reads as a deliberate set instead of a pile of mismatched stickers. */
+.pf-name { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.2; letter-spacing: .3px; }
+.idb-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 7px 0 2px; }
+.idb {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 23px; padding: 0 9px; border-radius: 7px;
+  font-size: 11.5px; font-weight: 800; line-height: 1; white-space: nowrap;
+  letter-spacing: .2px; border: 1px solid transparent; user-select: none;
+}
+.idb svg { flex: none; }
+.idb-v {
+  display: inline-grid; place-items: center; width: 14px; height: 14px;
+  border-radius: 50%; font-size: 9px; font-weight: 900; color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.45);
+}
+
+/* Official / verified — calm blue, outline style */
+.idb-official { background: rgba(43,127,201,.12); color: #2477bf; border-color: rgba(43,127,201,.26); }
+/* Super admin — warm amber */
+.idb-gm { background: rgba(176,110,42,.13); color: #985b27; border-color: rgba(176,110,42,.28); }
+/* Councilor — deep navy field with gold lettering */
+.idb-council { background: linear-gradient(135deg, #1f3354, #16243d); color: #f0d18a; border-color: rgba(232,200,120,.4); }
+.idb-council svg { color: #e8c878; }
+/* Creator tiers */
+.idb-cv-bronze { background: rgba(169,116,63,.14); color: #9a6531; border-color: rgba(169,116,63,.32); }
+.idb-cv-bronze .idb-v { background: linear-gradient(150deg, #d39a6a, #a9743f); }
+.idb-cv-yellow { background: rgba(224,162,19,.15); color: #b07d0d; border-color: rgba(224,162,19,.34); }
+.idb-cv-yellow .idb-v { background: linear-gradient(150deg, #ffd451, #e0a213); }
+.idb-cv-gold { background: rgba(200,134,10,.16); color: #b3760a; border-color: rgba(200,134,10,.4); }
+.idb-cv-gold .idb-v { background: linear-gradient(150deg, #ffe79a, #f0b429 45%, #c8860a); color: #5a3c05; }
+/* Membership — filled gradients to mark premium tier */
+.idb-svip { background: linear-gradient(135deg, #7b4be0, #c23bd0); color: #fff; border-color: transparent; box-shadow: 0 1px 4px rgba(140,60,200,.3); }
+.idb-vip { background: linear-gradient(135deg, #f0d585, #c89a36); color: #463209; border-color: transparent; box-shadow: 0 1px 4px rgba(180,140,40,.28); }
+
+[data-theme="dark"] .idb-official { background: rgba(70,150,220,.16); color: #79bdf0; border-color: rgba(70,150,220,.3); }
+[data-theme="dark"] .idb-gm { background: rgba(200,130,60,.16); color: #e7a96b; border-color: rgba(200,130,60,.32); }
+[data-theme="dark"] .idb-council { background: linear-gradient(135deg, #243a5e, #182a45); color: #f3d894; }
+[data-theme="dark"] .idb-cv-bronze { background: rgba(211,154,106,.16); color: #d99f6c; border-color: rgba(211,154,106,.34); }
+[data-theme="dark"] .idb-cv-yellow { background: rgba(255,212,81,.15); color: #f0c44e; border-color: rgba(255,212,81,.32); }
+[data-theme="dark"] .idb-cv-gold { background: rgba(255,206,90,.16); color: #f5cf6a; border-color: rgba(255,206,90,.36); }
+
+@media (max-width: 560px) {
+  .pf-name { font-size: 19px; }
+  .idb { height: 21px; font-size: 11px; padding: 0 8px; }
+}
