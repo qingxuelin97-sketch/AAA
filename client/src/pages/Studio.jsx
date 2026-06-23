@@ -1,20 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CountUp } from '../ui.jsx';
-import { Eye, Heart, Star, Play, Coins, Users, Drama, ScrollText, TrendingUp, Sparkles } from 'lucide-react';
+import { BarChart, LineChart } from '../components/Charts.jsx';
+import { Eye, Heart, Star, Play, Coins, Users, Drama, ScrollText, TrendingUp, Sparkles, BarChart3, LineChart as LineIcon, Gift, Crown, Check, ChevronRight } from 'lucide-react';
 
 const fmt = (n) => (n >= 10000 ? (n / 10000).toFixed(1) + 'w' : String(n ?? 0));
 
 export default function Studio() {
   const toast = useToast();
   const nav = useNavigate();
+  const { refreshUser } = useAuth();
   const [data, setData] = useState(null);
-  const [tab, setTab] = useState('characters');
+  const [tab, setTab] = useState('analytics');
+  const [claiming, setClaiming] = useState(false);
 
-  useEffect(() => { api('/me/studio').then(setData).catch(e => toast(e.message, 'err')); /* eslint-disable-next-line */ }, []);
+  const load = () => api('/me/studio').then(setData).catch(e => toast(e.message, 'err'));
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
   if (!data) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
   const t = data.totals;
+  const plan = data.revenue_plan;
 
   const cards = [
     { ic: Eye, label: '角色总浏览', val: t.char_uses, accent: '#3f8195' },
@@ -22,14 +27,26 @@ export default function Studio() {
     { ic: Star, label: '被收藏', val: t.char_favs, accent: '#c9962f' },
     { ic: Play, label: '剧本游玩', val: t.script_plays, accent: '#6a8a52' },
     { ic: Coins, label: '剧本收入', val: t.gold_earned, accent: '#c8853f', gold: true },
-    { ic: Users, label: '粉丝', val: t.followers, accent: '#7a6bd0' }
+    { ic: Users, label: '粉丝', val: t.followers, accent: '#7a6bd0' },
   ];
+
+  const topChars = data.characters.slice(0, 8).map(c => ({ label: c.name.slice(0, 4), value: c.uses }));
+  const topLikes = data.characters.slice(0, 8).map(c => ({ label: c.name.slice(0, 4), value: c.likes }));
+  const incomeLine = (data.series || []).map(d => ({ x: d.date, y: d.gold }));
+
+  const claim = async () => {
+    setClaiming(true);
+    try { const d = await api('/me/revenue-plan/claim', { method: 'POST' }); toast(`已领取分成 ${d.reward} 金币`); await refreshUser(); load(); }
+    catch (e) { toast(e.message, 'err'); } finally { setClaiming(false); }
+  };
+
+  const TABS = [['analytics', '数据分析', BarChart3], ['revenue', '收益分成', Gift], ['characters', `角色 ${data.characters.length}`, Drama], ['scripts', `剧本 ${data.scripts.length}`, ScrollText]];
 
   return (
     <>
       <div className="topbar">
         <div style={{ flex: 1 }}><h1><TrendingUp size={20} style={{ verticalAlign: -3, marginRight: 6 }} />创作中心</h1>
-          <div className="sub">你的角色与剧本的数据总览</div></div>
+          <div className="sub">作品数据、收益分析与创作者分成计划</div></div>
         <button className="btn primary" onClick={() => nav('/publish')}><Sparkles size={15} /> 发布新作品</button>
       </div>
 
@@ -44,9 +61,63 @@ export default function Studio() {
         </div>
 
         <div className="tabs-bar" style={{ marginTop: 22 }}>
-          <button className={tab === 'characters' ? 'active' : ''} onClick={() => setTab('characters')}>角色 ({data.characters.length})</button>
-          <button className={tab === 'scripts' ? 'active' : ''} onClick={() => setTab('scripts')}>剧本 ({data.scripts.length})</button>
+          {TABS.map(([k, l, Ic]) => <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}><Ic size={14} style={{ verticalAlign: -2, marginRight: 5 }} />{l}</button>)}
         </div>
+
+        {tab === 'analytics' && (
+          <div className="studio-analytics">
+            <div className="card chart-card">
+              <div className="section-title"><h2><LineIcon size={16} style={{ verticalAlign: -3, marginRight: 6 }} />近 14 天金币收入</h2></div>
+              <LineChart data={incomeLine} color="var(--gold)" unit=" 金" />
+            </div>
+            <div className="chart-grid">
+              <div className="card chart-card">
+                <div className="section-title"><h2><Eye size={15} style={{ verticalAlign: -3, marginRight: 6 }} />角色浏览 TOP</h2></div>
+                <BarChart data={topChars} color="var(--diamond)" />
+              </div>
+              <div className="card chart-card">
+                <div className="section-title"><h2><Heart size={15} style={{ verticalAlign: -3, marginRight: 6 }} />角色点赞 TOP</h2></div>
+                <BarChart data={topLikes} color="var(--accent)" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'revenue' && plan && (
+          <div className="rev-plan">
+            <div className="card rev-hero">
+              <div className="rev-hero-top">
+                <div>
+                  <div className="rev-tier"><Crown size={15} /> {plan.tier_name}</div>
+                  <div className="rev-est">本月可领 <b className="gold-num">{plan.estimate}</b> 金币</div>
+                  <div className="muted" style={{ fontSize: 12.5 }}>人气分 {plan.score} × 分成系数 {Math.round(plan.rate * 100)}%（单月上限 {plan.cap}）</div>
+                </div>
+                <button className="btn primary rev-claim" onClick={claim} disabled={!plan.claimable || claiming}>
+                  {plan.claimed ? <><Check size={16} /> 本月已领</> : claiming ? '领取中…' : <><Gift size={16} /> 领取分成</>}
+                </button>
+              </div>
+              <div className="rev-bar"><div style={{ width: `${Math.min(100, (plan.estimate / plan.cap) * 100)}%` }} /></div>
+            </div>
+
+            <div className="card">
+              <div className="section-title"><h2>分成等级阶梯</h2></div>
+              <div className="rev-tiers">
+                {plan.tiers.map(tr => (
+                  <div key={tr.id} className={'rev-tier-row' + (tr.id === plan.tier ? ' on' : '')}>
+                    <b>{tr.name}</b>
+                    <span className="muted">人气分 ≥ {tr.min}</span>
+                    <span className="rev-rate">{Math.round(tr.rate * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+              <p className="muted" style={{ fontSize: 12.8, lineHeight: 1.7, marginBottom: 0 }}>
+                <b>规则：</b>人气分 = 角色（浏览 + 点赞×2）+ 剧本（游玩 + 点赞×2）实时累计。每自然月可领取一次，
+                金额 = 人气分 × 当前等级系数（封顶 {plan.cap} 金币）。提升作品质量与热度即可解锁更高分成。
+                {plan.next && <> 距「{plan.next.name}」还差 <b>{plan.next.min - plan.score}</b> 人气分。</>}
+              </p>
+            </div>
+          </div>
+        )}
 
         {tab === 'characters' && (data.characters.length === 0
           ? <div className="empty" style={{ padding: 40 }}>还没有创建角色，<a onClick={() => nav('/character/new')} style={{ color: 'var(--accent)', cursor: 'pointer' }}>去创建一个</a></div>

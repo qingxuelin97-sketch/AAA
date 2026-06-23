@@ -64,7 +64,8 @@ router.post('/checkin', authRequired, (req, res) => {
   if (u.last_checkin === today) return res.status(400).json({ error:'今天已经签到过啦' });
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const streak = u.last_checkin === yesterday ? (u.checkin_streak || 0) + 1 : 1;
-  let reward = 100 + Math.min(streak, 7) * 20;
+  // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
+  const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200;
   if (isVip(u)) reward *= 2;
   db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ?').run(today, streak, req.user.id);
   const w = applyTx(req.user.id, { kind:'checkin', gold: reward, memo:`第 ${streak} 天签到` });

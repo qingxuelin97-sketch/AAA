@@ -71,9 +71,54 @@ router.post('/users/:id/councilor', (req, res) => {
 
 router.get('/stats', (req, res) => {
   const c = (t) => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;
-  res.json({ stats: { users: c('users'), characters: c('characters'), scripts: c('scripts'), moments: c('moments'),
-    banned: db.prepare('SELECT COUNT(*) n FROM users WHERE is_banned=1').get().n,
-    reports: db.prepare("SELECT COUNT(*) n FROM reports WHERE status='open'").get().n } });
+  const today = new Date().toISOString().slice(0, 10);
+  const series = (tbl, days = 14) => {
+    let rows = []; try { rows = db.prepare(`SELECT created_at FROM ${tbl}`).all(); } catch { rows = []; }
+    const out = [];
+    for (let i = days - 1; i >= 0; i--) { const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10); out.push({ date: d.slice(5), n: rows.filter(x => (x.created_at || '').slice(0, 10) === d).length }); }
+    return out;
+  };
+  const econ = (cond) => { try { return db.prepare(`SELECT COALESCE(SUM(${cond}),0) n FROM transactions`).get().n; } catch { return 0; } };
+  res.json({
+    stats: { users: c('users'), characters: c('characters'), scripts: c('scripts'), moments: c('moments'),
+      banned: db.prepare('SELECT COUNT(*) n FROM users WHERE is_banned=1').get().n,
+      reports: db.prepare("SELECT COUNT(*) n FROM reports WHERE status='open'").get().n,
+      conversations: c('conversations'), councilors: db.prepare('SELECT COUNT(*) n FROM users WHERE is_councilor=1').get().n,
+      proposals: db.prepare("SELECT COUNT(*) n FROM proposals WHERE status IN ('pending','voting')").get().n,
+      checkins_today: db.prepare('SELECT COUNT(*) n FROM users WHERE last_checkin = ?').get(today).n },
+    series: { users: series('users'), characters: series('characters'), conversations: series('conversations') },
+    economy: { gold_in: econ('CASE WHEN gold>0 THEN gold ELSE 0 END'), gold_out: econ('CASE WHEN gold<0 THEN -gold ELSE 0 END'), diamond_in: econ('CASE WHEN diamond>0 THEN diamond ELSE 0 END') },
+  });
+});
+
+// ---- GM full backup / restore (数据保全：可一键导出整库 JSON，重新部署后再导入恢复) ----
+const BACKUP_TABLES = ['users', 'settings', 'characters', 'world_entries', 'favorites', 'conversations', 'messages',
+  'scripts', 'reviews', 'reports', 'script_purchases', 'posts', 'post_likes', 'moments', 'moment_likes', 'comments',
+  'follows', 'groups', 'group_members', 'group_messages', 'theaters', 'theater_members', 'theater_cast', 'theater_messages',
+  'announcements', 'invite_keys', 'transactions', 'categories', 'app_config', 'ai_images', 'daily_progress', 'event_claims',
+  'proposals', 'proposal_votes', 'proposal_endorse', 'proposal_comments', 'friendships', 'friend_requests', 'dm_messages'];
+router.get('/backup', (req, res) => {
+  const dump = {};
+  for (const t of BACKUP_TABLES) { try { dump[t] = db.prepare(`SELECT * FROM ${t}`).all(); } catch { /* table absent */ } }
+  res.json({ app: '幻域 HUANYU', kind: 'server', exported_at: new Date().toISOString(), tables: dump });
+});
+router.post('/restore', (req, res) => {
+  const tables = req.body?.tables;
+  if (!tables || typeof tables !== 'object') return res.status(400).json({ error: '备份文件无效' });
+  const tx = db.transaction(() => {
+    for (const t of BACKUP_TABLES) {
+      const rows = tables[t]; if (!Array.isArray(rows)) continue;
+      try {
+        db.prepare(`DELETE FROM ${t}`).run();
+        for (const row of rows) {
+          const cols = Object.keys(row); if (!cols.length) continue;
+          db.prepare(`INSERT INTO ${t} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).run(...cols.map(k => row[k]));
+        }
+      } catch { /* skip incompatible table */ }
+    }
+  });
+  try { tx(); } catch (e) { return res.status(500).json({ error: '恢复失败：' + e.message }); }
+  res.json({ ok: true });
 });
 
 // ---- users ----

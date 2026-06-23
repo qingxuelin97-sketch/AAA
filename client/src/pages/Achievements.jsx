@@ -15,6 +15,9 @@ const ICONS = {
   Landmark, CalendarCheck, Dices, Coins,
 };
 const CATS = ['对话', '创作', '社交', '议会', '财富'];
+// Honor medal tier by reward magnitude — gives each achievement a sense of rarity.
+const medalOf = (reward) => (reward >= 300 ? 'gold' : reward >= 120 ? 'silver' : 'bronze');
+const INTRO_KEY = 'huanyu_ach_intro';
 
 export default function Achievements() {
   const toast = useToast();
@@ -24,6 +27,14 @@ export default function Achievements() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
+  // Ceremonial opening animation — plays once per session.
+  const [intro, setIntro] = useState(() => { try { return !sessionStorage.getItem(INTRO_KEY); } catch { return true; } });
+  useEffect(() => {
+    if (!intro) return;
+    try { sessionStorage.setItem(INTRO_KEY, '1'); } catch { /* */ }
+    const t = setTimeout(() => setIntro(false), 2600);
+    return () => clearTimeout(t);
+  }, [intro]);
 
   const load = () => api('/achievements').then(d => { setList(d.achievements || []); setSummary(d.summary); }).catch(e => toast(e.message, 'err')).finally(() => setLoading(false));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -38,9 +49,7 @@ export default function Achievements() {
     if (!claimables.length) return;
     setBusy('all');
     let total = 0;
-    for (const a of claimables) {
-      try { const d = await api(`/achievements/${a.id}/claim`, { method: 'POST' }); total += d.reward; } catch { /* skip */ }
-    }
+    for (const a of claimables) { try { const d = await api(`/achievements/${a.id}/claim`, { method: 'POST' }); total += d.reward; } catch { /* skip */ } }
     toast(`一键领取完成，共 +${total} 金币`); refreshUser?.(); await load(); setBusy('');
   };
 
@@ -54,10 +63,22 @@ export default function Achievements() {
 
   return (
     <>
+      {intro && (
+        <div className="ach-intro" onClick={() => setIntro(false)}>
+          <div className="ach-intro-rays" />
+          <div className="ach-intro-core">
+            <div className="ach-intro-trophy"><Trophy size={68} /></div>
+            <div className="ach-intro-title">成就殿堂</div>
+            <div className="ach-intro-sub">已点亮 <b>{summary?.unlocked ?? 0}</b> 项荣耀</div>
+          </div>
+          <div className="ach-intro-spark" aria-hidden="true">{Array.from({ length: 14 }).map((_, i) => <i key={i} style={{ '--i': i }} />)}</div>
+        </div>
+      )}
+
       <div className="topbar">
         <div style={{ flex: 1 }}>
           <h1><Trophy size={20} style={{ verticalAlign: -3, marginRight: 7 }} />成就殿堂</h1>
-          <div className="sub">在各板块留下足迹，解锁成就、领取金币</div>
+          <div className="sub">在各板块留下足迹，点亮荣耀、领取奖励</div>
         </div>
         {summary?.claimable > 0 && (
           <button className="btn primary" disabled={busy === 'all'} onClick={claimAll}>
@@ -66,15 +87,18 @@ export default function Achievements() {
         )}
       </div>
 
-      <div className="page" style={{ maxWidth: 960 }}>
-        <div className="ach-hero">
+      <div className="page" style={{ maxWidth: 980 }}>
+        <div className="ach-hall">
+          <div className="ach-hall-glow" aria-hidden="true" />
           <div className="ach-hero-ring" style={{ '--p': pct }}>
             <div className="ach-hero-num"><b><CountUp value={summary?.unlocked || 0} format={false} /></b><span>/ {summary?.total || 0}</span></div>
           </div>
           <div className="ach-hero-tx">
-            <b>已解锁 {summary?.unlocked || 0} 项成就</b>
-            <p>持续探索对话、创作、社交、议会与财富各板块，点亮全部 {summary?.total || 0} 项成就。{summary?.claimable > 0 && <span className="ach-pending">　有 {summary.claimable} 项奖励待领取！</span>}</p>
+            <div className="ach-hall-badge"><Crown size={13} /> 荣誉殿堂</div>
+            <b>已铭刻 {summary?.unlocked || 0} 项成就</b>
+            <p>横跨对话、创作、社交、议会与财富——每一次足迹都化作殿堂之光。{summary?.claimable > 0 && <span className="ach-pending">　{summary.claimable} 项荣誉奖励待领取！</span>}</p>
             <div className="ach-hero-bar"><span style={{ width: pct + '%' }} /></div>
+            <div className="ach-hall-stat"><span>完成度 {pct}%</span><span>·</span><span>金牌 {list.filter(a => a.unlocked && medalOf(a.reward) === 'gold').length}</span><span>银牌 {list.filter(a => a.unlocked && medalOf(a.reward) === 'silver').length}</span><span>铜牌 {list.filter(a => a.unlocked && medalOf(a.reward) === 'bronze').length}</span></div>
           </div>
         </div>
 
@@ -85,8 +109,9 @@ export default function Achievements() {
               {byCat[cat].map(a => {
                 const Ic = ICONS[a.icon] || Award;
                 const p = Math.round((a.value / a.goal) * 100);
+                const medal = medalOf(a.reward);
                 return (
-                  <div key={a.id} className={'ach-card' + (a.unlocked ? ' unlocked' : '') + (a.claimed ? ' claimed' : '')}>
+                  <div key={a.id} className={'ach-card medal-' + medal + (a.unlocked ? ' unlocked' : '') + (a.claimed ? ' claimed' : '')}>
                     <span className="ach-ic"><Ic size={22} />{a.unlocked && <span className="ach-ic-check"><Check size={11} /></span>}</span>
                     <div className="ach-body">
                       <div className="ach-name">{a.name}{!a.unlocked && <Lock size={12} className="ach-lock" />}</div>

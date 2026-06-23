@@ -623,6 +623,39 @@ function creatorTier(u) {
   return 'bronze';
 }
 
+/* ----------------------------- creator revenue-share program (创作者收益分成计划) -----------------------------
+   月度激励：按创作者作品的人气分（角色 uses+likes×2、剧本 plays+likes×2）核定，
+   分档享受不同分成系数，每自然月可领取一次。规则全透明展示给创作者。 */
+const REV_TIERS = [
+  { id: 'seed', name: '萌新创作者', min: 0, rate: 0.15 },
+  { id: 'bronze', name: '铜牌创作者', min: 500, rate: 0.18 },
+  { id: 'silver', name: '银牌创作者', min: 1500, rate: 0.22 },
+  { id: 'gold', name: '金牌创作者', min: 5000, rate: 0.26 },
+  { id: 'hall', name: '殿堂创作者', min: 15000, rate: 0.30 },
+];
+const REV_CAP = 5000; // 单月激励上限（金币）
+const revTierOf = (score) => [...REV_TIERS].reverse().find(t => score >= t.min) || REV_TIERS[0];
+function revenuePlan(u) {
+  const score = creatorScore(u.id);
+  const tier = revTierOf(score);
+  const estimate = Math.min(REV_CAP, Math.round(score * tier.rate));
+  const month = new Date().toISOString().slice(0, 7);
+  const claimed = u.rev_claim_month === month;
+  return { score, works: creatorWorks(u.id), tier: tier.id, tier_name: tier.name, rate: tier.rate,
+    estimate, cap: REV_CAP, month, claimed, claimable: estimate > 0 && !claimed,
+    tiers: REV_TIERS, next: REV_TIERS.find(t => t.min > score) || null };
+}
+// Daily positive-income series for charts (last `days` days).
+function incomeSeries(uid, days = 14) {
+  const txs = filter('transactions', t => t.user_id === uid && t.gold > 0);
+  const out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    out.push({ date: d.slice(5), gold: txs.filter(t => (t.created_at || '').slice(0, 10) === d).reduce((s, t) => s + t.gold, 0) });
+  }
+  return out;
+}
+
 /* ----------------------------- council apportionment ----------------------------- */
 const USERS_PER_SEAT = 100; // 平均每 100 名注册用户对应一个议会席位
 const MIN_SEATS = 5;        // 席位下限，保证小规模社区也有可运作的议会
@@ -821,7 +854,16 @@ async function route(method, path, search, body, headers) {
       script_count: scriptRows.length, script_plays: sum(scriptRows, 'plays'), script_sales: sum(scriptRows, 'sales'),
       gold_earned: sum(scriptRows, 'revenue'), followers: filter('follows', f => f.following_id === me.id).length
     };
-    return J({ totals, characters: charRows.sort((a, b) => b.uses - a.uses), scripts: scriptRows.sort((a, b) => b.revenue - a.revenue) });
+    return J({ totals, characters: charRows.sort((a, b) => b.uses - a.uses), scripts: scriptRows.sort((a, b) => b.revenue - a.revenue), series: incomeSeries(me.id, 14), revenue_plan: revenuePlan(me) });
+  }
+  if (method === 'GET' && path === '/me/revenue-plan') { need(); return J({ plan: revenuePlan(me) }); }
+  if (method === 'POST' && path === '/me/revenue-plan/claim') {
+    need(); const plan = revenuePlan(me);
+    if (!plan.claimable) return E(plan.claimed ? '本月激励已领取，下月再来' : '当前暂无可领取的激励，多创作高人气作品吧');
+    me.rev_claim_month = plan.month;
+    const w = applyTx(me.id, { kind: 'revenue_share', gold: plan.estimate, memo: `创作者分成 · ${plan.month}（${plan.tier_name}）` });
+    notify(me.id, `💰 创作者收益分成 ${plan.estimate} 金币已到账（${plan.tier_name}）`, '/studio');
+    return J({ ok: true, reward: plan.estimate, wallet: w, plan: revenuePlan(me) });
   }
   if (method === 'GET' && path === '/characters/public') {
     const cat = search.get('category'), q = (search.get('q') || '').toLowerCase(), sort = search.get('sort');
@@ -1081,7 +1123,9 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/economy/checkin') {
     need(); const today = new Date().toISOString().slice(0, 10); if (me.last_checkin === today) return E('今天已经签到过啦');
     const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10); const streak = me.last_checkin === y ? (me.checkin_streak || 0) + 1 : 1;
-    let reward = 100 + Math.min(streak, 7) * 20; if (isVip(me)) reward *= 2; me.last_checkin = today; me.checkin_streak = streak;
+    // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
+    const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200; if (isVip(me)) reward *= 2;
+    me.last_checkin = today; me.checkin_streak = streak;
     const w = applyTx(me.id, { kind: 'checkin', gold: reward, memo: `第 ${streak} 天签到` }); bumpDaily(me.id, 'checkin'); return J({ wallet: w, reward, streak });
   }
   if (method === 'POST' && path === '/economy/redeem') { need(); const key = find('invite_keys', k => k.code === String(body.code || '').trim()); if (!key) return E('密钥无效'); if (key.used >= key.max_uses) return E('该密钥已用完'); key.used++; if (key.grant_gold || key.grant_diamond) applyTx(me.id, { kind: 'reward', gold: key.grant_gold, diamond: key.grant_diamond, memo: `兑换码 ${key.code}` }); if (key.grant_vip_days) { const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + key.grant_vip_days * 86400000).toISOString(); } save(); return J({ wallet: publicUser(me) }); }
@@ -1532,11 +1576,23 @@ async function route(method, path, search, body, headers) {
   if (path === '/admin/stats' && method === 'GET') {
     gmOnly();
     const today = new Date().toISOString().slice(0, 10);
+    // Daily series (last 14 days) — new users, new chars, new conversations.
+    const cntByDay = (tbl, days = 14) => { const rows = table(tbl); const out = []; for (let i = days - 1; i >= 0; i--) { const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10); out.push({ date: d.slice(5), n: rows.filter(x => (x.created_at || '').slice(0, 10) === d).length }); } return out; };
+    const allTx = table('transactions');
+    const economy = { gold_in: allTx.filter(t => t.gold > 0).reduce((s, t) => s + t.gold, 0), gold_out: allTx.filter(t => t.gold < 0).reduce((s, t) => s - t.gold, 0), diamond_in: allTx.filter(t => t.diamond > 0).reduce((s, t) => s + t.diamond, 0) };
     return J({ stats: { users: table('users').length, characters: table('characters').length, scripts: table('scripts').length,
       moments: table('moments').length, banned: filter('users', u => u.is_banned).length, reports: filter('reports', r => r.status === 'open').length,
       conversations: table('conversations').length, councilors: filter('users', u => u.is_councilor).length,
       proposals: filter('proposals', p => p.status === 'pending' || p.status === 'voting').length,
-      checkins_today: filter('users', u => u.last_checkin === today).length } });
+      checkins_today: filter('users', u => u.last_checkin === today).length },
+      series: { users: cntByDay('users'), characters: cntByDay('characters'), conversations: cntByDay('conversations') }, economy });
+  }
+  // ---------- GM full backup / restore (数据保全) ----------
+  if (path === '/admin/backup' && method === 'GET') { gmOnly(); return J({ app: '幻域 HUANYU', version: 7, exported_at: now(), db }); }
+  if (path === '/admin/restore' && method === 'POST') {
+    gmOnly(); const data = body && body.db; if (!data || typeof data !== 'object') return E('备份文件无效');
+    db = data; if (!db._seq) db._seq = {}; save();
+    return J({ ok: true });
   }
   if (path === '/admin/users' && method === 'GET') {
     gmOnly(); const q = (search.get('q') || '').trim(); let rows;

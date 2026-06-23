@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal, CouncilorBadge } from '../ui.jsx';
-import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw } from 'lucide-react';
+import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Coins, Gem } from 'lucide-react';
+import { BarChart, LineChart } from '../components/Charts.jsx';
 
 export default function Admin() {
   const toast = useToast();
@@ -48,13 +49,37 @@ export default function Admin() {
 
 function Overview({ toast }) {
   const [stats, setStats] = useState(null);
+  const [series, setSeries] = useState(null);
+  const [economy, setEconomy] = useState(null);
   const [msg, setMsg] = useState('');
   const [link, setLink] = useState('');
   const [busy, setBusy] = useState(false);
+  const restoreRef = React.useRef();
   useEffect(() => {
-    api('/admin/stats').then(d => setStats(d.stats)).catch(e => toast(e.message, 'err'));
+    api('/admin/stats').then(d => { setStats(d.stats); setSeries(d.series); setEconomy(d.economy); }).catch(e => toast(e.message, 'err'));
     /* eslint-disable-next-line */
   }, []);
+
+  const backup = async () => {
+    try {
+      const d = await api('/admin/backup');
+      const blob = new Blob([JSON.stringify(d)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `huanyu-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast('已导出全站数据备份');
+    } catch (e) { toast(e.message, 'err'); }
+  };
+  const restore = async (file) => {
+    if (!file) return;
+    if (!confirm('确定用该备份覆盖当前全站数据？此操作不可撤销，建议先导出当前数据。')) return;
+    try {
+      const data = JSON.parse(await file.text());
+      await api('/admin/restore', { method: 'POST', body: data });
+      toast('数据已恢复，请刷新页面'); setTimeout(() => location.reload(), 1200);
+    } catch (e) { toast('恢复失败：' + e.message, 'err'); }
+  };
+
   if (!stats) return <div className="empty">载入中…</div>;
   const items = [
     [stats.users, '用户', Users], [stats.characters, '角色', Crown], [stats.scripts, '剧本', ScrollText],
@@ -75,6 +100,35 @@ function Overview({ toast }) {
           <div key={label} className="adm-stat"><span className="adm-stat-ic"><Ic size={16} /></span><b>{n ?? 0}</b><span>{label}</span></div>
         ))}
       </div>
+
+      {series && (
+        <div className="card chart-card" style={{ marginTop: 18 }}>
+          <div className="section-title"><h2><TrendingUp size={16} style={{ verticalAlign: -3, marginRight: 6 }} />近 14 天新增用户</h2></div>
+          <LineChart data={(series.users || []).map(d => ({ x: d.date, y: d.n }))} color="var(--diamond)" unit=" 人" />
+          <div className="chart-grid" style={{ marginTop: 14 }}>
+            <div><div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>每日新增角色</div><BarChart data={(series.characters || []).slice(-10).map(d => ({ label: d.date.slice(3), value: d.n }))} color="var(--accent)" height={130} /></div>
+            <div><div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>每日新增对话</div><BarChart data={(series.conversations || []).slice(-10).map(d => ({ label: d.date.slice(3), value: d.n }))} color="var(--ok)" height={130} /></div>
+          </div>
+        </div>
+      )}
+      {economy && (
+        <div className="adm-stats adm-stats-rich" style={{ marginTop: 14 }}>
+          <div className="adm-stat"><span className="adm-stat-ic"><Coins size={16} /></span><b className="gold-num">{economy.gold_in}</b><span>金币产出</span></div>
+          <div className="adm-stat"><span className="adm-stat-ic"><Coins size={16} /></span><b>{economy.gold_out}</b><span>金币消耗</span></div>
+          <div className="adm-stat"><span className="adm-stat-ic"><Gem size={16} /></span><b>{economy.diamond_in}</b><span>钻石产出</span></div>
+        </div>
+      )}
+
+      <div className="card" style={{ marginTop: 18 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 17 }}><Download size={16} style={{ verticalAlign: -3, marginRight: 6 }} />数据保全（备份 / 恢复）</h2>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>导出整站数据为 JSON 离线保存；重新部署导致数据重置后，可用备份一键恢复，避免数据丢失。</p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button className="btn" onClick={backup}><Download size={15} /> 导出全站备份</button>
+          <button className="btn" onClick={() => restoreRef.current?.click()}><Upload size={15} /> 从备份恢复</button>
+          <input ref={restoreRef} type="file" accept="application/json" hidden onChange={e => { restore(e.target.files?.[0]); e.target.value = ''; }} />
+        </div>
+      </div>
+
       <div className="card" style={{ marginTop: 18 }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 17 }}><Radio size={16} style={{ verticalAlign: -3, marginRight: 6 }} />全站广播</h2>
         <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>向所有用户推送一条系统通知（出现在每个人的通知中心）。</p>
