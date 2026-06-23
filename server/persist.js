@@ -2,26 +2,49 @@
 // 让数据在容器重新部署（临时磁盘被清空）后依然存活。
 //
 // 启用方式（任选其一，未设置则不启用、零影响）：
-//   1) 微信云托管 / 任意 MySQL：设置环境变量 BACKUP_MYSQL_URL
-//        例：mysql://user:pass@host:3306/dbname
+//   1) 微信云托管 MySQL：在控制台「关联 MySQL」后，平台会注入 MYSQL_* 环境变量，
+//      本模块自动识别并自动建库建表，无需手填 URL；也可手动设 BACKUP_MYSQL_URL。
 //   2) 持久磁盘 / NFS：设置 BACKUP_FILE=/data/huanyu-snapshot.json
 // 可选 BACKUP_INTERVAL_MS（默认 120000，即每 2 分钟滚存一次）。
 import fs from 'node:fs';
 import { exportAll, importAll, rowCount } from './snapshot.js';
 
-const MYSQL_URL = process.env.BACKUP_MYSQL_URL || '';
-const FILE = process.env.BACKUP_FILE || '';
-const INTERVAL = Math.max(15000, parseInt(process.env.BACKUP_INTERVAL_MS, 10) || 120000);
+const env = process.env;
+const FILE = env.BACKUP_FILE || '';
+const INTERVAL = Math.max(15000, parseInt(env.BACKUP_INTERVAL_MS, 10) || 120000);
 const KEY = 'huanyu_snapshot';
 
-export const persistenceEnabled = () => !!(MYSQL_URL || FILE);
-export const persistenceKind = () => (MYSQL_URL ? 'mysql' : FILE ? 'file' : 'none');
+// Resolve a MySQL config from an explicit URL or from common injected env vars
+// (微信云托管 / 腾讯云 / 通用命名都尽量兼容)。返回 null 表示未配置 MySQL。
+function mysqlCfg() {
+  if (env.BACKUP_MYSQL_URL) return { uri: env.BACKUP_MYSQL_URL };
+  const addr = env.MYSQL_ADDRESS || env.MYSQL_ADDR || '';
+  const host = env.MYSQL_HOST || env.DB_HOST || env.MYSQL_IP || (addr ? addr.split(':')[0] : '');
+  if (!host) return null;
+  const port = parseInt(env.MYSQL_PORT || env.DB_PORT || (addr.includes(':') ? addr.split(':')[1] : '') || '3306', 10);
+  const user = env.MYSQL_USERNAME || env.MYSQL_USER || env.DB_USER || 'root';
+  const password = env.MYSQL_PASSWORD || env.MYSQL_PWD || env.DB_PASSWORD || '';
+  const database = (env.MYSQL_DATABASE || env.MYSQL_DB || env.DB_NAME || 'huanyu').replace(/[^A-Za-z0-9_]/g, '') || 'huanyu';
+  return { host, port, user, password, database };
+}
+const MYSQL = mysqlCfg();
+
+export const persistenceEnabled = () => !!(MYSQL || FILE);
+export const persistenceKind = () => (MYSQL ? 'mysql' : FILE ? 'file' : 'none');
 
 let pool = null;
 async function mysql() {
   if (pool) return pool;
-  const { createPool } = await import('mysql2/promise');
-  pool = createPool(MYSQL_URL + (MYSQL_URL.includes('?') ? '&' : '?') + 'connectionLimit=2');
+  const { createPool, createConnection } = await import('mysql2/promise');
+  if (MYSQL.uri) {
+    pool = createPool(MYSQL.uri + (MYSQL.uri.includes('?') ? '&' : '?') + 'connectionLimit=2');
+  } else {
+    // 自动建库：先不带库名连接，确保数据库存在，再连到该库。
+    const boot = await createConnection({ host: MYSQL.host, port: MYSQL.port, user: MYSQL.user, password: MYSQL.password });
+    await boot.query(`CREATE DATABASE IF NOT EXISTS \`${MYSQL.database}\` CHARACTER SET utf8mb4`);
+    await boot.end();
+    pool = createPool({ host: MYSQL.host, port: MYSQL.port, user: MYSQL.user, password: MYSQL.password, database: MYSQL.database, connectionLimit: 2 });
+  }
   await pool.query('CREATE TABLE IF NOT EXISTS app_snapshot (k VARCHAR(64) PRIMARY KEY, v LONGTEXT, updated_at BIGINT)');
   return pool;
 }
@@ -31,13 +54,13 @@ const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 
 
 // Read a snapshot JSON string from the backend (or null if none yet).
 async function pull() {
+  if (MYSQL) { const p = await mysql(); const [rows] = await p.query('SELECT v FROM app_snapshot WHERE k = ?', [KEY]); return rows?.[0]?.v || null; }
   if (FILE) { try { return fs.readFileSync(FILE, 'utf8'); } catch { return null; } }
-  if (MYSQL_URL) { const p = await mysql(); const [rows] = await p.query('SELECT v FROM app_snapshot WHERE k = ?', [KEY]); return rows?.[0]?.v || null; }
   return null;
 }
 async function put(json) {
-  if (FILE) { fs.mkdirSync(FILE.replace(/\/[^/]*$/, '') || '.', { recursive: true }); fs.writeFileSync(FILE + '.tmp', json); fs.renameSync(FILE + '.tmp', FILE); return; }
-  if (MYSQL_URL) { const p = await mysql(); await p.query('INSERT INTO app_snapshot (k,v,updated_at) VALUES (?,?,?) ON DUPLICATE KEY UPDATE v=VALUES(v), updated_at=VALUES(updated_at)', [KEY, json, Date.now()]); }
+  if (MYSQL) { const p = await mysql(); await p.query('INSERT INTO app_snapshot (k,v,updated_at) VALUES (?,?,?) ON DUPLICATE KEY UPDATE v=VALUES(v), updated_at=VALUES(updated_at)', [KEY, json, Date.now()]); return; }
+  if (FILE) { fs.mkdirSync(FILE.replace(/\/[^/]*$/, '') || '.', { recursive: true }); fs.writeFileSync(FILE + '.tmp', json); fs.renameSync(FILE + '.tmp', FILE); }
 }
 
 // Save current DB → backend (skips when nothing changed).
