@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker } from '../ui.jsx';
-import { getThemeMode, setThemeMode } from '../theme.js';
+import { getThemeMode, setThemeMode, getGlass, setGlass } from '../theme.js';
 import { browserVoices, speakBrowser } from '../voice.js';
 import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download } from 'lucide-react';
 
@@ -64,6 +64,7 @@ export default function Settings() {
   const [detectingVoice, setDetectingVoice] = useState(false);
   const [testing, setTesting] = useState(false);
   const [theme, setTheme] = useState(getThemeMode());
+  const [glass, setGlassOn] = useState(getGlass());
   const [bvoices, setBvoices] = useState(() => browserVoices());
   useEffect(() => {
     const upd = () => setBvoices(browserVoices());
@@ -382,6 +383,10 @@ export default function Settings() {
               </div>
               <div className="hint">即时生效并记忆在本机；「跟随系统」会随设备深/浅色自动切换。</div>
             </div>
+            <label className="switch" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div><b style={{ fontSize: 14 }}>毛玻璃外观</b><div className="muted" style={{ fontSize: 12.5 }}>为卡片、侧边栏与弹窗启用磨砂玻璃质感，界面更通透灵动</div></div>
+              <span><input type="checkbox" checked={glass} onChange={e => { const v = e.target.checked; setGlassOn(v); setGlass(v); }} /><span className="track" /></span>
+            </label>
             <label className="switch" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
               <div><b style={{ fontSize: 14 }}>显示成人 (NSFW) 内容</b><div className="muted" style={{ fontSize: 12.5 }}>开启后广场将展示标记为成人的角色与剧本</div></div>
               <span><input type="checkbox" checked={!!s.nsfw} onChange={e => set('nsfw', e.target.checked ? 1 : 0)} /><span className="track" /></span>

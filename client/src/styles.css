@@ -2790,3 +2790,52 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 @keyframes introZoom { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
 @keyframes introOut { to { opacity: 0; visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { .ach-intro-rays, .ach-intro-spark, .ach-intro-trophy { animation: none; } .ach-intro { animation: introOut 0.4s ease 1.2s forwards; } }
+
+/* ---- 收益分成 mini 统计 ---- */
+.rev-mini { display: flex; gap: 10px; margin-top: 14px; }
+.rev-mini > div { flex: 1; text-align: center; padding: 10px; border-radius: 12px; background: var(--bg-2); }
+.rev-mini b { display: block; font-size: 18px; font-family: var(--serif); }
+.rev-mini span { font-size: 11.5px; color: var(--muted); }
+
+/* ============================================================
+   毛玻璃（玻璃拟态）外观选项 + 更灵动的交互
+   仅在 设置→偏好 开启后通过 [data-glass="on"] 生效；默认关闭，零影响。
+   ============================================================ */
+[data-glass="on"] .card,
+[data-glass="on"] .studio-card,
+[data-glass="on"] .adm-stat,
+[data-glass="on"] .ach-card,
+[data-glass="on"] .poster .p-info,
+[data-glass="on"] .chat-menu,
+[data-glass="on"] .draw-panel,
+[data-glass="on"] .draw-stage {
+  background: color-mix(in srgb, var(--panel) 60%, transparent) !important;
+  backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border-color: color-mix(in srgb, var(--border) 55%, transparent);
+}
+[data-glass="on"] .sidebar {
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+  backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+[data-glass="on"] .modal {
+  background: color-mix(in srgb, var(--panel) 68%, transparent) !important;
+  backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%);
+}
+[data-glass="on"] .modal-backdrop { background: rgba(20,16,10,0.30); backdrop-filter: blur(3px); }
+[data-glass="on"] .topbar { background: color-mix(in srgb, var(--bg) 55%, transparent); }
+[data-glass="on"] .studio-cards .studio-card,
+[data-glass="on"] .rev-mini > div { background: color-mix(in srgb, var(--panel) 45%, transparent); }
+[data-theme="dark"][data-glass="on"] .card,
+[data-theme="dark"][data-glass="on"] .studio-card,
+[data-theme="dark"][data-glass="on"] .adm-stat,
+[data-theme="dark"][data-glass="on"] .ach-card { background: color-mix(in srgb, var(--panel) 48%, transparent) !important; }
+
+/* 更灵动：交互卡片轻微上浮 + 弹性，仅作用于可点击的统计/列表卡，安全不影响排版 */
+.studio-card, .adm-stat, .rev-tier-row, .studio-row { transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s, background 0.16s; }
+.studio-card:hover, .adm-stat:hover { transform: translateY(-3px) scale(1.015); box-shadow: var(--shadow); }
+.studio-row:hover { transform: translateX(3px); }
+.rev-tier-row:hover { transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) {
+  .studio-card, .adm-stat, .rev-tier-row, .studio-row { transition: none; }
+  .studio-card:hover, .adm-stat:hover, .studio-row:hover, .rev-tier-row:hover { transform: none; }
+}

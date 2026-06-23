@@ -290,7 +290,7 @@ async function streamReply(res, conv, character, settings, userContent) {
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
     if (userContent) { try { db.prepare('UPDATE conversations SET affinity = COALESCE(affinity,0) + 3 WHERE id = ?').run(conv.id); } catch { /* */ } }
     // Deduct the platform fee only after a successful reply (no charge on failure).
-    if (feeDue) { try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》` }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ } }
+    if (feeDue) { try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ } }
   }
   res.write('data: [DONE]\n\n');
   res.end();
@@ -300,9 +300,10 @@ async function streamReply(res, conv, character, settings, userContent) {
 router.post('/tts', authRequired, async (req, res) => {
   const settings = getSettings(req.user.id);
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(req.user.id);
-  const { text: rawText, voice: reqVoice } = req.body || {};
+  const { text: rawText, voice: reqVoice, character_id } = req.body || {};
   if (!rawText) return res.status(400).json({ error: '缺少文本' });
   const text = String(rawText).slice(0, 4000);
+  const ttsRefOwner = character_id ? db.prepare('SELECT owner_id FROM characters WHERE id = ?').get(character_id)?.owner_id : null;
 
   // Own voice API (free) takes priority; otherwise fall back to the platform service, billed per sentence.
   let proto, base, key, model, voice, fee = 0;
@@ -320,7 +321,7 @@ router.post('/tts', authRequired, async (req, res) => {
   const out = await synthesize({ proto, base, key, model, voice, text });
   if (!out.ok) return res.status(out.status || 502).json({ error: out.error });
   if (fee) {
-    try { const w = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}` }); res.setHeader('X-Gold-Fee', String(fee)); res.setHeader('X-Gold-Balance', String(w.gold)); }
+    try { const w = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}`, ref_owner: ttsRefOwner }); res.setHeader('X-Gold-Fee', String(fee)); res.setHeader('X-Gold-Balance', String(w.gold)); }
     catch (e) { return res.status(402).json({ error: e.message }); }
   }
   res.setHeader('Content-Type', out.contentType);

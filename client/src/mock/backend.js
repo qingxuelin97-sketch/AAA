@@ -381,12 +381,13 @@ const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.no
 function publicUser(u) {
   return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, official: !!u.official, creator_tier: creatorTier(u), created_at: u.created_at };
 }
-function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '' }) {
+function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '', ref_owner = null }) {
   const u = user(uid);
   if (u.gold + gold < 0) throw new Error('金币不足');
   if (u.diamond + diamond < 0) throw new Error('钻石不足');
   u.gold += gold; u.diamond += diamond;
-  insert('transactions', { user_id: uid, kind, gold, diamond, memo });
+  // ref_owner: 该笔消费归属的创作者（用于"按用户真实投入分成"），仅当消费者非作者本人时记录。
+  insert('transactions', { user_id: uid, kind, gold, diamond, memo, ref_owner: (ref_owner && ref_owner !== uid) ? ref_owner : null });
   save();
   return { gold: u.gold, diamond: u.diamond };
 }
@@ -550,7 +551,7 @@ async function streamCompletion(conv, character, settings, userContent, me) {
         insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() }); conv.updated_at = now();
         if (userContent) conv.affinity = (conv.affinity || 0) + 3; // 好感度随有效互动增长
         // Only now deduct the platform fee — successful reply.
-        if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》` }); send({ fee: feeDue }); } catch { /* */ } }
+        if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); send({ fee: feeDue }); } catch { /* */ } }
         save();
       }
       controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close();
@@ -624,26 +625,36 @@ function creatorTier(u) {
 }
 
 /* ----------------------------- creator revenue-share program (创作者收益分成计划) -----------------------------
-   月度激励：按创作者作品的人气分（角色 uses+likes×2、剧本 plays+likes×2）核定，
-   分档享受不同分成系数，每自然月可领取一次。规则全透明展示给创作者。 */
+   分成基数 = 其他用户在该创作者作品上"真实花掉的金币"（平台对话费 + 平台语音费，
+   按消费记录的 ref_owner 归属）。创作者按等级系数从这笔"被投入金币池"中分成，
+   等级由累计被投入额决定，可随时领取尚未领取的部分。规则全透明。 */
 const REV_TIERS = [
-  { id: 'seed', name: '萌新创作者', min: 0, rate: 0.15 },
-  { id: 'bronze', name: '铜牌创作者', min: 500, rate: 0.18 },
-  { id: 'silver', name: '银牌创作者', min: 1500, rate: 0.22 },
-  { id: 'gold', name: '金牌创作者', min: 5000, rate: 0.26 },
-  { id: 'hall', name: '殿堂创作者', min: 15000, rate: 0.30 },
+  { id: 'seed', name: '萌新创作者', min: 0, rate: 0.50 },
+  { id: 'bronze', name: '铜牌创作者', min: 500, rate: 0.55 },
+  { id: 'silver', name: '银牌创作者', min: 2000, rate: 0.60 },
+  { id: 'gold', name: '金牌创作者', min: 8000, rate: 0.65 },
+  { id: 'hall', name: '殿堂创作者', min: 30000, rate: 0.70 },
 ];
-const REV_CAP = 5000; // 单月激励上限（金币）
-const revTierOf = (score) => [...REV_TIERS].reverse().find(t => score >= t.min) || REV_TIERS[0];
-function revenuePlan(u) {
-  const score = creatorScore(u.id);
-  const tier = revTierOf(score);
-  const estimate = Math.min(REV_CAP, Math.round(score * tier.rate));
+const revTierOf = (pool) => [...REV_TIERS].reverse().find(t => pool >= t.min) || REV_TIERS[0];
+// Gold others spent on this creator's works (platform AI + voice fees), attributed via ref_owner.
+function creatorSpendPool(uid) {
   const month = new Date().toISOString().slice(0, 7);
-  const claimed = u.rev_claim_month === month;
-  return { score, works: creatorWorks(u.id), tier: tier.id, tier_name: tier.name, rate: tier.rate,
-    estimate, cap: REV_CAP, month, claimed, claimable: estimate > 0 && !claimed,
-    tiers: REV_TIERS, next: REV_TIERS.find(t => t.min > score) || null };
+  let total = 0, monthSum = 0;
+  filter('transactions', t => t.ref_owner === uid && (t.kind === 'ai_fee' || t.kind === 'voice_fee')).forEach(t => {
+    const spent = Math.max(0, -t.gold); total += spent;
+    if ((t.created_at || '').slice(0, 7) === month) monthSum += spent;
+  });
+  return { total, month: monthSum };
+}
+function revenuePlan(u) {
+  const pool = creatorSpendPool(u.id);
+  const tier = revTierOf(pool.total);
+  const entitled = Math.floor(pool.total * tier.rate);
+  const claimed = u.rev_claimed_total || 0;
+  const claimable_amount = Math.max(0, entitled - claimed);
+  return { pool_total: pool.total, pool_month: pool.month, works: creatorWorks(u.id),
+    tier: tier.id, tier_name: tier.name, rate: tier.rate, entitled, claimed, claimable_amount,
+    claimable: claimable_amount > 0, tiers: REV_TIERS, next: REV_TIERS.find(t => t.min > pool.total) || null };
 }
 // Daily positive-income series for charts (last `days` days).
 function incomeSeries(uid, days = 14) {
@@ -859,11 +870,12 @@ async function route(method, path, search, body, headers) {
   if (method === 'GET' && path === '/me/revenue-plan') { need(); return J({ plan: revenuePlan(me) }); }
   if (method === 'POST' && path === '/me/revenue-plan/claim') {
     need(); const plan = revenuePlan(me);
-    if (!plan.claimable) return E(plan.claimed ? '本月激励已领取，下月再来' : '当前暂无可领取的激励，多创作高人气作品吧');
-    me.rev_claim_month = plan.month;
-    const w = applyTx(me.id, { kind: 'revenue_share', gold: plan.estimate, memo: `创作者分成 · ${plan.month}（${plan.tier_name}）` });
-    notify(me.id, `💰 创作者收益分成 ${plan.estimate} 金币已到账（${plan.tier_name}）`, '/studio');
-    return J({ ok: true, reward: plan.estimate, wallet: w, plan: revenuePlan(me) });
+    if (!plan.claimable) return E('暂无可领取的分成；当用户在你的作品上消费金币后即可分成');
+    const amount = plan.claimable_amount;
+    me.rev_claimed_total = (me.rev_claimed_total || 0) + amount;
+    const w = applyTx(me.id, { kind: 'revenue_share', gold: amount, memo: `创作者分成（${plan.tier_name} · ${Math.round(plan.rate * 100)}%）` });
+    notify(me.id, `💰 创作者收益分成 ${amount} 金币已到账（${plan.tier_name}）`, '/studio');
+    return J({ ok: true, reward: amount, wallet: w, plan: revenuePlan(me) });
   }
   if (method === 'GET' && path === '/characters/public') {
     const cat = search.get('category'), q = (search.get('q') || '').toLowerCase(), sort = search.get('sort');
@@ -988,6 +1000,8 @@ async function route(method, path, search, body, headers) {
   }
   if (method === 'POST' && path === '/chat/tts') {
     need(); const s = find('settings', x => x.user_id === me.id);
+    // Attribute the voice spend to the character's creator (for revenue share).
+    const ttsRefOwner = body.character_id ? find('characters', x => x.id === +body.character_id)?.owner_id : null;
     // Pick credentials: the user's own voice API (free) takes priority; otherwise
     // fall back to the platform voice service, billed per sentence (VIP discount).
     let vbase, vkey, vmodel, vname, vproto, fee = 0;
@@ -1008,7 +1022,7 @@ async function route(method, path, search, body, headers) {
     // platform service) and surface the charge + new balance via response headers.
     const finalize = (res) => {
       if (!fee || !res || !res.ok) return res;
-      let w; try { w = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}` }); } catch { return res; }
+      let w; try { w = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}`, ref_owner: ttsRefOwner }); } catch { return res; }
       const ct = res.headers.get('content-type') || 'audio/mpeg';
       return new Response(res.body, { headers: { 'content-type': ct, 'X-Gold-Fee': String(fee), 'X-Gold-Balance': String(w.gold) } });
     };

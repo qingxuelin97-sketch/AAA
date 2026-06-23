@@ -88,15 +88,20 @@ export default function Studio() {
             <div className="card rev-hero">
               <div className="rev-hero-top">
                 <div>
-                  <div className="rev-tier"><Crown size={15} /> {plan.tier_name}</div>
-                  <div className="rev-est">本月可领 <b className="gold-num">{plan.estimate}</b> 金币</div>
-                  <div className="muted" style={{ fontSize: 12.5 }}>人气分 {plan.score} × 分成系数 {Math.round(plan.rate * 100)}%（单月上限 {plan.cap}）</div>
+                  <div className="rev-tier"><Crown size={15} /> {plan.tier_name} · 分成 {Math.round(plan.rate * 100)}%</div>
+                  <div className="rev-est">可领取 <b className="gold-num">{plan.claimable_amount}</b> 金币</div>
+                  <div className="muted" style={{ fontSize: 12.5 }}>用户累计为你的作品投入 <b className="gold-num">{plan.pool_total}</b> 金币 · 你应得 {plan.entitled} · 已领 {plan.claimed}</div>
                 </div>
                 <button className="btn primary rev-claim" onClick={claim} disabled={!plan.claimable || claiming}>
-                  {plan.claimed ? <><Check size={16} /> 本月已领</> : claiming ? '领取中…' : <><Gift size={16} /> 领取分成</>}
+                  {claiming ? '领取中…' : plan.claimable ? <><Gift size={16} /> 领取分成</> : <><Check size={16} /> 暂无可领</>}
                 </button>
               </div>
-              <div className="rev-bar"><div style={{ width: `${Math.min(100, (plan.estimate / plan.cap) * 100)}%` }} /></div>
+              <div className="rev-bar"><div style={{ width: `${plan.entitled ? Math.min(100, (plan.claimed / plan.entitled) * 100) : 0}%` }} /></div>
+              <div className="rev-mini">
+                <div><b className="gold-num">{plan.pool_total}</b><span>累计被投入</span></div>
+                <div><b className="gold-num">{plan.pool_month}</b><span>本月被投入</span></div>
+                <div><b>{plan.works}</b><span>作品数</span></div>
+              </div>
             </div>
 
             <div className="card">
@@ -105,15 +110,15 @@ export default function Studio() {
                 {plan.tiers.map(tr => (
                   <div key={tr.id} className={'rev-tier-row' + (tr.id === plan.tier ? ' on' : '')}>
                     <b>{tr.name}</b>
-                    <span className="muted">人气分 ≥ {tr.min}</span>
-                    <span className="rev-rate">{Math.round(tr.rate * 100)}%</span>
+                    <span className="muted">累计被投入 ≥ {tr.min} 金币</span>
+                    <span className="rev-rate">分成 {Math.round(tr.rate * 100)}%</span>
                   </div>
                 ))}
               </div>
               <p className="muted" style={{ fontSize: 12.8, lineHeight: 1.7, marginBottom: 0 }}>
-                <b>规则：</b>人气分 = 角色（浏览 + 点赞×2）+ 剧本（游玩 + 点赞×2）实时累计。每自然月可领取一次，
-                金额 = 人气分 × 当前等级系数（封顶 {plan.cap} 金币）。提升作品质量与热度即可解锁更高分成。
-                {plan.next && <> 距「{plan.next.name}」还差 <b>{plan.next.min - plan.score}</b> 人气分。</>}
+                <b>规则：</b>当其他用户在你的角色上使用平台对话 / 语音（消耗金币）时，这些金币计入你的「被投入池」。
+                你可按当前等级**分成比例**从池中提取收益，随时领取尚未领取的部分。被投入越多，等级与分成比例越高。
+                {plan.next && <> 距「{plan.next.name}」还差用户再投入 <b>{plan.next.min - plan.pool_total}</b> 金币。</>}
               </p>
             </div>
           </div>

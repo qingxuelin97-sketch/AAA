@@ -16,7 +16,15 @@ export function applyTheme(mode = getThemeMode()) {
   try { window.dispatchEvent(new Event('huanyu-theme')); } catch { /* */ }
 }
 export function setThemeMode(mode) { localStorage.setItem(KEY, mode); applyTheme(mode); }
+
+// 毛玻璃（玻璃拟态）外观开关 — persisted, applied via data-glass on <html>.
+const GLASS_KEY = 'huanyu_glass';
+export function getGlass() { return localStorage.getItem(GLASS_KEY) === '1'; }
+export function applyGlass(on = getGlass()) { document.documentElement.dataset.glass = on ? 'on' : 'off'; }
+export function setGlass(on) { localStorage.setItem(GLASS_KEY, on ? '1' : '0'); applyGlass(on); }
+
 export function initTheme() {
   applyTheme();
+  applyGlass();
   try { mq().addEventListener('change', () => { if (getThemeMode() === 'system') applyTheme('system'); }); } catch { /* older browsers */ }
 }

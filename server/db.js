@@ -347,6 +347,8 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN is_councilor INTEGER DEFAULT 0',
   'ALTER TABLE users ADD COLUMN last_active INTEGER',
   'ALTER TABLE users ADD COLUMN rev_claim_month TEXT',
+  'ALTER TABLE users ADD COLUMN rev_claimed_total INTEGER DEFAULT 0',
+  'ALTER TABLE transactions ADD COLUMN ref_owner INTEGER',
   'ALTER TABLE conversations ADD COLUMN affinity INTEGER DEFAULT 0',
   "ALTER TABLE conversations ADD COLUMN memories TEXT DEFAULT '[]'",
   'ALTER TABLE messages ADD COLUMN reaction TEXT',

@@ -252,7 +252,7 @@ export default function Chat() {
     try {
       const res = await fetch('/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ text, voice: character?.voice_name || undefined })
+        body: JSON.stringify({ text, voice: character?.voice_name || undefined, character_id: character?.id })
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
       // Platform voice is billed per sentence — the server reports the charge via headers.
