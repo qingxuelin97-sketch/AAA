@@ -48,10 +48,10 @@ function platformImageKey() { try { return atob(platformCfg().image._ik || '') |
 const platformVoiceReady = () => !!(platformVoiceKey() && platformCfg().voice.base_url);
 const platformImageReady = () => !!(platformImageKey() && platformCfg().image.base_url);
 // Per-conversation platform usage fee (gold). Heavier (100+ message) sessions cost more.
-const PLATFORM_FEE = { base: 10, heavy: 15, heavy_threshold: 100 };
+const PLATFORM_FEE = { base: 20, heavy: 30, heavy_threshold: 100 };
 // Pay-per-use platform feature fees (gold). VIP / SVIP get the membership discount.
-const VOICE_FEE = 10;  // per spoken sentence (platform voice)
-const IMAGE_FEE = 20;  // per generated image
+const VOICE_FEE = 20;  // per spoken sentence (platform voice)
+const IMAGE_FEE = 40;  // per generated image
 // Membership discounts on the platform fee. VIP = 75 折 (0.75), SVIP = 5 折 (0.50).
 const memberDiscount = (u) => (u?.svip ? 0.5 : isVip(u) ? 0.75 : 1);
 // Round a base fee down by the caller's membership discount (min 1 gold).
@@ -270,11 +270,11 @@ function seed() {
 
 /* ----------------------------- daily tasks ----------------------------- */
 const DAILY_TASKS = [
-  { id: 'checkin', name: '完成每日签到', target: 1, reward: 30, key: 'checkin' },
-  { id: 'chat', name: '发起 1 次角色对话', target: 1, reward: 40, key: 'chat' },
-  { id: 'gacha', name: '在扭蛋机抽卡 1 次', target: 1, reward: 30, key: 'gacha' },
-  { id: 'fav', name: '收藏 1 个喜欢的角色', target: 1, reward: 20, key: 'fav' },
-  { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 20, key: 'like' }
+  { id: 'checkin', name: '完成每日签到', target: 1, reward: 15, key: 'checkin' },
+  { id: 'chat', name: '发起 1 次角色对话', target: 1, reward: 20, key: 'chat' },
+  { id: 'gacha', name: '在扭蛋机抽卡 1 次', target: 1, reward: 15, key: 'gacha' },
+  { id: 'fav', name: '收藏 1 个喜欢的角色', target: 1, reward: 10, key: 'fav' },
+  { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 10, key: 'like' }
 ];
 const todayStr = () => new Date().toISOString().slice(0, 10);
 function dailyOf(uid) {
@@ -588,7 +588,7 @@ const PACKAGES = [{ id: 'p1', cny: 6, diamond: 60, bonus: 0 }, { id: 'p2', cny: 
 // Platform activities (活动中心). `claim` events grant a one-time reward; others are
 // informational or link to a multiplayer (联机) destination.
 const EVENTS = [
-  { id: 'newbie', kind: 'claim', tag: '新人', title: '新人见面礼', desc: '初入幻域，领取启程礼包：500 金币 + 20 钻石，立刻开启你的第一段角色扮演。', reward: { gold: 500, diamond: 20 }, accent: '#d97757' },
+  { id: 'newbie', kind: 'claim', tag: '新人', title: '新人见面礼', desc: '初入幻域，领取启程礼包：200 金币 + 10 钻石，开启你的第一段角色扮演。', reward: { gold: 200, diamond: 10 }, accent: '#d97757' },
   { id: 'coop_carnival', kind: 'claim', tag: '联机', title: '限时联机狂欢', desc: '进入「剧场」与多位 AI 角色同台即兴演出，领取联机狂欢礼：60 钻石，并解锁多人同屏剧情。', reward: { gold: 0, diamond: 60 }, link: '/theater', linkText: '前往联机剧场', accent: '#7c5cff' },
   { id: 'group_party', kind: 'link', tag: '联机', title: '创作者联机大厅', desc: '加入群聊与其他创作者实时联机交流、互相导入角色、组队共创剧本。', link: '/groups', linkText: '进入联机大厅', accent: '#3f8195' },
   { id: 'checkin', kind: 'link', tag: '日常', title: '每日签到瓜分金币', desc: '连续签到奖励翻倍递增，VIP 再享双倍。坚持登录，金币越攒越多。', link: '/wallet', linkText: '去签到', accent: '#b3892f' },
@@ -629,11 +629,11 @@ function creatorTier(u) {
    按消费记录的 ref_owner 归属）。创作者按等级系数从这笔"被投入金币池"中分成，
    等级由累计被投入额决定，可随时领取尚未领取的部分。规则全透明。 */
 const REV_TIERS = [
-  { id: 'seed', name: '萌新创作者', min: 0, rate: 0.50 },
-  { id: 'bronze', name: '铜牌创作者', min: 500, rate: 0.55 },
-  { id: 'silver', name: '银牌创作者', min: 2000, rate: 0.60 },
-  { id: 'gold', name: '金牌创作者', min: 8000, rate: 0.65 },
-  { id: 'hall', name: '殿堂创作者', min: 30000, rate: 0.70 },
+  { id: 'seed', name: '萌新创作者', min: 0, rate: 0.20 },
+  { id: 'bronze', name: '铜牌创作者', min: 500, rate: 0.28 },
+  { id: 'silver', name: '银牌创作者', min: 2000, rate: 0.35 },
+  { id: 'gold', name: '金牌创作者', min: 8000, rate: 0.43 },
+  { id: 'hall', name: '殿堂创作者', min: 30000, rate: 0.50 },
 ];
 const revTierOf = (pool) => [...REV_TIERS].reverse().find(t => pool >= t.min) || REV_TIERS[0];
 // Gold others spent on this creator's works (platform AI + voice fees), attributed via ref_owner.
@@ -719,7 +719,7 @@ async function route(method, path, search, body, headers) {
     if (!key) return E('邀请密钥无效');
     if (key.used >= key.max_uses) return E('该邀请密钥已被使用完');
     if (find('users', u => u.username === username)) return E('该用户名已被注册', 409);
-    const u = insert('users', { username, password, display_name: display_name || username, email: email || '', avatar: null, banner: null, bio: '', gold: 1000, diamond: 0, vip_until: null, last_checkin: null, checkin_streak: 0 });
+    const u = insert('users', { username, password, display_name: display_name || username, email: email || '', avatar: null, banner: null, bio: '', gold: 300, diamond: 0, vip_until: null, last_checkin: null, checkin_streak: 0 });
     insert('settings', { user_id: u.id, llm_provider: 'openai', llm_base_url: 'https://api.openai.com/v1', llm_api_key: '', llm_model: 'gpt-4o-mini', llm_temperature: 0.8, llm_max_tokens: 1024, voice_provider: 'openai', voice_protocol: 'openai', voice_base_url: 'https://api.openai.com/v1', voice_api_key: '', voice_model: 'tts-1', voice_name: 'alloy', theme: 'dark', nsfw: 0, notify_email: 0 });
     key.used++;
     if (key.grant_gold || key.grant_diamond) applyTx(u.id, { kind: 'invite', gold: key.grant_gold, diamond: key.grant_diamond, memo: `邀请密钥 ${key.code} 奖励` });
@@ -1453,7 +1453,7 @@ async function route(method, path, search, body, headers) {
     const pick = pool[Math.floor(Math.random() * pool.length)];
     const had = find('favorites', f => f.user_id === me.id && f.character_id === pick.id);
     if (!had) { insert('favorites', { user_id: me.id, character_id: pick.id }); pick.likes = (pick.likes || 0) + 1; }
-    const w = applyTx(me.id, { kind: 'reward', gold: 20, memo: '抽卡返利' });
+    const w = applyTx(me.id, { kind: 'reward', gold: 10, memo: '抽卡返利' });
     return J({ character: { id: pick.id, name: pick.name, avatar: pick.avatar, tagline: pick.tagline }, already: !!had, cost: 50, wallet: w });
   }
 

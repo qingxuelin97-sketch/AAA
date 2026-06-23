@@ -34,7 +34,7 @@ router.post('/tasks/:id/claim', authRequired, (req, res) => {
 
 // ---- events ----
 const EVENTS = [
-  { id: 'newbie', kind: 'claim', tag: '新人', title: '新人见面礼', desc: '初入幻域，领取启程礼包：500 金币 + 20 钻石，立刻开启你的第一段角色扮演。', reward: { gold: 500, diamond: 20 }, accent: '#d97757' },
+  { id: 'newbie', kind: 'claim', tag: '新人', title: '新人见面礼', desc: '初入幻域，领取启程礼包：200 金币 + 10 钻石，开启你的第一段角色扮演。', reward: { gold: 200, diamond: 10 }, accent: '#d97757' },
   { id: 'coop_carnival', kind: 'claim', tag: '联机', title: '限时联机狂欢', desc: '进入「剧场」与多位 AI 角色同台即兴演出，领取联机狂欢礼：60 钻石，并解锁多人同屏剧情。', reward: { gold: 0, diamond: 60 }, link: '/theater', linkText: '前往联机剧场', accent: '#7c5cff' },
   { id: 'group_party', kind: 'link', tag: '联机', title: '创作者联机大厅', desc: '加入群聊与其他创作者实时联机交流、互相导入角色、组队共创剧本。', link: '/groups', linkText: '进入联机大厅', accent: '#3f8195' },
   { id: 'checkin', kind: 'link', tag: '日常', title: '每日签到瓜分金币', desc: '连续签到奖励翻倍递增，VIP 再享双倍。坚持登录，金币越攒越多。', link: '/wallet', linkText: '去签到', accent: '#b3892f' },
@@ -121,7 +121,7 @@ router.post('/gacha', authRequired, (req, res) => {
   const already = db.prepare('SELECT 1 FROM favorites WHERE user_id=? AND character_id=?').get(req.user.id, pick.id);
   if (!already) { db.prepare('INSERT INTO favorites (user_id, character_id) VALUES (?,?)').run(req.user.id, pick.id); db.prepare('UPDATE characters SET likes=likes+1 WHERE id=?').run(pick.id); }
   // small gold consolation
-  const w = applyTx(req.user.id, { kind: 'reward', gold: 20, memo: '抽卡返利' });
+  const w = applyTx(req.user.id, { kind: 'reward', gold: 10, memo: '抽卡返利' });
   try { db.prepare('UPDATE users SET gacha_pulls = COALESCE(gacha_pulls,0) + 1 WHERE id = ?').run(req.user.id); } catch { /* */ }
   bumpDaily(req.user.id, 'gacha');
   res.json({ character: { id: pick.id, name: pick.name, avatar: pick.avatar, tagline: pick.tagline }, already: !!already, cost: GACHA_COST, wallet: w });

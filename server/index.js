@@ -77,4 +77,10 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || '服务器错误' });
 });
 
-app.listen(PORT, () => console.log(`AI 聊天平台后端运行于 http://localhost:${PORT}`));
+// Restore the latest rolling snapshot (if external persistence is configured), then start.
+import('./persist.js').then(async ({ restoreOnBoot, startRolling }) => {
+  await restoreOnBoot();
+  startRolling();
+}).catch(e => console.error('[persist] 初始化失败：', e.message)).finally(() => {
+  app.listen(PORT, () => console.log(`AI 聊天平台后端运行于 http://localhost:${PORT}`));
+});

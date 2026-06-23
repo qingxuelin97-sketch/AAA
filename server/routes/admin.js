@@ -5,6 +5,8 @@ import { applyTx, isVip, notify } from '../wallet.js';
 import { adminView, updatePlatform } from '../platform.js';
 import { creatorTier } from '../creator.js';
 import { councilCfg, saveCouncil, councilSeats, councilSize, baseSeats, totalUsers, USERS_PER_SEAT, MIN_SEATS } from '../council.js';
+import { exportAll, importAll } from '../snapshot.js';
+import { flush } from '../persist.js';
 
 const router = Router();
 const isGm = (uid) => !!db.prepare('SELECT is_gm FROM users WHERE id = ?').get(uid)?.is_gm;
@@ -92,32 +94,14 @@ router.get('/stats', (req, res) => {
 });
 
 // ---- GM full backup / restore (数据保全：可一键导出整库 JSON，重新部署后再导入恢复) ----
-const BACKUP_TABLES = ['users', 'settings', 'characters', 'world_entries', 'favorites', 'conversations', 'messages',
-  'scripts', 'reviews', 'reports', 'script_purchases', 'posts', 'post_likes', 'moments', 'moment_likes', 'comments',
-  'follows', 'groups', 'group_members', 'group_messages', 'theaters', 'theater_members', 'theater_cast', 'theater_messages',
-  'announcements', 'invite_keys', 'transactions', 'categories', 'app_config', 'ai_images', 'daily_progress', 'event_claims',
-  'proposals', 'proposal_votes', 'proposal_endorse', 'proposal_comments', 'friendships', 'friend_requests', 'dm_messages'];
 router.get('/backup', (req, res) => {
-  const dump = {};
-  for (const t of BACKUP_TABLES) { try { dump[t] = db.prepare(`SELECT * FROM ${t}`).all(); } catch { /* table absent */ } }
-  res.json({ app: '幻域 HUANYU', kind: 'server', exported_at: new Date().toISOString(), tables: dump });
+  res.json({ app: '幻域 HUANYU', kind: 'server', exported_at: new Date().toISOString(), tables: exportAll() });
 });
-router.post('/restore', (req, res) => {
+router.post('/restore', async (req, res) => {
   const tables = req.body?.tables;
   if (!tables || typeof tables !== 'object') return res.status(400).json({ error: '备份文件无效' });
-  const tx = db.transaction(() => {
-    for (const t of BACKUP_TABLES) {
-      const rows = tables[t]; if (!Array.isArray(rows)) continue;
-      try {
-        db.prepare(`DELETE FROM ${t}`).run();
-        for (const row of rows) {
-          const cols = Object.keys(row); if (!cols.length) continue;
-          db.prepare(`INSERT INTO ${t} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).run(...cols.map(k => row[k]));
-        }
-      } catch { /* skip incompatible table */ }
-    }
-  });
-  try { tx(); } catch (e) { return res.status(500).json({ error: '恢复失败：' + e.message }); }
+  try { importAll(tables); } catch (e) { return res.status(500).json({ error: '恢复失败：' + e.message }); }
+  try { await flush(true); } catch { /* */ } // persist the restored data immediately
   res.json({ ok: true });
 });
 

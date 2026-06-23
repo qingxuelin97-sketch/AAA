@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   avatar TEXT,
   banner TEXT,
   bio TEXT DEFAULT '',
-  gold INTEGER DEFAULT 1000,
+  gold INTEGER DEFAULT 300,
   diamond INTEGER DEFAULT 0,
   vip_until TEXT,
   last_checkin TEXT,

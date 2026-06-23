@@ -2,9 +2,9 @@ import db from './db.js';
 import { isVip } from './wallet.js';
 
 // Pay-per-use feature fees (gold). VIP / SVIP get the membership discount.
-export const VOICE_FEE = 10;  // per spoken sentence (platform voice)
-export const IMAGE_FEE = 20;  // per generated image
-export const PLATFORM_FEE = { base: 10, heavy: 15, heavy_threshold: 100 };
+export const VOICE_FEE = 20;  // per spoken sentence (platform voice)
+export const IMAGE_FEE = 40;  // per generated image
+export const PLATFORM_FEE = { base: 20, heavy: 30, heavy_threshold: 100 };
 export const memberDiscount = (u) => (u?.svip ? 0.5 : isVip(u) ? 0.75 : 1);
 export const featureFee = (u, base) => Math.max(1, Math.round(base * memberDiscount(u)));
 // Per-reply platform chat fee: heavier (100+ message) sessions cost more.

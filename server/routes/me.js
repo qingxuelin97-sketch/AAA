@@ -9,11 +9,11 @@ const router = Router();
 // ---- creator revenue-share program (创作者收益分成计划) ----
 // 分成基数 = 其他用户在该创作者作品上真实花掉的金币（平台对话费 + 语音费，按 ref_owner 归属）。
 const REV_TIERS = [
-  { id: 'seed', name: '萌新创作者', min: 0, rate: 0.50 },
-  { id: 'bronze', name: '铜牌创作者', min: 500, rate: 0.55 },
-  { id: 'silver', name: '银牌创作者', min: 2000, rate: 0.60 },
-  { id: 'gold', name: '金牌创作者', min: 8000, rate: 0.65 },
-  { id: 'hall', name: '殿堂创作者', min: 30000, rate: 0.70 },
+  { id: 'seed', name: '萌新创作者', min: 0, rate: 0.20 },
+  { id: 'bronze', name: '铜牌创作者', min: 500, rate: 0.28 },
+  { id: 'silver', name: '银牌创作者', min: 2000, rate: 0.35 },
+  { id: 'gold', name: '金牌创作者', min: 8000, rate: 0.43 },
+  { id: 'hall', name: '殿堂创作者', min: 30000, rate: 0.50 },
 ];
 const revTierOf = (pool) => [...REV_TIERS].reverse().find(t => pool >= t.min) || REV_TIERS[0];
 function creatorSpendPool(uid) {

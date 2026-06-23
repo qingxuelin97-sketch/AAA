@@ -2,11 +2,11 @@ import db from './db.js';
 
 // Daily task progress, mirroring the browser build. Counts reset each calendar day.
 export const DAILY_TASKS = [
-  { id: 'checkin', name: '完成每日签到', target: 1, reward: 30, key: 'checkin' },
-  { id: 'chat', name: '发起 1 次角色对话', target: 1, reward: 40, key: 'chat' },
-  { id: 'gacha', name: '在扭蛋机抽卡 1 次', target: 1, reward: 30, key: 'gacha' },
-  { id: 'fav', name: '收藏 1 个喜欢的角色', target: 1, reward: 20, key: 'fav' },
-  { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 20, key: 'like' },
+  { id: 'checkin', name: '完成每日签到', target: 1, reward: 15, key: 'checkin' },
+  { id: 'chat', name: '发起 1 次角色对话', target: 1, reward: 20, key: 'chat' },
+  { id: 'gacha', name: '在扭蛋机抽卡 1 次', target: 1, reward: 15, key: 'gacha' },
+  { id: 'fav', name: '收藏 1 个喜欢的角色', target: 1, reward: 10, key: 'fav' },
+  { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 10, key: 'like' },
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);

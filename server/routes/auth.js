@@ -22,8 +22,8 @@ router.post('/register', (req, res) => {
   if (exists) return res.status(409).json({ error:'该用户名已被注册' });
 
   const hash = bcrypt.hashSync(password, 10);
-  const info = db.prepare('INSERT INTO users (username, email, password_hash, display_name) VALUES (?, ?, ?, ?)')
-    .run(username, email ||'', hash, display_name || username);
+  const info = db.prepare('INSERT INTO users (username, email, password_hash, display_name, gold) VALUES (?, ?, ?, ?, ?)')
+    .run(username, email ||'', hash, display_name || username, 300);
   const id = info.lastInsertRowid;
   db.prepare('INSERT INTO settings (user_id) VALUES (?)').run(id);
   db.prepare('UPDATE invite_keys SET used = used + 1 WHERE code = ?').run(key.code);
