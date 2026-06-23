@@ -87,7 +87,7 @@ export default function Achievements() {
         )}
       </div>
 
-      <div className="page" style={{ maxWidth: 980 }}>
+      <div className="page ach-page" style={{ maxWidth: 980 }}>
         <div className="ach-hall">
           <div className="ach-hall-glow" aria-hidden="true" />
           <div className="ach-hero-ring" style={{ '--p': pct }}>
