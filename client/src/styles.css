@@ -1308,13 +1308,19 @@ body::before, body::after { display: none !important; }
 .affinity-badge .af-tx i { display: block; height: 4px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .affinity-badge .af-tx i em { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ff8aa8, #ff5a8a); transition: width 0.6s var(--spring-soft); }
 
-.chat-drawer-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.28); z-index: 25; animation: fadeIn 0.2s ease both; }
-.chat-drawer { position: absolute; top: 0; right: 0; height: 100%; width: min(360px, 86vw); z-index: 26;
+/* Drawer must sit above the header (z-index:30) — otherwise the header's tool row
+   overlaps the drawer's top-right and swallows the ✕ close click. */
+.chat-drawer-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.28); z-index: 45; animation: fadeIn 0.2s ease both; }
+.chat-drawer { position: absolute; top: 0; right: 0; height: 100%; width: min(360px, 86vw); z-index: 46;
   background: var(--panel); border-left: 1px solid var(--border); box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column; animation: drawerIn 0.34s var(--spring-soft) both; }
 @keyframes drawerIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
 .cd-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .cd-head b { font-size: 14.5px; }
+.cd-head .speak { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; color: var(--muted);
+  transition: background 0.16s, color 0.16s, transform 0.16s var(--spring); }
+.cd-head .speak:hover { background: var(--bg-2); color: var(--text); transform: rotate(90deg); }
+.cd-head .speak:active { transform: scale(0.88) rotate(90deg); }
 .cd-body { overflow-y: auto; padding: 8px 16px 24px; }
 .cd-body section { padding: 16px 0; border-bottom: 1px solid var(--border); }
 .cd-body section:last-child { border-bottom: none; }
@@ -2974,4 +2980,37 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   .ach-page::before { animation: none; }
   .ach-ic-check { animation: none; }
   .nav-item:hover .ic, .nav-item.active .ic { transform: none; }
+}
+
+/* ====================== 滚动揭示 + 原生转场（精细打磨） ====================== */
+
+/* 滚动进入视口时优雅升起。仅 JS 注入 .reveal，故无障碍/无 JS 环境不受影响。 */
+.reveal { opacity: 0; transform: translateY(26px); will-change: opacity, transform;
+  transition: opacity 0.66s cubic-bezier(0.22, 0.61, 0.36, 1), transform 0.66s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(var(--rv-i, 0) * 0.06s); }
+.reveal.reveal-in { opacity: 1; transform: none; }
+
+/* —— 原生 View Transitions：仅内容区做转场，侧栏保持纹丝不动（精细之处） —— */
+.main { view-transition-name: vt-main; }
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(vt-main) { animation: vtOut 0.34s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  ::view-transition-new(vt-main) { animation: vtIn 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  /* 侧栏等根快照前后一致，禁用其默认交叉淡入，避免闪烁 */
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
+@keyframes vtOut {
+  from { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  to   { opacity: 0; transform: translateY(-10px) scale(0.985); filter: blur(3px); } }
+@keyframes vtIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.992); filter: blur(2px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+
+/* 当浏览器接管为原生转场时，把旧的 route-fade 收敛成纯淡入，避免双重动画打架。 */
+@supports (view-transition-name: none) {
+  .route-fade { animation: routeFadeSoft 0.3s ease both; }
+}
+@keyframes routeFadeSoft { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
 }

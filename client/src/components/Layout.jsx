@@ -110,6 +110,34 @@ export default function Layout({ children }) {
     return () => { alive = false; clearInterval(t); };
   }, []);
 
+  // Scroll-reveal — section-level surfaces elegantly rise in as they enter the
+  // viewport (not just on first paint). JS-only opt-in, so no-JS/reduced-motion
+  // users see everything immediately. A MutationObserver re-scans on route change.
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const SEL = '.section-title, .chart-card, .rev-hero, .rev-tiers, .daily-strip, .resume-rail, .adm-stat, .pkg, .ann-banner, .lb-podium';
+    const io = new IntersectionObserver((ents) => {
+      for (const e of ents) if (e.isIntersecting) { e.target.classList.add('reveal-in'); io.unobserve(e.target); }
+    }, { threshold: 0.06, rootMargin: '0px 0px -6% 0px' });
+    let raf = 0, i = 0;
+    const scan = () => {
+      document.querySelectorAll(SEL).forEach(el => {
+        if (el.dataset.rv) return;
+        el.dataset.rv = '1';
+        el.style.setProperty('--rv-i', (i++ % 6));
+        el.classList.add('reveal');
+        io.observe(el);
+      });
+    };
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { i = 0; scan(); }); };
+    schedule();
+    const root = document.querySelector('.main') || document.body;
+    const mo = new MutationObserver(schedule);
+    mo.observe(root, { childList: true, subtree: true });
+    return () => { io.disconnect(); mo.disconnect(); cancelAnimationFrame(raf); };
+  }, []);
+
   return (
     <div className={'app-shell' + (mode !== 'expanded' ? ' sb-' + mode : '')}>
       <Sidebar user={user} unread={unread} dmUnread={dmUnread} mode={mode} peek={peek} cycle={cycle} onLeave={closePeek} />
@@ -132,7 +160,7 @@ export default function Layout({ children }) {
       <QuickCreate />
       <nav className="bottom-nav">
         {TABS.map(t => (
-          <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => isActive ? 'active' : ''}>
+          <NavLink key={t.to} to={t.to} end={t.end} viewTransition className={({ isActive }) => isActive ? 'active' : ''}>
             <t.ic size={21} />
             <span>{t.label}</span>
             {t.to === '/profile' && unread > 0 && <span className="nb">{unread}</span>}
@@ -183,7 +211,7 @@ function Sidebar({ user, unread, dmUnread, mode, peek, cycle, onLeave }) {
             {!collapsed && <div className="nav-section">{g.title}</div>}
             {collapsed && <div className="nav-divider" />}
             {g.items.map(n => (
-              <NavLink key={n.to} to={n.to} end={n.end} title={collapsed ? n.label : undefined} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
+              <NavLink key={n.to} to={n.to} end={n.end} viewTransition title={collapsed ? n.label : undefined} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
                 <span className="ic"><n.ic size={18} /></span>
                 {!collapsed && n.label}
                 {n.badge === 'noti' && unread > 0 && <span className="nav-badge">{unread}</span>}
@@ -195,13 +223,13 @@ function Sidebar({ user, unread, dmUnread, mode, peek, cycle, onLeave }) {
         {user?.is_gm && (
           <div>
             {!collapsed ? <div className="nav-section">管理</div> : <div className="nav-divider" />}
-            <NavLink to="/admin" title={collapsed ? '管理后台' : undefined} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
+            <NavLink to="/admin" viewTransition title={collapsed ? '管理后台' : undefined} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
               <span className="ic"><Shield size={18} /></span>{!collapsed && '管理后台'}
             </NavLink>
           </div>
         )}
       </div>
-      <NavLink to="/publish" className="nav-item" title={collapsed ? '发布作品' : undefined} style={{ color: 'var(--accent)' }}>
+      <NavLink to="/publish" viewTransition className="nav-item" title={collapsed ? '发布作品' : undefined} style={{ color: 'var(--accent)' }}>
         <span className="ic"><Sparkles size={18} /></span>{!collapsed && '发布作品'}
       </NavLink>
       <div className="sidebar-foot">
@@ -242,7 +270,7 @@ function MobileTop({ user, unread, onMenu }) {
 function MobileNav({ user, unread, dmUnread, onClose, installEvt, doInstall }) {
   const { logout } = useAuth();
   const nav = useNavigate();
-  const go = (to) => { nav(to); onClose(); };
+  const go = (to) => { nav(to, { viewTransition: true }); onClose(); };
   return (
     <div className="mnav-mask mobile-only" onClick={onClose}>
       <aside className="mnav" onClick={e => e.stopPropagation()}>
