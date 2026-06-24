@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 # 幻域 · 更新到最新代码（数据不受影响：server/data.sqlite 不在 git 里）
 # 用法：cd /opt/huanyu && bash deploy/update.sh
+#   纯净更新（默认）：强制对齐到 GitHub 最新 main，丢弃服务器上对“代码”的本地改动
+#   （例如上次 npm install 改动了被跟踪的 package-lock.json，普通 git pull 会冲突）。
+#   数据库文件不在 git 里，绝不受影响。
 set -e
 cd "$(dirname "$0")/.."
 
-echo "==> 拉取最新代码"
-git pull
+# 让脚本能找到 node/npm/pm2（cron 或精简 shell 下 PATH 常常不全）
+export PATH="/usr/local/bin:/opt/node20/bin:$PATH"
+BRANCH="${BRANCH:-main}"
+PORT="${PORT:-4000}"
+
+echo "==> 强制同步到 origin/$BRANCH（保留数据库，丢弃代码本地改动）"
+git fetch origin "$BRANCH"
+git reset --hard "origin/$BRANCH"
 
 echo "==> 安装依赖 + 修复原生二进制"
 npm install --registry=https://registry.npmmirror.com
@@ -14,9 +23,11 @@ V=$(node -p "require('rolldown/package.json').version" 2>/dev/null || echo "")
 
 echo "==> 构建前端"
 NODE_OPTIONS=--max-old-space-size=2048 npm run build
-[ -f client/dist/index.html ] || { echo "!! 前端构建失败"; exit 1; }
+[ -f client/dist/index.html ] || { echo "!! 前端构建失败：client/dist/index.html 未生成"; exit 1; }
 
-echo "==> 重启服务"
-pm2 restart huanyu
+echo "==> 重启服务（找不到进程则新建）"
+PM2="$(command -v pm2 || echo /usr/local/bin/pm2)"
+"$PM2" restart huanyu --update-env 2>/dev/null || PORT="$PORT" "$PM2" start server/index.js --name huanyu --update-env
+"$PM2" save 2>/dev/null || true
 
 echo "==> 更新完成"
