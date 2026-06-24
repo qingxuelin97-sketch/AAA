@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
+import { prefetchPath } from '../prefetch.js';
 import { Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
@@ -160,7 +161,7 @@ export default function Layout({ children }) {
       <QuickCreate />
       <nav className="bottom-nav">
         {TABS.map(t => (
-          <NavLink key={t.to} to={t.to} end={t.end} viewTransition className={({ isActive }) => isActive ? 'active' : ''}>
+          <NavLink key={t.to} to={t.to} end={t.end} viewTransition onPointerEnter={() => prefetchPath(t.to)} onPointerDown={() => prefetchPath(t.to)} className={({ isActive }) => isActive ? 'active' : ''}>
             <t.ic size={21} />
             <span>{t.label}</span>
             {t.to === '/profile' && unread > 0 && <span className="nb">{unread}</span>}
@@ -211,7 +212,7 @@ function Sidebar({ user, unread, dmUnread, mode, peek, cycle, onLeave }) {
             {!collapsed && <div className="nav-section">{g.title}</div>}
             {collapsed && <div className="nav-divider" />}
             {g.items.map(n => (
-              <NavLink key={n.to} to={n.to} end={n.end} viewTransition title={collapsed ? n.label : undefined} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
+              <NavLink key={n.to} to={n.to} end={n.end} viewTransition onPointerEnter={() => prefetchPath(n.to)} onPointerDown={() => prefetchPath(n.to)} title={collapsed ? n.label : undefined} className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
                 <span className="ic"><n.ic size={18} /></span>
                 {!collapsed && n.label}
                 {n.badge === 'noti' && unread > 0 && <span className="nav-badge">{unread}</span>}
@@ -294,7 +295,7 @@ function MobileNav({ user, unread, dmUnread, onClose, installEvt, doInstall }) {
             <div key={g.title}>
               <div className="nav-section">{g.title}</div>
               {g.items.map(n => (
-                <button key={n.to} className="nav-item" onClick={() => go(n.to)}>
+                <button key={n.to} className="nav-item" onPointerDown={() => prefetchPath(n.to)} onClick={() => go(n.to)}>
                   <span className="ic"><n.ic size={18} /></span>{n.label}
                   {n.badge === 'noti' && unread > 0 && <span className="nav-badge">{unread}</span>}
                 {n.badge === 'dm' && dmUnread > 0 && <span className="nav-badge">{dmUnread}</span>}
