@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useViewTransitionState } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar, GridSkeleton, CreatorV } from '../ui.jsx';
 import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare, ListChecks, Check, Shuffle } from 'lucide-react';
@@ -57,11 +57,8 @@ function Spotlight({ items, onView, onChat }) {
 }
 
 function Poster({ c, onView, onFav, onChat }) {
-  // While a view transition toward this character is in flight, tag this card as
-  // the shared element so the browser morphs it into the detail page's hero.
-  const morphing = useViewTransitionState('/character/' + c.id);
   return (
-    <article className={'poster' + (morphing ? ' vt-morphing' : '')} style={morphing ? { viewTransitionName: 'vt-card' } : undefined} onClick={() => onView(c)}>
+    <article className="poster" onClick={(e) => onView(c, e)}>
       {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={44} /></div>}
       {c.featured ? <span className="p-feat"><Star size={11} fill="currentColor" /> 推荐</span>
         : c.category ? <span className="p-cat"><CategoryIcon slug={c.category} size={12} /> {categoryName(c.category)}</span> : null}
@@ -120,7 +117,13 @@ export default function Home() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [cat, sort]);
 
-  const view = (c) => nav('/character/' + c.id, { viewTransition: true });
+  // Tag the clicked card as the shared element so the global view-transition
+  // (in App) morphs it into the detail page's hero. Plain navigation otherwise.
+  const view = (c, e) => {
+    const el = e?.currentTarget;
+    if (el && typeof document !== 'undefined' && document.startViewTransition) el.style.viewTransitionName = 'vt-card';
+    nav('/character/' + c.id);
+  };
   const fav = async (e, c) => {
     e.stopPropagation();
     try {

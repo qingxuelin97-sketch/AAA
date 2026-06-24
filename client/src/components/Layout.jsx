@@ -154,7 +154,7 @@ export default function Layout({ children }) {
       {mobileNav && <MobileNav user={user} unread={unread} dmUnread={dmUnread} onClose={() => setMobileNav(false)} installEvt={installEvt} doInstall={doInstall} />}
       <main className="main">
         <ScrollChrome />
-        <div className="route-fade" key={loc.pathname}>{children}</div>
+        <div className="route-fade">{children}</div>
       </main>
       <CommandPalette />
       <QuickCreate />

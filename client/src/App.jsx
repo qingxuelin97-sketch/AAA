@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './api.jsx';
 import { ToastProvider } from './ui.jsx';
 import Layout from './components/Layout.jsx';
@@ -50,10 +50,27 @@ const P = (el) => <Protected>{el}</Protected>;
 
 export default function App() {
   const { user } = useAuth();
+  const location = useLocation();
+  // Defer committing the new location until inside document.startViewTransition,
+  // so the browser captures before/after snapshots and animates the swap. This is
+  // router-agnostic (works with BrowserRouter/HashRouter — no data router needed).
+  const [displayed, setDisplayed] = useState(location);
+  const prev = useRef(location);
+  useEffect(() => {
+    if (location === prev.current) return;
+    const commit = () => { prev.current = location; setDisplayed(location); };
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (typeof document === 'undefined' || !document.startViewTransition || reduce) { commit(); return; }
+    // Promise form (no flushSync) so a suspending lazy route can't crash the transition.
+    document.startViewTransition(() => new Promise((resolve) => {
+      commit();
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    }));
+  }, [location]);
   return (
     <ToastProvider>
       <Suspense fallback={<div className="empty" style={{ paddingTop: 160 }}>载入中…</div>}>
-        <Routes>
+        <Routes location={displayed}>
           <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
           <Route path="/" element={P(<Home />)} />
           <Route path="/scripts" element={P(<Scripts />)} />
