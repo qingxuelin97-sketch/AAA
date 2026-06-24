@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp } from '../ui.jsx';
@@ -63,7 +64,7 @@ export default function Achievements() {
 
   return (
     <>
-      {intro && (
+      {intro && createPortal(
         <div className="ach-intro" onClick={() => setIntro(false)}>
           <div className="ach-intro-rays" />
           <div className="ach-intro-core">
@@ -72,7 +73,8 @@ export default function Achievements() {
             <div className="ach-intro-sub">已点亮 <b>{summary?.unlocked ?? 0}</b> 项荣耀</div>
           </div>
           <div className="ach-intro-spark" aria-hidden="true">{Array.from({ length: 14 }).map((_, i) => <i key={i} style={{ '--i': i }} />)}</div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="topbar">
@@ -112,7 +114,10 @@ export default function Achievements() {
                 const medal = medalOf(a.reward);
                 return (
                   <div key={a.id} className={'ach-card medal-' + medal + (a.unlocked ? ' unlocked' : '') + (a.claimed ? ' claimed' : '')}>
-                    <span className="ach-ic"><Ic size={22} />{a.unlocked && <span className="ach-ic-check"><Check size={11} /></span>}</span>
+                    <span className="ach-ic-wrap">
+                      <span className="ach-ic"><Ic size={22} /></span>
+                      {a.unlocked && <span className="ach-ic-check"><Check size={11} /></span>}
+                    </span>
                     <div className="ach-body">
                       <div className="ach-name">{a.name}{!a.unlocked && <Lock size={12} className="ach-lock" />}</div>
                       <div className="ach-desc">{a.desc}</div>
