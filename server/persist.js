@@ -16,16 +16,18 @@ const KEY = 'huanyu_snapshot';
 
 // Resolve a MySQL config from an explicit URL or from common injected env vars
 // (微信云托管 / 腾讯云 / 通用命名都尽量兼容)。返回 null 表示未配置 MySQL。
+const trim = (v) => (typeof v === 'string' ? v.trim() : v);
 function mysqlCfg() {
-  if (env.BACKUP_MYSQL_URL) return { uri: env.BACKUP_MYSQL_URL };
-  const addr = env.MYSQL_ADDRESS || env.MYSQL_ADDR || '';
-  const host = env.MYSQL_HOST || env.DB_HOST || env.MYSQL_IP || (addr ? addr.split(':')[0] : '');
+  if (env.BACKUP_MYSQL_URL) return { uri: trim(env.BACKUP_MYSQL_URL) };
+  const addr = trim(env.MYSQL_ADDRESS || env.MYSQL_ADDR || '');
+  const host = trim(env.MYSQL_HOST || env.DB_HOST || env.MYSQL_IP || (addr ? addr.split(':')[0] : ''));
   if (!host) return null;
-  const port = parseInt(env.MYSQL_PORT || env.DB_PORT || (addr.includes(':') ? addr.split(':')[1] : '') || '3306', 10);
-  const user = env.MYSQL_USERNAME || env.MYSQL_USER || env.DB_USER || 'root';
-  const password = env.MYSQL_PASSWORD || env.MYSQL_PWD || env.DB_PASSWORD || '';
-  const database = (env.MYSQL_DATABASE || env.MYSQL_DB || env.DB_NAME || 'huanyu').replace(/[^A-Za-z0-9_]/g, '') || 'huanyu';
-  return { host, port, user, password, database };
+  const port = parseInt(trim(env.MYSQL_PORT || env.DB_PORT || (addr.includes(':') ? addr.split(':')[1] : '') || '3306'), 10);
+  const user = trim(env.MYSQL_USERNAME || env.MYSQL_USER || env.DB_USER || 'root');
+  const password = env.MYSQL_PASSWORD ?? env.MYSQL_PWD ?? env.DB_PASSWORD ?? '';
+  const database = trim(env.MYSQL_DATABASE || env.MYSQL_DB || env.DB_NAME || 'huanyu').replace(/[^A-Za-z0-9_]/g, '') || 'huanyu';
+  const ssl = /^(1|true|on|yes)$/i.test(trim(env.MYSQL_SSL || '')) ? { rejectUnauthorized: false } : undefined;
+  return { host, port, user, password, database, ssl };
 }
 const MYSQL = mysqlCfg();
 
@@ -36,17 +38,35 @@ let pool = null;
 async function mysql() {
   if (pool) return pool;
   const { createPool, createConnection } = await import('mysql2/promise');
-  if (MYSQL.uri) {
-    pool = createPool(MYSQL.uri + (MYSQL.uri.includes('?') ? '&' : '?') + 'connectionLimit=2');
-  } else {
-    // 自动建库：先不带库名连接，确保数据库存在，再连到该库。
-    const boot = await createConnection({ host: MYSQL.host, port: MYSQL.port, user: MYSQL.user, password: MYSQL.password });
-    await boot.query(`CREATE DATABASE IF NOT EXISTS \`${MYSQL.database}\` CHARACTER SET utf8mb4`);
-    await boot.end();
-    pool = createPool({ host: MYSQL.host, port: MYSQL.port, user: MYSQL.user, password: MYSQL.password, database: MYSQL.database, connectionLimit: 2 });
+  const ensureTable = (p) => p.query('CREATE TABLE IF NOT EXISTS app_snapshot (k VARCHAR(64) PRIMARY KEY, v LONGTEXT, updated_at BIGINT)');
+  try {
+    if (MYSQL.uri) {
+      pool = createPool(MYSQL.uri + (MYSQL.uri.includes('?') ? '&' : '?') + 'connectionLimit=2');
+      await ensureTable(pool);
+      return pool;
+    }
+    const base = { host: MYSQL.host, port: MYSQL.port, user: MYSQL.user, password: MYSQL.password, connectTimeout: 8000, ...(MYSQL.ssl ? { ssl: MYSQL.ssl } : {}) };
+    const make = () => createPool({ ...base, database: MYSQL.database, connectionLimit: 2 });
+    pool = make();
+    try {
+      await ensureTable(pool); // works directly if the database already exists (无需建库权限)
+    } catch (e) {
+      if (e.code === 'ER_BAD_DB_ERROR' || /unknown database/i.test(e.message || '')) {
+        // 库不存在且账号有建库权限时，自动建库后重连。
+        const boot = await createConnection(base);
+        await boot.query(`CREATE DATABASE IF NOT EXISTS \`${MYSQL.database}\` CHARACTER SET utf8mb4`);
+        await boot.end();
+        await pool.end().catch(() => {}); pool = make();
+        await ensureTable(pool);
+      } else throw e;
+    }
+    return pool;
+  } catch (e) {
+    // 失败时清空缓存，下一次重新建连，避免缓存到坏连接。
+    try { await pool?.end?.(); } catch { /* */ }
+    pool = null;
+    throw e;
   }
-  await pool.query('CREATE TABLE IF NOT EXISTS app_snapshot (k VARCHAR(64) PRIMARY KEY, v LONGTEXT, updated_at BIGINT)');
-  return pool;
 }
 
 let lastHash = '';
