@@ -1,60 +1,43 @@
-import React, { Suspense, useState, useEffect, useRef } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { Suspense, lazy } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './api.jsx';
 import { ToastProvider } from './ui.jsx';
 import Layout from './components/Layout.jsx';
 import Auth from './pages/Auth.jsx';
-import { lazyRoute, mapRoute, prefetchAllIdle } from './prefetch.js';
-import { isLite } from './perf.js';
 
 // Route-level code splitting — each page is fetched on demand so the initial
 // bundle stays small and the discover page paints fast. The login screen and
 // Layout shell stay eager (they're on the critical path for first paint).
-// lazyRoute() additionally exposes `.preload()` so chunks can be warmed ahead of
-// the click (see prefetch.js + Layout's pointer-intent prefetch) — this removes
-// the cold-start stall where the first navigation blocks on a chunk download.
-const Home = lazyRoute(() => import('./pages/Home.jsx'));
-const Library = lazyRoute(() => import('./pages/Library.jsx'));
-const CharacterEditor = lazyRoute(() => import('./pages/CharacterEditor.jsx'));
-const Chat = lazyRoute(() => import('./pages/Chat.jsx'));
-const Settings = lazyRoute(() => import('./pages/Settings.jsx'));
-const Profile = lazyRoute(() => import('./pages/Profile.jsx'));
-const Publish = lazyRoute(() => import('./pages/Publish.jsx'));
-const Scripts = lazyRoute(() => import('./pages/Scripts.jsx'));
-const ScriptDetail = lazyRoute(() => import('./pages/ScriptDetail.jsx'));
-const ScriptEditor = lazyRoute(() => import('./pages/ScriptEditor.jsx'));
-const Community = lazyRoute(() => import('./pages/Community.jsx'));
-const Groups = lazyRoute(() => import('./pages/Groups.jsx'));
-const GroupRoom = lazyRoute(() => import('./pages/GroupRoom.jsx'));
-const Theater = lazyRoute(() => import('./pages/Theater.jsx'));
-const TheaterRoom = lazyRoute(() => import('./pages/TheaterRoom.jsx'));
-const Wallet = lazyRoute(() => import('./pages/Wallet.jsx'));
-const Notifications = lazyRoute(() => import('./pages/Notifications.jsx'));
-const Favorites = lazyRoute(() => import('./pages/Favorites.jsx'));
-const Search = lazyRoute(() => import('./pages/Search.jsx'));
-const CharacterView = lazyRoute(() => import('./pages/CharacterView.jsx'));
-const Announcements = lazyRoute(() => import('./pages/Announcements.jsx'));
-const Leaderboard = lazyRoute(() => import('./pages/Leaderboard.jsx'));
-const Events = lazyRoute(() => import('./pages/Events.jsx'));
-const Admin = lazyRoute(() => import('./pages/Admin.jsx'));
-const Gacha = lazyRoute(() => import('./pages/Gacha.jsx'));
-const Studio = lazyRoute(() => import('./pages/Studio.jsx'));
-const Parliament = lazyRoute(() => import('./pages/Parliament.jsx'));
-const Achievements = lazyRoute(() => import('./pages/Achievements.jsx'));
-const Friends = lazyRoute(() => import('./pages/Friends.jsx'));
-const Draw = lazyRoute(() => import('./pages/Draw.jsx'));
-
-// Map the static nav destinations to their chunk so pointer-intent prefetch (in
-// Layout) can warm exactly the route about to be opened. Param routes (e.g.
-// /chats/:id) are reached from these list pages, which are covered here.
-mapRoute('/', Home); mapRoute('/library', Library); mapRoute('/chats', Chat);
-mapRoute('/settings', Settings); mapRoute('/profile', Profile); mapRoute('/publish', Publish);
-mapRoute('/scripts', Scripts); mapRoute('/community', Community); mapRoute('/groups', Groups);
-mapRoute('/theater', Theater); mapRoute('/wallet', Wallet); mapRoute('/notifications', Notifications);
-mapRoute('/favorites', Favorites); mapRoute('/search', Search); mapRoute('/announcements', Announcements);
-mapRoute('/leaderboard', Leaderboard); mapRoute('/events', Events); mapRoute('/admin', Admin);
-mapRoute('/gacha', Gacha); mapRoute('/studio', Studio); mapRoute('/parliament', Parliament);
-mapRoute('/achievements', Achievements); mapRoute('/friends', Friends); mapRoute('/draw', Draw);
+const Home = lazy(() => import('./pages/Home.jsx'));
+const Library = lazy(() => import('./pages/Library.jsx'));
+const CharacterEditor = lazy(() => import('./pages/CharacterEditor.jsx'));
+const Chat = lazy(() => import('./pages/Chat.jsx'));
+const Settings = lazy(() => import('./pages/Settings.jsx'));
+const Profile = lazy(() => import('./pages/Profile.jsx'));
+const Publish = lazy(() => import('./pages/Publish.jsx'));
+const Scripts = lazy(() => import('./pages/Scripts.jsx'));
+const ScriptDetail = lazy(() => import('./pages/ScriptDetail.jsx'));
+const ScriptEditor = lazy(() => import('./pages/ScriptEditor.jsx'));
+const Community = lazy(() => import('./pages/Community.jsx'));
+const Groups = lazy(() => import('./pages/Groups.jsx'));
+const GroupRoom = lazy(() => import('./pages/GroupRoom.jsx'));
+const Theater = lazy(() => import('./pages/Theater.jsx'));
+const TheaterRoom = lazy(() => import('./pages/TheaterRoom.jsx'));
+const Wallet = lazy(() => import('./pages/Wallet.jsx'));
+const Notifications = lazy(() => import('./pages/Notifications.jsx'));
+const Favorites = lazy(() => import('./pages/Favorites.jsx'));
+const Search = lazy(() => import('./pages/Search.jsx'));
+const CharacterView = lazy(() => import('./pages/CharacterView.jsx'));
+const Announcements = lazy(() => import('./pages/Announcements.jsx'));
+const Leaderboard = lazy(() => import('./pages/Leaderboard.jsx'));
+const Events = lazy(() => import('./pages/Events.jsx'));
+const Admin = lazy(() => import('./pages/Admin.jsx'));
+const Gacha = lazy(() => import('./pages/Gacha.jsx'));
+const Studio = lazy(() => import('./pages/Studio.jsx'));
+const Parliament = lazy(() => import('./pages/Parliament.jsx'));
+const Achievements = lazy(() => import('./pages/Achievements.jsx'));
+const Friends = lazy(() => import('./pages/Friends.jsx'));
+const Draw = lazy(() => import('./pages/Draw.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -67,38 +50,10 @@ const P = (el) => <Protected>{el}</Protected>;
 
 export default function App() {
   const { user } = useAuth();
-  const location = useLocation();
-  // Once signed in and past first paint, gently warm every route chunk during
-  // idle time so the first click on any nav item is instant (no cold-start stall).
-  useEffect(() => { if (user) prefetchAllIdle(); }, [user]);
-  // Defer committing the new location until inside document.startViewTransition,
-  // so the browser captures before/after snapshots and animates the swap. This is
-  // router-agnostic (works with BrowserRouter/HashRouter — no data router needed).
-  const [displayed, setDisplayed] = useState(location);
-  const prev = useRef(location);
-  useEffect(() => {
-    if (location === prev.current) return;
-    const commit = () => { prev.current = location; setDisplayed(location); };
-    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    // Lite devices skip the transition entirely: snapshotting a page full of
-    // blur/shadow on every click is the bulk of the tap-stutter — go instant.
-    if (typeof document === 'undefined' || !document.startViewTransition || reduce || isLite()) { commit(); return; }
-    // Promise form (no flushSync) so a suspending lazy route can't crash the transition.
-    const transition = document.startViewTransition(() => new Promise((resolve) => {
-      commit();
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    }));
-    // When navigations come faster than a transition can finish (rapid clicks), the
-    // browser skips the in-flight one and rejects these promises with AbortError.
-    // Swallow them so quick taps don't spew unhandled promise rejections.
-    transition.ready?.catch(() => {});
-    transition.finished?.catch(() => {});
-    transition.updateCallbackDone?.catch(() => {});
-  }, [location]);
   return (
     <ToastProvider>
       <Suspense fallback={<div className="empty" style={{ paddingTop: 160 }}>载入中…</div>}>
-        <Routes location={displayed}>
+        <Routes>
           <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
           <Route path="/" element={P(<Home />)} />
           <Route path="/scripts" element={P(<Scripts />)} />

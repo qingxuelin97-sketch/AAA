@@ -58,7 +58,7 @@ function Spotlight({ items, onView, onChat }) {
 
 function Poster({ c, onView, onFav, onChat }) {
   return (
-    <article className="poster" onClick={(e) => onView(c, e)}>
+    <article className="poster" onClick={() => onView(c)}>
       {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={44} /></div>}
       {c.featured ? <span className="p-feat"><Star size={11} fill="currentColor" /> 推荐</span>
         : c.category ? <span className="p-cat"><CategoryIcon slug={c.category} size={12} /> {categoryName(c.category)}</span> : null}
@@ -117,13 +117,7 @@ export default function Home() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [cat, sort]);
 
-  // Tag the clicked card as the shared element so the global view-transition
-  // (in App) morphs it into the detail page's hero. Plain navigation otherwise.
-  const view = (c, e) => {
-    const el = e?.currentTarget;
-    if (el && typeof document !== 'undefined' && document.startViewTransition) el.style.viewTransitionName = 'vt-card';
-    nav('/character/' + c.id);
-  };
+  const view = (c) => nav('/character/' + c.id);
   const fav = async (e, c) => {
     e.stopPropagation();
     try {

@@ -36,19 +36,12 @@ export function burst(x, y, colors = ['#ff5a8a', '#ff8aa8', '#ffd24a', '#e2885f'
 
 export function initFx() {
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // Each clickable host needs position:relative + overflow:hidden so the ripple is
-  // contained. getComputedStyle forces a synchronous style recalc, so do it once
-  // per element (cached) instead of on every click — keeps taps off the layout path.
-  const prepared = new WeakSet();
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     const t = e.target.closest('.btn, .nav-item, .cast-chip, .seg button, .cat-bar button, .send-btn, .task-row .btn, .theme-seg button, .tabs-bar button');
     if (!t || t.disabled || t.classList.contains('no-ripple')) return;
-    if (!prepared.has(t)) {
-      prepared.add(t);
-      if (getComputedStyle(t).position === 'static') t.style.position = 'relative';
-      if (!t.style.overflow) t.style.overflow = 'hidden';
-    }
+    if (getComputedStyle(t).position === 'static') t.style.position = 'relative';
+    if (!t.style.overflow) t.style.overflow = 'hidden';
     if (!reduce) spawnRipple(t, e.clientX, e.clientY);
   }, { passive: true });
 
