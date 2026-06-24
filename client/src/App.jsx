@@ -5,6 +5,7 @@ import { ToastProvider } from './ui.jsx';
 import Layout from './components/Layout.jsx';
 import Auth from './pages/Auth.jsx';
 import { lazyRoute, mapRoute, prefetchAllIdle } from './prefetch.js';
+import { isLite } from './perf.js';
 
 // Route-level code splitting — each page is fetched on demand so the initial
 // bundle stays small and the discover page paints fast. The login screen and
@@ -79,7 +80,9 @@ export default function App() {
     if (location === prev.current) return;
     const commit = () => { prev.current = location; setDisplayed(location); };
     const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (typeof document === 'undefined' || !document.startViewTransition || reduce) { commit(); return; }
+    // Lite devices skip the transition entirely: snapshotting a page full of
+    // blur/shadow on every click is the bulk of the tap-stutter — go instant.
+    if (typeof document === 'undefined' || !document.startViewTransition || reduce || isLite()) { commit(); return; }
     // Promise form (no flushSync) so a suspending lazy route can't crash the transition.
     const transition = document.startViewTransition(() => new Promise((resolve) => {
       commit();

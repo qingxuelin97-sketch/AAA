@@ -3024,3 +3024,50 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 }
 /* morph 进行时让卡片浮于其它内容之上，避免被相邻卡片裁切 */
 .poster.vt-morphing { z-index: 5; }
+
+/* ============================================================
+   性能精简模式 (perf-lite) — 在触屏 / 低端 / 省电 / 减弱动效 设备上
+   去掉最吃 GPU 的连续合成开销：所有 backdrop-filter 毛玻璃、满屏动画
+   模糊光层、固定背景附着、以及持续运行的装饰动画。布局与配色不变。
+   由 perf.js 自动判定；localStorage huanyu_perf = 'lite' | 'full' 可强制。
+   ============================================================ */
+
+/* 1) 关掉所有毛玻璃 —— 这是滚动 / 点击卡顿的最大来源。
+   注意：用 blur(0) 而非 none —— CSS 压缩器(esbuild)会把 backdrop-filter:none
+   当作初始值整条丢掉(连 !important 也忽略)，blur(0) 不是初始值故能保留，且
+   零半径模糊不触发昂贵的高斯模糊，效果等同关闭。 */
+html.perf-lite *, html.perf-lite *::before, html.perf-lite *::after {
+  -webkit-backdrop-filter: blur(0) !important;
+  backdrop-filter: blur(0) !important;
+}
+
+/* 2) 满屏的动画模糊光层（极光 / 光球 / 殿堂）—— 停动 + 去模糊 */
+html.perf-lite body::before,
+html.perf-lite body::after { animation: none !important; filter: none !important; }
+html.perf-lite body { background-attachment: scroll !important; }
+
+/* 3) 常驻可见的半透明栏：去掉毛玻璃后改为不透明，保证可读 */
+html.perf-lite .topbar,
+html.perf-lite .mobile-topbar { background: var(--panel) !important; }
+html.perf-lite .bottom-nav { background: var(--panel) !important; }
+html.perf-lite .chat-input-bar,
+html.perf-lite .chat-head { background: var(--bg) !important; }
+html.perf-lite .modal-backdrop { background: rgba(20, 16, 10, 0.5) !important; }
+
+/* 4) 停掉持续空转的装饰动画（即使闲置也在每帧重绘 / 重合成） */
+html.perf-lite .auth-orbs i,
+html.perf-lite .pl-hall-rays,
+html.perf-lite .pl-dust,
+html.perf-lite .pl-emblem-ring,
+html.perf-lite .pl-emblem-glow,
+html.perf-lite .pl-atmos-col,
+html.perf-lite .pl-hall-sweep,
+html.perf-lite .ach-hall-glow,
+html.perf-lite .chat-aura span,
+html.perf-lite .title-glow,
+html.perf-lite .msg.streaming .avatar { animation: none !important; }
+html.perf-lite .ach-page::before { animation: none !important; }
+
+/* 5) 留下来的大块模糊装饰，降低模糊半径（模糊半径越大越贵） */
+html.perf-lite .auth-orbs i { filter: blur(24px) !important; opacity: 0.4; }
+html.perf-lite .pl-emblem-glow { filter: none !important; }
