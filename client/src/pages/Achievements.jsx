@@ -77,7 +77,7 @@ export default function Achievements() {
 
       <div className="topbar">
         <div style={{ flex: 1 }}>
-          <h1><Trophy size={20} style={{ verticalAlign: -3, marginRight: 7 }} />成就殿堂</h1>
+          <h1 className="title-glow"><Trophy size={20} style={{ verticalAlign: -3, marginRight: 7 }} />成就殿堂</h1>
           <div className="sub">在各板块留下足迹，点亮荣耀、领取奖励</div>
         </div>
         {summary?.claimable > 0 && (

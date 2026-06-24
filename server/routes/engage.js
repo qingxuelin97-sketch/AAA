@@ -3,6 +3,7 @@ import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { applyTx, notify } from '../wallet.js';
 import { DAILY_TASKS, dailyOf, bumpDaily, saveClaimed } from '../daily.js';
+import { creatorTier } from '../creator.js';
 
 const router = Router();
 const TT = (t) => (t === 'script' ? 'script' : 'character');
@@ -105,8 +106,10 @@ router.get('/leaderboard', authOptional, (req, res) => {
   const authors = db.prepare(`SELECT u.id, u.display_name, u.avatar,
       (SELECT COALESCE(SUM(likes),0) FROM characters WHERE owner_id=u.id) +
       (SELECT COALESCE(SUM(likes),0) FROM scripts WHERE author_id=u.id) AS score,
-      (SELECT COUNT(*) FROM characters WHERE owner_id=u.id AND is_public=1) AS chars
-    FROM users u WHERE u.is_banned=0 ORDER BY score DESC LIMIT 20`).all();
+      (SELECT COUNT(*) FROM characters WHERE owner_id=u.id AND is_public=1) AS chars,
+      (SELECT COUNT(*) FROM scripts WHERE author_id=u.id) AS scripts
+    FROM users u WHERE u.is_banned=0 ORDER BY score DESC LIMIT 20`)
+    .all().map(a => ({ ...a, creator_tier: creatorTier(a.id) }));
   res.json({ characters, scripts, authors });
 });
 
