@@ -3014,3 +3014,13 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* —— 共享元素 morph：角色卡平滑展开为详情页英雄区 —— */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(vt-card) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1); }
+  ::view-transition-old(vt-card), ::view-transition-new(vt-card) {
+    animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1); }
+  ::view-transition-image-pair(vt-card) { border-radius: 16px; overflow: hidden; }
+}
+/* morph 进行时让卡片浮于其它内容之上，避免被相邻卡片裁切 */
+.poster.vt-morphing { z-index: 5; }

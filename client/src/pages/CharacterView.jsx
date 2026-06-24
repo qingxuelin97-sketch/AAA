@@ -60,7 +60,7 @@ export default function CharacterView() {
         {isOwner && <button className="btn" onClick={() => nav('/character/' + c.id + '/edit')}><Pencil size={15} /> 编辑</button>}
       </div>
       <div className="page" style={{ maxWidth: 860 }}>
-        <div className="char-hero">
+        <div className="char-hero" style={{ viewTransitionName: 'vt-card' }}>
           <div className="char-hero-bg">
             {c.background ? (isVideo
               ? <video src={c.background} muted loop autoPlay playsInline />
