@@ -3,7 +3,11 @@
   "appName": "幻域",
   "webDir": "client/dist",
   "backgroundColor": "#15120e",
-  "server": { "androidScheme": "https" },
+  "server": {
+    "url": "http://120.27.249.73:4000",
+    "cleartext": true,
+    "androidScheme": "http"
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 700,
