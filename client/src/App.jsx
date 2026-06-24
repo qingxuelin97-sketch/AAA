@@ -81,10 +81,16 @@ export default function App() {
     const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (typeof document === 'undefined' || !document.startViewTransition || reduce) { commit(); return; }
     // Promise form (no flushSync) so a suspending lazy route can't crash the transition.
-    document.startViewTransition(() => new Promise((resolve) => {
+    const transition = document.startViewTransition(() => new Promise((resolve) => {
       commit();
       requestAnimationFrame(() => requestAnimationFrame(resolve));
     }));
+    // When navigations come faster than a transition can finish (rapid clicks), the
+    // browser skips the in-flight one and rejects these promises with AbortError.
+    // Swallow them so quick taps don't spew unhandled promise rejections.
+    transition.ready?.catch(() => {});
+    transition.finished?.catch(() => {});
+    transition.updateCallbackDone?.catch(() => {});
   }, [location]);
   return (
     <ToastProvider>

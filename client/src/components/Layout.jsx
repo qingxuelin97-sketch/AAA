@@ -121,7 +121,7 @@ export default function Layout({ children }) {
     const io = new IntersectionObserver((ents) => {
       for (const e of ents) if (e.isIntersecting) { e.target.classList.add('reveal-in'); io.unobserve(e.target); }
     }, { threshold: 0.06, rootMargin: '0px 0px -6% 0px' });
-    let raf = 0, i = 0;
+    let raf = 0, i = 0, lastScan = 0, tTimer = 0;
     const scan = () => {
       document.querySelectorAll(SEL).forEach(el => {
         if (el.dataset.rv) return;
@@ -131,12 +131,21 @@ export default function Layout({ children }) {
         io.observe(el);
       });
     };
-    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { i = 0; scan(); }); };
+    const runScan = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { i = 0; scan(); }); };
+    // Throttle (not per-frame): chat streaming / live polling fire DOM mutations
+    // every frame, which would re-querySelectorAll the whole tree 60×/s. Cap at
+    // ~one scan per GAP ms — new sections still reveal, without the hot-path cost.
+    const GAP = 250;
+    const schedule = () => {
+      const since = performance.now() - lastScan;
+      if (since >= GAP) { lastScan = performance.now(); runScan(); }
+      else { clearTimeout(tTimer); tTimer = setTimeout(() => { lastScan = performance.now(); runScan(); }, GAP - since); }
+    };
     schedule();
     const root = document.querySelector('.main') || document.body;
     const mo = new MutationObserver(schedule);
     mo.observe(root, { childList: true, subtree: true });
-    return () => { io.disconnect(); mo.disconnect(); cancelAnimationFrame(raf); };
+    return () => { io.disconnect(); mo.disconnect(); cancelAnimationFrame(raf); clearTimeout(tTimer); };
   }, []);
 
   return (
