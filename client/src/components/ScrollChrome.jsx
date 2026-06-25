@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 
 // Thin top scroll-progress bar + a back-to-top button that fades in on long pages.
 // Driven by window scroll (the app body scrolls; the topbar is sticky inside it).
 export default function ScrollChrome() {
-  const [pct, setPct] = useState(0);
+  const barRef = useRef(null);
+  const btnRef = useRef(null);
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     let raf = 0;
+    let shown = false;
     const onScroll = () => {
       if (raf) return;
       raf = requestAnimationFrame(() => {
@@ -16,8 +18,12 @@ export default function ScrollChrome() {
         const doc = document.documentElement;
         const max = doc.scrollHeight - doc.clientHeight;
         const y = window.scrollY || doc.scrollTop || 0;
-        setPct(max > 0 ? Math.min(100, (y / max) * 100) : 0);
-        setShow(y > 560);
+        const pct = max > 0 ? Math.min(1, y / max) : 0;
+        // Write the progress bar directly — avoids a React re-render on every
+        // scroll frame (the bar updates ~60×/s; reconciliation here is wasted).
+        if (barRef.current) barRef.current.style.transform = `scaleX(${pct})`;
+        const next = y > 560;
+        if (next !== shown) { shown = next; setShow(next); } // re-render only on threshold cross
       });
     };
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -29,8 +35,8 @@ export default function ScrollChrome() {
 
   return (
     <>
-      <div className="scroll-progress" style={{ transform: `scaleX(${pct / 100})` }} aria-hidden="true" />
-      <button className={'to-top' + (show ? ' show' : '')} onClick={toTop} aria-label="回到顶部" title="回到顶部">
+      <div ref={barRef} className="scroll-progress" style={{ transform: 'scaleX(0)' }} aria-hidden="true" />
+      <button ref={btnRef} className={'to-top' + (show ? ' show' : '')} onClick={toTop} aria-label="回到顶部" title="回到顶部">
         <ArrowUp size={20} />
       </button>
     </>

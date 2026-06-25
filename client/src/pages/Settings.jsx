@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker } from '../ui.jsx';
 import { getThemeMode, setThemeMode, getGlass, setGlass } from '../theme.js';
+import { getPerfPref, setPerfPref, resolvePerf } from '../perf.js';
 import { browserVoices, speakBrowser } from '../voice.js';
 import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download } from 'lucide-react';
 
@@ -65,6 +66,8 @@ export default function Settings() {
   const [testing, setTesting] = useState(false);
   const [theme, setTheme] = useState(getThemeMode());
   const [glass, setGlassOn] = useState(getGlass());
+  const [perf, setPerf] = useState(getPerfPref());
+  const changePerf = (mode) => { setPerf(mode); setPerfPref(mode); };
   const [bvoices, setBvoices] = useState(() => browserVoices());
   useEffect(() => {
     const upd = () => setBvoices(browserVoices());
@@ -382,6 +385,21 @@ export default function Settings() {
                 ))}
               </div>
               <div className="hint">即时生效并记忆在本机；「跟随系统」会随设备深/浅色自动切换。</div>
+            </div>
+            <div className="field">
+              <label>性能模式</label>
+              <div className="theme-seg">
+                {[['auto', '自动', Activity], ['high', '高画质', Sun], ['lite', '省电', Cpu]].map(([v, l, Ic]) => (
+                  <button key={v} type="button" className={perf === v ? 'active' : ''} onClick={() => changePerf(v)}>
+                    <Ic size={15} /> {l}
+                  </button>
+                ))}
+              </div>
+              <div className="hint">
+                「省电」关闭毛玻璃模糊与持续动效、按需渲染卡片，明显降低手机/低端设备的 GPU 占用与发热；
+                「高画质」始终开启全部特效。
+                {perf === 'auto' && <>「自动」会按本机判断，当前为 <b>{resolvePerf('auto') === 'lite' ? '省电' : '高画质'}</b>。</>}
+              </div>
             </div>
             <label className="switch" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
               <div><b style={{ fontSize: 14 }}>毛玻璃外观</b><div className="muted" style={{ fontSize: 12.5 }}>为卡片、侧边栏与弹窗启用磨砂玻璃质感，界面更通透灵动</div></div>

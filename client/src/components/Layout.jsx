@@ -116,12 +116,16 @@ export default function Layout({ children }) {
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    // Skip the whole scroll-reveal machinery on the lite tier — the observers
+    // and re-scans aren't worth the cost on weak devices (content just shows).
+    if (document.documentElement.dataset.perf === 'lite') return;
     const SEL = '.section-title, .chart-card, .rev-hero, .rev-tiers, .daily-strip, .resume-rail, .adm-stat, .pkg, .ann-banner, .lb-podium';
     const io = new IntersectionObserver((ents) => {
       for (const e of ents) if (e.isIntersecting) { e.target.classList.add('reveal-in'); io.unobserve(e.target); }
     }, { threshold: 0.06, rootMargin: '0px 0px -6% 0px' });
-    let raf = 0, i = 0;
+    let i = 0;
     const scan = () => {
+      i = 0;
       document.querySelectorAll(SEL).forEach(el => {
         if (el.dataset.rv) return;
         el.dataset.rv = '1';
@@ -130,12 +134,17 @@ export default function Layout({ children }) {
         io.observe(el);
       });
     };
-    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { i = 0; scan(); }); };
-    schedule();
+    scan();
+    // Re-scan on DOM changes, but debounced — streaming chat / live feeds mutate
+    // the tree dozens of times a second, and a full querySelectorAll per frame
+    // is a real jank source. A trailing 200ms timer coalesces bursts into one
+    // scan once the DOM settles.
     const root = document.querySelector('.main') || document.body;
+    let timer = 0;
+    const schedule = () => { clearTimeout(timer); timer = setTimeout(scan, 200); };
     const mo = new MutationObserver(schedule);
     mo.observe(root, { childList: true, subtree: true });
-    return () => { io.disconnect(); mo.disconnect(); cancelAnimationFrame(raf); };
+    return () => { io.disconnect(); mo.disconnect(); clearTimeout(timer); };
   }, []);
 
   return (
