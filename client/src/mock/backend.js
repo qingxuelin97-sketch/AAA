@@ -843,7 +843,7 @@ async function route(method, path, search, body, headers) {
   // ---------- upload ----------
   if (method === 'POST' && path === '/upload') {
     const file = body && body.get && body.get('file'); if (!file) return E('未收到文件');
-    const url = await fileToDataUrl(file); return J({ url, type: file.type?.startsWith('video') ? 'video' : 'image' });
+    const url = await fileToDataUrl(file); return J({ url, type: file.type?.startsWith('video') ? 'video' : file.type?.startsWith('audio') ? 'audio' : 'image' });
   }
 
   // ---------- characters ----------
@@ -924,12 +924,12 @@ async function route(method, path, search, body, headers) {
       const author_char_count = filter('characters', x => x.is_public && x.owner_id === c.owner_id && x.id !== c.id && !x.from_script).length;
       return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(owner), fav_count, author_char_count }, related });
     }
-    if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0; if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
+    if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'bgm', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0; if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
     if (method === 'DELETE') { need(); if (!c || c.owner_id !== me.id) return E('无权删除', 403); db.characters = filter('characters', x => x.id !== cid); save(); return J({ ok: true }); }
   }
   if (method === 'POST' && path === '/characters') {
     need(); if (!body.name) return E('角色名必填');
-    const c = insert('characters', { owner_id: me.id, name: body.name, avatar: body.avatar || null, background: body.background || null, background_type: body.background_type || 'image', tagline: body.tagline || '', intro: body.intro || '', greeting: body.greeting || '', persona: body.persona || '', voice_name: body.voice_name || '', category: body.category || '', tags: body.tags || '', is_public: body.is_public ? 1 : 0, nsfw: body.nsfw ? 1 : 0, likes: 0, uses: 0 });
+    const c = insert('characters', { owner_id: me.id, name: body.name, avatar: body.avatar || null, background: body.background || null, background_type: body.background_type || 'image', bgm: body.bgm || '', tagline: body.tagline || '', intro: body.intro || '', greeting: body.greeting || '', persona: body.persona || '', voice_name: body.voice_name || '', category: body.category || '', tags: body.tags || '', is_public: body.is_public ? 1 : 0, nsfw: body.nsfw ? 1 : 0, likes: 0, uses: 0 });
     saveWorld(c.id, body.world); return J({ character: charView(c) });
   }
 
@@ -1722,12 +1722,15 @@ function pubSettings(s, me) {
     activity_visible: s.activity_visible === undefined ? 1 : s.activity_visible, leaderboard_visible: s.leaderboard_visible === undefined ? 1 : s.leaderboard_visible,
     read_receipts: s.read_receipts === undefined ? 1 : s.read_receipts, personalize: s.personalize === undefined ? 1 : s.personalize,
     // Platform service status — surfaced to the UI, but never the credentials.
+    // Pricing is always exposed (full + member-discounted) so the UI can label
+    // the cost and the VIP/SVIP discount regardless of which service is active.
     using_platform: usingPlatform,
-    platform_fee: usingPlatform ? { base: platformFee(me, 0), heavy: platformFee(me, PLATFORM_FEE.heavy_threshold + 1), heavy_threshold: PLATFORM_FEE.heavy_threshold, discount: memberDiscount(me) } : null,
-    // Pay-per-use feature pricing (after the caller's membership discount).
+    platform_fee: { base: platformFee(me, 0), heavy: platformFee(me, PLATFORM_FEE.heavy_threshold + 1),
+      base_full: PLATFORM_FEE.base, heavy_full: PLATFORM_FEE.heavy,
+      heavy_threshold: PLATFORM_FEE.heavy_threshold, discount: memberDiscount(me), active: usingPlatform },
     using_platform_voice: usingPlatformVoice,
-    voice_fee: usingPlatformVoice ? { per: featureFee(me, VOICE_FEE), base: VOICE_FEE, discount: memberDiscount(me) } : null,
-    image_fee: { per: featureFee(me, IMAGE_FEE), base: IMAGE_FEE, discount: memberDiscount(me), ready: platformImageReady() } };
+    voice_fee: { per: featureFee(me, VOICE_FEE), base: VOICE_FEE, discount: memberDiscount(me), active: usingPlatformVoice, ready: platformVoiceReady() },
+    image_fee: { per: featureFee(me, IMAGE_FEE), base: IMAGE_FEE, discount: memberDiscount(me), active: true, ready: platformImageReady() } };
 }
 
 /* ----------------------------- install ----------------------------- */

@@ -626,8 +626,15 @@ html { scroll-behavior: smooth; }
 .btn.primary:hover::after { opacity: 1; animation: sheen 0.85s cubic-bezier(0.22,0.61,0.36,1); }
 
 /* send button — pops & nudges */
+/* Base shape for the chat send / stop button — a solid circular icon button.
+   (Previously only the gradient + hover transforms were defined, so the button
+   had no size, radius or centering and rendered as a tiny misshapen square.) */
 .send-btn {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; border: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; align-self: flex-end;
   background-image: linear-gradient(135deg, #d6754e, var(--accent-2)); background-size: 180% 180%;
+  box-shadow: 0 2px 8px rgba(179, 82, 47, 0.28);
   transition: transform 0.3s var(--spring), background-position 0.4s ease, box-shadow 0.25s ease;
 }
 .send-btn:not(:disabled):hover { transform: scale(1.1); background-position: 100% 50%; box-shadow: 0 6px 16px rgba(179,82,47,0.34); }

@@ -6,6 +6,14 @@ import { getPerfPref, setPerfPref, resolvePerf } from '../perf.js';
 import { browserVoices, speakBrowser } from '../voice.js';
 import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download } from 'lucide-react';
 
+// Renders a gold price; when a membership discount applies it shows the full
+// price struck through next to the discounted one so VIP/SVIP can see the deal.
+function Fee({ full, now, discount }) {
+  if (discount < 1 && full != null && full !== now)
+    return <><s style={{ color: 'var(--faint)' }}>{full}</s> <b style={{ color: 'var(--accent-2)' }}>{now}</b> 金币</>;
+  return <><b>{now}</b> 金币</>;
+}
+
 // Providers' base URLs + wire protocol. Keys stay on the user side.
 // [base, protocol]. Protocol 'openai' = OpenAI-compatible Chat Completions;
 // 'anthropic' = Claude Messages API (distinct format, adapted server-side).
@@ -166,14 +174,21 @@ export default function Settings() {
         {tab === 'model' && (
           <div className="card">
             <div className="section-title"><h2>语言模型 API</h2><div style={{ display: 'flex', gap: 8 }}><button className="btn sm" onClick={testLLM} disabled={testing || !s.llm_api_key}>{testing ? '测试中…' : '测试连接'}</button><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div></div>
-            {s.using_platform && (
+            {s.platform_fee && (
               <div className="platform-note">
                 <span className="pn-ic"><ShieldCheck size={18} /></span>
                 <div className="pn-tx">
-                  <b>当前正在使用平台内置语言服务</b>
-                  <p>未填写自己的 API Key 时，对话将自动由平台官方模型提供，无需任何配置即可开聊。
-                  {s.platform_fee && <> 每次对话扣除 <b><Coins size={12} style={{ verticalAlign: -2 }} /> {s.platform_fee.base} 金币</b>；同一对话互动超过 {s.platform_fee.heavy_threshold} 条后按 <b>{s.platform_fee.heavy} 金币</b>计费{s.platform_fee.discount < 1 && <>（会员已享 {Math.round(s.platform_fee.discount * 10)} 折优惠）</>}。</>}
-                  填写下方自己的 API Key 即可改用自有额度、免平台扣费。</p>
+                  <b>{s.platform_fee.active ? '当前正在使用平台内置语言服务' : '平台内置语言服务（备用）'}</b>
+                  <p>
+                    未填写自己的 API Key 时，对话由平台官方模型提供，无需任何配置即可开聊。计费：每次对话{' '}
+                    <Coins size={12} style={{ verticalAlign: -2 }} /> <Fee full={s.platform_fee.base_full} now={s.platform_fee.base} discount={s.platform_fee.discount} />
+                    ，同一对话互动超过 {s.platform_fee.heavy_threshold} 条后{' '}
+                    <Coins size={12} style={{ verticalAlign: -2 }} /> <Fee full={s.platform_fee.heavy_full} now={s.platform_fee.heavy} discount={s.platform_fee.discount} />。
+                    {s.platform_fee.discount < 1
+                      ? <b style={{ color: 'var(--accent-2)' }}> 已含{user?.svip ? ' SVIP 5' : ' VIP 7.5'} 折会员优惠。</b>
+                      : <> 开通 VIP 享 7.5 折、SVIP 享 5 折。</>}
+                    {' '}填写下方自己的 API Key 即可改用自有额度、免平台扣费。
+                  </p>
                 </div>
               </div>
             )}
@@ -215,13 +230,20 @@ export default function Settings() {
         {tab === 'voice' && (
           <div className="card">
             <div className="section-title"><h2>语音模型 API</h2><div style={{ display: 'flex', gap: 8 }}><button className="btn sm" onClick={testVoice} disabled={testing}>{testing ? '试听中…' : '试听'}</button><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div></div>
-            {s.using_platform_voice && s.voice_fee && (
+            {s.voice_fee && (
               <div className="platform-note">
                 <span className="pn-ic"><ShieldCheck size={18} /></span>
                 <div className="pn-tx">
-                  <b>当前使用平台语音服务</b>
-                  <p>未填写自己的语音 API 时，朗读由平台语音提供，每句扣除 <b><Coins size={12} style={{ verticalAlign: -2 }} /> {s.voice_fee.per} 金币</b>
-                  {s.voice_fee.discount < 1 && <>（会员已享 {Math.round(s.voice_fee.discount * 10)} 折）</>}。填写下方自己的语音 API Key 即可改用自有额度、免平台扣费。</p>
+                  <b>{s.voice_fee.active ? '当前使用平台语音服务' : '平台语音朗读计费'}</b>
+                  <p>
+                    未填写自己的语音 API 时，朗读由平台语音提供，每句扣除{' '}
+                    <Coins size={12} style={{ verticalAlign: -2 }} /> <Fee full={s.voice_fee.base} now={s.voice_fee.per} discount={s.voice_fee.discount} />。
+                    {s.voice_fee.discount < 1
+                      ? <b style={{ color: 'var(--accent-2)' }}> 已含{user?.svip ? ' SVIP 5' : ' VIP 7.5'} 折会员优惠。</b>
+                      : <> 开通 VIP 享 7.5 折、SVIP 享 5 折。</>}
+                    {!s.voice_fee.ready && <span className="muted"> 平台语音暂未由管理员开启，可填写下方自有语音 API 使用。</span>}
+                    {' '}填写下方自己的语音 API Key 即可改用自有额度、免平台扣费。
+                  </p>
                 </div>
               </div>
             )}

@@ -19,11 +19,19 @@ function publicSettings(row, me) {
   out.voice_api_key_set = !!row.voice_api_key;
   const usingPlatform = !row.llm_api_key;
   const usingPlatformVoice = !row.voice_api_key && voiceReady();
+  const disc = memberDiscount(me);
   out.using_platform = usingPlatform;
-  out.platform_fee = usingPlatform ? { base: platformFee(me, 0), heavy: platformFee(me, PLATFORM_FEE.heavy_threshold + 1), heavy_threshold: PLATFORM_FEE.heavy_threshold, discount: memberDiscount(me) } : null;
+  // Always expose pricing (with full + member-discounted figures) so the UI can
+  // label the cost — and the discount for VIP/SVIP — regardless of whether the
+  // platform service is the one currently active for this user.
+  out.platform_fee = {
+    base: platformFee(me, 0), heavy: platformFee(me, PLATFORM_FEE.heavy_threshold + 1),
+    base_full: PLATFORM_FEE.base, heavy_full: PLATFORM_FEE.heavy,
+    heavy_threshold: PLATFORM_FEE.heavy_threshold, discount: disc, active: usingPlatform,
+  };
   out.using_platform_voice = usingPlatformVoice;
-  out.voice_fee = usingPlatformVoice ? { per: featureFee(me, VOICE_FEE), base: VOICE_FEE, discount: memberDiscount(me) } : null;
-  out.image_fee = { per: featureFee(me, IMAGE_FEE), base: IMAGE_FEE, discount: memberDiscount(me), ready: imageReady() };
+  out.voice_fee = { per: featureFee(me, VOICE_FEE), base: VOICE_FEE, discount: disc, active: usingPlatformVoice, ready: voiceReady() };
+  out.image_fee = { per: featureFee(me, IMAGE_FEE), base: IMAGE_FEE, discount: disc, active: true, ready: imageReady() };
   return out;
 }
 

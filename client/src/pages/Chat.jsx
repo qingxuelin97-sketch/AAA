@@ -4,11 +4,12 @@ import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { speakBrowser } from '../voice.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2 } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX } from 'lucide-react';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
 const FONT_KEY = 'huanyu_chat_font';
 const AUTOREAD_KEY = 'huanyu_chat_autoread';
+const BGM_KEY = 'huanyu_chat_bgm';
 const REACTIONS = ['❤️', '😂', '👍', '😮', '😢', '🔥'];
 const STARTERS = ['你好呀～', '很高兴认识你！', '*微笑着向你打招呼*', '今天过得怎么样？', '我们聊点什么好呢？'];
 const QUICK_ACTIONS = ['*微笑*', '*点头*', '*脸红*', '*轻笑*', '*歪头*', '*叹气*', '*眨眨眼*', '*沉默不语*', '*牵起你的手*', '*轻轻拥抱*', '😊', '😳', '🥰', '😢'];
@@ -54,12 +55,25 @@ export default function Chat() {
   const [fontSize, setFontSize] = useState(() => localStorage.getItem(FONT_KEY) || 'md');
   const [autoRead, setAutoRead] = useState(() => localStorage.getItem(AUTOREAD_KEY) === '1');
   const [reactFor, setReactFor] = useState(null);
+  const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
   const scrollRef = useRef();
   const abortRef = useRef(null);
+  const bgmRef = useRef(null);
   const autoReadRef = useRef(autoRead);
   useEffect(() => { autoReadRef.current = autoRead; }, [autoRead]);
   const setFont = (v) => { setFontSize(v); localStorage.setItem(FONT_KEY, v); };
   const toggleAutoRead = () => setAutoRead(v => { const n = !v; localStorage.setItem(AUTOREAD_KEY, n ? '1' : '0'); return n; });
+  const toggleBgm = () => setBgmOn(v => { const n = !v; localStorage.setItem(BGM_KEY, n ? '1' : '0'); return n; });
+
+  // Character background music — loop softly while in the conversation. Browsers
+  // may block autoplay until a gesture; the play() rejection is swallowed and
+  // the user can tap the music button (a direct gesture) to start it.
+  useEffect(() => {
+    const el = bgmRef.current;
+    if (!el) return;
+    if (bgmOn && character?.bgm) { el.volume = 0.45; el.play().catch(() => {}); }
+    else { el.pause(); }
+  }, [character?.bgm, bgmOn]);
   const syncMessages = () => api('/chat/conversations/' + id).then(d => { setMessages(d.messages); setAffinity(d.conversation.affinity || 0); setMemories(d.conversation.memories || []); }).catch(() => {});
 
   const addMemory = async () => {
@@ -310,6 +324,7 @@ export default function Chat() {
               </div>
             )}
             {!character?.background && <div className="chat-aura" aria-hidden="true"><span /><span /><span /></div>}
+            {character?.bgm && <audio ref={bgmRef} src={character.bgm} loop preload="auto" />}
             <div className="chat-head">
               <button className="btn ghost sm mobile-only" onClick={() => nav('/chats')}><ArrowLeft size={16} /></button>
               <div className={'ch-av' + (streaming ? ' live' : '')}><Avatar src={character?.avatar} name={character?.name} size={44} /></div>
@@ -321,6 +336,11 @@ export default function Chat() {
                 </button>
               ); })()}
               <div className="chat-tools">
+                {character?.bgm && (
+                  <button className={'speak chat-tool' + (bgmOn ? ' on' : '')} onClick={toggleBgm} title={bgmOn ? '关闭背景音乐' : '播放背景音乐'}>
+                    {bgmOn ? <Music size={17} /> : <VolumeX size={17} />}
+                  </button>
+                )}
                 <button className="speak chat-tool" onClick={() => setIllusOpen(true)} title="为当前剧情生成插图"><Wand2 size={17} /></button>
                 <button className={'speak chat-tool' + (searchOpen ? ' on' : '')} onClick={() => { setSearchOpen(o => !o); setSearchQ(''); }} title="对话内搜索"><Search size={17} /></button>
                 <div className="chat-menu-wrap">

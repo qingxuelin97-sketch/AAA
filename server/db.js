@@ -362,6 +362,7 @@ for (const sql of [
   'ALTER TABLE settings ADD COLUMN leaderboard_visible INTEGER DEFAULT 1',
   'ALTER TABLE settings ADD COLUMN read_receipts INTEGER DEFAULT 1',
   'ALTER TABLE settings ADD COLUMN personalize INTEGER DEFAULT 1',
+  "ALTER TABLE characters ADD COLUMN bgm TEXT DEFAULT ''",
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 export default db;

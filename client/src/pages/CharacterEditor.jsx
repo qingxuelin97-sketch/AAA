@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, uploadFile } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
-import { Plus, Dices } from 'lucide-react';
+import { Plus, Dices, Music, X } from 'lucide-react';
+
+const BGM_MAX_SEC = 60;
 
 // Local fallback shown if a third-party online image fails to hotlink.
 const IMG_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#efd9e6"/><stop offset="100%" stop-color="#c9b8ff"/></linearGradient></defs><rect width="160" height="100" fill="url(#g)"/><text x="80" y="56" font-size="12" fill="#fff" text-anchor="middle" font-family="sans-serif">加载失败</text></svg>');
@@ -28,10 +30,21 @@ async function lockImage(url) {
 }
 
 const BLANK = {
-  name: '', avatar: '', background: '', background_type: 'image',
+  name: '', avatar: '', background: '', background_type: 'image', bgm: '',
   tagline: '', intro: '', greeting: '', persona: '', voice_name: '', category: '', tags: '',
   is_public: false, nsfw: false, world: []
 };
+
+// Probe an audio File's duration (seconds) without uploading it.
+function audioDuration(file) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('audio');
+    el.preload = 'metadata';
+    el.onloadedmetadata = () => { URL.revokeObjectURL(el.src); resolve(el.duration); };
+    el.onerror = () => { URL.revokeObjectURL(el.src); reject(new Error('无法读取音频')); };
+    el.src = URL.createObjectURL(file);
+  });
+}
 
 export default function CharacterEditor() {
   const { id } = useParams();
@@ -42,6 +55,25 @@ export default function CharacterEditor() {
   const [c, setC] = useState(BLANK);
   const [busy, setBusy] = useState(false);
   const [locking, setLocking] = useState('');
+  const [bgmBusy, setBgmBusy] = useState(false);
+
+  // Upload a character BGM — rejected client-side if longer than 60s so we never
+  // ship an oversized loop. Stored as c.bgm (a /uploads URL, or data URL in the
+  // static build).
+  const pickBgm = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBgmBusy(true);
+    try {
+      let dur = 0;
+      try { dur = await audioDuration(file); } catch { /* some formats hide metadata — allow, server still size-caps */ }
+      if (dur && dur > BGM_MAX_SEC + 0.5) { toast(`背景音乐不能超过 ${BGM_MAX_SEC} 秒（当前 ${Math.round(dur)} 秒）`, 'err'); return; }
+      const d = await uploadFile(file);
+      set('bgm', d.url);
+      toast('背景音乐已上传 🎵');
+    } catch (err) { toast(err.message || '上传失败', 'err'); } finally { setBgmBusy(false); }
+  };
 
   // Pick an online image but freeze it to one fixed frame (no more random swaps).
   const pickOnline = async (b) => {
@@ -228,6 +260,23 @@ export default function CharacterEditor() {
                   : <img src={c.background} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
                 ) : <div className="empty" style={{ padding: 70 }}>未设置背景</div>}
               </div>
+
+              <label style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 6 }}><Music size={15} /> 角色背景音乐 (BGM)</label>
+              <input id="bgm-file" type="file" accept="audio/*" hidden onChange={pickBgm} />
+              {c.bgm ? (
+                <div className="bgm-row">
+                  <audio src={c.bgm} controls loop preload="metadata" style={{ width: '100%' }} />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button type="button" className="btn sm ghost" onClick={() => document.getElementById('bgm-file').click()} disabled={bgmBusy}>{bgmBusy ? '上传中…' : '更换'}</button>
+                    <button type="button" className="btn sm danger" onClick={() => set('bgm', '')}><X size={14} /> 移除</button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" className="btn sm" style={{ marginTop: 8 }} onClick={() => document.getElementById('bgm-file').click()} disabled={bgmBusy}>
+                  <Music size={14} /> {bgmBusy ? '上传中…' : '上传背景音乐'}
+                </button>
+              )}
+              <div className="hint">进入与该角色的对话时自动循环播放（用户可在对话内随时静音）。仅支持音频文件，时长不超过 {BGM_MAX_SEC} 秒。</div>
             </div>
           </div>
         )}

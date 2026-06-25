@@ -97,12 +97,12 @@ router.post('/', authRequired, (req, res) => {
   const b = req.body || {};
   if (!b.name) return res.status(400).json({ error: '角色名必填' });
   const info = db.prepare(`INSERT INTO characters
-    (owner_id, name, avatar, background, background_type, tagline, intro, greeting, persona, voice_name, category, tags, is_public, nsfw)
-    VALUES (@owner_id,@name,@avatar,@background,@background_type,@tagline,@intro,@greeting,@persona,@voice_name,@category,@tags,@is_public,@nsfw)`)
+    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, category, tags, is_public, nsfw)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@category,@tags,@is_public,@nsfw)`)
     .run({
       owner_id: req.user.id,
       name: b.name, avatar: b.avatar || null,
-      background: b.background || null, background_type: b.background_type || 'image',
+      background: b.background || null, background_type: b.background_type || 'image', bgm: b.bgm || '',
       tagline: b.tagline || '', intro: b.intro || '', greeting: b.greeting || '',
       persona: b.persona || '', voice_name: b.voice_name || '', category: b.category || '', tags: b.tags || '',
       is_public: b.is_public ? 1 : 0, nsfw: b.nsfw ? 1 : 0
@@ -117,13 +117,14 @@ router.put('/:id', authRequired, (req, res) => {
   if (!c || c.owner_id !== req.user.id) return res.status(403).json({ error: '无权编辑' });
   const b = req.body || {};
   db.prepare(`UPDATE characters SET
-    name=@name, avatar=@avatar, background=@background, background_type=@background_type,
+    name=@name, avatar=@avatar, background=@background, background_type=@background_type, bgm=@bgm,
     tagline=@tagline, intro=@intro, greeting=@greeting, persona=@persona,
     voice_name=@voice_name, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw WHERE id=@id`)
     .run({
       id: c.id,
       name: b.name ?? c.name, avatar: b.avatar ?? c.avatar,
       background: b.background ?? c.background, background_type: b.background_type ?? c.background_type,
+      bgm: b.bgm ?? c.bgm,
       tagline: b.tagline ?? c.tagline, intro: b.intro ?? c.intro, greeting: b.greeting ?? c.greeting,
       persona: b.persona ?? c.persona, voice_name: b.voice_name ?? c.voice_name,
       category: b.category ?? c.category, tags: b.tags ?? c.tags,

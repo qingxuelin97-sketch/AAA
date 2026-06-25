@@ -16,20 +16,21 @@ const storage = multer.diskStorage({
   }
 });
 
-// Allow images (incl. animated gif/webp/apng) and short videos for dynamic backgrounds.
-const allowed = /image\/(png|jpe?g|gif|webp|apng|avif)|video\/(mp4|webm|ogg)/;
+// Allow images (incl. animated gif/webp/apng), short videos for dynamic
+// backgrounds, and audio for character background music (BGM).
+const allowed = /image\/(png|jpe?g|gif|webp|apng|avif)|video\/(mp4|webm|ogg)|audio\/(mpeg|mp3|ogg|wav|x-wav|webm|aac|mp4|x-m4a)/;
 const upload = multer({
   storage,
   limits: { fileSize: 30 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (allowed.test(file.mimetype)) cb(null, true);
-    else cb(new Error('不支持的文件类型，仅允许图片或短视频'));
+    else cb(new Error('不支持的文件类型，仅允许图片、短视频或音频'));
   }
 });
 
 router.post('/', authRequired, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: '未收到文件' });
-  const kind = req.file.mimetype.startsWith('video') ? 'video' : 'image';
+  const kind = req.file.mimetype.startsWith('video') ? 'video' : req.file.mimetype.startsWith('audio') ? 'audio' : 'image';
   res.json({ url: '/uploads/' + req.file.filename, type: kind });
 });
 
