@@ -2,13 +2,14 @@ import React from 'react';
 import PublicShell from '../components/PublicShell.jsx';
 import { FEATURE_GROUPS, FEATURE_INTRO } from '../features.js';
 import {
-  Drama, Image, Video, UserPlus, Share2, SquarePen, Database, Type, Images,
-  Palette, Camera, FileVideo, Clapperboard, Film, Download, Sparkles, Check,
+  Drama, Image, MessagesSquare, Heart, Users, Brain, Languages,
+  UserPlus, Share2, SquarePen, Database, Type, Images,
+  Palette, Camera, Sparkles, Check,
 } from 'lucide-react';
 
 const ICONS = {
-  Drama, Image, Video, UserPlus, Share2, SquarePen, Database, Type, Images,
-  Palette, Camera, FileVideo, Clapperboard, Film, Download,
+  Drama, Image, MessagesSquare, Heart, Users, Brain, Languages,
+  UserPlus, Share2, SquarePen, Database, Type, Images, Palette, Camera,
 };
 
 export default function Features() {
