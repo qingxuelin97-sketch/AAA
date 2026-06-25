@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../api.jsx';
-import { useToast, Modal } from '../ui.jsx';
+import { useToast } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
-import { LEGAL } from '../legal.js';
-import { Drama, BookOpen, Plug, Volume2, Users, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare, X } from 'lucide-react';
+import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
+import { Drama, Plug, Volume2, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare, LayoutGrid, LifeBuoy } from 'lucide-react';
 
 const TAGLINES = [
   ['与你创造的', '角色一同呼吸'],
@@ -39,7 +39,7 @@ export default function Auth() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (mode === 'register' && !agree) { toast('请先阅读并勾选同意《用户协议》与《隐私政策》', 'err'); return; }
+    if (mode === 'register' && !agree) { toast('请先阅读并勾选同意《服务条款》《隐私政策》《版权声明》与《免责声明》', 'err'); return; }
     setBusy(true);
     try {
       if (mode === 'login') await login(form.username, form.password);
@@ -122,8 +122,10 @@ export default function Auth() {
               <label className="auth-agree">
                 <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} />
                 <span>我已阅读并同意
-                  <button type="button" onClick={() => setLegal('terms')}>《用户协议》</button>与
+                  <button type="button" onClick={() => setLegal('terms')}>《服务条款》</button>
                   <button type="button" onClick={() => setLegal('privacy')}>《隐私政策》</button>
+                  <button type="button" onClick={() => setLegal('copyright')}>《版权声明》</button>与
+                  <button type="button" onClick={() => setLegal('disclaimer')}>《免责声明》</button>
                 </span>
               </label>
             )}
@@ -132,33 +134,18 @@ export default function Auth() {
             </button>
           </form>
           <div className="auth-foot">
-            {mode === 'login' && <>登录即表示同意
-              <button type="button" className="auth-link" onClick={() => setLegal('terms')}>《用户协议》</button>与
-              <button type="button" className="auth-link" onClick={() => setLegal('privacy')}>《隐私政策》</button><br /></>}
-            © 2026 幻域 HUANYU · AI 角色扮演平台
+            <div className="auth-explore">
+              <button type="button" className="auth-explore-btn" onClick={() => nav('/features')}><LayoutGrid size={14} /> 产品功能</button>
+              <button type="button" className="auth-explore-btn" onClick={() => nav('/help')}><LifeBuoy size={14} /> 帮助中心</button>
+            </div>
+            {mode === 'login' && <div className="auth-foot-note">登录 / 注册即表示你已阅读并同意以下条款</div>}
+            <LegalLinks onOpen={setLegal} className="center" />
+            <div style={{ marginTop: 8 }}>© 2026 幻域 HUANYU · AI 角色扮演社区平台</div>
           </div>
         </div>
       </div>
 
-      {legal && (() => { const doc = LEGAL[legal]; return (
-        <Modal onClose={() => setLegal(null)}>
-          <button className="modal-x" onClick={() => setLegal(null)} aria-label="关闭"><X size={18} /></button>
-          <h2 style={{ margin: '0 0 4px' }}>{doc.title}</h2>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>最近更新：{doc.updated}</div>
-          <p className="legal-intro">{doc.intro}</p>
-          <div className="legal-body">
-            {doc.sections.map((s, i) => (
-              <section key={i}><h4>{s.h}</h4><p>{s.p}</p></section>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-            {legal === 'terms'
-              ? <button className="btn ghost" style={{ flex: 1 }} onClick={() => setLegal('privacy')}>查看隐私政策</button>
-              : <button className="btn ghost" style={{ flex: 1 }} onClick={() => setLegal('terms')}>查看用户协议</button>}
-            <button className="btn primary" style={{ flex: 1 }} onClick={() => setLegal(null)}>我已知悉</button>
-          </div>
-        </Modal>
-      ); })()}
+      {legal && <LegalModal docKey={legal} onClose={() => setLegal(null)} onOpen={setLegal} />}
     </div>
   );
 }

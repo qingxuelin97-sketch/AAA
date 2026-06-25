@@ -38,6 +38,8 @@ const Parliament = lazy(() => import('./pages/Parliament.jsx'));
 const Achievements = lazy(() => import('./pages/Achievements.jsx'));
 const Friends = lazy(() => import('./pages/Friends.jsx'));
 const Draw = lazy(() => import('./pages/Draw.jsx'));
+const Features = lazy(() => import('./pages/Features.jsx'));
+const Help = lazy(() => import('./pages/Help.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -55,6 +57,8 @@ export default function App() {
       <Suspense fallback={<div className="empty" style={{ paddingTop: 160 }}>载入中…</div>}>
         <Routes>
           <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/help" element={<Help />} />
           <Route path="/" element={P(<Home />)} />
           <Route path="/scripts" element={P(<Scripts />)} />
           <Route path="/script/new" element={P(<ScriptEditor />)} />

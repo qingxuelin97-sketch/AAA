@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker } from '../ui.jsx';
 import { getThemeMode, setThemeMode, getGlass, setGlass } from '../theme.js';
 import { getPerfPref, setPerfPref, resolvePerf } from '../perf.js';
 import { browserVoices, speakBrowser } from '../voice.js';
-import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download } from 'lucide-react';
+import HelpCenter from '../components/HelpCenter.jsx';
+import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Coins, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, LifeBuoy, LayoutGrid, Scale } from 'lucide-react';
 
 // Renders a gold price; when a membership discount applies it shows the full
 // price struck through next to the discounted one so VIP/SVIP can see the deal.
@@ -65,8 +68,10 @@ const VOICE_BY_VALUE = Object.fromEntries(VOICE_PROVIDER_OPTS.map(([v, , b, p]) 
 
 export default function Settings() {
   const toast = useToast();
+  const nav = useNavigate();
   const { user, setUser, refreshUser } = useAuth();
   const [tab, setTab] = useState('model');
+  const [legal, setLegal] = useState(null);
   const [s, setS] = useState(null);
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState({ display_name: '', bio: '', avatar: '', banner: '' });
@@ -163,7 +168,7 @@ export default function Settings() {
     } catch (e) { toast(e.message, 'err'); }
   };
 
-  const TABS = [['model', '语言模型', Cpu], ['voice', '语音模型', Volume2], ['account', '账号安全', UserCog], ['privacy', '隐私', Lock], ['pref', '偏好', SlidersHorizontal]];
+  const TABS = [['model', '语言模型', Cpu], ['voice', '语音模型', Volume2], ['account', '账号安全', UserCog], ['privacy', '隐私', Lock], ['pref', '偏好', SlidersHorizontal], ['help', '帮助中心', LifeBuoy]];
 
   return (
     <>
@@ -445,7 +450,28 @@ export default function Settings() {
             </label>
           </div>
         )}
+
+        {tab === 'help' && (
+          <>
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div className="section-title"><h2><LifeBuoy size={17} style={{ verticalAlign: -3, marginRight: 6 }} />帮助中心</h2>
+                <button className="btn sm" onClick={() => nav('/help')}>打开完整页面</button>
+              </div>
+              <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>常见问题与上手指引，支持搜索。也可在登录页直接访问帮助中心与产品功能。</p>
+              <HelpCenter />
+            </div>
+            <div className="card">
+              <div className="section-title"><h2><Scale size={17} style={{ verticalAlign: -3, marginRight: 6 }} />关于与条款</h2>
+                <button className="btn sm" onClick={() => nav('/features')}><LayoutGrid size={14} style={{ verticalAlign: -2, marginRight: 4 }} />产品功能</button>
+              </div>
+              <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>本站在中华人民共和国现行法律法规下运行。点击查看平台法律文本：</p>
+              <LegalLinks onOpen={setLegal} />
+              <div className="muted" style={{ fontSize: 12, marginTop: 14 }}>© 2026 幻域 HUANYU · AI 角色扮演社区平台</div>
+            </div>
+          </>
+        )}
       </div>
+      {legal && <LegalModal docKey={legal} onClose={() => setLegal(null)} onOpen={setLegal} />}
     </>
   );
 }
