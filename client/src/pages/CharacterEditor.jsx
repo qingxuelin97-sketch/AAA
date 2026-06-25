@@ -13,10 +13,10 @@ const BGM_MAX_SEC = 60;
 // provider is whatever the user/platform configured in Settings; these are the
 // common voice ids so creators can pick rather than memorize.
 const VOICE_PRESETS = [
-  ['阿里云 Qwen-TTS', ['Cherry', 'Serena', 'Ethan', 'Chelsie', 'Dylan', 'Jada', 'Sunny']],
-  ['OpenAI 兼容', ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer', 'coral', 'sage']],
-  ['Azure 中文', ['zh-CN-XiaoxiaoNeural', 'zh-CN-XiaoyiNeural', 'zh-CN-YunxiNeural', 'zh-CN-YunjianNeural', 'zh-CN-YunxiaNeural']],
-  ['MiniMax 海螺', ['male-qn-qingse', 'female-shaonv', 'female-yujie', 'audiobook_male_1', 'presenter_female']],
+  ['阿里云 Qwen-TTS', [['Cherry', '樱桃·温柔女声'], ['Serena', '塞琳娜·知性女声'], ['Ethan', '伊森·阳光男声'], ['Chelsie', '切尔西·清甜少女'], ['Dylan', '迪伦·北京话'], ['Jada', '婕达·上海话'], ['Sunny', '桑尼·四川话']]],
+  ['OpenAI 兼容', [['alloy', '中性'], ['echo', '沉稳男声'], ['fable', '英伦叙述'], ['onyx', '低沉男声'], ['nova', '活泼女声'], ['shimmer', '柔和女声'], ['coral', '温暖女声'], ['sage', '沉静']]],
+  ['Azure 中文', [['zh-CN-XiaoxiaoNeural', '晓晓·女声'], ['zh-CN-XiaoyiNeural', '晓伊·女声'], ['zh-CN-YunxiNeural', '云希·男声'], ['zh-CN-YunjianNeural', '云健·男声'], ['zh-CN-YunxiaNeural', '云夏·少年']]],
+  ['MiniMax 海螺', [['male-qn-qingse', '青涩男声'], ['female-shaonv', '少女音'], ['female-yujie', '御姐音'], ['audiobook_male_1', '有声书男声'], ['presenter_female', '女主播']]],
 ];
 const VOICE_SAMPLE = '你好呀，很高兴见到你。这是我的声音试听。';
 
@@ -43,7 +43,7 @@ async function lockImage(url) {
 
 const BLANK = {
   name: '', avatar: '', background: '', background_type: 'image', bgm: '',
-  tagline: '', intro: '', greeting: '', persona: '', voice_name: '', voice_speed: 1, category: '', tags: '',
+  tagline: '', intro: '', greeting: '', persona: '', voice_name: '', voice_speed: 1, voice_pitch: 1, category: '', tags: '',
   is_public: false, nsfw: false, world: []
 };
 
@@ -78,12 +78,12 @@ export default function CharacterEditor() {
   // 试听 — speak a sample line using this character's chosen voice + speed.
   const previewVoice = async () => {
     if (previewing) return;
-    if (voiceCfg?.proto === 'browser') { speakBrowser(VOICE_SAMPLE, c.voice_name || voiceCfg.name, c.voice_speed); return; }
+    if (voiceCfg?.proto === 'browser') { speakBrowser(VOICE_SAMPLE, c.voice_name || voiceCfg.name, c.voice_speed, c.voice_pitch); return; }
     setPreviewing(true);
     try {
       const res = await fetch('/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ text: VOICE_SAMPLE, voice: c.voice_name || undefined, speed: c.voice_speed || undefined })
+        body: JSON.stringify({ text: VOICE_SAMPLE, voice: c.voice_name || undefined, speed: c.voice_speed || undefined, pitch: c.voice_pitch || undefined })
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
       const charged = res.headers.get('X-Gold-Fee');
@@ -215,14 +215,14 @@ export default function CharacterEditor() {
                   </button>
                 </div>
                 <datalist id="voice-presets">
-                  {VOICE_PRESETS.map(([g, vs]) => vs.map(v => <option key={g + v} value={v}>{g}</option>))}
+                  {VOICE_PRESETS.map(([g, vs]) => vs.map(([v, lb]) => <option key={g + v} value={v}>{g} · {lb}</option>))}
                 </datalist>
                 <div className="voice-chips">
                   {VOICE_PRESETS.map(([g, vs]) => (
                     <div key={g} className="voice-chip-group">
                       <span className="vcg-label">{g}</span>
-                      {vs.map(v => (
-                        <button key={v} type="button" className={'voice-chip' + (c.voice_name === v ? ' on' : '')} onClick={() => set('voice_name', v)}>{v}</button>
+                      {vs.map(([v, lb]) => (
+                        <button key={v} type="button" title={v} className={'voice-chip' + (c.voice_name === v ? ' on' : '')} onClick={() => set('voice_name', v)}>{lb}</button>
                       ))}
                     </div>
                   ))}
@@ -231,7 +231,11 @@ export default function CharacterEditor() {
                 <input type="range" min="0.5" max="2" step="0.05" value={c.voice_speed || 1}
                   onChange={e => set('voice_speed', parseFloat(e.target.value))} style={{ width: '100%' }} />
                 <div className="vc-ticks"><span>慢 0.5×</span><span>正常 1×</span><span>快 2×</span></div>
-                <div className="hint">朗读该角色台词所用的音色与语速（需在「设置 → 语音模型」配置语音 API，或由平台提供）。试听走你当前的语音通道；平台语音会按句计费。</div>
+                <label style={{ marginTop: 10, display: 'block' }}>音调：<b>{Number(c.voice_pitch || 1).toFixed(2)}×</b></label>
+                <input type="range" min="0.5" max="1.5" step="0.05" value={c.voice_pitch || 1}
+                  onChange={e => set('voice_pitch', parseFloat(e.target.value))} style={{ width: '100%' }} />
+                <div className="vc-ticks"><span>低沉 0.5×</span><span>自然 1×</span><span>尖亮 1.5×</span></div>
+                <div className="hint">朗读该角色台词所用的音色、语速与音调（需在「设置 → 语音模型」配置语音 API，或由平台提供）。语速对多数服务商生效；音调对浏览器语音 / Azure / Google / MiniMax 生效。试听走你当前的语音通道，平台语音按句计费。</div>
               </div>
             </div>
           </div>

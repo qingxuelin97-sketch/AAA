@@ -924,12 +924,12 @@ async function route(method, path, search, body, headers) {
       const author_char_count = filter('characters', x => x.is_public && x.owner_id === c.owner_id && x.id !== c.id && !x.from_script).length;
       return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(owner), fav_count, author_char_count }, related });
     }
-    if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'bgm', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'voice_speed', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0; if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
+    if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'bgm', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'voice_speed', 'voice_pitch', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0; if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
     if (method === 'DELETE') { need(); if (!c || c.owner_id !== me.id) return E('无权删除', 403); db.characters = filter('characters', x => x.id !== cid); save(); return J({ ok: true }); }
   }
   if (method === 'POST' && path === '/characters') {
     need(); if (!body.name) return E('角色名必填');
-    const c = insert('characters', { owner_id: me.id, name: body.name, avatar: body.avatar || null, background: body.background || null, background_type: body.background_type || 'image', bgm: body.bgm || '', tagline: body.tagline || '', intro: body.intro || '', greeting: body.greeting || '', persona: body.persona || '', voice_name: body.voice_name || '', voice_speed: body.voice_speed || 1, category: body.category || '', tags: body.tags || '', is_public: body.is_public ? 1 : 0, nsfw: body.nsfw ? 1 : 0, likes: 0, uses: 0 });
+    const c = insert('characters', { owner_id: me.id, name: body.name, avatar: body.avatar || null, background: body.background || null, background_type: body.background_type || 'image', bgm: body.bgm || '', tagline: body.tagline || '', intro: body.intro || '', greeting: body.greeting || '', persona: body.persona || '', voice_name: body.voice_name || '', voice_speed: body.voice_speed || 1, voice_pitch: body.voice_pitch || 1, category: body.category || '', tags: body.tags || '', is_public: body.is_public ? 1 : 0, nsfw: body.nsfw ? 1 : 0, likes: 0, uses: 0 });
     saveWorld(c.id, body.world); return J({ character: charView(c) });
   }
 
@@ -1019,6 +1019,9 @@ async function route(method, path, search, body, headers) {
     const voice = vname;
     const proto = vproto;
     const rate = Math.min(2, Math.max(0.5, Number(body.speed) || 1)); // shared speed tuning
+    const pit = Math.min(1.5, Math.max(0.5, Number(body.pitch) || 1)); // shared pitch tuning
+    const pitPct = Math.round((pit - 1) * 100);
+    const pitSemi = Math.max(-12, Math.min(12, Math.round((pit - 1) * 24)));
     // On a successful audio response, deduct the per-sentence fee (only when using the
     // platform service) and surface the charge + new balance via response headers.
     const finalize = (res) => {
@@ -1043,7 +1046,7 @@ async function route(method, path, search, body, headers) {
         // MiniMax T2A v2: GroupId goes in query (?GroupId=...), audio returned as hex in JSON.
         const up = await realFetch(`${base}/t2a_v2`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${vkey}` },
-          body: JSON.stringify({ model: vmodel || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: 0 }, audio_setting: { format: 'mp3', sample_rate: 32000 } })
+          body: JSON.stringify({ model: vmodel || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi }, audio_setting: { format: 'mp3', sample_rate: 32000 } })
         });
         if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
         const d = await up.json().catch(() => null);
@@ -1068,7 +1071,7 @@ async function route(method, path, search, body, headers) {
       if (proto === 'azure') {
         // Azure Cognitive TTS: SSML in, audio out. Base URL = https://{region}.tts.speech.microsoft.com
         const rPct = Math.round((rate - 1) * 100);
-        const ssml = `<speak version='1.0' xml:lang='zh-CN'><voice xml:lang='zh-CN' name='${voice || 'zh-CN-XiaoxiaoNeural'}'><prosody rate='${rPct >= 0 ? '+' : ''}${rPct}%'>${text.replace(/[<&>]/g, '')}</prosody></voice></speak>`;
+        const ssml = `<speak version='1.0' xml:lang='zh-CN'><voice xml:lang='zh-CN' name='${voice || 'zh-CN-XiaoxiaoNeural'}'><prosody rate='${rPct >= 0 ? '+' : ''}${rPct}%' pitch='${pitPct >= 0 ? '+' : ''}${pitPct}%'>${text.replace(/[<&>]/g, '')}</prosody></voice></speak>`;
         const up = await realFetch(`${base}/cognitiveservices/v1`, {
           method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': vkey, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3' },
           body: ssml
@@ -1081,7 +1084,7 @@ async function route(method, path, search, body, headers) {
         const sep = base.includes('?') ? '&' : '?';
         const up = await realFetch(`${base}/v1/text:synthesize${sep}key=${encodeURIComponent(vkey)}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ input: { text }, voice: { languageCode: (voice || 'cmn-CN-Wavenet-A').split('-').slice(0, 2).join('-') || 'cmn-CN', name: voice || 'cmn-CN-Wavenet-A' }, audioConfig: { audioEncoding: 'MP3', speakingRate: rate } })
+          body: JSON.stringify({ input: { text }, voice: { languageCode: (voice || 'cmn-CN-Wavenet-A').split('-').slice(0, 2).join('-') || 'cmn-CN', name: voice || 'cmn-CN-Wavenet-A' }, audioConfig: { audioEncoding: 'MP3', speakingRate: rate, pitch: pitSemi } })
         });
         if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
         const d = await up.json().catch(() => null);
@@ -1601,6 +1604,10 @@ async function route(method, path, search, body, headers) {
     }
     save();
     return J({ ok: true, platform: platformAdminView() });
+  }
+  if (path === '/admin/platform/test-voice' && method === 'POST') {
+    gmOnly();
+    return E('纯浏览器演示版受第三方语音服务跨域限制，平台语音「试听」请在全栈服务端使用；演示版可在「设置 → 语音模型 → 浏览器内置语音」试听。', 501);
   }
   if (path === '/admin/stats' && method === 'GET') {
     gmOnly();

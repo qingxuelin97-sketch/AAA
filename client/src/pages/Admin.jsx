@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, getToken } from '../api.jsx';
 import { useToast, Avatar, Modal, CouncilorBadge } from '../ui.jsx';
 import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Coins, Gem } from 'lucide-react';
 import { BarChart, LineChart } from '../components/Charts.jsx';
@@ -371,6 +371,26 @@ function PlatformTab({ toast }) {
   const [llmModels, setLlmModels] = useState([]);
   const [voiceModels, setVoiceModels] = useState([]);
   const [det, setDet] = useState('');
+  const [vprev, setVprev] = useState(false);
+
+  // 试听平台语音 — synthesize a sample with the current form values (server falls
+  // back to the saved key when the key field is left blank).
+  const previewVoice = async () => {
+    if (vprev) return;
+    if (!voice.base_url) { toast('请先填写语音服务的 Base URL', 'err'); return; }
+    setVprev(true);
+    try {
+      const res = await fetch('/api/admin/platform/test-voice', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ voice: { protocol: voice.protocol, base_url: voice.base_url, model: voice.model, voice_name: voice.voice_name, key: voice.key } })
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
+      const audio = new Audio(URL.createObjectURL(await res.blob()));
+      audio.onended = () => setVprev(false); audio.onerror = () => setVprev(false);
+      await audio.play();
+      toast('平台语音试听播放中');
+    } catch (e) { toast(e.message, 'err'); setVprev(false); }
+  };
 
   const detect = async (kind) => {
     const cfg = kind === 'voice' ? voice : llm;
@@ -447,7 +467,10 @@ function PlatformTab({ toast }) {
       {/* ---- 语音合成 ---- */}
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="section-title"><h2 style={{ fontSize: 17 }}><Volume2 size={16} style={{ verticalAlign: -3, marginRight: 6 }} />平台语音合成服务</h2>
-          <button className="btn sm primary" disabled={busy} onClick={() => save('voice')}><Check size={14} /> 保存</button></div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn sm" disabled={vprev} onClick={previewVoice}><Volume2 size={14} className={vprev ? 'spin' : ''} /> {vprev ? '播放中' : '试听'}</button>
+            <button className="btn sm primary" disabled={busy} onClick={() => save('voice')}><Check size={14} /> 保存</button>
+          </div></div>
         <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>未配置自有语音 API 的用户朗读时调用此服务，<b>每句扣费 {cfg.voice?.fee ?? 10} 金币</b>（VIP 75 折 / SVIP 5 折）。配置后用户即可付费朗读。</p>
         <div className="row">
           <div className="field"><label>服务商预设</label>

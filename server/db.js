@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS characters (
   name TEXT NOT NULL,
   avatar TEXT, background TEXT, background_type TEXT DEFAULT 'image',
   tagline TEXT DEFAULT '', intro TEXT DEFAULT '', greeting TEXT DEFAULT '',
-  persona TEXT DEFAULT '', voice_name TEXT DEFAULT '', voice_speed REAL DEFAULT 1,
+  persona TEXT DEFAULT '', voice_name TEXT DEFAULT '', voice_speed REAL DEFAULT 1, voice_pitch REAL DEFAULT 1,
   category TEXT DEFAULT '', tags TEXT DEFAULT '',
   is_public INTEGER DEFAULT 0, nsfw INTEGER DEFAULT 0,
   likes INTEGER DEFAULT 0, uses INTEGER DEFAULT 0,
@@ -364,6 +364,7 @@ for (const sql of [
   'ALTER TABLE settings ADD COLUMN personalize INTEGER DEFAULT 1',
   "ALTER TABLE characters ADD COLUMN bgm TEXT DEFAULT ''",
   'ALTER TABLE characters ADD COLUMN voice_speed REAL DEFAULT 1',
+  'ALTER TABLE characters ADD COLUMN voice_pitch REAL DEFAULT 1',
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 export default db;

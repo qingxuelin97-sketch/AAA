@@ -2,13 +2,15 @@
 export function browserVoices() {
   try { return (window.speechSynthesis?.getVoices() || []); } catch { return []; }
 }
-export function speakBrowser(text, voiceName, rate) {
+export function speakBrowser(text, voiceName, rate, pitch) {
   try {
     const synth = window.speechSynthesis; if (!synth) return false;
     synth.cancel();
     const u = new SpeechSynthesisUtterance(String(text).slice(0, 4000));
     const r = Number(rate);
     if (r && r >= 0.5 && r <= 2) u.rate = r; // 语速调优
+    const p = Number(pitch);
+    if (p && p >= 0.5 && p <= 1.5) u.pitch = Math.max(0, Math.min(2, p)); // 音调调优
     const vs = synth.getVoices();
     const v = voiceName && vs.find(x => x.name === voiceName);
     if (v) { u.voice = v; u.lang = v.lang; }

@@ -2,7 +2,8 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx, isVip, notify } from '../wallet.js';
-import { adminView, updatePlatform } from '../platform.js';
+import { adminView, updatePlatform, getPlatform } from '../platform.js';
+import { synthesize } from './chat.js';
 import { creatorTier } from '../creator.js';
 import { councilCfg, saveCouncil, councilSeats, councilSize, baseSeats, totalUsers, USERS_PER_SEAT, MIN_SEATS } from '../council.js';
 import { exportAll, importAll } from '../snapshot.js';
@@ -22,6 +23,25 @@ router.get('/check', (req, res) => res.json({ is_gm: true }));
 // ---- platform AI config (language / voice / image) ----
 router.get('/platform', (req, res) => res.json({ platform: adminView() }));
 router.put('/platform', (req, res) => res.json({ ok: true, platform: updatePlatform(req.body || {}) }));
+
+// GM voice preview — synthesize a sample with the posted form values (so the GM
+// can verify before saving). A blank key falls back to the saved platform key.
+router.post('/platform/test-voice', async (req, res) => {
+  const b = req.body?.voice || req.body || {};
+  const saved = getPlatform().voice;
+  const out = await synthesize({
+    proto: b.protocol || saved.protocol || 'openai',
+    base: b.base_url || saved.base_url,
+    key: (b.key && b.key.trim()) ? b.key.trim() : saved.key,
+    model: b.model || saved.model,
+    voice: b.voice_name || saved.voice_name,
+    text: req.body?.text || '幻域平台语音测试，这是当前音色的试听。',
+    speed: req.body?.speed, pitch: req.body?.pitch,
+  });
+  if (!out.ok) return res.status(out.status || 502).json({ error: out.error });
+  res.setHeader('Content-Type', out.contentType);
+  res.send(out.buffer);
+});
 
 // ---- broadcast ----
 router.post('/broadcast', (req, res) => {
