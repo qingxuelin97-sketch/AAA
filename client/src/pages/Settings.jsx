@@ -51,6 +51,7 @@ const VOICE_PROVIDER_OPTS = [
   ['aliyun', '阿里云百炼 · 通义千问语音（Qwen-TTS）', 'https://dashscope.aliyuncs.com', 'aliyun'],
   ['baidu', '百度智能云 · 在线语音合成（度家族发音人）', 'https://tsn.baidu.com', 'baidu'],
   ['volcano', '火山引擎 · 豆包语音合成（BV 音色）', 'https://openspeech.bytedance.com', 'volcano'],
+  ['tencent', '腾讯云 · 语音合成 TTS（智瑜/智聆等）', 'https://tts.tencentcloudapi.com', 'tencent'],
   ['deepinfra', 'DeepInfra（Kokoro 等）', 'https://api.deepinfra.com/v1/openai', 'openai'],
   ['lemonfox', 'Lemonfox.ai（OpenAI 兼容）', 'https://api.lemonfox.ai/v1', 'openai'],
   ['elevenlabs', 'ElevenLabs（多语种角色配音）', 'https://api.elevenlabs.io/v1', 'elevenlabs'],
@@ -250,15 +251,15 @@ export default function Settings() {
                 </div>
               </div>
             )}
-            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>后端为每种 TTS 协议内置适配器：浏览器内置语音（免配置·离线）、OpenAI 协议族（OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox）、阿里云百炼、<b>百度智能云</b>、<b>火山引擎（豆包）</b>、ElevenLabs、MiniMax 海螺、Azure 认知语音、Google Cloud TTS、Deepgram Aura 等。密钥仅存于本地。国内厂商（百度 / 火山 / 阿里）建议在服务端部署版使用，浏览器纯静态站受跨域限制。</p>
+            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>后端为每种 TTS 协议内置适配器：浏览器内置语音（免配置·离线）、OpenAI 协议族（OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox）、阿里云百炼、<b>百度智能云</b>、<b>火山引擎（豆包）</b>、<b>腾讯云</b>、ElevenLabs、MiniMax 海螺、Azure 认知语音、Google Cloud TTS、Deepgram Aura 等。密钥仅存于本地。国内厂商（百度 / 火山 / 腾讯 / 阿里）建议在服务端部署版使用，浏览器纯静态站受跨域限制。</p>
             {(() => {
               const vproto = s.voice_protocol || 'openai';
-              const MODEL_PH = { openai: 'tts-1 / gpt-4o-mini-tts', elevenlabs: 'eleven_multilingual_v2', minimax: 'speech-02-hd / speech-01-turbo', deepgram: 'aura-asteria-en', google: '（在音色处填完整 voice）', azure: '（无需填，音色即模型）', aliyun: 'qwen-tts', baidu: '（无需填）', volcano: 'volcano_tts（集群名）' };
-              const VOICE_LB = { openai: '默认音色', elevenlabs: 'Voice ID', minimax: '音色（voice_id）', azure: 'Neural 音色名', google: 'voice name', deepgram: 'aura 音色', aliyun: '音色（Qwen-TTS）', baidu: '发音人（per）', volcano: '音色（voice_type）' };
-              const VOICE_PH = { openai: 'alloy / nova / onyx', elevenlabs: '21m00Tcm4TlvDq8ikWAM', minimax: 'male-qn-qingse / female-shaonv', azure: 'zh-CN-XiaoxiaoNeural', google: 'cmn-CN-Wavenet-A', deepgram: 'aura-asteria-en', aliyun: 'Cherry / Ethan / Serena', baidu: '0 度小美 / 1 度小宇 / 5118 度小鹿', volcano: 'BV001_streaming / BV700_streaming' };
-              const KEY_LB = { azure: '订阅密钥（Ocp-Apim-Subscription-Key）', google: 'API Key', deepgram: 'API Key（Token）', aliyun: 'DASHSCOPE_API_KEY', baidu: 'API Key:Secret Key', volcano: 'AppID:AccessToken', minimax: 'API Key（或 GroupId:APIKey）' };
-              const KEY_PH = vproto === 'elevenlabs' ? 'xi-api-key' : vproto === 'baidu' ? 'API Key:Secret Key（冒号分隔）' : vproto === 'volcano' ? 'AppID:AccessToken（冒号分隔）' : vproto === 'minimax' ? 'MiniMax APIKey（或 GroupId:APIKey）' : 'sk-...';
-              const BASE_PH = { azure: 'https://eastus.tts.speech.microsoft.com', google: 'https://texttospeech.googleapis.com', deepgram: 'https://api.deepgram.com', aliyun: 'https://dashscope.aliyuncs.com', baidu: 'https://tsn.baidu.com', volcano: 'https://openspeech.bytedance.com', minimax: 'https://api.minimax.chat/v1?GroupId=你的GroupId' };
+              const MODEL_PH = { openai: 'tts-1 / gpt-4o-mini-tts', elevenlabs: 'eleven_multilingual_v2', minimax: 'speech-02-hd / speech-01-turbo', deepgram: 'aura-asteria-en', google: '（在音色处填完整 voice）', azure: '（无需填，音色即模型）', aliyun: 'qwen-tts', baidu: '（无需填）', volcano: 'volcano_tts（集群名）', tencent: '地域 Region，如 ap-guangzhou' };
+              const VOICE_LB = { openai: '默认音色', elevenlabs: 'Voice ID', minimax: '音色（voice_id）', azure: 'Neural 音色名', google: 'voice name', deepgram: 'aura 音色', aliyun: '音色（Qwen-TTS）', baidu: '发音人（per）', volcano: '音色（voice_type）', tencent: '音色（VoiceType 编号）' };
+              const VOICE_PH = { openai: 'alloy / nova / onyx', elevenlabs: '21m00Tcm4TlvDq8ikWAM', minimax: 'male-qn-qingse / female-shaonv', azure: 'zh-CN-XiaoxiaoNeural', google: 'cmn-CN-Wavenet-A', deepgram: 'aura-asteria-en', aliyun: 'Cherry / Ethan / Serena', baidu: '0 度小美 / 1 度小宇 / 5118 度小鹿', volcano: 'BV001_streaming / BV700_streaming', tencent: '101001 智瑜 / 101002 智聆' };
+              const KEY_LB = { azure: '订阅密钥（Ocp-Apim-Subscription-Key）', google: 'API Key', deepgram: 'API Key（Token）', aliyun: 'DASHSCOPE_API_KEY', baidu: 'API Key:Secret Key', volcano: 'AppID:AccessToken', minimax: 'API Key（或 GroupId:APIKey）', tencent: 'SecretId:SecretKey' };
+              const KEY_PH = vproto === 'elevenlabs' ? 'xi-api-key' : vproto === 'baidu' ? 'API Key:Secret Key（冒号分隔）' : vproto === 'volcano' ? 'AppID:AccessToken（冒号分隔）' : vproto === 'minimax' ? 'MiniMax APIKey（或 GroupId:APIKey）' : vproto === 'tencent' ? 'SecretId:SecretKey（冒号分隔）' : 'sk-...';
+              const BASE_PH = { azure: 'https://eastus.tts.speech.microsoft.com', google: 'https://texttospeech.googleapis.com', deepgram: 'https://api.deepgram.com', aliyun: 'https://dashscope.aliyuncs.com', baidu: 'https://tsn.baidu.com', volcano: 'https://openspeech.bytedance.com', minimax: 'https://api.minimax.chat/v1?GroupId=你的GroupId', tencent: 'https://tts.tencentcloudapi.com' };
 
               // ---- Browser Web Speech: zero-config, no key/base ----
               if (vproto === 'browser') {
@@ -305,7 +306,8 @@ export default function Settings() {
               {vproto === 'azure' && <div className="hint">Base URL 中的区域需与你的资源一致，例如 <code>https://eastus.tts.speech.microsoft.com</code>。</div>}
               {vproto === 'aliyun' && <div className="hint">阿里云百炼（DashScope）：Base URL 固定 <code>https://dashscope.aliyuncs.com</code>，模型填 <code>qwen-tts</code>，音色可选 Cherry / Ethan / Serena / Chelsie / Dylan 等。Key 为百炼控制台的 <code>DASHSCOPE_API_KEY</code>。</div>}
               {vproto === 'baidu' && <div className="hint">百度智能云：Base URL 固定 <code>https://tsn.baidu.com</code>。在「API Key」处填 <b>API Key:Secret Key</b>（用英文冒号连接，二者均来自语音技术控制台的应用）。发音人 <code>per</code> 常用：0 度小美、1 度小宇、3 度逍遥、4 度丫丫、5118 度小鹿、106 度博文、110 度小童、111 度小萌。<b>百度接口不支持浏览器跨域</b>，请在服务端部署版使用。</div>}
-              {vproto === 'volcano' && <div className="hint">火山引擎（豆包语音）：Base URL 固定 <code>https://openspeech.bytedance.com</code>，模型填集群名 <code>volcano_tts</code>。在「API Key」处填 <b>AppID:AccessToken</b>（用英文冒号连接，来自火山语音控制台）。音色 <code>voice_type</code> 如 <code>BV001_streaming</code>（通用女声）、<code>BV700_streaming</code>（灿灿·多情感）等，需在控制台开通对应音色。</div>}</div>
+              {vproto === 'volcano' && <div className="hint">火山引擎（豆包语音）：Base URL 固定 <code>https://openspeech.bytedance.com</code>，模型填集群名 <code>volcano_tts</code>。在「API Key」处填 <b>AppID:AccessToken</b>（用英文冒号连接，来自火山语音控制台）。音色 <code>voice_type</code> 如 <code>BV001_streaming</code>（通用女声）、<code>BV700_streaming</code>（灿灿·多情感）等，需在控制台开通对应音色。</div>}
+              {vproto === 'tencent' && <div className="hint">腾讯云语音合成：Base URL 固定 <code>https://tts.tencentcloudapi.com</code>，「模型」处填地域 Region（如 <code>ap-guangzhou</code>）。在「API Key」处填 <b>SecretId:SecretKey</b>（用英文冒号连接，来自腾讯云访问管理 CAM）。音色填 <code>VoiceType</code> 编号，如 101001 智瑜、101002 智聆、101004 智云。<b>采用 TC3 服务端签名，仅服务端部署版可用</b>（浏览器纯静态站无法直连）。</div>}</div>
             <div className="row">
               <div className="field"><label>{VOICE_LB[vproto] || '音色'}</label><input className="input" value={s.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder={VOICE_PH[vproto] || ''} /></div>
               <div className="field"><label>{KEY_LB[vproto] || 'API Key'} {s.voice_api_key_set && <span className="tag">已配置</span>}</label>

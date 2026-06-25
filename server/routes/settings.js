@@ -81,6 +81,7 @@ router.post('/models', authRequired, async (req, res) => {
   const key = req.body?.api_key || cur.llm_api_key;
   if (proto === 'minimax') return res.json({ models: ['speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo', 'speech-01-240228'] });
   if (proto === 'volcano') return res.json({ models: ['volcano_tts', 'volcano_icl'] });
+  if (proto === 'tencent') return res.json({ models: ['ap-guangzhou', 'ap-shanghai', 'ap-beijing', 'ap-hongkong'] });
   if (proto === 'baidu' || proto === 'browser') return res.json({ models: [] });
   if (!base) return res.status(400).json({ error: '请先填写 API Base URL' });
   if (!key) return res.status(400).json({ error: '请先填写 API Key' });

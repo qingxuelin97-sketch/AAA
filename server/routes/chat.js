@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx } from '../wallet.js';
@@ -29,6 +30,23 @@ function effectiveLLM(settings) {
 
 // Split a combined "a:b" credential (Baidu APIKey:SecretKey / Volcano AppID:Token).
 const splitPair = (k) => { const s = String(k || ''); const i = s.indexOf(':'); return i < 0 ? [s.trim(), ''] : [s.slice(0, i).trim(), s.slice(i + 1).trim()]; };
+
+// Tencent Cloud TC3-HMAC-SHA256 request signature (used by 腾讯云 TTS TextToVoice).
+function tc3Authorization({ secretId, secretKey, service, host, action, version, payload, timestamp }) {
+  const date = new Date(timestamp * 1000).toISOString().slice(0, 10);
+  const ct = 'application/json; charset=utf-8';
+  const signedHeaders = 'content-type;host;x-tc-action';
+  const canonicalHeaders = `content-type:${ct}\nhost:${host}\nx-tc-action:${action.toLowerCase()}\n`;
+  const hashedPayload = crypto.createHash('sha256').update(payload, 'utf8').digest('hex');
+  const canonicalRequest = `POST\n/\n\n${canonicalHeaders}\n${signedHeaders}\n${hashedPayload}`;
+  const hashedCanonical = crypto.createHash('sha256').update(canonicalRequest, 'utf8').digest('hex');
+  const scope = `${date}/${service}/tc3_request`;
+  const stringToSign = `TC3-HMAC-SHA256\n${timestamp}\n${scope}\n${hashedCanonical}`;
+  const hmac = (k, d) => crypto.createHmac('sha256', k).update(d, 'utf8').digest();
+  const kSigning = hmac(hmac(hmac('TC3' + secretKey, date), service), 'tc3_request');
+  const signature = crypto.createHmac('sha256', kSigning).update(stringToSign, 'utf8').digest('hex');
+  return { authorization: `TC3-HMAC-SHA256 Credential=${secretId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`, ct };
+}
 
 // Resolve MiniMax pieces: root URL (no query), GroupId, bearer apiKey. GroupId may live
 // in the Base URL query (?GroupId=…) or be prefixed onto the key as "GroupId:apikey".
@@ -88,6 +106,23 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       const d = await r.json().catch(() => null);
       if (d?.code !== 3000 || !d?.data) return { ok: false, status: 502, error: '火山语音失败：' + (d?.message || JSON.stringify(d || {}).slice(0, 200)) };
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(d.data, 'base64') };
+    }
+    if (proto === 'tencent') {
+      // 腾讯云语音合成 TextToVoice: TC3 签名, SecretId:SecretKey, voice=VoiceType, model=地域(Region).
+      const [secretId, secretKey] = splitPair(key);
+      if (!secretId || !secretKey) return { ok: false, status: 400, error: '腾讯云语音需在 API Key 处填「SecretId:SecretKey」（用英文冒号分隔）' };
+      const host = (b || 'https://tts.tencentcloudapi.com').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+      const region = model || 'ap-guangzhou';
+      const tcSpeed = Math.max(-2, Math.min(6, Number(((rate - 1) * 2).toFixed(2)))); // 0=正常, 区间 [-2,6]
+      const payload = JSON.stringify({ Text: text, SessionId: (globalThis.crypto?.randomUUID?.() || ('s' + Date.now())), Volume: 0, Speed: tcSpeed, ModelType: 1, VoiceType: Number(voice) || 101001, PrimaryLanguage: 1, SampleRate: 16000, Codec: 'mp3' });
+      const timestamp = Math.floor(Date.now() / 1000);
+      const { authorization, ct } = tc3Authorization({ secretId, secretKey, service: 'tts', host, action: 'TextToVoice', version: '2019-08-23', payload, timestamp });
+      const r = await fetch(`https://${host}/`, { method: 'POST', headers: { 'Content-Type': ct, Host: host, Authorization: authorization, 'X-TC-Action': 'TextToVoice', 'X-TC-Timestamp': String(timestamp), 'X-TC-Version': '2019-08-23', 'X-TC-Region': region }, body: payload });
+      const d = await r.json().catch(() => null);
+      const resp = d?.Response;
+      if (!resp || resp.Error) return { ok: false, status: 502, error: '腾讯云语音失败：' + (resp?.Error?.Message || JSON.stringify(d || {}).slice(0, 200)) };
+      if (!resp.Audio) return { ok: false, status: 502, error: '腾讯云语音未返回音频' };
+      return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(resp.Audio, 'base64') };
     }
     if (proto === 'elevenlabs') {
       const r = await fetch(`${b}/text-to-speech/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`, {

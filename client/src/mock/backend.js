@@ -795,6 +795,7 @@ async function route(method, path, search, body, headers) {
     // MiniMax has no public model-list endpoint; return the known TTS models.
     if (proto === 'minimax') return J({ models: ['speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo', 'speech-01-240228'] });
     if (proto === 'volcano') return J({ models: ['volcano_tts', 'volcano_icl'] }); // cluster name, no list endpoint
+    if (proto === 'tencent') return J({ models: ['ap-guangzhou', 'ap-shanghai', 'ap-beijing', 'ap-hongkong'] }); // 地域(Region), no list endpoint
     if (proto === 'baidu' || proto === 'browser') return J({ models: [] }); // no remote model list
     if (!base) return E('请先填写 API Base URL');
     if (!key) return E('请先填写 API Key');
@@ -1064,6 +1065,10 @@ async function route(method, path, search, body, headers) {
         if (d?.code !== 3000 || !d?.data) return E('火山语音失败：' + (d?.message || JSON.stringify(d || {}).slice(0, 200)), 502);
         const bin = atob(d.data); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
         return finalize(new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } }));
+      }
+      if (proto === 'tencent') {
+        // 腾讯云 TTS 需要 TC3 服务端签名且不开放浏览器跨域，纯静态站无法直连——引导到服务端部署版。
+        return E('腾讯云语音需服务端 TC3 签名与代理，纯浏览器版无法直连。请使用「服务端部署版」，或在本页改用「浏览器内置语音」。', 501);
       }
       if (proto === 'elevenlabs') {
         // ElevenLabs: POST /v1/text-to-speech/{voice_id}, xi-api-key header, JSON in / mp3 out.
