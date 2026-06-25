@@ -3,21 +3,36 @@ import React, { useId } from 'react';
 // Lightweight, dependency-free charts that match the warm editorial design language.
 // Colors come from CSS vars so they adapt to light/dark automatically.
 
-export function BarChart({ data = [], height = 170, color = 'var(--accent)', unit = '' }) {
-  const max = Math.max(1, ...data.map(d => d.value));
+export function BarChart({ data = [], height = 196, color = 'var(--accent)', unit = '' }) {
   if (!data.length) return <div className="chart-empty">暂无数据</div>;
+  const max = Math.max(1, ...data.map(d => d.value));
+  const peak = data.reduce((m, d) => (d.value > m.value ? d : m), data[0]); // highlight the leader
+  const ticks = 4; // horizontal gridlines incl. baseline
+  const fmt = (n) => (n >= 10000 ? (n / 10000).toFixed(1) + 'w' : String(n));
   return (
-    <div className="bar-chart" style={{ height }}>
-      {data.map((d, i) => (
-        <div className="bar-col" key={i} title={`${d.label}：${d.value}${unit}`}>
-          <div className="bar-track">
-            <div className="bar-fill" style={{ height: `${(d.value / max) * 100}%`, background: color, animationDelay: `${i * 0.05}s` }}>
-              <span className="bar-val">{d.value}</span>
+    <div className="bar-chart2" style={{ '--h': height + 'px' }}>
+      {/* y scale gridlines + max label */}
+      <div className="bc-grid" aria-hidden="true">
+        {Array.from({ length: ticks }).map((_, i) => <span key={i} />)}
+      </div>
+      <span className="bc-ymax" aria-hidden="true">{fmt(max)}{unit}</span>
+      <div className="bc-bars">
+        {data.map((d, i) => {
+          const h = Math.max(2, (d.value / max) * 100);
+          const lead = d === peak && d.value > 0;
+          return (
+            <div className={'bc-col' + (lead ? ' lead' : '')} key={i} title={`${d.label}：${d.value}${unit}`}
+              style={{ '--c': color, '--d': i * 0.05 + 's' }}>
+              <div className="bc-plot">
+                <div className="bc-bar" style={{ height: h + '%' }}>
+                  <span className="bc-val">{fmt(d.value)}</span>
+                </div>
+              </div>
+              <div className="bc-label">{d.label || '—'}</div>
             </div>
-          </div>
-          <div className="bar-label">{d.label}</div>
-        </div>
-      ))}
+          );
+        })}
+      </div>
     </div>
   );
 }

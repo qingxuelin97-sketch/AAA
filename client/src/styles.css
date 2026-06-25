@@ -2771,15 +2771,31 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 @media (max-width: 680px) { .chart-grid { grid-template-columns: 1fr; } }
 .chart-empty { color: var(--faint); font-size: 13px; text-align: center; padding: 30px; }
 
-.bar-chart { display: flex; align-items: flex-end; gap: 10px; padding-top: 18px; }
-.bar-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 7px; height: 100%; }
-.bar-track { width: 100%; flex: 1; display: flex; align-items: flex-end; }
-.bar-fill { width: 100%; border-radius: 7px 7px 3px 3px; min-height: 3px; position: relative; transform-origin: bottom;
-  animation: barGrow 0.6s cubic-bezier(0.22,0.61,0.36,1) backwards; box-shadow: inset 0 -6px 14px rgba(0,0,0,0.06); }
-@keyframes barGrow { from { transform: scaleY(0); opacity: 0.4; } to { transform: scaleY(1); opacity: 1; } }
-.bar-val { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: var(--muted); }
-.bar-label { font-size: 11px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-@media (prefers-reduced-motion: reduce) { .bar-fill { animation: none; } }
+/* —— 结构化柱状图（基线 + 网格刻度 + 渐变柱 + 数值标签 + 榜首高亮）—— */
+.bar-chart2 { --label-h: 26px; --pad-top: 22px; position: relative; height: var(--h); padding-top: var(--pad-top); }
+.bc-grid { position: absolute; left: 0; right: 0; top: var(--pad-top); bottom: var(--label-h);
+  display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.bc-grid span { display: block; height: 1px; background: var(--border); }
+.bc-grid span:last-child { background: var(--border-2); }
+.bc-ymax { position: absolute; top: calc(var(--pad-top) - 14px); left: 0; font-size: 10.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.bc-bars { position: relative; height: 100%; display: flex; align-items: flex-end; gap: clamp(6px, 1.4vw, 13px); }
+.bc-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; }
+.bc-plot { flex: 1; display: flex; align-items: flex-end; justify-content: center; min-height: 0; }
+.bc-bar { width: 100%; max-width: 46px; border-radius: 7px 7px 2px 2px; position: relative; transform-origin: bottom;
+  background: linear-gradient(180deg, var(--c), color-mix(in srgb, var(--c) 28%, transparent));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -10px 18px rgba(0,0,0,0.05);
+  animation: barGrow 0.62s cubic-bezier(0.22,0.61,0.36,1) backwards; animation-delay: var(--d); }
+.bc-col.lead .bc-bar { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 16px color-mix(in srgb, var(--c) 38%, transparent); }
+.bc-col:hover .bc-bar { filter: brightness(1.06) saturate(1.05); }
+@keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.bc-val { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700;
+  color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; opacity: 0; animation: bcValIn 0.4s ease forwards; animation-delay: calc(var(--d) + 0.3s); }
+.bc-col.lead .bc-val { color: var(--accent-2); }
+@keyframes bcValIn { to { opacity: 1; } }
+.bc-label { height: var(--label-h); line-height: var(--label-h); text-align: center; font-size: 11px; color: var(--faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc-col.lead .bc-label { color: var(--muted); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .bc-bar, .bc-val { animation: none; opacity: 1; } }
 
 .line-chart { position: relative; }
 .lc-line { stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: lcDraw 1.1s cubic-bezier(0.5,0,0.3,1) forwards; }
@@ -3223,62 +3239,77 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 }
 
 /* ===================================================================== */
-/*  登录开场动画（一次性 · 品牌绽放 → 帷幕溶解）                          */
+/*  登录开场动画 —— 线性自上而下逐段揭幕（一次性，随页面加载）            */
 /* ===================================================================== */
-.auth-intro { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; cursor: pointer;
-  overflow: hidden; background:
-    radial-gradient(1200px 820px at 50% 32%, #3a2519 0%, #1c130d 56%, #0c0907 100%);
-  animation: aiIn 0.5s ease both; will-change: opacity, transform, filter; }
-.auth-intro.leaving { animation: aiOut 0.62s cubic-bezier(0.5, 0, 0.75, 0) both; pointer-events: none; }
-@keyframes aiIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes aiOut { to { opacity: 0; transform: scale(1.06); filter: blur(9px); } }
+.auth-reveal .auth-hero > *,
+.auth-reveal .auth-card > * { animation: authDrop 0.62s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+/* 自上而下的节奏：左栏品牌区与右栏登录卡共享一条时间线 */
+.auth-reveal .auth-hero > *:nth-child(1) { animation-delay: 0.04s; }
+.auth-reveal .auth-hero > *:nth-child(2) { animation-delay: 0.10s; }
+.auth-reveal .auth-hero > *:nth-child(3) { animation-delay: 0.16s; }
+.auth-reveal .auth-hero > *:nth-child(4) { animation-delay: 0.22s; }
+.auth-reveal .auth-hero > *:nth-child(5) { animation-delay: 0.28s; }
+.auth-reveal .auth-hero > *:nth-child(n+6) { animation-delay: 0.34s; }
+.auth-reveal .auth-card > *:nth-child(1) { animation-delay: 0.12s; }
+.auth-reveal .auth-card > *:nth-child(2) { animation-delay: 0.18s; }
+.auth-reveal .auth-card > *:nth-child(3) { animation-delay: 0.24s; }
+.auth-reveal .auth-card > *:nth-child(4) { animation-delay: 0.30s; }
+.auth-reveal .auth-card > *:nth-child(5) { animation-delay: 0.36s; }
+.auth-reveal .auth-card > *:nth-child(n+6) { animation-delay: 0.42s; }
+@keyframes authDrop { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .auth-reveal .auth-hero > *, .auth-reveal .auth-card > * { animation: none; }
+}
 
-.auth-intro-orbs { position: absolute; inset: 0; pointer-events: none; }
-.auth-intro-orbs i { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.55; animation: aiOrb 13s ease-in-out infinite; }
-.auth-intro-orbs i:nth-child(1) { width: 420px; height: 420px; background: radial-gradient(rgba(217,119,87,0.6), transparent 70%); top: -90px; left: 8%; }
-.auth-intro-orbs i:nth-child(2) { width: 360px; height: 360px; background: radial-gradient(rgba(63,129,149,0.45), transparent 70%); bottom: -80px; right: 12%; animation-delay: -4s; }
-.auth-intro-orbs i:nth-child(3) { width: 300px; height: 300px; background: radial-gradient(rgba(179,137,47,0.42), transparent 70%); top: 46%; right: -40px; animation-delay: -7s; }
-.auth-intro-orbs i:nth-child(4) { width: 260px; height: 260px; background: radial-gradient(rgba(217,119,87,0.4), transparent 70%); top: 8%; right: 30%; animation-delay: -10s; }
-@keyframes aiOrb { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(28px,-26px) scale(1.08); } 66% { transform: translate(-22px,18px) scale(0.94); } }
+/* ===================================================================== */
+/*  金币 / 钻石 资产视觉重设计 + 成就卡精修                                */
+/* ===================================================================== */
+/* —— premium 金币 & 钻石 chip（光泽 + 高光 + 立体）—— */
+.asset-chip { position: relative; width: 50px; height: 50px; border-radius: 16px; display: grid; place-items: center;
+  flex-shrink: 0; overflow: hidden; isolation: isolate; transition: transform 0.25s var(--spring); }
+.asset-chip > svg { position: relative; z-index: 2; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.18)); }
+.asset-chip::before { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit;
+  background: radial-gradient(80% 60% at 30% 18%, rgba(255,255,255,0.75), transparent 60%); }
+.asset-chip::after { content: ''; position: absolute; top: 0; left: -120%; width: 55%; height: 100%; z-index: 3;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,0.55), transparent); transform: skewX(-18deg);
+  animation: assetSheen 4.5s ease-in-out infinite; }
+.wallet-hero .col:hover .asset-chip { transform: translateY(-2px) rotate(-3deg); }
+@keyframes assetSheen { 0%, 72% { left: -120%; } 86%, 100% { left: 160%; } }
+.asset-chip.gold { color: #6f4710;
+  background: linear-gradient(152deg, #ffe9aa 0%, #f3c352 46%, #d29329 100%);
+  box-shadow: inset 0 1.5px 1px rgba(255,255,255,0.8), inset 0 -4px 8px rgba(150,95,20,0.4), 0 8px 18px rgba(214,160,50,0.42); }
+.asset-chip.diamond { color: #11506a;
+  background: linear-gradient(152deg, #d8f2fc 0%, #76c4e8 46%, #3787af 100%);
+  box-shadow: inset 0 1.5px 1px rgba(255,255,255,0.85), inset 0 -4px 8px rgba(20,80,110,0.4), 0 8px 18px rgba(70,150,195,0.4); }
+/* 资产数字配色，让金币/钻石一眼可辨 */
+.wallet-hero .col.gold .bal-num { color: #c8932f; }
+.wallet-hero .col.diamond .bal-num { color: #2f87a6; }
+[data-theme="dark"] .wallet-hero .col.gold .bal-num { color: #ecc468; }
+[data-theme="dark"] .wallet-hero .col.diamond .bal-num { color: #79d0e4; }
+[data-perf="lite"] .asset-chip::after { animation: none; }
+@media (prefers-reduced-motion: reduce) { .asset-chip::after { animation: none; } }
+/* 小尺寸资产 chip（兑换/充值处）继续用既有 .icon-chip，已在上方定义 */
 
-.auth-intro-grid { position: absolute; inset: -40% 0 0; pointer-events: none; opacity: 0.16;
-  background-image: linear-gradient(rgba(217,119,87,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(217,119,87,0.5) 1px, transparent 1px);
-  background-size: 46px 46px; transform: perspective(620px) rotateX(62deg); transform-origin: 50% 100%;
-  mask-image: radial-gradient(620px 360px at 50% 30%, #000 0%, transparent 75%);
-  -webkit-mask-image: radial-gradient(620px 360px at 50% 30%, #000 0%, transparent 75%);
-  animation: aiGrid 18s linear infinite; }
-@keyframes aiGrid { to { background-position: 0 46px, 46px 0; } }
-
-.auth-intro-core { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px; }
-.auth-intro-mark { position: relative; display: grid; place-items: center; margin-bottom: 26px;
-  animation: aiBloom 0.95s cubic-bezier(0.18, 0.9, 0.28, 1.2) both; }
-.auth-intro-mark > svg { position: relative; z-index: 2; border-radius: 28px;
-  box-shadow: 0 18px 60px rgba(217,119,87,0.55), 0 0 0 1px rgba(255,255,255,0.06); }
-.aim-ring { position: absolute; width: 96px; height: 96px; border-radius: 50%; border: 2px solid rgba(234,150,110,0.65);
-  animation: aimRing 1.9s ease-out infinite; }
-.aim-ring.r2 { animation-delay: 0.9s; }
-@keyframes aiBloom { 0% { opacity: 0; transform: scale(0.4) rotate(-12deg); } 60% { opacity: 1; } 100% { opacity: 1; transform: scale(1) rotate(0); } }
-@keyframes aimRing { 0% { transform: scale(0.7); opacity: 0.7; } 100% { transform: scale(2.4); opacity: 0; } }
-
-.auth-intro-title { margin: 0; font-family: var(--serif); font-weight: 800; display: flex; gap: 0.1em;
-  font-size: clamp(46px, 11vw, 88px); line-height: 1; letter-spacing: 0.04em; }
-.auth-intro-title span { display: inline-block; color: #fff; opacity: 0; transform: translateY(28px);
-  background: linear-gradient(180deg, #fff 30%, #ffd9c6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-  animation: aiChar 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
-@keyframes aiChar { 0% { opacity: 0; transform: translateY(28px); filter: blur(8px); } 100% { opacity: 1; transform: translateY(0); filter: blur(0); } }
-
-.auth-intro-sub { margin-top: 16px; color: rgba(255,255,255,0.62); font-size: clamp(12px, 2.4vw, 14px);
-  letter-spacing: 5px; padding-left: 5px; opacity: 0; animation: aiSub 0.9s ease both 0.95s; }
-@keyframes aiSub { 0% { opacity: 0; transform: translateY(10px); letter-spacing: 12px; } 100% { opacity: 0.62; transform: translateY(0); letter-spacing: 5px; } }
-
-.auth-intro-bar { margin-top: 30px; width: 188px; height: 3px; border-radius: 3px; overflow: hidden; background: rgba(255,255,255,0.12); }
-.auth-intro-bar i { display: block; height: 100%; border-radius: 3px; transform-origin: left;
-  background: linear-gradient(90deg, var(--accent), #ffce9e); transform: scaleX(0); animation: aiBar 1.7s ease 0.7s both; }
-@keyframes aiBar { to { transform: scaleX(1); } }
-
-.auth-intro-skip { position: absolute; bottom: 34px; left: 0; right: 0; text-align: center; z-index: 2;
-  color: rgba(255,255,255,0.4); font-size: 12px; letter-spacing: 1px; opacity: 0; animation: aiSkip 1s ease both 1.8s; }
-@keyframes aiSkip { 0% { opacity: 0; } 100% { opacity: 0.55; } }
-
-@media (prefers-reduced-motion: reduce) { .auth-intro { display: none; } }
-[data-perf="lite"] .auth-intro-grid, [data-perf="lite"] .auth-intro-orbs i { animation: none; }
+/* —— 成就卡精修：奖励金币药丸、奖牌角标、领取强调、未解锁更克制 —— */
+.ach-card { padding: 15px 16px; gap: 14px; }
+.ach-reward { background: rgba(226,179,88,0.16); color: #b78628; padding: 3px 9px 3px 7px; border-radius: 999px; line-height: 1; }
+[data-theme="dark"] .ach-reward { background: rgba(226,179,88,0.18); color: #e6c06a; }
+/* 奖牌角标：右上角细条，按金/银/铜着色 */
+.ach-card::before { content: ''; position: absolute; top: 0; right: 0; width: 46px; height: 46px; z-index: 1; pointer-events: none;
+  background: radial-gradient(120% 120% at 100% 0, var(--medal-c, transparent) 0, transparent 58%); opacity: 0.5; }
+.ach-card.medal-gold { --medal-c: rgba(214,169,58,0.5); }
+.ach-card.medal-silver { --medal-c: rgba(150,162,176,0.45); }
+.ach-card.medal-bronze { --medal-c: rgba(201,139,83,0.45); }
+.ach-card:not(.unlocked)::before { opacity: 0.22; }
+/* 未解锁：虚线描边 + 更弱对比，已解锁更实 */
+.ach-card:not(.unlocked) { border-style: dashed; }
+.ach-card.unlocked:not(.claimed) { background: linear-gradient(120deg, color-mix(in srgb, var(--medal-c, var(--accent)) 10%, var(--panel)), var(--panel) 70%); }
+/* 进度条按奖牌着色 */
+.ach-card.medal-gold .ach-prog-bar span { background: linear-gradient(90deg, #e9c45a, #d6a93a); }
+.ach-card.medal-silver .ach-prog-bar span { background: linear-gradient(90deg, #cfd6de, #aab4c0); }
+.ach-card.medal-bronze .ach-prog-bar span { background: linear-gradient(90deg, #e0a878, #c98b53); }
+/* 可领取按钮：柔和脉冲提示 */
+.ach-side .btn.sm.primary { box-shadow: 0 0 0 0 var(--accent-ring); animation: achClaimPulse 2s ease-in-out infinite; }
+@keyframes achClaimPulse { 50% { box-shadow: 0 0 0 5px rgba(217,119,87,0.16); } }
+[data-perf="lite"] .ach-side .btn.sm.primary { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ach-side .btn.sm.primary { animation: none; } }
