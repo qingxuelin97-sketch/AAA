@@ -27,6 +27,21 @@ function effectiveLLM(settings) {
   return null;
 }
 
+// Split a combined "a:b" credential (Baidu APIKey:SecretKey / Volcano AppID:Token).
+const splitPair = (k) => { const s = String(k || ''); const i = s.indexOf(':'); return i < 0 ? [s.trim(), ''] : [s.slice(0, i).trim(), s.slice(i + 1).trim()]; };
+
+// Baidu access-token cache. Tokens are valid ~30 days; we refresh a day early.
+const baiduTokens = new Map();
+async function baiduToken(apiKey, secretKey) {
+  const hit = baiduTokens.get(apiKey);
+  if (hit && hit.exp > Date.now()) return hit.tok;
+  const r = await fetch(`https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${encodeURIComponent(apiKey)}&client_secret=${encodeURIComponent(secretKey)}`, { method: 'POST' });
+  const d = await r.json().catch(() => null);
+  if (!d?.access_token) throw new Error('百度语音鉴权失败：' + (d?.error_description || d?.error || '请检查 API Key / Secret Key 是否正确'));
+  baiduTokens.set(apiKey, { tok: d.access_token, exp: Date.now() + (Number(d.expires_in || 2592000) - 86400) * 1000 });
+  return d.access_token;
+}
+
 // Synthesize speech via the right vendor adapter. Returns { ok, contentType, buffer } or { ok:false, status, error }.
 export async function synthesize({ proto, base, key, model, voice, text, speed, pitch }) {
   const b = (base || '').replace(/\/$/, '');
@@ -35,6 +50,33 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
   const pitPct = Math.round((pit - 1) * 100);                   // SSML pitch as +/-N%
   const pitSemi = Math.max(-12, Math.min(12, Math.round((pit - 1) * 24))); // semitone-based vendors
   try {
+    if (proto === 'baidu') {
+      // Baidu 智能云 短文本在线合成: OAuth token from APIKey:SecretKey, then POST form to /text2audio.
+      const [ak, sk] = splitPair(key);
+      if (!ak || !sk) return { ok: false, status: 400, error: '百度语音需在 API Key 处填「API Key:Secret Key」（用英文冒号分隔）' };
+      let tok; try { tok = await baiduToken(ak, sk); } catch (e) { return { ok: false, status: 502, error: e.message }; }
+      const spd = Math.max(0, Math.min(15, Math.round(rate * 5)));   // 语速 0-15（默认 5 ≈ 1×）
+      const pitB = Math.max(0, Math.min(15, Math.round(pit * 5)));   // 音调 0-15（默认 5 ≈ 1×）
+      const form = new URLSearchParams({ tok, tex: text, cuid: 'huanyu', ctp: '1', lan: 'zh', spd: String(spd), pit: String(pitB), vol: '5', per: String(voice || '0'), aue: '3' });
+      const r = await fetch(`${b || 'https://tsn.baidu.com'}/text2audio`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form.toString() });
+      const ct = r.headers.get('content-type') || '';
+      if (!r.ok || ct.includes('json')) { const t = await r.text().catch(() => ''); return { ok: false, status: 502, error: `百度语音失败：${t.slice(0, 200)}` }; }
+      return { ok: true, contentType: ct.includes('audio') ? ct : 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
+    }
+    if (proto === 'volcano') {
+      // 火山引擎语音合成: AppID:AccessToken, cluster=model, voice_type=voice. Auth header uses "Bearer;".
+      const [appid, vtok] = splitPair(key);
+      if (!appid || !vtok) return { ok: false, status: 400, error: '火山语音需在 API Key 处填「AppID:AccessToken」（用英文冒号分隔）' };
+      const cluster = model || 'volcano_tts';
+      const reqid = (globalThis.crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2)));
+      const r = await fetch(`${b || 'https://openspeech.bytedance.com'}/api/v1/tts`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer;${vtok}` },
+        body: JSON.stringify({ app: { appid, token: vtok, cluster }, user: { uid: 'huanyu' }, audio: { voice_type: voice || 'BV001_streaming', encoding: 'mp3', speed_ratio: rate, volume_ratio: 1, pitch_ratio: pit }, request: { reqid, text, operation: 'query' } }) });
+      if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
+      const d = await r.json().catch(() => null);
+      if (d?.code !== 3000 || !d?.data) return { ok: false, status: 502, error: '火山语音失败：' + (d?.message || JSON.stringify(d || {}).slice(0, 200)) };
+      return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(d.data, 'base64') };
+    }
     if (proto === 'elevenlabs') {
       const r = await fetch(`${b}/text-to-speech/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'xi-api-key': key, Accept: 'audio/mpeg' },

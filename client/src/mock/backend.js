@@ -794,7 +794,8 @@ async function route(method, path, search, body, headers) {
     const proto = body.protocol || 'openai';
     // MiniMax has no public model-list endpoint; return the known TTS models.
     if (proto === 'minimax') return J({ models: ['speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo', 'speech-01-240228'] });
-    if (proto === 'browser') return J({ models: [] }); // browser TTS has no remote models
+    if (proto === 'volcano') return J({ models: ['volcano_tts', 'volcano_icl'] }); // cluster name, no list endpoint
+    if (proto === 'baidu' || proto === 'browser') return J({ models: [] }); // no remote model list
     if (!base) return E('请先填写 API Base URL');
     if (!key) return E('请先填写 API Key');
     const url = proto === 'anthropic' ? base.replace(/\/v1$/, '') + '/v1/models' : base + '/models';
@@ -1032,6 +1033,38 @@ async function route(method, path, search, body, headers) {
     };
     try {
       // Protocol adapters: translate to each vendor's TTS API, return audio/* to the player.
+      if (proto === 'baidu') {
+        // Baidu 智能云 短文本在线合成. Key = "APIKey:SecretKey". NOTE: Baidu 不开放跨域(CORS)，
+        // 纯浏览器静态站无法直连——请在服务端部署版使用，浏览器版请改用「浏览器内置语音」。
+        const ci = (vkey || '').indexOf(':'); const ak = ci < 0 ? '' : vkey.slice(0, ci).trim(); const sk = ci < 0 ? '' : vkey.slice(ci + 1).trim();
+        if (!ak || !sk) return E('百度语音需在 API Key 处填「API Key:Secret Key」（用英文冒号分隔）', 400);
+        const tr = await realFetch(`https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${encodeURIComponent(ak)}&client_secret=${encodeURIComponent(sk)}`, { method: 'POST' });
+        const td = await tr.json().catch(() => null);
+        if (!td?.access_token) return E('百度语音鉴权失败：' + (td?.error_description || td?.error || '请检查 API Key / Secret Key') + '（浏览器版受跨域限制，建议用服务端部署版）', 502);
+        const spd = Math.max(0, Math.min(15, Math.round(rate * 5)));
+        const pitB = Math.max(0, Math.min(15, Math.round(pit * 5)));
+        const form = new URLSearchParams({ tok: td.access_token, tex: text, cuid: 'huanyu', ctp: '1', lan: 'zh', spd: String(spd), pit: String(pitB), vol: '5', per: String(voice || '0'), aue: '3' });
+        const up = await realFetch(`${base || 'https://tsn.baidu.com'}/text2audio`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form.toString() });
+        const ct = up.headers.get('content-type') || '';
+        if (!up.ok || ct.includes('json')) { const t = await up.text().catch(() => ''); return E(`百度语音失败：${t.slice(0, 200)}`, 502); }
+        return finalize(up);
+      }
+      if (proto === 'volcano') {
+        // 火山引擎语音合成. Key = "AppID:AccessToken", model = cluster, voice = voice_type.
+        const ci = (vkey || '').indexOf(':'); const appid = ci < 0 ? '' : vkey.slice(0, ci).trim(); const vtok = ci < 0 ? '' : vkey.slice(ci + 1).trim();
+        if (!appid || !vtok) return E('火山语音需在 API Key 处填「AppID:AccessToken」（用英文冒号分隔）', 400);
+        const cluster = vmodel || 'volcano_tts';
+        const reqid = (crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2)));
+        const up = await realFetch(`${base || 'https://openspeech.bytedance.com'}/api/v1/tts`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer;${vtok}` },
+          body: JSON.stringify({ app: { appid, token: vtok, cluster }, user: { uid: 'huanyu' }, audio: { voice_type: voice || 'BV001_streaming', encoding: 'mp3', speed_ratio: rate, volume_ratio: 1, pitch_ratio: pit }, request: { reqid, text, operation: 'query' } })
+        });
+        if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
+        const d = await up.json().catch(() => null);
+        if (d?.code !== 3000 || !d?.data) return E('火山语音失败：' + (d?.message || JSON.stringify(d || {}).slice(0, 200)), 502);
+        const bin = atob(d.data); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return finalize(new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } }));
+      }
       if (proto === 'elevenlabs') {
         // ElevenLabs: POST /v1/text-to-speech/{voice_id}, xi-api-key header, JSON in / mp3 out.
         const vid = voice || '21m00Tcm4TlvDq8ikWAM';

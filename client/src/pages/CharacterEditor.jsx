@@ -13,6 +13,8 @@ const BGM_MAX_SEC = 60;
 // provider is whatever the user/platform configured in Settings; these are the
 // common voice ids so creators can pick rather than memorize.
 const VOICE_PRESETS = [
+  ['百度智能云（发音人 per）', [['0', '度小美·甜美女声'], ['1', '度小宇·成熟男声'], ['3', '度逍遥·情感男声'], ['4', '度丫丫·童声'], ['5118', '度小鹿·清甜女声'], ['106', '度博文·磁性男声'], ['110', '度小童·活泼萌娃'], ['111', '度小萌·软萌女声'], ['103', '度米朵·治愈女声'], ['5', '度小娇·温柔女声']]],
+  ['火山引擎 · 豆包（voice_type）', [['BV001_streaming', '通用女声'], ['BV002_streaming', '通用男声'], ['BV700_streaming', '灿灿·多情感'], ['BV705_streaming', '炎明熙·多情感'], ['BV701_streaming', '擎苍·浑厚男声'], ['BV064_streaming', '奶气萌娃'], ['BV051_streaming', '活力女声'], ['BV056_streaming', '阳光男声'], ['BV034_streaming', '知性姐姐'], ['BV007_streaming', '亲切女声']]],
   ['阿里云 Qwen-TTS', [['Cherry', '樱桃·温柔女声'], ['Serena', '塞琳娜·知性女声'], ['Ethan', '伊森·阳光男声'], ['Chelsie', '切尔西·清甜少女'], ['Dylan', '迪伦·北京话'], ['Jada', '婕达·上海话'], ['Sunny', '桑尼·四川话']]],
   ['OpenAI 兼容', [['alloy', '中性'], ['echo', '沉稳男声'], ['fable', '英伦叙述'], ['onyx', '低沉男声'], ['nova', '活泼女声'], ['shimmer', '柔和女声'], ['coral', '温暖女声'], ['sage', '沉静']]],
   ['Azure 中文', [['zh-CN-XiaoxiaoNeural', '晓晓·女声'], ['zh-CN-XiaoyiNeural', '晓伊·女声'], ['zh-CN-YunxiNeural', '云希·男声'], ['zh-CN-YunjianNeural', '云健·男声'], ['zh-CN-YunxiaNeural', '云夏·少年']]],
@@ -235,7 +237,7 @@ export default function CharacterEditor() {
                 <input type="range" min="0.5" max="1.5" step="0.05" value={c.voice_pitch || 1}
                   onChange={e => set('voice_pitch', parseFloat(e.target.value))} style={{ width: '100%' }} />
                 <div className="vc-ticks"><span>低沉 0.5×</span><span>自然 1×</span><span>尖亮 1.5×</span></div>
-                <div className="hint">朗读该角色台词所用的音色、语速与音调（需在「设置 → 语音模型」配置语音 API，或由平台提供）。语速对多数服务商生效；音调对浏览器语音 / Azure / Google / MiniMax 生效。试听走你当前的语音通道，平台语音按句计费。</div>
+                <div className="hint">朗读该角色台词所用的音色、语速与音调（需在「设置 → 语音模型」配置语音 API，或由平台提供）。语速对多数服务商生效；音调对浏览器语音 / Azure / Google / MiniMax / 百度 / 火山生效。音色 ID 跟随你所配置的服务商：百度填发音人编号（per，如 0 / 1 / 5118），火山填 voice_type（如 BV001_streaming），其余厂商填对应音色名。试听走你当前的语音通道，平台语音按句计费。</div>
               </div>
             </div>
           </div>

@@ -345,6 +345,8 @@ const PF_VOICE_PRESETS = [
   ['groq', 'Groq · PlayAI TTS', 'https://api.groq.com/openai/v1', 'openai'],
   ['siliconflow', '硅基流动（CosyVoice / Fish-Speech）', 'https://api.siliconflow.cn/v1', 'openai'],
   ['aliyun', '阿里云百炼 · 通义千问语音（Qwen-TTS）', 'https://dashscope.aliyuncs.com', 'aliyun'],
+  ['baidu', '百度智能云 · 在线语音合成', 'https://tsn.baidu.com', 'baidu'],
+  ['volcano', '火山引擎 · 豆包语音合成', 'https://openspeech.bytedance.com', 'volcano'],
   ['elevenlabs', 'ElevenLabs', 'https://api.elevenlabs.io/v1', 'elevenlabs'],
   ['minimax', 'MiniMax 海螺（需 GroupId）', 'https://api.minimax.chat/v1', 'minimax'],
   ['azure', 'Azure 认知语音', 'https://eastus.tts.speech.microsoft.com', 'azure'],
@@ -492,11 +494,13 @@ function PlatformTab({ toast }) {
         </div>
         <div className="field"><label>API Base URL</label><input className="input" value={voice.base_url} onChange={e => setVoice(s => ({ ...s, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" />
           {voice.protocol === 'minimax' && <div className="hint">MiniMax 需在 Base URL 后附 <code>?GroupId=你的GroupId</code>。</div>}
-          {voice.protocol === 'aliyun' && <div className="hint">阿里云百炼（DashScope）固定填 <code>https://dashscope.aliyuncs.com</code>，模型填 <code>qwen-tts</code>；API Key 为百炼控制台的 <code>DASHSCOPE_API_KEY</code>。</div>}</div>
+          {voice.protocol === 'aliyun' && <div className="hint">阿里云百炼（DashScope）固定填 <code>https://dashscope.aliyuncs.com</code>，模型填 <code>qwen-tts</code>；API Key 为百炼控制台的 <code>DASHSCOPE_API_KEY</code>。</div>}
+          {voice.protocol === 'baidu' && <div className="hint">百度智能云固定填 <code>https://tsn.baidu.com</code>；API Key 处填 <b>API Key:Secret Key</b>（英文冒号连接）。默认音色填发音人 <code>per</code>（如 0/1/3/5118）。</div>}
+          {voice.protocol === 'volcano' && <div className="hint">火山引擎固定填 <code>https://openspeech.bytedance.com</code>，模型填集群名 <code>volcano_tts</code>；API Key 处填 <b>AppID:AccessToken</b>（英文冒号连接）。默认音色填 <code>voice_type</code>（如 BV001_streaming）。</div>}</div>
         <div className="row">
-          <div className="field"><label>默认音色</label><input className="input" value={voice.voice_name} onChange={e => setVoice(s => ({ ...s, voice_name: e.target.value }))} placeholder={voice.protocol === 'aliyun' ? 'Cherry / Ethan / Serena / Chelsie' : 'alloy / 21m00Tcm... / zh-CN-XiaoxiaoNeural'} /></div>
+          <div className="field"><label>默认音色</label><input className="input" value={voice.voice_name} onChange={e => setVoice(s => ({ ...s, voice_name: e.target.value }))} placeholder={voice.protocol === 'aliyun' ? 'Cherry / Ethan / Serena / Chelsie' : voice.protocol === 'baidu' ? '0 度小美 / 1 度小宇 / 5118 度小鹿' : voice.protocol === 'volcano' ? 'BV001_streaming / BV700_streaming' : 'alloy / 21m00Tcm... / zh-CN-XiaoxiaoNeural'} /></div>
           <div className="field"><label>API Key {cfg.voice?.key_set && <span className="tag">已配置 · {cfg.voice.key_masked}</span>}</label>
-            <input className="input" type="password" value={voice.key} onChange={e => setVoice(s => ({ ...s, key: e.target.value }))} placeholder={cfg.voice?.key_set ? '••••••（留空则不修改）' : '填写平台语音密钥'} /></div>
+            <input className="input" type="password" value={voice.key} onChange={e => setVoice(s => ({ ...s, key: e.target.value }))} placeholder={cfg.voice?.key_set ? '••••••（留空则不修改）' : voice.protocol === 'baidu' ? 'API Key:Secret Key' : voice.protocol === 'volcano' ? 'AppID:AccessToken' : '填写平台语音密钥'} /></div>
         </div>
         <p className="muted" style={{ fontSize: 12.5 }}>留空密钥则平台语音关闭，用户需自备语音 API 才能朗读（自备则免费）。</p>
       </div>
