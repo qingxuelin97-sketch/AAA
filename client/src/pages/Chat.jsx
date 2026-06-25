@@ -262,11 +262,11 @@ export default function Chat() {
 
   const speak = async (text) => {
     // Browser Web Speech needs no server round-trip (offline / no CORS).
-    if (voiceCfg?.voice_protocol === 'browser') { speakBrowser(text, voiceCfg.voice_name); return; }
+    if (voiceCfg?.voice_protocol === 'browser') { speakBrowser(text, voiceCfg.voice_name, character?.voice_speed); return; }
     try {
       const res = await fetch('/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ text, voice: character?.voice_name || undefined, character_id: character?.id })
+        body: JSON.stringify({ text, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, character_id: character?.id })
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
       // Platform voice is billed per sentence — the server reports the charge via headers.

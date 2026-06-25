@@ -3022,6 +3022,17 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   .reveal { opacity: 1; transform: none; transition: none; }
 }
 
+/* ---- Character voice tuning (音色调优) ---- */
+.voice-chips { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+.voice-chip-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.vcg-label { font-size: 11px; color: var(--faint); width: 100%; margin-bottom: -1px; }
+.voice-chip { font-size: 12px; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border-2);
+  background: var(--bg-2); color: var(--muted); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.voice-chip:hover { border-color: var(--accent); color: var(--accent-2); }
+.voice-chip.on { background: var(--accent-soft); color: var(--accent-2); border-color: var(--accent); font-weight: 600; }
+.vc-ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); margin-top: 2px; }
+.bgm-row audio { border-radius: 10px; }
+
 /* ============================================================
    性能优化层 (perf pass) — mobile + low-end devices
    ------------------------------------------------------------

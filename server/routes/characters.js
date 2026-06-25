@@ -10,6 +10,9 @@ function loadWorld(characterId) {
   return db.prepare('SELECT * FROM world_entries WHERE character_id = ? ORDER BY position, id').all(characterId);
 }
 
+// Voice speed is a 0.5–2.0 multiplier; default 1 (normal). Guards bad input.
+const clampSpeed = (v) => { const n = Number(v); return n >= 0.5 && n <= 2 ? Math.round(n * 100) / 100 : 1; };
+
 function ownerView(c) {
   if (!c) return c;
   c.world = loadWorld(c.id);
@@ -97,14 +100,15 @@ router.post('/', authRequired, (req, res) => {
   const b = req.body || {};
   if (!b.name) return res.status(400).json({ error: '角色名必填' });
   const info = db.prepare(`INSERT INTO characters
-    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, category, tags, is_public, nsfw)
-    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@category,@tags,@is_public,@nsfw)`)
+    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, category, tags, is_public, nsfw)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@category,@tags,@is_public,@nsfw)`)
     .run({
       owner_id: req.user.id,
       name: b.name, avatar: b.avatar || null,
       background: b.background || null, background_type: b.background_type || 'image', bgm: b.bgm || '',
       tagline: b.tagline || '', intro: b.intro || '', greeting: b.greeting || '',
-      persona: b.persona || '', voice_name: b.voice_name || '', category: b.category || '', tags: b.tags || '',
+      persona: b.persona || '', voice_name: b.voice_name || '', voice_speed: clampSpeed(b.voice_speed),
+      category: b.category || '', tags: b.tags || '',
       is_public: b.is_public ? 1 : 0, nsfw: b.nsfw ? 1 : 0
     });
   saveWorld(info.lastInsertRowid, b.world);
@@ -119,7 +123,7 @@ router.put('/:id', authRequired, (req, res) => {
   db.prepare(`UPDATE characters SET
     name=@name, avatar=@avatar, background=@background, background_type=@background_type, bgm=@bgm,
     tagline=@tagline, intro=@intro, greeting=@greeting, persona=@persona,
-    voice_name=@voice_name, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw WHERE id=@id`)
+    voice_name=@voice_name, voice_speed=@voice_speed, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw WHERE id=@id`)
     .run({
       id: c.id,
       name: b.name ?? c.name, avatar: b.avatar ?? c.avatar,
@@ -127,6 +131,7 @@ router.put('/:id', authRequired, (req, res) => {
       bgm: b.bgm ?? c.bgm,
       tagline: b.tagline ?? c.tagline, intro: b.intro ?? c.intro, greeting: b.greeting ?? c.greeting,
       persona: b.persona ?? c.persona, voice_name: b.voice_name ?? c.voice_name,
+      voice_speed: b.voice_speed != null ? clampSpeed(b.voice_speed) : (c.voice_speed ?? 1),
       category: b.category ?? c.category, tags: b.tags ?? c.tags,
       is_public: (b.is_public ? 1 : 0), nsfw: (b.nsfw ? 1 : 0)
     });

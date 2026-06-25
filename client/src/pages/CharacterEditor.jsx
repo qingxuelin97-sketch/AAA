@@ -1,12 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, uploadFile } from '../api.jsx';
+import { api, uploadFile, getToken } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
-import { Plus, Dices, Music, X } from 'lucide-react';
+import { speakBrowser } from '../voice.js';
+import { Plus, Dices, Music, X, Volume2 } from 'lucide-react';
 
 const BGM_MAX_SEC = 60;
+
+// Cross-provider voice presets for the character voice picker. The actual
+// provider is whatever the user/platform configured in Settings; these are the
+// common voice ids so creators can pick rather than memorize.
+const VOICE_PRESETS = [
+  ['阿里云 Qwen-TTS', ['Cherry', 'Serena', 'Ethan', 'Chelsie', 'Dylan', 'Jada', 'Sunny']],
+  ['OpenAI 兼容', ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer', 'coral', 'sage']],
+  ['Azure 中文', ['zh-CN-XiaoxiaoNeural', 'zh-CN-XiaoyiNeural', 'zh-CN-YunxiNeural', 'zh-CN-YunjianNeural', 'zh-CN-YunxiaNeural']],
+  ['MiniMax 海螺', ['male-qn-qingse', 'female-shaonv', 'female-yujie', 'audiobook_male_1', 'presenter_female']],
+];
+const VOICE_SAMPLE = '你好呀，很高兴见到你。这是我的声音试听。';
 
 // Local fallback shown if a third-party online image fails to hotlink.
 const IMG_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#efd9e6"/><stop offset="100%" stop-color="#c9b8ff"/></linearGradient></defs><rect width="160" height="100" fill="url(#g)"/><text x="80" y="56" font-size="12" fill="#fff" text-anchor="middle" font-family="sans-serif">加载失败</text></svg>');
@@ -31,7 +43,7 @@ async function lockImage(url) {
 
 const BLANK = {
   name: '', avatar: '', background: '', background_type: 'image', bgm: '',
-  tagline: '', intro: '', greeting: '', persona: '', voice_name: '', category: '', tags: '',
+  tagline: '', intro: '', greeting: '', persona: '', voice_name: '', voice_speed: 1, category: '', tags: '',
   is_public: false, nsfw: false, world: []
 };
 
@@ -56,6 +68,32 @@ export default function CharacterEditor() {
   const [busy, setBusy] = useState(false);
   const [locking, setLocking] = useState('');
   const [bgmBusy, setBgmBusy] = useState(false);
+  const [voiceCfg, setVoiceCfg] = useState(null);
+  const [previewing, setPreviewing] = useState(false);
+
+  // Know the user's own voice protocol so the editor preview can use the right
+  // path (browser TTS vs. server synthesis).
+  useEffect(() => { api('/settings').then(d => setVoiceCfg({ proto: d.settings.voice_protocol, name: d.settings.voice_name })).catch(() => {}); }, []);
+
+  // 试听 — speak a sample line using this character's chosen voice + speed.
+  const previewVoice = async () => {
+    if (previewing) return;
+    if (voiceCfg?.proto === 'browser') { speakBrowser(VOICE_SAMPLE, c.voice_name || voiceCfg.name, c.voice_speed); return; }
+    setPreviewing(true);
+    try {
+      const res = await fetch('/api/chat/tts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ text: VOICE_SAMPLE, voice: c.voice_name || undefined, speed: c.voice_speed || undefined })
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
+      const charged = res.headers.get('X-Gold-Fee');
+      const audio = new Audio(URL.createObjectURL(await res.blob()));
+      audio.onended = () => setPreviewing(false);
+      audio.onerror = () => setPreviewing(false);
+      await audio.play();
+      if (charged) toast(`平台语音试听 · 消耗 ${charged} 金币`);
+    } catch (err) { toast(err.message, 'err'); setPreviewing(false); }
+  };
 
   // Upload a character BGM — rejected client-side if longer than 60s so we never
   // ship an oversized loop. Stored as c.bgm (a /uploads URL, or data URL in the
@@ -169,9 +207,31 @@ export default function CharacterEditor() {
                 <button type="button" className="btn sm ghost" style={{ margin: '8px auto 0' }} onClick={rollAvatar}><Dices size={14} /> 随机二次元头像</button>
                 <div className="hint" style={{ textAlign: 'center' }}>可挑选真人风格预设脸模（区分男女）、随机二次元头像，或上传自定义静态图片</div>
               </div>
-              <div className="field"><label>语音音色名 <span className="muted">(可选)</span></label>
-                <input className="input" value={c.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder="如 alloy / nova，留空用默认" />
-                <div className="hint">对话时朗读该角色台词所用的语音音色（需在设置中配置语音 API）。</div>
+              <div className="field"><label style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Volume2 size={15} /> 音色调优 <span className="muted">(可选)</span></label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input className="input" style={{ flex: 1 }} value={c.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder="如 Cherry / alloy，留空用默认音色" list="voice-presets" />
+                  <button type="button" className="btn sm" onClick={previewVoice} disabled={previewing} title="试听该音色">
+                    <Volume2 size={14} className={previewing ? 'spin' : ''} /> {previewing ? '播放中' : '试听'}
+                  </button>
+                </div>
+                <datalist id="voice-presets">
+                  {VOICE_PRESETS.map(([g, vs]) => vs.map(v => <option key={g + v} value={v}>{g}</option>))}
+                </datalist>
+                <div className="voice-chips">
+                  {VOICE_PRESETS.map(([g, vs]) => (
+                    <div key={g} className="voice-chip-group">
+                      <span className="vcg-label">{g}</span>
+                      {vs.map(v => (
+                        <button key={v} type="button" className={'voice-chip' + (c.voice_name === v ? ' on' : '')} onClick={() => set('voice_name', v)}>{v}</button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <label style={{ marginTop: 12, display: 'block' }}>语速：<b>{Number(c.voice_speed || 1).toFixed(2)}×</b></label>
+                <input type="range" min="0.5" max="2" step="0.05" value={c.voice_speed || 1}
+                  onChange={e => set('voice_speed', parseFloat(e.target.value))} style={{ width: '100%' }} />
+                <div className="vc-ticks"><span>慢 0.5×</span><span>正常 1×</span><span>快 2×</span></div>
+                <div className="hint">朗读该角色台词所用的音色与语速（需在「设置 → 语音模型」配置语音 API，或由平台提供）。试听走你当前的语音通道；平台语音会按句计费。</div>
               </div>
             </div>
           </div>

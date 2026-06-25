@@ -344,6 +344,7 @@ const PF_VOICE_PRESETS = [
   ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）', 'https://api.openai.com/v1', 'openai'],
   ['groq', 'Groq · PlayAI TTS', 'https://api.groq.com/openai/v1', 'openai'],
   ['siliconflow', '硅基流动（CosyVoice / Fish-Speech）', 'https://api.siliconflow.cn/v1', 'openai'],
+  ['aliyun', '阿里云百炼 · 通义千问语音（Qwen-TTS）', 'https://dashscope.aliyuncs.com', 'aliyun'],
   ['elevenlabs', 'ElevenLabs', 'https://api.elevenlabs.io/v1', 'elevenlabs'],
   ['minimax', 'MiniMax 海螺（需 GroupId）', 'https://api.minimax.chat/v1', 'minimax'],
   ['azure', 'Azure 认知语音', 'https://eastus.tts.speech.microsoft.com', 'azure'],
@@ -467,9 +468,10 @@ function PlatformTab({ toast }) {
           </div>
         </div>
         <div className="field"><label>API Base URL</label><input className="input" value={voice.base_url} onChange={e => setVoice(s => ({ ...s, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" />
-          {voice.protocol === 'minimax' && <div className="hint">MiniMax 需在 Base URL 后附 <code>?GroupId=你的GroupId</code>。</div>}</div>
+          {voice.protocol === 'minimax' && <div className="hint">MiniMax 需在 Base URL 后附 <code>?GroupId=你的GroupId</code>。</div>}
+          {voice.protocol === 'aliyun' && <div className="hint">阿里云百炼（DashScope）固定填 <code>https://dashscope.aliyuncs.com</code>，模型填 <code>qwen-tts</code>；API Key 为百炼控制台的 <code>DASHSCOPE_API_KEY</code>。</div>}</div>
         <div className="row">
-          <div className="field"><label>默认音色</label><input className="input" value={voice.voice_name} onChange={e => setVoice(s => ({ ...s, voice_name: e.target.value }))} placeholder="alloy / 21m00Tcm... / zh-CN-XiaoxiaoNeural" /></div>
+          <div className="field"><label>默认音色</label><input className="input" value={voice.voice_name} onChange={e => setVoice(s => ({ ...s, voice_name: e.target.value }))} placeholder={voice.protocol === 'aliyun' ? 'Cherry / Ethan / Serena / Chelsie' : 'alloy / 21m00Tcm... / zh-CN-XiaoxiaoNeural'} /></div>
           <div className="field"><label>API Key {cfg.voice?.key_set && <span className="tag">已配置 · {cfg.voice.key_masked}</span>}</label>
             <input className="input" type="password" value={voice.key} onChange={e => setVoice(s => ({ ...s, key: e.target.value }))} placeholder={cfg.voice?.key_set ? '••••••（留空则不修改）' : '填写平台语音密钥'} /></div>
         </div>
