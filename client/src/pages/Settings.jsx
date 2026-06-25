@@ -253,12 +253,12 @@ export default function Settings() {
             <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>后端为每种 TTS 协议内置适配器：浏览器内置语音（免配置·离线）、OpenAI 协议族（OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox）、阿里云百炼、<b>百度智能云</b>、<b>火山引擎（豆包）</b>、ElevenLabs、MiniMax 海螺、Azure 认知语音、Google Cloud TTS、Deepgram Aura 等。密钥仅存于本地。国内厂商（百度 / 火山 / 阿里）建议在服务端部署版使用，浏览器纯静态站受跨域限制。</p>
             {(() => {
               const vproto = s.voice_protocol || 'openai';
-              const MODEL_PH = { openai: 'tts-1 / gpt-4o-mini-tts', elevenlabs: 'eleven_multilingual_v2', minimax: 'speech-01-turbo', deepgram: 'aura-asteria-en', google: '（在音色处填完整 voice）', azure: '（无需填，音色即模型）', aliyun: 'qwen-tts', baidu: '（无需填）', volcano: 'volcano_tts（集群名）' };
-              const VOICE_LB = { openai: '默认音色', elevenlabs: 'Voice ID', minimax: 'voice_id', azure: 'Neural 音色名', google: 'voice name', deepgram: 'aura 音色', aliyun: '音色（Qwen-TTS）', baidu: '发音人（per）', volcano: '音色（voice_type）' };
-              const VOICE_PH = { openai: 'alloy / nova / onyx', elevenlabs: '21m00Tcm4TlvDq8ikWAM', minimax: 'male-qn-qingse', azure: 'zh-CN-XiaoxiaoNeural', google: 'cmn-CN-Wavenet-A', deepgram: 'aura-asteria-en', aliyun: 'Cherry / Ethan / Serena', baidu: '0 度小美 / 1 度小宇 / 5118 度小鹿', volcano: 'BV001_streaming / BV700_streaming' };
-              const KEY_LB = { azure: '订阅密钥（Ocp-Apim-Subscription-Key）', google: 'API Key', deepgram: 'API Key（Token）', aliyun: 'DASHSCOPE_API_KEY', baidu: 'API Key:Secret Key', volcano: 'AppID:AccessToken' };
-              const KEY_PH = vproto === 'elevenlabs' ? 'xi-api-key' : vproto === 'baidu' ? 'API Key:Secret Key（冒号分隔）' : vproto === 'volcano' ? 'AppID:AccessToken（冒号分隔）' : 'sk-...';
-              const BASE_PH = { azure: 'https://eastus.tts.speech.microsoft.com', google: 'https://texttospeech.googleapis.com', deepgram: 'https://api.deepgram.com', aliyun: 'https://dashscope.aliyuncs.com', baidu: 'https://tsn.baidu.com', volcano: 'https://openspeech.bytedance.com' };
+              const MODEL_PH = { openai: 'tts-1 / gpt-4o-mini-tts', elevenlabs: 'eleven_multilingual_v2', minimax: 'speech-02-hd / speech-01-turbo', deepgram: 'aura-asteria-en', google: '（在音色处填完整 voice）', azure: '（无需填，音色即模型）', aliyun: 'qwen-tts', baidu: '（无需填）', volcano: 'volcano_tts（集群名）' };
+              const VOICE_LB = { openai: '默认音色', elevenlabs: 'Voice ID', minimax: '音色（voice_id）', azure: 'Neural 音色名', google: 'voice name', deepgram: 'aura 音色', aliyun: '音色（Qwen-TTS）', baidu: '发音人（per）', volcano: '音色（voice_type）' };
+              const VOICE_PH = { openai: 'alloy / nova / onyx', elevenlabs: '21m00Tcm4TlvDq8ikWAM', minimax: 'male-qn-qingse / female-shaonv', azure: 'zh-CN-XiaoxiaoNeural', google: 'cmn-CN-Wavenet-A', deepgram: 'aura-asteria-en', aliyun: 'Cherry / Ethan / Serena', baidu: '0 度小美 / 1 度小宇 / 5118 度小鹿', volcano: 'BV001_streaming / BV700_streaming' };
+              const KEY_LB = { azure: '订阅密钥（Ocp-Apim-Subscription-Key）', google: 'API Key', deepgram: 'API Key（Token）', aliyun: 'DASHSCOPE_API_KEY', baidu: 'API Key:Secret Key', volcano: 'AppID:AccessToken', minimax: 'API Key（或 GroupId:APIKey）' };
+              const KEY_PH = vproto === 'elevenlabs' ? 'xi-api-key' : vproto === 'baidu' ? 'API Key:Secret Key（冒号分隔）' : vproto === 'volcano' ? 'AppID:AccessToken（冒号分隔）' : vproto === 'minimax' ? 'MiniMax APIKey（或 GroupId:APIKey）' : 'sk-...';
+              const BASE_PH = { azure: 'https://eastus.tts.speech.microsoft.com', google: 'https://texttospeech.googleapis.com', deepgram: 'https://api.deepgram.com', aliyun: 'https://dashscope.aliyuncs.com', baidu: 'https://tsn.baidu.com', volcano: 'https://openspeech.bytedance.com', minimax: 'https://api.minimax.chat/v1?GroupId=你的GroupId' };
 
               // ---- Browser Web Speech: zero-config, no key/base ----
               if (vproto === 'browser') {
@@ -301,7 +301,7 @@ export default function Settings() {
               </div>
             </div>
             <div className="field"><label>API Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} placeholder={BASE_PH[vproto] || 'https://api.openai.com/v1'} />
-              {vproto === 'minimax' && <div className="hint">MiniMax 需在 Base URL 后附上你的 GroupId，例如 <code>https://api.minimax.chat/v1?GroupId=你的GroupId</code>。</div>}
+              {vproto === 'minimax' && <div className="hint">MiniMax 海螺语音：Base URL 后附上你的 GroupId，例如 <code>https://api.minimax.chat/v1?GroupId=你的GroupId</code>（也可不附、改在「API Key」处填 <b>GroupId:APIKey</b>）。模型可填 <code>speech-02-hd</code> / <code>speech-01-turbo</code>，音色 <code>voice_id</code> 如 male-qn-qingse、female-shaonv、female-yujie 等。GroupId 与 APIKey 均在 MiniMax 控制台获取。</div>}
               {vproto === 'azure' && <div className="hint">Base URL 中的区域需与你的资源一致，例如 <code>https://eastus.tts.speech.microsoft.com</code>。</div>}
               {vproto === 'aliyun' && <div className="hint">阿里云百炼（DashScope）：Base URL 固定 <code>https://dashscope.aliyuncs.com</code>，模型填 <code>qwen-tts</code>，音色可选 Cherry / Ethan / Serena / Chelsie / Dylan 等。Key 为百炼控制台的 <code>DASHSCOPE_API_KEY</code>。</div>}
               {vproto === 'baidu' && <div className="hint">百度智能云：Base URL 固定 <code>https://tsn.baidu.com</code>。在「API Key」处填 <b>API Key:Secret Key</b>（用英文冒号连接，二者均来自语音技术控制台的应用）。发音人 <code>per</code> 常用：0 度小美、1 度小宇、3 度逍遥、4 度丫丫、5118 度小鹿、106 度博文、110 度小童、111 度小萌。<b>百度接口不支持浏览器跨域</b>，请在服务端部署版使用。</div>}

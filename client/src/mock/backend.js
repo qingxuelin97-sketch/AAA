@@ -1076,15 +1076,21 @@ async function route(method, path, search, body, headers) {
         return finalize(up);
       }
       if (proto === 'minimax') {
-        // MiniMax T2A v2: GroupId goes in query (?GroupId=...), audio returned as hex in JSON.
-        const up = await realFetch(`${base}/t2a_v2`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${vkey}` },
+        // MiniMax T2A v2: GroupId is a query param on the request URL (after the path); audio is hex.
+        // Accept GroupId from Base URL (?GroupId=…) or prefixed onto the key as "GroupId:apikey".
+        let mmRoot = base, mmGid = '', mmKey = (vkey || '').trim();
+        const q = base.indexOf('?');
+        if (q >= 0) { const p = new URLSearchParams(base.slice(q + 1)); mmGid = p.get('GroupId') || p.get('group_id') || ''; mmRoot = base.slice(0, q).replace(/\/$/, ''); }
+        if (!mmGid) { const c = mmKey.indexOf(':'); if (c > 0) { mmGid = mmKey.slice(0, c).trim(); mmKey = mmKey.slice(c + 1).trim(); } }
+        if (!mmGid) return E('MiniMax 缺少 GroupId：请在 Base URL 后附 ?GroupId=你的GroupId（或在密钥处填「GroupId:APIKey」）', 400);
+        const up = await realFetch(`${mmRoot}/t2a_v2?GroupId=${encodeURIComponent(mmGid)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mmKey}` },
           body: JSON.stringify({ model: vmodel || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi }, audio_setting: { format: 'mp3', sample_rate: 32000 } })
         });
         if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
         const d = await up.json().catch(() => null);
         const hex = d?.data?.audio;
-        if (!hex) return E('语音服务未返回音频（MiniMax 需在 Base URL 后附 ?GroupId=你的GroupId）', 502);
+        if (!hex) return E('MiniMax 未返回音频：' + (d?.base_resp?.status_msg || JSON.stringify(d || {}).slice(0, 200)) + '（请检查 GroupId / APIKey / 音色）', 502);
         const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(h => parseInt(h, 16)));
         return finalize(new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } }));
       }

@@ -30,6 +30,18 @@ function effectiveLLM(settings) {
 // Split a combined "a:b" credential (Baidu APIKey:SecretKey / Volcano AppID:Token).
 const splitPair = (k) => { const s = String(k || ''); const i = s.indexOf(':'); return i < 0 ? [s.trim(), ''] : [s.slice(0, i).trim(), s.slice(i + 1).trim()]; };
 
+// Resolve MiniMax pieces: root URL (no query), GroupId, bearer apiKey. GroupId may live
+// in the Base URL query (?GroupId=…) or be prefixed onto the key as "GroupId:apikey".
+function minimaxParts(base, key) {
+  let root = base, gid = '';
+  const q = base.indexOf('?');
+  if (q >= 0) { const p = new URLSearchParams(base.slice(q + 1)); gid = p.get('GroupId') || p.get('group_id') || ''; root = base.slice(0, q); }
+  root = root.replace(/\/$/, '');
+  let apiKey = String(key || '').trim();
+  if (!gid) { const c = apiKey.indexOf(':'); if (c > 0) { gid = apiKey.slice(0, c).trim(); apiKey = apiKey.slice(c + 1).trim(); } }
+  return { root, gid, apiKey };
+}
+
 // Baidu access-token cache. Tokens are valid ~30 days; we refresh a day early.
 const baiduTokens = new Map();
 async function baiduToken(apiKey, secretKey) {
@@ -85,11 +97,16 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
     }
     if (proto === 'minimax') {
-      const r = await fetch(`${b}/t2a_v2`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      // MiniMax T2A v2: GroupId is a query param on the *request* URL (after the path),
+      // the API key is the bearer. Accept GroupId from the Base URL query (?GroupId=…)
+      // or appended to the key as "GroupId:apikey"; rebuild the URL so /t2a_v2 stays a path.
+      const mm = minimaxParts(b, key);
+      if (!mm.gid) return { ok: false, status: 400, error: 'MiniMax 缺少 GroupId：请在 Base URL 后附 ?GroupId=你的GroupId（或在密钥处填「GroupId:APIKey」）' };
+      const r = await fetch(`${mm.root}/t2a_v2?GroupId=${encodeURIComponent(mm.gid)}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mm.apiKey}` },
         body: JSON.stringify({ model: model || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi }, audio_setting: { format: 'mp3', sample_rate: 32000 } }) });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
       const d = await r.json().catch(() => null); const hex = d?.data?.audio;
-      if (!hex) return { ok: false, status: 502, error: '语音服务未返回音频（MiniMax 需在 Base URL 后附 ?GroupId=）' };
+      if (!hex) return { ok: false, status: 502, error: 'MiniMax 未返回音频：' + (d?.base_resp?.status_msg || JSON.stringify(d || {}).slice(0, 200)) + '（请检查 GroupId / APIKey / 音色是否匹配）' };
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(hex, 'hex') };
     }
     if (proto === 'aliyun') {
