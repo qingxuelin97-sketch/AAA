@@ -36,20 +36,50 @@ export function parsePid(raw) {
   return null;
 }
 
-// Brand mark — a clay crescent + spark, drawn as crisp SVG (replaces emoji logo).
-export function Logo({ size = 38, radius = 11 }) {
+// Brand mark — 幻域 "moon-gate to the illusory realm": a glassy clay tile with a
+// luminous crescent portal and an emerging spark. Drawn as crisp, resolution-free
+// SVG. IDs are unique per instance (useId) so multiple logos on one page never
+// collide — a fixed id would make a later-removed <defs> break url() fills,
+// rendering them black. `radius` is kept for back-compat and mapped onto the tile.
+export function Logo({ size = 38, radius }) {
+  const raw = React.useId();
+  const uid = raw.replace(/[^a-zA-Z0-9]/g, '');
+  const tile = `hyT${uid}`, sheen = `hyS${uid}`, moon = `hyM${uid}`, cre = `hyC${uid}`, glow = `hyG${uid}`;
+  // Map the legacy 40-grid radius onto the 48 viewBox, clamped to stay a squircle
+  // (never a full circle), with a sensible default.
+  const rx = radius != null ? Math.max(8, Math.min(16, radius * 1.12)) : 13;
+  const spark = 'M31.7 12.4c.62 3.3 1.4 4.08 4.7 4.7-3.3.62-4.08 1.4-4.7 4.7-.62-3.3-1.4-4.08-4.7-4.7 3.3-.62 4.08-1.4 4.7-4.7Z';
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" aria-label="幻域" role="img">
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-label="幻域" role="img">
       <defs>
-        <linearGradient id="huanyuLogoGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#dd8662" />
-          <stop offset="100%" stopColor="#b3522f" />
+        <linearGradient id={tile} x1="5" y1="2" x2="43" y2="46" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#f0a079" />
+          <stop offset=".52" stopColor="#dd7d54" />
+          <stop offset="1" stopColor="#ad4c29" />
         </linearGradient>
+        <radialGradient id={sheen} cx="30%" cy="20%" r="80%">
+          <stop offset="0" stopColor="#fff" stopOpacity=".5" />
+          <stop offset="52%" stopColor="#fff" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={moon} x1="13" y1="12" x2="31" y2="37" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="1" stopColor="#ffe7d6" />
+        </linearGradient>
+        <mask id={cre}>
+          <rect width="48" height="48" fill="#000" />
+          <circle cx="22.4" cy="24.6" r="11.3" fill="#fff" />
+          <circle cx="27.9" cy="20.2" r="9.5" fill="#000" />
+        </mask>
+        <filter id={glow} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="1.15" />
+        </filter>
       </defs>
-      <rect width="40" height="40" rx={radius} fill="url(#huanyuLogoGrad)" />
-      <circle cx="19" cy="20" r="9.5" fill="#fff" opacity="0.96" />
-      <circle cx="23.5" cy="17.5" r="8.2" fill="url(#huanyuLogoGrad)" />
-      <path d="M27.4 23.2l0.7 2 2 0.7-2 0.7-0.7 2-0.7-2-2-0.7 2-0.7z" fill="#fff" />
+      <rect width="48" height="48" rx={rx} fill={`url(#${tile})`} />
+      <rect width="48" height="48" rx={rx} fill={`url(#${sheen})`} />
+      <rect width="48" height="48" fill={`url(#${moon})`} mask={`url(#${cre})`} />
+      <path d={spark} fill="#fff" opacity=".55" filter={`url(#${glow})`} />
+      <path d={spark} fill="#fff" />
+      <circle cx="15.6" cy="33.4" r="1.15" fill="#fff" opacity=".88" />
     </svg>
   );
 }

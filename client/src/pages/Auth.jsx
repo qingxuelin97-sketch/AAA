@@ -25,7 +25,7 @@ function AuthIntro({ onDone }) {
       <div className="auth-intro-core">
         <div className="auth-intro-mark">
           <span className="aim-ring" /><span className="aim-ring r2" />
-          <Logo size={92} radius={26} />
+          <Logo size={96} />
         </div>
         <h1 className="auth-intro-title" aria-label="幻域">
           {['幻', '域'].map((c, i) => <span key={i} style={{ animationDelay: 0.5 + i * 0.13 + 's' }}>{c}</span>)}
