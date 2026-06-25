@@ -3221,3 +3221,64 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   .pubpage-nav { display: none; }
   .help-groups, .feat-grid { grid-template-columns: 1fr; }
 }
+
+/* ===================================================================== */
+/*  登录开场动画（一次性 · 品牌绽放 → 帷幕溶解）                          */
+/* ===================================================================== */
+.auth-intro { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; cursor: pointer;
+  overflow: hidden; background:
+    radial-gradient(1200px 820px at 50% 32%, #3a2519 0%, #1c130d 56%, #0c0907 100%);
+  animation: aiIn 0.5s ease both; will-change: opacity, transform, filter; }
+.auth-intro.leaving { animation: aiOut 0.62s cubic-bezier(0.5, 0, 0.75, 0) both; pointer-events: none; }
+@keyframes aiIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes aiOut { to { opacity: 0; transform: scale(1.06); filter: blur(9px); } }
+
+.auth-intro-orbs { position: absolute; inset: 0; pointer-events: none; }
+.auth-intro-orbs i { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.55; animation: aiOrb 13s ease-in-out infinite; }
+.auth-intro-orbs i:nth-child(1) { width: 420px; height: 420px; background: radial-gradient(rgba(217,119,87,0.6), transparent 70%); top: -90px; left: 8%; }
+.auth-intro-orbs i:nth-child(2) { width: 360px; height: 360px; background: radial-gradient(rgba(63,129,149,0.45), transparent 70%); bottom: -80px; right: 12%; animation-delay: -4s; }
+.auth-intro-orbs i:nth-child(3) { width: 300px; height: 300px; background: radial-gradient(rgba(179,137,47,0.42), transparent 70%); top: 46%; right: -40px; animation-delay: -7s; }
+.auth-intro-orbs i:nth-child(4) { width: 260px; height: 260px; background: radial-gradient(rgba(217,119,87,0.4), transparent 70%); top: 8%; right: 30%; animation-delay: -10s; }
+@keyframes aiOrb { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(28px,-26px) scale(1.08); } 66% { transform: translate(-22px,18px) scale(0.94); } }
+
+.auth-intro-grid { position: absolute; inset: -40% 0 0; pointer-events: none; opacity: 0.16;
+  background-image: linear-gradient(rgba(217,119,87,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(217,119,87,0.5) 1px, transparent 1px);
+  background-size: 46px 46px; transform: perspective(620px) rotateX(62deg); transform-origin: 50% 100%;
+  mask-image: radial-gradient(620px 360px at 50% 30%, #000 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(620px 360px at 50% 30%, #000 0%, transparent 75%);
+  animation: aiGrid 18s linear infinite; }
+@keyframes aiGrid { to { background-position: 0 46px, 46px 0; } }
+
+.auth-intro-core { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px; }
+.auth-intro-mark { position: relative; display: grid; place-items: center; margin-bottom: 26px;
+  animation: aiBloom 0.95s cubic-bezier(0.18, 0.9, 0.28, 1.2) both; }
+.auth-intro-mark .logo, .auth-intro-mark > svg, .auth-intro-mark > div { position: relative; z-index: 2;
+  box-shadow: 0 14px 50px rgba(217,119,87,0.5); border-radius: 26px; }
+.aim-ring { position: absolute; width: 92px; height: 92px; border-radius: 50%; border: 2px solid rgba(234,150,110,0.65);
+  animation: aimRing 1.9s ease-out infinite; }
+.aim-ring.r2 { animation-delay: 0.9s; }
+@keyframes aiBloom { 0% { opacity: 0; transform: scale(0.4) rotate(-12deg); } 60% { opacity: 1; } 100% { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes aimRing { 0% { transform: scale(0.7); opacity: 0.7; } 100% { transform: scale(2.4); opacity: 0; } }
+
+.auth-intro-title { margin: 0; font-family: var(--serif); font-weight: 800; display: flex; gap: 0.1em;
+  font-size: clamp(46px, 11vw, 88px); line-height: 1; letter-spacing: 0.04em; }
+.auth-intro-title span { display: inline-block; color: #fff; opacity: 0; transform: translateY(28px);
+  background: linear-gradient(180deg, #fff 30%, #ffd9c6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: aiChar 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+@keyframes aiChar { 0% { opacity: 0; transform: translateY(28px); filter: blur(8px); } 100% { opacity: 1; transform: translateY(0); filter: blur(0); } }
+
+.auth-intro-sub { margin-top: 16px; color: rgba(255,255,255,0.62); font-size: clamp(12px, 2.4vw, 14px);
+  letter-spacing: 5px; padding-left: 5px; opacity: 0; animation: aiSub 0.9s ease both 0.95s; }
+@keyframes aiSub { 0% { opacity: 0; transform: translateY(10px); letter-spacing: 12px; } 100% { opacity: 0.62; transform: translateY(0); letter-spacing: 5px; } }
+
+.auth-intro-bar { margin-top: 30px; width: 188px; height: 3px; border-radius: 3px; overflow: hidden; background: rgba(255,255,255,0.12); }
+.auth-intro-bar i { display: block; height: 100%; border-radius: 3px; transform-origin: left;
+  background: linear-gradient(90deg, var(--accent), #ffce9e); transform: scaleX(0); animation: aiBar 1.7s ease 0.7s both; }
+@keyframes aiBar { to { transform: scaleX(1); } }
+
+.auth-intro-skip { position: absolute; bottom: 34px; left: 0; right: 0; text-align: center; z-index: 2;
+  color: rgba(255,255,255,0.4); font-size: 12px; letter-spacing: 1px; opacity: 0; animation: aiSkip 1s ease both 1.8s; }
+@keyframes aiSkip { 0% { opacity: 0; } 100% { opacity: 0.55; } }
+
+@media (prefers-reduced-motion: reduce) { .auth-intro { display: none; } }
+[data-perf="lite"] .auth-intro-grid, [data-perf="lite"] .auth-intro-orbs i { animation: none; }

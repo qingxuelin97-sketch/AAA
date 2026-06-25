@@ -1,10 +1,42 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../api.jsx';
 import { useToast } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
 import { Drama, Plug, Volume2, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare, LayoutGrid, LifeBuoy } from 'lucide-react';
+
+// One-shot cinematic opening: brand mark blooms, name rises, then the curtain
+// dissolves to reveal the login UI. Plays once per browser session, respects
+// reduced-motion, and can be skipped by clicking anywhere.
+function AuthIntro({ onDone }) {
+  const [leaving, setLeaving] = useState(false);
+  const finish = useCallback(() => { setLeaving(true); setTimeout(onDone, 620); }, [onDone]);
+  useEffect(() => {
+    const auto = setTimeout(finish, 2600);
+    const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Enter') finish(); };
+    window.addEventListener('keydown', onKey);
+    return () => { clearTimeout(auto); window.removeEventListener('keydown', onKey); };
+  }, [finish]);
+  return (
+    <div className={'auth-intro' + (leaving ? ' leaving' : '')} onClick={finish} role="button" tabIndex={0} aria-label="进入幻域">
+      <div className="auth-intro-orbs" aria-hidden="true"><i /><i /><i /><i /></div>
+      <div className="auth-intro-grid" aria-hidden="true" />
+      <div className="auth-intro-core">
+        <div className="auth-intro-mark">
+          <span className="aim-ring" /><span className="aim-ring r2" />
+          <Logo size={92} radius={26} />
+        </div>
+        <h1 className="auth-intro-title" aria-label="幻域">
+          {['幻', '域'].map((c, i) => <span key={i} style={{ animationDelay: 0.5 + i * 0.13 + 's' }}>{c}</span>)}
+        </h1>
+        <div className="auth-intro-sub">HUANYU · AI 角色扮演社区</div>
+        <div className="auth-intro-bar" aria-hidden="true"><i /></div>
+      </div>
+      <div className="auth-intro-skip">点击任意处进入</div>
+    </div>
+  );
+}
 
 const TAGLINES = [
   ['与你创造的', '角色一同呼吸'],
@@ -32,7 +64,16 @@ export default function Auth() {
   const [showPwd, setShowPwd] = useState(false);
   const [tl, setTl] = useState(0);
   const [agree, setAgree] = useState(false);
-  const [legal, setLegal] = useState(null); // null | 'terms' | 'privacy'
+  const [legal, setLegal] = useState(null); // null | 'terms' | 'privacy' | 'copyright' | 'disclaimer'
+  // Opening animation — once per session, skipped under reduced-motion.
+  const [intro, setIntro] = useState(() => {
+    try {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
+      if (sessionStorage.getItem('huanyu_intro_seen')) return false;
+    } catch { /* */ }
+    return true;
+  });
+  const endIntro = useCallback(() => { setIntro(false); try { sessionStorage.setItem('huanyu_intro_seen', '1'); } catch { /* */ } }, []);
 
   useEffect(() => { const t = setInterval(() => setTl(i => (i + 1) % TAGLINES.length), 3600); return () => clearInterval(t); }, []);
   const upd = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -52,7 +93,9 @@ export default function Auth() {
   };
 
   return (
-    <div className="auth-wrap v2">
+    <>
+      {intro && <AuthIntro onDone={endIntro} />}
+    <div className={'auth-wrap v2' + (intro ? ' intro-pending' : ' intro-done')}>
       <div className="auth-hero">
         <div className="glow" />
         <div className="auth-orbs" aria-hidden="true"><i /><i /><i /></div>
@@ -147,5 +190,6 @@ export default function Auth() {
 
       {legal && <LegalModal docKey={legal} onClose={() => setLegal(null)} onOpen={setLegal} />}
     </div>
+    </>
   );
 }
