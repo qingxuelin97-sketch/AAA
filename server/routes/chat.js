@@ -136,16 +136,32 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
     }
     if (proto === 'minimax') {
-      // MiniMax T2A v2: GroupId is a query param on the *request* URL (after the path),
-      // the API key is the bearer. Accept GroupId from the Base URL query (?GroupId=…)
-      // or appended to the key as "GroupId:apikey"; rebuild the URL so /t2a_v2 stays a path.
+      // MiniMax T2A v2 (POST /v1/t2a_v2?GroupId=…):
+      //   · GroupId 是拼接在请求 URL 末尾的查询参数；可来自 Base URL 的 ?GroupId=…，
+      //     也可前缀到密钥上写作「GroupId:APIKey」。
+      //   · 鉴权用 Bearer APIKey；模型 speech-02-hd 为默认（兼顾音质与稳定性）。
+      //   · pitch 取整数半音 [-12,12]；speed [0.5,2]；vol (0,10]。
+      //   · 响应体里 data.audio 默认即十六进制字符串，显式传 output_format:'hex' 更稳。
+      //   · base_resp.status_code === 0 才算成功；非 0 时 status_msg 为错误描述。
       const mm = minimaxParts(b, key);
       if (!mm.gid) return { ok: false, status: 400, error: 'MiniMax 缺少 GroupId：请在 Base URL 后附 ?GroupId=你的GroupId（或在密钥处填「GroupId:APIKey」）' };
-      const r = await fetch(`${mm.root}/t2a_v2?GroupId=${encodeURIComponent(mm.gid)}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mm.apiKey}` },
-        body: JSON.stringify({ model: model || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi }, audio_setting: { format: 'mp3', sample_rate: 32000 } }) });
+      if (!mm.apiKey) return { ok: false, status: 400, error: 'MiniMax 缺少 API Key：请在 API Key 处填写 MiniMax 控制台的接口密钥' };
+      const mmModel = model || 'speech-02-hd';
+      const r = await fetch(`${mm.root}/t2a_v2?GroupId=${encodeURIComponent(mm.gid)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mm.apiKey}` },
+        body: JSON.stringify({
+          model: mmModel, text, stream: false,
+          voice_setting: { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi },
+          audio_setting: { format: 'mp3', sample_rate: 32000, channel: 1, bitrate: 128000 },
+          output_format: 'hex',
+        }) });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
-      const d = await r.json().catch(() => null); const hex = d?.data?.audio;
-      if (!hex) return { ok: false, status: 502, error: 'MiniMax 未返回音频：' + (d?.base_resp?.status_msg || JSON.stringify(d || {}).slice(0, 200)) + '（请检查 GroupId / APIKey / 音色是否匹配）' };
+      const d = await r.json().catch(() => null);
+      const bresp = d?.base_resp || {};
+      if (bresp.status_code && bresp.status_code !== 0)
+        return { ok: false, status: 502, error: 'MiniMax 合成失败：' + (bresp.status_msg || ('status_code=' + bresp.status_code)) + '（请检查 GroupId / APIKey / 模型 / 音色是否匹配）' };
+      const hex = d?.data?.audio;
+      if (!hex) return { ok: false, status: 502, error: 'MiniMax 未返回音频：' + (bresp.status_msg || JSON.stringify(d || {}).slice(0, 200)) + '（请检查 GroupId / APIKey / 音色是否匹配）' };
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(hex, 'hex') };
     }
     if (proto === 'aliyun') {

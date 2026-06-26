@@ -546,7 +546,7 @@ function PlatformTab({ toast }) {
           </div>
         </div>
         <div className="field"><label>API Base URL</label><input className="input" value={voice.base_url} onChange={e => setVoice(s => ({ ...s, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" />
-          {voice.protocol === 'minimax' && <div className="hint">MiniMax 海螺：Base URL 后附 <code>?GroupId=你的GroupId</code>（或不附、在 API Key 处填 <b>GroupId:APIKey</b>）。模型填 <code>speech-02-hd</code> / <code>speech-01-turbo</code>，默认音色填 <code>voice_id</code>（如 male-qn-qingse）。</div>}
+          {voice.protocol === 'minimax' && <div className="hint">MiniMax 海螺：Base URL 后附 <code>?GroupId=你的GroupId</code>（或不附、在 API Key 处填 <b>GroupId:APIKey</b>）。模型推荐 <code>speech-02-hd</code>（默认，音质佳）/ <code>speech-2.5-hd-preview</code>（最新预览版）/ <code>speech-01-turbo</code>（更快），默认音色填 <code>voice_id</code>（如 male-qn-qingse、female-shaonv、presenter_female 等）。</div>}
           {voice.protocol === 'aliyun' && <div className="hint">阿里云百炼（DashScope）固定填 <code>https://dashscope.aliyuncs.com</code>，模型填 <code>qwen-tts</code>；API Key 为百炼控制台的 <code>DASHSCOPE_API_KEY</code>。</div>}
           {voice.protocol === 'baidu' && <div className="hint">百度智能云固定填 <code>https://tsn.baidu.com</code>；API Key 处填 <b>API Key:Secret Key</b>（英文冒号连接）。默认音色填发音人 <code>per</code>（如 0/1/3/5118）。</div>}
           {voice.protocol === 'volcano' && <div className="hint">火山引擎固定填 <code>https://openspeech.bytedance.com</code>，模型填集群名 <code>volcano_tts</code>；API Key 处填 <b>AppID:AccessToken</b>（英文冒号连接）。默认音色填 <code>voice_type</code>（如 BV001_streaming）。</div>}

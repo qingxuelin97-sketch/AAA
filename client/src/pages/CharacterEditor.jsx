@@ -20,7 +20,7 @@ const VOICE_PRESETS = [
   ['阿里云 Qwen-TTS', [['Cherry', '樱桃·温柔女声'], ['Serena', '塞琳娜·知性女声'], ['Ethan', '伊森·阳光男声'], ['Chelsie', '切尔西·清甜少女'], ['Dylan', '迪伦·北京话'], ['Jada', '婕达·上海话'], ['Sunny', '桑尼·四川话']]],
   ['OpenAI 兼容', [['alloy', '中性'], ['echo', '沉稳男声'], ['fable', '英伦叙述'], ['onyx', '低沉男声'], ['nova', '活泼女声'], ['shimmer', '柔和女声'], ['coral', '温暖女声'], ['sage', '沉静']]],
   ['Azure 中文', [['zh-CN-XiaoxiaoNeural', '晓晓·女声'], ['zh-CN-XiaoyiNeural', '晓伊·女声'], ['zh-CN-YunxiNeural', '云希·男声'], ['zh-CN-YunjianNeural', '云健·男声'], ['zh-CN-YunxiaNeural', '云夏·少年']]],
-  ['MiniMax 海螺（voice_id）', [['male-qn-qingse', '青涩男声'], ['male-qn-jingying', '精英男声'], ['male-qn-badao', '霸道男声'], ['female-shaonv', '少女音'], ['female-yujie', '御姐音'], ['female-chengshu', '成熟女声'], ['female-tianmei', '甜美女声'], ['audiobook_male_1', '有声书男声'], ['audiobook_female_1', '有声书女声'], ['presenter_female', '女主播']]],
+  ['MiniMax 海螺（voice_id）', [['male-qn-qingse', '青涩男声'], ['male-qn-jingying', '精英男声'], ['male-qn-badao', '霸道男声'], ['male-qn-daxuesheng', '大学生男声'], ['female-shaonv', '少女音'], ['female-yujie', '御姐音'], ['female-chengshu', '成熟女声'], ['female-tianmei', '甜美女声'], ['presenter_male', '男主播'], ['presenter_female', '女主播'], ['audiobook_male_1', '有声书男声1'], ['audiobook_male_2', '有声书男声2'], ['audiobook_female_1', '有声书女声1'], ['audiobook_female_2', '有声书女声2']]],
 ];
 const VOICE_SAMPLE = '你好呀，很高兴见到你。这是我的声音试听。';
 

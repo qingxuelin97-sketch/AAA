@@ -80,7 +80,7 @@ router.post('/models', authRequired, async (req, res) => {
   const raw = String(req.body?.base_url || cur.llm_base_url || '');
   const base = raw.split('?')[0].replace(/\/$/, '');
   const key = req.body?.api_key || cur.llm_api_key;
-  if (proto === 'minimax') return res.json({ models: ['speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo', 'speech-01-240228'] });
+  if (proto === 'minimax') return res.json({ models: ['speech-2.5-hd-preview', 'speech-2.5-turbo-preview', 'speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo'] });
   if (proto === 'volcano') return res.json({ models: ['volcano_tts', 'volcano_icl'] });
   if (proto === 'tencent') return res.json({ models: ['ap-guangzhou', 'ap-shanghai', 'ap-beijing', 'ap-hongkong'] });
   if (proto === 'baidu' || proto === 'browser') return res.json({ models: [] });

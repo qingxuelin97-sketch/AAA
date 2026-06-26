@@ -787,7 +787,7 @@ async function route(method, path, search, body, headers) {
     const key = body.api_key || s.llm_api_key;
     const proto = body.protocol || 'openai';
     // MiniMax has no public model-list endpoint; return the known TTS models.
-    if (proto === 'minimax') return J({ models: ['speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo', 'speech-01-240228'] });
+    if (proto === 'minimax') return J({ models: ['speech-2.5-hd-preview', 'speech-2.5-turbo-preview', 'speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo'] });
     if (proto === 'volcano') return J({ models: ['volcano_tts', 'volcano_icl'] }); // cluster name, no list endpoint
     if (proto === 'tencent') return J({ models: ['ap-guangzhou', 'ap-shanghai', 'ap-beijing', 'ap-hongkong'] }); // 地域(Region), no list endpoint
     if (proto === 'baidu' || proto === 'browser') return J({ models: [] }); // no remote model list
@@ -1075,21 +1075,30 @@ async function route(method, path, search, body, headers) {
         return finalize(up);
       }
       if (proto === 'minimax') {
-        // MiniMax T2A v2: GroupId is a query param on the request URL (after the path); audio is hex.
-        // Accept GroupId from Base URL (?GroupId=…) or prefixed onto the key as "GroupId:apikey".
+        // MiniMax T2A v2 (POST /v1/t2a_v2?GroupId=…): GroupId 在 URL 查询串，Bearer 鉴权，
+        // 响应 data.audio 为十六进制字符串（显式传 output_format:'hex' 更稳）。
+        // GroupId 可来自 Base URL 的 ?GroupId=… 或前缀到密钥上「GroupId:APIKey」。
         let mmRoot = base, mmGid = '', mmKey = (vkey || '').trim();
         const q = base.indexOf('?');
         if (q >= 0) { const p = new URLSearchParams(base.slice(q + 1)); mmGid = p.get('GroupId') || p.get('group_id') || ''; mmRoot = base.slice(0, q).replace(/\/$/, ''); }
         if (!mmGid) { const c = mmKey.indexOf(':'); if (c > 0) { mmGid = mmKey.slice(0, c).trim(); mmKey = mmKey.slice(c + 1).trim(); } }
         if (!mmGid) return E('MiniMax 缺少 GroupId：请在 Base URL 后附 ?GroupId=你的GroupId（或在密钥处填「GroupId:APIKey」）', 400);
+        if (!mmKey) return E('MiniMax 缺少 API Key：请在 API Key 处填写 MiniMax 控制台的接口密钥', 400);
         const up = await realFetch(`${mmRoot}/t2a_v2?GroupId=${encodeURIComponent(mmGid)}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mmKey}` },
-          body: JSON.stringify({ model: vmodel || 'speech-01-turbo', text, stream: false, voice_setting: { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi }, audio_setting: { format: 'mp3', sample_rate: 32000 } })
+          body: JSON.stringify({
+            model: vmodel || 'speech-02-hd', text, stream: false,
+            voice_setting: { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi },
+            audio_setting: { format: 'mp3', sample_rate: 32000, channel: 1, bitrate: 128000 },
+            output_format: 'hex',
+          })
         });
         if (!up.ok) { const t = await up.text().catch(() => ''); return E(`语音服务返回 ${up.status}：${t.slice(0, 200)}`, 502); }
         const d = await up.json().catch(() => null);
+        const bresp = d?.base_resp || {};
+        if (bresp.status_code && bresp.status_code !== 0) return E('MiniMax 合成失败：' + (bresp.status_msg || ('status_code=' + bresp.status_code)) + '（请检查 GroupId / APIKey / 模型 / 音色）', 502);
         const hex = d?.data?.audio;
-        if (!hex) return E('MiniMax 未返回音频：' + (d?.base_resp?.status_msg || JSON.stringify(d || {}).slice(0, 200)) + '（请检查 GroupId / APIKey / 音色）', 502);
+        if (!hex) return E('MiniMax 未返回音频：' + (bresp.status_msg || JSON.stringify(d || {}).slice(0, 200)) + '（请检查 GroupId / APIKey / 音色）', 502);
         const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(h => parseInt(h, 16)));
         return finalize(new Response(bytes, { headers: { 'content-type': 'audio/mpeg' } }));
       }
