@@ -3,6 +3,7 @@ import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { bumpDaily } from '../daily.js';
 import { creatorTier } from '../creator.js';
+import { contentLimiter } from '../limiters.js';
 
 const router = Router();
 
@@ -159,5 +160,60 @@ function saveWorld(characterId, world) {
     stmt.run(characterId, w.keys || '', w.content || '', w.enabled === false ? 0 : 1, i);
   });
 }
+
+// ── 角色卡 JSON 导出 ──────────────────────────────────────────────
+// 返回可移植的角色卡 JSON：含元信息 + 角色字段 + 世界书条目。
+// 公开角色任何人可导出；私有角色仅 owner 可导出。
+router.get('/:id/export', authOptional, (req, res) => {
+  const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(req.params.id);
+  if (!c) return res.status(404).json({ error: '角色不存在' });
+  if (!c.is_public && (!req.user || req.user.id !== c.owner_id)) return res.status(403).json({ error: '无权导出' });
+  const world = loadWorld(c.id).map(w => ({ keys: w.keys, content: w.content, enabled: !!w.enabled, position: w.position }));
+  const card = {
+    platform: 'huanyu',
+    spec: 1,
+    exported_at: new Date().toISOString(),
+    character: {
+      name: c.name, avatar: c.avatar, background: c.background, background_type: c.background_type, bgm: c.bgm,
+      tagline: c.tagline, intro: c.intro, greeting: c.greeting, persona: c.persona,
+      voice_name: c.voice_name, voice_speed: c.voice_speed, voice_pitch: c.voice_pitch,
+      category: c.category, tags: c.tags, nsfw: !!c.nsfw
+    },
+    world
+  };
+  res.setHeader('Content-Disposition', `attachment; filename="character-${c.id}-${encodeURIComponent(c.name)}.json"`);
+  res.json(card);
+});
+
+// ── 角色卡 JSON 导入 ──────────────────────────────────────────────
+// 接收导出格式 JSON，创建为当前用户的新角色（私有，需用户自行发布）。
+// 限频 contentLimiter 防止批量灌入。字段严格白名单，忽略 id/owner/uses 等元数据。
+router.post('/import', authRequired, contentLimiter, (req, res) => {
+  const body = req.body || {};
+  const ch = body.character || body;   // 兼容裸 character 对象
+  if (!ch || !ch.name || typeof ch.name !== 'string' || ch.name.length > 60) {
+    return res.status(400).json({ error: '角色卡格式无效：缺少 name 或长度超限' });
+  }
+  const world = Array.isArray(body.world) ? body.world.filter(w => w && typeof w === 'object') : [];
+  if (world.length > 200) return res.status(400).json({ error: '世界书条目过多（上限 200）' });
+  const str = (v, max) => v == null ? '' : String(v).slice(0, max);
+  const info = db.prepare(`INSERT INTO characters
+    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw)`)
+    .run({
+      owner_id: req.user.id,
+      name: str(ch.name, 60),
+      avatar: str(ch.avatar, 500),
+      background: str(ch.background, 500), background_type: ['image', 'color', 'video'].includes(ch.background_type) ? ch.background_type : 'image', bgm: str(ch.bgm, 500),
+      tagline: str(ch.tagline, 200), intro: str(ch.intro, 4000), greeting: str(ch.greeting, 4000),
+      persona: str(ch.persona, 8000), voice_name: str(ch.voice_name, 60),
+      voice_speed: clampSpeed(ch.voice_speed), voice_pitch: clampPitch(ch.voice_pitch),
+      category: str(ch.category, 40), tags: str(ch.tags, 200),
+      is_public: 0, nsfw: ch.nsfw ? 1 : 0
+    });
+  saveWorld(info.lastInsertRowid, world);
+  const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);
+  res.json({ character: ownerView(c) });
+});
 
 export default router;

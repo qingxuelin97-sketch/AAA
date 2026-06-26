@@ -5,7 +5,7 @@ import { useToast, Avatar, Modal, CreatorV } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
-import { MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye, ChevronRight, Drama, BadgeCheck } from 'lucide-react';
+import { MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye, ChevronRight, Drama, BadgeCheck, Download } from 'lucide-react';
 
 function recordRecent(c) {
   try {
@@ -50,6 +50,18 @@ export default function CharacterView() {
     try { const d = await api(`/characters/${c.id}/favorite`, { method: 'POST' }); setFaved(d.faved); toast(d.faved ? '已收藏' : '已取消收藏'); }
     catch (e) { toast(e.message, 'err'); }
   };
+  const exportCard = async () => {
+    try {
+      const card = await api('/characters/' + c.id + '/export');
+      const blob = new Blob([JSON.stringify(card, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `character-${c.id}-${c.name}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast('角色卡已导出');
+    } catch (e) { toast(e.message, 'err'); }
+  };
 
   return (
     <>
@@ -57,6 +69,7 @@ export default function CharacterView() {
         <button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button>
         <div style={{ flex: 1 }}><h1>{c.name}</h1><div className="sub">角色卡 · {pid('character', c.id)}</div></div>
         {!isOwner && <ReportButton type="character" id={c.id} />}
+        <button className="btn ghost sm" onClick={exportCard} title="导出角色卡 JSON"><Download size={15} /></button>
         {isOwner && <button className="btn" onClick={() => nav('/character/' + c.id + '/edit')}><Pencil size={15} /> 编辑</button>}
       </div>
       <div className="page" style={{ maxWidth: 860 }}>

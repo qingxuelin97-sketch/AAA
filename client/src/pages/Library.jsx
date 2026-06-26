@@ -1,14 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
-import { Drama, Globe, MessageCircle, Plus, X } from 'lucide-react';
+import { Drama, Globe, MessageCircle, Plus, X, Upload } from 'lucide-react';
 
 export default function Library() {
   const [chars, setChars] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
   const toast = useToast();
   const nav = useNavigate();
+  const fileRef = useRef();
+
+  const importCard = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 1024 * 1024) { toast('文件过大（上限 1MB）', 'err'); return; }
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const d = await api('/characters/import', { method: 'POST', body: data });
+      toast('导入成功，已创建为新角色（私有）');
+      nav('/character/' + d.character.id + '/edit');
+    } catch (err) {
+      toast(err.message || '导入失败：JSON 格式错误', 'err');
+    } finally { setImporting(false); }
+  };
 
   const load = () => api('/characters/mine').then(d => setChars(d.characters)).catch(e => toast(e.message, 'err')).finally(() => setLoading(false));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -39,8 +58,10 @@ export default function Library() {
           <h1>我的角色</h1>
           <div className="sub">创建并管理你的角色，配置立绘、动态背景与世界书</div>
         </div>
+        <button className="btn" onClick={() => fileRef.current?.click()} disabled={importing} title="从 JSON 文件导入角色卡"><Upload size={15} style={{ verticalAlign: -3 }} /> {importing ? '导入中…' : '导入'}</button>
         <button className="btn primary" onClick={() => nav('/character/new')}><Plus size={16} style={{ verticalAlign: -3 }} /> 新建角色</button>
       </div>
+      <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={importCard} />
       <div className="page">
         {loading ? <GridSkeleton n={6} /> :
           chars.length === 0 ? (
