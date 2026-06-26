@@ -80,7 +80,33 @@ router.post('/models', authRequired, async (req, res) => {
   const raw = String(req.body?.base_url || cur.llm_base_url || '');
   const base = raw.split('?')[0].replace(/\/$/, '');
   const key = req.body?.api_key || cur.llm_api_key;
-  if (proto === 'minimax') return res.json({ models: ['speech-2.5-hd-preview', 'speech-2.5-turbo-preview', 'speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo'] });
+  if (proto === 'minimax') {
+    // MiniMax /v1/models（OpenAI 兼容）：返回账户可用的全部模型。
+    //   · 该端点不需要 GroupId，需从 base_url 中剥离 ?GroupId=… 查询串；
+    //   · 密钥可能写作「GroupId:APIKey」，取冒号后部分作为 Bearer；
+    //   · TTS 适配器走 /t2a_v2，仅保留 speech-* 开头的语音合成模型；若 /v1/models
+    //     未返回任何 speech-*（MiniMax 当前 /v1/models 仅暴露 LLM 模型），则把全部
+    //     模型回显，由前端 placeholder 提示用户手动输入 speech-02-hd 等 TTS 模型名。
+    const mmBase = raw.split('?')[0].replace(/\/$/, '');
+    let mmKey = String(key || '').trim();
+    if (mmKey.includes(':')) { const c = mmKey.indexOf(':'); mmKey = mmKey.slice(c + 1).trim(); }
+    if (!mmBase) return res.status(400).json({ error: '请先填写 API Base URL' });
+    if (!mmKey) return res.status(400).json({ error: '请先填写 API Key（MiniMax 接口密钥）' });
+    try {
+      assertPublicUrl(mmBase);
+      const r = await fetch(`${mmBase}/models`, { headers: { Authorization: `Bearer ${mmKey}` } });
+      if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[settings] minimax /models 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: `MiniMax 模型列表获取失败 (HTTP ${r.status})，请检查 API Key 与 Base URL` }); }
+      const d = await r.json().catch(() => null);
+      const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : (Array.isArray(d) ? d : []));
+      const ids = list.map(m => (typeof m === 'string' ? m : (m.id || m.model_id || m.name))).filter(Boolean);
+      const tts = ids.filter(id => /^speech[-_.]/i.test(id));
+      res.json({ models: tts.length ? tts : ids });
+    } catch (e) {
+      console.error('[settings] minimax /models 连接失败', e.message);
+      res.status(502).json({ error: 'MiniMax 模型列表获取失败：' + e.message });
+    }
+    return;
+  }
   if (proto === 'volcano') return res.json({ models: ['volcano_tts', 'volcano_icl'] });
   if (proto === 'tencent') return res.json({ models: ['ap-guangzhou', 'ap-shanghai', 'ap-beijing', 'ap-hongkong'] });
   if (proto === 'baidu' || proto === 'browser') return res.json({ models: [] });

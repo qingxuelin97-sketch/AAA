@@ -786,8 +786,26 @@ async function route(method, path, search, body, headers) {
     const base = raw.split('?')[0].replace(/\/$/, '');
     const key = body.api_key || s.llm_api_key;
     const proto = body.protocol || 'openai';
-    // MiniMax has no public model-list endpoint; return the known TTS models.
-    if (proto === 'minimax') return J({ models: ['speech-2.5-hd-preview', 'speech-2.5-turbo-preview', 'speech-02-hd', 'speech-02-turbo', 'speech-01-hd', 'speech-01-turbo'] });
+    // MiniMax /v1/models（OpenAI 兼容）：自动检测账户可用模型，仅暴露 speech-* 给 TTS 适配器。
+    //   · /v1/models 不需要 GroupId，从 base_url 剥离 ?GroupId=…；密钥可能是「GroupId:APIKey」，取冒号后部分。
+    //   · MiniMax 当前 /v1/models 仅返回 LLM 模型（MiniMax-M3 等），未暴露 speech-* TTS 模型；
+    //     若过滤后为空，回显全部模型，前端 placeholder 提示用户手动输入 speech-02-hd 等。
+    if (proto === 'minimax') {
+      const mmBase = raw.split('?')[0].replace(/\/$/, '');
+      let mmKey = String(key || '').trim();
+      if (mmKey.includes(':')) { const c = mmKey.indexOf(':'); mmKey = mmKey.slice(c + 1).trim(); }
+      if (!mmBase) return E('请先填写 API Base URL');
+      if (!mmKey) return E('请先填写 API Key（MiniMax 接口密钥）');
+      try {
+        const r = await realFetch(`${mmBase}/models`, { headers: { Authorization: `Bearer ${mmKey}` } });
+        if (!r.ok) { const t = await r.text().catch(() => ''); return E(`MiniMax 模型列表获取失败 (HTTP ${r.status})，请检查 API Key 与 Base URL：${t.slice(0, 150)}`, 502); }
+        const d = await r.json();
+        const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : (Array.isArray(d) ? d : []));
+        const ids = list.map(m => (typeof m === 'string' ? m : (m.id || m.model_id || m.name))).filter(Boolean);
+        const tts = ids.filter(id => /^speech[-_.]/i.test(id));
+        return J({ models: tts.length ? tts : ids });
+      } catch (e) { return E('MiniMax 模型列表获取失败（可能是浏览器跨域限制）：' + e.message, 502); }
+    }
     if (proto === 'volcano') return J({ models: ['volcano_tts', 'volcano_icl'] }); // cluster name, no list endpoint
     if (proto === 'tencent') return J({ models: ['ap-guangzhou', 'ap-shanghai', 'ap-beijing', 'ap-hongkong'] }); // 地域(Region), no list endpoint
     if (proto === 'baidu' || proto === 'browser') return J({ models: [] }); // no remote model list
