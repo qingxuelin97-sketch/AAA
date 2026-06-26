@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
+import { contentLimiter } from '../limiters.js';
 import { applyTx, notify } from '../wallet.js';
 import { DAILY_TASKS, dailyOf, bumpDaily, saveClaimed } from '../daily.js';
 import { creatorTier } from '../creator.js';
@@ -9,7 +10,7 @@ const router = Router();
 const TT = (t) => (t === 'script' ? 'script' : 'character');
 
 // ---- daily tasks ----
-router.post('/track', authRequired, (req, res) => {
+router.post('/track', authRequired, contentLimiter, (req, res) => {
   const a = String(req.body?.action || '');
   if (['gacha', 'chat', 'fav', 'like', 'checkin'].includes(a)) bumpDaily(req.user.id, a);
   res.json({ ok: true });
@@ -65,7 +66,7 @@ router.post('/events/:id/claim', authRequired, (req, res) => {
 
 // ---- views ----
 // 校验目标存在且公开，防对任意 id 刷浏览量。
-router.post('/view', authOptional, (req, res) => {
+router.post('/view', authRequired, (req, res) => {
   const { type, id } = req.body || {};
   const isScript = TT(type) === 'script';
   const tbl = isScript ? 'scripts' : 'characters';

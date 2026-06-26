@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
+import { contentLimiter } from '../limiters.js';
 import { bumpDaily } from '../daily.js';
 
 const router = Router();
@@ -31,7 +32,7 @@ router.get('/posts/:id', authOptional, (req, res) => {
 });
 
 // Publish a card/script to the homepage
-router.post('/posts', authRequired, (req, res) => {
+router.post('/posts', authRequired, contentLimiter, (req, res) => {
   const b = req.body || {};
   if (!b.title) return res.status(400).json({ error: '标题必填' });
   const info = db.prepare(`INSERT INTO posts (author_id, type, title, body, cover, character_id, payload, tags)
@@ -101,7 +102,7 @@ router.post('/posts/:id/import', authRequired, (req, res) => {
 });
 
 // "Push to other players" — directed share into a user's inbox
-router.post('/push', authRequired, (req, res) => {
+router.post('/push', authRequired, contentLimiter, (req, res) => {
   const { post_id, to_username, note } = req.body || {};
   const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(post_id);
   if (!post) return res.status(404).json({ error: '内容不存在' });

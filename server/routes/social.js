@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
+import { contentLimiter } from '../limiters.js';
 import { notify } from '../wallet.js';
 
 const router = Router();
@@ -31,7 +32,7 @@ router.get('/moments', authOptional, (req, res) => {
   res.json({ moments: rows });
 });
 
-router.post('/moments', authRequired, (req, res) => {
+router.post('/moments', authRequired, contentLimiter, (req, res) => {
   const { text, image } = req.body || {};
   if (!text && !image) return res.status(400).json({ error: '说点什么或配张图吧' });
   const info = db.prepare('INSERT INTO moments (user_id, text, image) VALUES (?,?,?)').run(req.user.id, text || '', image || null);
@@ -66,7 +67,7 @@ router.get('/moments/:id/comments', (req, res) => {
   res.json({ comments: rows });
 });
 
-router.post('/moments/:id/comments', authRequired, (req, res) => {
+router.post('/moments/:id/comments', authRequired, contentLimiter, (req, res) => {
   const { text } = req.body || {};
   if (!text) return res.status(400).json({ error: '评论不能为空' });
   const m = db.prepare('SELECT * FROM moments WHERE id = ?').get(req.params.id);

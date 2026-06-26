@@ -3,6 +3,7 @@ import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { isVip } from '../wallet.js';
 import { getPlatform, voiceReady, imageReady, featureFee, platformFee, memberDiscount, VOICE_FEE, IMAGE_FEE, PLATFORM_FEE } from '../platform.js';
+import { assertPublicUrl } from '../safeUrl.js';
 
 const router = Router();
 
@@ -85,17 +86,19 @@ router.post('/models', authRequired, async (req, res) => {
   if (proto === 'baidu' || proto === 'browser') return res.json({ models: [] });
   if (!base) return res.status(400).json({ error: '请先填写 API Base URL' });
   if (!key) return res.status(400).json({ error: '请先填写 API Key' });
+  // SSRF 防护：发起 fetch 前校验 base_url 不指向内网/本机。
+  assertPublicUrl(base);
   const url = proto === 'anthropic' ? base.replace(/\/v1$/, '') + '/v1/models' : base + '/models';
   const headers = proto === 'elevenlabs' ? { 'xi-api-key': key }
     : proto === 'anthropic' ? { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
       : { Authorization: `Bearer ${key}` };
   try {
     const r = await fetch(url, { headers });
-    if (!r.ok) { const t = await r.text().catch(() => ''); return res.status(502).json({ error: `服务商返回 ${r.status}：${t.slice(0, 200)}` }); }
+    if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[settings] /models 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: '获取模型列表失败，请检查 API Base URL 与 Key 是否正确' }); }
     const d = await r.json();
     const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : (Array.isArray(d) ? d : []));
     res.json({ models: list.map(m => (typeof m === 'string' ? m : (m.model_id || m.id || m.name))).filter(Boolean) });
-  } catch (e) { res.status(502).json({ error: '连接服务商失败：' + e.message }); }
+  } catch (e) { console.error('[settings] /models 连接失败', e.message); res.status(502).json({ error: '获取模型列表失败，请检查 API Base URL 与 Key 是否正确' }); }
 });
 
 // Connection test — verify the configured/posted LLM credentials respond.
@@ -106,19 +109,21 @@ router.post('/test-llm', authRequired, async (req, res) => {
   const model = req.body?.model || cur.llm_model;
   const proto = req.body?.protocol || cur.llm_protocol || 'openai';
   if (!key) return res.status(400).json({ error: '请先填写 API Key' });
+  // SSRF 防护：发起 fetch 前校验 base_url 不指向内网/本机。
+  assertPublicUrl(base);
   try {
     let reply = '';
     if (proto === 'anthropic') {
       const r = await fetch(base.replace(/\/v1$/, '') + '/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }) });
-      if (!r.ok) { const t = await r.text().catch(() => ''); return res.status(502).json({ error: '连接失败：' + t.slice(0, 200) }); }
+      if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[settings] /test-llm 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: '连接测试失败：请检查 API Key 与 Base URL 是否正确' }); }
       const d = await r.json(); reply = d?.content?.[0]?.text || 'OK';
     } else {
       const r = await fetch(base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }) });
-      if (!r.ok) { const t = await r.text().catch(() => ''); return res.status(502).json({ error: '连接失败：' + t.slice(0, 200) }); }
+      if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[settings] /test-llm 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: '连接测试失败：请检查 API Key 与 Base URL 是否正确' }); }
       const d = await r.json(); reply = d?.choices?.[0]?.message?.content || 'OK';
     }
     res.json({ ok: true, reply: String(reply).slice(0, 40) });
-  } catch (e) { res.status(502).json({ error: '连接失败：' + e.message }); }
+  } catch (e) { console.error('[settings] /test-llm 连接失败', e.message); res.status(502).json({ error: '连接测试失败：请检查 API Key 与 Base URL 是否正确' }); }
 });
 
 // Privacy / data management.

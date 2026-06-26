@@ -113,8 +113,20 @@ router.post('/:id/refund', authRequired, (req, res) => {
 });
 
 router.post('/:id/like', authRequired, (req, res) => {
-  db.prepare('UPDATE scripts SET likes = likes + 1 WHERE id = ?').run(req.params.id);
-  res.json({ ok: true });
+  const id = +req.params.id;
+  const s = db.prepare('SELECT id FROM scripts WHERE id = ?').get(id);
+  if (!s) return res.status(404).json({ error: '剧本不存在' });
+  // toggle 去重：已点赞则取消，未点赞则新增，PRIMARY KEY 原子防重复刷数。
+  const exist = db.prepare('SELECT 1 FROM script_likes WHERE script_id = ? AND user_id = ?').get(id, req.user.id);
+  if (exist) {
+    db.prepare('DELETE FROM script_likes WHERE script_id = ? AND user_id = ?').run(id, req.user.id);
+    db.prepare('UPDATE scripts SET likes = MAX(0, likes - 1) WHERE id = ?').run(id);
+    res.json({ ok: true, liked: false });
+  } else {
+    db.prepare('INSERT OR IGNORE INTO script_likes (script_id, user_id) VALUES (?,?)').run(id, req.user.id);
+    db.prepare('UPDATE scripts SET likes = likes + 1 WHERE id = ?').run(id);
+    res.json({ ok: true, liked: true });
+  }
 });
 
 export default router;

@@ -367,7 +367,18 @@ for (const sql of [
   'ALTER TABLE characters ADD COLUMN voice_pitch REAL DEFAULT 1',
   // 安全相关：token 版本号（改密后旧 token 失效）
   'ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0',
+  // 安全相关：账号锁定（登录失败计数 + 锁定截止时间）
+  'ALTER TABLE users ADD COLUMN failed_logins INTEGER DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN locked_until INTEGER DEFAULT 0',
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
+
+// 安全相关：剧本点赞去重表，PRIMARY KEY(script_id,user_id) 防重复点赞刷数。
+db.exec(`CREATE TABLE IF NOT EXISTS script_likes (
+  script_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (script_id, user_id)
+)`);
 
 // 安全相关：event_claims 加 (user_id, event_id) 唯一索引，原子防并发重复领取。
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }

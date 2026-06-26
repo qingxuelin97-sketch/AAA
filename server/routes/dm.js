@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
+import { contentLimiter } from '../limiters.js';
 import { notify } from '../wallet.js';
 import { creatorTier } from '../creator.js';
 import { areFriends, isOnline, dmAllowed, dmThread } from '../relations.js';
@@ -31,7 +32,7 @@ router.get('/:id', authRequired, (req, res) => {
   res.json({ messages: msgs, peer: { id: target.id, display_name: target.display_name, avatar: target.avatar, online: isOnline(target), creator_tier: creatorTier(target.id), is_councilor: !!target.is_councilor, verified: !!target.verified }, can_dm: dmAllowed(me, target), friend: areFriends(me.id, tid) });
 });
 
-router.post('/:id', authRequired, (req, res) => {
+router.post('/:id', authRequired, contentLimiter, (req, res) => {
   const me = req.user; const tid = +req.params.id; const target = U(tid);
   if (!target) return res.status(404).json({ error: '用户不存在' });
   const text = String(req.body?.text || '').trim(); if (!text) return res.status(400).json({ error: '消息不能为空' });

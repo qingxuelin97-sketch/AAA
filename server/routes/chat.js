@@ -5,6 +5,8 @@ import { authRequired } from '../auth.js';
 import { applyTx } from '../wallet.js';
 import { getPlatform, voiceReady, featureFee, platformFee, VOICE_FEE } from '../platform.js';
 import { bumpDaily } from '../daily.js';
+import { assertPublicUrl } from '../safeUrl.js';
+import { aiLimiter } from '../limiters.js';
 
 const router = Router();
 
@@ -75,6 +77,8 @@ async function baiduToken(apiKey, secretKey) {
 // Synthesize speech via the right vendor adapter. Returns { ok, contentType, buffer } or { ok:false, status, error }.
 export async function synthesize({ proto, base, key, model, voice, text, speed, pitch }) {
   const b = (base || '').replace(/\/$/, '');
+  // SSRF 防护：用户填了 voice base_url 时校验其不指向内网/本机；为空则用各厂商默认地址，跳过校验。
+  if (b) assertPublicUrl(b);
   const rate = Math.min(2, Math.max(0.5, Number(speed) || 1)); // shared playback-rate tuning
   const pit = Math.min(1.5, Math.max(0.5, Number(pitch) || 1)); // shared pitch tuning (1 = natural)
   const pitPct = Math.round((pit - 1) * 100);                   // SSML pitch as +/-N%
@@ -313,7 +317,7 @@ router.post('/conversations/:id/messages/:mid/react', authRequired, (req, res) =
 });
 
 // ---- Streaming completion ----
-router.post('/conversations/:id/complete', authRequired, async (req, res) => {
+router.post('/conversations/:id/complete', authRequired, aiLimiter, async (req, res) => {
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
   const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
@@ -327,7 +331,7 @@ router.post('/conversations/:id/complete', authRequired, async (req, res) => {
 });
 
 // Regenerate: drop the trailing assistant message, then produce a fresh reply.
-router.post('/conversations/:id/regenerate', authRequired, async (req, res) => {
+router.post('/conversations/:id/regenerate', authRequired, aiLimiter, async (req, res) => {
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
   const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
@@ -341,6 +345,9 @@ router.post('/conversations/:id/regenerate', authRequired, async (req, res) => {
 async function streamReply(res, conv, character, settings, userContent) {
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
   const eff = effectiveLLM(settings);
+  // SSRF 防护：仅校验用户自带的 base_url。平台 base_url 由管理员配置，
+  // 自托管部署常指向内网/本机自建 LLM，故不校验以免破坏现有功能。在写 SSE 头之前，便于把 400 以 JSON 返回。
+  if (eff && !eff.platform) assertPublicUrl(eff.base_url);
 
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
@@ -416,7 +423,7 @@ async function streamReply(res, conv, character, settings, userContent) {
 }
 
 // ---- Text to speech proxy ----
-router.post('/tts', authRequired, async (req, res) => {
+router.post('/tts', authRequired, aiLimiter, async (req, res) => {
   const settings = getSettings(req.user.id);
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(req.user.id);
   const { text: rawText, voice: reqVoice, speed: reqSpeed, pitch: reqPitch, character_id } = req.body || {};

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
+import { assertPublicUrl } from '../safeUrl.js';
+import { aiLimiter } from '../limiters.js';
 
 const router = Router();
 const memberOf = (tid, uid) => !!db.prepare('SELECT 1 FROM theater_members WHERE theater_id = ? AND user_id = ?').get(tid, uid);
@@ -51,7 +53,7 @@ router.post('/:id/join', authRequired, (req, res) => {
 });
 
 // A human speaks — 仅成员可发言，不再自动加成员，防任意用户干扰他人剧场。
-router.post('/:id/say', authRequired, (req, res) => {
+router.post('/:id/say', authRequired, aiLimiter, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
@@ -64,7 +66,7 @@ router.post('/:id/say', authRequired, (req, res) => {
 });
 
 // Drive an AI character (or narrator) to speak. Uses the caller's LLM settings.
-router.post('/:id/act', authRequired, async (req, res) => {
+router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
@@ -87,6 +89,8 @@ router.post('/:id/act', authRequired, async (req, res) => {
     system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`;
   }
 
+  // SSRF 防护：发起 fetch 前校验用户配置的 llm_base_url 不指向内网/本机。
+  assertPublicUrl(settings.llm_base_url);
   try {
     const r = await fetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },

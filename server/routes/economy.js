@@ -34,6 +34,10 @@ router.get('/packages', (req, res) => res.json({ packages: PACKAGES }));
 router.post('/recharge', authRequired, (req, res) => {
   const pkg = PACKAGES.find(p => p.id === (req.body || {}).package_id);
   if (!pkg) return res.status(400).json({ error:'套餐不存在' });
+  // 模拟支付门控：生产环境必须显式开启 PAYMENT_ENABLED=true 才能充值，避免白嫖。
+  if (process.env.PAYMENT_ENABLED !== 'true') {
+    return res.status(503).json({ error: '在线支付尚未开启，演示环境充值已禁用' });
+  }
   const total = pkg.diamond + pkg.bonus;
   const w = applyTx(req.user.id, { kind:'recharge', diamond: total, memo:`充值 ¥${pkg.cny} 获得 ${total} 钻石` });
   res.json({ wallet: w });
