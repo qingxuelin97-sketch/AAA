@@ -242,45 +242,89 @@ export function Modal({ children, onClose }) {
   );
 }
 
-// 自定义金币图标：圆形硬币 + ¥ 符号 + 金色径向渐变 + 顶部高光。
+// 自定义金币图标：硬币齿纹 + 双层高光 + 精致 ¥ + 金色径向渐变。
 // 替代 lucide 朴素的 Coins，让货币一眼有质感。接口与 lucide 图标一致（size/className/style）。
 export function CoinIcon({ size = 16, className, style, ...p }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style} aria-hidden="true" {...p}>
       <defs>
-        <radialGradient id="hyCoinG" cx="36%" cy="28%" r="78%">
-          <stop offset="0%" stopColor="#fff4c6" />
-          <stop offset="42%" stopColor="#f1c452" />
-          <stop offset="100%" stopColor="#9c661a" />
+        <radialGradient id="hyCoinG" cx="34%" cy="26%" r="82%">
+          <stop offset="0%" stopColor="#fff6cc" />
+          <stop offset="38%" stopColor="#f3c958" />
+          <stop offset="74%" stopColor="#c98f25" />
+          <stop offset="100%" stopColor="#8a5912" />
+        </radialGradient>
+        <radialGradient id="hyCoinRim" cx="50%" cy="50%" r="50%">
+          <stop offset="86%" stopColor="#a9791f" stopOpacity="0" />
+          <stop offset="100%" stopColor="#5b3d0a" stopOpacity="0.9" />
         </radialGradient>
       </defs>
-      <circle cx="12" cy="12" r="9.2" fill="url(#hyCoinG)" stroke="#6e4a0e" strokeWidth="1.1" />
-      <circle cx="12" cy="12" r="6.4" fill="none" stroke="#6e4a0e" strokeWidth="0.7" opacity="0.45" />
-      <path d="M8.6 7.6 L12 11.4 L15.4 7.6" stroke="#58390c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 11.4 V16.6" stroke="#58390c" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M9.1 12.7 H14.9" stroke="#58390c" strokeWidth="1.3" strokeLinecap="round" />
-      <path d="M9.6 14.5 H14.4" stroke="#58390c" strokeWidth="1.3" strokeLinecap="round" />
-      <path d="M6.9 6.4 a5.2 5.2 0 0 1 3-1.5" stroke="#fffbe6" strokeWidth="1.2" strokeLinecap="round" opacity="0.8" />
+      {/* 硬币主体 */}
+      <circle cx="12" cy="12" r="9.3" fill="url(#hyCoinG)" />
+      <circle cx="12" cy="12" r="9.3" fill="url(#hyCoinRim)" />
+      <circle cx="12" cy="12" r="9.3" fill="none" stroke="#5b3d0a" strokeWidth="1" />
+      {/* 边缘齿纹（硬币纹路质感） */}
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="#6e4a0e" strokeWidth="1.3" strokeDasharray="0.55 0.85" opacity="0.55" />
+      {/* 内圈装饰 */}
+      <circle cx="12" cy="12" r="6.5" fill="none" stroke="#6e4a0e" strokeWidth="0.6" opacity="0.4" />
+      {/* ¥ 符号 */}
+      <path d="M8.4 7.4 L12 11.5 L15.6 7.4" stroke="#4f3408" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 11.5 V16.8" stroke="#4f3408" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M9 12.8 H15" stroke="#4f3408" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M9.5 14.6 H14.5" stroke="#4f3408" strokeWidth="1.3" strokeLinecap="round" />
+      {/* 左上主高光 */}
+      <path d="M6.4 6.2 a6 6 0 0 1 3.2-1.7" stroke="#fffbe6" strokeWidth="1.3" strokeLinecap="round" opacity="0.85" />
+      {/* 顶部光点 */}
+      <circle cx="9.2" cy="6.4" r="0.9" fill="#fffbe6" opacity="0.8" />
+      {/* 右下反射 */}
+      <path d="M16.5 17.2 a6 6 0 0 1-3 1.6" stroke="#fff1c0" strokeWidth="0.9" strokeLinecap="round" opacity="0.4" />
     </svg>
   );
 }
 
-// 自定义钻石图标：明亮式切割宝石 + 冰蓝渐变 + 切面线 + 高光。
-// 替代 lucide 的 Gem，呈现真实宝石立体感。
+// 自定义钻石图标：明亮式切割 + 多切面折射明暗 + 腰围 + 桌面高光 + 星芒闪烁。
+// 替代 lucide 的 Gem，呈现真实宝石立体感。星芒 .dia-sparkle 由 CSS 驱动闪烁。
 export function DiamondIcon({ size = 16, className, style, ...p }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style} aria-hidden="true" {...p}>
       <defs>
-        <linearGradient id="hyDiaG" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#e4f7fc" />
-          <stop offset="48%" stopColor="#7fcfe2" />
+        <linearGradient id="hyDiaCrown" x1="0" y1="0" x2="0.2" y2="1">
+          <stop offset="0%" stopColor="#eafaff" />
+          <stop offset="100%" stopColor="#9fdcec" />
+        </linearGradient>
+        <linearGradient id="hyDiaCrownR" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#bfe6f2" />
+          <stop offset="100%" stopColor="#6cc0d8" />
+        </linearGradient>
+        <linearGradient id="hyDiaPav" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#7fcfe2" />
           <stop offset="100%" stopColor="#2c6f81" />
         </linearGradient>
+        <linearGradient id="hyDiaPavR" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#5fb6cf" />
+          <stop offset="100%" stopColor="#1d5566" />
+        </linearGradient>
       </defs>
-      <path d="M4.5 9 L8.2 4 H15.8 L19.5 9 Z" fill="url(#hyDiaG)" stroke="#0f3d4d" strokeWidth="0.9" strokeLinejoin="round" />
-      <path d="M4.5 9 H19.5 L12 20 Z" fill="url(#hyDiaG)" stroke="#0f3d4d" strokeWidth="0.9" strokeLinejoin="round" />
-      <path d="M8.2 4 L12 9 L15.8 4 M4.5 9 L12 9 L19.5 9 M12 9 V20" stroke="#0f3d4d" strokeWidth="0.55" opacity="0.5" />
-      <path d="M8.2 4.6 L10 7" stroke="#ffffff" strokeWidth="1.1" strokeLinecap="round" opacity="0.85" />
+      {/* 冠部（上）左半 —— 亮 */}
+      <path d="M8.6 4 L12 4 L12 9 L4.5 9 Z" fill="url(#hyDiaCrown)" />
+      {/* 冠部右半 —— 稍暗，体现折光 */}
+      <path d="M12 4 L15.4 4 L19.5 9 L12 9 Z" fill="url(#hyDiaCrownR)" />
+      {/* 亭部（下）左半 */}
+      <path d="M4.5 9 L12 9 L12 20 Z" fill="url(#hyDiaPav)" />
+      {/* 亭部右半 —— 更深 */}
+      <path d="M12 9 L19.5 9 L12 20 Z" fill="url(#hyDiaPavR)" />
+      {/* 外轮廓 */}
+      <path d="M8.6 4 H15.4 L19.5 9 L12 20 L4.5 9 Z" fill="none" stroke="#0f3d4d" strokeWidth="0.95" strokeLinejoin="round" />
+      {/* 腰围线（最宽处，略粗） */}
+      <path d="M4.5 9 H19.5" stroke="#0f3d4d" strokeWidth="1.1" strokeLinecap="round" />
+      {/* 切面线 */}
+      <path d="M8.6 4 L4.5 9 M15.4 4 L19.5 9 M4.5 9 L12 20 M19.5 9 L12 20 M12 4 V20" stroke="#0f3d4d" strokeWidth="0.5" opacity="0.45" />
+      {/* 桌面高光（顶部白条） */}
+      <path d="M9.1 4.6 H14.9" stroke="#ffffff" strokeWidth="1" strokeLinecap="round" opacity="0.85" />
+      {/* 左上切面高光 */}
+      <path d="M8.6 4 L7 6.4" stroke="#ffffff" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+      {/* 星芒（闪烁，由 .dia-sparkle CSS 驱动） */}
+      <path className="dia-sparkle" d="M10.4 6.2 L10.7 7 L11.5 7.3 L10.7 7.6 L10.4 8.4 L10.1 7.6 L9.3 7.3 L10.1 7 Z" fill="#ffffff" opacity="0.9" />
     </svg>
   );
 }
