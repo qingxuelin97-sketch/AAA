@@ -56,6 +56,7 @@ router.post('/platform/test-image', async (req, res) => {
     size: b.size || saved.size || '1024x1024',
     region: b.region || saved.region,
     styles: b.styles || saved.styles,
+    resolution: b.resolution || saved.resolution || '768:768',
   };
   // 腾讯云：调用 AIrtist 检测
   if (cfg.provider === 'tencent') {

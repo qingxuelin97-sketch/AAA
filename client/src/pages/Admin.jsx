@@ -358,17 +358,42 @@ const PF_VOICE_PRESETS = [
 const PF_IMAGE_PRESETS = [
   ['openai', 'OpenAI（gpt-image-1 / dall-e-3）', 'https://api.openai.com/v1'],
   ['siliconflow', '硅基流动（Kolors / SD）', 'https://api.siliconflow.cn/v1'],
-  ['tencent', '腾讯云 AIrtist（ImageGeneration 文生图）', ''],
+  ['tencent', '腾讯云（AI 绘画 / 混元生图 文生图）', ''],
   ['custom', '自定义（OpenAI /images/generations 兼容）', ''],
 ];
 const IMG_SIZES = ['1024x1024', '1024x1536', '1536x1024', '512x512', '768x1024', '1024x768'];
 // 腾讯云 AIrtist 文生图风格编号（部分常用）
 const TENCENT_IMG_STYLES = [
-  ['201', '201 商业插画'], ['202', '202 水彩'], ['203', '203 油画'], ['204', '204 厚涂'],
-  ['205', '205 二次元'], ['207', '207 写实摄影'], ['208', '208 像素风'],
-  ['209', '209 概念设计'], ['210', '210 吉卜力'], ['211', '211 赛博朋克'],
+  ['201', '201 日系动漫'], ['203', '203 唯美古风'], ['204', '204 复古动漫'],
+  ['301', '301 游戏卡通手绘'], ['401', '401 通用写实'], ['101', '101 水墨画'],
+  ['102', '102 概念艺术'], ['103', '103 油画'], ['104', '104 水彩画'], ['105', '105 像素画'],
+  ['106', '106 厚涂'], ['107', '107 插图'], ['108', '108 剪纸'], ['109', '109 印象派(莫奈)'],
+  ['110', '110 2.5D'], ['111', '111 古典肖像'], ['112', '112 黑白素描'], ['113', '113 赛博朋克'],
+  ['114', '114 科幻'], ['115', '115 暗黑'], ['116', '116 3D'], ['117', '117 蒸汽波'],
+  ['118', '118 油画(梵高)'], ['000', '000 不限定'],
+];
+// 混元生图极速版风格（riman 等字符串编号）
+const TENCENT_IMG_STYLES_RAPID = [
+  ['riman', 'riman 日漫动画'], ['shuimo', 'shuimo 水墨画'], ['monai', 'monai 莫奈'],
+  ['bianping', 'bianping 扁平插画'], ['xiangsu', 'xiangsu 像素插画'],
+  ['ertonghuiben', 'ertonghuiben 儿童绘本'], ['3dxuanran', '3dxuanran 3D 渲染'],
+  ['manhua', 'manhua 漫画'], ['heibaimanhua', 'heibaimanhua 黑白漫画'],
+  ['xieshi', 'xieshi 写实'], ['dongman', 'dongman 动漫'], ['bijiasuo', 'bijiasuo 毕加索'],
+  ['saibopengke', 'saibopengke 赛博朋克'], ['youhua', 'youhua 油画'],
+  ['masaike', 'masaike 马赛克'], ['qinghuaci', 'qinghuaci 青花瓷'],
+];
+// 腾讯云原生分辨率（像素值，非比例）
+const TENCENT_IMG_RESOLUTIONS = [
+  '768:768', '1024:1024', '768:1024', '1024:768',
+  '720:1280', '1280:720', '768:1280', '1280:768',
 ];
 const TENCENT_IMG_REGIONS = ['ap-guangzhou', 'ap-beijing', 'ap-shanghai', 'ap-chengdu', 'ap-chongqing', 'ap-nanjing', 'ap-hongkong', 'ap-singapore'];
+// 腾讯云文生图模型/接口选择
+const TENCENT_IMG_MODELS = [
+  ['TextToImage', 'TextToImage · AI 绘画文生图（同步，风格多）'],
+  ['TextToImageRapid', 'TextToImageRapid · 混元生图极速版（同步，速度快）'],
+  ['TextToImageLite', 'TextToImageLite · 文生图轻量版（3 并发，仅广州）'],
+];
 
 function PlatformTab({ toast }) {
   const [cfg, setCfg] = useState(null);
@@ -378,7 +403,7 @@ function PlatformTab({ toast }) {
   // voice
   const [voice, setVoice] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', voice_name: '', key: '' });
   // image
-  const [image, setImage] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', size: '1024x1024', key: '', region: '', styles: '201' });
+  const [image, setImage] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', size: '1024x1024', key: '', region: '', styles: '201', resolution: '768:768' });
   const [imgTest, setImgTest] = useState(null); // { ok, message, latency_ms, sample? }
   const [imgTesting, setImgTesting] = useState(false);
   const [llmModels, setLlmModels] = useState([]);
@@ -421,7 +446,7 @@ function PlatformTab({ toast }) {
     const p = d.platform; setCfg(p);
     setLlm({ provider: 'custom', base_url: p.base_url || '', model: p.model || '', protocol: p.protocol || 'openai', system_prompt: p.system_prompt || '', key: '' });
     setVoice({ provider: p.voice?.provider || 'openai', base_url: p.voice?.base_url || '', model: p.voice?.model || '', protocol: p.voice?.protocol || 'openai', voice_name: p.voice?.voice_name || '', key: '' });
-    setImage({ provider: p.image?.provider || 'openai', base_url: p.image?.base_url || '', model: p.image?.model || '', protocol: p.image?.protocol || 'openai', size: p.image?.size || '1024x1024', key: '', region: p.image?.region || '', styles: p.image?.styles || '201' });
+    setImage({ provider: p.image?.provider || 'openai', base_url: p.image?.base_url || '', model: p.image?.model || 'TextToImage', protocol: p.image?.protocol || 'openai', size: p.image?.size || '1024x1024', key: '', region: p.image?.region || '', styles: p.image?.styles || '201', resolution: p.image?.resolution || '768:768' });
   }).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
@@ -433,7 +458,7 @@ function PlatformTab({ toast }) {
       if (section === 'voice') { body = { voice: { provider: voice.provider, base_url: voice.base_url, model: voice.model, protocol: voice.protocol, voice_name: voice.voice_name } }; if (voice.key.trim()) body.voice.key = voice.key.trim(); }
       if (section === 'image') {
         body = { image: { provider: image.provider, base_url: image.base_url, model: image.model, protocol: image.protocol, size: image.size } };
-        if (image.provider === 'tencent') { body.image.region = image.region; body.image.styles = image.styles; }
+        if (image.provider === 'tencent') { body.image.region = image.region; body.image.styles = image.styles; body.image.resolution = image.resolution; }
         if (image.key.trim()) body.image.key = image.key.trim();
       }
       const d = await api('/admin/platform', { method: 'PUT', body });
@@ -446,7 +471,7 @@ function PlatformTab({ toast }) {
   const testImage = async () => {
     setImgTesting(true); setImgTest(null);
     try {
-      const payload = { image: { provider: image.provider, base_url: image.base_url, model: image.model, size: image.size, region: image.region, styles: image.styles } };
+      const payload = { image: { provider: image.provider, base_url: image.base_url, model: image.model, size: image.size, region: image.region, styles: image.styles, resolution: image.resolution } };
       if (image.key.trim()) payload.image.key = image.key.trim();
       const d = await api('/admin/platform/test-image', { method: 'POST', body: payload });
       setImgTest(d);
@@ -545,7 +570,7 @@ function PlatformTab({ toast }) {
         </div>
         <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>
           「AI 绘图」页与聊天插图调用此服务，<b>每张扣费 {cfg.image?.fee ?? 20} 金币</b>（VIP 75 折 / SVIP 5 折）。
-          {image.provider === 'tencent' ? ' 腾讯云走 AIrtist ImageGeneration 接口（TC3 签名）。' : ' 需兼容 OpenAI /images/generations。'}
+          {image.provider === 'tencent' ? ' 腾讯云文生图（TC3 签名，支持三个模型接口切换）。' : ' 需兼容 OpenAI /images/generations。'}
         </p>
         <div className="row">
           <div className="field"><label>服务商预设</label>
@@ -566,18 +591,37 @@ function PlatformTab({ toast }) {
         {image.provider === 'tencent' ? (
           <>
             <div className="row">
-              <div className="field"><label>默认风格（可多选，逗号分隔）</label>
-                <select className="select" value={(image.styles || '201').split(',')[0].trim()} onChange={e => setImage(s => ({ ...s, styles: e.target.value }))}>
-                  {TENCENT_IMG_STYLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              <div className="field"><label>模型 / 接口</label>
+                <select className="select" value={image.model || 'TextToImage'} onChange={e => { const m = e.target.value; setImage(s => ({ ...s, model: m, styles: m === 'TextToImageRapid' ? 'riman' : '201' })); }}>
+                  {TENCENT_IMG_MODELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select></div>
-              <div className="field"><label>默认画幅（自动转比例）</label>
-                <select className="select" value={image.size} onChange={e => setImage(s => ({ ...s, size: e.target.value }))}>
-                  {IMG_SIZES.map(z => <option key={z} value={z}>{z}</option>)}
+              {image.model !== 'TextToImageLite' && (
+                <div className="field"><label>地域 Region</label>
+                  <select className="select" value={image.region} onChange={e => setImage(s => ({ ...s, region: e.target.value }))}>
+                    <option value="">默认（ap-guangzhou）</option>
+                    {TENCENT_IMG_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select></div>
+              )}
+            </div>
+            <div className="row">
+              <div className="field"><label>默认风格</label>
+                <select className="select" value={image.styles || '201'} onChange={e => setImage(s => ({ ...s, styles: e.target.value }))}>
+                  {(image.model === 'TextToImageRapid' ? TENCENT_IMG_STYLES_RAPID : TENCENT_IMG_STYLES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select></div>
+              <div className="field"><label>分辨率（原生像素值）</label>
+                <select className="select" value={image.resolution || '768:768'} onChange={e => setImage(s => ({ ...s, resolution: e.target.value }))}>
+                  {TENCENT_IMG_RESOLUTIONS.map(z => <option key={z} value={z}>{z}</option>)}
                 </select></div>
             </div>
             <div className="field"><label>API 密钥（SecretId:SecretKey） {cfg.image?.key_set && <span className="tag">已配置 · {cfg.image.key_masked}</span>}</label>
               <input className="input" type="password" value={image.key} onChange={e => setImage(s => ({ ...s, key: e.target.value }))} placeholder={cfg.image?.key_set ? '••••••（留空则不修改）' : 'SecretId:SecretKey（英文冒号分隔）'} /></div>
-            <div className="hint">腾讯云 AIrtist 文生图：固定调用 <code>aiart.tencentcloudapi.com</code> 的 <code>ImageGeneration</code> 接口（Version 2022-12-29）。密钥处填 <b>SecretId:SecretKey</b>。画幅会自动转换为腾讯云分辨率比例（1:1 / 2:3 / 3:4 / 3:2 / 4:3 等）。需先在腾讯云控制台开通 AIrtist 服务。TC3 服务端签名，仅服务端部署版可用。</div>
+            <div className="hint">
+              腾讯云文生图，TC3-HMAC-SHA256 服务端签名。当前接口：<b>{image.model || 'TextToImage'}</b>
+              {image.model === 'TextToImage' && <>（aiart.tencentcloudapi.com，Styles 数组，ResultConfig.Resolution，需开通 AI 绘画）</>}
+              {image.model === 'TextToImageRapid' && <>（aiart.tencentcloudapi.com，混元生图极速版，Resolution 顶层，风格为字符串编号）</>}
+              {image.model === 'TextToImageLite' && <>（hunyuan.tencentcloudapi.com，轻量版，固定 ap-guangzhou，3 并发）</>}
+              。密钥填 <b>SecretId:SecretKey</b>。分辨率用腾讯云原生像素值（如 768:768、1024:1024）。需先在腾讯云控制台开通对应服务。仅服务端部署版可用。
+            </div>
           </>
         ) : (
           <>

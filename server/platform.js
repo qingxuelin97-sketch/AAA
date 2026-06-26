@@ -20,7 +20,7 @@ const DEFAULTS = {
   key: process.env.PLATFORM_LLM_KEY || '',
   system_prompt: '',
   voice: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'tts-1', voice_name: 'alloy' },
-  image: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'gpt-image-1', size: '1024x1024', region: '', styles: '201' },
+  image: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'gpt-image-1', size: '1024x1024', region: '', styles: '201', resolution: '768:768' },
 };
 
 function read() {
@@ -49,7 +49,7 @@ export function adminView() {
     base_url: p.base_url, model: p.model, protocol: p.protocol, system_prompt: p.system_prompt || '',
     key_set: !!p.key, key_masked: mask(p.key), fee: PLATFORM_FEE,
     voice: { provider: p.voice.provider, protocol: p.voice.protocol, base_url: p.voice.base_url, model: p.voice.model, voice_name: p.voice.voice_name, key_set: !!p.voice.key, key_masked: mask(p.voice.key), fee: VOICE_FEE },
-    image: { provider: p.image.provider, protocol: p.image.protocol, base_url: p.image.base_url, model: p.image.model, size: p.image.size, region: p.image.region || '', styles: p.image.styles || '', key_set: !!p.image.key, key_masked: mask(p.image.key), fee: IMAGE_FEE },
+    image: { provider: p.image.provider, protocol: p.image.protocol, base_url: p.image.base_url, model: p.image.model, size: p.image.size, region: p.image.region || '', styles: p.image.styles || '', resolution: p.image.resolution || '', key_set: !!p.image.key, key_masked: mask(p.image.key), fee: IMAGE_FEE },
   };
 }
 export function updatePlatform(body = {}) {
@@ -64,7 +64,7 @@ export function updatePlatform(body = {}) {
     if (typeof body.voice.key === 'string' && body.voice.key.trim()) p.voice.key = body.voice.key.trim();
   }
   if (body.image && typeof body.image === 'object') {
-    ['provider', 'protocol', 'base_url', 'model', 'size', 'region', 'styles'].forEach(k => { if (typeof body.image[k] === 'string') p.image[k] = body.image[k].trim(); });
+    ['provider', 'protocol', 'base_url', 'model', 'size', 'region', 'styles', 'resolution'].forEach(k => { if (typeof body.image[k] === 'string') p.image[k] = body.image[k].trim(); });
     if (typeof body.image.key === 'string' && body.image.key.trim()) p.image.key = body.image.key.trim();
   }
   write(p);

@@ -1,99 +1,118 @@
 import { tc3Authorization, splitTencentKey } from './tencentSign.js';
 
-// 腾讯云 AIrtist 图像生成（文生图）适配。
-// 接口：aiart.tencentcloudapi.com 的 ImageGeneration（Version 2022-12-29）。
-// 签名：TC3-HMAC-SHA256（v3）。密钥约定 SecretId:SecretKey 冒号分隔。
-//
-// 风格编号参考（腾讯云官方文档）：
-//   201 商业插画 / 202 水彩 / 203 油画 / 204 厚涂 / 205 二次元 /
-//   207 写实摄影 / 208 像素风 / 209 概念设计 / 210 吉卜力 / 211 赛博朋克
-// Resolution 取值：1:1、4:3、3:4、16:9、9:16、2:3、3:2
+// 腾讯云文生图适配。支持三个同步文生图接口（均为 TC3-HMAC-SHA256 签名，返回 ResultImage）：
+//   1) TextToImage      —— AI 绘画文生图（aiart.tencentcloudapi.com，Styles 数组，ResultConfig.Resolution）
+//   2) TextToImageRapid —— 混元生图极速版（aiart.tencentcloudapi.com，Style 单数，Resolution 顶层）
+//   3) TextToImageLite  —— 文生图轻量版（hunyuan.tencentcloudapi.com，Style 单数，仅 ap-guangzhou）
+// 密钥约定 SecretId:SecretKey 冒号分隔。
+// model 字段存接口选择（TextToImage / TextToImageRapid / TextToImageLite）。
 
-const SERVICE = 'aiart';
-const HOST = 'aiart.tencentcloudapi.com';
-const ACTION = 'ImageGeneration';
 const VERSION = '2022-12-29';
+const VERSION_HUNYUAN = '2023-09-01';
 
-// OpenAI 风格 size（WxH）映射到腾讯云 Resolution 比例
-const SIZE_TO_RATIO = {
-  '1024x1024': '1:1', '512x512': '1:1',
-  '1024x1536': '2:3', '768x1024': '3:4',
-  '1536x1024': '3:2', '1024x768': '4:3',
+// 各模型的域名 / service / version / 参数构造方式
+const MODEL_SPECS = {
+  TextToImage: {
+    host: 'aiart.tencentcloudapi.com', service: 'aiart', version: VERSION,
+    // AI 绘画：Styles 是数组，Resolution 放在 ResultConfig 里
+    buildPayload: ({ prompt, style, resolution, rspImgType }) => JSON.stringify({
+      Prompt: String(prompt).slice(0, 100),
+      Styles: [style || '201'],
+      ResultConfig: { Resolution: resolution || '768:768' },
+      RspImgType: rspImgType || 'url',
+      LogoAdd: 0,
+    }),
+  },
+  TextToImageRapid: {
+    host: 'aiart.tencentcloudapi.com', service: 'aiart', version: VERSION,
+    // 混元极速版：Style 单数，Resolution 顶层，支持比例与长边分辨率
+    buildPayload: ({ prompt, style, resolution, rspImgType }) => JSON.stringify({
+      Prompt: String(prompt).slice(0, 256),
+      Style: style || 'riman',
+      Resolution: resolution || '1024:1024',
+    }),
+  },
+  TextToImageLite: {
+    host: 'hunyuan.tencentcloudapi.com', service: 'hunyuan', version: VERSION_HUNYUAN,
+    // 轻量版：hunyuan 域名，仅 ap-guangzhou，Style 单数
+    buildPayload: ({ prompt, style, resolution, rspImgType }) => JSON.stringify({
+      Prompt: String(prompt).slice(0, 256),
+      Style: style || '201',
+      Resolution: resolution || '768:768',
+      RspImgType: rspImgType || 'url',
+      LogoAdd: 0,
+    }),
+  },
 };
 
 export function tencentImageReady(cfg) {
-  // 腾讯云图像服务判定：密钥（SecretId:SecretKey）已配置即可，base_url 用默认域名
   return !!(cfg && cfg.key);
 }
 
-function buildPayload({ prompt, styles, size, rspImgType }) {
-  const ratio = SIZE_TO_RATIO[size] || '1:1';
-  const styleList = (Array.isArray(styles) ? styles : String(styles || '201').split(','))
-    .map(s => String(s).trim()).filter(Boolean).slice(0, 3);
-  if (!styleList.length) styleList.push('201');
-  return JSON.stringify({
-    Prompt: String(prompt).slice(0, 1500),
-    Styles: styleList,
-    ResultConfig: { Resolution: ratio },
-    RspImgType: rspImgType || 'url',
-  });
+function resolveModel(model) {
+  return MODEL_SPECS[model] ? model : 'TextToImage';
 }
 
-async function callTencentImage({ secretId, secretKey, region, prompt, styles, size, rspImgType }) {
-  const payload = buildPayload({ prompt, styles, size, rspImgType });
+async function callTencentImage({ secretId, secretKey, model, region, prompt, style, resolution, rspImgType }) {
+  const m = resolveModel(model);
+  const spec = MODEL_SPECS[m];
+  const payload = spec.buildPayload({ prompt, style, resolution, rspImgType });
   const timestamp = Math.floor(Date.now() / 1000);
-  const { authorization, ct } = tc3Authorization({ secretId, secretKey, service: SERVICE, host: HOST, action: ACTION, version: VERSION, payload, timestamp });
-  const r = await fetch(`https://${HOST}/`, {
+  const { authorization, ct } = tc3Authorization({
+    secretId, secretKey, service: spec.service, host: spec.host,
+    action: m, version: spec.version, payload, timestamp,
+  });
+  const r = await fetch(`https://${spec.host}/`, {
     method: 'POST',
     headers: {
-      'Content-Type': ct, Host: HOST, Authorization: authorization,
-      'X-TC-Action': ACTION, 'X-TC-Timestamp': String(timestamp),
-      'X-TC-Version': VERSION, 'X-TC-Region': region || 'ap-guangzhou',
+      'Content-Type': ct, Host: spec.host, Authorization: authorization,
+      'X-TC-Action': m, 'X-TC-Timestamp': String(timestamp),
+      'X-TC-Version': spec.version,
+      // 轻量版仅 ap-guangzhou，其他模型用配置的地域
+      'X-TC-Region': m === 'TextToImageLite' ? 'ap-guangzhou' : (region || 'ap-guangzhou'),
     },
     body: payload,
   });
-  return { r, payload };
+  return { r, payload, model: m };
 }
 
 // 真正调用腾讯云生成一张图。返回 { image, raw } 或抛出错误。
-// image 统一成可前端直接展示的形式：url 或 data URI。
 export async function generateTencentImage(cfg, { prompt, size }) {
   const { secretId, secretKey } = splitTencentKey(cfg.key);
   if (!secretId || !secretKey) throw new Error('腾讯云生图密钥未配置（需 SecretId:SecretKey）');
   const { r } = await callTencentImage({
-    secretId, secretKey, region: cfg.region || 'ap-guangzhou',
-    prompt, styles: cfg.styles, size, rspImgType: 'url',
+    secretId, secretKey, model: cfg.model, region: cfg.region,
+    prompt, style: cfg.styles, resolution: cfg.resolution || '768:768', rspImgType: 'url',
   });
   const d = await r.json().catch(() => null);
   if (d?.Response?.Error) {
     const e = d.Response.Error;
     throw new Error(`腾讯云生图失败 [${e.Code}]：${e.Message}`);
   }
-  const images = d?.Response?.ResultImage || [];
-  if (!images.length) throw new Error('腾讯云生图未返回图片');
-  return { image: images[0], raw: d };
+  const image = d?.Response?.ResultImage;
+  if (!image) throw new Error('腾讯云生图未返回图片');
+  return { image, raw: d };
 }
 
-// 在线检测：用当前配置发起一次最小生成请求，验证密钥/签名/区域是否可用。
-// 返回 { ok, message, latency_ms, sample? }，sample 为生成的图片 URL 供后台预览。
+// 在线检测：用当前配置发起一次最小生成请求，验证密钥/签名/接口是否可用。
+// 返回 { ok, message, latency_ms, sample? }。
 export async function testTencentImage(cfg) {
   const { secretId, secretKey } = splitTencentKey(cfg.key);
   if (!secretId || !secretKey) return { ok: false, message: '密钥未配置（需 SecretId:SecretKey）' };
   const t0 = Date.now();
   try {
-    const { r } = await callTencentImage({
-      secretId, secretKey, region: cfg.region || 'ap-guangzhou',
-      prompt: '一只可爱的橘猫，柔光摄影', styles: cfg.styles || '201',
-      size: '768x1024', rspImgType: 'url',
+    const { r, model } = await callTencentImage({
+      secretId, secretKey, model: cfg.model, region: cfg.region,
+      prompt: '一只可爱的橘猫，柔光摄影', style: cfg.styles, resolution: cfg.resolution || '768:768', rspImgType: 'url',
     });
     const latency_ms = Date.now() - t0;
     const d = await r.json().catch(() => null);
     if (d?.Response?.Error) {
       const e = d.Response.Error;
-      return { ok: false, message: `失败 [${e.Code}]：${e.Message}`, latency_ms };
+      return { ok: false, message: `失败 [${e.Code}]：${e.Message}`, latency_ms, model };
     }
-    const sample = d?.Response?.ResultImage?.[0];
-    return { ok: true, message: '连接成功，密钥与签名有效', latency_ms, sample };
+    const sample = d?.Response?.ResultImage;
+    return { ok: true, message: `连接成功（${model}），密钥与签名有效`, latency_ms, sample, model };
   } catch (e) {
     return { ok: false, message: '连接失败：' + e.message, latency_ms: Date.now() - t0 };
   }
