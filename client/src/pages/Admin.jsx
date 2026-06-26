@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth, getToken } from '../api.jsx';
 import { useToast, Avatar, Modal, CouncilorBadge, CoinIcon, DiamondIcon } from '../ui.jsx';
-import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload } from 'lucide-react';
+import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Zap, ImageIcon, Loader2 } from 'lucide-react';
 import { BarChart, LineChart } from '../components/Charts.jsx';
 
 export default function Admin() {
@@ -358,9 +358,17 @@ const PF_VOICE_PRESETS = [
 const PF_IMAGE_PRESETS = [
   ['openai', 'OpenAI（gpt-image-1 / dall-e-3）', 'https://api.openai.com/v1'],
   ['siliconflow', '硅基流动（Kolors / SD）', 'https://api.siliconflow.cn/v1'],
+  ['tencent', '腾讯云 AIrtist（ImageGeneration 文生图）', ''],
   ['custom', '自定义（OpenAI /images/generations 兼容）', ''],
 ];
 const IMG_SIZES = ['1024x1024', '1024x1536', '1536x1024', '512x512', '768x1024', '1024x768'];
+// 腾讯云 AIrtist 文生图风格编号（部分常用）
+const TENCENT_IMG_STYLES = [
+  ['201', '201 商业插画'], ['202', '202 水彩'], ['203', '203 油画'], ['204', '204 厚涂'],
+  ['205', '205 二次元'], ['207', '207 写实摄影'], ['208', '208 像素风'],
+  ['209', '209 概念设计'], ['210', '210 吉卜力'], ['211', '211 赛博朋克'],
+];
+const TENCENT_IMG_REGIONS = ['ap-guangzhou', 'ap-beijing', 'ap-shanghai', 'ap-chengdu', 'ap-chongqing', 'ap-nanjing', 'ap-hongkong', 'ap-singapore'];
 
 function PlatformTab({ toast }) {
   const [cfg, setCfg] = useState(null);
@@ -370,7 +378,9 @@ function PlatformTab({ toast }) {
   // voice
   const [voice, setVoice] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', voice_name: '', key: '' });
   // image
-  const [image, setImage] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', size: '1024x1024', key: '' });
+  const [image, setImage] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', size: '1024x1024', key: '', region: '', styles: '201' });
+  const [imgTest, setImgTest] = useState(null); // { ok, message, latency_ms, sample? }
+  const [imgTesting, setImgTesting] = useState(false);
   const [llmModels, setLlmModels] = useState([]);
   const [voiceModels, setVoiceModels] = useState([]);
   const [det, setDet] = useState('');
@@ -411,7 +421,7 @@ function PlatformTab({ toast }) {
     const p = d.platform; setCfg(p);
     setLlm({ provider: 'custom', base_url: p.base_url || '', model: p.model || '', protocol: p.protocol || 'openai', system_prompt: p.system_prompt || '', key: '' });
     setVoice({ provider: p.voice?.provider || 'openai', base_url: p.voice?.base_url || '', model: p.voice?.model || '', protocol: p.voice?.protocol || 'openai', voice_name: p.voice?.voice_name || '', key: '' });
-    setImage({ provider: p.image?.provider || 'openai', base_url: p.image?.base_url || '', model: p.image?.model || '', protocol: p.image?.protocol || 'openai', size: p.image?.size || '1024x1024', key: '' });
+    setImage({ provider: p.image?.provider || 'openai', base_url: p.image?.base_url || '', model: p.image?.model || '', protocol: p.image?.protocol || 'openai', size: p.image?.size || '1024x1024', key: '', region: p.image?.region || '', styles: p.image?.styles || '201' });
   }).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
@@ -421,11 +431,27 @@ function PlatformTab({ toast }) {
       let body = {};
       if (section === 'llm') { body = { base_url: llm.base_url, model: llm.model, protocol: llm.protocol, system_prompt: llm.system_prompt }; if (llm.key.trim()) body.key = llm.key.trim(); }
       if (section === 'voice') { body = { voice: { provider: voice.provider, base_url: voice.base_url, model: voice.model, protocol: voice.protocol, voice_name: voice.voice_name } }; if (voice.key.trim()) body.voice.key = voice.key.trim(); }
-      if (section === 'image') { body = { image: { provider: image.provider, base_url: image.base_url, model: image.model, protocol: image.protocol, size: image.size } }; if (image.key.trim()) body.image.key = image.key.trim(); }
+      if (section === 'image') {
+        body = { image: { provider: image.provider, base_url: image.base_url, model: image.model, protocol: image.protocol, size: image.size } };
+        if (image.provider === 'tencent') { body.image.region = image.region; body.image.styles = image.styles; }
+        if (image.key.trim()) body.image.key = image.key.trim();
+      }
       const d = await api('/admin/platform', { method: 'PUT', body });
       setCfg(d.platform); setLlm(l => ({ ...l, key: '' })); setVoice(v => ({ ...v, key: '' })); setImage(i => ({ ...i, key: '' }));
       toast('已保存，立即对全体生效');
     } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+  };
+
+  // 在线检测图像服务——用当前表单值发起一次最小生成请求，验证配置是否可用
+  const testImage = async () => {
+    setImgTesting(true); setImgTest(null);
+    try {
+      const payload = { image: { provider: image.provider, base_url: image.base_url, model: image.model, size: image.size, region: image.region, styles: image.styles } };
+      if (image.key.trim()) payload.image.key = image.key.trim();
+      const d = await api('/admin/platform/test-image', { method: 'POST', body: payload });
+      setImgTest(d);
+    } catch (e) { setImgTest({ ok: false, message: e.message }); }
+    finally { setImgTesting(false); }
   };
 
   if (!cfg) return <div className="empty">载入中…</div>;
@@ -510,25 +536,81 @@ function PlatformTab({ toast }) {
       {/* ---- AI 生图 ---- */}
       <div className="card">
         <div className="section-title"><h2 style={{ fontSize: 17 }}><Cpu size={16} style={{ verticalAlign: -3, marginRight: 6 }} />平台 AI 生图服务</h2>
-          <button className="btn sm primary" disabled={busy} onClick={() => save('image')}><Check size={14} /> 保存</button></div>
-        <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>「AI 绘图」页与聊天插图调用此服务，<b>每张扣费 {cfg.image?.fee ?? 20} 金币</b>（VIP 75 折 / SVIP 5 折）。需兼容 OpenAI <code>/images/generations</code>。</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn sm" disabled={imgTesting} onClick={testImage} title="用当前配置发起一次最小生成请求，验证密钥与签名是否可用">
+              {imgTesting ? <><Loader2 size={14} className="spin" /> 检测中…</> : <><Zap size={14} /> 在线检测</>}
+            </button>
+            <button className="btn sm primary" disabled={busy} onClick={() => save('image')}><Check size={14} /> 保存</button>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>
+          「AI 绘图」页与聊天插图调用此服务，<b>每张扣费 {cfg.image?.fee ?? 20} 金币</b>（VIP 75 折 / SVIP 5 折）。
+          {image.provider === 'tencent' ? ' 腾讯云走 AIrtist ImageGeneration 接口（TC3 签名）。' : ' 需兼容 OpenAI /images/generations。'}
+        </p>
         <div className="row">
           <div className="field"><label>服务商预设</label>
-            <select className="select" value={image.provider} onChange={e => { const v = e.target.value; const pr = PF_IMAGE_PRESETS.find(x => x[0] === v); setImage(s => ({ ...s, provider: v, ...(pr ? { base_url: pr[2] || s.base_url } : {}) })); }}>
+            <select className="select" value={image.provider} onChange={e => { const v = e.target.value; const pr = PF_IMAGE_PRESETS.find(x => x[0] === v); setImage(s => ({ ...s, provider: v, ...(pr && v !== 'tencent' ? { base_url: pr[2] || s.base_url } : {}) })); }}>
               {PF_IMAGE_PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select></div>
-          <div className="field"><label>模型</label><input className="input" value={image.model} onChange={e => setImage(s => ({ ...s, model: e.target.value }))} placeholder="gpt-image-1 / dall-e-3 / Kwai-Kolors/Kolors" /></div>
+          {image.provider === 'tencent' ? (
+            <div className="field"><label>地域 Region</label>
+              <select className="select" value={image.region} onChange={e => setImage(s => ({ ...s, region: e.target.value }))}>
+                <option value="">默认（ap-guangzhou）</option>
+                {TENCENT_IMG_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select></div>
+          ) : (
+            <div className="field"><label>模型</label><input className="input" value={image.model} onChange={e => setImage(s => ({ ...s, model: e.target.value }))} placeholder="gpt-image-1 / dall-e-3 / Kwai-Kolors/Kolors" /></div>
+          )}
         </div>
-        <div className="field"><label>API Base URL</label><input className="input" value={image.base_url} onChange={e => setImage(s => ({ ...s, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" /></div>
-        <div className="row">
-          <div className="field"><label>默认画幅</label>
-            <select className="select" value={image.size} onChange={e => setImage(s => ({ ...s, size: e.target.value }))}>
-              {IMG_SIZES.map(z => <option key={z} value={z}>{z}</option>)}
-            </select></div>
-          <div className="field"><label>API Key {cfg.image?.key_set && <span className="tag">已配置 · {cfg.image.key_masked}</span>}</label>
-            <input className="input" type="password" value={image.key} onChange={e => setImage(s => ({ ...s, key: e.target.value }))} placeholder={cfg.image?.key_set ? '••••••（留空则不修改）' : '填写平台生图密钥'} /></div>
-        </div>
-        <p className="muted" style={{ fontSize: 12.5 }}>留空密钥则生图服务关闭，「AI 绘图」页会提示未开启。</p>
+
+        {image.provider === 'tencent' ? (
+          <>
+            <div className="row">
+              <div className="field"><label>默认风格（可多选，逗号分隔）</label>
+                <select className="select" value={(image.styles || '201').split(',')[0].trim()} onChange={e => setImage(s => ({ ...s, styles: e.target.value }))}>
+                  {TENCENT_IMG_STYLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select></div>
+              <div className="field"><label>默认画幅（自动转比例）</label>
+                <select className="select" value={image.size} onChange={e => setImage(s => ({ ...s, size: e.target.value }))}>
+                  {IMG_SIZES.map(z => <option key={z} value={z}>{z}</option>)}
+                </select></div>
+            </div>
+            <div className="field"><label>API 密钥（SecretId:SecretKey） {cfg.image?.key_set && <span className="tag">已配置 · {cfg.image.key_masked}</span>}</label>
+              <input className="input" type="password" value={image.key} onChange={e => setImage(s => ({ ...s, key: e.target.value }))} placeholder={cfg.image?.key_set ? '••••••（留空则不修改）' : 'SecretId:SecretKey（英文冒号分隔）'} /></div>
+            <div className="hint">腾讯云 AIrtist 文生图：固定调用 <code>aiart.tencentcloudapi.com</code> 的 <code>ImageGeneration</code> 接口（Version 2022-12-29）。密钥处填 <b>SecretId:SecretKey</b>。画幅会自动转换为腾讯云分辨率比例（1:1 / 2:3 / 3:4 / 3:2 / 4:3 等）。需先在腾讯云控制台开通 AIrtist 服务。TC3 服务端签名，仅服务端部署版可用。</div>
+          </>
+        ) : (
+          <>
+            <div className="field"><label>API Base URL</label><input className="input" value={image.base_url} onChange={e => setImage(s => ({ ...s, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" /></div>
+            <div className="row">
+              <div className="field"><label>默认画幅</label>
+                <select className="select" value={image.size} onChange={e => setImage(s => ({ ...s, size: e.target.value }))}>
+                  {IMG_SIZES.map(z => <option key={z} value={z}>{z}</option>)}
+                </select></div>
+              <div className="field"><label>API Key {cfg.image?.key_set && <span className="tag">已配置 · {cfg.image.key_masked}</span>}</label>
+                <input className="input" type="password" value={image.key} onChange={e => setImage(s => ({ ...s, key: e.target.value }))} placeholder={cfg.image?.key_set ? '••••••（留空则不修改）' : '填写平台生图密钥'} /></div>
+            </div>
+            <p className="muted" style={{ fontSize: 12.5 }}>留空密钥则生图服务关闭，「AI 绘图」页会提示未开启。</p>
+          </>
+        )}
+
+        {/* 在线检测结果 */}
+        {imgTest && (
+          <div className={'img-test-result' + (imgTest.ok ? ' ok' : ' fail')}>
+            <div className="itr-head">
+              {imgTest.ok ? <Check size={16} /> : <AlertTriangle size={16} />}
+              <b>{imgTest.ok ? '检测通过' : '检测失败'}</b>
+              {imgTest.latency_ms != null && <span className="muted">· {imgTest.latency_ms}ms</span>}
+            </div>
+            <div className="itr-msg">{imgTest.message}</div>
+            {imgTest.sample && (
+              <div className="itr-sample">
+                <ImageIcon size={14} className="muted" />
+                <img src={imgTest.sample} alt="检测样图" onError={e => { e.target.style.display = 'none'; }} />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );

@@ -309,6 +309,19 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .we-adv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 10px; }
 .we-adv-grid label { font-size: 11.5px; }
 .we-advanced .field label { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; display: block; }
+
+/* ---- 管理后台图像服务在线检测 ---- */
+.img-test-result { margin-top: 14px; padding: 12px 14px; border-radius: 11px; border: 1px solid var(--border-2); animation: riseIn 0.22s ease both; }
+.img-test-result.ok { background: color-mix(in srgb, #4caf85 12%, var(--panel)); border-color: color-mix(in srgb, #4caf85 35%, var(--border-2)); }
+.img-test-result.fail { background: color-mix(in srgb, #d4677a 12%, var(--panel)); border-color: color-mix(in srgb, #d4677a 35%, var(--border-2)); }
+.img-test-result .itr-head { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.img-test-result.ok .itr-head { color: #2f8a63; }
+.img-test-result.fail .itr-head { color: #b0455a; }
+.img-test-result .itr-msg { font-size: 12.8px; color: var(--muted); margin-top: 5px; word-break: break-all; line-height: 1.55; }
+.img-test-result .itr-sample { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.img-test-result .itr-sample img { max-width: 100%; max-height: 280px; border-radius: 9px; border: 1px solid var(--border-2); }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .uploader { border: 1.5px dashed var(--border-2); border-radius: 13px; padding: 18px; text-align: center; cursor: pointer; transition: 0.15s; position: relative; overflow: hidden; background: #fcfbf7; color: var(--muted); }
 .uploader:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-2); }
 .uploader .preview { width: 100%; height: 150px; object-fit: cover; border-radius: 9px; }

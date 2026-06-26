@@ -43,6 +43,50 @@ router.post('/platform/test-voice', async (req, res) => {
   res.send(out.buffer);
 });
 
+// GM 图像服务在线检测——用当前表单值（未保存的也行）发起一次最小生成请求，
+// 验证密钥/签名/区域是否可用，返回结果与延迟。空 key 回落到已保存配置。
+router.post('/platform/test-image', async (req, res) => {
+  const b = req.body?.image || req.body || {};
+  const saved = getPlatform().image;
+  const cfg = {
+    provider: b.provider || saved.provider || 'openai',
+    base_url: b.base_url || saved.base_url,
+    key: (b.key && b.key.trim()) ? b.key.trim() : saved.key,
+    model: b.model || saved.model,
+    size: b.size || saved.size || '1024x1024',
+    region: b.region || saved.region,
+    styles: b.styles || saved.styles,
+  };
+  // 腾讯云：调用 AIrtist 检测
+  if (cfg.provider === 'tencent') {
+    const { testTencentImage } = await import('../tencentImage.js');
+    const r = await testTencentImage(cfg);
+    return res.json(r);
+  }
+  // OpenAI 兼容：用 base_url + key 调一次最小 /images/generations
+  if (!cfg.key || !cfg.base_url) return res.json({ ok: false, message: '密钥与 Base URL 未配置' });
+  try {
+    const { assertPublicUrl } = await import('../safeUrl.js');
+    assertPublicUrl(cfg.base_url);
+    const t0 = Date.now();
+    const up = await fetch(cfg.base_url.replace(/\/$/, '') + '/images/generations', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
+      body: JSON.stringify({ model: cfg.model || 'dall-e-3', prompt: '一只可爱的橘猫，柔光摄影', size: cfg.size || '1024x1024', n: 1 }),
+    });
+    const latency_ms = Date.now() - t0;
+    if (!up.ok) {
+      const t = await up.text().catch(() => '');
+      return res.json({ ok: false, message: `HTTP ${up.status}：${t.slice(0, 180)}`, latency_ms });
+    }
+    const d = await up.json().catch(() => null);
+    const item = d?.data?.[0] || {};
+    const sample = item.b64_json ? 'data:image/png;base64,' + item.b64_json : item.url;
+    return res.json({ ok: true, message: '连接成功，密钥有效', latency_ms, sample });
+  } catch (e) {
+    return res.json({ ok: false, message: '连接失败：' + e.message });
+  }
+});
+
 // ---- broadcast ----
 router.post('/broadcast', (req, res) => {
   const text = String(req.body?.text || '').trim();
