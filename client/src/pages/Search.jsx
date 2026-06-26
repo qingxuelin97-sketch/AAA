@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid, parsePid } from '../assets.jsx';
@@ -12,8 +12,11 @@ const TABS = [
 ];
 
 export default function Search() {
-  const [tab, setTab] = useState('user');
-  const [q, setQ] = useState('');
+  const [params] = useSearchParams();
+  const initialQ = params.get('q') || '';
+  const initialTab = params.get('tab') || 'user';
+  const [tab, setTab] = useState(initialTab);
+  const [q, setQ] = useState(initialQ);
   const [res, setRes] = useState(null);
   const [loading, setLoading] = useState(false);
   const nav = useNavigate();
@@ -53,6 +56,9 @@ export default function Search() {
   };
 
   const current = TABS.find(t => t.k === tab);
+
+  // 从标签广场等外部链接带 q 参数跳入时，自动执行一次搜索
+  useEffect(() => { if (initialQ) run(); /* eslint-disable-next-line */ }, []);
 
   return (
     <>

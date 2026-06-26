@@ -5,7 +5,8 @@ import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
 import { speakBrowser } from '../voice.js';
-import { Plus, Dices, Music, X, Volume2 } from 'lucide-react';
+import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
+import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash } from 'lucide-react';
 
 const BGM_MAX_SEC = 60;
 
@@ -73,6 +74,10 @@ export default function CharacterEditor() {
   const [bgmBusy, setBgmBusy] = useState(false);
   const [voiceCfg, setVoiceCfg] = useState(null);
   const [previewing, setPreviewing] = useState(false);
+  const [loaded, setLoaded] = useState(false); // 服务器数据加载完成前不自动存草稿，避免覆盖
+  const [draftHint, setDraftHint] = useState(null); // { savedAt } 检测到本地草稿时提示恢复
+  const draftKey = id || 'new';
+  const draft = useDraftAutosave('character', draftKey, c, c.name, loaded);
 
   // Know the user's own voice protocol so the editor preview can use the right
   // path (browser TTS vs. server synthesis).
@@ -136,10 +141,16 @@ export default function CharacterEditor() {
 
   useEffect(() => {
     if (editing) {
-      api('/characters/' + id).then(d => setC({ ...BLANK, ...d.character, is_public: !!d.character.is_public, world: d.character.world || [] }))
+      api('/characters/' + id).then(d => { setC({ ...BLANK, ...d.character, is_public: !!d.character.is_public, world: d.character.world || [] }); setLoaded(true); const dl = listDrafts('character').find(x => x.key === id); if (dl) setDraftHint(dl); })
         .catch(e => toast(e.message, 'err'));
+    } else {
+      setLoaded(true);
+      const dl = listDrafts('character').find(x => x.key === 'new'); if (dl) setDraftHint(dl);
     }
   }, [id]);
+
+  const restoreDraft = () => { const d = loadDraft('character', draftKey); if (d) { setC({ ...BLANK, ...d }); toast('已恢复草稿，记得保存'); } setDraftHint(null); };
+  const discardDraft = () => { delDraft('character', draftKey); setDraftHint(null); toast('草稿已丢弃'); };
 
   const set = (k, v) => setC(prev => ({ ...prev, [k]: v }));
 
@@ -153,6 +164,7 @@ export default function CharacterEditor() {
     try {
       if (editing) await api('/characters/' + id, { method: 'PUT', body: c });
       else await api('/characters', { method: 'POST', body: c });
+      draft.discard(); // 保存成功后清理本地草稿
       toast('已保存');
       nav('/library');
     } catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }
@@ -166,12 +178,21 @@ export default function CharacterEditor() {
           <h1>{editing ? '编辑角色' : '新建角色'}</h1>
           <div className="sub">{c.name || '为你的角色注入灵魂'}</div>
         </div>
+        {loaded && <span className="draft-badge" title="内容会自动暂存到本机，断网不丢失"><RotateCcw size={12} /> 已自动暂存</span>}
         <label className="switch">
           <input type="checkbox" checked={c.is_public} onChange={e => set('is_public', e.target.checked)} />
           <span className="track" /><span style={{ fontSize: 13 }}>公开到广场</span>
         </label>
         <button className="btn primary" onClick={save} disabled={busy}>{busy ? '保存中…' : '保存角色'}</button>
       </div>
+
+      {draftHint && (
+        <div className="draft-restore">
+          <span>检测到未保存的草稿「{draftHint.name}」（{Math.round((Date.now() - draftHint.savedAt) / 60000)} 分钟前）</span>
+          <button className="btn sm primary" onClick={restoreDraft}><RotateCcw size={13} /> 恢复</button>
+          <button className="btn sm ghost" onClick={discardDraft}><Trash size={13} /> 丢弃</button>
+        </div>
+      )}
 
       <div className="page">
         <div className="tabs-bar">

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Uploader } from '../ui.jsx';
+import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
+import { RotateCcw, Trash } from 'lucide-react';
 
 const BLANK = {
   title: '', summary: '', cover: '', content: '',
@@ -16,6 +18,10 @@ export default function ScriptEditor() {
   const [s, setS] = useState(BLANK);
   const [cats, setCats] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [draftHint, setDraftHint] = useState(null);
+  const draftKey = id || 'new';
+  const draft = useDraftAutosave('script', draftKey, s, s.title, loaded);
 
   useEffect(() => {
     api('/meta/categories').then(d => setCats(d.categories || [])).catch(() => {});
@@ -24,11 +30,17 @@ export default function ScriptEditor() {
   useEffect(() => {
     if (editing) {
       api('/scripts/' + id)
-        .then(d => setS({ ...BLANK, ...d.script, nsfw: !!d.script.nsfw }))
+        .then(d => { setS({ ...BLANK, ...d.script, nsfw: !!d.script.nsfw }); setLoaded(true); const dl = listDrafts('script').find(x => x.key === id); if (dl) setDraftHint(dl); })
         .catch(e => toast(e.message, 'err'));
+    } else {
+      setLoaded(true);
+      const dl = listDrafts('script').find(x => x.key === 'new'); if (dl) setDraftHint(dl);
     }
     // eslint-disable-next-line
   }, [id]);
+
+  const restoreDraft = () => { const d = loadDraft('script', draftKey); if (d) { setS({ ...BLANK, ...d }); toast('已恢复草稿，记得保存'); } setDraftHint(null); };
+  const discardDraft = () => { delDraft('script', draftKey); setDraftHint(null); toast('草稿已丢弃'); };
 
   const set = (k, v) => setS(prev => ({ ...prev, [k]: v }));
 
@@ -48,6 +60,7 @@ export default function ScriptEditor() {
     try {
       if (editing) await api('/scripts/' + id, { method: 'PUT', body });
       else await api('/scripts', { method: 'POST', body });
+      draft.discard();
       toast('已保存');
       nav('/scripts');
     } catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }
@@ -61,8 +74,17 @@ export default function ScriptEditor() {
           <h1>{editing ? '编辑剧本' : '创建剧本'}</h1>
           <div className="sub">{s.title || '撰写你的世界观与剧情，分享或出售给其他玩家'}</div>
         </div>
+        {loaded && <span className="draft-badge" title="内容会自动暂存到本机，断网不丢失"><RotateCcw size={12} /> 已自动暂存</span>}
         <button className="btn primary" onClick={save} disabled={busy}>{busy ? '保存中…' : '保存'}</button>
       </div>
+
+      {draftHint && (
+        <div className="draft-restore">
+          <span>检测到未保存的草稿「{draftHint.name}」（{Math.round((Date.now() - draftHint.savedAt) / 60000)} 分钟前）</span>
+          <button className="btn sm primary" onClick={restoreDraft}><RotateCcw size={13} /> 恢复</button>
+          <button className="btn sm ghost" onClick={discardDraft}><Trash size={13} /> 丢弃</button>
+        </div>
+      )}
 
       <div className="page" style={{ maxWidth: 820 }}>
         <div className="field"><label>标题 *</label>

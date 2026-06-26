@@ -67,7 +67,7 @@ export default function Favorites() {
                   {c.tags && c.tags.length ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
                       {(Array.isArray(c.tags) ? c.tags : String(c.tags).split(',')).filter(Boolean).slice(0, 4).map((t, i) => (
-                        <span key={i} className="tag">{t}</span>
+                        <span key={i} className="tag tag-link" onClick={e => { e.stopPropagation(); nav('/search?q=' + encodeURIComponent(String(t).trim()) + '&tab=character'); }}>{t}</span>
                       ))}
                     </div>
                   ) : null}

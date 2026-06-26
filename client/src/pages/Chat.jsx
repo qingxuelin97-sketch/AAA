@@ -115,15 +115,29 @@ export default function Chat() {
     try { const d = await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { clear: true } }); setMessages(d.messages); setAffinity(0); toast('对话已清空'); }
     catch (e) { toast(e.message, 'err'); }
   };
-  const exportConv = () => {
+  const exportConv = (fmt = 'md') => {
     setMenuOpen(false);
-    const md = `# 与「${character?.name || '角色'}」的对话\n\n` +
-      messages.filter(m => m.content).map(m => `**${m.role === 'user' ? '我' : (character?.name || '角色')}：**\n\n${m.content}`).join('\n\n---\n\n');
-    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const msgs = messages.filter(m => m.content);
+    let blob, name;
+    if (fmt === 'json') {
+      // JSON 结构化导出：便于迁移、二次创作或导入其他工具
+      const payload = {
+        platform: 'huanyu', character: character?.name || null, character_id: character?.id || null,
+        conversation_id: id, exported_at: new Date().toISOString(), message_count: msgs.length,
+        messages: msgs.map(m => ({ role: m.role, content: m.content, created_at: m.created_at || null, reaction: m.reaction || null }))
+      };
+      blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+      name = `${character?.name || '对话'}-${id}.json`;
+    } else {
+      const md = `# 与「${character?.name || '角色'}」的对话\n\n` +
+        msgs.map(m => `**${m.role === 'user' ? '我' : (character?.name || '角色')}：**\n\n${m.content}`).join('\n\n---\n\n');
+      blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      name = `${character?.name || '对话'}-${id}.md`;
+    }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `${character?.name || '对话'}-${id}.md`; a.click();
+    a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    toast('已导出 Markdown');
+    toast(`已导出 ${fmt === 'json' ? 'JSON' : 'Markdown'}`);
   };
   const react = async (msg, emoji) => {
     setReactFor(null);
@@ -350,7 +364,8 @@ export default function Chat() {
                       <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />
                       <div className="chat-menu">
                         <button onClick={renameConv}><Edit3 size={15} /> 重命名对话</button>
-                        <button onClick={exportConv}><Download size={15} /> 导出为 Markdown</button>
+                        <button onClick={() => exportConv('md')}><Download size={15} /> 导出为 Markdown</button>
+                        <button onClick={() => exportConv('json')}><Download size={15} /> 导出为 JSON</button>
                         <button className="danger" onClick={clearConv}><Eraser size={15} /> 清空消息</button>
                         <div className="chat-menu-sep" />
                         <div className="chat-menu-row"><span><Type size={15} /> 字号</span>

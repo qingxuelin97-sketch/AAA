@@ -40,6 +40,7 @@ const Friends = lazy(() => import('./pages/Friends.jsx'));
 const Draw = lazy(() => import('./pages/Draw.jsx'));
 const Features = lazy(() => import('./pages/Features.jsx'));
 const Help = lazy(() => import('./pages/Help.jsx'));
+const Tags = lazy(() => import('./pages/Tags.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/script/:id/edit" element={P(<ScriptEditor />)} />
           <Route path="/community" element={P(<Community />)} />
           <Route path="/search" element={P(<Search />)} />
+          <Route path="/tags" element={P(<Tags />)} />
           <Route path="/announcements" element={P(<Announcements />)} />
           <Route path="/leaderboard" element={P(<Leaderboard />)} />
           <Route path="/events" element={P(<Events />)} />

@@ -3314,3 +3314,31 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 @keyframes achClaimPulse { 50% { box-shadow: 0 0 0 5px rgba(217,119,87,0.16); } }
 [data-perf="lite"] .ach-side .btn.sm.primary { animation: none; }
 @media (prefers-reduced-motion: reduce) { .ach-side .btn.sm.primary { animation: none; } }
+
+/* ============================================================
+   创作草稿系统 —— 自动暂存提示 + 恢复条
+   ============================================================ */
+.draft-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
+  color: var(--accent-2); background: var(--accent-soft); padding: 4px 9px; border-radius: 999px;
+  white-space: nowrap; opacity: 0.85; }
+.draft-restore { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 auto;
+  max-width: var(--content-max, 1100px); padding: 11px 16px; background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); border-radius: 13px;
+  box-shadow: var(--shadow-sm); animation: riseIn 0.3s ease both; }
+.draft-restore > span { flex: 1; min-width: 200px; font-size: 13px; color: var(--text); }
+[data-theme="dark"] .draft-restore { background: color-mix(in srgb, var(--accent) 14%, var(--panel)); }
+
+/* ============================================================
+   标签广场 —— 标签云 + 可点击标签
+   ============================================================ */
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; padding: 8px 0; }
+.tag-cloud-item { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border: 1px solid var(--border-2);
+  background: var(--panel); color: var(--text); padding: 7px 14px; border-radius: 999px; font-weight: 600;
+  transition: transform 0.18s var(--spring), border-color 0.18s, background 0.18s, color 0.18s; line-height: 1; }
+.tag-cloud-item:hover { transform: translateY(-2px); border-color: var(--accent); background: var(--accent-soft); color: var(--accent-2); }
+.tag-cloud-item:active { transform: translateY(0); }
+.tag-cloud-count { font-size: 0.72em; font-weight: 700; color: var(--muted); background: var(--bg-2); padding: 2px 7px; border-radius: 999px; }
+.tag-cloud-item:hover .tag-cloud-count { color: var(--accent-2); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+/* 列表内可点击标签（收藏/角色卡 meta 区） */
+.tag.tag-link { cursor: pointer; transition: background 0.15s, color 0.15s; }
+.tag.tag-link:hover { background: var(--accent-soft); color: var(--accent-2); }
