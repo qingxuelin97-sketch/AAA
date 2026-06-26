@@ -43,6 +43,36 @@ router.post('/platform/test-voice', async (req, res) => {
   res.send(out.buffer);
 });
 
+// GM 音色自动检测——调用 TTS 服务商的音色列表端点（当前仅 MiniMax /v1/get_voice）。
+// 表单 key 为空时回退到已保存的平台语音 key（GM 保存后表单 key 会被清空，不能因此
+// 让 GM 重新填 key 才能检测）。base_url / protocol 同样回退到已保存值。
+router.post('/platform/detect-voices', async (req, res) => {
+  const b = req.body?.voice || req.body || {};
+  const saved = getPlatform().voice;
+  const proto = b.protocol || saved.protocol || 'openai';
+  if (proto !== 'minimax') return res.status(400).json({ error: '当前语音服务商未提供音色列表端点' });
+  const raw = String(b.base_url || saved.base_url || '');
+  const mmBase = raw.split('?')[0].replace(/\/$/, '');
+  let mmKey = String((b.key && b.key.trim()) ? b.key.trim() : saved.key || '').trim();
+  if (mmKey.includes(':')) { const c = mmKey.indexOf(':'); mmKey = mmKey.slice(c + 1).trim(); }
+  if (!mmBase) return res.status(400).json({ error: '请先填写 API Base URL' });
+  if (!mmKey) return res.status(400).json({ error: '请先填写 API Key（MiniMax 接口密钥）' });
+  try {
+    const { assertPublicUrl } = await import('../safeUrl.js');
+    assertPublicUrl(mmBase);
+    const r = await fetch(`${mmBase}/get_voice`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mmKey}` },
+      body: JSON.stringify({ voice_type: 'all' }),
+    });
+    if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[admin] minimax /get_voice 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: `音色列表获取失败 (HTTP ${r.status})，请检查 API Key 与 Base URL` }); }
+    const d = await r.json().catch(() => null);
+    if (d?.base_resp?.status_code && d.base_resp.status_code !== 0)
+      return res.status(502).json({ error: 'MiniMax 返回错误：' + (d.base_resp.status_msg || ('status_code=' + d.base_resp.status_code)) });
+    const norm = (arr, group) => (Array.isArray(arr) ? arr.map(v => ({ voice_id: v.voice_id, voice_name: v.voice_name || '', group, description: Array.isArray(v.description) ? v.description.join('；') : (v.description || '') })).filter(x => x.voice_id) : []);
+    res.json({ voices: [...norm(d?.system_voice, '系统音色'), ...norm(d?.voice_cloning, '复刻音色'), ...norm(d?.voice_generation, '生成音色')] });
+  } catch (e) { console.error('[admin] minimax /get_voice 连接失败', e.message); res.status(502).json({ error: '音色列表获取失败：' + e.message }); }
+});
+
 // GM 图像服务在线检测——用当前表单值（未保存的也行）发起一次最小生成请求，
 // 验证密钥/签名/区域是否可用，返回结果与延迟。空 key 回落到已保存配置。
 router.post('/platform/test-image', async (req, res) => {

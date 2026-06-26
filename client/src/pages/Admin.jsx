@@ -446,12 +446,13 @@ function PlatformTab({ toast }) {
   };
 
   // 检测可用音色（当前仅 MiniMax 提供音色列表端点 /v1/get_voice）。
+  // 走 /admin/platform/detect-voices：表单 key 为空时回退到已保存的平台语音 key，
+  // 这样 GM 保存后（表单 key 被清空）仍可直接检测，无需重新填写 key。
   const detectVoices = async () => {
     if (voice.protocol !== 'minimax') { toast('当前语音服务商未提供音色列表端点', 'err'); return; }
-    if (!voice.base_url) { toast('请先填写 Base URL', 'err'); return; }
     setDetVoices(true);
     try {
-      const d = await api('/settings/voices', { method: 'POST', body: { base_url: voice.base_url, api_key: voice.key || undefined, protocol: voice.protocol } });
+      const d = await api('/admin/platform/detect-voices', { method: 'POST', body: { voice: { protocol: voice.protocol, base_url: voice.base_url, key: voice.key || undefined } } });
       if (!d.voices?.length) { toast('未检测到可用音色（请检查 API Key / GroupId）', 'err'); return; }
       setVoiceVoices(d.voices);
       toast(`检测到 ${d.voices.length} 个可用音色`);

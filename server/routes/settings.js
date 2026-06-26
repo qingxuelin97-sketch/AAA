@@ -86,7 +86,7 @@ router.post('/models', authRequired, async (req, res) => {
     //     不能拿来当 TTS 模型，否则会把文字模型错误地路由进语音合成。
     //   · 因此这里返回 MiniMax 官方文档公开的 T2A 模型清单（同步语音合成接口
     //     POST /v1/t2a_v2 实际支持的 model 取值），由前端 datalist 供选择。
-    //   · 音色（voice_id）的自动检测走另一个端点 /v1/get_voice，见 /settings/voices。
+    //   · 音色（voice_id）的自动检测走另一个端点 /v1/get_voice，见 /admin/platform/detect-voices（GM）与 /settings/voices（用户自备）。
     return res.json({
       models: ['speech-2.8-hd', 'speech-2.8-turbo', 'speech-2.6-hd', 'speech-2.6-turbo', 'speech-02-hd', 'speech-02-turbo'],
       source: '官方文档公开 T2A 模型清单（MiniMax 未提供 TTS 模型列表端点）',

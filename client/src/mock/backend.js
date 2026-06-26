@@ -788,7 +788,7 @@ async function route(method, path, search, body, headers) {
     const proto = body.protocol || 'openai';
     // MiniMax TTS 模型：官方未提供「TTS 模型列表」端点，/v1/models 只返回 LLM 模型
     // （MiniMax-M3 等），不能拿来当 TTS 模型，否则会把文字模型错误地路由进语音合成。
-    // 这里返回 MiniMax 官方文档公开的 T2A 模型清单。音色检测走 /settings/voices。
+    // 这里返回 MiniMax 官方文档公开的 T2A 模型清单。音色检测走 /admin/platform/detect-voices（GM）/ /settings/voices（用户自备）。
     if (proto === 'minimax') return J({ models: ['speech-2.8-hd', 'speech-2.8-turbo', 'speech-2.6-hd', 'speech-2.6-turbo', 'speech-02-hd', 'speech-02-turbo'] });
     if (proto === 'volcano') return J({ models: ['volcano_tts', 'volcano_icl'] }); // cluster name, no list endpoint
     if (proto === 'tencent') return J({ models: ['ap-guangzhou', 'ap-shanghai', 'ap-beijing', 'ap-hongkong'] }); // 地域(Region), no list endpoint
@@ -1678,6 +1678,10 @@ async function route(method, path, search, body, headers) {
   if (path === '/admin/platform/test-voice' && method === 'POST') {
     gmOnly();
     return E('纯浏览器演示版受第三方语音服务跨域限制，平台语音「试听」请在全栈服务端使用；演示版可在「设置 → 语音模型 → 浏览器内置语音」试听。', 501);
+  }
+  if (path === '/admin/platform/detect-voices' && method === 'POST') {
+    gmOnly();
+    return E('纯浏览器演示版受第三方语音服务跨域限制，音色自动检测请在全栈服务端使用。', 501);
   }
   if (path === '/admin/stats' && method === 'GET') {
     gmOnly();
