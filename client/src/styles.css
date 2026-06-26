@@ -312,7 +312,7 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .tabs-bar button:hover { color: var(--text); }
 .tabs-bar button.active { color: var(--accent-2); border-color: var(--accent); }
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(40, 34, 24, 0.42); backdrop-filter: blur(5px); display: grid; place-items: center; z-index: 500; padding: 20px; animation: fade 0.18s ease; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(40, 34, 24, 0.42); backdrop-filter: blur(5px); display: grid; align-items: safe center; justify-items: center; z-index: 500; padding: 20px; overflow-y: auto; animation: fade 0.18s ease; }
 @keyframes fade { from { opacity: 0; } }
 .modal { width: 100%; max-width: 470px; max-height: 88vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
 .modal h2 { font-size: 22px; }
@@ -494,20 +494,8 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 @keyframes riseIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes popIn { from { opacity: 0; transform: scale(0.965); } to { opacity: 1; transform: none; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes auroraA { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(6vw,4vh) scale(1.15); } 100% { transform: translate(0,0) scale(1); } }
-@keyframes auroraB { 0% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-5vw,-3vh) scale(1); } 100% { transform: translate(0,0) scale(1.1); } }
 @keyframes sheen { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(220%) skewX(-18deg); } }
 @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-
-/* drifting aurora backdrop */
-body::before { content: ''; position: fixed; inset: -20vmax; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(closest-side, rgba(204,106,68,0.16), transparent 70%) 18% 12% / 52vmax 52vmax no-repeat,
-    radial-gradient(closest-side, rgba(63,129,149,0.13), transparent 70%) 86% 92% / 46vmax 46vmax no-repeat;
-  filter: blur(20px); animation: auroraA 26s ease-in-out infinite; }
-body::after { content: ''; position: fixed; inset: -20vmax; z-index: -1; pointer-events: none;
-  background: radial-gradient(closest-side, rgba(179,82,47,0.10), transparent 70%) 70% 20% / 40vmax 40vmax no-repeat;
-  filter: blur(26px); animation: auroraB 32s ease-in-out infinite; }
 
 /* page + element entrances */
 .page { animation: riseIn 0.42s cubic-bezier(0.22,0.61,0.36,1) both; }
@@ -559,7 +547,6 @@ body::after { content: ''; position: fixed; inset: -20vmax; z-index: -1; pointer
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
-  body::before, body::after { animation: none; }
 }
 
 .msg-acts { display: flex; gap: 14px; margin-top: 5px; }
@@ -865,7 +852,7 @@ html { scroll-behavior: smooth; }
 body { background-image:
   radial-gradient(1100px 600px at 90% -12%, rgba(217,119,87,0.045), transparent 60%),
   radial-gradient(820px 520px at -8% 110%, rgba(63,129,149,0.035), transparent 55%); }
-body::before, body::after { display: none !important; }
+/* body::before 已弃用（v3 极光层）；body::after 由下方「质感精修」段定义为静态噪点纹理。 */
 
 .sidebar { background: #f6f4ed; border-right-color: var(--border); }
 .topbar { background: rgba(250,249,245,0.85); }
@@ -1573,7 +1560,7 @@ body { -webkit-touch-callout: none; }
 .sb-search-ic { justify-content: center; margin: 2px 0 6px; }
 
 /* ---- 命令面板 ---- */
-.cmdk-backdrop { position: fixed; inset: 0; z-index: 200; background: rgba(15,12,9,0.42);
+.cmdk-backdrop { position: fixed; inset: 0; z-index: 450; background: rgba(15,12,9,0.42);
   backdrop-filter: blur(6px); display: flex; align-items: flex-start; justify-content: center;
   padding: clamp(48px, 12vh, 140px) 16px 16px; animation: cmdkFade 0.18s ease both; }
 @keyframes cmdkFade { from { opacity: 0; } to { opacity: 1; } }
@@ -2917,10 +2904,10 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 .ach-card.unlocked.medal-silver { box-shadow: 0 0 0 1px rgba(150,162,176,0.4), 0 8px 22px rgba(120,130,145,0.12); }
 .ach-card.unlocked.medal-bronze { box-shadow: 0 0 0 1px rgba(201,139,83,0.4), 0 8px 22px rgba(160,110,70,0.12); }
 .ach-card.unlocked .ach-ic { position: relative; overflow: hidden; }
-.ach-card.unlocked.medal-gold .ach-ic::after { content: ''; position: absolute; top: 0; left: -60%; width: 45%; height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.55), transparent); transform: skewX(-18deg);
+.ach-card.unlocked.medal-gold .ach-ic::after { content: ''; position: absolute; top: 0; left: 0; width: 45%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.55), transparent); transform: translate3d(-133%,0,0) skewX(-18deg);
   animation: medalShine 3.6s ease-in-out 1s infinite; }
-@keyframes medalShine { 0%, 18% { left: -60%; } 38%, 100% { left: 160%; } }
+@keyframes medalShine { 0%, 18% { transform: translate3d(-133%,0,0) skewX(-18deg); } 38%, 100% { transform: translate3d(356%,0,0) skewX(-18deg); } }
 @media (prefers-reduced-motion: reduce) { .ach-card.unlocked.medal-gold .ach-ic::after { animation: none; display: none; } }
 
 /* ---- 收益分成 mini 统计 ---- */
@@ -2988,10 +2975,10 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 .ach-grid .ach-card:nth-child(5) { animation-delay: 0.20s; }
 .ach-grid .ach-card:nth-child(n+6) { animation-delay: 0.25s; }
 @keyframes achRise { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: none; } }
-.ach-card::after { content: ''; position: absolute; top: 0; left: -75%; width: 50%; height: 100%; pointer-events: none; z-index: 3;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.30), transparent); transform: skewX(-18deg); opacity: 0; }
+.ach-card::after { content: ''; position: absolute; top: 0; left: 0; width: 50%; height: 100%; pointer-events: none; z-index: 3;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.30), transparent); transform: translate3d(-150%,0,0) skewX(-18deg); opacity: 0; }
 .ach-card:hover::after { animation: sweepShine 0.85s ease; }
-@keyframes sweepShine { 0% { left: -75%; opacity: 0.9; } 100% { left: 150%; opacity: 0; } }
+@keyframes sweepShine { 0% { transform: translate3d(-150%,0,0) skewX(-18deg); opacity: 0.9; } 100% { transform: translate3d(300%,0,0) skewX(-18deg); opacity: 0; } }
 /* 已解锁金牌：呼吸光晕（仅动 box-shadow，不与悬停位移冲突） */
 .ach-card.unlocked.medal-gold { animation: achRise 0.55s cubic-bezier(0.22,0.61,0.36,1) both, goldBreath 3.2s ease-in-out 0.7s infinite; }
 @keyframes goldBreath {

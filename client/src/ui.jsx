@@ -235,9 +235,16 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
 }
 
 export function Modal({ children, onClose }) {
+  // ESC 关闭 + 无障碍语义：桌面端用户习惯按 ESC 关闭弹窗，并补充 dialog 角色供读屏识别。
+  useEffect(() => {
+    if (!onClose) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="card modal" onClick={e => e.stopPropagation()}>{children}</div>
+      <div className="card modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>{children}</div>
     </div>
   );
 }

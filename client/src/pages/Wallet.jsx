@@ -56,11 +56,11 @@ export default function Wallet() {
         {/* balance hero */}
         <div className="wallet-hero">
           <div className="col gold">
-            <span className="asset-chip gold"><CoinIcon size={34} /></span>
+            <span className="asset-chip gold"><CoinIcon size={46} /></span>
             <div><div className="bal-num"><CountUp value={wallet.gold} /></div><div className="bal-lbl">金币</div></div>
           </div>
           <div className="col diamond">
-            <span className="asset-chip diamond"><DiamondIcon size={34} /></span>
+            <span className="asset-chip diamond"><DiamondIcon size={46} /></span>
             <div><div className="bal-num"><CountUp value={wallet.diamond} /></div><div className="bal-lbl">钻石</div></div>
           </div>
           <div className="col member">
