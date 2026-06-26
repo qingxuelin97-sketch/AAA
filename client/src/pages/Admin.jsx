@@ -409,7 +409,9 @@ function PlatformTab({ toast }) {
   const [imgTesting, setImgTesting] = useState(false);
   const [llmModels, setLlmModels] = useState([]);
   const [voiceModels, setVoiceModels] = useState([]);
+  const [voiceVoices, setVoiceVoices] = useState([]);
   const [det, setDet] = useState('');
+  const [detVoices, setDetVoices] = useState(false);
   const [vprev, setVprev] = useState(false);
 
   // 试听平台语音 — synthesize a sample with the current form values (server falls
@@ -441,6 +443,19 @@ function PlatformTab({ toast }) {
       (kind === 'voice' ? setVoiceModels : setLlmModels)(d.models);
       toast(`检测到 ${d.models.length} 个可用模型`);
     } catch (e) { toast(e.message, 'err'); } finally { setDet(''); }
+  };
+
+  // 检测可用音色（当前仅 MiniMax 提供音色列表端点 /v1/get_voice）。
+  const detectVoices = async () => {
+    if (voice.protocol !== 'minimax') { toast('当前语音服务商未提供音色列表端点', 'err'); return; }
+    if (!voice.base_url) { toast('请先填写 Base URL', 'err'); return; }
+    setDetVoices(true);
+    try {
+      const d = await api('/settings/voices', { method: 'POST', body: { base_url: voice.base_url, api_key: voice.key || undefined, protocol: voice.protocol } });
+      if (!d.voices?.length) { toast('未检测到可用音色（请检查 API Key / GroupId）', 'err'); return; }
+      setVoiceVoices(d.voices);
+      toast(`检测到 ${d.voices.length} 个可用音色`);
+    } catch (e) { toast(e.message, 'err'); } finally { setDetVoices(false); }
   };
 
   const load = () => api('/admin/platform').then(d => {
@@ -552,7 +567,18 @@ function PlatformTab({ toast }) {
           {voice.protocol === 'volcano' && <div className="hint">火山引擎固定填 <code>https://openspeech.bytedance.com</code>，模型填集群名 <code>volcano_tts</code>；API Key 处填 <b>AppID:AccessToken</b>（英文冒号连接）。默认音色填 <code>voice_type</code>（如 BV001_streaming）。</div>}
           {voice.protocol === 'tencent' && <div className="hint">腾讯云固定填 <code>https://tts.tencentcloudapi.com</code>，模型处填地域 Region（如 <code>ap-guangzhou</code>）；API Key 处填 <b>SecretId:SecretKey</b>（英文冒号连接）。默认音色填 <code>VoiceType</code> 编号（如 101001 智瑜）。TC3 服务端签名，仅服务端部署版可用。</div>}</div>
         <div className="row">
-          <div className="field"><label>默认音色</label><input className="input" value={voice.voice_name} onChange={e => setVoice(s => ({ ...s, voice_name: e.target.value }))} placeholder={voice.protocol === 'aliyun' ? 'Cherry / Ethan / Serena / Chelsie' : voice.protocol === 'baidu' ? '0 度小美 / 1 度小宇 / 5118 度小鹿' : voice.protocol === 'volcano' ? 'BV001_streaming / BV700_streaming' : voice.protocol === 'minimax' ? 'male-qn-qingse / female-shaonv' : voice.protocol === 'tencent' ? '101001 智瑜 / 101002 智聆' : 'alloy / 21m00Tcm... / zh-CN-XiaoxiaoNeural'} /></div>
+          <div className="field"><label>默认音色 {voice.protocol === 'minimax' && <span className="tag">支持自动检测</span>}</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" style={{ flex: 1 }} value={voice.voice_name} onChange={e => setVoice(s => ({ ...s, voice_name: e.target.value }))} list="pf-voice-voices" placeholder={voice.protocol === 'aliyun' ? 'Cherry / Ethan / Serena / Chelsie' : voice.protocol === 'baidu' ? '0 度小美 / 1 度小宇 / 5118 度小鹿' : voice.protocol === 'volcano' ? 'BV001_streaming / BV700_streaming' : voice.protocol === 'minimax' ? 'male-qn-qingse / female-shaonv' : voice.protocol === 'tencent' ? '101001 智瑜 / 101002 智聆' : 'alloy / 21m00Tcm... / zh-CN-XiaoxiaoNeural'} />
+              {voice.protocol === 'minimax' && <button className="btn" type="button" onClick={detectVoices} disabled={detVoices} title="自动检测账户可用音色"><RefreshCw size={15} className={detVoices ? 'spin' : ''} /></button>}
+            </div>
+            {voiceVoices.length > 0 && (<>
+              <datalist id="pf-voice-voices">{voiceVoices.map(v => <option key={v.voice_id} value={v.voice_id}>{v.voice_name ? v.voice_name + ' · ' : ''}{v.group}</option>)}</datalist>
+              <select className="select" style={{ marginTop: 8 }} value={voiceVoices.some(v => v.voice_id === voice.voice_name) ? voice.voice_name : ''} onChange={e => e.target.value && setVoice(s => ({ ...s, voice_name: e.target.value }))}>
+                <option value="">— 选择检测到的 {voiceVoices.length} 个音色 —</option>
+                {voiceVoices.map(v => <option key={v.voice_id} value={v.voice_id}>{v.voice_id}{v.voice_name ? ' · ' + v.voice_name : ''}（{v.group}）</option>)}
+              </select></>)}
+          </div>
           <div className="field"><label>API Key {cfg.voice?.key_set && <span className="tag">已配置 · {cfg.voice.key_masked}</span>}</label>
             <input className="input" type="password" value={voice.key} onChange={e => setVoice(s => ({ ...s, key: e.target.value }))} placeholder={cfg.voice?.key_set ? '••••••（留空则不修改）' : voice.protocol === 'baidu' ? 'API Key:Secret Key' : voice.protocol === 'volcano' ? 'AppID:AccessToken' : voice.protocol === 'minimax' ? 'APIKey（或 GroupId:APIKey）' : voice.protocol === 'tencent' ? 'SecretId:SecretKey' : '填写平台语音密钥'} /></div>
         </div>

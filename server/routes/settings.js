@@ -81,31 +81,16 @@ router.post('/models', authRequired, async (req, res) => {
   const base = raw.split('?')[0].replace(/\/$/, '');
   const key = req.body?.api_key || cur.llm_api_key;
   if (proto === 'minimax') {
-    // MiniMax /v1/models（OpenAI 兼容）：返回账户可用的全部模型。
-    //   · 该端点不需要 GroupId，需从 base_url 中剥离 ?GroupId=… 查询串；
-    //   · 密钥可能写作「GroupId:APIKey」，取冒号后部分作为 Bearer；
-    //   · TTS 适配器走 /t2a_v2，仅保留 speech-* 开头的语音合成模型；若 /v1/models
-    //     未返回任何 speech-*（MiniMax 当前 /v1/models 仅暴露 LLM 模型），则把全部
-    //     模型回显，由前端 placeholder 提示用户手动输入 speech-02-hd 等 TTS 模型名。
-    const mmBase = raw.split('?')[0].replace(/\/$/, '');
-    let mmKey = String(key || '').trim();
-    if (mmKey.includes(':')) { const c = mmKey.indexOf(':'); mmKey = mmKey.slice(c + 1).trim(); }
-    if (!mmBase) return res.status(400).json({ error: '请先填写 API Base URL' });
-    if (!mmKey) return res.status(400).json({ error: '请先填写 API Key（MiniMax 接口密钥）' });
-    try {
-      assertPublicUrl(mmBase);
-      const r = await fetch(`${mmBase}/models`, { headers: { Authorization: `Bearer ${mmKey}` } });
-      if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[settings] minimax /models 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: `MiniMax 模型列表获取失败 (HTTP ${r.status})，请检查 API Key 与 Base URL` }); }
-      const d = await r.json().catch(() => null);
-      const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : (Array.isArray(d) ? d : []));
-      const ids = list.map(m => (typeof m === 'string' ? m : (m.id || m.model_id || m.name))).filter(Boolean);
-      const tts = ids.filter(id => /^speech[-_.]/i.test(id));
-      res.json({ models: tts.length ? tts : ids });
-    } catch (e) {
-      console.error('[settings] minimax /models 连接失败', e.message);
-      res.status(502).json({ error: 'MiniMax 模型列表获取失败：' + e.message });
-    }
-    return;
+    // MiniMax TTS 模型：官方未提供「TTS 模型列表」端点。
+    //   · /v1/models 是 OpenAI 兼容端点，只返回 LLM 模型（MiniMax-M3 等），
+    //     不能拿来当 TTS 模型，否则会把文字模型错误地路由进语音合成。
+    //   · 因此这里返回 MiniMax 官方文档公开的 T2A 模型清单（同步语音合成接口
+    //     POST /v1/t2a_v2 实际支持的 model 取值），由前端 datalist 供选择。
+    //   · 音色（voice_id）的自动检测走另一个端点 /v1/get_voice，见 /settings/voices。
+    return res.json({
+      models: ['speech-2.8-hd', 'speech-2.8-turbo', 'speech-2.6-hd', 'speech-2.6-turbo', 'speech-02-hd', 'speech-02-turbo'],
+      source: '官方文档公开 T2A 模型清单（MiniMax 未提供 TTS 模型列表端点）',
+    });
   }
   if (proto === 'volcano') return res.json({ models: ['volcano_tts', 'volcano_icl'] });
   if (proto === 'tencent') return res.json({ models: ['ap-guangzhou', 'ap-shanghai', 'ap-beijing', 'ap-hongkong'] });
@@ -125,6 +110,37 @@ router.post('/models', authRequired, async (req, res) => {
     const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : (Array.isArray(d) ? d : []));
     res.json({ models: list.map(m => (typeof m === 'string' ? m : (m.model_id || m.id || m.name))).filter(Boolean) });
   } catch (e) { console.error('[settings] /models 连接失败', e.message); res.status(502).json({ error: '获取模型列表失败，请检查 API Base URL 与 Key 是否正确' }); }
+});
+
+// Detect available voices for TTS providers that expose a voice-list endpoint.
+// Currently supports MiniMax (POST /v1/get_voice, voice_type:"all").
+router.post('/voices', authRequired, async (req, res) => {
+  const cur = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id) || {};
+  const proto = req.body?.protocol || cur.voice_protocol || 'openai';
+  if (proto !== 'minimax') return res.status(400).json({ error: '当前语音服务商未提供音色列表端点' });
+  // MiniMax /v1/get_voice：POST，Bearer 鉴权，body {voice_type:"all"}。
+  //   · 不需要 GroupId，从 base_url 剥离 ?GroupId=…；密钥可能是「GroupId:APIKey」，取冒号后部分。
+  //   · 响应含 system_voice / voice_cloning / voice_generation 三类，每项含 voice_id、voice_name、description。
+  const raw = String(req.body?.base_url || cur.voice_base_url || '');
+  const mmBase = raw.split('?')[0].replace(/\/$/, '');
+  let mmKey = String(req.body?.api_key || cur.voice_api_key || '').trim();
+  if (mmKey.includes(':')) { const c = mmKey.indexOf(':'); mmKey = mmKey.slice(c + 1).trim(); }
+  if (!mmBase) return res.status(400).json({ error: '请先填写 API Base URL' });
+  if (!mmKey) return res.status(400).json({ error: '请先填写 API Key（MiniMax 接口密钥）' });
+  try {
+    assertPublicUrl(mmBase);
+    const r = await fetch(`${mmBase}/get_voice`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mmKey}` },
+      body: JSON.stringify({ voice_type: 'all' }),
+    });
+    if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[settings] minimax /get_voice 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: `音色列表获取失败 (HTTP ${r.status})，请检查 API Key 与 Base URL` }); }
+    const d = await r.json().catch(() => null);
+    if (d?.base_resp?.status_code && d.base_resp.status_code !== 0)
+      return res.status(502).json({ error: 'MiniMax 返回错误：' + (d.base_resp.status_msg || ('status_code=' + d.base_resp.status_code)) });
+    const norm = (arr, group) => (Array.isArray(arr) ? arr.map(v => ({ voice_id: v.voice_id, voice_name: v.voice_name || '', group, description: Array.isArray(v.description) ? v.description.join('；') : (v.description || '') })).filter(x => x.voice_id) : []);
+    const voices = [...norm(d?.system_voice, '系统音色'), ...norm(d?.voice_cloning, '复刻音色'), ...norm(d?.voice_generation, '生成音色')];
+    res.json({ voices });
+  } catch (e) { console.error('[settings] minimax /get_voice 连接失败', e.message); res.status(502).json({ error: '音色列表获取失败：' + e.message }); }
 });
 
 // Connection test — verify the configured/posted LLM credentials respond.
