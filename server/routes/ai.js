@@ -27,6 +27,22 @@ router.post('/image', authRequired, aiLimiter, async (req, res) => {
     if (cfg.provider === 'tencent') {
       // 腾讯云 AIrtist：TC3 签名直连 aiart.tencentcloudapi.com，无需 SSRF 校验（固定官方域名）
       image = (await generateTencentImage(cfg, { prompt, size })).image;
+    } else if (cfg.provider === 'hunyuan') {
+      // 腾讯混元 TokenHub：OpenAI 兼容 /images/generations，size 需转成冒号格式
+      assertPublicUrl(cfg.base_url);
+      const hySize = String(size).replace('x', ':'); // 1024x1024 -> 1024:1024
+      const up = await fetch(cfg.base_url.replace(/\/$/, '') + '/images/generations', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
+        body: JSON.stringify({ model: cfg.model || 'hy-image-v3.0', prompt, size: hySize, n: 1 }),
+      });
+      if (!up.ok) {
+        const t = await up.text().catch(() => '');
+        console.error('[ai] 混元生图上游错误', up.status, t.slice(0, 400));
+        return res.status(502).json({ error: '混元生图服务暂不可用：' + t.slice(0, 200) });
+      }
+      const d = await up.json().catch(() => null);
+      const item = d?.data?.[0] || {};
+      image = item.b64_json ? 'data:image/png;base64,' + item.b64_json : (item.url || item.image);
     } else {
       // OpenAI 兼容协议：base_url + Bearer key 调 /images/generations
       assertPublicUrl(cfg.base_url);

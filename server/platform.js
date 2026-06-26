@@ -35,7 +35,7 @@ function write(cfg) {
 
 export function getPlatform() { return read(); }
 export const voiceReady = () => { const c = read(); return !!(c.voice.key && c.voice.base_url); };
-// 图像服务可用性判定：腾讯云只需 key（SecretId:SecretKey），其他协议需 key + base_url
+// 图像服务可用性判定：腾讯云原生只需 key（SecretId:SecretKey）；混元/其他需 key + base_url
 export const imageReady = () => {
   const c = read();
   if (c.image.provider === 'tencent') return !!c.image.key;

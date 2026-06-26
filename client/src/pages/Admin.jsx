@@ -358,7 +358,8 @@ const PF_VOICE_PRESETS = [
 const PF_IMAGE_PRESETS = [
   ['openai', 'OpenAI（gpt-image-1 / dall-e-3）', 'https://api.openai.com/v1'],
   ['siliconflow', '硅基流动（Kolors / SD）', 'https://api.siliconflow.cn/v1'],
-  ['tencent', '腾讯云（AI 绘画 / 混元生图 文生图）', ''],
+  ['tencent', '腾讯云原生（TC3 签名，需 AKID 主密钥）', ''],
+  ['hunyuan', '腾讯混元 TokenHub（OpenAI 兼容，ak-/sk- 密钥）', 'https://tokenhub.tencentmaas.com/v1'],
   ['custom', '自定义（OpenAI /images/generations 兼容）', ''],
 ];
 const IMG_SIZES = ['1024x1024', '1024x1536', '1536x1024', '512x512', '768x1024', '1024x768'];
@@ -574,7 +575,7 @@ function PlatformTab({ toast }) {
         </p>
         <div className="row">
           <div className="field"><label>服务商预设</label>
-            <select className="select" value={image.provider} onChange={e => { const v = e.target.value; const pr = PF_IMAGE_PRESETS.find(x => x[0] === v); setImage(s => ({ ...s, provider: v, ...(pr && v !== 'tencent' ? { base_url: pr[2] || s.base_url } : {}) })); }}>
+            <select className="select" value={image.provider} onChange={e => { const v = e.target.value; const pr = PF_IMAGE_PRESETS.find(x => x[0] === v); setImage(s => ({ ...s, provider: v, ...((pr && v !== 'tencent' && pr[2]) ? { base_url: pr[2] } : {}), ...(v === 'hunyuan' ? { model: s.model || 'hy-image-v3.0' } : {}) })); }}>
               {PF_IMAGE_PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select></div>
           {image.provider === 'tencent' ? (

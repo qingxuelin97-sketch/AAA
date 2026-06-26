@@ -64,15 +64,18 @@ router.post('/platform/test-image', async (req, res) => {
     const r = await testTencentImage(cfg);
     return res.json(r);
   }
-  // OpenAI 兼容：用 base_url + key 调一次最小 /images/generations
+  // 混元 TokenHub / OpenAI 兼容：用 base_url + Bearer key 调一次 /images/generations
   if (!cfg.key || !cfg.base_url) return res.json({ ok: false, message: '密钥与 Base URL 未配置' });
   try {
     const { assertPublicUrl } = await import('../safeUrl.js');
     assertPublicUrl(cfg.base_url);
+    const isHunyuan = cfg.provider === 'hunyuan';
+    const testSize = isHunyuan ? '1024:1024' : (cfg.size || '1024x1024');
+    const model = isHunyuan ? (cfg.model || 'hy-image-v3.0') : (cfg.model || 'dall-e-3');
     const t0 = Date.now();
     const up = await fetch(cfg.base_url.replace(/\/$/, '') + '/images/generations', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
-      body: JSON.stringify({ model: cfg.model || 'dall-e-3', prompt: '一只可爱的橘猫，柔光摄影', size: cfg.size || '1024x1024', n: 1 }),
+      body: JSON.stringify({ model, prompt: '一只可爱的橘猫，柔光摄影', size: testSize, n: 1 }),
     });
     const latency_ms = Date.now() - t0;
     if (!up.ok) {
@@ -81,7 +84,7 @@ router.post('/platform/test-image', async (req, res) => {
     }
     const d = await up.json().catch(() => null);
     const item = d?.data?.[0] || {};
-    const sample = item.b64_json ? 'data:image/png;base64,' + item.b64_json : item.url;
+    const sample = item.b64_json ? 'data:image/png;base64,' + item.b64_json : (item.url || item.image);
     return res.json({ ok: true, message: '连接成功，密钥有效', latency_ms, sample });
   } catch (e) {
     return res.json({ ok: false, message: '连接失败：' + e.message });
