@@ -53,7 +53,7 @@ export default function Favorites() {
             {chars.map(c => (
               <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
                 <div className="cover">
-                  {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}
+                  {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={46} /></div>}
                   <button
                     className="btn sm danger"
                     style={{ position: 'absolute', top: 8, right: 8 }}

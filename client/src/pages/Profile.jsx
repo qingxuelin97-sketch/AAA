@@ -119,7 +119,7 @@ export default function Profile() {
           <div className="grid">
             {data.characters.map(c => (
               <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
-                <div className="cover">{c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}</div>
+                <div className="cover">{c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={46} /></div>}</div>
                 <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro}</p></div>
               </div>
             ))}
@@ -129,7 +129,7 @@ export default function Profile() {
           <div className="grid">
             {data.scripts.map(s => (
               <div key={s.id} className="char-card" onClick={() => nav('/script/' + s.id)}>
-                <div className="cover">{s.cover ? <img src={s.cover} alt="" /> : <div className="ph"><ScrollText size={32} /></div>}
+                <div className="cover">{s.cover ? <img src={s.cover} alt="" loading="lazy" /> : <div className="ph"><ScrollText size={32} /></div>}
                   <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{s.price_gold > 0 ? <><CoinIcon size={12} /> {s.price_gold}</> : '免费'}</div></div>
                 <div className="meta"><h3>{s.title}</h3><p>{s.summary}</p></div>
               </div>

@@ -9,7 +9,7 @@ function ScriptCard({ s, nav, extra }) {
   return (
     <div className="char-card" onClick={() => nav('/script/' + s.id)}>
       <div className="cover">
-        {s.cover ? <img src={s.cover} alt="" /> : <div className="ph"><ScrollText size={46} /></div>}
+        {s.cover ? <img src={s.cover} alt="" loading="lazy" /> : <div className="ph"><ScrollText size={46} /></div>}
       </div>
       <div className="meta">
         <h3>{s.title}</h3>

@@ -3131,12 +3131,18 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
    remember each card's real size after first reveal, so the scrollbar stays
    stable (no jumping). Applied where lists get long. */
 /* Vertical containers only — horizontal rails (.rail > .poster) are left out
-   so an off-screen estimate can never cause a sideways scroll jump. */
-@media (max-width: 860px) {
-  .grid > .char-card { content-visibility: auto; contain-intrinsic-size: auto 210px; }
-  .poster-grid > .poster { content-visibility: auto; contain-intrinsic-size: auto 280px; }
-  .moment { content-visibility: auto; contain-intrinsic-size: auto 140px; }
-}
+   so an off-screen estimate can never cause a sideways scroll jump.
+   Desktop high-tier benefits too: off-screen cards skip layout/paint with zero
+   visual change (they render normally as they enter the viewport). */
+.grid > .char-card { content-visibility: auto; contain-intrinsic-size: auto 210px; }
+.poster-grid > .poster { content-visibility: auto; contain-intrinsic-size: auto 280px; }
+.moment { content-visibility: auto; contain-intrinsic-size: auto 140px; }
+.conv-item { content-visibility: auto; contain-intrinsic-size: auto 68px; }
+.noti-item { content-visibility: auto; contain-intrinsic-size: auto 78px; }
+.ann-item { content-visibility: auto; contain-intrinsic-size: auto 100px; }
+.lb-row { content-visibility: auto; contain-intrinsic-size: auto 64px; }
+.room-row { content-visibility: auto; contain-intrinsic-size: auto 88px; }
+/* lite tier: slightly larger estimates (cards may wrap/tall on narrow screens) */
 [data-perf="lite"] .grid > .char-card { content-visibility: auto; contain-intrinsic-size: auto 230px; }
 [data-perf="lite"] .poster-grid > .poster { content-visibility: auto; contain-intrinsic-size: auto 300px; }
 [data-perf="lite"] .moment { content-visibility: auto; contain-intrinsic-size: auto 140px; }

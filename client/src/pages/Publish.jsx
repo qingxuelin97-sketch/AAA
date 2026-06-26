@@ -43,7 +43,7 @@ export default function Publish() {
           <div className="grid">
             {mine.map(c => (
               <div key={c.id} className="char-card">
-                <div className="cover" onClick={() => nav('/character/' + c.id + '/edit')}>{c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}
+                <div className="cover" onClick={() => nav('/character/' + c.id + '/edit')}>{c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={46} /></div>}
                   {c.is_public ? <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Globe size={12} /> 已公开</div> : null}</div>
                 <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro || '暂无简介'}</p>
                   <div className="foot">

@@ -253,7 +253,7 @@ export default function Home() {
             <div className="grid">
               {scripts.map(s => (
                 <div key={s.id} className="char-card" onClick={() => nav('/script/' + s.id)}>
-                  <div className="cover">{s.cover ? <img src={s.cover} alt="" /> : <div className="ph"><ScrollText size={34} /></div>}
+                  <div className="cover">{s.cover ? <img src={s.cover} alt="" loading="lazy" /> : <div className="ph"><ScrollText size={34} /></div>}
                     <div className="pill-pub">{s.price_gold > 0 ? <><CoinIcon size={12} /> {s.price_gold}</> : '免费'}</div></div>
                   <div className="meta"><h3>{s.title}</h3><p>{s.summary}</p>
                     <div className="foot"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Play size={11} /> {s.plays}</span><span style={{ marginLeft: 'auto' }} className="muted">{s.author_name}</span></div></div>

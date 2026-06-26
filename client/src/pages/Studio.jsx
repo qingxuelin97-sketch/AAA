@@ -148,7 +148,7 @@ export default function Studio() {
             <div className="studio-list">
               {data.scripts.map(s => (
                 <div key={s.id} className="studio-row" onClick={() => nav('/script/' + s.id)}>
-                  <div className="sr-cover">{s.cover ? <img src={s.cover} alt="" /> : <ScrollText size={20} />}</div>
+                  <div className="sr-cover">{s.cover ? <img src={s.cover} alt="" loading="lazy" /> : <ScrollText size={20} />}</div>
                   <div className="sr-name"><b>{s.title}</b><span className="tag">{s.price_gold > 0 ? `${s.price_gold} 金币` : '免费'}</span></div>
                   <div className="sr-stats">
                     <span title="游玩"><Play size={13} /> {fmt(s.plays)}</span>

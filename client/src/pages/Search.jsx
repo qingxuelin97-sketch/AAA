@@ -89,7 +89,7 @@ export default function Search() {
             <div className="grid">
               {res.characters.map(c => (
                 <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
-                  <div className="cover">{c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={40} /></div>}
+                  <div className="cover">{c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={40} /></div>}
                     <div className="pill-pub">{pid('character', c.id)}</div></div>
                   <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro || '暂无简介'}</p></div>
                 </div>
@@ -101,7 +101,7 @@ export default function Search() {
             <div className="grid">
               {res.scripts.map(s => (
                 <div key={s.id} className="char-card" onClick={() => nav('/script/' + s.id)}>
-                  <div className="cover">{s.cover ? <img src={s.cover} alt="" /> : <div className="ph"><ScrollText size={34} /></div>}
+                  <div className="cover">{s.cover ? <img src={s.cover} alt="" loading="lazy" /> : <div className="ph"><ScrollText size={34} /></div>}
                     <div className="pill-pub">{pid('script', s.id)}</div></div>
                   <div className="meta"><h3>{s.title}</h3><p>{s.summary}</p>
                     <div className="foot">

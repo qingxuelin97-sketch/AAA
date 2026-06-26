@@ -53,7 +53,7 @@ export default function Library() {
               {chars.map(c => (
                 <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id + '/edit')}>
                   <div className="cover">
-                    {c.avatar ? <img src={c.avatar} alt="" /> : <div className="ph"><Drama size={46} /></div>}
+                    {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={46} /></div>}
                     {c.is_public ? <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Globe size={12} /> 已公开</div> : null}
                   </div>
                   <div className="meta">
