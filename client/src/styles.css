@@ -3277,9 +3277,9 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 /* ===================================================================== */
 /* —— premium 金币 & 钻石 chip（光泽 + 高光 + 立体）—— */
 /* 资产图标直接裸露，不套任何方体/圆角盒 —— 仅 drop-shadow 让图标立体浮起 */
-.asset-chip { display: inline-grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px;
+.asset-chip { display: inline-grid; place-items: center; flex-shrink: 0; width: 56px; height: 56px;
   background: none; border: 0; border-radius: 0; box-shadow: none; transition: transform 0.25s var(--spring); }
-.asset-chip > svg { display: block; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+.asset-chip > svg { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.24)); }
 .wallet-hero .col:hover .asset-chip { transform: translateY(-2px) rotate(-3deg); }
 /* 资产数字配色 + 货币色微光，让金币/钻石一眼可辨 */
 .wallet-hero .col.gold .bal-num { color: #c8932f; text-shadow: 0 0 14px rgba(241,196,82,0.4); }

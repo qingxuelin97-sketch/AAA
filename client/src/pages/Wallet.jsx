@@ -56,11 +56,11 @@ export default function Wallet() {
         {/* balance hero */}
         <div className="wallet-hero">
           <div className="col gold">
-            <span className="asset-chip gold"><CoinIcon size={22} /></span>
+            <span className="asset-chip gold"><CoinIcon size={34} /></span>
             <div><div className="bal-num"><CountUp value={wallet.gold} /></div><div className="bal-lbl">金币</div></div>
           </div>
           <div className="col diamond">
-            <span className="asset-chip diamond"><DiamondIcon size={22} /></span>
+            <span className="asset-chip diamond"><DiamondIcon size={34} /></span>
             <div><div className="bal-num"><CountUp value={wallet.diamond} /></div><div className="bal-lbl">钻石</div></div>
           </div>
           <div className="col member">
@@ -87,7 +87,7 @@ export default function Wallet() {
           <div className="pkg-grid">
             {packages.map(p => (
               <div key={p.id} className="pkg" aria-disabled="true">
-                <span className="icon-chip diamond sm"><DiamondIcon size={16} /></span>
+                <span className="icon-chip diamond sm"><DiamondIcon size={22} /></span>
                 <div className="d">{p.diamond}</div>
                 <div className="b">{p.bonus ? `再赠 ${p.bonus}` : '无赠送'}</div>
                 <div className="pkg-pay">¥ {p.cny}</div>
@@ -105,12 +105,12 @@ export default function Wallet() {
             <h2 style={{ margin: '0 0 14px', fontSize: 18 }}>钻石兑换金币</h2>
             <div className="exch">
               <div className="exch-side">
-                <span className="icon-chip diamond sm"><DiamondIcon size={15} /></span>
+                <span className="icon-chip diamond sm"><DiamondIcon size={20} /></span>
                 <input className="input" type="number" min="1" placeholder="钻石数量" value={exDiamond} onChange={e => setExDiamond(e.target.value)} />
               </div>
               <ArrowRight size={18} className="muted" style={{ flexShrink: 0 }} />
               <div className="exch-side">
-                <span className="icon-chip gold sm"><CoinIcon size={15} /></span>
+                <span className="icon-chip gold sm"><CoinIcon size={20} /></span>
                 <div className="exch-out">{fmt(exN * goldPer)} <span className="muted">金币</span></div>
               </div>
             </div>
