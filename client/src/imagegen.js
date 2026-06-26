@@ -30,11 +30,14 @@ export function generateImage({ prompt, size }) {
 }
 
 // Best-effort download of a data: or remote image URL.
+// 仅允许 data:image、blob: 与 http(s): 协议，防止 javascript:/file: 等危险协议。
 export function downloadImage(url, name = 'huanyu-art') {
+  const safe = /^data:image\/|^(https?:|blob:)/i.test(String(url));
+  if (!safe) return;
   try {
     const a = document.createElement('a');
-    a.href = url; a.download = `${name}-${Date.now()}.png`; a.rel = 'noopener';
+    a.href = url; a.download = `${name}-${Date.now()}.png`; a.rel = 'noopener noreferrer';
     if (!url.startsWith('data:')) a.target = '_blank';
     document.body.appendChild(a); a.click(); a.remove();
-  } catch { window.open(url, '_blank'); }
+  } catch { window.open(url, '_blank', 'noopener,noreferrer'); }
 }

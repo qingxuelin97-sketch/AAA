@@ -1,10 +1,15 @@
 import { Router } from'express';
+import rateLimit from 'express-rate-limit';
 import db from'../db.js';
 import { authRequired } from'../auth.js';
 import { applyTx, isVip, publicUser, GOLD_PER_DIAMOND, VIP_COST_GOLD, VIP_DAYS, notify } from'../wallet.js';
 import { bumpDaily } from '../daily.js';
 
 const router = Router();
+
+// 兑换码：每分钟最多 5 次/IP，防爆破。
+const redeemLimiter = rateLimit({ windowMs: 60_000, max: 5, standardHeaders: true, legacyHeaders: false,
+  message: { error: '兑换尝试过于频繁，请稍后再试' } });
 
 // Recharge packages (diamonds). Payment is simulated for the demo.
 export const PACKAGES = [
@@ -38,6 +43,7 @@ router.post('/recharge', authRequired, (req, res) => {
 router.post('/exchange', authRequired, (req, res) => {
   const n = parseInt((req.body || {}).diamond, 10);
   if (!n || n <= 0) return res.status(400).json({ error:'请输入有效的钻石数量' });
+  if (n > 1_000_000) return res.status(400).json({ error:'单次兑换上限 100 万钻石' });
   try {
     const w = applyTx(req.user.id, { kind:'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo:`${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` });
     res.json({ wallet: w });
@@ -57,7 +63,7 @@ router.post('/vip', authRequired, (req, res) => {
   res.json({ wallet: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });
 });
 
-// Daily check-in — VIP earns double, streak bonus.
+// Daily check-in — VIP earns double, streak bonus. 用条件 UPDATE 原子化防并发重复签到。
 router.post('/checkin', authRequired, (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   const today = new Date().toISOString().slice(0, 10);
@@ -67,7 +73,9 @@ router.post('/checkin', authRequired, (req, res) => {
   // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
   const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200;
   if (isVip(u)) reward *= 2;
-  db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ?').run(today, streak, req.user.id);
+  // 仅当今天尚未签到时才更新；并发请求只有一个能成功。
+  const upd = db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ? AND last_checkin != ?').run(today, streak, req.user.id, today);
+  if (upd.changes === 0) return res.status(400).json({ error:'今天已经签到过啦' });
   const w = applyTx(req.user.id, { kind:'checkin', gold: reward, memo:`第 ${streak} 天签到` });
   bumpDaily(req.user.id, 'checkin');
   res.json({ wallet: w, reward, streak });
@@ -78,13 +86,13 @@ router.get('/transactions', authRequired, (req, res) => {
   res.json({ transactions: txs });
 });
 
-// Redeem a gift / invite code for an existing user
-router.post('/redeem', authRequired, (req, res) => {
+// Redeem a gift / invite code for an existing user. 用条件 UPDATE 原子扣减，防并发超额。
+router.post('/redeem', authRequired, redeemLimiter, (req, res) => {
   const code = String((req.body || {}).code ||'').trim();
   const key = db.prepare('SELECT * FROM invite_keys WHERE code = ?').get(code);
   if (!key) return res.status(400).json({ error:'密钥无效' });
-  if (key.used >= key.max_uses) return res.status(400).json({ error:'该密钥已用完' });
-  db.prepare('UPDATE invite_keys SET used = used + 1 WHERE code = ?').run(code);
+  const upd = db.prepare('UPDATE invite_keys SET used = used + 1 WHERE code = ? AND used < max_uses').run(code);
+  if (upd.changes === 0) return res.status(400).json({ error:'该密钥已用完' });
   if (key.grant_gold || key.grant_diamond)
     applyTx(req.user.id, { kind:'reward', gold: key.grant_gold, diamond: key.grant_diamond, memo:`兑换码 ${code}` });
   if (key.grant_vip_days) {

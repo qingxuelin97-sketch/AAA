@@ -374,7 +374,9 @@ async function streamReply(res, conv, character, settings, userContent) {
     });
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => '');
-      res.write(`data: ${JSON.stringify({ error: `模型服务返回 ${upstream.status}：${text.slice(0, 300)}` })}\n\n`);
+      // 仅在服务端日志记录上游详情，对客户端只返回通用提示，避免泄露内部信息
+      console.error('[chat] 上游模型服务错误', upstream.status, text.slice(0, 300));
+      res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`);
       return res.end();
     }
     const reader = upstream.body.getReader();
@@ -399,7 +401,8 @@ async function streamReply(res, conv, character, settings, userContent) {
       }
     }
   } catch (err) {
-    res.write(`data: ${JSON.stringify({ error: '连接模型服务失败：' + err.message })}\n\n`);
+    console.error('[chat] 连接模型服务失败', err.message);
+    res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`);
   }
   if (full.trim()) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());

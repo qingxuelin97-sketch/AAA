@@ -66,10 +66,3 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
-
-// Resolve an uploaded/relative asset path to a usable URL.
-export function asset(url) {
-  if (!url) return '';
-  if (url.startsWith('http') || url.startsWith('data:')) return url;
-  return url;
-}

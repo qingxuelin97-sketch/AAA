@@ -40,6 +40,8 @@ router.post('/:id/leave', authRequired, (req, res) => {
 router.get('/:id', authRequired, (req, res) => {
   const g = db.prepare(`SELECT g.*, u.display_name AS owner_name FROM groups g JOIN users u ON u.id = g.owner_id WHERE g.id = ?`).get(req.params.id);
   if (!g) return res.status(404).json({ error: '群不存在' });
+  // 私有群仅 owner 与成员可见，防 IDOR 读取他人私有群详情。
+  if (!g.is_public && g.owner_id !== req.user.id && !memberOf(g.id, req.user.id)) return res.status(403).json({ error: '无权访问该群' });
   const members = db.prepare(`SELECT gm.role, u.id, u.display_name, u.avatar FROM group_members gm
     JOIN users u ON u.id = gm.user_id WHERE gm.group_id = ?`).all(g.id);
   const messages = db.prepare(`SELECT m.*, u.display_name, u.avatar FROM group_messages m
@@ -50,16 +52,20 @@ router.get('/:id', authRequired, (req, res) => {
 router.post('/:id/messages', authRequired, (req, res) => {
   const g = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.id);
   if (!g) return res.status(404).json({ error: '群不存在' });
-  if (!memberOf(g.id, req.user.id)) db.prepare('INSERT INTO group_members (group_id, user_id) VALUES (?,?)').run(g.id, req.user.id);
+  // 仅成员可发言，不再自动加成员，防任意用户对他人群发消息。
+  if (!memberOf(g.id, req.user.id) && g.owner_id !== req.user.id) return res.status(403).json({ error: '请先加入该群' });
   const { content } = req.body || {};
   if (!content) return res.status(400).json({ error: '消息不能为空' });
-  const info = db.prepare('INSERT INTO group_messages (group_id, user_id, content) VALUES (?,?,?)').run(g.id, req.user.id, content);
+  const info = db.prepare('INSERT INTO group_messages (group_id, user_id, content) VALUES (?,?,?)').run(g.id, req.user.id, String(content).slice(0, 2000));
   const msg = db.prepare(`SELECT m.*, u.display_name, u.avatar FROM group_messages m JOIN users u ON u.id = m.user_id WHERE m.id = ?`).get(info.lastInsertRowid);
   res.json({ message: msg });
 });
 
-// Polling endpoint for new messages
+// Polling endpoint for new messages — 仅成员可拉取，防 IDOR 读取他人群消息。
 router.get('/:id/messages', authRequired, (req, res) => {
+  const g = db.prepare('SELECT owner_id, is_public FROM groups WHERE id = ?').get(req.params.id);
+  if (!g) return res.status(404).json({ error: '群不存在' });
+  if (g.owner_id !== req.user.id && !memberOf(req.params.id, req.user.id) && !g.is_public) return res.status(403).json({ error: '无权访问该群' });
   const after = parseInt(req.query.after, 10) || 0;
   const rows = db.prepare(`SELECT m.*, u.display_name, u.avatar FROM group_messages m
     JOIN users u ON u.id = m.user_id WHERE m.group_id = ? AND m.id > ? ORDER BY m.id`).all(req.params.id, after);

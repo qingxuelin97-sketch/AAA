@@ -4,6 +4,12 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// 生产环境禁止运行 seed（会清库并预置弱口令 demo 账号），避免误操作导致管理员后门。
+if (process.env.NODE_ENV === 'production') {
+  console.error('[seed] 禁止在生产环境运行 seed 脚本。如需初始化请使用环境变量配置管理员账号。');
+  process.exit(1);
+}
+
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'uploads');
 fs.mkdirSync(dir, { recursive: true });
 const rnd = (s) => { let x = 0; for (const c of s) x = (x * 31 + c.charCodeAt(0)) % 9973; return () => (x = (x * 73 + 41) % 9973) / 9973; };

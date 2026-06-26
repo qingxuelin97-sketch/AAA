@@ -365,6 +365,11 @@ for (const sql of [
   "ALTER TABLE characters ADD COLUMN bgm TEXT DEFAULT ''",
   'ALTER TABLE characters ADD COLUMN voice_speed REAL DEFAULT 1',
   'ALTER TABLE characters ADD COLUMN voice_pitch REAL DEFAULT 1',
+  // 安全相关：token 版本号（改密后旧 token 失效）
+  'ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0',
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
+
+// 安全相关：event_claims 加 (user_id, event_id) 唯一索引，原子防并发重复领取。
+try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }
 
 export default db;

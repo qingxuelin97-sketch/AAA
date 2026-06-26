@@ -35,6 +35,8 @@ router.post('/', authRequired, (req, res) => {
 router.get('/:id', authRequired, (req, res) => {
   const t = db.prepare(`SELECT t.*, u.display_name AS owner_name FROM theaters t JOIN users u ON u.id = t.owner_id WHERE t.id = ?`).get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
+  // 私有剧场仅 owner 与成员可见，防 IDOR。
+  if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '无权访问该剧场' });
   const cast = castOf(t.id);
   const members = db.prepare(`SELECT u.id, u.display_name, u.avatar FROM theater_members tm JOIN users u ON u.id = tm.user_id WHERE tm.theater_id = ?`).all(t.id);
   const messages = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id').all(t.id);
@@ -48,16 +50,16 @@ router.post('/:id/join', authRequired, (req, res) => {
   res.json({ ok: true });
 });
 
-// A human speaks
+// A human speaks — 仅成员可发言，不再自动加成员，防任意用户干扰他人剧场。
 router.post('/:id/say', authRequired, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
-  if (!memberOf(t.id, req.user.id)) db.prepare('INSERT INTO theater_members (theater_id, user_id) VALUES (?,?)').run(t.id, req.user.id);
+  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
   const { content } = req.body || {};
   if (!content) return res.status(400).json({ error: '内容不能为空' });
   const u = db.prepare('SELECT display_name, avatar FROM users WHERE id = ?').get(req.user.id);
   const info = db.prepare('INSERT INTO theater_messages (theater_id, sender_type, sender_id, name, avatar, content) VALUES (?,?,?,?,?,?)')
-    .run(t.id, 'user', req.user.id, u.display_name, u.avatar, content);
+    .run(t.id, 'user', req.user.id, u.display_name, u.avatar, String(content).slice(0, 2000));
   res.json({ message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
 });
 
@@ -65,6 +67,7 @@ router.post('/:id/say', authRequired, (req, res) => {
 router.post('/:id/act', authRequired, async (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
   const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
   if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
 
@@ -92,17 +95,21 @@ router.post('/:id/act', authRequired, async (req, res) => {
         messages: [{ role: 'system', content: system }, { role: 'user', content: `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请继续：` }]
       })
     });
-    if (!r.ok) { const tx = await r.text().catch(() => ''); return res.status(502).json({ error: `模型返回 ${r.status}：${tx.slice(0, 200)}` }); }
+    if (!r.ok) { return res.status(502).json({ error: '模型服务暂不可用' }); }
     const data = await r.json();
     const content = (data.choices?.[0]?.message?.content || '').trim();
     if (!content) return res.status(502).json({ error: '模型未返回内容' });
     const info = db.prepare('INSERT INTO theater_messages (theater_id, sender_type, sender_id, name, avatar, content) VALUES (?,?,?,?,?,?)')
       .run(t.id, req.body?.narrator ? 'narrator' : 'ai', target.id || null, target.name, target.avatar, content);
     res.json({ message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
-  } catch (e) { res.status(502).json({ error: '连接模型失败：' + e.message }); }
+  } catch (e) { res.status(502).json({ error: '模型服务暂不可用' }); }
 });
 
+// 仅成员可拉取消息，防 IDOR 读取他人剧场历史。
 router.get('/:id/messages', authRequired, (req, res) => {
+  const t = db.prepare('SELECT owner_id, is_public FROM theaters WHERE id = ?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (t.owner_id !== req.user.id && !memberOf(req.params.id, req.user.id) && !t.is_public) return res.status(403).json({ error: '无权访问该剧场' });
   const after = parseInt(req.query.after, 10) || 0;
   res.json({ messages: db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? AND id > ? ORDER BY id').all(req.params.id, after) });
 });

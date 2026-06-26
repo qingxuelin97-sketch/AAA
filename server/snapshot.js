@@ -20,9 +20,12 @@ export function importAll(tables) {
     for (const t of BACKUP_TABLES) {
       const rows = tables[t]; if (!Array.isArray(rows)) continue;
       try {
+        // 动态取该表实际列名做白名单交集，防止恶意列名拼接 SQL。
+        const realCols = db.prepare(`PRAGMA table_info(${t})`).all().map(c => c.name);
+        const allowed = new Set(realCols);
         db.prepare(`DELETE FROM ${t}`).run();
         for (const row of rows) {
-          const cols = Object.keys(row); if (!cols.length) continue;
+          const cols = Object.keys(row).filter(c => allowed.has(c)); if (!cols.length) continue;
           db.prepare(`INSERT INTO ${t} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).run(...cols.map(k => row[k]));
         }
       } catch { /* skip incompatible table */ }

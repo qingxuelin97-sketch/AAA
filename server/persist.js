@@ -26,7 +26,8 @@ function mysqlCfg() {
   const user = trim(env.MYSQL_USERNAME || env.MYSQL_USER || env.DB_USER || 'root');
   const password = env.MYSQL_PASSWORD ?? env.MYSQL_PWD ?? env.DB_PASSWORD ?? '';
   const database = trim(env.MYSQL_DATABASE || env.MYSQL_DB || env.DB_NAME || 'huanyu').replace(/[^A-Za-z0-9_]/g, '') || 'huanyu';
-  const ssl = /^(1|true|on|yes)$/i.test(trim(env.MYSQL_SSL || '')) ? { rejectUnauthorized: false } : undefined;
+  // 启用 SSL 时使用系统 CA 校验证书，杜绝中间人截获数据库流量。
+  const ssl = /^(1|true|on|yes)$/i.test(trim(env.MYSQL_SSL || '')) ? { rejectUnauthorized: true } : undefined;
   return { host, port, user, password, database, ssl };
 }
 const MYSQL = mysqlCfg();

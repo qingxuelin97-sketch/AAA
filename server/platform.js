@@ -13,12 +13,11 @@ export const platformFee = (u, msgCount) =>
 
 // Group-wide platform AI config (language / voice / image). Stored as JSON in
 // app_config. Keys live only in the server DB and are never returned unmasked.
-// Default platform language service (same provider the browser build ships with),
-// so a fresh self-hosted server can chat out-of-the-box. GM can change it anytime.
+// 默认平台语言服务密钥从环境变量注入，杜绝硬编码进源码；GM 也可在后台配置。
 const DEFAULTS = {
-  base_url: 'https://open.bigmodel.cn/api/paas/v4',
-  model: 'glm-5.2', protocol: 'openai',
-  key: 'eaf7c0d692d34f4fa3752228476416bd.AMCKVTqtPwclkU7P',
+  base_url: process.env.PLATFORM_LLM_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4',
+  model: process.env.PLATFORM_LLM_MODEL || 'glm-5.2', protocol: 'openai',
+  key: process.env.PLATFORM_LLM_KEY || '',
   system_prompt: '',
   voice: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'tts-1', voice_name: 'alloy' },
   image: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'gpt-image-1', size: '1024x1024' },

@@ -25,12 +25,18 @@ router.get('/tasks', authRequired, (req, res) => {
 router.post('/tasks/:id/claim', authRequired, (req, res) => {
   const t = DAILY_TASKS.find(x => x.id === req.params.id);
   if (!t) return res.status(404).json({ error: '任务不存在' });
-  const d = dailyOf(req.user.id);
-  if ((d.counts[t.key] || 0) < t.target) return res.status(400).json({ error: '任务尚未完成' });
-  if (d.claimed.includes(t.id)) return res.status(400).json({ error: '该奖励已领取' });
-  d.claimed.push(t.id); saveClaimed(req.user.id, d.claimed);
-  applyTx(req.user.id, { kind: 'reward', gold: t.reward, memo: `每日任务：${t.name}` });
-  res.json({ ok: true, reward: t.reward });
+  // 用事务包住「检查-标记-发奖」，防并发重复领取。
+  let result = null;
+  const tx = db.transaction(() => {
+    const d = dailyOf(req.user.id);
+    if ((d.counts[t.key] || 0) < t.target) return res.status(400).json({ error: '任务尚未完成' });
+    if (d.claimed.includes(t.id)) return res.status(400).json({ error: '该奖励已领取' });
+    d.claimed.push(t.id); saveClaimed(req.user.id, d.claimed);
+    applyTx(req.user.id, { kind: 'reward', gold: t.reward, memo: `每日任务：${t.name}` });
+    result = { ok: true, reward: t.reward };
+  });
+  tx();
+  if (result) res.json(result);
 });
 
 // ---- events ----
@@ -49,17 +55,22 @@ router.get('/events', authOptional, (req, res) => {
 router.post('/events/:id/claim', authRequired, (req, res) => {
   const ev = EVENTS.find(e => e.id === req.params.id);
   if (!ev || ev.kind !== 'claim') return res.status(400).json({ error: '该活动无可领取奖励' });
-  if (db.prepare('SELECT 1 FROM event_claims WHERE user_id = ? AND event_id = ?').get(req.user.id, ev.id)) return res.status(400).json({ error: '该活动奖励已领取' });
-  db.prepare('INSERT INTO event_claims (user_id, event_id) VALUES (?,?)').run(req.user.id, ev.id);
+  // INSERT OR IGNORE + UNIQUE(user_id,event_id) 原子去重，防并发重复领取。
+  const ins = db.prepare('INSERT OR IGNORE INTO event_claims (user_id, event_id) VALUES (?,?)').run(req.user.id, ev.id);
+  if (ins.changes === 0) return res.status(400).json({ error: '该活动奖励已领取' });
   const w = applyTx(req.user.id, { kind: 'event', gold: ev.reward?.gold || 0, diamond: ev.reward?.diamond || 0, memo: `活动奖励 · ${ev.title}` });
   notify(req.user.id, `已领取活动「${ev.title}」奖励`, '/events');
   res.json({ ok: true, wallet: w });
 });
 
 // ---- views ----
+// 校验目标存在且公开，防对任意 id 刷浏览量。
 router.post('/view', authOptional, (req, res) => {
   const { type, id } = req.body || {};
-  const tbl = TT(type) === 'script' ? 'scripts' : 'characters';
+  const isScript = TT(type) === 'script';
+  const tbl = isScript ? 'scripts' : 'characters';
+  const row = db.prepare(`SELECT 1 FROM ${tbl} WHERE id = ? AND is_public = 1`).get(id);
+  if (!row) return res.json({ ok: true }); // 静默忽略，避免泄露目标是否存在
   db.prepare(`UPDATE ${tbl} SET views = views + 1 WHERE id = ?`).run(id);
   res.json({ ok: true });
 });
@@ -75,6 +86,9 @@ router.get('/reviews/:type/:id', authOptional, (req, res) => {
 });
 router.post('/reviews/:type/:id', authRequired, (req, res) => {
   const type = TT(req.params.type), id = +req.params.id;
+  // 校验目标存在且公开，防对私有/他人资源刷评分。
+  const tbl = type === 'script' ? 'scripts' : 'characters';
+  if (!db.prepare(`SELECT 1 FROM ${tbl} WHERE id = ? AND is_public = 1`).get(id)) return res.status(404).json({ error: '目标不存在或不可评价' });
   const rating = Math.min(5, Math.max(1, parseInt(req.body?.rating, 10) || 5));
   const text = (req.body?.text || '').slice(0, 500);
   const ex = db.prepare('SELECT id FROM reviews WHERE target_type=? AND target_id=? AND user_id=?').get(type, id, req.user.id);
@@ -93,7 +107,10 @@ router.delete('/reviews/:id', authRequired, (req, res) => {
 router.post('/report', authRequired, (req, res) => {
   const { type, id, reason } = req.body || {};
   if (!type || !id) return res.status(400).json({ error: '参数不全' });
-  db.prepare('INSERT INTO reports (target_type, target_id, reporter_id, reason) VALUES (?,?,?,?)').run(type, id, req.user.id, reason || '');
+  // 校验目标存在，防对不存在的 id 提举报污染队列。
+  const tbl = TT(type) === 'script' ? 'scripts' : 'characters';
+  if (!db.prepare(`SELECT 1 FROM ${tbl} WHERE id = ?`).get(id)) return res.status(404).json({ error: '目标不存在' });
+  db.prepare('INSERT INTO reports (target_type, target_id, reporter_id, reason) VALUES (?,?,?,?)').run(type, id, req.user.id, (reason || '').slice(0, 500));
   res.json({ ok: true });
 });
 

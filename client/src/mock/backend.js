@@ -10,18 +10,12 @@ const KEY = 'huanyu_db_v7';
 let db;
 
 /* ----------------------------- platform LLM service (hidden) -----------------------------
-   When a user has NOT configured their own API key, chats fall back to the platform's
-   built-in language service. These credentials are NEVER surfaced through any API response
-   or the settings UI for non-GM users — ordinary users can neither see nor edit the
-   provider, base URL, key or model. The values below are only DEFAULTS used to seed an
-   editable, DB-backed platform config: the super admin (GM) can change the model / base URL
-   / key from the admin console, and the change applies to ALL no-API users at once.
-   (Note: in a purely static client build the bundle is ultimately inspectable; this keeps
-   the credentials out of the product UI, the strongest guarantee achievable without a server.) */
+   静态构建不再内置任何平台共享密钥（密钥会被打进公开 bundle 而泄露）。
+   无自有 Key 的用户需在设置中自行配置 LLM 服务；GM 也可在后台配置平台默认服务。
+   以下仅保留协议默认值，密钥留空。 */
 const PLATFORM_DEFAULTS = {
   base_url: 'https://open.bigmodel.cn/api/paas/v4',
-  // base64 of the platform key — kept out of plain source / UI.
-  _k: 'ZWFmN2MwZDY5MmQzNGY0ZmEzNzUyMjI4NDc2NDE2YmQuQU1DS1ZUcXRQd2Nsa1U3UA==',
+  _k: '',
   model: 'glm-5.2', protocol: 'openai',
   // Platform voice (TTS) service — used by no-key users, billed per sentence.
   voice: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', _vk: '', model: 'tts-1', voice_name: 'alloy' },

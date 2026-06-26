@@ -1,10 +1,21 @@
 import jwt from 'jsonwebtoken';
 import db from './db.js';
 
-const SECRET = process.env.JWT_SECRET || 'ai-chat-platform-dev-secret-change-me';
+// 强制要求强随机 JWT 密钥；缺失或过弱则拒绝启动，杜绝回落到公开默认密钥。
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET || SECRET.length < 32) {
+  console.error('[auth] JWT_SECRET 未配置或长度不足 32，拒绝启动。请在环境变量中设置强随机密钥。');
+  process.exit(1);
+}
+
+// 为每个账号维护 token 版本号；改密/封禁时 +1，使旧 token 立即失效。
+export function bumpTokenVersion(userId) {
+  db.prepare('UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').run(userId);
+}
 
 export function sign(user) {
-  return jwt.sign({ id: user.id, username: user.username }, SECRET, { expiresIn: '30d' });
+  const tv = user.token_version ?? 0;
+  return jwt.sign({ id: user.id, username: user.username, tv }, SECRET, { expiresIn: '30d', algorithm: 'HS256' });
 }
 
 export function authRequired(req, res, next) {
@@ -12,10 +23,12 @@ export function authRequired(req, res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: '未登录' });
   try {
-    const payload = jwt.verify(token, SECRET);
-    const user = db.prepare('SELECT id, username, email, display_name, avatar, bio, is_banned, ban_reason FROM users WHERE id = ?').get(payload.id);
+    const payload = jwt.verify(token, SECRET, { algorithms: ['HS256'] });
+    const user = db.prepare('SELECT id, username, email, display_name, avatar, bio, is_banned, ban_reason, token_version FROM users WHERE id = ?').get(payload.id);
     if (!user) return res.status(401).json({ error: '账号不存在' });
     if (user.is_banned) return res.status(403).json({ error: '账号已被封禁' + (user.ban_reason ? '：' + user.ban_reason : '') });
+    // 校验 token 版本：改密后旧 token 失效
+    if ((payload.tv ?? 0) !== (user.token_version ?? 0)) return res.status(401).json({ error: '登录态已失效，请重新登录' });
     req.user = user;
     next();
   } catch {
@@ -29,8 +42,10 @@ export function authOptional(req, res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (token) {
     try {
-      const payload = jwt.verify(token, SECRET);
-      req.user = db.prepare('SELECT id, username, display_name, avatar FROM users WHERE id = ?').get(payload.id);
+      const payload = jwt.verify(token, SECRET, { algorithms: ['HS256'] });
+      const user = db.prepare('SELECT id, username, display_name, avatar, is_banned, token_version FROM users WHERE id = ?').get(payload.id);
+      // 即便软鉴权也校验封禁与 token 版本，避免被封号/改密用户继续以登录态浏览
+      if (user && !user.is_banned && (payload.tv ?? 0) === (user.token_version ?? 0)) req.user = user;
     } catch { /* ignore */ }
   }
   next();
