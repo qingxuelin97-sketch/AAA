@@ -384,6 +384,8 @@ db.exec(`CREATE TABLE IF NOT EXISTS script_likes (
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }
 
 // 独立世界书：可脱离角色单独编辑，并跨角色复用（多对多关联）。
+// 高级模式字段：mode（触发模式）/ inject_pos（注入位置）/ priority（优先级）/
+// case_sensitive（大小写）/ group_name（互斥分组）/ comment（作者备注）。
 db.exec(`
 CREATE TABLE IF NOT EXISTS worldbooks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -398,7 +400,13 @@ CREATE TABLE IF NOT EXISTS worldbooks (
 CREATE TABLE IF NOT EXISTS worldbook_entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   worldbook_id INTEGER REFERENCES worldbooks(id) ON DELETE CASCADE,
-  keys TEXT DEFAULT '', content TEXT DEFAULT '', enabled INTEGER DEFAULT 1, position INTEGER DEFAULT 0
+  keys TEXT DEFAULT '', content TEXT DEFAULT '', enabled INTEGER DEFAULT 1, position INTEGER DEFAULT 0,
+  mode TEXT DEFAULT 'keyword',
+  inject_pos TEXT DEFAULT 'after',
+  priority INTEGER DEFAULT 50,
+  case_sensitive INTEGER DEFAULT 0,
+  group_name TEXT DEFAULT '',
+  comment TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS character_worldbooks (
   character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
@@ -406,5 +414,14 @@ CREATE TABLE IF NOT EXISTS character_worldbooks (
   PRIMARY KEY (character_id, worldbook_id)
 );
 `);
+// 迁移：已有 worldbook_entries 数据库补齐高级模式列。
+for (const sql of [
+  "ALTER TABLE worldbook_entries ADD COLUMN mode TEXT DEFAULT 'keyword'",
+  "ALTER TABLE worldbook_entries ADD COLUMN inject_pos TEXT DEFAULT 'after'",
+  'ALTER TABLE worldbook_entries ADD COLUMN priority INTEGER DEFAULT 50',
+  'ALTER TABLE worldbook_entries ADD COLUMN case_sensitive INTEGER DEFAULT 0',
+  'ALTER TABLE worldbook_entries ADD COLUMN group_name TEXT DEFAULT \'\'',
+  'ALTER TABLE worldbook_entries ADD COLUMN comment TEXT DEFAULT \'\'',
+]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 export default db;

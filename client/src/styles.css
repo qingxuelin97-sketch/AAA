@@ -299,7 +299,16 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 /* ---------- World book / editor ---------- */
 .editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: clamp(16px, 2.4vw, 26px); align-items: start; }
 .world-entry { border: 1px solid var(--border); border-radius: 13px; padding: 14px; margin-bottom: 12px; background: var(--panel); box-shadow: var(--shadow-sm); }
+.world-entry.advanced { border-color: color-mix(in srgb, var(--accent) 28%, var(--border)); }
 .world-entry .top { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+.world-entry .top .input { flex: 1; min-width: 0; }
+.wb-mode-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; user-select: none; padding: 4px 9px; border-radius: 8px; transition: background 0.15s, color 0.15s; }
+.wb-mode-toggle:hover { background: var(--bg-2); color: var(--text); }
+.wb-mode-toggle input { accent-color: var(--accent); }
+.we-advanced { margin-top: 12px; padding: 12px; border-radius: 11px; background: var(--bg-2); border: 1px solid var(--border); animation: riseIn 0.2s ease both; }
+.we-adv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 10px; }
+.we-adv-grid label { font-size: 11.5px; }
+.we-advanced .field label { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; display: block; }
 .uploader { border: 1.5px dashed var(--border-2); border-radius: 13px; padding: 18px; text-align: center; cursor: pointer; transition: 0.15s; position: relative; overflow: hidden; background: #fcfbf7; color: var(--muted); }
 .uploader:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-2); }
 .uploader .preview { width: 100%; height: 150px; object-fit: cover; border-radius: 9px; }
@@ -2811,6 +2820,50 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 
 /* ---- 创作中心 · 分析 ---- */
 .studio-analytics { display: flex; flex-direction: column; gap: 16px; }
+
+/* ---- 金币收入概览（汇总卡片 + 构成堆叠条）---- */
+.inc-hero { display: flex; align-items: stretch; gap: 24px; flex-wrap: wrap;
+  background: radial-gradient(120% 130% at 0% 0%, rgba(200,133,63,0.10), transparent 55%),
+    linear-gradient(135deg, rgba(179,137,47,0.08), rgba(217,119,87,0.04)); border-color: var(--border-2); }
+.inc-hero-l { flex: 1; min-width: 200px; }
+.inc-hero-label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.inc-hero-num { font-size: 38px; font-family: var(--serif); display: block; line-height: 1.15; margin: 6px 0 8px; letter-spacing: -0.01em; }
+.inc-hero-sub { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.inc-hero-sub span { display: inline-flex; align-items: center; gap: 4px; }
+.inc-breakdown { flex: 1.2; min-width: 240px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.inc-bd-title { font-size: 12px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: 0.04em; }
+.inc-stack { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--bg-2); gap: 2px; padding: 2px; }
+.inc-seg { height: 100%; border-radius: 999px; transition: width 0.6s var(--spring-soft, ease); min-width: 4px; }
+.inc-seg.sell { background: linear-gradient(90deg, #d6a93a, #e8c45a); }
+.inc-seg.share { background: linear-gradient(90deg, #c2775a, #d97757); }
+.inc-seg.other { background: linear-gradient(90deg, #7a8db0, #9aafc7); }
+.inc-seg.empty { background: var(--border); }
+.inc-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.inc-legend .il { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.inc-legend .il i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.inc-legend .il.sell i { background: #d6a93a; }
+.inc-legend .il.share i { background: #c2775a; }
+.inc-legend .il.other i { background: #7a8db0; }
+.inc-legend .il b { color: var(--text); font-weight: 700; }
+
+/* ---- 每日收入明细表 ---- */
+.inc-detail-card { overflow: hidden; }
+.inc-detail-head, .inc-detail-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr 1.2fr; gap: 8px; align-items: center; }
+.inc-detail-head { padding: 10px 16px; font-size: 11.5px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid var(--border); background: var(--bg-2); }
+.inc-detail-head span:not(:first-child) { text-align: right; }
+.inc-detail-body { max-height: 360px; overflow-y: auto; }
+.inc-detail-row { padding: 9px 16px; font-size: 13px; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+.inc-detail-row:hover { background: var(--bg-2); }
+.inc-detail-row:last-child { border-bottom: none; }
+.inc-detail-row span:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.inc-detail-row .idr-date { font-weight: 600; color: var(--muted); }
+.inc-detail-row .idr-total { font-weight: 800; font-size: 14px; }
+.inc-detail-row.zero { opacity: 0.45; }
+.inc-detail-row.zero .idr-total { font-weight: 600; }
+@media (max-width: 560px) {
+  .inc-detail-head, .inc-detail-row { grid-template-columns: 1fr 1fr 1fr 1fr 1.1fr; gap: 4px; font-size: 11.5px; padding: 8px 11px; }
+  .inc-detail-head { font-size: 10px; padding: 8px 11px; }
+}
 
 /* ---- 创作者收益分成 ---- */
 .rev-plan { display: flex; flex-direction: column; gap: 16px; }

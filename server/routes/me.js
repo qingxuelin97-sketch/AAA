@@ -32,12 +32,18 @@ function revenuePlan(u) {
     tier: tier.id, tier_name: tier.name, rate: tier.rate, entitled, claimed, claimable_amount,
     claimable: claimable_amount > 0, tiers: REV_TIERS, next: REV_TIERS.find(t => t.min > pool.total) || null };
 }
+// 创作者收入明细序列：按天 + 按来源拆分，供创作中心展示「每段情况」。
+// 来源分类：sell_script 剧本销售 / revenue_share 分成领取 / other 其他（签到/任务/成就/活动等）。
 function incomeSeries(uid, days = 14) {
-  const txs = db.prepare('SELECT gold, created_at FROM transactions WHERE user_id = ? AND gold > 0').all(uid);
+  const txs = db.prepare('SELECT gold, kind, created_at FROM transactions WHERE user_id = ? AND gold > 0').all(uid);
   const out = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-    out.push({ date: d.slice(5), gold: txs.filter(t => (t.created_at || '').slice(0, 10) === d).reduce((s, t) => s + t.gold, 0) });
+    const dayTxs = txs.filter(t => (t.created_at || '').slice(0, 10) === d);
+    const sell = dayTxs.filter(t => t.kind === 'sell_script').reduce((s, t) => s + t.gold, 0);
+    const share = dayTxs.filter(t => t.kind === 'revenue_share').reduce((s, t) => s + t.gold, 0);
+    const other = dayTxs.filter(t => t.kind !== 'sell_script' && t.kind !== 'revenue_share').reduce((s, t) => s + t.gold, 0);
+    out.push({ date: d.slice(5), gold: sell + share + other, sell_script: sell, revenue_share: share, other });
   }
   return out;
 }

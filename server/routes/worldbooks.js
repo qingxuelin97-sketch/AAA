@@ -8,7 +8,7 @@ const router = Router();
 const str = (v, max) => v == null ? '' : String(v).slice(0, max);
 
 function loadEntries(wbId) {
-  return db.prepare('SELECT id, keys, content, enabled, position FROM worldbook_entries WHERE worldbook_id = ? ORDER BY position, id').all(wbId);
+  return db.prepare('SELECT id, keys, content, enabled, position, mode, inject_pos, priority, case_sensitive, group_name, comment FROM worldbook_entries WHERE worldbook_id = ? ORDER BY priority DESC, position, id').all(wbId);
 }
 
 // 列表卡片：附条目数，供广场/我的列表展示
@@ -118,10 +118,18 @@ router.post('/from-character/:characterId', authRequired, contentLimiter, (req, 
 function saveEntries(wbId, entries) {
   db.prepare('DELETE FROM worldbook_entries WHERE worldbook_id = ?').run(wbId);
   if (!Array.isArray(entries)) return;
-  const stmt = db.prepare('INSERT INTO worldbook_entries (worldbook_id, keys, content, enabled, position) VALUES (?,?,?,?,?)');
+  const stmt = db.prepare(`INSERT INTO worldbook_entries
+    (worldbook_id, keys, content, enabled, position, mode, inject_pos, priority, case_sensitive, group_name, comment)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
   entries.forEach((e, i) => {
     if (!e || (!e.content && !e.keys)) return;
-    stmt.run(wbId, str(e.keys, 500), str(e.content, 4000), e.enabled === false ? 0 : 1, i);
+    const mode = e.mode === 'regex' ? 'regex' : e.mode === 'always' ? 'always' : 'keyword';
+    const injectPos = e.inject_pos === 'before' ? 'before' : 'after';
+    const pri = Math.max(0, Math.min(100, parseInt(e.priority) || 50));
+    stmt.run(
+      wbId, str(e.keys, 500), str(e.content, 4000), e.enabled === false ? 0 : 1, i,
+      mode, injectPos, pri, e.case_sensitive ? 1 : 0, str(e.group_name, 60), str(e.comment, 500)
+    );
   });
 }
 

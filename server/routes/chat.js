@@ -196,24 +196,58 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
 
 // Build the system prompt from persona, intro and triggered world-book entries.
 // 聚合角色内嵌 world_entries + 所有关联独立世界书（character_worldbooks）的条目。
+// 支持高级模式：触发模式（keyword/regex/always）、注入位置（before/after）、
+// 优先级（高优先级先注入）、互斥分组（同组只取最高优先级条目）、大小写敏感。
 function buildSystemPrompt(character, recentText) {
-  const parts = [];
-  if (character.persona) parts.push(character.persona.trim());
-  if (character.intro) parts.push(`【角色简介】\n${character.intro.trim()}`);
+  const beforeParts = []; // 注入位置：角色设定前
+  const afterParts = [];  // 注入位置：角色设定后（默认）
+  const personaParts = [];
+  if (character.persona) personaParts.push(character.persona.trim());
+  if (character.intro) personaParts.push(`【角色简介】\n${character.intro.trim()}`);
 
+  // 角色内嵌世界书（常规模式，只有 keys/content，按 keyword 触发）
   const own = db.prepare('SELECT keys, content FROM world_entries WHERE character_id = ? AND enabled = 1 ORDER BY position, id').all(character.id);
-  const linked = db.prepare(`SELECT we.keys, we.content FROM worldbook_entries we
+  // 关联独立世界书条目（含高级模式字段）
+  const linked = db.prepare(`SELECT we.keys, we.content, we.mode, we.inject_pos, we.priority, we.case_sensitive, we.group_name
+    FROM worldbook_entries we
     JOIN character_worldbooks cw ON cw.worldbook_id = we.worldbook_id
-    WHERE cw.character_id = ? AND we.enabled = 1`).all(character.id);
-  const world = [...own, ...linked];
-  const triggered = [];
-  const haystack = (recentText || '').toLowerCase();
-  for (const w of world) {
-    const keys = (w.keys || '').split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
-    const always = keys.length === 0; // no keys => always-on lore
-    if (always || keys.some(k => haystack.includes(k))) triggered.push(w.content);
+    WHERE cw.character_id = ? AND we.enabled = 1
+    ORDER BY we.priority DESC, we.position, we.id`).all(character.id);
+
+  // 统一触发动机：内嵌条目默认 keyword 模式；空 keys => always
+  const evalEntry = (w) => {
+    const mode = w.mode || 'keyword';
+    const keysRaw = (w.keys || '').split(',').map(k => k.trim()).filter(Boolean);
+    if (mode === 'always' || keysRaw.length === 0) return true;
+    const cs = !!w.case_sensitive;
+    const hay = cs ? (recentText || '') : (recentText || '').toLowerCase();
+    if (mode === 'regex') {
+      return keysRaw.some(k => { try { const re = new RegExp(k, cs ? '' : 'i'); return re.test(recentText || ''); } catch { return false; } });
+    }
+    return keysRaw.some(k => { const kk = cs ? k : k.toLowerCase(); return hay.includes(kk); });
+  };
+
+  // 触发 + 互斥分组（同 group_name 只保留最高优先级的一条）
+  const triggered = [...own.map(o => ({ ...o, mode: 'keyword', inject_pos: 'after', priority: 50, group_name: '' })), ...linked]
+    .filter(evalEntry);
+  const groupBest = new Map();
+  for (const t of triggered) {
+    if (!t.group_name) continue;
+    const prev = groupBest.get(t.group_name);
+    if (!prev || (t.priority || 0) > (prev.priority || 0)) groupBest.set(t.group_name, t);
   }
-  if (triggered.length) parts.push('【世界书 / 设定】\n' + triggered.join('\n---\n'));
+  const finalEntries = triggered.filter(t => {
+    if (!t.group_name) return true;
+    return groupBest.get(t.group_name) === t;
+  });
+
+  for (const t of finalEntries) {
+    (t.inject_pos === 'before' ? beforeParts : afterParts).push(t.content);
+  }
+  const parts = [];
+  if (beforeParts.length) parts.push('【世界书 / 设定】\n' + beforeParts.join('\n---\n'));
+  parts.push(...personaParts);
+  if (afterParts.length) parts.push('【世界书 / 设定】\n' + afterParts.join('\n---\n'));
   parts.push(`你正在扮演「${character.name}」。请始终保持角色设定，使用沉浸式的第一人称叙述，不要跳出角色，不要提及你是 AI。`);
   return parts.join('\n\n');
 }

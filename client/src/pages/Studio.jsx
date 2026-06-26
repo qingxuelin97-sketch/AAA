@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CountUp, CoinIcon } from '../ui.jsx';
 import { BarChart, LineChart } from '../components/Charts.jsx';
-import { Eye, Heart, Star, Play, Users, Drama, ScrollText, TrendingUp, Sparkles, BarChart3, LineChart as LineIcon, Gift, Crown, Check, ChevronRight } from 'lucide-react';
+import { Eye, Heart, Star, Play, Users, Drama, ScrollText, TrendingUp, Sparkles, BarChart3, LineChart as LineIcon, Gift, Crown, Check, ChevronRight, Coins, TrendingDown, Calendar } from 'lucide-react';
 
 const fmt = (n) => (n >= 10000 ? (n / 10000).toFixed(1) + 'w' : String(n ?? 0));
 
@@ -66,10 +66,75 @@ export default function Studio() {
 
         {tab === 'analytics' && (
           <div className="studio-analytics">
+            {/* 金币收入概览——汇总卡片 */}
+            {(() => {
+              const total = (data.series || []).reduce((s, d) => s + (d.gold || 0), 0);
+              const sellT = (data.series || []).reduce((s, d) => s + (d.sell_script || 0), 0);
+              const shareT = (data.series || []).reduce((s, d) => s + (d.revenue_share || 0), 0);
+              const otherT = (data.series || []).reduce((s, d) => s + (d.other || 0), 0);
+              const peak = (data.series || []).reduce((m, d) => (d.gold > m.gold ? d : m), { gold: 0, date: '—' });
+              const avg = total / Math.max(1, (data.series || []).filter(d => d.gold > 0).length || 1);
+              return (
+                <div className="inc-summary">
+                  <div className="card inc-hero">
+                    <div className="inc-hero-l">
+                      <div className="inc-hero-label"><Coins size={14} /> 近 14 天总收入</div>
+                      <b className="gold-num inc-hero-num"><CountUp value={total} /></b>
+                      <div className="inc-hero-sub">
+                        <span><TrendingUp size={12} /> 日均 {Math.round(avg)}</span>
+                        <span>峰值 {peak.gold}（{peak.date}）</span>
+                      </div>
+                    </div>
+                    {/* 收入构成——堆叠条 */}
+                    <div className="inc-breakdown">
+                      <div className="inc-bd-title">收入构成</div>
+                      <div className="inc-stack">
+                        {total > 0 ? <>
+                          {sellT > 0 && <div className="inc-seg sell" style={{ width: (sellT / total * 100) + '%' }} title={`剧本销售 ${sellT}`} />}
+                          {shareT > 0 && <div className="inc-seg share" style={{ width: (shareT / total * 100) + '%' }} title={`分成领取 ${shareT}`} />}
+                          {otherT > 0 && <div className="inc-seg other" style={{ width: (otherT / total * 100) + '%' }} title={`其他 ${otherT}`} />}
+                        </> : <div className="inc-seg empty" style={{ width: '100%' }} />}
+                      </div>
+                      <div className="inc-legend">
+                        <span className="il sell"><i /> 剧本销售 <b>{sellT}</b></span>
+                        <span className="il share"><i /> 分成领取 <b>{shareT}</b></span>
+                        <span className="il other"><i /> 其他 <b>{otherT}</b></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 趋势折线图 */}
             <div className="card chart-card">
-              <div className="section-title"><h2><LineIcon size={16} style={{ verticalAlign: -3, marginRight: 6 }} />近 14 天金币收入</h2></div>
+              <div className="section-title"><h2><LineIcon size={16} style={{ verticalAlign: -3, marginRight: 6 }} />近 14 天金币收入趋势</h2></div>
               <LineChart data={incomeLine} color="var(--gold)" unit=" 金" />
             </div>
+
+            {/* 每日明细列表——显示「每段情况」 */}
+            <div className="card inc-detail-card">
+              <div className="section-title"><h2><Calendar size={15} style={{ verticalAlign: -3, marginRight: 6 }} />每日收入明细</h2></div>
+              <div className="inc-detail-head">
+                <span>日期</span>
+                <span>剧本销售</span>
+                <span>分成领取</span>
+                <span>其他</span>
+                <span>合计</span>
+              </div>
+              <div className="inc-detail-body">
+                {[...(data.series || [])].reverse().map((d, i) => (
+                  <div key={i} className={'inc-detail-row' + (d.gold > 0 ? '' : ' zero')}>
+                    <span className="idr-date">{d.date}</span>
+                    <span className="gold-num">{d.sell_script || 0}</span>
+                    <span className="gold-num">{d.revenue_share || 0}</span>
+                    <span className="gold-num">{d.other || 0}</span>
+                    <span className="idr-total gold-num">{d.gold || 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="chart-grid">
               <div className="card chart-card">
                 <div className="section-title"><h2><Eye size={15} style={{ verticalAlign: -3, marginRight: 6 }} />角色浏览 TOP</h2></div>
