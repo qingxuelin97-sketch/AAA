@@ -673,6 +673,7 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   .btn, .btn.primary, .send-btn, .cat-chip, .nav-item, .checkin-btn, .cast-chip, .seg button { transition: none !important; }
   .btn:hover, .send-btn:hover, .cat-chip:hover, .nav-item:hover, .cast-chip:hover { transform: none !important; }
+  .modal-backdrop .card.modal { animation: none !important; }
 }
 
 /* ===== Fix: toggle track must render even when wrapped (was collapsing to 0) ===== */
@@ -1149,6 +1150,9 @@ body { background-image:
 
 /* modal backdrop fade */
 .modal-backdrop { animation: fadeIn 0.22s ease both; }
+/* modal 内容卡片弹入：backdrop 先淡入，卡片稍晚弹起，形成层叠质感 */
+.modal-backdrop .card.modal { animation: modalPop 0.38s var(--spring-soft) both; animation-delay: 0.04s; }
+@keyframes modalPop { from { opacity: 0; transform: translateY(18px) scale(0.965); } to { opacity: 1; transform: none; } }
 
 /* empty-state icon gentle float */
 .empty .big { animation: floaty 3.2s ease-in-out infinite; }
@@ -3070,6 +3074,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   .dcard-cat, .poster .p-cat, .poster .p-feat, .pill-pub, .dcard-fav, .dcard-uses { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 [data-perf="lite"] .topbar { background: color-mix(in srgb, var(--bg) 96%, transparent); backdrop-filter: none; -webkit-backdrop-filter: none; }
+[data-perf="lite"] .modal-backdrop .card.modal { animation: none; }
 [data-perf="lite"] .bottom-nav { background: color-mix(in srgb, var(--bg) 97%, transparent); backdrop-filter: none; -webkit-backdrop-filter: none; }
 [data-perf="lite"] .mobile-topbar { background: color-mix(in srgb, var(--bg) 97%, transparent); backdrop-filter: none; -webkit-backdrop-filter: none; }
 [data-perf="lite"] .mnav-mask,
