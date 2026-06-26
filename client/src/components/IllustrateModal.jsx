@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Modal } from '../ui.jsx';
+import { useToast, Modal, CoinIcon } from '../ui.jsx';
 import { STYLE_PRESETS, SIZE_OPTS, composePrompt, generateImage, downloadImage } from '../imagegen.js';
-import { Sparkles, Coins, Download, X, Wand2, Crown } from 'lucide-react';
+import { Sparkles, Download, X, Wand2, Crown } from 'lucide-react';
 
 // Compact text-to-image modal used inside chat to illustrate the current scene.
 // Shares the same billed platform endpoint as the AI 绘图 page.
@@ -38,7 +38,7 @@ export default function IllustrateModal({ initialPrompt = '', onClose }) {
       <button className="modal-x" onClick={onClose} aria-label="关闭"><X size={18} /></button>
       <h2 style={{ margin: '0 0 4px', fontSize: 18 }}><Wand2 size={17} style={{ verticalAlign: -3, marginRight: 6, color: 'var(--accent)' }} />生成场景插图</h2>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>
-        为当前剧情绘制一张插画 · 每张 <b><Coins size={12} style={{ verticalAlign: -2 }} /> {fee ?? '—'} 金币</b>
+        为当前剧情绘制一张插画 · 每张 <b><CoinIcon size={12} style={{ verticalAlign: -2 }} /> {fee ?? '—'} 金币</b>
         {discount < 1 && <span className="draw-vip" style={{ marginLeft: 6 }}><Crown size={11} /> {Math.round(discount * 10)}折</span>}
         ｜ 余额 {user?.gold ?? 0}
       </p>

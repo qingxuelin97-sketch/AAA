@@ -335,21 +335,17 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 
 .wallet-mini { display: flex; gap: 8px; padding: 4px 10px 14px; flex-wrap: wrap; }
 
-/* 金币 / 钻石 资产芯片：圆形徽章 + 渐变质感 + 悬浮微光 */
-.coin { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700;
+/* 金币 / 钻石 资产芯片：图标自带渐变质感，芯片用主题色淡底衬托 */
+.coin { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700;
   font-variant-numeric: tabular-nums; letter-spacing: 0.01em; color: var(--c-fg, var(--text));
-  padding: 3px 11px 3px 3px; border-radius: 20px;
+  padding: 3px 10px 3px 8px; border-radius: 20px;
   background: var(--c-bg, var(--panel)); border: 1px solid var(--c-bd, var(--border));
   transition: transform 0.18s var(--spring-soft), box-shadow 0.18s ease, border-color 0.18s ease; }
-.coin > svg { width: 18px; height: 18px; padding: 3px; box-sizing: border-box; border-radius: 50%;
-  color: var(--c-ic-fg, currentColor); background: var(--c-ic-bg, var(--panel)); flex-shrink: 0;
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.5), inset 0 -1px 2px rgba(0,0,0,0.22), 0 1px 2px rgba(0,0,0,0.14); }
+.coin > svg { width: 15px; height: 15px; flex-shrink: 0; display: block; }
 .coin.gold { --c-fg: #9a6c1c; --c-bd: rgba(179,137,47,0.32);
-  --c-bg: linear-gradient(135deg, rgba(226,179,88,0.16), rgba(179,137,47,0.05));
-  --c-ic-fg: #5b4012; --c-ic-bg: radial-gradient(circle at 32% 28%, #f7dd99, #e1b252 46%, #b3892f); }
+  --c-bg: linear-gradient(135deg, rgba(226,179,88,0.16), rgba(179,137,47,0.05)); }
 .coin.diamond { --c-fg: #2c6f81; --c-bd: rgba(63,129,149,0.32);
-  --c-bg: linear-gradient(135deg, rgba(102,196,218,0.16), rgba(63,129,149,0.05));
-  --c-ic-fg: #0f3d4d; --c-ic-bg: radial-gradient(circle at 32% 28%, #cdeef6, #7fcfe2 46%, #3f8195); }
+  --c-bg: linear-gradient(135deg, rgba(102,196,218,0.16), rgba(63,129,149,0.05)); }
 .coin:hover { transform: translateY(-1px); border-color: var(--c-fg); box-shadow: 0 4px 12px -5px var(--c-fg); }
 [data-theme="dark"] .coin.gold { --c-fg: #ecc468; --c-bd: rgba(226,179,88,0.3);
   --c-bg: linear-gradient(135deg, rgba(226,179,88,0.16), rgba(179,137,47,0.04)); }

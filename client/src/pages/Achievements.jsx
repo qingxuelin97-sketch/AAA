@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, CountUp } from '../ui.jsx';
+import { useToast, CountUp, CoinIcon } from '../ui.jsx';
 import {
-  Trophy, Award, Coins, Check, ChevronRight, Lock,
+  Trophy, Award, Check, ChevronRight, Lock,
   MessageCircle, MessagesSquare, Send, Heart, Sparkles, UserPlus, Drama, Globe, ScrollText,
   BadgeCheck, Crown, Star, Bookmark, PenLine, Users, UserCheck, Scale, Gavel, CheckSquare,
   Landmark, CalendarCheck, Dices,
@@ -13,7 +13,7 @@ import {
 const ICONS = {
   MessageCircle, MessagesSquare, Send, Heart, Sparkles, UserPlus, Drama, Globe, ScrollText,
   BadgeCheck, Crown, Star, Bookmark, PenLine, Users, UserCheck, Scale, Gavel, CheckSquare,
-  Landmark, CalendarCheck, Dices, Coins,
+  Landmark, CalendarCheck, Dices, Coins: CoinIcon,
 };
 const CATS = ['对话', '创作', '社交', '议会', '财富'];
 // Honor medal tier by reward magnitude — gives each achievement a sense of rarity.
@@ -84,7 +84,7 @@ export default function Achievements() {
         </div>
         {summary?.claimable > 0 && (
           <button className="btn primary" disabled={busy === 'all'} onClick={claimAll}>
-            <Coins size={16} /> 一键领取 {summary.gold_pending} 金币
+            <CoinIcon size={16} /> 一键领取 {summary.gold_pending} 金币
           </button>
         )}
       </div>
@@ -126,7 +126,7 @@ export default function Achievements() {
                       )}
                     </div>
                     <div className="ach-side">
-                      <span className="ach-reward"><Coins size={12} /> {a.reward}</span>
+                      <span className="ach-reward"><CoinIcon size={12} /> {a.reward}</span>
                       {a.claimed ? <span className="ach-state done"><Check size={13} /> 已领取</span>
                         : a.claimable ? <button className="btn sm primary" disabled={busy === a.id} onClick={() => claim(a)}>领取</button>
                           : <button className="ach-go" onClick={() => nav(a.link)}>去完成 <ChevronRight size={13} /></button>}

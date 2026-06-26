@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth, getToken } from '../api.jsx';
-import { useToast, Avatar, Modal, CouncilorBadge } from '../ui.jsx';
-import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Coins, Gem } from 'lucide-react';
+import { useToast, Avatar, Modal, CouncilorBadge, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload } from 'lucide-react';
 import { BarChart, LineChart } from '../components/Charts.jsx';
 
 export default function Admin() {
@@ -113,9 +113,9 @@ function Overview({ toast }) {
       )}
       {economy && (
         <div className="adm-stats adm-stats-rich" style={{ marginTop: 14 }}>
-          <div className="adm-stat"><span className="adm-stat-ic"><Coins size={16} /></span><b className="gold-num">{economy.gold_in}</b><span>金币产出</span></div>
-          <div className="adm-stat"><span className="adm-stat-ic"><Coins size={16} /></span><b>{economy.gold_out}</b><span>金币消耗</span></div>
-          <div className="adm-stat"><span className="adm-stat-ic"><Gem size={16} /></span><b>{economy.diamond_in}</b><span>钻石产出</span></div>
+          <div className="adm-stat"><span className="adm-stat-ic"><CoinIcon size={16} /></span><b className="gold-num">{economy.gold_in}</b><span>金币产出</span></div>
+          <div className="adm-stat"><span className="adm-stat-ic"><CoinIcon size={16} /></span><b>{economy.gold_out}</b><span>金币消耗</span></div>
+          <div className="adm-stat"><span className="adm-stat-ic"><DiamondIcon size={16} /></span><b>{economy.diamond_in}</b><span>钻石产出</span></div>
         </div>
       )}
 

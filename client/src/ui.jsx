@@ -241,3 +241,46 @@ export function Modal({ children, onClose }) {
     </div>
   );
 }
+
+// 自定义金币图标：圆形硬币 + ¥ 符号 + 金色径向渐变 + 顶部高光。
+// 替代 lucide 朴素的 Coins，让货币一眼有质感。接口与 lucide 图标一致（size/className/style）。
+export function CoinIcon({ size = 16, className, style, ...p }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style} aria-hidden="true" {...p}>
+      <defs>
+        <radialGradient id="hyCoinG" cx="36%" cy="28%" r="78%">
+          <stop offset="0%" stopColor="#fff4c6" />
+          <stop offset="42%" stopColor="#f1c452" />
+          <stop offset="100%" stopColor="#9c661a" />
+        </radialGradient>
+      </defs>
+      <circle cx="12" cy="12" r="9.2" fill="url(#hyCoinG)" stroke="#6e4a0e" strokeWidth="1.1" />
+      <circle cx="12" cy="12" r="6.4" fill="none" stroke="#6e4a0e" strokeWidth="0.7" opacity="0.45" />
+      <path d="M8.6 7.6 L12 11.4 L15.4 7.6" stroke="#58390c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 11.4 V16.6" stroke="#58390c" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M9.1 12.7 H14.9" stroke="#58390c" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M9.6 14.5 H14.4" stroke="#58390c" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M6.9 6.4 a5.2 5.2 0 0 1 3-1.5" stroke="#fffbe6" strokeWidth="1.2" strokeLinecap="round" opacity="0.8" />
+    </svg>
+  );
+}
+
+// 自定义钻石图标：明亮式切割宝石 + 冰蓝渐变 + 切面线 + 高光。
+// 替代 lucide 的 Gem，呈现真实宝石立体感。
+export function DiamondIcon({ size = 16, className, style, ...p }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style} aria-hidden="true" {...p}>
+      <defs>
+        <linearGradient id="hyDiaG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#e4f7fc" />
+          <stop offset="48%" stopColor="#7fcfe2" />
+          <stop offset="100%" stopColor="#2c6f81" />
+        </linearGradient>
+      </defs>
+      <path d="M4.5 9 L8.2 4 H15.8 L19.5 9 Z" fill="url(#hyDiaG)" stroke="#0f3d4d" strokeWidth="0.9" strokeLinejoin="round" />
+      <path d="M4.5 9 H19.5 L12 20 Z" fill="url(#hyDiaG)" stroke="#0f3d4d" strokeWidth="0.9" strokeLinejoin="round" />
+      <path d="M8.2 4 L12 9 L15.8 4 M4.5 9 L12 9 L19.5 9 M12 9 V20" stroke="#0f3d4d" strokeWidth="0.55" opacity="0.5" />
+      <path d="M8.2 4.6 L10 7" stroke="#ffffff" strokeWidth="1.1" strokeLinecap="round" opacity="0.85" />
+    </svg>
+  );
+}

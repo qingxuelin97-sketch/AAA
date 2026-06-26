@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast } from '../ui.jsx';
-import { PartyPopper, Coins, Gem, Gift, Check, ArrowRight, Copy, Users, ListChecks } from 'lucide-react';
+import { useToast, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { PartyPopper, Gift, Check, ArrowRight, Copy, Users, ListChecks } from 'lucide-react';
 
 export default function Events() {
   const [events, setEvents] = useState(null);
@@ -52,7 +52,7 @@ export default function Events() {
                   <b>{t.name}</b>
                   <div className="tk-bar"><span style={{ width: Math.round(t.progress / t.target * 100) + '%' }} /></div>
                 </div>
-                <span className="tk-reward"><Coins size={13} /> {t.reward}</span>
+                <span className="tk-reward"><CoinIcon size={13} /> {t.reward}</span>
                 <button className="btn sm primary" disabled={!t.done || t.claimed || busy === 't-' + t.id} onClick={claimTask(t)}>
                   {t.claimed ? '已领取' : t.done ? '领取' : `${t.progress}/${t.target}`}
                 </button>
@@ -74,8 +74,8 @@ export default function Events() {
 
                 {ev.reward && (ev.reward.gold > 0 || ev.reward.diamond > 0) && (
                   <div className="ev-reward">
-                    {ev.reward.gold > 0 && <span><Coins size={14} /> {ev.reward.gold} 金币</span>}
-                    {ev.reward.diamond > 0 && <span><Gem size={14} /> {ev.reward.diamond} 钻石</span>}
+                    {ev.reward.gold > 0 && <span><CoinIcon size={14} /> {ev.reward.gold} 金币</span>}
+                    {ev.reward.diamond > 0 && <span><DiamondIcon size={14} /> {ev.reward.diamond} 钻石</span>}
                   </div>
                 )}
 

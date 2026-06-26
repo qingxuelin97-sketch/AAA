@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, CountUp } from '../ui.jsx';
+import { useToast, Avatar, CountUp, CoinIcon } from '../ui.jsx';
 import { BarChart, LineChart } from '../components/Charts.jsx';
-import { Eye, Heart, Star, Play, Coins, Users, Drama, ScrollText, TrendingUp, Sparkles, BarChart3, LineChart as LineIcon, Gift, Crown, Check, ChevronRight } from 'lucide-react';
+import { Eye, Heart, Star, Play, Users, Drama, ScrollText, TrendingUp, Sparkles, BarChart3, LineChart as LineIcon, Gift, Crown, Check, ChevronRight } from 'lucide-react';
 
 const fmt = (n) => (n >= 10000 ? (n / 10000).toFixed(1) + 'w' : String(n ?? 0));
 
@@ -26,7 +26,7 @@ export default function Studio() {
     { ic: Heart, label: '角色总点赞', val: t.char_likes, accent: '#d4677a' },
     { ic: Star, label: '被收藏', val: t.char_favs, accent: '#c9962f' },
     { ic: Play, label: '剧本游玩', val: t.script_plays, accent: '#6a8a52' },
-    { ic: Coins, label: '剧本收入', val: t.gold_earned, accent: '#c8853f', gold: true },
+    { ic: CoinIcon, label: '剧本收入', val: t.gold_earned, accent: '#c8853f', gold: true },
     { ic: Users, label: '粉丝', val: t.followers, accent: '#7a6bd0' },
   ];
 
@@ -153,7 +153,7 @@ export default function Studio() {
                   <div className="sr-stats">
                     <span title="游玩"><Play size={13} /> {fmt(s.plays)}</span>
                     <span title="销量"><Drama size={13} /> {fmt(s.sales)}</span>
-                    <span title="收入" className="gold-num"><Coins size={13} /> {fmt(s.revenue)}</span>
+                    <span title="收入" className="gold-num"><CoinIcon size={13} /> {fmt(s.revenue)}</span>
                   </div>
                 </div>
               ))}

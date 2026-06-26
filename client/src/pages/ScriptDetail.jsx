@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar } from '../ui.jsx';
+import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
-import { Coins, Heart, Play, Lock, Trash2, Eye } from 'lucide-react';
+import { Heart, Play, Lock, Trash2, Eye } from 'lucide-react';
 
 export default function ScriptDetail() {
   const { id } = useParams();
@@ -115,7 +115,7 @@ export default function ScriptDetail() {
           {locked ? (
             <div className="card" style={{ background: 'var(--bg-2)', marginTop: 18, textAlign: 'center' }}>
               <div style={{ fontSize: 30, marginBottom: 8 }}><Lock size={30} /></div>
-              <h3 style={{ margin: '0 0 6px' }}>本剧本需 <span className="price-tag"><Coins size={16} /> {script.price_gold}</span> 金币解锁</h3>
+              <h3 style={{ margin: '0 0 6px' }}>本剧本需 <span className="price-tag"><CoinIcon size={16} /> {script.price_gold}</span> 金币解锁</h3>
               <p className="muted" style={{ fontSize: 13 }}>支持购买后 30 分钟内不满意退款</p>
               <button className="btn primary" style={{ marginTop: 6 }} onClick={buy} disabled={busy}>
                 {busy ? '处理中…' : '购买并解锁'}

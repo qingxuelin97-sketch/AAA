@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast, Avatar, GridSkeleton, CreatorV } from '../ui.jsx';
-import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Coins, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare, ListChecks, Check, Shuffle } from 'lucide-react';
+import { useToast, Avatar, GridSkeleton, CreatorV, CoinIcon } from '../ui.jsx';
+import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare, ListChecks, Check, Shuffle } from 'lucide-react';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 
 // Auto-rotating spotlight of featured characters — the hero of the discover page.
@@ -167,7 +167,7 @@ export default function Home() {
                 <button key={t.id} className={'ds-task' + (t.claimed ? ' claimed' : t.done ? ' done' : '')} onClick={() => claimTask(t)}
                   title={t.claimed ? '已领取' : t.done ? '点击领取奖励' : '去完成'}>
                   <span className="ds-task-tx">{t.name}</span>
-                  <span className="ds-task-meta">{t.claimed ? <><Check size={12} /> 已领</> : t.done ? <><Coins size={12} /> 领 {t.reward}</> : <>{t.progress}/{t.target}</>}</span>
+                  <span className="ds-task-meta">{t.claimed ? <><Check size={12} /> 已领</> : t.done ? <><CoinIcon size={12} /> 领 {t.reward}</> : <>{t.progress}/{t.target}</>}</span>
                 </button>
               ))}
             </div>
@@ -254,7 +254,7 @@ export default function Home() {
               {scripts.map(s => (
                 <div key={s.id} className="char-card" onClick={() => nav('/script/' + s.id)}>
                   <div className="cover">{s.cover ? <img src={s.cover} alt="" /> : <div className="ph"><ScrollText size={34} /></div>}
-                    <div className="pill-pub">{s.price_gold > 0 ? <><Coins size={12} /> {s.price_gold}</> : '免费'}</div></div>
+                    <div className="pill-pub">{s.price_gold > 0 ? <><CoinIcon size={12} /> {s.price_gold}</> : '免费'}</div></div>
                   <div className="meta"><h3>{s.title}</h3><p>{s.summary}</p>
                     <div className="foot"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Play size={11} /> {s.plays}</span><span style={{ marginLeft: 'auto' }} className="muted">{s.author_name}</span></div></div>
                 </div>

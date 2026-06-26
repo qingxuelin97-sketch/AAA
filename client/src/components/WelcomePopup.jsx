@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '../ui.jsx';
-import { Sparkles, Bug, Coins, Gem, Crown, MessageSquare, Copy, X } from 'lucide-react';
+import { useToast, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { Sparkles, Bug, Crown, MessageSquare, Copy, X } from 'lucide-react';
 
 const QQ = '3487923507';
 const SEEN_KEY = 'huanyu_welcome_seen';
@@ -47,8 +47,8 @@ export default function WelcomePopup() {
             <b>Bug 赏金计划 · 你来找茬，我来发奖</b>
             <p>发现任何 bug、卡顿或体验瑕疵，提交至官方技术 QQ，一经采纳 <b>奖励 100 金币起</b>；重大问题再加码钻石与 VIP。让幻域因你而更好。</p>
             <div className="wp-rewards">
-              <span><Coins size={13} /> 100 金币起</span>
-              <span><Gem size={13} /> 重大问题加码</span>
+              <span><CoinIcon size={13} /> 100 金币起</span>
+              <span><DiamondIcon size={13} /> 重大问题加码</span>
               <span><Crown size={13} /> VIP 加成</span>
             </div>
             <div className="wp-qq">

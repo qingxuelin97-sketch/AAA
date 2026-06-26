@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
-import { Bell, Heart, MessageCircle, Gift, Megaphone, Landmark, Coins, CheckCheck, Sparkles } from 'lucide-react';
+import { Bell, Heart, MessageCircle, Gift, Megaphone, Landmark, CheckCheck, Sparkles } from 'lucide-react';
 
 // Infer an icon + accent from the notification text (no schema change needed).
 function iconFor(text) {

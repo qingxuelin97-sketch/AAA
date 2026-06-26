@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Modal } from '../ui.jsx';
+import { useToast, Modal, CoinIcon } from '../ui.jsx';
 import { STYLE_PRESETS, SIZE_OPTS, composePrompt, generateImage, downloadImage } from '../imagegen.js';
-import { Sparkles, Coins, Wand2, Download, Trash2, Copy, ImageIcon, Crown, Info, X } from 'lucide-react';
+import { Sparkles, Wand2, Download, Trash2, Copy, ImageIcon, Crown, Info, X } from 'lucide-react';
 
 // AI 绘图 — text-to-image studio. The image API is configured by GM in the admin
 // console; each generation costs gold (VIP discount), shown transparently up-front.
@@ -57,7 +57,7 @@ export default function Draw() {
           <div className="sub">用文字描绘画面，让 AI 为你的故事绘制插画</div>
         </div>
         <span className="draw-cost-badge" title="每张生成的费用（已含会员折扣）">
-          <Coins size={15} /> 每张 {fee ?? '—'} 金币{discount < 1 && <span className="draw-vip"><Crown size={11} /> {Math.round(discount * 10)}折</span>}
+          <CoinIcon size={15} /> 每张 {fee ?? '—'} 金币{discount < 1 && <span className="draw-vip"><Crown size={11} /> {Math.round(discount * 10)}折</span>}
         </span>
       </div>
 
@@ -98,7 +98,7 @@ export default function Draw() {
 
             <div className="draw-actions">
               <div className="draw-balance">
-                余额 <b><Coins size={13} style={{ verticalAlign: -2 }} /> {user?.gold ?? 0}</b>
+                余额 <b><CoinIcon size={13} style={{ verticalAlign: -2 }} /> {user?.gold ?? 0}</b>
                 {!canAfford && <span className="draw-warn">金币不足</span>}
               </div>
               <button className="btn primary draw-go" onClick={generate} disabled={busy || !prompt.trim() || !ready || !canAfford}>

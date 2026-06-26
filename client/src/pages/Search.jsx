@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast, Avatar } from '../ui.jsx';
+import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid, parsePid } from '../assets.jsx';
-import { Search as SearchIcon, Drama, ScrollText, Coins, Play, User } from 'lucide-react';
+import { Search as SearchIcon, Drama, ScrollText, Play, User } from 'lucide-react';
 
 const TABS = [
   { k: 'user', label: '用户', ph: '用户 ID（如 U3）或用户名 / 昵称' },
@@ -105,7 +105,7 @@ export default function Search() {
                     <div className="pill-pub">{pid('script', s.id)}</div></div>
                   <div className="meta"><h3>{s.title}</h3><p>{s.summary}</p>
                     <div className="foot">
-                      <span className="price-tag">{s.price_gold > 0 ? <><Coins size={12} /> {s.price_gold}</> : <span className="free-tag">免费</span>}</span>
+                      <span className="price-tag">{s.price_gold > 0 ? <><CoinIcon size={12} /> {s.price_gold}</> : <span className="free-tag">免费</span>}</span>
                       <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }} className="muted"><Play size={11} /> {s.plays}</span>
                     </div></div>
                 </div>

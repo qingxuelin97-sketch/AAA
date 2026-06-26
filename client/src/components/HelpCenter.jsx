@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { HELP } from '../help.js';
+import { CoinIcon } from '../ui.jsx';
 import {
-  Rocket, Cpu, Volume2, Coins, Drama, Landmark, ShieldCheck, LifeBuoy,
+  Rocket, Cpu, Volume2, Drama, Landmark, ShieldCheck, LifeBuoy,
   Search, ChevronDown, HelpCircle,
 } from 'lucide-react';
 
-const ICONS = { Rocket, Cpu, Volume2, Coins, Drama, Landmark, ShieldCheck, LifeBuoy };
+const ICONS = { Rocket, Cpu, Volume2, Coins: CoinIcon, Drama, Landmark, ShieldCheck, LifeBuoy };
 
 // Reusable Help Center body. Rendered standalone on the public /help page and
 // inline inside Settings → 帮助中心. Self-contained: search + collapsible Q&A.

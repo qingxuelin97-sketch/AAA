@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
-import { useToast, GridSkeleton } from '../ui.jsx';
-import { ScrollText, Coins, Play, Plus, Inbox } from 'lucide-react';
+import { useToast, GridSkeleton, CoinIcon } from '../ui.jsx';
+import { ScrollText, Play, Plus, Inbox } from 'lucide-react';
 import { CategoryIcon } from '../assets.jsx';
 
 function ScriptCard({ s, nav, extra }) {
@@ -16,7 +16,7 @@ function ScriptCard({ s, nav, extra }) {
         <p>{s.summary || '暂无简介'}</p>
         <div className="foot">
           {s.price_gold > 0
-            ? <span className="price-tag"><Coins size={14} /> {s.price_gold}</span>
+            ? <span className="price-tag"><CoinIcon size={14} /> {s.price_gold}</span>
             : <span className="free-tag">免费</span>}
           <span><Play size={12} style={{ verticalAlign: 'middle' }} /> {s.plays || 0}</span>
           {extra ? <span style={{ marginLeft: 'auto' }}>{extra(s)}</span> : null}

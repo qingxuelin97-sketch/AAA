@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, CountUp, IdentityBadges } from '../ui.jsx';
-import { Coins, Gem, Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, BadgeCheck, Crown, X, Pencil, Share2, Check, MessageSquare } from 'lucide-react';
+import { useToast, Avatar, CountUp, IdentityBadges, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, BadgeCheck, Crown, X, Pencil, Share2, Check, MessageSquare } from 'lucide-react';
 import { pid } from '../assets.jsx';
 import ReportButton from '../components/ReportButton.jsx';
 
@@ -100,8 +100,8 @@ export default function Profile() {
             </div>
             {isMe && (
               <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span className="coin gold"><Coins size={14} /> {user.gold} 金币</span>
-                <span className="coin diamond"><Gem size={14} /> {user.diamond} 钻石</span>
+                <span className="coin gold"><CoinIcon size={14} /> {user.gold} 金币</span>
+                <span className="coin diamond"><DiamondIcon size={14} /> {user.diamond} 钻石</span>
                 <button className="btn sm" onClick={() => nav('/wallet')}><Wallet size={14} /> 钱包 / 充值</button>
                 <button className="btn sm" onClick={() => nav('/settings')}><Pencil size={14} /> 编辑资料</button>
               </div>
@@ -130,7 +130,7 @@ export default function Profile() {
             {data.scripts.map(s => (
               <div key={s.id} className="char-card" onClick={() => nav('/script/' + s.id)}>
                 <div className="cover">{s.cover ? <img src={s.cover} alt="" /> : <div className="ph"><ScrollText size={32} /></div>}
-                  <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{s.price_gold > 0 ? <><Coins size={12} /> {s.price_gold}</> : '免费'}</div></div>
+                  <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{s.price_gold > 0 ? <><CoinIcon size={12} /> {s.price_gold}</> : '免费'}</div></div>
                 <div className="meta"><h3>{s.title}</h3><p>{s.summary}</p></div>
               </div>
             ))}
