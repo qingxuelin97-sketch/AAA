@@ -117,7 +117,8 @@ app.use((err, req, res, next) => {
 
 // Start serving immediately (so platform health checks pass even if the DB is slow),
 // then restore the rolling snapshot in the background and begin rolling saves.
-app.listen(PORT, () => console.log(`AI 聊天平台后端运行于 http://localhost:${PORT}`));
+// 显式绑定 0.0.0.0：确保外部（安全组放行的 4000 端口）可访问，避免某些环境下默认绑到 127.0.0.1。
+app.listen(PORT, '0.0.0.0', () => console.log(`AI 聊天平台后端运行于 http://0.0.0.0:${PORT}`));
 import('./persist.js').then(async ({ restoreOnBoot, startRolling }) => {
   await restoreOnBoot();
   startRolling();
