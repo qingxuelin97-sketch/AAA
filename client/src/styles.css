@@ -333,24 +333,21 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .mobile-only { display: none; }
 .bottom-nav { display: none; }
 
-.wallet-mini { display: flex; gap: 8px; padding: 4px 10px 14px; flex-wrap: wrap; }
+.wallet-mini { display: flex; gap: 10px; padding: 4px 10px 14px; flex-wrap: wrap; align-items: center; }
 
-/* 金币 / 钻石 资产芯片：图标自带渐变质感，芯片用主题色淡底衬托 */
+/* 金币 / 钻石 货币行：图标直接裸露，不套任何方体/胶囊，仅 drop-shadow 托底 */
 .coin { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700;
   font-variant-numeric: tabular-nums; letter-spacing: 0.01em; color: var(--c-fg, var(--text));
-  padding: 3px 10px 3px 8px; border-radius: 20px;
-  background: var(--c-bg, var(--panel)); border: 1px solid var(--c-bd, var(--border));
-  transition: transform 0.18s var(--spring-soft), box-shadow 0.18s ease, border-color 0.18s ease; }
-.coin > svg { width: 15px; height: 15px; flex-shrink: 0; display: block; }
-.coin.gold { --c-fg: #9a6c1c; --c-bd: rgba(179,137,47,0.32);
-  --c-bg: linear-gradient(135deg, rgba(226,179,88,0.16), rgba(179,137,47,0.05)); }
-.coin.diamond { --c-fg: #2c6f81; --c-bd: rgba(63,129,149,0.32);
-  --c-bg: linear-gradient(135deg, rgba(102,196,218,0.16), rgba(63,129,149,0.05)); }
-.coin:hover { transform: translateY(-1px); border-color: var(--c-fg); box-shadow: 0 4px 12px -5px var(--c-fg); }
-[data-theme="dark"] .coin.gold { --c-fg: #ecc468; --c-bd: rgba(226,179,88,0.3);
-  --c-bg: linear-gradient(135deg, rgba(226,179,88,0.16), rgba(179,137,47,0.04)); }
-[data-theme="dark"] .coin.diamond { --c-fg: #79d0e4; --c-bd: rgba(102,196,218,0.3);
-  --c-bg: linear-gradient(135deg, rgba(102,196,218,0.16), rgba(63,129,149,0.04)); }
+  background: none; border: 0; padding: 0; border-radius: 0; cursor: inherit;
+  transition: transform 0.18s var(--spring-soft), filter 0.18s ease; }
+.coin > svg { width: 18px; height: 18px; flex-shrink: 0; display: block;
+  filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.22)); }
+.coin.gold { --c-fg: #9a6c1c; }
+.coin.diamond { --c-fg: #2c6f81; }
+.coin:hover { transform: translateY(-1px); }
+.coin:hover > svg { filter: drop-shadow(0 2px 3px rgba(0,0,0,0.28)); }
+[data-theme="dark"] .coin.gold { --c-fg: #ecc468; }
+[data-theme="dark"] .coin.diamond { --c-fg: #79d0e4; }
 .vip-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 800;
   background: linear-gradient(135deg, #e7c879, #c89a3a); color: #463209; }
 
@@ -445,8 +442,9 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .icon-chip { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0;
   background: var(--accent-soft); color: var(--accent-2); }
 .icon-chip.sm { width: 32px; height: 32px; border-radius: 10px; }
-.icon-chip.gold { background: #f5ead2; color: #a9791f; }
-.icon-chip.diamond { background: #d9ebf0; color: #2f6f81; }
+/* 货币专用：图标裸露，不套方盒 —— 覆盖 .icon-chip 的背景/圆角/阴影 */
+.icon-chip.gold, .icon-chip.diamond { background: none; box-shadow: none; border-radius: 0; }
+.icon-chip.gold > svg, .icon-chip.diamond > svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.22)); }
 .icon-chip.vip { background: linear-gradient(135deg, #f0dcae, #e3c074); color: #5b4310; }
 
 .wallet-hero { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: clamp(12px, 2vw, 28px); align-items: center;
@@ -1294,8 +1292,7 @@ body::before, body::after { display: none !important; }
 [data-theme="dark"] .recharge-mask { background: rgba(15,15,20,0.55); color: var(--muted); }
 [data-theme="dark"] .poster .p-cat { background: rgba(17,17,22,0.7); color: var(--text); }
 [data-theme="dark"] .ann-banner .ann-x:hover { background: rgba(255,255,255,0.08); }
-[data-theme="dark"] .icon-chip.gold { background: #352a14; color: #e3c06a; }
-[data-theme="dark"] .icon-chip.diamond { background: #14323a; color: #79d0e4; }
+[data-theme="dark"] .icon-chip.gold, [data-theme="dark"] .icon-chip.diamond { background: none; }
 [data-theme="dark"] .vip-card { background: linear-gradient(140deg, #2e2616, #241d12); border-color: #4a3c22; }
 [data-theme="dark"] .wallet-hero { background: linear-gradient(135deg, #232229, #191921); }
 
@@ -3279,22 +3276,11 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 /*  金币 / 钻石 资产视觉重设计 + 成就卡精修                                */
 /* ===================================================================== */
 /* —— premium 金币 & 钻石 chip（光泽 + 高光 + 立体）—— */
-.asset-chip { position: relative; width: 50px; height: 50px; border-radius: 16px; display: grid; place-items: center;
-  flex-shrink: 0; overflow: hidden; isolation: isolate; transition: transform 0.25s var(--spring); }
-.asset-chip > svg { position: relative; z-index: 2; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.18)); }
-.asset-chip::before { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit;
-  background: radial-gradient(80% 60% at 30% 18%, rgba(255,255,255,0.75), transparent 60%); }
-.asset-chip::after { content: ''; position: absolute; top: 0; left: -120%; width: 55%; height: 100%; z-index: 3;
-  background: linear-gradient(105deg, transparent, rgba(255,255,255,0.55), transparent); transform: skewX(-18deg);
-  animation: assetSheen 4.5s ease-in-out infinite; }
+/* 资产图标直接裸露，不套任何方体/圆角盒 —— 仅 drop-shadow 让图标立体浮起 */
+.asset-chip { display: inline-grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px;
+  background: none; border: 0; border-radius: 0; box-shadow: none; transition: transform 0.25s var(--spring); }
+.asset-chip > svg { display: block; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
 .wallet-hero .col:hover .asset-chip { transform: translateY(-2px) rotate(-3deg); }
-@keyframes assetSheen { 0%, 72% { left: -120%; } 86%, 100% { left: 160%; } }
-.asset-chip.gold { color: #6f4710;
-  background: linear-gradient(152deg, #ffe9aa 0%, #f3c352 46%, #d29329 100%);
-  box-shadow: inset 0 1.5px 1px rgba(255,255,255,0.8), inset 0 -4px 8px rgba(150,95,20,0.4), 0 8px 18px rgba(214,160,50,0.42); }
-.asset-chip.diamond { color: #11506a;
-  background: linear-gradient(152deg, #d8f2fc 0%, #76c4e8 46%, #3787af 100%);
-  box-shadow: inset 0 1.5px 1px rgba(255,255,255,0.85), inset 0 -4px 8px rgba(20,80,110,0.4), 0 8px 18px rgba(70,150,195,0.4); }
 /* 资产数字配色 + 货币色微光，让金币/钻石一眼可辨 */
 .wallet-hero .col.gold .bal-num { color: #c8932f; text-shadow: 0 0 14px rgba(241,196,82,0.4); }
 .wallet-hero .col.diamond .bal-num { color: #2f87a6; text-shadow: 0 0 14px rgba(102,196,218,0.4); }
@@ -3305,11 +3291,10 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 @keyframes coinBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 .dia-sparkle { animation: diaSparkle 2.6s ease-in-out infinite; }
 @keyframes diaSparkle { 0%, 100% { opacity: 0.2; } 45%, 55% { opacity: 1; } }
-[data-perf="lite"] .asset-chip::after,
 [data-perf="lite"] .asset-chip > svg,
 [data-perf="lite"] .dia-sparkle { animation: none; }
 @media (prefers-reduced-motion: reduce) {
-  .asset-chip::after, .asset-chip > svg, .dia-sparkle { animation: none; }
+  .asset-chip > svg, .dia-sparkle { animation: none; }
 }
 /* 小尺寸资产 chip（兑换/充值处）继续用既有 .icon-chip，已在上方定义 */
 
