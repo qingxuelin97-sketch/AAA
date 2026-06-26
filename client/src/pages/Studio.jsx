@@ -17,7 +17,7 @@ export default function Studio() {
 
   const load = () => api('/me/studio').then(setData).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
-  if (!data) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
+  if (!data) return <><div className="topbar"><div style={{ flex: 1 }}><h1>创作中心</h1><div className="sub">作品数据、收益分析与创作者分成计划</div></div></div><div className="page"><div className="empty">载入中…</div></div></>;
   const t = data.totals;
   const plan = data.revenue_plan;
 

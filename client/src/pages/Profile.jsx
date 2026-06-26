@@ -30,7 +30,7 @@ export default function Profile() {
       api('/friends/state/' + targetId).then(setFr).catch(() => {});
     } catch (e) { toast(e.message, 'err'); }
   };
-  if (!data) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
+  if (!data) return <><div className="topbar"><div style={{ flex: 1 }}><h1>个人中心</h1></div></div><div className="page"><div className="empty">载入中…</div></div></>;
   const u = data.user;
 
   const shareProfile = async () => {
