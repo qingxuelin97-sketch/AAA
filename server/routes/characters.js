@@ -19,6 +19,11 @@ const clampPitch = (v) => { const n = Number(v); return n >= 0.5 && n <= 1.5 ? M
 function ownerView(c) {
   if (!c) return c;
   c.world = loadWorld(c.id);
+  // 附加角色关联的独立世界书（供前端展示/管理）
+  c.linked_worldbooks = db.prepare(`SELECT w.id, w.name, w.is_public, w.owner_id,
+    (SELECT COUNT(*) FROM worldbook_entries WHERE worldbook_id = w.id) AS entry_count
+    FROM character_worldbooks cw JOIN worldbooks w ON w.id = cw.worldbook_id
+    WHERE cw.character_id = ? ORDER BY w.id`).all(c.id);
   return c;
 }
 

@@ -6,7 +6,7 @@ import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
 import { speakBrowser } from '../voice.js';
 import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
-import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash } from 'lucide-react';
+import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Link2, Unlink, BookUp } from 'lucide-react';
 
 const BGM_MAX_SEC = 60;
 
@@ -76,8 +76,14 @@ export default function CharacterEditor() {
   const [previewing, setPreviewing] = useState(false);
   const [loaded, setLoaded] = useState(false); // 服务器数据加载完成前不自动存草稿，避免覆盖
   const [draftHint, setDraftHint] = useState(null); // { savedAt } 检测到本地草稿时提示恢复
+  const [myWbs, setMyWbs] = useState([]); // 我的世界书列表，供关联选择
+  const [showAttach, setShowAttach] = useState(false);
+  const [wbBusy, setWbBusy] = useState(false);
   const draftKey = id || 'new';
   const draft = useDraftAutosave('character', draftKey, c, c.name, loaded);
+
+  // 加载我的世界书列表（供关联选择器使用）
+  useEffect(() => { api('/worldbooks/mine').then(d => setMyWbs(d.worldbooks || [])).catch(() => {}); }, []);
 
   // Know the user's own voice protocol so the editor preview can use the right
   // path (browser TTS vs. server synthesis).
@@ -157,6 +163,37 @@ export default function CharacterEditor() {
   const addWorld = () => set('world', [...c.world, { keys: '', content: '', enabled: true }]);
   const updWorld = (i, k, v) => set('world', c.world.map((w, j) => j === i ? { ...w, [k]: v } : w));
   const delWorld = (i) => set('world', c.world.filter((_, j) => j !== i));
+
+  // ── 独立世界书关联（跨角色复用）── 仅已保存角色可关联
+  const linked = c.linked_worldbooks || [];
+  const attachWb = async (wbId) => {
+    setWbBusy(true);
+    try {
+      await api('/worldbooks/' + wbId + '/attach/' + id, { method: 'POST' });
+      const w = myWbs.find(x => x.id === wbId);
+      set('linked_worldbooks', [...linked, { id: w.id, name: w.name, is_public: w.is_public, owner_id: w.owner_id, entry_count: w.entry_count }]);
+      toast('已关联世界书');
+    } catch (e) { toast(e.message, 'err'); } finally { setWbBusy(false); }
+  };
+  const detachWb = async (wbId) => {
+    setWbBusy(true);
+    try {
+      await api('/worldbooks/' + wbId + '/attach/' + id, { method: 'DELETE' });
+      set('linked_worldbooks', linked.filter(x => x.id !== wbId));
+      toast('已解除关联');
+    } catch (e) { toast(e.message, 'err'); } finally { setWbBusy(false); }
+  };
+  const saveAsWb = async () => {
+    if (!c.world.length) { toast('当前没有内嵌世界书条目', 'err'); return; }
+    const name = prompt('为新世界书命名：', c.name + ' 的世界书');
+    if (!name) return;
+    setWbBusy(true);
+    try {
+      const d = await api('/worldbooks/from-character/' + id, { method: 'POST', body: { name } });
+      setMyWbs(prev => [...prev, d.worldbook]);
+      toast('已另存为独立世界书，可在「世界书」页管理');
+    } catch (e) { toast(e.message, 'err'); } finally { setWbBusy(false); }
+  };
 
   const save = async () => {
     if (!c.name.trim()) { toast('请填写角色名', 'err'); setTab('basic'); return; }
@@ -303,6 +340,49 @@ export default function CharacterEditor() {
                   value={w.content} onChange={e => updWorld(i, 'content', e.target.value)} />
               </div>
             ))}
+
+            {editing && (
+              <div className="card" style={{ marginTop: 22, background: 'var(--bg-2)' }}>
+                <div className="section-title">
+                  <h2 style={{ fontSize: 15 }}><Link2 size={14} style={{ verticalAlign: -2, marginRight: 5 }} />关联独立世界书 ({linked.length})</h2>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn sm" onClick={saveAsWb} disabled={wbBusy} title="把上方内嵌条目另存为独立世界书"><BookUp size={13} /> 另存为</button>
+                    <button className="btn sm" onClick={() => setShowAttach(s => !s)} disabled={wbBusy}><Plus size={13} /> 关联</button>
+                  </div>
+                </div>
+                <p className="muted" style={{ fontSize: 12.5, marginTop: -8 }}>
+                  关联后，该世界书的条目会与本角色内嵌条目一起在对话中触发。可在「世界书」页独立编辑，多个角色共享同一本。
+                </p>
+                {linked.length === 0 && <div className="muted" style={{ fontSize: 13, padding: '6px 0' }}>尚未关联任何独立世界书</div>}
+                {linked.map(w => (
+                  <div key={w.id} className="room-row" style={{ padding: '8px 10px', background: 'var(--panel)', marginBottom: 6, borderRadius: 10 }}>
+                    <BookUp size={15} className="muted" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <b style={{ fontSize: 13.5 }}>{w.name}</b>
+                      <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>{w.entry_count || 0} 条</span>
+                      {w.is_public ? <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>· 公开</span> : null}
+                    </div>
+                    <button className="btn sm ghost danger" onClick={() => detachWb(w.id)} disabled={wbBusy} title="解除关联"><Unlink size={13} /></button>
+                  </div>
+                ))}
+                {showAttach && (
+                  <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                    <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>从我的世界书中选择：</div>
+                    {myWbs.filter(w => !linked.some(l => l.id === w.id)).length === 0
+                      ? <div className="muted" style={{ fontSize: 13 }}>没有可关联的世界书（全部已关联或尚未创建）</div>
+                      : myWbs.filter(w => !linked.some(l => l.id === w.id)).map(w => (
+                        <div key={w.id} className="room-row" style={{ padding: '7px 10px', background: 'var(--panel)', marginBottom: 5, borderRadius: 10, cursor: 'pointer' }} onClick={() => attachWb(w.id)}>
+                          <Plus size={14} style={{ color: 'var(--accent)' }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <b style={{ fontSize: 13 }}>{w.name}</b>
+                            <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>{w.entry_count || 0} 条</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

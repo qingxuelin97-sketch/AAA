@@ -383,4 +383,28 @@ db.exec(`CREATE TABLE IF NOT EXISTS script_likes (
 // 安全相关：event_claims 加 (user_id, event_id) 唯一索引，原子防并发重复领取。
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }
 
+// 独立世界书：可脱离角色单独编辑，并跨角色复用（多对多关联）。
+db.exec(`
+CREATE TABLE IF NOT EXISTS worldbooks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  tags TEXT DEFAULT '',
+  is_public INTEGER DEFAULT 0,
+  uses INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS worldbook_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  worldbook_id INTEGER REFERENCES worldbooks(id) ON DELETE CASCADE,
+  keys TEXT DEFAULT '', content TEXT DEFAULT '', enabled INTEGER DEFAULT 1, position INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS character_worldbooks (
+  character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+  worldbook_id INTEGER REFERENCES worldbooks(id) ON DELETE CASCADE,
+  PRIMARY KEY (character_id, worldbook_id)
+);
+`);
+
 export default db;

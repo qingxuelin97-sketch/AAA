@@ -28,6 +28,7 @@ import meRoutes from './routes/me.js';
 import parliamentRoutes from './routes/parliament.js';
 import friendRoutes from './routes/friends.js';
 import dmRoutes from './routes/dm.js';
+import worldbookRoutes from './routes/worldbooks.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -90,6 +91,7 @@ app.use('/api/me', meRoutes);
 app.use('/api/parliament', parliamentRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/dm', dmRoutes);
+app.use('/api/worldbooks', worldbookRoutes);
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Serve built client (production) with SPA fallback.

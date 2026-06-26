@@ -10,7 +10,7 @@ import QuickCreate from './QuickCreate.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark, UserRound, Wand2, Medal, Tags as TagsIcon
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark, UserRound, Wand2, Medal, Tags as TagsIcon, BookOpen
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -37,6 +37,7 @@ const GROUPS = [
   ] },
   { title: '我的', items: [
     { to: '/library', ic: Library, label: '我的角色' },
+    { to: '/worldbooks', ic: BookOpen, label: '世界书' },
     { to: '/studio', ic: TrendingUp, label: '创作中心' },
     { to: '/achievements', ic: Medal, label: '成就' },
     { to: '/favorites', ic: Heart, label: '收藏' },

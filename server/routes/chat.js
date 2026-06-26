@@ -195,12 +195,17 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
 }
 
 // Build the system prompt from persona, intro and triggered world-book entries.
+// 聚合角色内嵌 world_entries + 所有关联独立世界书（character_worldbooks）的条目。
 function buildSystemPrompt(character, recentText) {
   const parts = [];
   if (character.persona) parts.push(character.persona.trim());
   if (character.intro) parts.push(`【角色简介】\n${character.intro.trim()}`);
 
-  const world = db.prepare('SELECT * FROM world_entries WHERE character_id = ? AND enabled = 1 ORDER BY position, id').all(character.id);
+  const own = db.prepare('SELECT keys, content FROM world_entries WHERE character_id = ? AND enabled = 1 ORDER BY position, id').all(character.id);
+  const linked = db.prepare(`SELECT we.keys, we.content FROM worldbook_entries we
+    JOIN character_worldbooks cw ON cw.worldbook_id = we.worldbook_id
+    WHERE cw.character_id = ? AND we.enabled = 1`).all(character.id);
+  const world = [...own, ...linked];
   const triggered = [];
   const haystack = (recentText || '').toLowerCase();
   for (const w of world) {
