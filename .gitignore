@@ -10,3 +10,5 @@ shots-static/
 .DS_Store
 *.log
 server/smoke.tmp.sqlite*
+server/.jwt-secret
+.env

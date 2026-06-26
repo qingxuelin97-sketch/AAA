@@ -34,14 +34,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// CORS 白名单：来自环境变量 CORS_ORIGINS（逗号分隔），未配置则仅允许同源。
+// CORS：来自环境变量 CORS_ORIGINS（逗号分隔）的白名单；未配置则允许所有来源，
+// 保证同源部署（前后端在同一阿里云实例）和静态托管+独立后端的场景都能开箱可用。
 const ALLOWED_ORIGINS = new Set(
   (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
 );
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || ALLOWED_ORIGINS.has(origin)) return cb(null, true);
-    return cb(null, false); // 不抛错，仅不带 ACAO 头，浏览器即拦截
+    if (!ALLOWED_ORIGINS.size || !origin || ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+    return cb(null, false);
   },
   credentials: false,
 }));

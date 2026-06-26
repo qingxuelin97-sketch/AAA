@@ -1,11 +1,29 @@
 import jwt from 'jsonwebtoken';
 import db from './db.js';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
-// 强制要求强随机 JWT 密钥；缺失或过弱则拒绝启动，杜绝回落到公开默认密钥。
-const SECRET = process.env.JWT_SECRET;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// JWT 密钥解析：优先环境变量 JWT_SECRET；未配置时自动生成强随机密钥并
+// 持久化到 .jwt-secret 文件，重启后复用——既避免回落到公开硬编码密钥，
+// 又保证未配置环境变量时开箱可用（不会 process.exit 导致服务起不来）。
+// 生产环境强烈建议显式设置 JWT_SECRET 环境变量。
+const SECRET_FILE = path.join(__dirname, '.jwt-secret');
+let SECRET = process.env.JWT_SECRET;
 if (!SECRET || SECRET.length < 32) {
-  console.error('[auth] JWT_SECRET 未配置或长度不足 32，拒绝启动。请在环境变量中设置强随机密钥。');
-  process.exit(1);
+  if (fs.existsSync(SECRET_FILE)) {
+    SECRET = fs.readFileSync(SECRET_FILE, 'utf8').trim();
+  }
+  if (!SECRET || SECRET.length < 32) {
+    SECRET = crypto.randomBytes(48).toString('base64url');
+    try { fs.writeFileSync(SECRET_FILE, SECRET, { mode: 0o600 }); } catch { /* 只读 fs 时退回内存密钥 */ }
+  }
+  if (!process.env.JWT_SECRET) {
+    console.warn('[auth] 未配置 JWT_SECRET 环境变量，已自动生成并持久化到 .jwt-secret。生产环境建议显式设置 JWT_SECRET 环境变量以便多实例一致。');
+  }
 }
 
 // 为每个账号维护 token 版本号；改密/封禁时 +1，使旧 token 立即失效。
