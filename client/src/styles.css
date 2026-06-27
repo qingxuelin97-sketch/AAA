@@ -715,16 +715,23 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .modal-backdrop .card { backdrop-filter: blur(10px); }
 
 /* ---- mobile immersive rooms (no double header) ---- */
+/* 重构方案：CSS 变量 --vh 作为视觉视口真相源（Chat.jsx visualViewport 实时写入），
+   .app-shell / .chat-layout 全链路一起收缩到可见区高度，根本不给 body 留缝隙。
+   不再用 position:fixed（iOS Safari 键盘弹起 offsetTop 错位经典 bug），
+   不再依赖 100dvh 单独收缩（iOS Safari 收缩有延迟，延迟期输入栏滞留键盘遮挡区）。 */
 @media (max-width: 860px) {
   .app-shell:has(.immersive) .mobile-topbar,
   .app-shell:has(.immersive) .bottom-nav { display: none; }
-  .app-shell:has(.immersive) .main { padding-bottom: 0; }
-  /* 沉浸式对话：移动端 fixed 脱离文档流 + visualViewport 实时驱动 height（见 Chat.jsx）。
-     不再依赖 100dvh 单独收缩 —— iOS Safari 键盘弹起时 100dvh 收缩有延迟，
-     延迟期输入栏滞留键盘遮挡区，用户上滑触发 body 滚动露出原色背景。
-     fixed top:0 + height=vv.height 让布局立即贴合可见区，输入栏（flex 末尾）
-     自动上移到键盘上方。z-index:100 盖住 .app-shell 其他内容。 */
-  .chat-layout.immersive { position: fixed; top: 0; left: 0; right: 0; height: 100dvh; z-index: 100; }
+  .app-shell:has(.immersive) .main { padding: 0; }
+  /* 外层锁死：高度=可见区，溢出隐藏，body 永远拖不动、不露原色。
+     min-height:0 覆盖基础规则 .app-shell{min-height:100vh}，否则 min-height 会撑住不让 height 收缩 */
+  .app-shell:has(.immersive) { height: var(--vh, 100dvh); min-height: 0; overflow: hidden; }
+  /* 对话页撑满可见区 */
+  .chat-layout.immersive { height: var(--vh, 100dvh); }
+  /* body 兜底同色：万一有 1px 缝隙也是同色，不是突兀的 #faf9f5 原色。
+     has-bg（角色卡有背景图）时用暗色融入背景图底部，普通对话用 var(--bg) 融合 .chat-main */
+  body:has(.immersive) { background: var(--bg); overscroll-behavior: none; }
+  body:has(.chat-main.has-bg) { background: #15120e; }
   .immersive .chat-head { padding-top: calc(13px + env(safe-area-inset-top)); }
   .immersive .chat-input-bar { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
   /* the conversation list (browse state) keeps comfortable spacing */
