@@ -243,7 +243,7 @@ function saveEntries(wbId, entries) {
     (worldbook_id, keys, content, enabled, position, mode, inject_pos, priority, case_sensitive, group_name, comment,
      image_urls, image_keys, image_position, front_slot, probability, min_turns, exclude_keys,
      max_turns, cooldown, required_keys, sticky, depth, variable_write, branch, vectorize, tone, folder)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
   entries.forEach((e, i) => {
     if (!e || (!e.content && !e.keys)) return;
     const mode = e.mode === 'regex' ? 'regex' : e.mode === 'always' ? 'always' : 'keyword';
