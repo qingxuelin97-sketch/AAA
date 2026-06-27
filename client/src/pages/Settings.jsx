@@ -86,6 +86,8 @@ export default function Settings() {
   const [perf, setPerf] = useState(getPerfPref());
   const changePerf = (mode) => { setPerf(mode); setPerfPref(mode); };
   const [bvoices, setBvoices] = useState(() => browserVoices());
+  // 密钥 / 密码显隐切换（移动端核对长密钥用）
+  const [showSecret, setShowSecret] = useState({});
   useEffect(() => {
     const upd = () => setBvoices(browserVoices());
     upd(); try { window.speechSynthesis?.addEventListener?.('voiceschanged', upd); } catch { /* */ }
@@ -208,8 +210,8 @@ export default function Settings() {
                   {PROVIDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select></div>
               <div className="field"><label>模型名称</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="input" style={{ flex: 1 }} value={s.llm_model} onChange={e => set('llm_model', e.target.value)} placeholder="gpt-4o-mini" list="model-list" />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <input className="input" style={{ flex: 1, minWidth: 160 }} value={s.llm_model} onChange={e => set('llm_model', e.target.value)} placeholder="gpt-4o-mini" list="model-list" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
                   <button className="btn" onClick={detectModels} disabled={detecting} title="检测服务商可用模型">
                     <RefreshCw size={15} className={detecting ? 'spin' : ''} /> {detecting ? '检测中' : '检测模型'}
                   </button>
@@ -225,9 +227,12 @@ export default function Settings() {
                 )}
               </div>
             </div>
-            <div className="field"><label>API Base URL</label><input className="input" value={s.llm_base_url} onChange={e => set('llm_base_url', e.target.value)} /></div>
+            <div className="field"><label>API Base URL</label><input className="input" value={s.llm_base_url} onChange={e => set('llm_base_url', e.target.value)} inputMode="url" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} /></div>
             <div className="field"><label>API Key {s.llm_api_key_set && <span className="tag">已配置</span>}</label>
-              <input className="input" type="password" value={s.llm_api_key || ''} onChange={e => set('llm_api_key', e.target.value)} placeholder={s.llm_api_key_set ? '••••••（留空不修改）' : 'sk-...'} />
+              <div className="secret-input">
+                <input className="input" type={showSecret.llm ? 'text' : 'password'} value={s.llm_api_key || ''} onChange={e => set('llm_api_key', e.target.value)} placeholder={s.llm_api_key_set ? '••••••（留空不修改）' : 'sk-...'} autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
+                <button type="button" className="secret-toggle" onClick={() => setShowSecret(p => ({ ...p, llm: !p.llm }))} title={showSecret.llm ? '隐藏' : '显示'}>{showSecret.llm ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+              </div>
               <div className="hint">点「检测模型」可向服务商拉取可用模型列表再选择（需先填 Base URL 与 Key）。</div></div>
             <div className="row">
               <div className="field"><label>Temperature：{s.llm_temperature}</label><input type="range" min="0" max="2" step="0.1" value={s.llm_temperature} onChange={e => set('llm_temperature', parseFloat(e.target.value))} style={{ width: '100%' }} /></div>
@@ -289,8 +294,8 @@ export default function Settings() {
                   {VOICE_PROVIDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select></div>
               <div className="field"><label>模型</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="input" style={{ flex: 1 }} value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder={MODEL_PH[vproto] || 'model'} list="voice-model-list" />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <input className="input" style={{ flex: 1, minWidth: 160 }} value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder={MODEL_PH[vproto] || 'model'} list="voice-model-list" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
                   <button className="btn" onClick={detectVoiceModels} disabled={detectingVoice} title="检测服务商可用模型">
                     <RefreshCw size={15} className={detectingVoice ? 'spin' : ''} /> {detectingVoice ? '检测中' : '检测模型'}
                   </button>
@@ -306,7 +311,7 @@ export default function Settings() {
                 )}
               </div>
             </div>
-            <div className="field"><label>API Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} placeholder={BASE_PH[vproto] || 'https://api.openai.com/v1'} />
+            <div className="field"><label>API Base URL</label><input className="input" value={s.voice_base_url} onChange={e => set('voice_base_url', e.target.value)} placeholder={BASE_PH[vproto] || 'https://api.openai.com/v1'} inputMode="url" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
               {vproto === 'minimax' && <div className="hint">MiniMax 海螺语音：Base URL 后附上你的 GroupId，例如 <code>https://api.minimax.chat/v1?GroupId=你的GroupId</code>（也可不附、改在「API Key」处填 <b>GroupId:APIKey</b>）。模型推荐 <code>speech-02-hd</code>（默认，音质佳）/ <code>speech-2.5-hd-preview</code>（最新预览版）/ <code>speech-01-turbo</code>（更快），音色 <code>voice_id</code> 如 male-qn-qingse、female-shaonv、female-yujie、presenter_female 等。GroupId 与 APIKey 均在 MiniMax 控制台获取。</div>}
               {vproto === 'azure' && <div className="hint">Base URL 中的区域需与你的资源一致，例如 <code>https://eastus.tts.speech.microsoft.com</code>。</div>}
               {vproto === 'aliyun' && <div className="hint">阿里云百炼（DashScope）：Base URL 固定 <code>https://dashscope.aliyuncs.com</code>，模型填 <code>qwen-tts</code>，音色可选 Cherry / Ethan / Serena / Chelsie / Dylan 等。Key 为百炼控制台的 <code>DASHSCOPE_API_KEY</code>。</div>}
@@ -316,7 +321,10 @@ export default function Settings() {
             <div className="row">
               <div className="field"><label>{VOICE_LB[vproto] || '音色'}</label><input className="input" value={s.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder={VOICE_PH[vproto] || ''} /></div>
               <div className="field"><label>{KEY_LB[vproto] || 'API Key'} {s.voice_api_key_set && <span className="tag">已配置</span>}</label>
-                <input className="input" type="password" value={s.voice_api_key || ''} onChange={e => set('voice_api_key', e.target.value)} placeholder={s.voice_api_key_set ? '••••••（留空不修改）' : KEY_PH} />
+                <div className="secret-input">
+                  <input className="input" type={showSecret.voice ? 'text' : 'password'} value={s.voice_api_key || ''} onChange={e => set('voice_api_key', e.target.value)} placeholder={s.voice_api_key_set ? '••••••（留空不修改）' : KEY_PH} autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
+                  <button type="button" className="secret-toggle" onClick={() => setShowSecret(p => ({ ...p, voice: !p.voice }))} title={showSecret.voice ? '隐藏' : '显示'}>{showSecret.voice ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                </div>
                 <div className="hint">浏览器将直连该服务商；若其未开放跨域(CORS)，纯静态站点可能无法播放，建议优先选「浏览器内置语音」、OpenAI 协议族或 ElevenLabs。</div></div>
             </div>
               </>);
@@ -328,21 +336,31 @@ export default function Settings() {
           <>
             <div className="card" style={{ marginBottom: 20 }}>
               <div className="section-title"><h2>个人资料</h2><button className="btn sm primary" onClick={saveProfile}>保存资料</button></div>
-              <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'center', marginBottom: 14 }}>
                 <AvatarPicker value={profile.avatar} onChange={url => setProfile({ ...profile, avatar: url })} size={92} />
-                <div style={{ flex: 1 }}>
-                  <div className="field" style={{ marginBottom: 10 }}><label>昵称</label><input className="input" value={profile.display_name} onChange={e => setProfile({ ...profile, display_name: e.target.value })} /></div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div className="field" style={{ marginBottom: 10 }}><label>昵称</label><input className="input" value={profile.display_name} onChange={e => setProfile({ ...profile, display_name: e.target.value })} autoCapitalize="off" autoCorrect="off" spellCheck={false} enterKeyHint="done" /></div>
                   <div className="muted" style={{ fontSize: 12 }}>用户名 @{user?.username}（不可更改）</div>
                 </div>
               </div>
-              <div className="field"><label>个人简介</label><textarea className="textarea" value={profile.bio} onChange={e => setProfile({ ...profile, bio: e.target.value })} placeholder="介绍一下你自己…" /></div>
+              <div className="field"><label>个人简介</label><textarea className="textarea" value={profile.bio} onChange={e => setProfile({ ...profile, bio: e.target.value })} placeholder="介绍一下你自己…" autoCapitalize="off" autoCorrect="off" spellCheck={false} /></div>
               <div className="field"><label>主页横幅</label><Uploader value={profile.banner} onChange={url => setProfile({ ...profile, banner: url })} accept="image/*" /></div>
             </div>
             <div className="card">
               <div className="section-title"><h2>修改密码</h2><button className="btn sm" onClick={changePwd}>确认修改</button></div>
               <div className="row">
-                <div className="field"><label>原密码</label><input className="input" type="password" value={pwd.old_password} onChange={e => setPwd({ ...pwd, old_password: e.target.value })} /></div>
-                <div className="field"><label>新密码</label><input className="input" type="password" value={pwd.new_password} onChange={e => setPwd({ ...pwd, new_password: e.target.value })} /></div>
+                <div className="field"><label>原密码</label>
+                  <div className="secret-input">
+                    <input className="input" type={showSecret.oldpwd ? 'text' : 'password'} value={pwd.old_password} onChange={e => setPwd({ ...pwd, old_password: e.target.value })} autoComplete="current-password" spellCheck={false} />
+                    <button type="button" className="secret-toggle" onClick={() => setShowSecret(p => ({ ...p, oldpwd: !p.oldpwd }))} title={showSecret.oldpwd ? '隐藏' : '显示'}>{showSecret.oldpwd ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                  </div>
+                </div>
+                <div className="field"><label>新密码</label>
+                  <div className="secret-input">
+                    <input className="input" type={showSecret.newpwd ? 'text' : 'password'} value={pwd.new_password} onChange={e => setPwd({ ...pwd, new_password: e.target.value })} autoComplete="new-password" spellCheck={false} />
+                    <button type="button" className="secret-toggle" onClick={() => setShowSecret(p => ({ ...p, newpwd: !p.newpwd }))} title={showSecret.newpwd ? '隐藏' : '显示'}>{showSecret.newpwd ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                  </div>
+                </div>
               </div>
             </div>
           </>

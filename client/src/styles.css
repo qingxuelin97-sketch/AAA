@@ -232,7 +232,8 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .char-card .meta h3 { margin: 0 0 5px; font-size: 16px; font-family: var(--sans); font-weight: 650; letter-spacing: -0.005em; }
 .char-card .meta p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.55;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 38px; }
-.char-card .foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-size: 12px; color: var(--faint); }
+.char-card .foot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 12px; font-size: 12px; color: var(--faint); }
+.char-card .foot > div { flex-wrap: wrap; }
 .pill-pub { position: absolute; top: 10px; right: 10px; background: rgba(28, 26, 22, 0.6); color: #fff; backdrop-filter: blur(6px);
   padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
 
@@ -764,7 +765,28 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   .action-panel button { padding: 10px 13px; }
   .bottom-nav a { padding: 7px 0; }
   .bottom-nav a svg { width: 22px; height: 22px; }
+  /* 对话页：菜单项 / 反应 emoji / 记忆删除 / 抽屉关闭 / 好感度徽章 触控放大 */
+  .chat-menu button { padding: 12px 13px; }
+  .chat-menu-row { padding: 10px 13px; }
+  .react-pop button { font-size: 22px; padding: 8px 10px; }
+  .mem-item button { padding: 8px; }
+  .cd-head .speak { width: 40px; height: 40px; }
+  .affinity-badge { padding: 8px 14px 8px 10px; }
+  /* 设置页：标题行 / 危险数据行 / 三列分段 移动端适配，防窄屏溢出 */
+  .section-title { flex-wrap: wrap; gap: 8px; }
+  .section-title > div { flex-wrap: wrap; }
+  .priv-data-row { flex-wrap: wrap; gap: 8px; }
+  .priv-data-row > .btn { width: 100%; justify-content: center; }
+  .seg.seg-3 { grid-template-columns: 1fr; }
+  /* tabs-bar 横滑提示：渐变遮罩暗示可滑动 */
+  .tabs-bar { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%); }
 }
+
+/* 密钥 / 密码输入框：右侧显隐切换按钮 */
+.secret-input { position: relative; display: flex; align-items: center; }
+.secret-input .input { width: 100%; padding-right: 44px; }
+.secret-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: grid; place-items: center; border: none; background: none; color: var(--muted); cursor: pointer; border-radius: 8px; transition: color 0.15s, background 0.15s; }
+.secret-toggle:hover { color: var(--text); background: var(--bg-2); }
 
 /* 极小屏（<420px）单列网格，避免卡片拥挤 */
 @media (max-width: 420px) {
@@ -778,9 +800,9 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .char-hero-bg { position: absolute; inset: 0; }
 .char-hero-bg img, .char-hero-bg video { width: 100%; height: 100%; object-fit: cover; }
 .char-hero-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(251,250,246,0.5), rgba(251,250,246,0.93)); }
-.char-hero-fg { position: relative; display: flex; gap: 18px; align-items: center; padding: clamp(18px, 3vw, 28px); }
+.char-hero-fg { position: relative; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; padding: clamp(18px, 3vw, 28px); }
 .char-hero-fg h2 { font-size: clamp(20px, 3vw, 26px); }
-@media (max-width: 560px) { .char-hero-fg { flex-direction: column; text-align: center; align-items: center; } }
+@media (max-width: 700px) { .char-hero-fg { flex-direction: column; text-align: center; align-items: center; } }
 
 /* ============ Skeleton loaders ============ */
 .skel { position: relative; overflow: hidden; background: #ece7dc; border-radius: 8px; }
@@ -1525,6 +1547,10 @@ body { background-image:
 .chat-drawer { position: absolute; top: 0; right: 0; height: 100%; width: min(360px, 86vw); z-index: 46;
   background: var(--panel); border-left: 1px solid var(--border); box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column; animation: drawerIn 0.34s var(--spring-soft) both; }
+/* 移动端抽屉占满全宽，避免记忆/世界书列表过窄 */
+@media (max-width: 860px) {
+  .chat-drawer { width: 100%; border-left: none; }
+}
 @keyframes drawerIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
 .cd-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .cd-head b { font-size: 14.5px; }
