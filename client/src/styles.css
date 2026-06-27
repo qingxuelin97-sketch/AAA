@@ -275,6 +275,8 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 /* min-height:0 让 flex:1 的滚动区能收缩，否则内容撑开导致父容器溢出、
    输入栏被挤出可见区底部（仿真实测键盘弹起后输入栏 bottom=510 > 可见区=500）。 */
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: clamp(16px, 3vw, 26px) clamp(14px, 4vw, 36px); }
+/* 输入栏占位 spacer：仅移动端沉浸式显示，桌面端输入栏在文档流内不需要 */
+.chat-input-spacer { display: none; }
 .chat-thread { width: 100%; max-width: 780px; margin-inline: auto; display: flex; flex-direction: column; gap: 18px; }
 .msg { display: flex; gap: 11px; max-width: 86%; align-items: flex-end; }
 .msg .avatar { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.12); align-self: flex-end; }
@@ -715,25 +717,24 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .modal-backdrop .card { backdrop-filter: blur(10px); }
 
 /* ---- mobile immersive rooms (no double header) ---- */
-/* 重构方案：CSS 变量 --vh 作为视觉视口真相源（Chat.jsx visualViewport 实时写入），
-   .app-shell / .chat-layout 全链路一起收缩到可见区高度，根本不给 body 留缝隙。
-   不再用 position:fixed（iOS Safari 键盘弹起 offsetTop 错位经典 bug），
-   不再依赖 100dvh 单独收缩（iOS Safari 收缩有延迟，延迟期输入栏滞留键盘遮挡区）。 */
+/* 输入栏独立 fixed：键盘弹起时只输入栏 bottom 上移到键盘上方，
+   chat-main 布局不动，下方被键盘覆盖是自然的，不会"拉出半屏原色背景"。 */
 @media (max-width: 860px) {
   .app-shell:has(.immersive) .mobile-topbar,
   .app-shell:has(.immersive) .bottom-nav { display: none; }
   .app-shell:has(.immersive) .main { padding: 0; }
-  /* 外层锁死：高度=可见区，溢出隐藏，body 永远拖不动、不露原色。
-     min-height:0 覆盖基础规则 .app-shell{min-height:100vh}，否则 min-height 会撑住不让 height 收缩 */
-  .app-shell:has(.immersive) { height: var(--vh, 100dvh); min-height: 0; overflow: hidden; }
-  /* 对话页撑满可见区 */
-  .chat-layout.immersive { height: var(--vh, 100dvh); }
-  /* body 兜底同色：万一有 1px 缝隙也是同色，不是突兀的 #faf9f5 原色。
-     has-bg（角色卡有背景图）时用暗色融入背景图底部，普通对话用 var(--bg) 融合 .chat-main */
-  body:has(.immersive) { background: var(--bg); overscroll-behavior: none; }
-  body:has(.chat-main.has-bg) { background: #15120e; }
+  .chat-layout.immersive { height: 100dvh; }
+  body:has(.immersive) { overscroll-behavior: none; }
   .immersive .chat-head { padding-top: calc(13px + env(safe-area-inset-top)); }
-  .immersive .chat-input-bar { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+  /* 输入栏 fixed：脱离文档流，bottom 由 visualViewport 驱动（见 Chat.jsx） */
+  .immersive .chat-input-bar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 30;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+  /* spacer 占位：在 chat-main 末尾留出输入栏高度，避免最后消息被 fixed 输入栏遮挡。
+     仅移动端沉浸式显示（桌面端输入栏在文档流内不需要占位） */
+  .immersive .chat-input-spacer { display: block; height: calc(96px + env(safe-area-inset-bottom)); flex-shrink: 0; }
   /* the conversation list (browse state) keeps comfortable spacing */
   .chat-list .hd { padding: 14px 16px; }
 }

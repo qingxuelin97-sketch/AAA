@@ -91,24 +91,27 @@ export default function Chat() {
   const autoReadRef = useRef(autoRead);
   useEffect(() => { autoReadRef.current = autoRead; }, [autoRead]);
 
-  // 移动端键盘遮挡修复（重构版）：visualViewport 实时把可见区高度写入 CSS 变量 --vh，
-  // .app-shell + .chat-layout 全链路依赖 var(--vh) 一起收缩到可见区。
-  // 不再直接操作 inline height（React 重渲染会覆盖），改用 CSS 变量最干净。
-  // 100dvh 作为兜底（无 vv 的旧浏览器 / 桌面端）。
+  // 输入栏独立 fixed：键盘弹起时 visualViewport 驱动输入栏 bottom 上移到键盘上方。
+  // chat-main 不收缩，下方被键盘覆盖是自然的（键盘挡住就是挡住），只有输入框被顶上去。
+  // 这样根本不会"拉出半屏原色背景" —— 布局不动，只是输入框上移。
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     let raf = 0;
     const apply = () => {
-      // 写入 --vh：视觉视口高度（键盘弹起时收缩）
-      document.documentElement.style.setProperty('--vh', vv.height + 'px');
+      const bar = inputBarRef.current;
+      if (bar) {
+        // 键盘高度 = 布局视口 - 视觉视口高度 - 视觉视口顶部偏移
+        // 输入栏 bottom = 键盘高度（上移到键盘上方）
+        const kbdH = window.innerHeight - vv.height - vv.offsetTop;
+        bar.style.bottom = (kbdH > 0 ? kbdH : 0) + 'px';
+      }
       const kbd = (window.innerHeight - vv.height) > 120;
       setKbdOpen(kbd);
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
         const el = document.activeElement;
-        // 仅对聊天输入框触发滚入，避免 scrollIntoView 回退到滚动 body 露出顶/底原色
         if (el && el.tagName === 'TEXTAREA' && inputBarRef.current?.contains(el)) {
           el.scrollIntoView({ block: 'nearest' });
         }
@@ -116,12 +119,11 @@ export default function Chat() {
     };
     vv.addEventListener('resize', apply);
     vv.addEventListener('scroll', apply);
-    apply(); // 初始化：进入对话页立即贴合当前可见区
+    apply();
     return () => {
       vv.removeEventListener('resize', apply);
       vv.removeEventListener('scroll', apply);
-      // 卸载清除 --vh，恢复 CSS 100dvh 兜底
-      document.documentElement.style.removeProperty('--vh');
+      if (inputBarRef.current) inputBarRef.current.style.bottom = '';
       if (raf) cancelAnimationFrame(raf);
     };
   }, [conv]);
@@ -631,12 +633,17 @@ export default function Chat() {
                 {STARTERS.map(s => <button key={s} className="starter-chip" onClick={() => send(s)}>{s}</button>)}
               </div>
             )}
-            {actionsOpen && (
-              <div className="action-panel">
-                {QUICK_ACTIONS.map(a => <button key={a} onClick={() => insertAction(a)}>{a}</button>)}
-              </div>
-            )}
+            {/* 输入栏占位：移动端 fixed 输入栏遮挡下方消息，spacer 留出空白避免遮挡 */}
+            <div className="chat-input-spacer" aria-hidden="true" />
+            {/* 输入栏：移动端 CSS 改 position:fixed 脱离文档流，键盘弹起时 visualViewport
+                驱动 bottom 上移到键盘上方。chat-main 布局不动，下方被键盘覆盖是自然的，
+                只有输入框被顶上去 —— 不会"拉出半屏原色背景"。 */}
             <div className="chat-input-bar" ref={inputBarRef}>
+              {actionsOpen && (
+                <div className="action-panel">
+                  {QUICK_ACTIONS.map(a => <button key={a} onClick={() => insertAction(a)}>{a}</button>)}
+                </div>
+              )}
               <div className="box">
                 <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => setActionsOpen(o => !o)} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
                 <textarea ref={inputRef} rows={1} value={input} placeholder={`对 ${character?.name} 说点什么…（Enter 发送，Shift+Enter 换行）`}
@@ -648,51 +655,51 @@ export default function Chat() {
               </div>
             </div>
 
-            {drawerOpen && (() => { const af = affinityInfo(affinity); return (
-              <>
-                <div className="chat-drawer-mask" onClick={() => setDrawerOpen(false)} />
-                <aside className="chat-drawer">
-                  <div className="cd-head">
-                    <Avatar src={character?.avatar} name={character?.name} size={36} />
-                    <b style={{ flex: 1 }}>{character?.name} · 档案</b>
-                    <button className="speak" onClick={() => setDrawerOpen(false)}><X size={16} /></button>
-                  </div>
-                  <div className="cd-body">
-                    <section>
-                      <h4><Heart size={14} /> 好感度</h4>
-                      <div className="af-big">{af.icon} Lv.{af.level} · {af.name}</div>
-                      <div className="af-bar"><span style={{ width: af.pct + '%' }} /></div>
-                      <p className="muted">好感值 {af.value}{af.nextAt ? ` · 距「${AFFINITY_LEVELS[af.level]?.name}」还需 ${af.nextAt - af.value}` : ' · 已是最高羁绊'}</p>
-                    </section>
-                    <section>
-                      <h4><Brain size={14} /> 对话记忆 <span className="muted">角色会始终记住</span></h4>
-                      {memories.length === 0 && <p className="muted" style={{ fontSize: 13 }}>还没有记忆。添加后会注入到每次对话，角色将牢记。</p>}
-                      {memories.map(mm => (
-                        <div className="mem-item" key={mm.id}><span>{mm.content}</span><button onClick={() => delMemory(mm.id)} title="删除"><X size={13} /></button></div>
+          {drawerOpen && (() => { const af = affinityInfo(affinity); return (
+            <>
+              <div className="chat-drawer-mask" onClick={() => setDrawerOpen(false)} />
+              <aside className="chat-drawer">
+                <div className="cd-head">
+                  <Avatar src={character?.avatar} name={character?.name} size={36} />
+                  <b style={{ flex: 1 }}>{character?.name} · 档案</b>
+                  <button className="speak" onClick={() => setDrawerOpen(false)}><X size={16} /></button>
+                </div>
+                <div className="cd-body">
+                  <section>
+                    <h4><Heart size={14} /> 好感度</h4>
+                    <div className="af-big">{af.icon} Lv.{af.level} · {af.name}</div>
+                    <div className="af-bar"><span style={{ width: af.pct + '%' }} /></div>
+                    <p className="muted">好感值 {af.value}{af.nextAt ? ` · 距「${AFFINITY_LEVELS[af.level]?.name}」还需 ${af.nextAt - af.value}` : ' · 已是最高羁绊'}</p>
+                  </section>
+                  <section>
+                    <h4><Brain size={14} /> 对话记忆 <span className="muted">角色会始终记住</span></h4>
+                    {memories.length === 0 && <p className="muted" style={{ fontSize: 13 }}>还没有记忆。添加后会注入到每次对话，角色将牢记。</p>}
+                    {memories.map(mm => (
+                      <div className="mem-item" key={mm.id}><span>{mm.content}</span><button onClick={() => delMemory(mm.id)} title="删除"><X size={13} /></button></div>
+                    ))}
+                    <div className="mem-add">
+                      <input className="input" value={newMem} placeholder="如：我叫小明，养了一只叫奶糖的猫" enterKeyHint="done"
+                        onChange={e => setNewMem(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMemory(); } }} />
+                      <button className="btn sm primary" onClick={addMemory}><Plus size={14} /> 记住</button>
+                    </div>
+                  </section>
+                  <section>
+                    <h4><BookOpen size={14} /> 世界书 / 设定</h4>
+                    {(!character?.world || character.world.length === 0)
+                      ? <p className="muted" style={{ fontSize: 13 }}>该角色未设置世界书条目。</p>
+                      : character.world.map((w, i) => (
+                        <div className="wb-item" key={i}>
+                          <div className="wb-keys">{(w.keys || '常驻').split(',').map(k => k.trim()).filter(Boolean).map((k, j) => <span key={j}>{k}</span>)}</div>
+                          <p>{w.content}</p>
+                        </div>
                       ))}
-                      <div className="mem-add">
-                        <input className="input" value={newMem} placeholder="如：我叫小明，养了一只叫奶糖的猫" enterKeyHint="done"
-                          onChange={e => setNewMem(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMemory(); } }} />
-                        <button className="btn sm primary" onClick={addMemory}><Plus size={14} /> 记住</button>
-                      </div>
-                    </section>
-                    <section>
-                      <h4><BookOpen size={14} /> 世界书 / 设定</h4>
-                      {(!character?.world || character.world.length === 0)
-                        ? <p className="muted" style={{ fontSize: 13 }}>该角色未设置世界书条目。</p>
-                        : character.world.map((w, i) => (
-                          <div className="wb-item" key={i}>
-                            <div className="wb-keys">{(w.keys || '常驻').split(',').map(k => k.trim()).filter(Boolean).map((k, j) => <span key={j}>{k}</span>)}</div>
-                            <p>{w.content}</p>
-                          </div>
-                        ))}
-                    </section>
-                  </div>
-                </aside>
-              </>
-            ); })()}
-          </>
-        )}
+                  </section>
+                </div>
+              </aside>
+            </>
+          ); })()}
+        </>
+      )}
       </div>
       {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
       {previewImg && (
