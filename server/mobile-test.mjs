@@ -121,8 +121,90 @@ try {
   await sleep(600);
   await page.screenshot({ path: path.join(OUT_DIR, '03-chat-focused.png'), fullPage: false });
 
-  // 模拟键盘弹起：visualViewport resize（headless 无真实键盘，用 evaluate 触发）
-  // 这里只能验证静态渲染，真实键盘弹起需要真机。但可检测聚焦后输入栏背景是否变化。
+  // 模拟键盘弹起：headless Chromium 无真实键盘，但可以 Object.defineProperty 覆盖
+  // visualViewport.height（模拟键盘遮挡后视觉视口缩小），再 dispatchEvent resize，
+  // 验证 Chat.jsx 的 visualViewport 监听是否实时把 .chat-layout 的 inline height 收缩到可见区。
+  console.log('· 模拟键盘弹起（vv.height 844→500）…');
+  const kbdSim = await page.evaluate(() => {
+    const vv = window.visualViewport;
+    if (!vv) return { error: 'no visualViewport' };
+    const layout = document.querySelector('.chat-layout.immersive');
+    if (!layout) return { error: 'no .chat-layout.immersive' };
+    // DOMRect 属性是原型 getter，JSON.stringify 会丢失，手动提取成普通对象
+    const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, width: r.width, height: r.height }; };
+    const before = {
+      layoutHeight: layout.style.height || getComputedStyle(layout).height,
+      layoutOffsetHeight: layout.offsetHeight,
+      inputBarRect: rect(document.querySelector('.chat-input-bar')),
+      bodyScrollTop: document.body.scrollTop,
+      vvHeight: vv.height,
+      innerHeight: window.innerHeight,
+    };
+    // 覆盖 visualViewport.height 模拟键盘弹起（键盘占 344px）
+    const KBD_H = 344;
+    Object.defineProperty(vv, 'height', { configurable: true, get: () => window.innerHeight - KBD_H });
+    Object.defineProperty(vv, 'offsetTop', { configurable: true, get: () => 0 });
+    vv.dispatchEvent(new Event('resize'));
+    // 同步读取 apply 后的样式（apply 是同步设 inline height，rAF 部分异步但 height 立即生效）
+    const after = {
+      layoutHeight: layout.style.height,
+      layoutOffsetHeight: layout.offsetHeight,
+      inputBarRect: rect(document.querySelector('.chat-input-bar')),
+      bodyScrollTop: document.body.scrollTop,
+      vvHeight: vv.height,
+    };
+    // 模拟用户上滑（尝试滚动 body）
+    document.body.scrollTop = -100;
+    document.documentElement.scrollTop = -100;
+    const afterScroll = { body: document.body.scrollTop, html: document.documentElement.scrollTop };
+    return { before, after, afterScroll };
+  });
+  console.log('· 键盘模拟:', JSON.stringify(kbdSim, null, 2));
+  await sleep(400);
+  await page.screenshot({ path: path.join(OUT_DIR, '03b-chat-keyboard.png'), fullPage: false });
+
+  // 校验：键盘弹起后输入栏 bottom 必须 <= 视口底部（不被键盘遮挡）
+  const kbdCheck = kbdSim.after ? kbdSim.after.inputBarRect : null;
+  if (kbdCheck) {
+    const kbdBottom = kbdCheck.bottom;
+    const visibleBottom = kbdSim.after.vvHeight; // 可见区底部 = vv.height
+    if (kbdBottom <= visibleBottom + 2) {
+      console.log(`✅ 键盘弹起后输入栏 bottom=${kbdBottom.toFixed(0)} ≤ 可见区=${visibleBottom}，输入栏在键盘上方`);
+    } else {
+      findings.push(`[kbd] 输入栏 bottom=${kbdBottom.toFixed(0)} > 可见区=${visibleBottom}，输入栏被键盘遮挡`);
+      console.log(`❌ 输入栏被键盘遮挡：bottom=${kbdBottom.toFixed(0)} > 可见区=${visibleBottom}`);
+    }
+    // 校验 layout inline height 收缩
+    const inlineH = parseInt(kbdSim.after.layoutHeight);
+    if (inlineH && Math.abs(inlineH - visibleBottom) <= 2) {
+      console.log(`✅ .chat-layout inline height=${inlineH} 实时贴合可见区=${visibleBottom}`);
+    } else {
+      findings.push(`[kbd] .chat-layout height=${kbdSim.after.layoutHeight} 未贴合可见区=${visibleBottom}`);
+      console.log(`❌ .chat-layout height=${kbdSim.after.layoutHeight} 未实时收缩到 ${visibleBottom}`);
+    }
+    // 校验 body 未被滚动
+    if (kbdSim.afterScroll.body === 0 && kbdSim.afterScroll.html === 0) {
+      console.log('✅ 上滑未滚动 body（overscroll-behavior:none 生效）');
+    } else {
+      findings.push(`[kbd] body 被滚动 body=${kbdSim.afterScroll.body} html=${kbdSim.afterScroll.html}`);
+    }
+  }
+
+  // 模拟键盘收起
+  console.log('· 模拟键盘收起…');
+  await page.evaluate(() => {
+    const vv = window.visualViewport;
+    // 恢复 visualViewport.height（删除 getter）
+    try { delete vv.height; } catch { /* */ }
+    try { delete vv.offsetTop; } catch { /* */ }
+    // 重新定义为原始值
+    Object.defineProperty(vv, 'height', { configurable: true, get: () => window.innerHeight });
+    vv.dispatchEvent(new Event('resize'));
+  });
+  await sleep(300);
+  await page.screenshot({ path: path.join(OUT_DIR, '03c-chat-keyboard-closed.png'), fullPage: false });
+
   const focusStyle = await page.evaluate(() => {
     const bar = document.querySelector('.chat-input-bar');
     const cs = getComputedStyle(bar);

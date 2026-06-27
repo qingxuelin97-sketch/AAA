@@ -259,7 +259,7 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   .conv-item .speak { opacity: 0.55; }
 }
 
-.chat-main { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; background: var(--bg); }
+.chat-main { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; min-height: 0; background: var(--bg); }
 .chat-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .chat-bg img, .chat-bg video { width: 100%; height: 100%; object-fit: cover; }
 .chat-bg::after { content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -267,12 +267,14 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .chat-scroll, .chat-input-bar { position: relative; z-index: 1; }
 /* Header sits above the scrolling thread so its dropdown menu / search bar never bleed
    through the messages (both used to share z-index:1 and the later-painted thread won). */
-.chat-head { position: relative; z-index: 30; }
+.chat-head { position: relative; z-index: 30; flex-shrink: 0; }
 .chat-head { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid var(--border);
   background: rgba(251, 250, 246, 0.8); backdrop-filter: saturate(140%) blur(12px); }
 .chat-head .nm { min-width: 0; }
 .chat-head .nm b { font-size: 15.5px; font-weight: 650; font-family: var(--serif); } .chat-head .nm span { font-size: 12px; color: var(--muted); }
-.chat-scroll { flex: 1; overflow-y: auto; padding: clamp(16px, 3vw, 26px) clamp(14px, 4vw, 36px); }
+/* min-height:0 让 flex:1 的滚动区能收缩，否则内容撑开导致父容器溢出、
+   输入栏被挤出可见区底部（仿真实测键盘弹起后输入栏 bottom=510 > 可见区=500）。 */
+.chat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: clamp(16px, 3vw, 26px) clamp(14px, 4vw, 36px); }
 .chat-thread { width: 100%; max-width: 780px; margin-inline: auto; display: flex; flex-direction: column; gap: 18px; }
 .msg { display: flex; gap: 11px; max-width: 86%; align-items: flex-end; }
 .msg .avatar { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.12); align-self: flex-end; }
@@ -301,7 +303,7 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 /* 输入栏：顶部透明 → 底部几乎不透明的渐变。点输入框聚焦后即使键盘弹起，
    输入栏上方也不会突然露出 body 原色块（渐变把过渡做平了）。
    border-top 去掉，沉浸式无边界感。padding-top 加大到 14px 防顶部贴边。 */
-.chat-input-bar { padding: 14px clamp(14px, 4vw, 36px) 16px; border-top: none; background: linear-gradient(180deg, transparent 0%, rgba(251,250,246,0.82) 38%, rgba(251,250,246,0.97) 100%); backdrop-filter: blur(10px); }
+.chat-input-bar { padding: 14px clamp(14px, 4vw, 36px) 16px; border-top: none; flex-shrink: 0; background: linear-gradient(180deg, transparent 0%, rgba(251,250,246,0.82) 38%, rgba(251,250,246,0.97) 100%); backdrop-filter: blur(10px); }
 .chat-input-bar .box { max-width: 780px; margin-inline: auto; display: flex; gap: 8px; align-items: flex-end; background: var(--panel);
   border: 1px solid var(--border-2); border-radius: 20px; padding: 6px 6px 6px 8px; box-shadow: 0 2px 10px rgba(40,33,22,0.06); transition: border-color 0.15s, box-shadow 0.15s; }
 .chat-input-bar .box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
@@ -717,7 +719,12 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   .app-shell:has(.immersive) .mobile-topbar,
   .app-shell:has(.immersive) .bottom-nav { display: none; }
   .app-shell:has(.immersive) .main { padding-bottom: 0; }
-  .immersive { height: 100dvh; }
+  /* 沉浸式对话：移动端 fixed 脱离文档流 + visualViewport 实时驱动 height（见 Chat.jsx）。
+     不再依赖 100dvh 单独收缩 —— iOS Safari 键盘弹起时 100dvh 收缩有延迟，
+     延迟期输入栏滞留键盘遮挡区，用户上滑触发 body 滚动露出原色背景。
+     fixed top:0 + height=vv.height 让布局立即贴合可见区，输入栏（flex 末尾）
+     自动上移到键盘上方。z-index:100 盖住 .app-shell 其他内容。 */
+  .chat-layout.immersive { position: fixed; top: 0; left: 0; right: 0; height: 100dvh; z-index: 100; }
   .immersive .chat-head { padding-top: calc(13px + env(safe-area-inset-top)); }
   .immersive .chat-input-bar { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
   /* the conversation list (browse state) keeps comfortable spacing */
