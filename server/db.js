@@ -384,21 +384,39 @@ db.exec(`CREATE TABLE IF NOT EXISTS script_likes (
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }
 
 // 独立世界书：可脱离角色单独编辑，并跨角色复用（多对多关联）。
-// 三类能力（简单/标准/专家）可在同一本世界书里共存，不再单选档位：
-//   简单能力：关键词触发（keys/content/enabled）
-//   标准能力：触发模式 mode、注入位置 inject_pos、优先级 priority、互斥分组 group_name、
+// 三类能力（通常/高级/专家）可在同一本世界书里共存，不再单选档位：
+//   通常能力：关键词触发（keys/content/enabled）
+//   高级能力：触发模式 mode、注入位置 inject_pos、优先级 priority、互斥分组 group_name、
 //            大小写敏感 case_sensitive、作者备注 comment、排除关键词 exclude_keys、
-//            触发概率 probability、最少轮数 min_turns
+//            触发概率 probability、最少轮数 min_turns、最多触发轮数 max_turns、冷却 cooldown、
+//            AND关键词 required_keys、粘性 sticky、注入深度 depth
 //   专家能力：预注入图片 image_urls / image_keys / image_position、自构前端 front_schema、
-//            提示词叠加 prompt_overlay、前端槽位 front_slot
-//   世界书级：扫描深度 scan_depth、Token 预算 token_budget、递归触发 recursion
+//            提示词叠加 prompt_overlay、前端槽位 front_slot、变量写入 variable_write、
+//            分支 branch、语义检索 vectorize、语气标签 tone
+//   世界书级：扫描深度 scan_depth、Token 预算 token_budget、递归触发 recursion、
+//            最大激活条目数 max_active、世界变量声明 variable_schema、系统注入位置 system_pos、
+//            递归最大轮数 recursion_depth
 // 字段说明：
 //   scan_depth：触发判定时回看最近多少条消息（默认 4）
 //   token_budget：本轮注入世界书设定的最大 Token 数（0 = 不限）
 //   recursion：是否递归触发（被激活条目的 content 中的关键词可继续激活其他条目）
 //   probability：命中后的触发概率（0-100），100 = 必触发
 //   min_turns：对话轮数达到此值后才允许触发（0 = 立即可触发）
+//   max_turns：触发累计达到此轮数后自动停用（0 = 不限）
+//   cooldown：触发后冷却 N 轮内不再触发（0 = 无冷却）
+//   required_keys：必须同时命中全部关键词才触发（AND 逻辑，逗号分隔）
+//   sticky：粘性轮数，一旦触发后持续 N 轮保持激活（0 = 不粘性）
+//   depth：注入到历史第几条消息之后（0 = 当前轮）
+//   variable_write：触发时写入的世界变量（如 met_queen=true，逗号分隔）
+//   branch：分支条件 JSON，按变量值选不同 content
+//   vectorize：是否启用语义检索触发（1=按 embedding 相似度匹配）
+//   tone：语气标签，注入提示词影响叙述风格
+//   max_active：每轮最大激活条目数（防 Token 爆炸，默认 6）
+//   variable_schema：世界变量声明 JSON（变量名/默认值/类型）
+//   system_pos：系统提示词注入位置（before/after/front）
+//   recursion_depth：递归最大轮数（默认 2）
 //   exclude_keys：出现任一关键词时，该条目本轮不触发（黑名单）
+//   folder：条目所属文件夹（用于编辑器分组折叠）
 db.exec(`
 CREATE TABLE IF NOT EXISTS worldbooks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -414,6 +432,10 @@ CREATE TABLE IF NOT EXISTS worldbooks (
   scan_depth INTEGER DEFAULT 4,
   token_budget INTEGER DEFAULT 0,
   recursion INTEGER DEFAULT 0,
+  max_active INTEGER DEFAULT 6,
+  variable_schema TEXT DEFAULT '',
+  system_pos TEXT DEFAULT 'after',
+  recursion_depth INTEGER DEFAULT 2,
   created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS worldbook_entries (
@@ -432,7 +454,17 @@ CREATE TABLE IF NOT EXISTS worldbook_entries (
   front_slot TEXT DEFAULT '',
   probability INTEGER DEFAULT 100,
   min_turns INTEGER DEFAULT 0,
-  exclude_keys TEXT DEFAULT ''
+  exclude_keys TEXT DEFAULT '',
+  max_turns INTEGER DEFAULT 0,
+  cooldown INTEGER DEFAULT 0,
+  required_keys TEXT DEFAULT '',
+  sticky INTEGER DEFAULT 0,
+  depth INTEGER DEFAULT 0,
+  variable_write TEXT DEFAULT '',
+  branch TEXT DEFAULT '',
+  vectorize INTEGER DEFAULT 0,
+  tone TEXT DEFAULT '',
+  folder TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS character_worldbooks (
   character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
@@ -462,6 +494,20 @@ for (const sql of [
   'ALTER TABLE worldbooks ADD COLUMN scan_depth INTEGER DEFAULT 4',
   'ALTER TABLE worldbooks ADD COLUMN token_budget INTEGER DEFAULT 0',
   'ALTER TABLE worldbooks ADD COLUMN recursion INTEGER DEFAULT 0',
+  'ALTER TABLE worldbooks ADD COLUMN max_active INTEGER DEFAULT 6',
+  "ALTER TABLE worldbooks ADD COLUMN variable_schema TEXT DEFAULT ''",
+  "ALTER TABLE worldbooks ADD COLUMN system_pos TEXT DEFAULT 'after'",
+  'ALTER TABLE worldbooks ADD COLUMN recursion_depth INTEGER DEFAULT 2',
+  'ALTER TABLE worldbook_entries ADD COLUMN max_turns INTEGER DEFAULT 0',
+  'ALTER TABLE worldbook_entries ADD COLUMN cooldown INTEGER DEFAULT 0',
+  "ALTER TABLE worldbook_entries ADD COLUMN required_keys TEXT DEFAULT ''",
+  'ALTER TABLE worldbook_entries ADD COLUMN sticky INTEGER DEFAULT 0',
+  'ALTER TABLE worldbook_entries ADD COLUMN depth INTEGER DEFAULT 0',
+  "ALTER TABLE worldbook_entries ADD COLUMN variable_write TEXT DEFAULT ''",
+  "ALTER TABLE worldbook_entries ADD COLUMN branch TEXT DEFAULT ''",
+  'ALTER TABLE worldbook_entries ADD COLUMN vectorize INTEGER DEFAULT 0',
+  "ALTER TABLE worldbook_entries ADD COLUMN tone TEXT DEFAULT ''",
+  "ALTER TABLE worldbook_entries ADD COLUMN folder TEXT DEFAULT ''",
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 export default db;

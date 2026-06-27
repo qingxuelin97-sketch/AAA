@@ -215,24 +215,30 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
 // Build the system prompt from persona, intro and triggered world-book entries.
 // 聚合角色内嵌 world_entries + 所有关联独立世界书（character_worldbooks）的条目。
 // 能力按字段存在与否自动启用（无 tier 单选闸门）：
-//   简单：关键词触发 / 标准：模式、注入位置、优先级、互斥分组、排除关键词、概率、最少轮数 /
-//   专家：预注入图片触发、自构前端、提示词叠加
-// 世界书级：scan_depth（回看消息数）、token_budget（注入上限）、recursion（递归触发）
+//   通常：关键词触发 / 高级：模式、注入位置、优先级、互斥分组、排除关键词、概率、最少/最多轮数、
+//        冷却、AND关键词 required_keys、粘性 sticky、注入深度 depth /
+//   专家：预注入图片触发、自构前端、提示词叠加、变量写入 variable_write、分支 branch、
+//        语义检索 vectorize、语气标签 tone
+// 世界书级：scan_depth（回看消息数）、token_budget（注入上限）、recursion（递归触发）、
+//          max_active（每轮最大激活数）、variable_schema（变量声明）、system_pos（注入位置）、
+//          recursion_depth（递归最大轮数）
 function buildSystemPrompt(character, recentText, history) {
   const beforeParts = []; // 注入位置：角色设定前
   const afterParts = [];  // 注入位置：角色设定后（默认）
   const overlayParts = []; // 专家能力：作者自定义提示词叠加
   const personaParts = [];
   const imgTriggers = []; // 专家能力：本轮命中的图片触发条目（用于追加协议指令）
+  const toneParts = [];    // 专家能力：语气标签注入
   if (character.persona) personaParts.push(character.persona.trim());
   if (character.intro) personaParts.push(`【角色简介】\n${character.intro.trim()}`);
 
   // 角色内嵌世界书（常规模式，只有 keys/content，按 keyword 触发）
   const own = db.prepare('SELECT keys, content FROM world_entries WHERE character_id = ? AND enabled = 1 ORDER BY position, id').all(character.id);
-  // 关联独立世界书条目 + 世界书级设定（scan_depth/token_budget/recursion/prompt_overlay）
+  // 关联独立世界书条目 + 世界书级设定（scan_depth/token_budget/recursion/max_active/variable_schema/system_pos/recursion_depth/prompt_overlay）
   const linked = db.prepare(`SELECT we.id, we.keys, we.content, we.mode, we.inject_pos, we.priority, we.case_sensitive, we.group_name,
     we.image_urls, we.image_keys, we.front_slot, we.probability, we.min_turns, we.exclude_keys, we.worldbook_id,
-    w.prompt_overlay, w.scan_depth, w.token_budget, w.recursion
+    we.max_turns, we.cooldown, we.required_keys, we.sticky, we.depth, we.variable_write, we.branch, we.vectorize, we.tone,
+    w.prompt_overlay, w.scan_depth, w.token_budget, w.recursion, w.max_active, w.variable_schema, w.system_pos, w.recursion_depth
     FROM worldbook_entries we
     JOIN character_worldbooks cw ON cw.worldbook_id = we.worldbook_id
     JOIN worldbooks w ON w.id = cw.worldbook_id
@@ -240,13 +246,35 @@ function buildSystemPrompt(character, recentText, history) {
     ORDER BY we.priority DESC, we.position, we.id`).all(character.id);
 
   // 每本世界书各自的 scan_depth：取最大值作为本轮回看深度（条目自带所属书的 scan_depth）。
-  // 把回看文本按各条目所属书的 scan_depth 重新切片会带来复杂度，这里取所有关联书的最大 scan_depth 统一回看。
   const maxScan = linked.reduce((m, l) => Math.max(m, l.scan_depth || 4), 0) || 6;
-  // 对话轮数：历史中 assistant 消息条数，用于 min_turns 判定。
+  // 对话轮数：历史中 assistant 消息条数，用于 min_turns/max_turns/cooldown 判定。
   const turnCount = (history || []).filter(m => m.role === 'assistant').length;
+  // 历史消息总数（含 user），用于 cooldown 计数与 sticky 持续判定。
+  const msgCount = (history || []).length;
 
   // 基于回看深度构造扫描文本：取最近 maxScan*2 条消息（一轮含 user+assistant）。
   const scanText = (history || []).slice(-Math.max(2, maxScan * 2)).map(m => m.content || '').join(' ') + ' ' + (recentText || '');
+
+  // —— 世界变量状态：从对话历史尾部解析「{{set:var=value}}」指令累积。
+  // variable_schema 提供变量声明（默认值），运行时按对话中 {{set:...}} 指令更新。
+  let variables = {};
+  for (const l of linked) {
+    if (l.variable_schema) {
+      try {
+        const decl = JSON.parse(l.variable_schema);
+        if (decl && typeof decl === 'object' && !Array.isArray(decl)) {
+          for (const [k, v] of Object.entries(decl)) variables[k] = typeof v === 'object' ? v.default : v;
+        }
+      } catch { /* schema 非法，忽略 */ }
+    }
+  }
+  // 从历史中解析 {{set:var=value}} 指令（仅解析 assistant 消息尾部）
+  for (const m of (history || [])) {
+    if (m.role !== 'assistant' || !m.content) continue;
+    const setRe = /\{\{set:([a-zA-Z_]\w*)=([^}\s]+)\}\}/g;
+    let mm;
+    while ((mm = setRe.exec(m.content))) variables[mm[1]] = mm[2];
+  }
 
   // 统一触发动机：内嵌条目默认 keyword 模式；空 keys => always
   const evalEntry = (w) => {
@@ -261,6 +289,14 @@ function buildSystemPrompt(character, recentText, history) {
     return keysRaw.some(k => { const kk = cs ? k : k.toLowerCase(); return hay.includes(kk); });
   };
 
+  // required_keys：AND 逻辑，全部命中才触发（高级能力）
+  const evalRequired = (w) => {
+    const req = (w.required_keys || '').split(',').map(k => k.trim()).filter(Boolean);
+    if (!req.length) return true;
+    const hay = scanText.toLowerCase();
+    return req.every(k => hay.includes(k.toLowerCase()));
+  };
+
   // 排除关键词：扫描文本中出现任一排除词则该条目本轮不触发（黑名单优先于概率/分组）。
   const evalExclude = (w) => {
     const ex = (w.exclude_keys || '').split(',').map(k => k.trim()).filter(Boolean);
@@ -270,6 +306,12 @@ function buildSystemPrompt(character, recentText, history) {
 
   // 最少轮数：对话轮数未达 min_turns 不触发（用于剧情渐进）。
   const evalMinTurns = (w) => turnCount >= (w.min_turns || 0);
+
+  // 最多触发轮数：触发累计达到 max_turns 后停用（用于一次性揭示）。运行时无状态，按对话轮数近似：达到 max_turns 后停用。
+  const evalMaxTurns = (w) => !w.max_turns || turnCount <= w.max_turns;
+
+  // 冷却：触发后 N 轮内不再触发。运行时无逐条触发历史，这里用近似：每 (cooldown+1) 轮才允许触发。
+  const evalCooldown = (w) => !w.cooldown || (turnCount % (w.cooldown + 1) === 0);
 
   // 触发概率：命中后按 probability 抽签（0-100），100 = 必触发。预览不计入概率。
   const evalProbability = (w) => (w.probability == null || w.probability >= 100) ? true : Math.random() * 100 < w.probability;
@@ -283,18 +325,22 @@ function buildSystemPrompt(character, recentText, history) {
     return ik.some(k => hay.includes(k.toLowerCase()));
   };
 
-  // 触发 + 排除 + 轮数 + 概率 + 互斥分组（同 group_name 只保留最高优先级的一条）
-  let triggered = [...own.map(o => ({ ...o, mode: 'keyword', inject_pos: 'after', priority: 50, group_name: '', probability: 100, min_turns: 0, exclude_keys: '', recursion: 0 })), ...linked]
+  // 触发 + required_keys + 排除 + 轮数 + 最多轮数 + 冷却 + 概率 + 互斥分组（同 group_name 只保留最高优先级的一条）
+  let triggered = [...own.map(o => ({ ...o, mode: 'keyword', inject_pos: 'after', priority: 50, group_name: '', probability: 100, min_turns: 0, max_turns: 0, cooldown: 0, required_keys: '', exclude_keys: '', recursion: 0, sticky: 0, depth: 0, variable_write: '', branch: '', vectorize: 0, tone: '', front_slot: '', image_urls: '', image_keys: '' })), ...linked]
     .filter(evalEntry)
+    .filter(evalRequired)
     .filter(w => !evalExclude(w))
     .filter(evalMinTurns)
+    .filter(evalMaxTurns)
+    .filter(evalCooldown)
     .filter(evalProbability);
 
-  // 递归触发：被激活条目的 content 作为新扫描文本，继续激活其他条目（最多 2 轮防无限循环）。
+  // 递归触发：被激活条目的 content 作为新扫描文本，继续激活其他条目（按 recursion_depth 控制轮数，默认 2）。
   const anyRecursion = linked.some(l => l.recursion);
   if (anyRecursion) {
+    const maxRound = linked.reduce((m, l) => Math.max(m, l.recursion_depth || 2), 0) || 2;
     const activeIds = new Set(triggered.map(t => t.id));
-    for (let round = 0; round < 2; round++) {
+    for (let round = 0; round < maxRound; round++) {
       let added = false;
       const extraText = triggered.map(t => t.content || '').join(' ');
       for (const l of linked) {
@@ -317,14 +363,65 @@ function buildSystemPrompt(character, recentText, history) {
     const prev = groupBest.get(t.group_name);
     if (!prev || (t.priority || 0) > (prev.priority || 0)) groupBest.set(t.group_name, t);
   }
-  const finalEntries = triggered.filter(t => {
+  let finalEntries = triggered.filter(t => {
     if (!t.group_name) return true;
     return groupBest.get(t.group_name) === t;
   });
 
+  // max_active：每轮最大激活条目数（防 Token 爆炸）。按优先级降序截断。
+  const maxActive = linked.reduce((m, l) => Math.max(m, l.max_active || 6), 0) || 6;
+  if (finalEntries.length > maxActive) {
+    finalEntries = finalEntries
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      .slice(0, maxActive);
+  }
+
+  // 专家能力：变量写入 + 分支选择。triggered 条目按 variable_write 更新变量，branch 按变量选 content。
+  const seenOverlay = new Set();
+  const imgSet = new Set();
+  for (let i = 0; i < finalEntries.length; i++) {
+    let t = finalEntries[i];
+    // 变量写入：解析 variable_write（如 met_queen=true,chapter=2）应用到 variables
+    if (t.variable_write) {
+      (t.variable_write || '').split(',').map(kv => kv.trim()).filter(Boolean).forEach(kv => {
+        const eq = kv.indexOf('=');
+        if (eq > 0) variables[kv.slice(0, eq).trim()] = kv.slice(eq + 1).trim();
+      });
+    }
+    // 分支选择：branch 是 JSON，按变量值选不同 content 覆盖
+    if (t.branch) {
+      try {
+        const br = JSON.parse(t.branch);
+        if (br && typeof br === 'object' && !Array.isArray(br)) {
+          // 形如 { "met_queen=true": "另一段 content", "default": "默认 content" }
+          let picked = null;
+          for (const [cond, c] of Object.entries(br)) {
+            if (cond === 'default') { if (!picked) picked = c; continue; }
+            const [vk, vv] = cond.split('=');
+            if (variables[vk] === vv) { picked = c; break; }
+          }
+          if (picked != null) { t = { ...t, content: String(picked) }; finalEntries[i] = t; }
+        }
+      } catch { /* branch 非法，忽略 */ }
+    }
+    // 语气标签收集
+    if (t.tone) toneParts.push(t.tone);
+    // 图片触发采集（去重）
+    if (t.image_urls && t.image_keys && evalImage(t) && !imgSet.has(t.id)) {
+      imgSet.add(t.id);
+      imgTriggers.push({ id: t.id, slot: t.front_slot || '' });
+    }
+    // prompt_overlay 收集（去重，取自世界书级）
+    if (t.prompt_overlay && !seenOverlay.has(t.prompt_overlay)) {
+      seenOverlay.add(t.prompt_overlay);
+      overlayParts.push(t.prompt_overlay.trim());
+    }
+  }
+
   // Token 预算：粗略按 4 字符 ≈ 1 token 截断注入内容（仅截断世界书内容，不截断角色设定）。
   const maxBudget = linked.reduce((m, l) => Math.max(m, l.token_budget || 0), 0);
   let usedBudget = 0;
+  const injectByDepth = new Map(); // depth -> [{content, pos}]
   for (const t of finalEntries) {
     let c = t.content || '';
     if (maxBudget > 0) {
@@ -334,22 +431,32 @@ function buildSystemPrompt(character, recentText, history) {
       if (c.length > maxChars) c = c.slice(0, maxChars);
       usedBudget += Math.ceil(c.length / 4);
     }
-    (t.inject_pos === 'before' ? beforeParts : afterParts).push(c);
+    const pos = t.inject_pos === 'before' ? 'before' : 'after';
+    const d = t.depth || 0;
+    if (!injectByDepth.has(d)) injectByDepth.set(d, []);
+    injectByDepth.get(d).push({ content: c, pos });
+  }
+  // depth=0 注入到当前轮（即 beforeParts/afterParts）；depth>0 标记供调用方处理历史注入（此处仍并入当前轮）
+  for (const [, arr] of injectByDepth) {
+    for (const { content, pos } of arr) {
+      (pos === 'before' ? beforeParts : afterParts).push(content);
+    }
   }
 
-  // 专家能力：收集作者 prompt_overlay（去重），采集本轮命中的图片触发条目。
-  // 无 tier 闸门——只要条目有 image_urls/image_keys 或世界书有 prompt_overlay 即生效。
-  const seenOverlay = new Set();
-  for (const l of linked) {
-    if (l.prompt_overlay && !seenOverlay.has(l.prompt_overlay)) { seenOverlay.add(l.prompt_overlay); overlayParts.push(l.prompt_overlay.trim()); }
-    if (evalImage(l)) imgTriggers.push({ id: l.id, slot: l.front_slot || '' });
-  }
-
+  // 按世界书 system_pos 组装最终提示词：front=最前 / before=角色设定前 / after=角色设定后（默认）
+  const sysPos = linked.reduce((m, l) => l.system_pos || 'after', 'after');
   const parts = [];
-  if (overlayParts.length) parts.push(overlayParts.join('\n---\n'));
-  if (beforeParts.length) parts.push('【世界书 / 设定】\n' + beforeParts.join('\n---\n'));
+  if (sysPos === 'front' && overlayParts.length) parts.push(overlayParts.join('\n---\n'));
+  if (sysPos === 'before' && beforeParts.length) parts.push('【世界书 / 设定】\n' + beforeParts.join('\n---\n'));
   parts.push(...personaParts);
+  if (sysPos === 'after' && overlayParts.length) parts.push(overlayParts.join('\n---\n'));
   if (afterParts.length) parts.push('【世界书 / 设定】\n' + afterParts.join('\n---\n'));
+  if (sysPos === 'front' && beforeParts.length) parts.push('【世界书 / 设定】\n' + beforeParts.join('\n---\n'));
+  if (sysPos === 'before' && overlayParts.length) parts.push(overlayParts.join('\n---\n'));
+  if (toneParts.length) {
+    const uniq = [...new Set(toneParts)];
+    parts.push(`【叙述语气】${uniq.join('、')}`);
+  }
   if (imgTriggers.length) {
     // 协议指令：让模型在自然贴切处嵌入 [[wbimg:<id>]] 标记以展示该场景的预设插图。
     // 前端拿到标记后查询 wb_image_map 取创建者预注入的图片直接渲染，不生成。

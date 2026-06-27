@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
 import { BookOpen, Plus, Globe, BookLock, BookCheck, ArrowRight, Search, Sparkles,
-  Image as ImageIcon, Layout, Sliders, Layers } from 'lucide-react';
+  Image as ImageIcon, Layout, Sliders, Layers, Variable, GitBranch } from 'lucide-react';
 
 // 能力徽章定义：按字段是否有数据派生，与编辑器一致。
 const CAPS = [
-  { key: 'cap_image', label: '图片注入', icon: ImageIcon },
-  { key: 'cap_front', label: '自构前端', icon: Layout },
-  { key: 'cap_overlay', label: '提示词叠加', icon: Sliders },
-  { key: 'cap_recursion', label: '递归触发', icon: Layers },
+  { key: 'cap_image', label: '图片注入', icon: ImageIcon, tier: 'expert' },
+  { key: 'cap_front', label: '自构前端', icon: Layout, tier: 'expert' },
+  { key: 'cap_overlay', label: '提示词叠加', icon: Sliders, tier: 'expert' },
+  { key: 'cap_recursion', label: '递归触发', icon: Layers, tier: 'advanced' },
+  { key: 'cap_variable', label: '世界变量', icon: Variable, tier: 'expert' },
+  { key: 'cap_branch', label: '分支选择', icon: GitBranch, tier: 'expert' },
+  { key: 'cap_vector', label: '语义检索', icon: Sparkles, tier: 'expert' },
 ];
 
 export default function Worldbooks() {
@@ -55,10 +58,10 @@ export default function Worldbooks() {
           <div className="wb-hero-content">
             <div className="wb-hero-title">世界书能力体系</div>
             <div className="wb-hero-row">
-              <div className="wb-hero-pill"><BookOpen size={14} /> 简单<span className="wb-hero-pill-sub">关键词 / 常驻</span></div>
-              <div className="wb-hero-pill"><Sliders size={14} /> 标准<span className="wb-hero-pill-sub">正则 / 分组 / 概率 / 计时</span></div>
-              <div className="wb-hero-pill expert"><ImageIcon size={14} /> 专家<span className="wb-hero-pill-sub">图片注入 / 自构前端</span></div>
-              <span className="wb-hero-note">三类能力可在同一本世界书共存，无需二选一</span>
+              <div className="wb-hero-pill tier-normal"><BookOpen size={14} /> 通常<span className="wb-hero-pill-sub">关键词 / 常驻</span></div>
+              <div className="wb-hero-pill tier-advanced"><Sliders size={14} /> 高级<span className="wb-hero-pill-sub">正则 / 分组 / 概率 / 计时</span></div>
+              <div className="wb-hero-pill tier-expert"><Sparkles size={14} /> 专家<span className="wb-hero-pill-sub">图片 / 前端 / 变量 / 分支</span></div>
+              <span className="wb-hero-note">三档能力可在同一本世界书共存，无需二选一</span>
             </div>
           </div>
         </div>
@@ -106,7 +109,7 @@ export default function Worldbooks() {
                         <div className="wb-card-caps">
                           {caps.map(c => {
                             const Icon = c.icon;
-                            return <span key={c.key} className="wb-cap-chip"><Icon size={10} /> {c.label}</span>;
+                            return <span key={c.key} className={`wb-cap-chip tier-${c.tier || 'expert'}`}><Icon size={10} /> {c.label}</span>;
                           })}
                         </div>
                       )}

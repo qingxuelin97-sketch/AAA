@@ -302,6 +302,8 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .world-entry::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 40%, #7c5bd9)); opacity: 0.55; transition: opacity 0.2s; }
 .world-entry:hover::before { opacity: 1; }
 .world-entry:hover { border-color: var(--border-2); }
+.world-entry[data-selected="true"] { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); background: color-mix(in srgb, var(--accent) 4%, var(--panel)); }
+.world-entry[data-selected="true"]::before { opacity: 1; background: linear-gradient(180deg, var(--accent), #7c5bd9); }
 .world-entry .top { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
 .world-entry .top .input { flex: 1; min-width: 0; }
 .wb-mode-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; user-select: none; padding: 4px 9px; border-radius: 8px; transition: background 0.15s, color 0.15s; }
@@ -312,10 +314,15 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .we-adv-grid label { font-size: 11.5px; }
 .we-advanced .field label { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; display: block; }
 
-/* —— 能力徽章条（不再单选档位，三类能力可共存）—— */
+/* —— 能力徽章条（三档共存：通常/高级/专家）—— */
 .wb-cap-bar { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; padding: 10px 12px; border-radius: 12px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, var(--bg-2)), var(--bg-2)); border: 1px solid var(--border); }
 .wb-cap-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: var(--panel); color: var(--muted); border: 1px solid var(--border); }
 .wb-cap-badge.on { color: var(--text); border-color: var(--border-2); }
+/* 三档身份配色：橙=通常 / 紫=高级 / 粉=专家 */
+.wb-cap-badge.tier-normal.on { color: #c97a3f; background: color-mix(in srgb, #c97a3f 14%, var(--panel)); border-color: color-mix(in srgb, #c97a3f 38%, var(--border)); }
+.wb-cap-badge.tier-advanced.on { color: #7c5bd9; background: color-mix(in srgb, #7c5bd9 14%, var(--panel)); border-color: color-mix(in srgb, #7c5bd9 38%, var(--border)); }
+.wb-cap-badge.tier-expert.on { color: #d4677a; background: color-mix(in srgb, #d4677a 14%, var(--panel)); border-color: color-mix(in srgb, #d4677a 38%, var(--border)); }
+/* 兼容旧的 .on.expert 写法 */
 .wb-cap-badge.on.expert { color: #d4677a; background: color-mix(in srgb, #d4677a 14%, var(--panel)); border-color: color-mix(in srgb, #d4677a 38%, var(--border)); }
 .wb-cap-badge .muted { font-weight: 500; }
 .wb-tier-hint { font-size: 12.5px !important; margin-top: -6px !important; margin-bottom: 14px !important; line-height: 1.6; }
@@ -333,6 +340,13 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .wb-adv-section-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .wb-adv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: flex-end; }
 .textarea.mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.6; }
+.input.sm { padding: 6px 9px; font-size: 12.5px; border-radius: 9px; }
+
+/* —— 专家能力面板（独立于高级设定，紫色调）—— */
+.wb-expert-panel { padding: 0; margin-bottom: 16px; overflow: hidden; border: 1px solid color-mix(in srgb, #7c5bd9 22%, var(--border)); }
+.wb-advanced-toggle.expert { background: color-mix(in srgb, #7c5bd9 7%, var(--bg-2)); color: #7c5bd9; }
+.wb-advanced-toggle.expert:hover:not(:disabled) { background: color-mix(in srgb, #7c5bd9 12%, var(--bg-2)); }
+.wb-expert-panel .wb-adv-section-head { color: #7c5bd9; }
 
 /* —— 条目高级面板：四个命名分块 —— */
 .we-block { padding: 11px 12px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--border); margin-bottom: 10px; }
@@ -342,6 +356,9 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .we-block-image .we-block-head { color: #d4677a; }
 .we-block-image code { background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 4px; font-size: 11.5px; }
 [data-theme="dark"] .we-block-image code { background: rgba(255,255,255,0.08); }
+/* 专家能力块：紫粉渐变，区别于图片块 */
+.we-block-expert { background: linear-gradient(135deg, color-mix(in srgb, #7c5bd9 7%, var(--panel)), color-mix(in srgb, #d4677a 5%, var(--panel))); border: 1px dashed color-mix(in srgb, #7c5bd9 36%, var(--border)); }
+.we-block-expert .we-block-head { color: #7c5bd9; }
 
 .wb-editor { max-width: 880px; }
 
@@ -354,6 +371,15 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .wb-img-tag { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, #d4677a 18%, var(--bg-2)); color: #d4677a; display: inline-flex; align-items: center; gap: 3px; }
 .wb-prev-content { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
 .wb-prev-img { font-size: 11.5px; color: #d4677a; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; }
+/* 预览增强：配置元信息 / 多段分组 / 变量声明 / 互斥告警 / 中性标签 */
+.wb-prev-meta { padding: 8px 11px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--border); line-height: 1.7; }
+.wb-prev-group { padding: 10px 12px; border-radius: 11px; background: color-mix(in srgb, var(--accent) 3%, var(--bg-2)); border: 1px solid var(--border); animation: riseIn 0.22s ease both; }
+.wb-prev-group-text { font-size: 12px; font-weight: 600; color: var(--muted); padding: 2px 6px; border-radius: 6px; background: var(--panel); display: inline-block; margin-bottom: 6px; }
+.wb-var-preview { margin-top: 6px; padding: 7px 10px; border-radius: 9px; background: color-mix(in srgb, #7c5bd9 9%, var(--bg-2)); border: 1px solid color-mix(in srgb, #7c5bd9 26%, var(--border)); color: #7c5bd9; font-size: 11.5px; display: flex; align-items: center; gap: 6px; word-break: break-all; }
+.wb-var-preview code { font-size: 11px; background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 4px; }
+[data-theme="dark"] .wb-var-preview code { background: rgba(255,255,255,0.08); }
+.wb-conflict-warn { margin-top: 6px; padding: 7px 10px; border-radius: 9px; background: color-mix(in srgb, #d4677a 10%, var(--bg-2)); border: 1px dashed color-mix(in srgb, #d4677a 40%, var(--border)); color: #b0455a; font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+.wb-img-tag.neutral { color: var(--muted); background: var(--panel); border-color: var(--border); }
 
 /* —— 世界书列表：高阶灵动画风 —— */
 .wb-list-topbar { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent), transparent); }
@@ -366,12 +392,27 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .wb-hero-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .wb-hero-pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--border); font-size: 13px; font-weight: 600; transition: transform 0.2s, border-color 0.2s; }
 .wb-hero-pill:hover { transform: translateY(-2px); }
-.wb-hero-pill.expert { color: #d4677a; border-color: color-mix(in srgb, #d4677a 34%, var(--border)); background: color-mix(in srgb, #d4677a 8%, var(--bg-2)); }
+/* 三档配色（与徽章一致） */
+.wb-hero-pill.tier-normal { color: #c97a3f; border-color: color-mix(in srgb, #c97a3f 34%, var(--border)); background: color-mix(in srgb, #c97a3f 8%, var(--bg-2)); }
+.wb-hero-pill.tier-advanced { color: #7c5bd9; border-color: color-mix(in srgb, #7c5bd9 34%, var(--border)); background: color-mix(in srgb, #7c5bd9 8%, var(--bg-2)); }
+.wb-hero-pill.tier-expert, .wb-hero-pill.expert { color: #d4677a; border-color: color-mix(in srgb, #d4677a 34%, var(--border)); background: color-mix(in srgb, #d4677a 8%, var(--bg-2)); }
 .wb-hero-pill-sub { font-size: 10.5px; color: var(--muted); font-weight: 500; margin-left: 4px; }
 .wb-hero-note { font-size: 12px; color: var(--muted); padding: 6px 12px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 8%, var(--bg-2)); border: 1px dashed color-mix(in srgb, var(--accent) 30%, var(--border)); }
 .wb-list-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
 .wb-search { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--border); flex: 1; min-width: 180px; color: var(--muted); }
 .wb-search input { border: none; background: transparent; outline: none; font-size: 13px; color: var(--text); flex: 1; min-width: 0; }
+
+/* —— 编辑器内：条目列表头 / 内联搜索 / 批量栏 / 文件夹分组 —— */
+.wb-list-head { flex-wrap: wrap; gap: 10px; }
+.wb-list-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.wb-search-inline { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 9px; background: var(--bg-2); border: 1px solid var(--border); color: var(--muted); min-width: 160px; }
+.wb-search-inline input { border: none; background: transparent; outline: none; font-size: 12.5px; color: var(--text); flex: 1; min-width: 0; }
+.wb-batch-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 9px 12px; margin-bottom: 12px; border-radius: 11px; background: color-mix(in srgb, var(--accent) 8%, var(--bg-2)); border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border)); font-size: 12.5px; animation: riseIn 0.2s ease both; }
+.wb-folder-group { margin-bottom: 4px; }
+.wb-folder-head { display: flex; align-items: center; gap: 6px; padding: 7px 10px; margin: 6px 0 4px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 4%, var(--bg-2)); border: 1px solid var(--border); cursor: pointer; font-size: 12.5px; font-weight: 650; color: var(--text); transition: background 0.15s; user-select: none; }
+.wb-folder-head:hover { background: color-mix(in srgb, var(--accent) 8%, var(--bg-2)); }
+.wb-folder-name { color: var(--accent-2); }
+
 .wb-empty { padding: 60px 20px; }
 .wb-grid { gap: 16px; }
 .wb-card .wb-cover { height: 96px; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--accent) 14%, var(--bg-2)), var(--bg-2)); position: relative; overflow: hidden; }
@@ -383,6 +424,9 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .wb-card:hover { box-shadow: var(--shadow-lg), 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
 .wb-card-caps { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
 .wb-cap-chip { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; font-weight: 600; color: #d4677a; background: color-mix(in srgb, #d4677a 12%, var(--bg-2)); border: 1px solid color-mix(in srgb, #d4677a 30%, var(--border)); display: inline-flex; align-items: center; gap: 3px; }
+.wb-cap-chip.tier-normal { color: #c97a3f; background: color-mix(in srgb, #c97a3f 12%, var(--bg-2)); border-color: color-mix(in srgb, #c97a3f 30%, var(--border)); }
+.wb-cap-chip.tier-advanced { color: #7c5bd9; background: color-mix(in srgb, #7c5bd9 12%, var(--bg-2)); border-color: color-mix(in srgb, #7c5bd9 30%, var(--border)); }
+.wb-cap-chip.tier-expert { color: #d4677a; background: color-mix(in srgb, #d4677a 12%, var(--bg-2)); border-color: color-mix(in srgb, #d4677a 30%, var(--border)); }
 
 /* —— Chat 内：[[wbimg:id]] 标记直接展示创建者预注入的图片（不生图）—— */
 .wb-inline-imgs { display: block; margin: 8px 0 4px; }
