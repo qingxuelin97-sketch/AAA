@@ -101,10 +101,10 @@ export default function Chat() {
     const apply = () => {
       const bar = inputBarRef.current;
       if (bar) {
-        // 键盘高度 = 视觉视口被键盘遮挡的高度 = innerHeight - vv.height。
-        // 仅当 offsetTop 为正（顶部栏下压视觉视口）时扣减；
-        // offsetTop 为负（键盘弹起后页面被上推、视觉视口上移）时不扣减，
-        // 否则 kbdH 会被算大、输入栏被顶得过高，与键盘之间露出 WebView 原色背景（黑色间隙）。
+        // 键盘高度 = 布局视口 - 视觉视口底部（offsetTop + height）。
+        // Edge 移动端键盘弹起时 vv.offsetTop 可能为负（视觉视口被上推），
+        // 若照常扣减会让 kbdH 被算大、输入栏被顶过高，与键盘之间露出黑色间隙。
+        // 故仅当 offsetTop 为正（顶部栏下压视觉视口）时才扣减。
         const kbdH = window.innerHeight - vv.height - Math.max(0, vv.offsetTop);
         bar.style.bottom = (kbdH > 0 ? kbdH : 0) + 'px';
       }
@@ -122,9 +122,22 @@ export default function Chat() {
     vv.addEventListener('resize', apply);
     vv.addEventListener('scroll', apply);
     apply();
+    // Edge 兜底：部分 Edge 版本键盘弹起/收起时 visualViewport 不及时触发 resize，
+    // 或触发时 vv.height/offsetTop 仍为旧值。监听 textarea focus/blur 后短延迟重算，
+    // 保证输入栏最终落到正确位置（即使 vv 事件迟到也能补正）。
+    const ta = inputRef.current;
+    const reapply = () => { setTimeout(apply, 60); setTimeout(apply, 240); };
+    if (ta) {
+      ta.addEventListener('focus', reapply);
+      ta.addEventListener('blur', reapply);
+    }
     return () => {
       vv.removeEventListener('resize', apply);
       vv.removeEventListener('scroll', apply);
+      if (ta) {
+        ta.removeEventListener('focus', reapply);
+        ta.removeEventListener('blur', reapply);
+      }
       if (inputBarRef.current) inputBarRef.current.style.bottom = '';
       if (raf) cancelAnimationFrame(raf);
     };
