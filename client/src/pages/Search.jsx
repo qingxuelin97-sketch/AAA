@@ -69,8 +69,8 @@ export default function Search() {
         <div className="seg" style={{ marginBottom: 16 }}>
           {TABS.map(t => <button key={t.k} className={tab === t.k ? 'active' : ''} onClick={() => { setTab(t.k); setRes(null); }}>{t.label}</button>)}
         </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 22 }}>
-          <input className="input" placeholder={current.ph} value={q}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 22 }}>
+          <input className="input" style={{ flex: 1, minWidth: 180 }} placeholder={current.ph} value={q}
             onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && run()} autoFocus />
           <button className="btn primary" onClick={run}><SearchIcon size={16} /> 搜索</button>
         </div>

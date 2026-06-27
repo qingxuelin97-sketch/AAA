@@ -736,6 +736,15 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   border-radius: var(--radius); background: rgba(244,242,236,0.55); backdrop-filter: blur(2px);
   color: var(--muted); font-weight: 600; font-size: 15px; }
 
+/* —— 聊天页加载骨架屏 —— */
+.chat-skel .msg { animation: none; }
+.chat-skel .skel-av { width: 38px; height: 38px; border-radius: 50%; flex: none; }
+.chat-skel .skel-line { height: 12px; width: 80px; border-radius: 6px; margin-bottom: 8px; }
+.chat-skel .skel-bubble { height: 56px; width: 70%; max-width: 320px; border-radius: 14px; }
+.skel { background: linear-gradient(90deg, var(--bg-2) 25%, color-mix(in srgb, var(--bg-2) 60%, var(--panel)) 50%, var(--bg-2) 75%); background-size: 200% 100%; animation: skel-shimmer 1.4s ease-in-out infinite; }
+@keyframes skel-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+
 /* mobile: prevent iOS input auto-zoom (needs >=16px), comfier hit targets */
 @media (max-width: 860px) {
   .input, .textarea, .select { font-size: 16px; }
@@ -3366,6 +3375,11 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 [data-perf="lite"] .pl-atmos-col,
 [data-perf="lite"] .pl-doc.live { animation: none !important; }
 [data-perf="lite"] .chat-aura { display: none; }
+/* lite 模式禁用消息进场动画，流式高频追加时避免低端机卡顿 */
+[data-perf="lite"] .msg { animation: none !important; }
+/* 桌面 lite 模式也禁用聊天顶/底栏的 blur（移动端已由 860px 断点禁用） */
+[data-perf="lite"] .chat-head,
+[data-perf="lite"] .chat-input-bar { backdrop-filter: none; -webkit-backdrop-filter: none; }
 
 /* --- 3. Skip rendering of off-screen cards (spreads paint/layout cost) ---
    `content-visibility: auto` lets the browser not lay out or paint cards that

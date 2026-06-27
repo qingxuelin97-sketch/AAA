@@ -77,11 +77,15 @@ export default function Chat() {
   const [reactFor, setReactFor] = useState(null);
   const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
   const [previewImg, setPreviewImg] = useState(null);
+  const [loadingConv, setLoadingConv] = useState(false);
   const scrollRef = useRef();
   const abortRef = useRef(null);
   const bgmRef = useRef(null);
   const inputRef = useRef(null);
   const inputBarRef = useRef(null);
+  // 流式更新 rAF 节流：累积 delta 到缓冲，每帧最多刷新一次，降低低端机渲染压力
+  const streamBufRef = useRef(null);
+  const streamRafRef = useRef(0);
   const autoReadRef = useRef(autoRead);
   useEffect(() => { autoReadRef.current = autoRead; }, [autoRead]);
 
@@ -106,16 +110,19 @@ export default function Chat() {
   }, [conv]);
 
   // 浮层（抽屉/菜单/搜索/反应面板/编辑）拦截浏览器后退键：打开时压栈，后退先关浮层而非跳路由。
+  const closeAllOverlays = () => {
+    setDrawerOpen(false); setMenuOpen(false); setSearchOpen(false); setSearchQ('');
+    setActionsOpen(false); setReactFor(null); setEditingId(null);
+  };
   const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null;
   useEffect(() => {
     if (!anyOverlayOpen) return;
     history.pushState({ overlay: true }, '');
-    const onPop = () => {
-      setDrawerOpen(false); setMenuOpen(false); setSearchOpen(false); setSearchQ('');
-      setActionsOpen(false); setReactFor(null); setEditingId(null);
-    };
+    const onPop = closeAllOverlays;
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); closeAllOverlays(); history.state?.overlay && history.back(); } };
     window.addEventListener('popstate', onPop);
-    return () => { window.removeEventListener('popstate', onPop); if (history.state?.overlay) history.back(); };
+    document.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('popstate', onPop); document.removeEventListener('keydown', onKey); if (history.state?.overlay) history.back(); };
   }, [anyOverlayOpen]);
   const setFont = (v) => { setFontSize(v); localStorage.setItem(FONT_KEY, v); };
   const toggleAutoRead = () => setAutoRead(v => { const n = !v; localStorage.setItem(AUTOREAD_KEY, n ? '1' : '0'); return n; });
@@ -230,10 +237,11 @@ export default function Chat() {
   useEffect(() => {
     if (!id) { setConv(null); setCharacter(null); setMessages([]); return; }
     setDrawerOpen(false);
+    setLoadingConv(true);
     api('/chat/conversations/' + id).then(d => {
       setConv(d.conversation); setCharacter(d.character); setMessages(d.messages);
       setAffinity(d.conversation.affinity || 0); setMemories(d.conversation.memories || []);
-    }).catch(e => toast(e.message, 'err'));
+    }).catch(e => toast(e.message, 'err')).finally(() => setLoadingConv(false));
   }, [id]);
 
   const scrollToBottom = (behavior = 'smooth') => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
@@ -274,12 +282,32 @@ export default function Chat() {
           try {
             const j = JSON.parse(payload2);
             if (j.error) throw new Error(j.error);
-            if (j.delta) setMessages(m => {
-              const copy = [...m]; copy[copy.length - 1] = { ...copy[copy.length - 1], content: copy[copy.length - 1].content + j.delta };
-              return copy;
-            });
+            if (j.delta) {
+              // rAF 节流：累积 delta 到缓冲，每帧最多刷新一次，降低低端机渲染压力
+              streamBufRef.current = (streamBufRef.current || '') + j.delta;
+              if (!streamRafRef.current) {
+                streamRafRef.current = requestAnimationFrame(() => {
+                  const chunk = streamBufRef.current; streamBufRef.current = ''; streamRafRef.current = 0;
+                  setMessages(m => {
+                    const copy = [...m]; const last = copy[copy.length - 1];
+                    if (last) copy[copy.length - 1] = { ...last, content: (last.content || '') + chunk };
+                    return copy;
+                  });
+                });
+              }
+            }
           } catch (err) { if (err.message && !err.message.includes('JSON')) throw err; }
         }
+      }
+      // 收尾前 flush 残留缓冲，避免末尾 delta 丢失
+      if (streamRafRef.current) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = 0; }
+      if (streamBufRef.current) {
+        const chunk = streamBufRef.current; streamBufRef.current = '';
+        setMessages(m => {
+          const copy = [...m]; const last = copy[copy.length - 1];
+          if (last) copy[copy.length - 1] = { ...last, content: (last.content || '') + chunk };
+          return copy;
+        });
       }
       setMessages(m => {
         const c = [...m]; const last = c[c.length - 1];
@@ -300,7 +328,12 @@ export default function Chat() {
         setMessages(m => { const c = [...m]; const last = c[c.length - 1];
           if (last?._streaming) c[c.length - 1] = { role: 'assistant', content: '（连接出错）' + err.message, _streaming: false }; return c; });
       }
-    } finally { setStreaming(false); abortRef.current = null; }
+    } finally {
+      // 清理流式缓冲与未完成的 rAF，避免内存泄漏或悬空刷新
+      if (streamRafRef.current) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = 0; }
+      streamBufRef.current = null;
+      setStreaming(false); abortRef.current = null;
+    }
   };
 
   const stop = () => { abortRef.current?.abort(); };
@@ -498,6 +531,19 @@ export default function Chat() {
                 );
               })()}
               <div className="chat-thread">
+              {loadingConv && messages.length === 0 && (
+                <div className="chat-skel">
+                  {[0, 1, 2].map(k => (
+                    <div key={k} className={'msg assistant' + (k > 0 ? ' run-cont' : ' run-start')}>
+                      <div className="skel skel-av" />
+                      <div className="msg-col">
+                        <div className="skel skel-line" style={{ width: '40%' }} />
+                        <div className="skel skel-bubble" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {messages.map((m, i) => {
                 const q = searchQ.trim().toLowerCase();
                 if (q && !(m.content || '').toLowerCase().includes(q)) return null;
