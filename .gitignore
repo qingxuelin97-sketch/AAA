@@ -7,6 +7,8 @@ server/uploads/*
 !server/uploads/.gitkeep
 shots/
 shots-static/
+mobile-shots/
+server/mobile-test.tmp.sqlite*
 .DS_Store
 *.log
 server/smoke.tmp.sqlite*

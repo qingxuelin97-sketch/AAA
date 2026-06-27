@@ -298,7 +298,10 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .typing span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); margin-right: 4px; animation: blink 1.2s infinite; }
 .typing span:nth-child(2) { animation-delay: 0.2s; } .typing span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-.chat-input-bar { padding: 12px clamp(14px, 4vw, 36px) 16px; border-top: 1px solid var(--border); background: rgba(251, 250, 246, 0.85); backdrop-filter: blur(10px); }
+/* 输入栏：顶部透明 → 底部几乎不透明的渐变。点输入框聚焦后即使键盘弹起，
+   输入栏上方也不会突然露出 body 原色块（渐变把过渡做平了）。
+   border-top 去掉，沉浸式无边界感。padding-top 加大到 14px 防顶部贴边。 */
+.chat-input-bar { padding: 14px clamp(14px, 4vw, 36px) 16px; border-top: none; background: linear-gradient(180deg, transparent 0%, rgba(251,250,246,0.82) 38%, rgba(251,250,246,0.97) 100%); backdrop-filter: blur(10px); }
 .chat-input-bar .box { max-width: 780px; margin-inline: auto; display: flex; gap: 8px; align-items: flex-end; background: var(--panel);
   border: 1px solid var(--border-2); border-radius: 20px; padding: 6px 6px 6px 8px; box-shadow: 0 2px 10px rgba(40,33,22,0.06); transition: border-color 0.15s, box-shadow 0.15s; }
 .chat-input-bar .box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
@@ -1091,10 +1094,16 @@ body { background-image:
 /* flatter cards: lighter default shadow, lift only on hover */
 .card { box-shadow: var(--shadow-sm); }
 .char-card, .room-row, .pkg, .skel-card, .adm-row, .lb-row, .ann-item, .world-entry { box-shadow: var(--shadow-sm); }
-.chat-head, .chat-input-bar { background: rgba(255,255,255,0.8); }
+/* light 默认主题：顶部栏稍不透明白，底部输入栏走三段渐变（与基础规则一致，这里显式声明保险） */
+.chat-head { background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); }
+.chat-input-bar { background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.82) 38%, rgba(255,255,255,0.97) 100%); }
 /* When a chat background image/video is set: no full scrim, transparent top bar + bottom gradient for input readability (沉浸) */
 .chat-bg::after { display: none; }
 .has-bg .chat-head { background: transparent; backdrop-filter: none; border-color: transparent; }
+/* has-bg 下输入栏：浅色高不透明渐变，顶部 0% 透明看背景图，底部 98% 几乎不透明保证 textarea 文字可读。
+   配合 backdrop-filter: blur(10px)（继承自基础规则）把背景图模糊，既保留沉浸感又不露 body 原色。
+   旧版用 rgba(0,0,0,0.18)/0.52 深黑半透明，在浅色背景图上透出背景，像半屏原色背景被拉出来。 */
+.has-bg .chat-input-bar { background: linear-gradient(180deg, transparent 0%, rgba(251,250,246,0.82) 38%, rgba(251,250,246,0.98) 100%); }
 .has-bg .chat-head .nm b { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.55); }
 .has-bg .chat-head .nm span { color: rgba(255,255,255,0.88); text-shadow: 0 1px 4px rgba(0,0,0,0.55); }
 
@@ -1466,8 +1475,13 @@ body { background-image:
 [data-theme="dark"] .topbar { background: rgba(19,19,24,0.82); }
 [data-theme="dark"] .mobile-topbar { background: rgba(19,19,24,0.9); }
 [data-theme="dark"] .bottom-nav { background: rgba(15,15,20,0.94); }
-[data-theme="dark"] .chat-head, [data-theme="dark"] .chat-input-bar { background: rgba(22,22,28,0.82); }
-[data-theme="dark"] .has-bg .chat-head, [data-theme="dark"] .has-bg .chat-input-bar { background: transparent; }
+/* dark 主题：顶部栏深色稍不透明，输入栏三段渐变。之前是纯色 rgba(22,22,28,0.82)，键盘弹起露出原色块。 */
+[data-theme="dark"] .chat-head { background: rgba(22,22,28,0.9); }
+[data-theme="dark"] .chat-input-bar { background: linear-gradient(180deg, transparent 0%, rgba(21,18,14,0.82) 38%, rgba(21,18,14,0.97) 100%); }
+/* dark + has-bg：之前是 transparent（优先级 0,3,0 覆盖一切），导致深色背景图 + 输入栏完全透明，文字看不清且露 body。
+   改为深色半透明渐变：顶部透明看背景，底部 95% 不透明压暗保证可读。 */
+[data-theme="dark"] .has-bg .chat-head { background: transparent; }
+[data-theme="dark"] .has-bg .chat-input-bar { background: linear-gradient(180deg, transparent 0%, rgba(21,18,14,0.82) 38%, rgba(21,18,14,0.98) 100%); }
 [data-theme="dark"] .theater-stage { background: rgba(22,22,28,0.7); }
 /* toggles / segmented / tabs */
 [data-theme="dark"] .switch .track { background: #45464f; }
@@ -2970,9 +2984,9 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 .chat-input-bar .box:focus-within { border-color: transparent;
   box-shadow: 0 0 0 1.5px var(--accent), 0 0 0 5px var(--accent-ring), 0 14px 34px rgba(217,119,87,0.14); }
 [data-theme="dark"] .chat-input-bar { background: linear-gradient(180deg, transparent 0%, rgba(21,18,14,0.78) 34%, rgba(21,18,14,0.96) 100%); }
-/* has-bg 模式：输入栏底部加深渐变保证文字可读，深色主题同样生效（不再被 transparent 覆盖） */
-.has-bg .chat-input-bar,
-[data-theme="dark"] .has-bg .chat-input-bar { background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.18) 34%, rgba(0,0,0,0.52) 100%); }
+/* has-bg 模式：交由前面 .has-bg .chat-input-bar / [data-theme="dark"] .has-bg .chat-input-bar 规则处理。
+   此处不再重复声明，避免末尾规则覆盖前置的浅色高不透明渐变（旧版用 rgba(0,0,0,0.18)/0.52 深黑半透明，
+   在浅色背景图上会透出背景，视觉上像半屏原色背景被拉出来）。 */
 
 /* ---- 回到底部按钮精修 ---- */
 .scroll-bottom-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--panel); border: 1px solid var(--border-2);
