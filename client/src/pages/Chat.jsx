@@ -101,9 +101,11 @@ export default function Chat() {
     const apply = () => {
       const bar = inputBarRef.current;
       if (bar) {
-        // 键盘高度 = 布局视口 - 视觉视口高度 - 视觉视口顶部偏移
-        // 输入栏 bottom = 键盘高度（上移到键盘上方）
-        const kbdH = window.innerHeight - vv.height - vv.offsetTop;
+        // 键盘高度 = 视觉视口被键盘遮挡的高度 = innerHeight - vv.height。
+        // 仅当 offsetTop 为正（顶部栏下压视觉视口）时扣减；
+        // offsetTop 为负（键盘弹起后页面被上推、视觉视口上移）时不扣减，
+        // 否则 kbdH 会被算大、输入栏被顶得过高，与键盘之间露出 WebView 原色背景（黑色间隙）。
+        const kbdH = window.innerHeight - vv.height - Math.max(0, vv.offsetTop);
         bar.style.bottom = (kbdH > 0 ? kbdH : 0) + 'px';
       }
       const kbd = (window.innerHeight - vv.height) > 120;
