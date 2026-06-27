@@ -384,8 +384,15 @@ db.exec(`CREATE TABLE IF NOT EXISTS script_likes (
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }
 
 // 独立世界书：可脱离角色单独编辑，并跨角色复用（多对多关联）。
-// 高级模式字段：mode（触发模式）/ inject_pos（注入位置）/ priority（优先级）/
-// case_sensitive（大小写）/ group_name（互斥分组）/ comment（作者备注）。
+// 创作者档位 tier：
+//   normal  —— 通常档：关键词触发，仅 keys/content/enabled，≤30 条
+//   advanced—— 高级档：mode/inject_pos/priority/group_name/case_sensitive/comment，≤100 条
+//   expert  —— 专家档：在 advanced 基础上新增「图片触发」与「自构对话前端」，≤200 条
+//   - front_schema：玩家自构对话前端布局 JSON（layout/slots/accent）
+//   - prompt_overlay：叠加在系统提示词上的专家指令模板
+// 条目专家级字段：
+//   - image_prompt / image_keys / image_position：在文中塞入关联提示词触发图片
+//   - front_slot：将条目绑定到 front_schema 中具名 slot（在对应位置渲染）
 db.exec(`
 CREATE TABLE IF NOT EXISTS worldbooks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -393,8 +400,11 @@ CREATE TABLE IF NOT EXISTS worldbooks (
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
   tags TEXT DEFAULT '',
+  tier TEXT DEFAULT 'normal',
   is_public INTEGER DEFAULT 0,
   uses INTEGER DEFAULT 0,
+  front_schema TEXT DEFAULT '',
+  prompt_overlay TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS worldbook_entries (
@@ -406,7 +416,11 @@ CREATE TABLE IF NOT EXISTS worldbook_entries (
   priority INTEGER DEFAULT 50,
   case_sensitive INTEGER DEFAULT 0,
   group_name TEXT DEFAULT '',
-  comment TEXT DEFAULT ''
+  comment TEXT DEFAULT '',
+  image_prompt TEXT DEFAULT '',
+  image_keys TEXT DEFAULT '',
+  image_position TEXT DEFAULT 'inline',
+  front_slot TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS character_worldbooks (
   character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
@@ -414,14 +428,21 @@ CREATE TABLE IF NOT EXISTS character_worldbooks (
   PRIMARY KEY (character_id, worldbook_id)
 );
 `);
-// 迁移：已有 worldbook_entries 数据库补齐高级模式列。
+// 迁移：已有数据库补齐高级模式列与专家档列。
 for (const sql of [
   "ALTER TABLE worldbook_entries ADD COLUMN mode TEXT DEFAULT 'keyword'",
   "ALTER TABLE worldbook_entries ADD COLUMN inject_pos TEXT DEFAULT 'after'",
   'ALTER TABLE worldbook_entries ADD COLUMN priority INTEGER DEFAULT 50',
   'ALTER TABLE worldbook_entries ADD COLUMN case_sensitive INTEGER DEFAULT 0',
-  'ALTER TABLE worldbook_entries ADD COLUMN group_name TEXT DEFAULT \'\'',
-  'ALTER TABLE worldbook_entries ADD COLUMN comment TEXT DEFAULT \'\'',
+  "ALTER TABLE worldbook_entries ADD COLUMN group_name TEXT DEFAULT ''",
+  "ALTER TABLE worldbook_entries ADD COLUMN comment TEXT DEFAULT ''",
+  "ALTER TABLE worldbook_entries ADD COLUMN image_prompt TEXT DEFAULT ''",
+  "ALTER TABLE worldbook_entries ADD COLUMN image_keys TEXT DEFAULT ''",
+  "ALTER TABLE worldbook_entries ADD COLUMN image_position TEXT DEFAULT 'inline'",
+  "ALTER TABLE worldbook_entries ADD COLUMN front_slot TEXT DEFAULT ''",
+  "ALTER TABLE worldbooks ADD COLUMN tier TEXT DEFAULT 'normal'",
+  "ALTER TABLE worldbooks ADD COLUMN front_schema TEXT DEFAULT ''",
+  "ALTER TABLE worldbooks ADD COLUMN prompt_overlay TEXT DEFAULT ''",
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 export default db;

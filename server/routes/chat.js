@@ -216,19 +216,25 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
 // 聚合角色内嵌 world_entries + 所有关联独立世界书（character_worldbooks）的条目。
 // 支持高级模式：触发模式（keyword/regex/always）、注入位置（before/after）、
 // 优先级（高优先级先注入）、互斥分组（同组只取最高优先级条目）、大小写敏感。
+// 专家档：注入作者 prompt_overlay；若条目含图片关键词，向系统提示词追加图片触发协议指令，
+// 引导模型在回复命中关键词时嵌入 [[wbimg:<entryId>]] 标记，由前端解析为可生成图片占位。
 function buildSystemPrompt(character, recentText) {
   const beforeParts = []; // 注入位置：角色设定前
   const afterParts = [];  // 注入位置：角色设定后（默认）
+  const overlayParts = []; // 专家档：作者自定义提示词叠加
   const personaParts = [];
+  const imgTriggers = []; // 专家档：本轮命中的图片触发条目（用于追加协议指令）
   if (character.persona) personaParts.push(character.persona.trim());
   if (character.intro) personaParts.push(`【角色简介】\n${character.intro.trim()}`);
 
   // 角色内嵌世界书（常规模式，只有 keys/content，按 keyword 触发）
   const own = db.prepare('SELECT keys, content FROM world_entries WHERE character_id = ? AND enabled = 1 ORDER BY position, id').all(character.id);
-  // 关联独立世界书条目（含高级模式字段）
-  const linked = db.prepare(`SELECT we.keys, we.content, we.mode, we.inject_pos, we.priority, we.case_sensitive, we.group_name
+  // 关联独立世界书条目（含高级/专家字段）
+  const linked = db.prepare(`SELECT we.id, we.keys, we.content, we.mode, we.inject_pos, we.priority, we.case_sensitive, we.group_name,
+    we.image_prompt, we.image_keys, we.front_slot, w.tier, w.prompt_overlay
     FROM worldbook_entries we
     JOIN character_worldbooks cw ON cw.worldbook_id = we.worldbook_id
+    JOIN worldbooks w ON w.id = cw.worldbook_id
     WHERE cw.character_id = ? AND we.enabled = 1
     ORDER BY we.priority DESC, we.position, we.id`).all(character.id);
 
@@ -243,6 +249,15 @@ function buildSystemPrompt(character, recentText) {
       return keysRaw.some(k => { try { const re = new RegExp(k, cs ? '' : 'i'); return re.test(recentText || ''); } catch { return false; } });
     }
     return keysRaw.some(k => { const kk = cs ? k : k.toLowerCase(); return hay.includes(kk); });
+  };
+
+  // 专家档：图片关键词独立判定（与条目文本触发解耦，可单独命中）。
+  const evalImage = (w) => {
+    if (!w.image_prompt || !w.image_keys) return false;
+    const ik = (w.image_keys || '').split(',').map(k => k.trim()).filter(Boolean);
+    if (ik.length === 0) return true;
+    const hay = (recentText || '').toLowerCase();
+    return ik.some(k => hay.includes(k.toLowerCase()));
   };
 
   // 触发 + 互斥分组（同 group_name 只保留最高优先级的一条）
@@ -262,10 +277,27 @@ function buildSystemPrompt(character, recentText) {
   for (const t of finalEntries) {
     (t.inject_pos === 'before' ? beforeParts : afterParts).push(t.content);
   }
+
+  // 专家档：收集作者 prompt_overlay（去重），并采集本轮命中的图片触发条目，
+  // 构造 [[wbimg:<entryId>]] 协议指令注入到系统提示词，让模型在回复里嵌入图片标记。
+  const seenOverlay = new Set();
+  for (const l of linked) {
+    if (l.tier !== 'expert') continue;
+    if (l.prompt_overlay && !seenOverlay.has(l.prompt_overlay)) { seenOverlay.add(l.prompt_overlay); overlayParts.push(l.prompt_overlay.trim()); }
+    if (evalImage(l)) imgTriggers.push({ id: l.id, prompt: l.image_prompt, slot: l.front_slot || '' });
+  }
+
   const parts = [];
+  if (overlayParts.length) parts.push(overlayParts.join('\n---\n'));
   if (beforeParts.length) parts.push('【世界书 / 设定】\n' + beforeParts.join('\n---\n'));
   parts.push(...personaParts);
   if (afterParts.length) parts.push('【世界书 / 设定】\n' + afterParts.join('\n---\n'));
+  if (imgTriggers.length) {
+    // 协议指令：让模型在合适时机（场景/情绪转换时）嵌入 [[wbimg:<id>]] 标记。
+    // 前端解析标记后懒生成图片，避免无谓的图片费用。
+    const list = imgTriggers.map(t => `[[wbimg:${t.id}]] -> ${String(t.prompt).slice(0, 200)}`).join('\n');
+    parts.push(`【插图协议 / 你可以在叙述中嵌入以下标记触发现场插图，仅在自然贴切时使用，每条最多一次】\n${list}`);
+  }
   parts.push(`你正在扮演「${character.name}」。请始终保持角色设定，使用沉浸式的第一人称叙述，不要跳出角色，不要提及你是 AI。`);
   return parts.join('\n\n');
 }
@@ -297,7 +329,25 @@ router.post('/conversations', authRequired, (req, res) => {
 });
 
 const parseMem = (conv) => { try { conv.memories = JSON.parse(conv.memories || '[]'); } catch { conv.memories = []; } return conv; };
-const withWorld = (c) => { if (c) c.world = db.prepare('SELECT * FROM world_entries WHERE character_id = ? ORDER BY position, id').all(c.id); return c; };
+const withWorld = (c) => {
+  if (!c) return c;
+  c.world = db.prepare('SELECT * FROM world_entries WHERE character_id = ? ORDER BY position, id').all(c.id);
+  // 关联的独立世界书：暴露 tier / front_schema / prompt_overlay / 命中过的图片条目，
+  // 供前端在专家档下渲染「自构对话前端」与解析 [[wbimg:id]] 标记。
+  c.linked_worldbooks = db.prepare(`SELECT w.id, w.name, w.tier, w.front_schema, w.prompt_overlay
+    FROM character_worldbooks cw JOIN worldbooks w ON w.id = cw.worldbook_id
+    WHERE cw.character_id = ? ORDER BY w.id`).all(c.id);
+  // 专家档：扁平化所有图片触发条目（id -> { prompt, position, slot }），供前端解析 [[wbimg:id]] 标记。
+  const wbIds = c.linked_worldbooks.filter(w => w.tier === 'expert').map(w => w.id);
+  if (wbIds.length) {
+    const rows = db.prepare(`SELECT we.id, we.image_prompt, we.image_position, we.front_slot, we.worldbook_id
+      FROM worldbook_entries we WHERE we.worldbook_id IN (${wbIds.map(() => '?').join(',')})
+      AND we.image_prompt != '' AND we.image_keys != '' AND we.enabled = 1`).all(...wbIds);
+    c.wb_image_map = {};
+    for (const r of rows) c.wb_image_map[r.id] = { prompt: r.image_prompt, position: r.image_position || 'inline', slot: r.front_slot || '', worldbook_id: r.worldbook_id };
+  }
+  return c;
+};
 
 router.get('/conversations/:id', authRequired, (req, res) => {
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);

@@ -4,7 +4,8 @@ import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { speakBrowser } from '../voice.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { generateImage } from '../imagegen.js';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
 const FONT_KEY = 'huanyu_chat_font';
@@ -27,6 +28,26 @@ function affinityInfo(v) {
   const cur = AFFINITY_LEVELS[idx], next = AFFINITY_LEVELS[idx + 1];
   const pct = next ? Math.min(100, Math.round((v - cur.min) / (next.min - cur.min) * 100)) : 100;
   return { level: idx + 1, name: cur.name, icon: cur.icon, pct, value: v, nextAt: next ? next.min : null };
+}
+
+// —— 专家档世界书：[[wbimg:<entryId>]] 标记协议 ——
+// 模型在专家世界书触发时嵌入此标记。前端按 wb_image_map[id] 解析为「点击生成」图片占位。
+const WBIMG_RE = /\[\[wbimg:(\d+)\]\]/g;
+
+// 把一段助手文本拆成 [text | { marker, id, meta }] 交替片段，供气泡按片段渲染。
+function splitWbMarkers(text, imageMap) {
+  if (!text || !imageMap) return [{ text }];
+  const out = [];
+  let last = 0, m;
+  WBIMG_RE.lastIndex = 0;
+  while ((m = WBIMG_RE.exec(text))) {
+    if (m.index > last) out.push({ text: text.slice(last, m.index) });
+    const id = m[1];
+    out.push({ marker: true, id, meta: imageMap[id] || null });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last) });
+  return out;
 }
 
 export default function Chat() {
@@ -56,6 +77,7 @@ export default function Chat() {
   const [autoRead, setAutoRead] = useState(() => localStorage.getItem(AUTOREAD_KEY) === '1');
   const [reactFor, setReactFor] = useState(null);
   const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
+  const [wbImgs, setWbImgs] = useState({}); // 专家档：[[wbimg:id]] 标记的已生成/生成中图片缓存
   const scrollRef = useRef();
   const abortRef = useRef(null);
   const bgmRef = useRef(null);
@@ -274,6 +296,54 @@ export default function Chat() {
     catch { toast('复制失败', 'err'); }
   };
 
+  // 专家档世界书：点击 [[wbimg:id]] 占位后调用平台 AI 生图（按平台费率扣金币）。
+  // 失败时回写错误状态，让玩家可重试。
+  const genWbImg = async (entryId, prompt) => {
+    const key = String(entryId);
+    if (wbImgs[key]?.loading || wbImgs[key]?.url) return;
+    setWbImgs(p => ({ ...p, [key]: { loading: true } }));
+    try {
+      const d = await generateImage({ prompt, size: '1024x1024' });
+      setWbImgs(p => ({ ...p, [key]: { url: d.image, loading: false } }));
+    } catch (e) {
+      setWbImgs(p => ({ ...p, [key]: { loading: false, error: e.message || '生成失败' } }));
+      toast(e.message || '生成失败', 'err');
+    }
+  };
+
+  // 气泡内容渲染：专家档助手消息可含 [[wbimg:id]] 标记，渲染为可点击生图的占位块。
+  // 无标记时退化为纯文本，保持原有打字机/换行行为。
+  const imageMap = character?.wb_image_map;
+  const renderBubbleContent = (content, role) => {
+    if (!content) return null;
+    if (role !== 'assistant' || !imageMap || !WBIMG_RE.test(content)) {
+      // WBIMG_RE.test 设置了 lastIndex，但因为是 /g 正则在 .test 后会推进 lastIndex，
+      // 由于我们每次都新建局部匹配，这里通过 splitWbMarkers 统一处理避免状态污染。
+      WBIMG_RE.lastIndex = 0;
+      return content;
+    }
+    WBIMG_RE.lastIndex = 0;
+    const parts = splitWbMarkers(content, imageMap);
+    return parts.map((seg, i) => {
+      if (!seg.marker) return <span key={i}>{seg.text}</span>;
+      const key = String(seg.id);
+      const meta = seg.meta;
+      const cached = wbImgs[key];
+      if (cached?.url) {
+        return <img key={i} className="wb-inline-img" src={cached.url} alt="场景插图" />;
+      }
+      return (
+        <button key={i} className="wb-img-trigger" onClick={() => meta && genWbImg(seg.id, meta.prompt)}
+          disabled={!meta || cached?.loading}
+          title={meta?.prompt || '未知图片'}>
+          {cached?.loading ? <><Sparkles size={12} /> 生成中…</>
+            : cached?.error ? <><ImageIcon size={12} /> 重试生图</>
+            : <><ImageIcon size={12} /> {meta ? '生成场景插图' : '未知插图标记'}</>}
+        </button>
+      );
+    });
+  };
+
   const speak = async (text) => {
     // Browser Web Speech needs no server round-trip (offline / no CORS).
     if (voiceCfg?.voice_protocol === 'browser') { speakBrowser(text, voiceCfg.voice_name, character?.voice_speed, character?.voice_pitch); return; }
@@ -392,6 +462,24 @@ export default function Chat() {
             )}
 
             <div className={'chat-scroll font-' + fontSize} ref={scrollRef} onScroll={onScroll}>
+              {/* 专家档世界书：自构对话前端 banner 槽（若 front_schema 含 banner 类型 slot） */}
+              {character?.linked_worldbooks?.some(w => w.tier === 'expert' && w.front_schema) && (() => {
+                let schema = null;
+                for (const w of character.linked_worldbooks) {
+                  if (w.tier !== 'expert' || !w.front_schema) continue;
+                  try { schema = JSON.parse(w.front_schema); break; } catch { /* */ }
+                }
+                const banner = schema?.slots?.find(s => s.type === 'banner');
+                if (!banner) return null;
+                return (
+                  <div className="wb-front-banner" style={schema.accent ? { ['--wb-accent']: schema.accent } : null}>
+                    {banner.src
+                      ? <img src={banner.src} alt="场景横幅" />
+                      : <div className="wb-front-banner-ph"><Sparkles size={14} /> 专家档自构前端 · {schema.layout} 布局</div>}
+                    <div className="wb-front-banner-cap">{banner.id} slot</div>
+                  </div>
+                );
+              })()}
               <div className="chat-thread">
               {messages.map((m, i) => {
                 const q = searchQ.trim().toLowerCase();
@@ -413,7 +501,9 @@ export default function Chat() {
                       </div>
                     ) : (
                       <div className="bubble">
-                        {m.content || (m._streaming && <span className="typing"><span></span><span></span><span></span></span>)}
+                        {m._streaming && !m.content
+                          ? <span className="typing"><span></span><span></span><span></span></span>
+                          : renderBubbleContent(m.content, m.role)}
                         {m.reaction && <span className="msg-reaction" title="我的反应">{m.reaction}</span>}
                       </div>
                     )}

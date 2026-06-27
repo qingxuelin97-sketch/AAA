@@ -2,13 +2,55 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast } from '../ui.jsx';
-import { Plus, ArrowLeft, Trash, BookOpen, Save, Globe, Settings2, ChevronDown, ChevronUp, Code2, Info } from 'lucide-react';
+import { Plus, ArrowLeft, Trash, BookOpen, Save, Globe, ChevronDown, ChevronUp,
+  Code2, Sparkles, Wand2, Image as ImageIcon, Layout, Play, Eye } from 'lucide-react';
 
-const BLANK = { name: '', description: '', tags: '', is_public: false, entries: [] };
-// 常规条目默认字段；高级条目额外携带 mode/inject_pos/priority 等。
-const newEntry = (advanced = false) => advanced
-  ? { keys: '', content: '', enabled: true, mode: 'keyword', inject_pos: 'after', priority: 50, case_sensitive: false, group_name: '', comment: '' }
-  : { keys: '', content: '', enabled: true };
+const BLANK = { name: '', description: '', tags: '', tier: 'normal', is_public: false, front_schema: '', prompt_overlay: '', entries: [] };
+
+// 三档创作者能力对比：列表显示
+const TIERS = [
+  { id: 'normal', name: '通常', icon: BookOpen, accent: 'var(--accent-2)',
+    desc: '关键词触发 · 跨角色复用 · 适合普通创作者',
+    cap: ['关键词触发', '常驻条目', '≤ 30 条', '公开共享'], limit: 30 },
+  { id: 'advanced', name: '高级', icon: Code2, accent: '#7c5bd9',
+    desc: '正则/常驻/优先级/互斥分组 · 工程化设定',
+    cap: ['正则与常驻', '注入位置', '优先级 + 互斥分组', '作者备注', '≤ 100 条'], limit: 100 },
+  { id: 'expert', name: '专家', icon: Wand2, accent: '#d4677a',
+    desc: '图片触发协议 · 自构对话前端 · 提示词叠加',
+    cap: ['文中塞入关联提示词触发图片', '玩家自构对话前端 (front_schema)', '专家级 prompt_overlay', '全部高级能力', '≤ 200 条'], limit: 200 },
+];
+
+// 条目默认值：按档位返回不同字段集
+const newEntry = (tier) => {
+  const e = { keys: '', content: '', enabled: true };
+  if (tier !== 'normal') Object.assign(e, { mode: 'keyword', inject_pos: 'after', priority: 50, case_sensitive: false, group_name: '', comment: '' });
+  if (tier === 'expert') Object.assign(e, { image_prompt: '', image_keys: '', image_position: 'inline', front_slot: '' });
+  return e;
+};
+
+// 在切换档位时给现有条目补齐/精简字段
+const normalizeEntries = (entries, tier) => entries.map(e => {
+  const out = { keys: e.keys || '', content: e.content || '', enabled: e.enabled !== false };
+  if (tier !== 'normal') Object.assign(out, {
+    mode: e.mode || 'keyword', inject_pos: e.inject_pos || 'after', priority: e.priority ?? 50,
+    case_sensitive: !!e.case_sensitive, group_name: e.group_name || '', comment: e.comment || ''
+  });
+  if (tier === 'expert') Object.assign(out, {
+    image_prompt: e.image_prompt || '', image_keys: e.image_keys || '',
+    image_position: e.image_position || 'inline', front_slot: e.front_slot || ''
+  });
+  return out;
+});
+
+// front_schema 默认模板，让创作者一键起步
+const DEFAULT_SCHEMA = JSON.stringify({
+  layout: 'split', accent: '#d4677a',
+  slots: [
+    { id: 'banner', type: 'banner', bind: '', src: '' },
+    { id: 'side', type: 'image-carousel', bind: 'scene' },
+    { id: 'mood', type: 'text-bar', bind: 'mood' }
+  ]
+}, null, 2);
 
 export default function WorldbookEditor() {
   const { id } = useParams();
@@ -20,9 +62,13 @@ export default function WorldbookEditor() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ownerId, setOwnerId] = useState(null);
-  const [advanced, setAdvanced] = useState(false); // 高级模式开关
-  const [expanded, setExpanded] = useState({}); // 条目高级面板展开状态
+  const [expanded, setExpanded] = useState({});
+  const [showSchema, setShowSchema] = useState(false);
+  const [preview, setPreview] = useState({ text: '', result: null, loading: false });
   const readOnly = editing && user && ownerId != null && ownerId !== user.id;
+
+  const tier = wb.tier || 'normal';
+  const tierMeta = TIERS.find(t => t.id === tier) || TIERS[0];
 
   useEffect(() => {
     if (!editing) { setLoaded(true); return; }
@@ -33,44 +79,49 @@ export default function WorldbookEditor() {
         keys: e.keys || '', content: e.content || '', enabled: e.enabled !== false,
         mode: e.mode || 'keyword', inject_pos: e.inject_pos || 'after',
         priority: e.priority ?? 50, case_sensitive: !!e.case_sensitive,
-        group_name: e.group_name || '', comment: e.comment || ''
+        group_name: e.group_name || '', comment: e.comment || '',
+        image_prompt: e.image_prompt || '', image_keys: e.image_keys || '',
+        image_position: e.image_position || 'inline', front_slot: e.front_slot || '',
+        _id: e.id
       }));
-      // 任意条目使用了高级字段则默认开启高级模式
-      const hasAdvanced = entries.some(e => e.mode !== 'keyword' || e.inject_pos !== 'after' || e.priority !== 50 || e.case_sensitive || e.group_name || e.comment);
-      setAdvanced(hasAdvanced);
-      setWb({ name: w.name, description: w.description, tags: w.tags, is_public: !!w.is_public, entries });
+      setWb({
+        name: w.name, description: w.description, tags: w.tags, tier: w.tier || 'normal',
+        is_public: !!w.is_public, front_schema: w.front_schema || '', prompt_overlay: w.prompt_overlay || '',
+        entries
+      });
       setLoaded(true);
     }).catch(e => toast(e.message, 'err'));
   }, [id]);
 
   const set = (k, v) => setWb(p => ({ ...p, [k]: v }));
-  const addEntry = () => { set('entries', [...wb.entries, newEntry(advanced)]); setExpanded(p => ({ ...p, [wb.entries.length]: advanced })); };
+  const addEntry = () => {
+    if (wb.entries.length >= tierMeta.limit) { toast(`已达 ${tierMeta.name} 档配额上限（${tierMeta.limit} 条）`, 'err'); return; }
+    set('entries', [...wb.entries, newEntry(tier)]);
+    setExpanded(p => ({ ...p, [wb.entries.length]: tier !== 'normal' }));
+  };
   const updEntry = (i, k, v) => set('entries', wb.entries.map((e, j) => j === i ? { ...e, [k]: v } : e));
   const delEntry = (i) => set('entries', wb.entries.filter((_, j) => j !== i));
   const toggleExpand = (i) => setExpanded(p => ({ ...p, [i]: !p[i] }));
 
-  // 切换高级模式时，给现有条目补齐/精简高级字段
-  const toggleAdvanced = () => {
-    const next = !advanced;
-    if (next) {
-      set('entries', wb.entries.map(e => ({
-        ...e, mode: e.mode || 'keyword', inject_pos: e.inject_pos || 'after',
-        priority: e.priority ?? 50, case_sensitive: !!e.case_sensitive,
-        group_name: e.group_name || '', comment: e.comment || ''
-      })));
-    }
-    setAdvanced(next);
+  // 切换档位：升档时补齐字段；normal 时剥离（服务器也会兜底剥离）
+  const changeTier = (nextTier) => {
+    if (readOnly) return;
+    if (nextTier === tier) return;
+    set('tier', nextTier);
+    set('entries', normalizeEntries(wb.entries, nextTier));
+    if (nextTier === 'expert' && !wb.front_schema) set('front_schema', DEFAULT_SCHEMA);
   };
 
   const save = async () => {
     if (!wb.name.trim()) { toast('请填写世界书名称', 'err'); return; }
     setBusy(true);
     try {
+      const payload = { ...wb, entries: normalizeEntries(wb.entries, tier) };
       if (editing) {
-        await api('/worldbooks/' + id, { method: 'PUT', body: wb });
+        await api('/worldbooks/' + id, { method: 'PUT', body: payload });
         toast('已保存');
       } else {
-        const d = await api('/worldbooks', { method: 'POST', body: wb });
+        const d = await api('/worldbooks', { method: 'POST', body: payload });
         toast('已创建');
         nav('/worldbook/' + d.worldbook.id + '/edit', { replace: true });
       }
@@ -84,6 +135,16 @@ export default function WorldbookEditor() {
     catch (e) { toast(e.message, 'err'); }
   };
 
+  // 触发预览：调用后端 test-trigger
+  const runPreview = async () => {
+    if (!editing) { toast('请先保存后再预览触发', 'err'); return; }
+    setPreview(p => ({ ...p, loading: true }));
+    try {
+      const d = await api('/worldbooks/' + id + '/test-trigger', { method: 'POST', body: { text: preview.text } });
+      setPreview(p => ({ ...p, result: d, loading: false }));
+    } catch (e) { toast(e.message, 'err'); setPreview(p => ({ ...p, loading: false })); }
+  };
+
   if (!loaded) return (
     <><div className="topbar"><button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button><div style={{ flex: 1 }}><h1>世界书</h1></div></div>
       <div className="page"><div className="empty">载入中…</div></div></>
@@ -93,11 +154,45 @@ export default function WorldbookEditor() {
     <>
       <div className="topbar">
         <button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button>
-        <div style={{ flex: 1 }}><h1>{editing ? wb.name || '世界书' : '新建世界书'}</h1><div className="sub"><BookOpen size={11} style={{ verticalAlign: -1 }} /> 独立世界书 · 可跨角色复用{readOnly ? ' · 只读' : ''}</div></div>
+        <div style={{ flex: 1 }}>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {editing ? wb.name || '世界书' : '新建世界书'}
+            <span className={'wb-tier-chip tier-' + tier}>{tierMeta.name}档</span>
+          </h1>
+          <div className="sub"><BookOpen size={11} style={{ verticalAlign: -1 }} /> 独立世界书 · 可跨角色复用{readOnly ? ' · 只读' : ''}</div>
+        </div>
         {editing && !readOnly && <button className="btn ghost danger" onClick={del} title="删除"><Trash size={15} /></button>}
         {!readOnly && <button className="btn primary" onClick={save} disabled={busy}><Save size={15} /> {busy ? '保存中…' : '保存'}</button>}
       </div>
-      <div className="page" style={{ maxWidth: 860 }}>
+
+      <div className="page wb-editor">
+        {/* —— 档位选择 —— */}
+        {!readOnly && (
+          <div className="wb-tier-grid">
+            {TIERS.map(t => {
+              const Icon = t.icon;
+              const on = tier === t.id;
+              return (
+                <button key={t.id} className={'wb-tier-card' + (on ? ' on tier-' + t.id : '')} onClick={() => changeTier(t.id)} disabled={readOnly}>
+                  <div className="wb-tier-icon"><Icon size={18} /></div>
+                  <div className="wb-tier-name">{t.name}档</div>
+                  <div className="wb-tier-desc">{t.desc}</div>
+                  <div className="wb-tier-cap">
+                    {t.cap.map((c, i) => <span key={i} className="wb-cap-pill">{c}</span>)}
+                  </div>
+                  {on && <span className="wb-tier-check"><Sparkles size={12} /> 当前</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {readOnly && (
+          <div className={'wb-tier-banner tier-' + tier}>
+            当前为<b>{tierMeta.name}档</b> · {tierMeta.desc}
+          </div>
+        )}
+
+        {/* —— 基础信息 —— */}
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="field">
             <label>名称</label>
@@ -118,30 +213,51 @@ export default function WorldbookEditor() {
           </label>
         </div>
 
-        <div className="section-title">
-          <h2>设定条目 ({wb.entries.length})</h2>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {!readOnly && (
-              <label className="wb-mode-toggle" title="高级模式：触发模式、注入位置、优先级、互斥分组等工程化控制">
-                <input type="checkbox" checked={advanced} onChange={toggleAdvanced} disabled={readOnly} />
-                <Code2 size={14} /> 高级模式
-              </label>
+        {/* —— 专家档：自构对话前端 + 提示词叠加 —— */}
+        {tier === 'expert' && (
+          <div className="card wb-expert-panel">
+            <div className="wb-expert-head">
+              <Layout size={16} /> 自构对话前端（front_schema）
+              <button className="btn sm ghost" onClick={() => setShowSchema(s => !s)}>{showSchema ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {showSchema ? '收起' : '展开'}</button>
+            </div>
+            <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 10px' }}>
+              定义玩家在对话页见到的布局：banner / 侧边图片轮播 / 心情文本条。条目可通过 front_slot 绑定到对应 slot，触发后即在对应位置渲染。
+            </p>
+            {showSchema && (
+              <textarea className="textarea mono" rows={10} value={wb.front_schema} onChange={e => set('front_schema', e.target.value)} disabled={readOnly}
+                placeholder={DEFAULT_SCHEMA} spellCheck={false} />
             )}
-            {!readOnly && <button className="btn sm" onClick={addEntry}><Plus size={14} /> 添加条目</button>}
+            <div className="wb-expert-head" style={{ marginTop: 14 }}>
+              <Sparkles size={16} /> 专家级提示词叠加（prompt_overlay）
+            </div>
+            <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 10px' }}>
+              拼接在系统提示词最前方的指令模板，可定制角色语气、叙述风格、节奏控制等。
+            </p>
+            <textarea className="textarea mono" rows={4} value={wb.prompt_overlay} onChange={e => set('prompt_overlay', e.target.value)} disabled={readOnly}
+              placeholder="例：以电影分镜方式叙述场景，每段 ≤ 80 字，重要意象后插入 [[wbimg:对应条目ID]] 标记。" />
           </div>
+        )}
+
+        {/* —— 条目列表 —— */}
+        <div className="section-title">
+          <h2>设定条目 ({wb.entries.length}/{tierMeta.limit})</h2>
+          {!readOnly && <button className="btn sm" onClick={addEntry}><Plus size={14} /> 添加条目</button>}
         </div>
-        <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>
-          {advanced
-            ? <>高级模式已开启：每条目可配置触发模式（关键词/正则/常驻）、注入位置、优先级与互斥分组。适合复杂世界观工程化管理。</>
-            : <>角色对话中出现「触发关键词」时，对应设定自动注入提示词。留空关键词则为常驻设定。世界书可关联到任意多个角色。</>}
+        <p className="muted wb-tier-hint">
+          {tier === 'normal' && <>角色对话出现「触发关键词」时设定自动注入。留空关键词为常驻设定。</>}
+          {tier === 'advanced' && <>高级档已开启：可配置触发模式（关键词/正则/常驻）、注入位置、优先级与互斥分组。</>}
+          {tier === 'expert' && <>专家档已开启：在高级能力基础上，每条目可塞入「图片触发提示词」，模型会在文中嵌入 <code>[[wbimg:条目ID]]</code> 标记，由玩家点击生成现场插图。</>}
         </p>
+
         {wb.entries.length === 0 && <div className="empty" style={{ padding: 40 }}>暂无条目{readOnly ? '' : '，点击右上角添加'}</div>}
         {wb.entries.map((w, i) => (
-          <div key={i} className={'world-entry' + (advanced ? ' advanced' : '')}>
+          <div key={i} className={'world-entry tier-' + tier}>
             <div className="top">
-              <input className="input" style={{ flex: 1 }} placeholder={advanced ? (w.mode === 'regex' ? '正则表达式，逗号分隔多个' : w.mode === 'always' ? '常驻条目无需关键词' : '触发关键词，逗号分隔') : '触发关键词，逗号分隔（留空=常驻）'}
+              <input className="input" style={{ flex: 1 }}
+                placeholder={tier === 'normal' ? '触发关键词，逗号分隔（留空=常驻）'
+                  : (w.mode === 'regex' ? '正则表达式，逗号分隔多个' : w.mode === 'always' ? '常驻条目无需关键词' : '触发关键词，逗号分隔')}
                 value={w.keys} onChange={e => updEntry(i, 'keys', e.target.value)} disabled={readOnly} />
-              {advanced && (
+              {tier !== 'normal' && (
                 <select className="input" style={{ width: 'auto', minWidth: 92 }} value={w.mode || 'keyword'} onChange={e => updEntry(i, 'mode', e.target.value)} disabled={readOnly}>
                   <option value="keyword">关键词</option>
                   <option value="regex">正则</option>
@@ -152,7 +268,7 @@ export default function WorldbookEditor() {
                 <input type="checkbox" checked={w.enabled !== false} onChange={e => updEntry(i, 'enabled', e.target.checked)} disabled={readOnly} />
                 <span className="track" />
               </label>
-              {advanced && (
+              {tier !== 'normal' && (
                 <button className="btn sm ghost" onClick={() => toggleExpand(i)} title="高级配置" disabled={readOnly}>
                   {expanded[i] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
@@ -161,7 +277,8 @@ export default function WorldbookEditor() {
             </div>
             <textarea className="textarea" placeholder="设定内容，例如：「圣城阿斯特拉位于浮空岛之上，由七位贤者守护…」"
               value={w.content} onChange={e => updEntry(i, 'content', e.target.value)} disabled={readOnly} />
-            {advanced && expanded[i] && (
+
+            {tier !== 'normal' && expanded[i] && (
               <div className="we-advanced">
                 <div className="we-adv-grid">
                   <div className="field" style={{ margin: 0 }}>
@@ -189,10 +306,73 @@ export default function WorldbookEditor() {
                   <label>作者备注 <span className="muted">（不注入提示词，仅备注用）</span></label>
                   <input className="input" placeholder="例如：此条目用于第3章剧情揭示" value={w.comment || ''} onChange={e => updEntry(i, 'comment', e.target.value)} disabled={readOnly} />
                 </div>
+
+                {/* —— 专家档：图片触发 —— */}
+                {tier === 'expert' && (
+                  <div className="we-image">
+                    <div className="we-image-head"><ImageIcon size={14} /> 图片触发协议</div>
+                    <p className="muted" style={{ fontSize: 12, margin: '2px 0 8px' }}>
+                      命中 image_keys 时，模型可在文中嵌入 <code>[[wbimg:{w._id || '新条目'}]]</code> 标记，玩家点击后调用 AI 生图（按平台生图费率）。
+                    </p>
+                    <div className="we-adv-grid">
+                      <div className="field" style={{ margin: 0, gridColumn: '1 / -1' }}>
+                        <label>图片提示词 <span className="muted">（生图 prompt，可含风格关键词）</span></label>
+                        <textarea className="textarea" rows={2} placeholder="例：圣城阿斯特拉全景，浮空岛，金色穹顶，云海翻涌，史诗概念画"
+                          value={w.image_prompt || ''} onChange={e => updEntry(i, 'image_prompt', e.target.value)} disabled={readOnly} />
+                      </div>
+                      <div className="field" style={{ margin: 0 }}>
+                        <label>图片触发关键词 <span className="muted">（逗号分隔）</span></label>
+                        <input className="input" placeholder="圣城, 阿斯特拉" value={w.image_keys || ''} onChange={e => updEntry(i, 'image_keys', e.target.value)} disabled={readOnly} />
+                      </div>
+                      <div className="field" style={{ margin: 0 }}>
+                        <label>图片位置</label>
+                        <select className="input" value={w.image_position || 'inline'} onChange={e => updEntry(i, 'image_position', e.target.value)} disabled={readOnly}>
+                          <option value="inline">行内插入</option>
+                          <option value="before">消息前</option>
+                          <option value="after">消息后</option>
+                          <option value="side">侧边槽位</option>
+                        </select>
+                      </div>
+                      <div className="field" style={{ margin: 0, gridColumn: '1 / -1' }}>
+                        <label>绑定前端 slot <span className="muted">（留空=不绑；与 front_schema.slots[].id 对应）</span></label>
+                        <input className="input" placeholder="例：scene / banner / mood" value={w.front_slot || ''} onChange={e => updEntry(i, 'front_slot', e.target.value)} disabled={readOnly} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         ))}
+
+        {/* —— 触发预览 —— */}
+        {editing && (
+          <div className="card wb-preview">
+            <div className="wb-preview-head"><Eye size={16} /> 触发预览</div>
+            <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 8px' }}>
+              输入一段模拟对话文本，查看哪些条目会被激活（专家档可看到图片触发命中）。
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" style={{ flex: 1 }} placeholder="例：我们走向圣城阿斯特拉的城门…"
+                value={preview.text} onChange={e => setPreview(p => ({ ...p, text: e.target.value }))} />
+              <button className="btn primary" onClick={runPreview} disabled={preview.loading}><Play size={13} /> {preview.loading ? '分析中…' : '测试'}</button>
+            </div>
+            {preview.result && (
+              <div className="wb-preview-result">
+                <div className="muted" style={{ fontSize: 12 }}>档位：{preview.result.tier} · 命中 {preview.result.results.length} / {preview.result.total} 条</div>
+                {preview.result.results.length === 0
+                  ? <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>无命中条目</div>
+                  : preview.result.results.map((r, i) => (
+                    <div key={i} className="wb-prev-row">
+                      <div className="wb-prev-keys">{r.keys || '(常驻)'}{r.imgTriggered && <span className="wb-img-tag"><ImageIcon size={10} /> 图</span>}</div>
+                      <div className="wb-prev-content">{r.content}</div>
+                      {r.image_prompt && <div className="wb-prev-img"><ImageIcon size={11} /> {r.image_prompt}</div>}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );
