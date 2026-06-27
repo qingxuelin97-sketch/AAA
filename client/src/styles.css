@@ -719,12 +719,15 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   .app-shell:has(.immersive) .mobile-topbar,
   .app-shell:has(.immersive) .bottom-nav { display: none; }
   .app-shell:has(.immersive) .main { padding-bottom: 0; }
-  /* 沉浸式对话：移动端 fixed 脱离文档流 + visualViewport 实时驱动 height（见 Chat.jsx）。
-     不再依赖 100dvh 单独收缩 —— iOS Safari 键盘弹起时 100dvh 收缩有延迟，
-     延迟期输入栏滞留键盘遮挡区，用户上滑触发 body 滚动露出原色背景。
-     fixed top:0 + height=vv.height 让布局立即贴合可见区，输入栏（flex 末尾）
-     自动上移到键盘上方。z-index:100 盖住 .app-shell 其他内容。 */
-  .chat-layout.immersive { position: fixed; top: 0; left: 0; right: 0; height: 100dvh; z-index: 100; }
+  /* 沉浸式对话多层防御（不再用 position:fixed —— iOS Safari 键盘弹起时 fixed 元素有
+     offsetTop 错位经典 bug，且 fixed height 收缩后下方留白显示 body 原色）：
+     1. .chat-layout 留在文档流，height:100dvh 兜底，visualViewport 实时驱动 inline height 收缩
+     2. .app-shell 沉浸式时 overflow:hidden 锁住，body 不会被拖动滚动
+     3. body 背景设为 chat-main 同色兜底 —— 即使有缝隙露白也是同色，不是突兀的原色
+     4. html,body overscroll-behavior:none 禁回弹 */
+  .app-shell:has(.immersive) { overflow: hidden; height: 100dvh; }
+  .chat-layout.immersive { height: 100dvh; }
+  body:has(.immersive) { background: var(--bg); overscroll-behavior: none; }
   .immersive .chat-head { padding-top: calc(13px + env(safe-area-inset-top)); }
   .immersive .chat-input-bar { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
   /* the conversation list (browse state) keeps comfortable spacing */
