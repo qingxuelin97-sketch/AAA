@@ -100,14 +100,25 @@ export default function Chat() {
     let raf = 0;
     const apply = () => {
       const bar = inputBarRef.current;
-      if (bar) {
-        // 键盘高度 = 布局视口 - 视觉视口底部（offsetTop + height）。
-        // Edge 移动端键盘弹起时 vv.offsetTop 可能为负（视觉视口被上推），
-        // 若照常扣减会让 kbdH 被算大、输入栏被顶过高，与键盘之间露出黑色间隙。
-        // 故仅当 offsetTop 为正（顶部栏下压视觉视口）时才扣减。
-        const kbdH = window.innerHeight - vv.height - Math.max(0, vv.offsetTop);
-        bar.style.bottom = (kbdH > 0 ? kbdH : 0) + 'px';
-      }
+      if (!bar) return;
+      // 测量自适应法：先把输入栏放回 bottom:0（让浏览器原生布局决定位置），
+      // 同步触发 reflow 测出它在视觉视口坐标里的实际底边位置，与键盘顶部
+      // （=视觉视口底边 vv.height）的差距就是真正需要上推的距离。
+      // 不同浏览器对 position:fixed 与键盘交互的处理不同：
+      //   - Chrome/Android 默认 resize 布局视口 → bar 已在键盘上方，offset=0
+      //   - Edge 部分版本 fixed 相对视觉视口跟随键盘 → bar 已贴键盘，offset=0
+      //   - iOS Safari 不 resize 但 fixed 相对布局视口 → 需要 push up 键盘高度
+      // 通过测量实际位置自动适配，无需对 Edge 硬编码，也不影响其他浏览器。
+      bar.style.bottom = '0px';
+      // getBoundingClientRect 多数浏览器返回相对布局视口的坐标；
+      // 视觉视口顶 = 布局视口顶 + offsetTop，故视觉视口坐标 = 布局坐标 - offsetTop
+      const rect = bar.getBoundingClientRect();
+      const barBottomInVisual = rect.bottom - vv.offsetTop;
+      const keyboardTopInVisual = vv.height;
+      // offset > 0：bar 底边在键盘顶下方（被键盘挡），需要 push up
+      // offset <= 0：bar 已在键盘顶上方或对齐，无需 push（避免制造间隙）
+      const offset = Math.max(0, Math.round(barBottomInVisual - keyboardTopInVisual));
+      bar.style.bottom = offset + 'px';
       const kbd = (window.innerHeight - vv.height) > 120;
       setKbdOpen(kbd);
       if (raf) return;
