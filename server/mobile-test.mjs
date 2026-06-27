@@ -123,18 +123,21 @@ try {
 
   // 模拟键盘弹起：headless Chromium 无真实键盘，但可以 Object.defineProperty 覆盖
   // visualViewport.height（模拟键盘遮挡后视觉视口缩小），再 dispatchEvent resize，
-  // 验证 Chat.jsx 的 visualViewport 监听是否实时把 .chat-layout 的 inline height 收缩到可见区。
+  // 验证 Chat.jsx 是否把 --vh 写入、.app-shell + .chat-layout 全链路是否一起收缩。
   console.log('· 模拟键盘弹起（vv.height 844→500）…');
   const kbdSim = await page.evaluate(() => {
     const vv = window.visualViewport;
     if (!vv) return { error: 'no visualViewport' };
     const layout = document.querySelector('.chat-layout.immersive');
-    if (!layout) return { error: 'no .chat-layout.immersive' };
-    // DOMRect 属性是原型 getter，JSON.stringify 会丢失，手动提取成普通对象
+    const shell = document.querySelector('.app-shell');
+    if (!layout || !shell) return { error: 'no layout/shell' };
     const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect();
       return { top: r.top, bottom: r.bottom, left: r.left, width: r.width, height: r.height }; };
     const before = {
-      layoutHeight: layout.style.height || getComputedStyle(layout).height,
+      vh: getComputedStyle(document.documentElement).getPropertyValue('--vh').trim(),
+      shellHeight: getComputedStyle(shell).height,
+      shellOffsetHeight: shell.offsetHeight,
+      layoutHeight: getComputedStyle(layout).height,
       layoutOffsetHeight: layout.offsetHeight,
       inputBarRect: rect(document.querySelector('.chat-input-bar')),
       bodyScrollTop: document.body.scrollTop,
@@ -146,9 +149,12 @@ try {
     Object.defineProperty(vv, 'height', { configurable: true, get: () => window.innerHeight - KBD_H });
     Object.defineProperty(vv, 'offsetTop', { configurable: true, get: () => 0 });
     vv.dispatchEvent(new Event('resize'));
-    // 同步读取 apply 后的样式（apply 是同步设 inline height，rAF 部分异步但 height 立即生效）
+    // 同步读取（apply 同步设 --vh，CSS 立即重算）
     const after = {
-      layoutHeight: layout.style.height,
+      vh: getComputedStyle(document.documentElement).getPropertyValue('--vh').trim(),
+      shellHeight: getComputedStyle(shell).height,
+      shellOffsetHeight: shell.offsetHeight,
+      layoutHeight: getComputedStyle(layout).height,
       layoutOffsetHeight: layout.offsetHeight,
       inputBarRect: rect(document.querySelector('.chat-input-bar')),
       bodyScrollTop: document.body.scrollTop,
@@ -164,41 +170,44 @@ try {
   await sleep(400);
   await page.screenshot({ path: path.join(OUT_DIR, '03b-chat-keyboard.png'), fullPage: false });
 
-  // 校验：键盘弹起后输入栏 bottom 必须 <= 视口底部（不被键盘遮挡）
-  const kbdCheck = kbdSim.after ? kbdSim.after.inputBarRect : null;
-  if (kbdCheck) {
-    const kbdBottom = kbdCheck.bottom;
-    const visibleBottom = kbdSim.after.vvHeight; // 可见区底部 = vv.height
-    if (kbdBottom <= visibleBottom + 2) {
-      console.log(`✅ 键盘弹起后输入栏 bottom=${kbdBottom.toFixed(0)} ≤ 可见区=${visibleBottom}，输入栏在键盘上方`);
-    } else {
-      findings.push(`[kbd] 输入栏 bottom=${kbdBottom.toFixed(0)} > 可见区=${visibleBottom}，输入栏被键盘遮挡`);
-      console.log(`❌ 输入栏被键盘遮挡：bottom=${kbdBottom.toFixed(0)} > 可见区=${visibleBottom}`);
-    }
-    // 校验 layout inline height 收缩
-    const inlineH = parseInt(kbdSim.after.layoutHeight);
-    if (inlineH && Math.abs(inlineH - visibleBottom) <= 2) {
-      console.log(`✅ .chat-layout inline height=${inlineH} 实时贴合可见区=${visibleBottom}`);
-    } else {
-      findings.push(`[kbd] .chat-layout height=${kbdSim.after.layoutHeight} 未贴合可见区=${visibleBottom}`);
-      console.log(`❌ .chat-layout height=${kbdSim.after.layoutHeight} 未实时收缩到 ${visibleBottom}`);
-    }
-    // 校验 body 未被滚动
-    if (kbdSim.afterScroll.body === 0 && kbdSim.afterScroll.html === 0) {
-      console.log('✅ 上滑未滚动 body（overscroll-behavior:none 生效）');
-    } else {
-      findings.push(`[kbd] body 被滚动 body=${kbdSim.afterScroll.body} html=${kbdSim.afterScroll.html}`);
-    }
+  // 校验全链路收缩
+  if (kbdSim.after && !kbdSim.error) {
+    const targetH = kbdSim.after.vvHeight; // 500
+    // 1. --vh 写入
+    if (kbdSim.after.vh === '500px') console.log(`✅ --vh=${kbdSim.after.vh} 写入正确`);
+    else { findings.push(`[kbd] --vh=${kbdSim.after.vh} 期望 500px`); console.log(`❌ --vh=${kbdSim.after.vh}`); }
+    // 2. .app-shell 收缩
+    if (kbdSim.after.shellOffsetHeight === targetH) console.log(`✅ .app-shell height=${kbdSim.after.shellOffsetHeight} 收缩到可见区`);
+    else { findings.push(`[kbd] .app-shell height=${kbdSim.after.shellOffsetHeight} 期望 ${targetH}`); console.log(`❌ .app-shell height=${kbdSim.after.shellOffsetHeight}`); }
+    // 3. .chat-layout 收缩
+    if (kbdSim.after.layoutOffsetHeight === targetH) console.log(`✅ .chat-layout height=${kbdSim.after.layoutOffsetHeight} 收缩到可见区`);
+    else { findings.push(`[kbd] .chat-layout height=${kbdSim.after.layoutOffsetHeight} 期望 ${targetH}`); console.log(`❌ .chat-layout height=${kbdSim.after.layoutOffsetHeight}`); }
+    // 4. 输入栏在可见区内
+    const ib = kbdSim.after.inputBarRect;
+    if (ib && ib.bottom <= targetH + 2) console.log(`✅ 输入栏 bottom=${ib.bottom.toFixed(0)} ≤ 可见区=${targetH}`);
+    else if (ib) { findings.push(`[kbd] 输入栏 bottom=${ib.bottom} > 可见区=${targetH}`); console.log(`❌ 输入栏 bottom=${ib.bottom}`); }
+    // 5. body 未滚动
+    if (kbdSim.afterScroll.body === 0 && kbdSim.afterScroll.html === 0) console.log('✅ 上滑未滚动 body');
+    else { findings.push(`[kbd] body 被滚动`); console.log(`❌ body 滚动 ${JSON.stringify(kbdSim.afterScroll)}`); }
   }
+
+  // 采样键盘区像素：屏幕 500-844 是键盘遮挡区（仿真里是 body），确认不是突兀原色 #faf9f5
+  // has-bg 时 body 应为 #15120e 暗色融入背景图
+  const kbdRegionPixel = await page.evaluate(() => {
+    // 采样 (100, 700) 即键盘区中心的 body 像素
+    const el = document.elementFromPoint(100, 700);
+    const cs = el ? getComputedStyle(el) : null;
+    return { elTag: el?.tagName, elClass: el?.className?.toString?.()?.slice(0, 40) || null,
+      elBg: cs?.backgroundColor, bodyBg: getComputedStyle(document.body).backgroundColor };
+  });
+  console.log('· 键盘区采样:', JSON.stringify(kbdRegionPixel));
 
   // 模拟键盘收起
   console.log('· 模拟键盘收起…');
   await page.evaluate(() => {
     const vv = window.visualViewport;
-    // 恢复 visualViewport.height（删除 getter）
     try { delete vv.height; } catch { /* */ }
     try { delete vv.offsetTop; } catch { /* */ }
-    // 重新定义为原始值
     Object.defineProperty(vv, 'height', { configurable: true, get: () => window.innerHeight });
     vv.dispatchEvent(new Event('resize'));
   });

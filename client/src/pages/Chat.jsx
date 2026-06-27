@@ -85,29 +85,23 @@ export default function Chat() {
   const bgmRef = useRef(null);
   const inputRef = useRef(null);
   const inputBarRef = useRef(null);
-  // .chat-layout 根节点：移动端沉浸式时由 visualViewport 实时驱动 inline height，
-  // 不靠 100dvh 单独收缩（iOS Safari 键盘弹起时 100dvh 收缩有延迟，延迟期输入栏滞留键盘遮挡区）。
-  const layoutRef = useRef(null);
   // 流式更新 rAF 节流：累积 delta 到缓冲，每帧最多刷新一次，降低低端机渲染压力
   const streamBufRef = useRef(null);
   const streamRafRef = useRef(0);
   const autoReadRef = useRef(autoRead);
   useEffect(() => { autoReadRef.current = autoRead; }, [autoRead]);
 
-  // 移动端键盘遮挡修复（重做版）：visualViewport 实时驱动 .chat-layout.immersive 的 inline height，
-  // 键盘弹起瞬间把布局高度收缩到可见区高度，输入栏（flex 末尾）自动上移到键盘上方，
-  // 根本不给"输入栏滞留键盘遮挡区 → 用户上滑 → body 滚动露出原色背景"留发生机会。
-  // 100dvh 作为 CSS 基础高度兜底（无 vv 的旧浏览器 / 桌面端）。
+  // 移动端键盘遮挡修复（重构版）：visualViewport 实时把可见区高度写入 CSS 变量 --vh，
+  // .app-shell + .chat-layout 全链路依赖 var(--vh) 一起收缩到可见区。
+  // 不再直接操作 inline height（React 重渲染会覆盖），改用 CSS 变量最干净。
+  // 100dvh 作为兜底（无 vv 的旧浏览器 / 桌面端）。
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     let raf = 0;
     const apply = () => {
-      const layout = layoutRef.current;
-      if (layout) {
-        // 实时贴合可见区：不等 100dvh 延迟收缩
-        layout.style.height = vv.height + 'px';
-      }
+      // 写入 --vh：视觉视口高度（键盘弹起时收缩）
+      document.documentElement.style.setProperty('--vh', vv.height + 'px');
       const kbd = (window.innerHeight - vv.height) > 120;
       setKbdOpen(kbd);
       if (raf) return;
@@ -126,7 +120,8 @@ export default function Chat() {
     return () => {
       vv.removeEventListener('resize', apply);
       vv.removeEventListener('scroll', apply);
-      if (layoutRef.current) layoutRef.current.style.height = ''; // 卸载恢复 CSS 100dvh
+      // 卸载清除 --vh，恢复 CSS 100dvh 兜底
+      document.documentElement.style.removeProperty('--vh');
       if (raf) cancelAnimationFrame(raf);
     };
   }, [conv]);
@@ -442,7 +437,7 @@ export default function Chat() {
   const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
 
   return (
-    <div className={'chat-layout' + (conv ? ' immersive' : '')} ref={layoutRef}>
+    <div className={'chat-layout' + (conv ? ' immersive' : '')}>
       <div className={'chat-list' + (conv ? ' hide-mobile' : '') + (listMini ? ' mini' : '')}>
         <div className="hd">
           {!listMini && <span style={{ flex: 1 }}>对话</span>}
