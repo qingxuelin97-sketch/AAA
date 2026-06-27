@@ -7,10 +7,10 @@ const router = Router();
 
 const str = (v, max) => v == null ? '' : String(v).slice(0, max);
 
-// tier 是世界书自身的「设置级别」（normal/advanced/expert），仅决定启用哪些特性面板，
-// 不对创作者上锁、不设配额、不限制升档/降档。所有字段始终可写，由前端按 tier 控制可见性。
+// tier 不再作单选档位（简单/标准/专家能力可在同一本世界书共存）。
+// 此处保留 TIERS 仅用于公开广场的展示分类（按世界书实际启用的能力派生），不再用于字段开关。
 const TIERS = ['normal', 'advanced', 'expert'];
-// 软上限：仅作防恶意超大请求的安全阀，不按 tier 区分。
+// 软上限：仅作防恶意超大请求的安全阀。
 const SAFE_ENTRY_LIMIT = 500;
 
 // 安全白名单：避免恶意脚本注入到 front_schema 中。
@@ -30,15 +30,29 @@ const sanitizeSchema = (raw) => {
 
 function loadEntries(wbId) {
   return db.prepare(`SELECT id, keys, content, enabled, position, mode, inject_pos, priority, case_sensitive, group_name, comment,
-    image_urls, image_keys, image_position, front_slot FROM worldbook_entries WHERE worldbook_id = ? ORDER BY priority DESC, position, id`).all(wbId);
+    image_urls, image_keys, image_position, front_slot, probability, min_turns, exclude_keys
+    FROM worldbook_entries WHERE worldbook_id = ? ORDER BY priority DESC, position, id`).all(wbId);
 }
 
-// 列表卡片：附条目数与 tier，供广场/我的列表展示。
+// 列表卡片：附条目数与已启用的能力徽章（图片注入 / 自构前端 / 提示词叠加 / 递归），
+// 能力按字段是否有数据派生，不再依赖 tier 单选。
 function withCount(rows) {
   if (!rows.length) return rows;
-  const counts = db.prepare('SELECT worldbook_id, COUNT(*) n FROM worldbook_entries WHERE worldbook_id IN (' + rows.map(() => '?').join(',') + ') GROUP BY worldbook_id').all(...rows.map(r => r.id));
-  const map = new Map(counts.map(c => [c.worldbook_id, c.n]));
-  return rows.map(r => ({ ...r, entry_count: map.get(r.id) || 0 }));
+  const ids = rows.map(r => r.id);
+  const counts = db.prepare('SELECT worldbook_id, COUNT(*) n FROM worldbook_entries WHERE worldbook_id IN (' + ids.map(() => '?').join(',') + ') GROUP BY worldbook_id').all(...ids);
+  const countMap = new Map(counts.map(c => [c.worldbook_id, c.n]));
+  // 任意条目配置了 image_urls+image_keys 即视为启用图片注入
+  const imgRows = db.prepare(`SELECT DISTINCT worldbook_id FROM worldbook_entries
+    WHERE worldbook_id IN (${ids.map(() => '?').join(',')}) AND image_urls != '' AND image_keys != ''`).all(...ids);
+  const imgSet = new Set(imgRows.map(r => r.worldbook_id));
+  return rows.map(r => ({
+    ...r,
+    entry_count: countMap.get(r.id) || 0,
+    cap_image: imgSet.has(r.id) || false,
+    cap_front: !!(r.front_schema && r.front_schema.trim()),
+    cap_overlay: !!(r.prompt_overlay && r.prompt_overlay.trim()),
+    cap_recursion: !!r.recursion
+  }));
 }
 
 // 我的世界书
@@ -74,14 +88,13 @@ router.get('/:id', authOptional, (req, res) => {
   res.json({ worldbook });
 });
 
-// 触发预览：给定一段「最近对话文本」，返回会被命中的条目（含触发原因、图片提示词），
-// 让专家档创作者在编辑器里实时预览世界书在对话中如何被激活。
+// 触发预览：给定一段「最近对话文本」，返回会被命中的条目（含触发原因、排除关键词、图片注入）。
+// 注意：probability / min_turns / recursion 涉及运行时上下文，预览不强制模拟，仅回显配置供创作者参考。
 router.post('/:id/test-trigger', authRequired, (req, res) => {
   const w = db.prepare('SELECT * FROM worldbooks WHERE id = ?').get(req.params.id);
   if (!w || (!w.is_public && w.owner_id !== req.user.id)) return res.status(403).json({ error: '无权访问' });
   const text = str(req.body?.text, 4000) || '';
   const entries = loadEntries(w.id).filter(e => e.enabled !== false && e.enabled !== 0);
-  const isExpert = w.tier === 'expert';
   const results = entries.map(e => {
     const mode = e.mode || 'keyword';
     const keysRaw = (e.keys || '').split(',').map(k => k.trim()).filter(Boolean);
@@ -89,29 +102,33 @@ router.post('/:id/test-trigger', authRequired, (req, res) => {
     if (mode === 'always' || keysRaw.length === 0) triggered = true;
     else if (mode === 'regex') triggered = keysRaw.some(k => { try { return new RegExp(k, e.case_sensitive ? '' : 'i').test(text); } catch { return false; } });
     else triggered = keysRaw.some(k => { const hay = e.case_sensitive ? text : text.toLowerCase(); return hay.includes(e.case_sensitive ? k : k.toLowerCase()); });
-    // 专家档：图片触发关键词独立判定（命中后展示创建者预注入的图片，非即时生成）
+    // 排除关键词命中则不触发（黑名单优先）
+    const exRaw = (e.exclude_keys || '').split(',').map(k => k.trim()).filter(Boolean);
+    if (triggered && exRaw.length) triggered = !exRaw.some(k => text.toLowerCase().includes(k.toLowerCase()));
+    // 图片触发关键词独立判定（命中后展示创建者预注入的图片）
     let imgTriggered = false;
-    const urls = isExpert && e.image_urls ? e.image_urls.split(',').map(u => u.trim()).filter(Boolean) : [];
-    if (isExpert && urls.length && e.image_keys) {
+    const urls = e.image_urls ? e.image_urls.split(',').map(u => u.trim()).filter(Boolean) : [];
+    if (urls.length && e.image_keys) {
       const ik = e.image_keys.split(',').map(k => k.trim()).filter(Boolean);
       imgTriggered = ik.length === 0 || ik.some(k => text.toLowerCase().includes(k.toLowerCase()));
     }
     return { id: e.id, keys: e.keys, content: e.content.slice(0, 200), mode, priority: e.priority,
       inject_pos: e.inject_pos, group_name: e.group_name, front_slot: e.front_slot,
-      triggered, imgTriggered, image_urls: isExpert ? urls : [], image_position: e.image_position };
+      probability: e.probability ?? 100, min_turns: e.min_turns ?? 0, exclude_keys: e.exclude_keys || '',
+      triggered, imgTriggered, image_urls: urls, image_position: e.image_position };
   }).filter(r => r.triggered || r.imgTriggered);
-  res.json({ results, tier: w.tier, total: entries.length });
+  res.json({ results, scan_depth: w.scan_depth, token_budget: w.token_budget, recursion: !!w.recursion, total: entries.length });
 });
 
 // 创建
 router.post('/', authRequired, contentLimiter, (req, res) => {
   const b = req.body || {};
   if (!b.name || typeof b.name !== 'string' || b.name.length > 60) return res.status(400).json({ error: '世界书名称必填（60字内）' });
-  const tier = TIERS.includes(b.tier) ? b.tier : 'normal';
   const entries = (Array.isArray(b.entries) ? b.entries.filter(e => e && typeof e === 'object') : []).slice(0, SAFE_ENTRY_LIMIT);
-  const info = db.prepare('INSERT INTO worldbooks (owner_id, name, description, tags, tier, is_public, front_schema, prompt_overlay) VALUES (?,?,?,?,?,?,?,?)')
-    .run(req.user.id, str(b.name, 60), str(b.description, 500), str(b.tags, 200), tier, b.is_public ? 1 : 0,
-      sanitizeSchema(b.front_schema), str(b.prompt_overlay, 2000));
+  const info = db.prepare('INSERT INTO worldbooks (owner_id, name, description, tags, tier, is_public, front_schema, prompt_overlay, scan_depth, token_budget, recursion) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+    .run(req.user.id, str(b.name, 60), str(b.description, 500), str(b.tags, 200), 'expert', b.is_public ? 1 : 0,
+      sanitizeSchema(b.front_schema), str(b.prompt_overlay, 2000),
+      Math.max(1, Math.min(50, parseInt(b.scan_depth) || 4)), Math.max(0, Math.min(8000, parseInt(b.token_budget) || 0)), b.recursion ? 1 : 0);
   saveEntries(info.lastInsertRowid, entries);
   const w = db.prepare('SELECT * FROM worldbooks WHERE id = ?').get(info.lastInsertRowid);
   res.json({ worldbook: { ...w, entries: loadEntries(w.id) } });
@@ -122,11 +139,11 @@ router.put('/:id', authRequired, (req, res) => {
   const w = db.prepare('SELECT * FROM worldbooks WHERE id = ?').get(req.params.id);
   if (!w || w.owner_id !== req.user.id) return res.status(403).json({ error: '无权编辑' });
   const b = req.body || {};
-  // tier 自由切换（无升降档限制）；front_schema / prompt_overlay 始终保存，由 tier 决定运行时是否启用。
-  const tier = TIERS.includes(b.tier) ? b.tier : (w.tier || 'normal');
-  db.prepare('UPDATE worldbooks SET name=?, description=?, tags=?, tier=?, is_public=?, front_schema=?, prompt_overlay=? WHERE id=?')
+  db.prepare('UPDATE worldbooks SET name=?, description=?, tags=?, is_public=?, front_schema=?, prompt_overlay=?, scan_depth=?, token_budget=?, recursion=? WHERE id=?')
     .run(str(b.name ?? w.name, 60), str(b.description ?? w.description, 500), str(b.tags ?? w.tags, 200),
-      tier, (b.is_public ? 1 : 0), sanitizeSchema(b.front_schema ?? w.front_schema), str(b.prompt_overlay ?? w.prompt_overlay, 2000), w.id);
+      (b.is_public ? 1 : 0), sanitizeSchema(b.front_schema ?? w.front_schema), str(b.prompt_overlay ?? w.prompt_overlay, 2000),
+      Math.max(1, Math.min(50, parseInt(b.scan_depth ?? w.scan_depth) || 4)), Math.max(0, Math.min(8000, parseInt(b.token_budget ?? w.token_budget) || 0)),
+      (b.recursion ?? w.recursion) ? 1 : 0, w.id);
   if (Array.isArray(b.entries)) saveEntries(w.id, b.entries.filter(e => e && typeof e === 'object').slice(0, SAFE_ENTRY_LIMIT));
   const updated = db.prepare('SELECT * FROM worldbooks WHERE id = ?').get(w.id);
   res.json({ worldbook: { ...updated, entries: loadEntries(w.id) } });
@@ -172,26 +189,29 @@ router.post('/from-character/:characterId', authRequired, contentLimiter, (req, 
   res.json({ worldbook: { ...w, entries: loadEntries(w.id) } });
 });
 
-// 全字段保存：tier 不再决定字段是否入库（不剥离），仅运行时控制特性启用与否。
+// 全字段保存：所有字段始终入库（不再按 tier 剥离），运行时按「字段是否有数据」决定特性是否启用。
 function saveEntries(wbId, entries) {
   db.prepare('DELETE FROM worldbook_entries WHERE worldbook_id = ?').run(wbId);
   if (!Array.isArray(entries)) return;
   const stmt = db.prepare(`INSERT INTO worldbook_entries
     (worldbook_id, keys, content, enabled, position, mode, inject_pos, priority, case_sensitive, group_name, comment,
-     image_urls, image_keys, image_position, front_slot)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+     image_urls, image_keys, image_position, front_slot, probability, min_turns, exclude_keys)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
   entries.forEach((e, i) => {
     if (!e || (!e.content && !e.keys)) return;
     const mode = e.mode === 'regex' ? 'regex' : e.mode === 'always' ? 'always' : 'keyword';
     const injectPos = e.inject_pos === 'before' ? 'before' : 'after';
     const pri = Math.max(0, Math.min(100, parseInt(e.priority) || 50));
+    const prob = Math.max(0, Math.min(100, parseInt(e.probability) ?? 100));
+    const minTurns = Math.max(0, Math.min(999, parseInt(e.min_turns) || 0));
     stmt.run(
       wbId, str(e.keys, 500), str(e.content, 4000), e.enabled === false ? 0 : 1, i,
       mode, injectPos, pri,
       e.case_sensitive ? 1 : 0, str(e.group_name, 60), str(e.comment, 500),
       str(e.image_urls, 2000), str(e.image_keys, 300),
       ['inline', 'before', 'after', 'side'].includes(e.image_position) ? e.image_position : 'inline',
-      str(e.front_slot, 32)
+      str(e.front_slot, 32),
+      prob, minTurns, str(e.exclude_keys, 300)
     );
   });
 }

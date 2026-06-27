@@ -2,14 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
-import { BookOpen, Plus, Globe, BookLock, BookCheck, ArrowRight, Search, Sparkles, Wand2, Code2 } from 'lucide-react';
+import { BookOpen, Plus, Globe, BookLock, BookCheck, ArrowRight, Search, Sparkles,
+  Image as ImageIcon, Layout, Sliders, Layers } from 'lucide-react';
 
-// 三档徽章配置：与编辑器保持一致
-const TIER_BADGE = {
-  normal: { name: '通常', icon: BookOpen, accent: '#c97a3f' },
-  advanced: { name: '高级', icon: Code2, accent: '#7c5bd9' },
-  expert: { name: '专家', icon: Wand2, accent: '#d4677a' },
-};
+// 能力徽章定义：按字段是否有数据派生，与编辑器一致。
+const CAPS = [
+  { key: 'cap_image', label: '图片注入', icon: ImageIcon },
+  { key: 'cap_front', label: '自构前端', icon: Layout },
+  { key: 'cap_overlay', label: '提示词叠加', icon: Sliders },
+  { key: 'cap_recursion', label: '递归触发', icon: Layers },
+];
 
 export default function Worldbooks() {
   const { user } = useAuth();
@@ -17,7 +19,6 @@ export default function Worldbooks() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
-  const [tierFilter, setTierFilter] = useState('all');
   const toast = useToast();
   const nav = useNavigate();
 
@@ -26,17 +27,13 @@ export default function Worldbooks() {
     const base = tab === 'mine' ? '/worldbooks/mine' : '/worldbooks/public';
     const params = new URLSearchParams();
     if (tab === 'public' && q) params.set('q', q);
-    if (tab === 'public' && tierFilter !== 'all') params.set('tier', tierFilter);
     const qs = params.toString();
     api(qs ? `${base}?${qs}` : base)
       .then(d => setList(d.worldbooks || []))
       .catch(e => toast(e.message, 'err'))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab, tierFilter]);
-
-  // 客户端二次过滤（mine tab 没有 tier 后端过滤）
-  const filtered = tierFilter === 'all' ? list : list.filter(w => (w.tier || 'normal') === tierFilter);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab]);
 
   return (
     <>
@@ -46,31 +43,22 @@ export default function Worldbooks() {
             世界书
             <Sparkles size={16} style={{ color: 'var(--accent)' }} />
           </h1>
-          <div className="sub">独立设定集 · 三档创作者体系 · 跨角色复用与图片触发</div>
+          <div className="sub">独立设定集 · 能力可共存 · 跨角色复用与预注入图片</div>
         </div>
         <button className="btn primary" onClick={() => nav('/worldbook/new/edit')}><Plus size={16} /> 新建世界书</button>
       </div>
 
       <div className="page wb-list">
-        {/* —— 档位速览：引导创作者进入对应能力档 —— */}
+        {/* —— 能力说明 hero —— */}
         <div className="wb-hero">
           <div className="wb-hero-aurora" />
           <div className="wb-hero-content">
-            <div className="wb-hero-title">三档创作者体系</div>
+            <div className="wb-hero-title">世界书能力体系</div>
             <div className="wb-hero-row">
-              {Object.entries(TIER_BADGE).map(([id, t]) => {
-                const Icon = t.icon;
-                return (
-                  <div key={id} className={'wb-hero-pill tier-' + id}>
-                    <Icon size={14} /> {t.name}档
-                    <span className="wb-hero-pill-sub">
-                      {id === 'normal' && '关键词触发'}
-                      {id === 'advanced' && '工程化设定'}
-                      {id === 'expert' && '图片触发 + 自构前端'}
-                    </span>
-                  </div>
-                );
-              })}
+              <div className="wb-hero-pill"><BookOpen size={14} /> 简单<span className="wb-hero-pill-sub">关键词 / 常驻</span></div>
+              <div className="wb-hero-pill"><Sliders size={14} /> 标准<span className="wb-hero-pill-sub">正则 / 分组 / 概率 / 计时</span></div>
+              <div className="wb-hero-pill expert"><ImageIcon size={14} /> 专家<span className="wb-hero-pill-sub">图片注入 / 自构前端</span></div>
+              <span className="wb-hero-note">三类能力可在同一本世界书共存，无需二选一</span>
             </div>
           </div>
         </div>
@@ -79,12 +67,6 @@ export default function Worldbooks() {
           <div className="seg" style={{ marginBottom: 0 }}>
             <button className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>我的世界书</button>
             <button className={tab === 'public' ? 'active' : ''} onClick={() => setTab('public')}>公开广场</button>
-          </div>
-          <div className="wb-tier-filter">
-            <button className={tierFilter === 'all' ? 'active' : ''} onClick={() => setTierFilter('all')}>全部</button>
-            <button className={tierFilter === 'normal' ? 'active tier-normal' : 'tier-normal'} onClick={() => setTierFilter('normal')}>通常</button>
-            <button className={tierFilter === 'advanced' ? 'active tier-advanced' : 'tier-advanced'} onClick={() => setTierFilter('advanced')}>高级</button>
-            <button className={tierFilter === 'expert' ? 'active tier-expert' : 'tier-expert'} onClick={() => setTierFilter('expert')}>专家</button>
           </div>
           {tab === 'public' && (
             <div className="wb-search">
@@ -95,26 +77,23 @@ export default function Worldbooks() {
         </div>
 
         {loading ? <GridSkeleton n={4} /> :
-          filtered.length === 0 ? (
+          list.length === 0 ? (
             <div className="empty wb-empty">
               <div className="big"><BookLock size={46} /></div>
-              {tab === 'mine' ? <>还没有世界书<div style={{ marginTop: 14 }}><button className="btn primary" onClick={() => nav('/worldbook/new/edit')}>创建第一本世界书</button></div></> : (q || tierFilter !== 'all' ? '没有匹配的世界书' : '广场还没有公开世界书')}
+              {tab === 'mine' ? <>还没有世界书<div style={{ marginTop: 14 }}><button className="btn primary" onClick={() => nav('/worldbook/new/edit')}>创建第一本世界书</button></div></> : (q ? '没有匹配的世界书' : '广场还没有公开世界书')}
             </div>
           ) : (
             <div className="grid wb-grid">
-              {filtered.map((w, i) => {
+              {list.map((w, i) => {
                 const owned = user && w.owner_id === user.id;
-                const tier = w.tier || 'normal';
-                const badge = TIER_BADGE[tier];
-                const BIcon = badge.icon;
+                // 能力徽章：按字段派生
+                const caps = CAPS.filter(c => w[c.key]);
                 return (
-                  <div key={w.id} className={'char-card wb-card tier-' + tier} style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }} onClick={() => nav('/worldbook/' + w.id + '/edit')}>
+                  <div key={w.id} className="char-card wb-card" style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }} onClick={() => nav('/worldbook/' + w.id + '/edit')}>
                     <div className="cover wb-cover">
                       <div className="wb-cover-aurora" />
-                      <div className="wb-cover-icon"><BIcon size={30} /></div>
-                      <div className={'wb-tier-ribbon tier-' + tier}>
-                        <BIcon size={11} /> {badge.name}档
-                      </div>
+                      <div className="wb-cover-icon"><BookOpen size={30} /></div>
+                      {caps.length > 0 && <div className="wb-cap-ribbon">{caps.length} 项能力</div>}
                       {w.is_public ? <div className="pill-pub"><Globe size={12} /> 公开</div> : null}
                     </div>
                     <div className="meta">
@@ -123,6 +102,14 @@ export default function Worldbooks() {
                       {w.tags && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
                         {String(w.tags).split(',').filter(Boolean).slice(0, 4).map((t, i) => <span key={i} className="tag">{t.trim()}</span>)}
                       </div>}
+                      {caps.length > 0 && (
+                        <div className="wb-card-caps">
+                          {caps.map(c => {
+                            const Icon = c.icon;
+                            return <span key={c.key} className="wb-cap-chip"><Icon size={10} /> {c.label}</span>;
+                          })}
+                        </div>
+                      )}
                       <div className="foot">
                         <span className="muted" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}><BookCheck size={12} /> {w.entry_count || 0} 条</span>
                         {tab === 'public' && w.owner_name && <span className="muted" style={{ fontSize: 12 }}>· {w.owner_name}</span>}

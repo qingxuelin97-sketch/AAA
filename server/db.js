@@ -384,16 +384,21 @@ db.exec(`CREATE TABLE IF NOT EXISTS script_likes (
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }
 
 // 独立世界书：可脱离角色单独编辑，并跨角色复用（多对多关联）。
-// tier 是世界书自身的「设置级别」（并非创作者档位，不上锁）：
-//   normal  —— 简单：关键词触发
-//   advanced—— 标准：正则/常驻/优先级/互斥分组
-//   expert  —— 专家：图片触发 + 自构对话前端 + 提示词叠加
+// 三类能力（简单/标准/专家）可在同一本世界书里共存，不再单选档位：
+//   简单能力：关键词触发（keys/content/enabled）
+//   标准能力：触发模式 mode、注入位置 inject_pos、优先级 priority、互斥分组 group_name、
+//            大小写敏感 case_sensitive、作者备注 comment、排除关键词 exclude_keys、
+//            触发概率 probability、最少轮数 min_turns
+//   专家能力：预注入图片 image_urls / image_keys / image_position、自构前端 front_schema、
+//            提示词叠加 prompt_overlay、前端槽位 front_slot
+//   世界书级：扫描深度 scan_depth、Token 预算 token_budget、递归触发 recursion
 // 字段说明：
-//   front_schema：玩家自构对话前端布局 JSON（layout/slots/accent）
-//   prompt_overlay：叠加在系统提示词上的专家指令模板
-//   image_urls：创建者预注入的图片 URL 列表（逗号分隔），命中触发关键词或 [[wbimg:id]] 标记时直接展示
-//   image_keys：触发预注入图片展示的关键词
-//   front_slot：将条目绑定到 front_schema 中具名 slot（在对应位置渲染）
+//   scan_depth：触发判定时回看最近多少条消息（默认 4）
+//   token_budget：本轮注入世界书设定的最大 Token 数（0 = 不限）
+//   recursion：是否递归触发（被激活条目的 content 中的关键词可继续激活其他条目）
+//   probability：命中后的触发概率（0-100），100 = 必触发
+//   min_turns：对话轮数达到此值后才允许触发（0 = 立即可触发）
+//   exclude_keys：出现任一关键词时，该条目本轮不触发（黑名单）
 db.exec(`
 CREATE TABLE IF NOT EXISTS worldbooks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -401,11 +406,14 @@ CREATE TABLE IF NOT EXISTS worldbooks (
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
   tags TEXT DEFAULT '',
-  tier TEXT DEFAULT 'normal',
+  tier TEXT DEFAULT 'expert',
   is_public INTEGER DEFAULT 0,
   uses INTEGER DEFAULT 0,
   front_schema TEXT DEFAULT '',
   prompt_overlay TEXT DEFAULT '',
+  scan_depth INTEGER DEFAULT 4,
+  token_budget INTEGER DEFAULT 0,
+  recursion INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS worldbook_entries (
@@ -421,7 +429,10 @@ CREATE TABLE IF NOT EXISTS worldbook_entries (
   image_urls TEXT DEFAULT '',
   image_keys TEXT DEFAULT '',
   image_position TEXT DEFAULT 'inline',
-  front_slot TEXT DEFAULT ''
+  front_slot TEXT DEFAULT '',
+  probability INTEGER DEFAULT 100,
+  min_turns INTEGER DEFAULT 0,
+  exclude_keys TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS character_worldbooks (
   character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
@@ -442,9 +453,15 @@ for (const sql of [
   "ALTER TABLE worldbook_entries ADD COLUMN image_position TEXT DEFAULT 'inline'",
   "ALTER TABLE worldbook_entries ADD COLUMN front_slot TEXT DEFAULT ''",
   "ALTER TABLE worldbook_entries ADD COLUMN image_urls TEXT DEFAULT ''",
-  "ALTER TABLE worldbooks ADD COLUMN tier TEXT DEFAULT 'normal'",
+  'ALTER TABLE worldbook_entries ADD COLUMN probability INTEGER DEFAULT 100',
+  'ALTER TABLE worldbook_entries ADD COLUMN min_turns INTEGER DEFAULT 0',
+  "ALTER TABLE worldbook_entries ADD COLUMN exclude_keys TEXT DEFAULT ''",
+  "ALTER TABLE worldbooks ADD COLUMN tier TEXT DEFAULT 'expert'",
   "ALTER TABLE worldbooks ADD COLUMN front_schema TEXT DEFAULT ''",
   "ALTER TABLE worldbooks ADD COLUMN prompt_overlay TEXT DEFAULT ''",
+  'ALTER TABLE worldbooks ADD COLUMN scan_depth INTEGER DEFAULT 4',
+  'ALTER TABLE worldbooks ADD COLUMN token_budget INTEGER DEFAULT 0',
+  'ALTER TABLE worldbooks ADD COLUMN recursion INTEGER DEFAULT 0',
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 export default db;

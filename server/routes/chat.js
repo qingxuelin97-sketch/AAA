@@ -214,29 +214,39 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
 
 // Build the system prompt from persona, intro and triggered world-book entries.
 // 聚合角色内嵌 world_entries + 所有关联独立世界书（character_worldbooks）的条目。
-// 支持高级模式：触发模式（keyword/regex/always）、注入位置（before/after）、
-// 优先级（高优先级先注入）、互斥分组（同组只取最高优先级条目）、大小写敏感。
-// 专家档：注入作者 prompt_overlay；若条目含图片关键词，向系统提示词追加图片触发协议指令，
-// 引导模型在回复命中关键词时嵌入 [[wbimg:<entryId>]] 标记，由前端解析为可生成图片占位。
-function buildSystemPrompt(character, recentText) {
+// 能力按字段存在与否自动启用（无 tier 单选闸门）：
+//   简单：关键词触发 / 标准：模式、注入位置、优先级、互斥分组、排除关键词、概率、最少轮数 /
+//   专家：预注入图片触发、自构前端、提示词叠加
+// 世界书级：scan_depth（回看消息数）、token_budget（注入上限）、recursion（递归触发）
+function buildSystemPrompt(character, recentText, history) {
   const beforeParts = []; // 注入位置：角色设定前
   const afterParts = [];  // 注入位置：角色设定后（默认）
-  const overlayParts = []; // 专家档：作者自定义提示词叠加
+  const overlayParts = []; // 专家能力：作者自定义提示词叠加
   const personaParts = [];
-  const imgTriggers = []; // 专家档：本轮命中的图片触发条目（用于追加协议指令）
+  const imgTriggers = []; // 专家能力：本轮命中的图片触发条目（用于追加协议指令）
   if (character.persona) personaParts.push(character.persona.trim());
   if (character.intro) personaParts.push(`【角色简介】\n${character.intro.trim()}`);
 
   // 角色内嵌世界书（常规模式，只有 keys/content，按 keyword 触发）
   const own = db.prepare('SELECT keys, content FROM world_entries WHERE character_id = ? AND enabled = 1 ORDER BY position, id').all(character.id);
-  // 关联独立世界书条目（含高级/专家字段）
+  // 关联独立世界书条目 + 世界书级设定（scan_depth/token_budget/recursion/prompt_overlay）
   const linked = db.prepare(`SELECT we.id, we.keys, we.content, we.mode, we.inject_pos, we.priority, we.case_sensitive, we.group_name,
-    we.image_urls, we.image_keys, we.front_slot, w.tier, w.prompt_overlay
+    we.image_urls, we.image_keys, we.front_slot, we.probability, we.min_turns, we.exclude_keys, we.worldbook_id,
+    w.prompt_overlay, w.scan_depth, w.token_budget, w.recursion
     FROM worldbook_entries we
     JOIN character_worldbooks cw ON cw.worldbook_id = we.worldbook_id
     JOIN worldbooks w ON w.id = cw.worldbook_id
     WHERE cw.character_id = ? AND we.enabled = 1
     ORDER BY we.priority DESC, we.position, we.id`).all(character.id);
+
+  // 每本世界书各自的 scan_depth：取最大值作为本轮回看深度（条目自带所属书的 scan_depth）。
+  // 把回看文本按各条目所属书的 scan_depth 重新切片会带来复杂度，这里取所有关联书的最大 scan_depth 统一回看。
+  const maxScan = linked.reduce((m, l) => Math.max(m, l.scan_depth || 4), 0) || 6;
+  // 对话轮数：历史中 assistant 消息条数，用于 min_turns 判定。
+  const turnCount = (history || []).filter(m => m.role === 'assistant').length;
+
+  // 基于回看深度构造扫描文本：取最近 maxScan*2 条消息（一轮含 user+assistant）。
+  const scanText = (history || []).slice(-Math.max(2, maxScan * 2)).map(m => m.content || '').join(' ') + ' ' + (recentText || '');
 
   // 统一触发动机：内嵌条目默认 keyword 模式；空 keys => always
   const evalEntry = (w) => {
@@ -244,26 +254,63 @@ function buildSystemPrompt(character, recentText) {
     const keysRaw = (w.keys || '').split(',').map(k => k.trim()).filter(Boolean);
     if (mode === 'always' || keysRaw.length === 0) return true;
     const cs = !!w.case_sensitive;
-    const hay = cs ? (recentText || '') : (recentText || '').toLowerCase();
+    const hay = cs ? scanText : scanText.toLowerCase();
     if (mode === 'regex') {
-      return keysRaw.some(k => { try { const re = new RegExp(k, cs ? '' : 'i'); return re.test(recentText || ''); } catch { return false; } });
+      return keysRaw.some(k => { try { const re = new RegExp(k, cs ? '' : 'i'); return re.test(scanText); } catch { return false; } });
     }
     return keysRaw.some(k => { const kk = cs ? k : k.toLowerCase(); return hay.includes(kk); });
   };
 
-  // 专家档：图片触发判定。需要创建者预注入了图片（image_urls）且配置了触发关键词。
-  // 命中后由 buildSystemPrompt 引导模型在回复中嵌入 [[wbimg:id]] 标记，前端直接展示预注入图片（不调用生图）。
+  // 排除关键词：扫描文本中出现任一排除词则该条目本轮不触发（黑名单优先于概率/分组）。
+  const evalExclude = (w) => {
+    const ex = (w.exclude_keys || '').split(',').map(k => k.trim()).filter(Boolean);
+    if (!ex.length) return false;
+    return ex.some(k => scanText.toLowerCase().includes(k.toLowerCase()));
+  };
+
+  // 最少轮数：对话轮数未达 min_turns 不触发（用于剧情渐进）。
+  const evalMinTurns = (w) => turnCount >= (w.min_turns || 0);
+
+  // 触发概率：命中后按 probability 抽签（0-100），100 = 必触发。预览不计入概率。
+  const evalProbability = (w) => (w.probability == null || w.probability >= 100) ? true : Math.random() * 100 < w.probability;
+
+  // 图片触发判定：需创建者预注入图片且配置触发关键词，命中后前端直接展示（不调用生图）。
   const evalImage = (w) => {
     if (!w.image_urls || !w.image_keys) return false;
     const ik = (w.image_keys || '').split(',').map(k => k.trim()).filter(Boolean);
     if (ik.length === 0) return true;
-    const hay = (recentText || '').toLowerCase();
+    const hay = scanText.toLowerCase();
     return ik.some(k => hay.includes(k.toLowerCase()));
   };
 
-  // 触发 + 互斥分组（同 group_name 只保留最高优先级的一条）
-  const triggered = [...own.map(o => ({ ...o, mode: 'keyword', inject_pos: 'after', priority: 50, group_name: '' })), ...linked]
-    .filter(evalEntry);
+  // 触发 + 排除 + 轮数 + 概率 + 互斥分组（同 group_name 只保留最高优先级的一条）
+  let triggered = [...own.map(o => ({ ...o, mode: 'keyword', inject_pos: 'after', priority: 50, group_name: '', probability: 100, min_turns: 0, exclude_keys: '', recursion: 0 })), ...linked]
+    .filter(evalEntry)
+    .filter(w => !evalExclude(w))
+    .filter(evalMinTurns)
+    .filter(evalProbability);
+
+  // 递归触发：被激活条目的 content 作为新扫描文本，继续激活其他条目（最多 2 轮防无限循环）。
+  const anyRecursion = linked.some(l => l.recursion);
+  if (anyRecursion) {
+    const activeIds = new Set(triggered.map(t => t.id));
+    for (let round = 0; round < 2; round++) {
+      let added = false;
+      const extraText = triggered.map(t => t.content || '').join(' ');
+      for (const l of linked) {
+        if (activeIds.has(l.id)) continue;
+        const keysRaw = (l.keys || '').split(',').map(k => k.trim()).filter(Boolean);
+        if (!keysRaw.length) continue; // 常驻条目不参与递归
+        const hit = keysRaw.some(k => extraText.toLowerCase().includes(k.toLowerCase()));
+        if (hit && !evalExclude({ ...l, exclude_keys: l.exclude_keys }) && evalMinTurns(l)) {
+          triggered.push(l); activeIds.add(l.id); added = true;
+        }
+      }
+      if (!added) break;
+    }
+  }
+
+  // 互斥分组取最高优先级
   const groupBest = new Map();
   for (const t of triggered) {
     if (!t.group_name) continue;
@@ -275,16 +322,25 @@ function buildSystemPrompt(character, recentText) {
     return groupBest.get(t.group_name) === t;
   });
 
+  // Token 预算：粗略按 4 字符 ≈ 1 token 截断注入内容（仅截断世界书内容，不截断角色设定）。
+  const maxBudget = linked.reduce((m, l) => Math.max(m, l.token_budget || 0), 0);
+  let usedBudget = 0;
   for (const t of finalEntries) {
-    (t.inject_pos === 'before' ? beforeParts : afterParts).push(t.content);
+    let c = t.content || '';
+    if (maxBudget > 0) {
+      const remaining = maxBudget - usedBudget;
+      if (remaining <= 0) break;
+      const maxChars = remaining * 4;
+      if (c.length > maxChars) c = c.slice(0, maxChars);
+      usedBudget += Math.ceil(c.length / 4);
+    }
+    (t.inject_pos === 'before' ? beforeParts : afterParts).push(c);
   }
 
-  // 专家档：收集作者 prompt_overlay（去重），并采集本轮命中的图片触发条目，
-  // 构造 [[wbimg:<entryId>]] 协议指令注入到系统提示词，让模型在回复里嵌入图片标记。
-  // 前端解析标记后直接展示该条目预注入的图片，不调用平台 AI 生图。
+  // 专家能力：收集作者 prompt_overlay（去重），采集本轮命中的图片触发条目。
+  // 无 tier 闸门——只要条目有 image_urls/image_keys 或世界书有 prompt_overlay 即生效。
   const seenOverlay = new Set();
   for (const l of linked) {
-    if (l.tier !== 'expert') continue;
     if (l.prompt_overlay && !seenOverlay.has(l.prompt_overlay)) { seenOverlay.add(l.prompt_overlay); overlayParts.push(l.prompt_overlay.trim()); }
     if (evalImage(l)) imgTriggers.push({ id: l.id, slot: l.front_slot || '' });
   }
@@ -334,13 +390,13 @@ const parseMem = (conv) => { try { conv.memories = JSON.parse(conv.memories || '
 const withWorld = (c) => {
   if (!c) return c;
   c.world = db.prepare('SELECT * FROM world_entries WHERE character_id = ? ORDER BY position, id').all(c.id);
-  // 关联的独立世界书：暴露 tier / front_schema / prompt_overlay / 命中过的图片条目，
-  // 供前端在专家档下渲染「自构对话前端」与解析 [[wbimg:id]] 标记。
-  c.linked_worldbooks = db.prepare(`SELECT w.id, w.name, w.tier, w.front_schema, w.prompt_overlay
+  // 关联的独立世界书：暴露 front_schema / prompt_overlay，供前端渲染「自构对话前端」。
+  c.linked_worldbooks = db.prepare(`SELECT w.id, w.name, w.front_schema, w.prompt_overlay
     FROM character_worldbooks cw JOIN worldbooks w ON w.id = cw.worldbook_id
     WHERE cw.character_id = ? ORDER BY w.id`).all(c.id);
-  // 专家档：扁平化所有图片触发条目（id -> { urls, position, slot }），供前端解析 [[wbimg:id]] 标记后直接展示预注入图片。
-  const wbIds = c.linked_worldbooks.filter(w => w.tier === 'expert').map(w => w.id);
+  // 图片触发条目（id -> { urls, position, slot }）：无 tier 闸门，凡有 image_urls+image_keys 的条目均纳入，
+  // 供前端解析 [[wbimg:id]] 标记后直接展示创建者预注入的图片（不调用生图）。
+  const wbIds = c.linked_worldbooks.map(w => w.id);
   if (wbIds.length) {
     const rows = db.prepare(`SELECT we.id, we.image_urls, we.image_position, we.front_slot, we.worldbook_id
       FROM worldbook_entries we WHERE we.worldbook_id IN (${wbIds.map(() => '?').join(',')})
@@ -477,7 +533,7 @@ async function streamReply(res, conv, character, settings, userContent) {
     if (me.gold < feeDue) { sse({ error: `金币不足，本次平台 AI 服务需 ${feeDue} 金币（当前 ${me.gold}）。可前往钱包签到/兑换，或在设置中填写自己的 API。` }); sse('[DONE]'); return res.end(); }
   }
   const recentText = history.slice(-6).map(m => m.content).join(' ');
-  let system = buildSystemPrompt(character, recentText + ' ' + userContent);
+  let system = buildSystemPrompt(character, recentText + ' ' + userContent, history);
   if (eff.platform && eff.system_prompt.trim()) system = eff.system_prompt.trim() + '\n\n' + system;
   const payloadMessages = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
