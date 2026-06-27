@@ -7,40 +7,35 @@ import { Plus, ArrowLeft, Trash, BookOpen, Save, Globe, ChevronDown, ChevronUp,
 
 const BLANK = { name: '', description: '', tags: '', tier: 'normal', is_public: false, front_schema: '', prompt_overlay: '', entries: [] };
 
-// 三档创作者能力对比：列表显示
+// 世界书设置级别（不是创作者档位、不上锁）：仅决定编辑器显示哪些特性面板。
+// tier 可自由切换，所有字段始终保留入库，运行时按 tier 决定是否启用专家特性。
 const TIERS = [
-  { id: 'normal', name: '通常', icon: BookOpen, accent: 'var(--accent-2)',
+  { id: 'normal', name: '简单', icon: BookOpen, accent: 'var(--accent-2)',
     desc: '关键词触发 · 跨角色复用 · 适合普通创作者',
-    cap: ['关键词触发', '常驻条目', '≤ 30 条', '公开共享'], limit: 30 },
-  { id: 'advanced', name: '高级', icon: Code2, accent: '#7c5bd9',
+    cap: ['关键词触发', '常驻条目', '公开共享'] },
+  { id: 'advanced', name: '标准', icon: Code2, accent: '#7c5bd9',
     desc: '正则/常驻/优先级/互斥分组 · 工程化设定',
-    cap: ['正则与常驻', '注入位置', '优先级 + 互斥分组', '作者备注', '≤ 100 条'], limit: 100 },
+    cap: ['正则与常驻', '注入位置', '优先级 + 互斥分组', '作者备注'] },
   { id: 'expert', name: '专家', icon: Wand2, accent: '#d4677a',
-    desc: '图片触发协议 · 自构对话前端 · 提示词叠加',
-    cap: ['文中塞入关联提示词触发图片', '玩家自构对话前端 (front_schema)', '专家级 prompt_overlay', '全部高级能力', '≤ 200 条'], limit: 200 },
+    desc: '预注入图片触发 · 自构对话前端 · 提示词叠加',
+    cap: ['预注入图片触发展示', '玩家自构对话前端 (front_schema)', '专家级 prompt_overlay', '全部标准能力'] },
 ];
 
-// 条目默认值：按档位返回不同字段集
-const newEntry = (tier) => {
-  const e = { keys: '', content: '', enabled: true };
-  if (tier !== 'normal') Object.assign(e, { mode: 'keyword', inject_pos: 'after', priority: 50, case_sensitive: false, group_name: '', comment: '' });
-  if (tier === 'expert') Object.assign(e, { image_prompt: '', image_keys: '', image_position: 'inline', front_slot: '' });
-  return e;
-};
-
-// 在切换档位时给现有条目补齐/精简字段
-const normalizeEntries = (entries, tier) => entries.map(e => {
-  const out = { keys: e.keys || '', content: e.content || '', enabled: e.enabled !== false };
-  if (tier !== 'normal') Object.assign(out, {
-    mode: e.mode || 'keyword', inject_pos: e.inject_pos || 'after', priority: e.priority ?? 50,
-    case_sensitive: !!e.case_sensitive, group_name: e.group_name || '', comment: e.comment || ''
-  });
-  if (tier === 'expert') Object.assign(out, {
-    image_prompt: e.image_prompt || '', image_keys: e.image_keys || '',
-    image_position: e.image_position || 'inline', front_slot: e.front_slot || ''
-  });
-  return out;
+// 条目默认值：始终包含全部字段（不按 tier 剥离），仅前端按 tier 控制面板可见性。
+const newEntry = () => ({
+  keys: '', content: '', enabled: true,
+  mode: 'keyword', inject_pos: 'after', priority: 50, case_sensitive: false, group_name: '', comment: '',
+  image_urls: '', image_keys: '', image_position: 'inline', front_slot: ''
 });
+
+// 切换 tier 不再剥离字段，仅补齐缺失字段，保证数据完整。
+const normalizeEntries = (entries) => entries.map(e => ({
+  keys: e.keys || '', content: e.content || '', enabled: e.enabled !== false,
+  mode: e.mode || 'keyword', inject_pos: e.inject_pos || 'after', priority: e.priority ?? 50,
+  case_sensitive: !!e.case_sensitive, group_name: e.group_name || '', comment: e.comment || '',
+  image_urls: e.image_urls || '', image_keys: e.image_keys || '',
+  image_position: e.image_position || 'inline', front_slot: e.front_slot || ''
+}));
 
 // front_schema 默认模板，让创作者一键起步
 const DEFAULT_SCHEMA = JSON.stringify({
@@ -80,7 +75,7 @@ export default function WorldbookEditor() {
         mode: e.mode || 'keyword', inject_pos: e.inject_pos || 'after',
         priority: e.priority ?? 50, case_sensitive: !!e.case_sensitive,
         group_name: e.group_name || '', comment: e.comment || '',
-        image_prompt: e.image_prompt || '', image_keys: e.image_keys || '',
+        image_urls: e.image_urls || '', image_keys: e.image_keys || '',
         image_position: e.image_position || 'inline', front_slot: e.front_slot || '',
         _id: e.id
       }));
@@ -95,20 +90,17 @@ export default function WorldbookEditor() {
 
   const set = (k, v) => setWb(p => ({ ...p, [k]: v }));
   const addEntry = () => {
-    if (wb.entries.length >= tierMeta.limit) { toast(`已达 ${tierMeta.name} 档配额上限（${tierMeta.limit} 条）`, 'err'); return; }
-    set('entries', [...wb.entries, newEntry(tier)]);
+    set('entries', [...wb.entries, newEntry()]);
     setExpanded(p => ({ ...p, [wb.entries.length]: tier !== 'normal' }));
   };
   const updEntry = (i, k, v) => set('entries', wb.entries.map((e, j) => j === i ? { ...e, [k]: v } : e));
   const delEntry = (i) => set('entries', wb.entries.filter((_, j) => j !== i));
   const toggleExpand = (i) => setExpanded(p => ({ ...p, [i]: !p[i] }));
 
-  // 切换档位：升档时补齐字段；normal 时剥离（服务器也会兜底剥离）
+  // 切换级别：自由切换，不剥离字段（数据始终保留）。切到专家档且无 front_schema 时给默认模板起步。
   const changeTier = (nextTier) => {
-    if (readOnly) return;
-    if (nextTier === tier) return;
+    if (readOnly || nextTier === tier) return;
     set('tier', nextTier);
-    set('entries', normalizeEntries(wb.entries, nextTier));
     if (nextTier === 'expert' && !wb.front_schema) set('front_schema', DEFAULT_SCHEMA);
   };
 
@@ -116,7 +108,7 @@ export default function WorldbookEditor() {
     if (!wb.name.trim()) { toast('请填写世界书名称', 'err'); return; }
     setBusy(true);
     try {
-      const payload = { ...wb, entries: normalizeEntries(wb.entries, tier) };
+      const payload = { ...wb, entries: normalizeEntries(wb.entries) };
       if (editing) {
         await api('/worldbooks/' + id, { method: 'PUT', body: payload });
         toast('已保存');
@@ -240,13 +232,13 @@ export default function WorldbookEditor() {
 
         {/* —— 条目列表 —— */}
         <div className="section-title">
-          <h2>设定条目 ({wb.entries.length}/{tierMeta.limit})</h2>
+          <h2>设定条目 ({wb.entries.length})</h2>
           {!readOnly && <button className="btn sm" onClick={addEntry}><Plus size={14} /> 添加条目</button>}
         </div>
         <p className="muted wb-tier-hint">
           {tier === 'normal' && <>角色对话出现「触发关键词」时设定自动注入。留空关键词为常驻设定。</>}
-          {tier === 'advanced' && <>高级档已开启：可配置触发模式（关键词/正则/常驻）、注入位置、优先级与互斥分组。</>}
-          {tier === 'expert' && <>专家档已开启：在高级能力基础上，每条目可塞入「图片触发提示词」，模型会在文中嵌入 <code>[[wbimg:条目ID]]</code> 标记，由玩家点击生成现场插图。</>}
+          {tier === 'advanced' && <>标准级已开启：可配置触发模式（关键词/正则/常驻）、注入位置、优先级与互斥分组。</>}
+          {tier === 'expert' && <>专家级已开启：在标准能力基础上，每条目可「预注入图片」，命中图片触发关键词时，模型在文中嵌入 <code>[[wbimg:条目ID]]</code> 标记，前端直接展示你预设的图片（不调用 AI 生图）。</>}
         </p>
 
         {wb.entries.length === 0 && <div className="empty" style={{ padding: 40 }}>暂无条目{readOnly ? '' : '，点击右上角添加'}</div>}
@@ -307,21 +299,21 @@ export default function WorldbookEditor() {
                   <input className="input" placeholder="例如：此条目用于第3章剧情揭示" value={w.comment || ''} onChange={e => updEntry(i, 'comment', e.target.value)} disabled={readOnly} />
                 </div>
 
-                {/* —— 专家档：图片触发 —— */}
+                {/* —— 专家档：预注入图片触发 —— */}
                 {tier === 'expert' && (
                   <div className="we-image">
-                    <div className="we-image-head"><ImageIcon size={14} /> 图片触发协议</div>
+                    <div className="we-image-head"><ImageIcon size={14} /> 预注入图片触发</div>
                     <p className="muted" style={{ fontSize: 12, margin: '2px 0 8px' }}>
-                      命中 image_keys 时，模型可在文中嵌入 <code>[[wbimg:{w._id || '新条目'}]]</code> 标记，玩家点击后调用 AI 生图（按平台生图费率）。
+                      由<b>创建者</b>预填图片 URL（一张或多张）。对话命中下方关键词时，模型在文中嵌入 <code>[[wbimg:{w._id || '新条目'}]]</code> 标记，前端直接展示你预设的图片（不调用 AI 生图，不产生生图费用）。
                     </p>
                     <div className="we-adv-grid">
                       <div className="field" style={{ margin: 0, gridColumn: '1 / -1' }}>
-                        <label>图片提示词 <span className="muted">（生图 prompt，可含风格关键词）</span></label>
-                        <textarea className="textarea" rows={2} placeholder="例：圣城阿斯特拉全景，浮空岛，金色穹顶，云海翻涌，史诗概念画"
-                          value={w.image_prompt || ''} onChange={e => updEntry(i, 'image_prompt', e.target.value)} disabled={readOnly} />
+                        <label>预注入图片 URL <span className="muted">（逗号分隔，可多张；支持外部图床直链）</span></label>
+                        <textarea className="textarea" rows={2} placeholder="例：https://cdn.example.com/scene_astrala.jpg, https://cdn.example.com/scene_astrala_night.jpg"
+                          value={w.image_urls || ''} onChange={e => updEntry(i, 'image_urls', e.target.value)} disabled={readOnly} />
                       </div>
                       <div className="field" style={{ margin: 0 }}>
-                        <label>图片触发关键词 <span className="muted">（逗号分隔）</span></label>
+                        <label>图片触发关键词 <span className="muted">（逗号分隔，命中即展示）</span></label>
                         <input className="input" placeholder="圣城, 阿斯特拉" value={w.image_keys || ''} onChange={e => updEntry(i, 'image_keys', e.target.value)} disabled={readOnly} />
                       </div>
                       <div className="field" style={{ margin: 0 }}>
@@ -366,7 +358,9 @@ export default function WorldbookEditor() {
                     <div key={i} className="wb-prev-row">
                       <div className="wb-prev-keys">{r.keys || '(常驻)'}{r.imgTriggered && <span className="wb-img-tag"><ImageIcon size={10} /> 图</span>}</div>
                       <div className="wb-prev-content">{r.content}</div>
-                      {r.image_prompt && <div className="wb-prev-img"><ImageIcon size={11} /> {r.image_prompt}</div>}
+                      {r.image_urls && r.image_urls.length > 0 && (
+                        <div className="wb-prev-img"><ImageIcon size={11} /> 预注入 {r.image_urls.length} 张图片</div>
+                      )}
                     </div>
                   ))}
               </div>

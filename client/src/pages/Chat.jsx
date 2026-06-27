@@ -5,7 +5,6 @@ import { useToast, Avatar } from '../ui.jsx';
 import { speakBrowser } from '../voice.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles } from 'lucide-react';
-import { generateImage } from '../imagegen.js';
 
 const LIST_KEY = 'huanyu_chatlist_mini';
 const FONT_KEY = 'huanyu_chat_font';
@@ -31,7 +30,7 @@ function affinityInfo(v) {
 }
 
 // —— 专家档世界书：[[wbimg:<entryId>]] 标记协议 ——
-// 模型在专家世界书触发时嵌入此标记。前端按 wb_image_map[id] 解析为「点击生成」图片占位。
+// 模型在专家世界书触发时嵌入此标记。前端按 wb_image_map[id] 直接展示创建者预注入的图片（不调用 AI 生图）。
 const WBIMG_RE = /\[\[wbimg:(\d+)\]\]/g;
 
 // 把一段助手文本拆成 [text | { marker, id, meta }] 交替片段，供气泡按片段渲染。
@@ -77,7 +76,6 @@ export default function Chat() {
   const [autoRead, setAutoRead] = useState(() => localStorage.getItem(AUTOREAD_KEY) === '1');
   const [reactFor, setReactFor] = useState(null);
   const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
-  const [wbImgs, setWbImgs] = useState({}); // 专家档：[[wbimg:id]] 标记的已生成/生成中图片缓存
   const scrollRef = useRef();
   const abortRef = useRef(null);
   const bgmRef = useRef(null);
@@ -296,29 +294,12 @@ export default function Chat() {
     catch { toast('复制失败', 'err'); }
   };
 
-  // 专家档世界书：点击 [[wbimg:id]] 占位后调用平台 AI 生图（按平台费率扣金币）。
-  // 失败时回写错误状态，让玩家可重试。
-  const genWbImg = async (entryId, prompt) => {
-    const key = String(entryId);
-    if (wbImgs[key]?.loading || wbImgs[key]?.url) return;
-    setWbImgs(p => ({ ...p, [key]: { loading: true } }));
-    try {
-      const d = await generateImage({ prompt, size: '1024x1024' });
-      setWbImgs(p => ({ ...p, [key]: { url: d.image, loading: false } }));
-    } catch (e) {
-      setWbImgs(p => ({ ...p, [key]: { loading: false, error: e.message || '生成失败' } }));
-      toast(e.message || '生成失败', 'err');
-    }
-  };
-
-  // 气泡内容渲染：专家档助手消息可含 [[wbimg:id]] 标记，渲染为可点击生图的占位块。
+  // 气泡内容渲染：专家档助手消息可含 [[wbimg:id]] 标记，标记位置直接展示创建者预注入的图片（不调用 AI 生图）。
   // 无标记时退化为纯文本，保持原有打字机/换行行为。
   const imageMap = character?.wb_image_map;
   const renderBubbleContent = (content, role) => {
     if (!content) return null;
     if (role !== 'assistant' || !imageMap || !WBIMG_RE.test(content)) {
-      // WBIMG_RE.test 设置了 lastIndex，但因为是 /g 正则在 .test 后会推进 lastIndex，
-      // 由于我们每次都新建局部匹配，这里通过 splitWbMarkers 统一处理避免状态污染。
       WBIMG_RE.lastIndex = 0;
       return content;
     }
@@ -326,20 +307,17 @@ export default function Chat() {
     const parts = splitWbMarkers(content, imageMap);
     return parts.map((seg, i) => {
       if (!seg.marker) return <span key={i}>{seg.text}</span>;
-      const key = String(seg.id);
       const meta = seg.meta;
-      const cached = wbImgs[key];
-      if (cached?.url) {
-        return <img key={i} className="wb-inline-img" src={cached.url} alt="场景插图" />;
+      if (!meta || !meta.urls || meta.urls.length === 0) {
+        return <span key={i} className="wb-img-missing" title="该标记未预注入图片"><ImageIcon size={12} /> 〔未注入图片〕</span>;
       }
+      // 多张时堆叠展示（首张为主图，其余点击可放大由原生 lightbox 处理）
       return (
-        <button key={i} className="wb-img-trigger" onClick={() => meta && genWbImg(seg.id, meta.prompt)}
-          disabled={!meta || cached?.loading}
-          title={meta?.prompt || '未知图片'}>
-          {cached?.loading ? <><Sparkles size={12} /> 生成中…</>
-            : cached?.error ? <><ImageIcon size={12} /> 重试生图</>
-            : <><ImageIcon size={12} /> {meta ? '生成场景插图' : '未知插图标记'}</>}
-        </button>
+        <span key={i} className="wb-inline-imgs">
+          {meta.urls.map((u, j) => (
+            <img key={j} className="wb-inline-img" src={u} alt={`场景插图 ${j + 1}`} loading="lazy" />
+          ))}
+        </span>
       );
     });
   };

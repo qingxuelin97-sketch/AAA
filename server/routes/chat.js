@@ -231,7 +231,7 @@ function buildSystemPrompt(character, recentText) {
   const own = db.prepare('SELECT keys, content FROM world_entries WHERE character_id = ? AND enabled = 1 ORDER BY position, id').all(character.id);
   // 关联独立世界书条目（含高级/专家字段）
   const linked = db.prepare(`SELECT we.id, we.keys, we.content, we.mode, we.inject_pos, we.priority, we.case_sensitive, we.group_name,
-    we.image_prompt, we.image_keys, we.front_slot, w.tier, w.prompt_overlay
+    we.image_urls, we.image_keys, we.front_slot, w.tier, w.prompt_overlay
     FROM worldbook_entries we
     JOIN character_worldbooks cw ON cw.worldbook_id = we.worldbook_id
     JOIN worldbooks w ON w.id = cw.worldbook_id
@@ -251,9 +251,10 @@ function buildSystemPrompt(character, recentText) {
     return keysRaw.some(k => { const kk = cs ? k : k.toLowerCase(); return hay.includes(kk); });
   };
 
-  // 专家档：图片关键词独立判定（与条目文本触发解耦，可单独命中）。
+  // 专家档：图片触发判定。需要创建者预注入了图片（image_urls）且配置了触发关键词。
+  // 命中后由 buildSystemPrompt 引导模型在回复中嵌入 [[wbimg:id]] 标记，前端直接展示预注入图片（不调用生图）。
   const evalImage = (w) => {
-    if (!w.image_prompt || !w.image_keys) return false;
+    if (!w.image_urls || !w.image_keys) return false;
     const ik = (w.image_keys || '').split(',').map(k => k.trim()).filter(Boolean);
     if (ik.length === 0) return true;
     const hay = (recentText || '').toLowerCase();
@@ -280,11 +281,12 @@ function buildSystemPrompt(character, recentText) {
 
   // 专家档：收集作者 prompt_overlay（去重），并采集本轮命中的图片触发条目，
   // 构造 [[wbimg:<entryId>]] 协议指令注入到系统提示词，让模型在回复里嵌入图片标记。
+  // 前端解析标记后直接展示该条目预注入的图片，不调用平台 AI 生图。
   const seenOverlay = new Set();
   for (const l of linked) {
     if (l.tier !== 'expert') continue;
     if (l.prompt_overlay && !seenOverlay.has(l.prompt_overlay)) { seenOverlay.add(l.prompt_overlay); overlayParts.push(l.prompt_overlay.trim()); }
-    if (evalImage(l)) imgTriggers.push({ id: l.id, prompt: l.image_prompt, slot: l.front_slot || '' });
+    if (evalImage(l)) imgTriggers.push({ id: l.id, slot: l.front_slot || '' });
   }
 
   const parts = [];
@@ -293,10 +295,10 @@ function buildSystemPrompt(character, recentText) {
   parts.push(...personaParts);
   if (afterParts.length) parts.push('【世界书 / 设定】\n' + afterParts.join('\n---\n'));
   if (imgTriggers.length) {
-    // 协议指令：让模型在合适时机（场景/情绪转换时）嵌入 [[wbimg:<id>]] 标记。
-    // 前端解析标记后懒生成图片，避免无谓的图片费用。
-    const list = imgTriggers.map(t => `[[wbimg:${t.id}]] -> ${String(t.prompt).slice(0, 200)}`).join('\n');
-    parts.push(`【插图协议 / 你可以在叙述中嵌入以下标记触发现场插图，仅在自然贴切时使用，每条最多一次】\n${list}`);
+    // 协议指令：让模型在自然贴切处嵌入 [[wbimg:<id>]] 标记以展示该场景的预设插图。
+    // 前端拿到标记后查询 wb_image_map 取创建者预注入的图片直接渲染，不生成。
+    const list = imgTriggers.map(t => `[[wbimg:${t.id}]]`).join(' / ');
+    parts.push(`【插图标记协议 / 当叙述自然贴切时，可在对应位置嵌入以下标记以展示该场景的预设插图，每条最多一次，无合适场景则忽略】\n${list}`);
   }
   parts.push(`你正在扮演「${character.name}」。请始终保持角色设定，使用沉浸式的第一人称叙述，不要跳出角色，不要提及你是 AI。`);
   return parts.join('\n\n');
@@ -337,14 +339,17 @@ const withWorld = (c) => {
   c.linked_worldbooks = db.prepare(`SELECT w.id, w.name, w.tier, w.front_schema, w.prompt_overlay
     FROM character_worldbooks cw JOIN worldbooks w ON w.id = cw.worldbook_id
     WHERE cw.character_id = ? ORDER BY w.id`).all(c.id);
-  // 专家档：扁平化所有图片触发条目（id -> { prompt, position, slot }），供前端解析 [[wbimg:id]] 标记。
+  // 专家档：扁平化所有图片触发条目（id -> { urls, position, slot }），供前端解析 [[wbimg:id]] 标记后直接展示预注入图片。
   const wbIds = c.linked_worldbooks.filter(w => w.tier === 'expert').map(w => w.id);
   if (wbIds.length) {
-    const rows = db.prepare(`SELECT we.id, we.image_prompt, we.image_position, we.front_slot, we.worldbook_id
+    const rows = db.prepare(`SELECT we.id, we.image_urls, we.image_position, we.front_slot, we.worldbook_id
       FROM worldbook_entries we WHERE we.worldbook_id IN (${wbIds.map(() => '?').join(',')})
-      AND we.image_prompt != '' AND we.image_keys != '' AND we.enabled = 1`).all(...wbIds);
+      AND we.image_urls != '' AND we.image_keys != '' AND we.enabled = 1`).all(...wbIds);
     c.wb_image_map = {};
-    for (const r of rows) c.wb_image_map[r.id] = { prompt: r.image_prompt, position: r.image_position || 'inline', slot: r.front_slot || '', worldbook_id: r.worldbook_id };
+    for (const r of rows) {
+      const urls = (r.image_urls || '').split(',').map(u => u.trim()).filter(Boolean);
+      if (urls.length) c.wb_image_map[r.id] = { urls, position: r.image_position || 'inline', slot: r.front_slot || '', worldbook_id: r.worldbook_id };
+    }
   }
   return c;
 };

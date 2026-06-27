@@ -384,15 +384,16 @@ db.exec(`CREATE TABLE IF NOT EXISTS script_likes (
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }
 
 // 独立世界书：可脱离角色单独编辑，并跨角色复用（多对多关联）。
-// 创作者档位 tier：
-//   normal  —— 通常档：关键词触发，仅 keys/content/enabled，≤30 条
-//   advanced—— 高级档：mode/inject_pos/priority/group_name/case_sensitive/comment，≤100 条
-//   expert  —— 专家档：在 advanced 基础上新增「图片触发」与「自构对话前端」，≤200 条
-//   - front_schema：玩家自构对话前端布局 JSON（layout/slots/accent）
-//   - prompt_overlay：叠加在系统提示词上的专家指令模板
-// 条目专家级字段：
-//   - image_prompt / image_keys / image_position：在文中塞入关联提示词触发图片
-//   - front_slot：将条目绑定到 front_schema 中具名 slot（在对应位置渲染）
+// tier 是世界书自身的「设置级别」（并非创作者档位，不上锁）：
+//   normal  —— 简单：关键词触发
+//   advanced—— 标准：正则/常驻/优先级/互斥分组
+//   expert  —— 专家：图片触发 + 自构对话前端 + 提示词叠加
+// 字段说明：
+//   front_schema：玩家自构对话前端布局 JSON（layout/slots/accent）
+//   prompt_overlay：叠加在系统提示词上的专家指令模板
+//   image_urls：创建者预注入的图片 URL 列表（逗号分隔），命中触发关键词或 [[wbimg:id]] 标记时直接展示
+//   image_keys：触发预注入图片展示的关键词
+//   front_slot：将条目绑定到 front_schema 中具名 slot（在对应位置渲染）
 db.exec(`
 CREATE TABLE IF NOT EXISTS worldbooks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -417,7 +418,7 @@ CREATE TABLE IF NOT EXISTS worldbook_entries (
   case_sensitive INTEGER DEFAULT 0,
   group_name TEXT DEFAULT '',
   comment TEXT DEFAULT '',
-  image_prompt TEXT DEFAULT '',
+  image_urls TEXT DEFAULT '',
   image_keys TEXT DEFAULT '',
   image_position TEXT DEFAULT 'inline',
   front_slot TEXT DEFAULT ''
@@ -428,7 +429,7 @@ CREATE TABLE IF NOT EXISTS character_worldbooks (
   PRIMARY KEY (character_id, worldbook_id)
 );
 `);
-// 迁移：已有数据库补齐高级模式列与专家档列。
+// 迁移：已有数据库补齐列。image_prompt 旧字段保留兼容，新逻辑使用 image_urls。
 for (const sql of [
   "ALTER TABLE worldbook_entries ADD COLUMN mode TEXT DEFAULT 'keyword'",
   "ALTER TABLE worldbook_entries ADD COLUMN inject_pos TEXT DEFAULT 'after'",
@@ -440,6 +441,7 @@ for (const sql of [
   "ALTER TABLE worldbook_entries ADD COLUMN image_keys TEXT DEFAULT ''",
   "ALTER TABLE worldbook_entries ADD COLUMN image_position TEXT DEFAULT 'inline'",
   "ALTER TABLE worldbook_entries ADD COLUMN front_slot TEXT DEFAULT ''",
+  "ALTER TABLE worldbook_entries ADD COLUMN image_urls TEXT DEFAULT ''",
   "ALTER TABLE worldbooks ADD COLUMN tier TEXT DEFAULT 'normal'",
   "ALTER TABLE worldbooks ADD COLUMN front_schema TEXT DEFAULT ''",
   "ALTER TABLE worldbooks ADD COLUMN prompt_overlay TEXT DEFAULT ''",
