@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { speakBrowser } from '../voice.js';
+import { speakBrowser, stripParensForSpeech } from '../voice.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles } from 'lucide-react';
 
@@ -411,7 +411,10 @@ export default function Chat() {
     });
   };
 
-  const speak = async (text) => {
+  const speak = async (raw) => {
+    // 括号内的内容（动作 / OOC 说明）默认不朗读
+    const text = stripParensForSpeech(raw);
+    if (!text) return;
     // Browser Web Speech needs no server round-trip (offline / no CORS).
     if (voiceCfg?.voice_protocol === 'browser') { speakBrowser(text, voiceCfg.voice_name, character?.voice_speed, character?.voice_pitch); return; }
     try {

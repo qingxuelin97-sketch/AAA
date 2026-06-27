@@ -1,4 +1,26 @@
 // Shared browser Web Speech API (TTS) helpers — zero-config, offline, CORS-free.
+
+// 去除括号及其包裹的内容（动作 / OOC 说明），朗读时默认不读。
+// 支持中英文圆括号、中方括号【】并通过迭代处理嵌套；不处理「」『』《》等台词/书名引用。
+const PAREN_PAIRS = [
+  [/（[^（）]*）/g, /（/g, /）/g],
+  [/\([^()]*\)/g, /\(/g, /\)/g],
+  [/【[^【】]*】/g, /【/g, /】/g],
+];
+export function stripParensForSpeech(input) {
+  let s = String(input || '');
+  let prev;
+  // 反复剥离最内层括号，直到无变化（支持任意嵌套层数）
+  let guard = 0;
+  do {
+    prev = s;
+    for (const [re] of PAREN_PAIRS) s = s.replace(re, '');
+  } while (s !== prev && ++guard < 50);
+  // 残留的未配对括号字符也清掉，避免单独读出
+  for (const [, , open, close] of PAREN_PAIRS) s = s.replace(open, ' ').replace(close, ' ');
+  return s.replace(/\s{2,}/g, ' ').trim();
+}
+
 export function browserVoices() {
   try { return (window.speechSynthesis?.getVoices() || []); } catch { return []; }
 }
