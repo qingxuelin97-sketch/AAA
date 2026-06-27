@@ -77,6 +77,8 @@ export default function Chat() {
   const [reactFor, setReactFor] = useState(null);
   const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
   const [previewImg, setPreviewImg] = useState(null);
+  // 键盘弹起标志：用于隐藏滚动到底部按钮，避免覆盖输入区导致点击失灵
+  const [kbdOpen, setKbdOpen] = useState(false);
   const [loadingConv, setLoadingConv] = useState(false);
   const scrollRef = useRef();
   const abortRef = useRef(null);
@@ -89,24 +91,29 @@ export default function Chat() {
   const autoReadRef = useRef(autoRead);
   useEffect(() => { autoReadRef.current = autoRead; }, [autoRead]);
 
-  // 移动端键盘遮挡修复：监听 visualViewport，键盘弹起时把输入栏推到可见区。
-  // iOS Safari 的 100dvh 更新有延迟，需主动 scrollIntoView 把聚焦输入框滚入视野。
+  // 移动端键盘遮挡修复：依赖 100dvh 收缩 + scrollIntoView 把输入框滚入可见区。
+  // 不再注入 paddingBottom：padding 会撑高盒子导致溢出 .chat-main 漏出 body 原色背景。
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    let raf = 0;
     const onResize = () => {
-      // 键盘弹起时 visualViewport.height < window.innerHeight
-      const bar = inputBarRef.current;
-      if (bar) {
-        bar.style.transform = 'translateY(0)';
-        bar.style.paddingBottom = `${Math.max(16, window.innerHeight - vv.height - bar.offsetTop)}px`;
-      }
-      if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') {
-        document.activeElement.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      }
+      // 检测键盘弹起：visualViewport 高度显著小于布局视口
+      const kbd = (window.innerHeight - vv.height) > 120;
+      setKbdOpen(kbd);
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const el = document.activeElement;
+        // 仅对聊天输入框触发滚入，避免 scrollIntoView 回退到滚动 body 露出顶/底原色
+        if (el && el.tagName === 'TEXTAREA' && inputBarRef.current?.contains(el)) {
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      });
     };
     vv.addEventListener('resize', onResize);
-    return () => { vv.removeEventListener('resize', onResize); inputBarRef.current && (inputBarRef.current.style.paddingBottom = ''); };
+    vv.addEventListener('scroll', onResize);
+    return () => { vv.removeEventListener('resize', onResize); vv.removeEventListener('scroll', onResize); if (raf) cancelAnimationFrame(raf); };
   }, [conv]);
 
   // 浮层（抽屉/菜单/搜索/反应面板/编辑）拦截浏览器后退键：打开时压栈，后退先关浮层而非跳路由。
@@ -603,7 +610,7 @@ export default function Chat() {
               </div>
             </div>
 
-            {!atBottom && (
+            {!atBottom && !kbdOpen && (
               <button className="scroll-bottom-btn" onClick={() => scrollToBottom()} title="回到底部" aria-label="回到底部">
                 <ArrowDown size={18} />
               </button>
