@@ -411,7 +411,10 @@ export default function Chat() {
     });
   };
 
-  const speak = async (text) => {
+  const speak = async (raw) => {
+    // 括号内的内容（动作/OOC 说明）默认不朗读：去除中英文括号及其包裹内容
+    const text = String(raw || '').replace(/（[^（）]*）/g, '').replace(/\([^()]*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+    if (!text) return;
     // Browser Web Speech needs no server round-trip (offline / no CORS).
     if (voiceCfg?.voice_protocol === 'browser') { speakBrowser(text, voiceCfg.voice_name, character?.voice_speed, character?.voice_pitch); return; }
     try {
