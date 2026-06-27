@@ -76,11 +76,47 @@ export default function Chat() {
   const [autoRead, setAutoRead] = useState(() => localStorage.getItem(AUTOREAD_KEY) === '1');
   const [reactFor, setReactFor] = useState(null);
   const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
+  const [previewImg, setPreviewImg] = useState(null);
   const scrollRef = useRef();
   const abortRef = useRef(null);
   const bgmRef = useRef(null);
+  const inputRef = useRef(null);
+  const inputBarRef = useRef(null);
   const autoReadRef = useRef(autoRead);
   useEffect(() => { autoReadRef.current = autoRead; }, [autoRead]);
+
+  // 移动端键盘遮挡修复：监听 visualViewport，键盘弹起时把输入栏推到可见区。
+  // iOS Safari 的 100dvh 更新有延迟，需主动 scrollIntoView 把聚焦输入框滚入视野。
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      // 键盘弹起时 visualViewport.height < window.innerHeight
+      const bar = inputBarRef.current;
+      if (bar) {
+        bar.style.transform = 'translateY(0)';
+        bar.style.paddingBottom = `${Math.max(16, window.innerHeight - vv.height - bar.offsetTop)}px`;
+      }
+      if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') {
+        document.activeElement.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    };
+    vv.addEventListener('resize', onResize);
+    return () => { vv.removeEventListener('resize', onResize); inputBarRef.current && (inputBarRef.current.style.paddingBottom = ''); };
+  }, [conv]);
+
+  // 浮层（抽屉/菜单/搜索/反应面板/编辑）拦截浏览器后退键：打开时压栈，后退先关浮层而非跳路由。
+  const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null;
+  useEffect(() => {
+    if (!anyOverlayOpen) return;
+    history.pushState({ overlay: true }, '');
+    const onPop = () => {
+      setDrawerOpen(false); setMenuOpen(false); setSearchOpen(false); setSearchQ('');
+      setActionsOpen(false); setReactFor(null); setEditingId(null);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => { window.removeEventListener('popstate', onPop); if (history.state?.overlay) history.back(); };
+  }, [anyOverlayOpen]);
   const setFont = (v) => { setFontSize(v); localStorage.setItem(FONT_KEY, v); };
   const toggleAutoRead = () => setAutoRead(v => { const n = !v; localStorage.setItem(AUTOREAD_KEY, n ? '1' : '0'); return n; });
   const toggleBgm = () => setBgmOn(v => { const n = !v; localStorage.setItem(BGM_KEY, n ? '1' : '0'); return n; });
@@ -311,11 +347,12 @@ export default function Chat() {
       if (!meta || !meta.urls || meta.urls.length === 0) {
         return <span key={i} className="wb-img-missing" title="该标记未预注入图片"><ImageIcon size={12} /> 〔未注入图片〕</span>;
       }
-      // 多张时堆叠展示（首张为主图，其余点击可放大由原生 lightbox 处理）
+      // 多张时堆叠展示，点击任一张进入全屏预览（支持 pinch-zoom 与双指缩放）
       return (
         <span key={i} className="wb-inline-imgs">
           {meta.urls.map((u, j) => (
-            <img key={j} className="wb-inline-img" src={u} alt={`场景插图 ${j + 1}`} loading="lazy" />
+            <img key={j} className="wb-inline-img" src={u} alt={`场景插图 ${j + 1}（点击放大）`} loading="lazy"
+              onClick={() => setPreviewImg(u)} />
           ))}
         </span>
       );
@@ -433,7 +470,9 @@ export default function Chat() {
             {searchOpen && (
               <div className="chat-search">
                 <Search size={15} className="muted" />
-                <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="在本对话中搜索…" onKeyDown={e => e.key === 'Escape' && (setSearchOpen(false), setSearchQ(''))} />
+                <input autoFocus value={searchQ} enterKeyHint="search" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                  onChange={e => setSearchQ(e.target.value)} placeholder="在本对话中搜索…"
+                  onKeyDown={e => e.key === 'Escape' && (setSearchOpen(false), setSearchQ(''))} />
                 {searchQ && <span className="muted" style={{ fontSize: 12 }}>{messages.filter(mm => mm.content?.toLowerCase().includes(searchQ.toLowerCase())).length} 条</span>}
                 <button className="speak" onClick={() => { setSearchOpen(false); setSearchQ(''); }}><X size={15} /></button>
               </div>
@@ -470,7 +509,8 @@ export default function Chat() {
                     {m.role === 'assistant' && firstOfRun && <div className="msg-name">{character?.name}</div>}
                     {editingId === m.id ? (
                       <div className="msg-edit">
-                        <textarea value={editText} autoFocus onChange={e => setEditText(e.target.value)}
+                        <textarea value={editText} autoFocus autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
+                          enterKeyHint="done"
                           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(m); } if (e.key === 'Escape') setEditingId(null); }} />
                         <div className="msg-edit-acts">
                           <button className="btn sm primary" onClick={() => saveEdit(m)}><Check size={13} /> 保存</button>
@@ -478,7 +518,8 @@ export default function Chat() {
                         </div>
                       </div>
                     ) : (
-                      <div className="bubble">
+                      <div className="bubble" onContextMenu={m.content ? (e) => { e.preventDefault(); copyMsg(m.content); } : undefined}
+                        title={m.content ? '长按或右键复制' : undefined}>
                         {m._streaming && !m.content
                           ? <span className="typing"><span></span><span></span><span></span></span>
                           : renderBubbleContent(m.content, m.role)}
@@ -532,10 +573,11 @@ export default function Chat() {
                 {QUICK_ACTIONS.map(a => <button key={a} onClick={() => insertAction(a)}>{a}</button>)}
               </div>
             )}
-            <div className="chat-input-bar">
+            <div className="chat-input-bar" ref={inputBarRef}>
               <div className="box">
                 <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => setActionsOpen(o => !o)} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
-                <textarea rows={1} value={input} placeholder={`对 ${character?.name} 说点什么…（Enter 发送，Shift+Enter 换行）`}
+                <textarea ref={inputRef} rows={1} value={input} placeholder={`对 ${character?.name} 说点什么…（Enter 发送，Shift+Enter 换行）`}
+                  enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
                 {streaming
                   ? <button className="send-btn stop" onClick={stop} title="停止生成"><Square size={15} fill="currentColor" /></button>
@@ -566,7 +608,7 @@ export default function Chat() {
                         <div className="mem-item" key={mm.id}><span>{mm.content}</span><button onClick={() => delMemory(mm.id)} title="删除"><X size={13} /></button></div>
                       ))}
                       <div className="mem-add">
-                        <input className="input" value={newMem} placeholder="如：我叫小明，养了一只叫奶糖的猫"
+                        <input className="input" value={newMem} placeholder="如：我叫小明，养了一只叫奶糖的猫" enterKeyHint="done"
                           onChange={e => setNewMem(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMemory(); } }} />
                         <button className="btn sm primary" onClick={addMemory}><Plus size={14} /> 记住</button>
                       </div>
@@ -590,6 +632,12 @@ export default function Chat() {
         )}
       </div>
       {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
+      {previewImg && (
+        <div className="img-lightbox" onClick={() => setPreviewImg(null)}>
+          <img src={previewImg} alt="预览" />
+          <button className="img-lightbox-close" onClick={(e) => { e.stopPropagation(); setPreviewImg(null); }} title="关闭"><X size={22} /></button>
+        </div>
+      )}
     </div>
   );
 }

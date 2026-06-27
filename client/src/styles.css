@@ -253,6 +253,10 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .conv-item .speak { opacity: 0; transition: opacity 0.15s, color 0.15s, background 0.15s; border-radius: 7px; padding: 4px; }
 .conv-item:hover .speak { opacity: 0.6; }
 .conv-item .speak:hover { opacity: 1; color: var(--danger); background: var(--bg-2); }
+/* 移动端无 hover：删除按钮始终可见，便于触控操作 */
+@media (max-width: 860px) {
+  .conv-item .speak { opacity: 0.55; }
+}
 
 .chat-main { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; background: var(--bg); }
 .chat-bg { position: absolute; inset: 0; z-index: 0; }
@@ -279,11 +283,17 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .msg.user .bubble { background: linear-gradient(150deg, var(--accent), var(--accent-2)); border-bottom-right-radius: 6px; color: #fff;
   box-shadow: 0 2px 6px rgba(194,90,56,0.22), 0 10px 24px rgba(194,90,56,0.2); }
 .msg-acts { display: flex; gap: 2px; margin-top: 6px; flex-wrap: wrap; opacity: 0.55; transition: opacity 0.16s; }
+.msg-acts .speak { margin-top: 0; }
 .msg.user .msg-acts { justify-content: flex-end; }
 .msg:hover .msg-acts, .msg-acts:focus-within { opacity: 1; }
 .msg .speak { background: none; border: none; color: var(--faint); font-size: 12px; padding: 3px 7px; border-radius: 8px;
   display: inline-flex; gap: 4px; align-items: center; transition: color 0.15s, background 0.15s; }
 .msg .speak:hover { color: var(--accent); background: var(--bg-2); }
+/* 移动端无 hover：消息操作按钮始终可见 + 触控目标放大 */
+@media (max-width: 860px) {
+  .msg-acts { opacity: 0.85; }
+  .msg .speak { padding: 7px 9px; }
+}
 .typing span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); margin-right: 4px; animation: blink 1.2s infinite; }
 .typing span:nth-child(2) { animation-delay: 0.2s; } .typing span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
@@ -430,7 +440,14 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 
 /* —— Chat 内：[[wbimg:id]] 标记直接展示创建者预注入的图片（不生图）—— */
 .wb-inline-imgs { display: block; margin: 8px 0 4px; }
-.wb-inline-img { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; margin: 4px 0; box-shadow: var(--shadow-md); animation: riseIn 0.35s ease both; }
+.wb-inline-img { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; margin: 4px 0; box-shadow: var(--shadow-md); animation: riseIn 0.35s ease both; cursor: zoom-in; transition: transform 0.2s; }
+.wb-inline-img:active { transform: scale(0.98); }
+
+/* —— 图片全屏预览 lightbox（支持 pinch-zoom / 双指缩放）—— */
+.img-lightbox { position: fixed; inset: 0; z-index: 9999; background: rgba(20, 16, 10, 0.92); display: flex; align-items: center; justify-content: center; padding: 20px; overflow: auto; animation: fade 0.2s ease; touch-action: pinch-zoom; }
+.img-lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; touch-action: pinch-zoom; }
+.img-lightbox-close { position: fixed; top: calc(16px + env(safe-area-inset-top)); right: calc(16px + env(safe-area-inset-right)); width: 44px; height: 44px; border-radius: 50%; border: none; background: rgba(0,0,0,0.45); color: #fff; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(8px); }
+.img-lightbox-close:hover { background: rgba(0,0,0,0.65); }
 .wb-img-missing { display: inline-flex; align-items: center; gap: 4px; margin: 2px 4px; padding: 3px 9px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg-2); color: var(--muted); font-size: 11.5px; vertical-align: middle; }
 .wb-front-banner { position: relative; height: 110px; margin: 8px 14px 14px; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, var(--wb-accent, #d4677a), color-mix(in srgb, var(--wb-accent, #d4677a) 40%, #7c5bd9)); box-shadow: var(--shadow-md); }
 .wb-front-banner img { width: 100%; height: 100%; object-fit: cover; }
@@ -583,6 +600,8 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   .row { flex-direction: column; gap: 0; }
   .auth-wrap { grid-template-columns: 1fr; } .auth-hero { display: none; }
   .chat-layout { flex-direction: column; height: 100dvh; }
+  .chat-head { flex-wrap: wrap; gap: 8px; padding: 9px 14px; }
+  .chat-input-bar .box { flex-wrap: wrap; }
   .chat-list { width: 100%; height: auto; max-height: 38vh; border-right: none; border-bottom: 1px solid var(--border); }
   .chat-list.hide-mobile { display: none; }
   .msg { max-width: 90%; }
@@ -706,9 +725,6 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
 
-.msg-acts { display: flex; gap: 14px; margin-top: 5px; }
-.msg-acts .speak { margin-top: 0; }
-
 /* spinner for model detection */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.9s linear infinite; }
@@ -723,9 +739,29 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 /* mobile: prevent iOS input auto-zoom (needs >=16px), comfier hit targets */
 @media (max-width: 860px) {
   .input, .textarea, .select { font-size: 16px; }
+  /* 兜底：裸 input/textarea/select（无类名）也走 16px 防 iOS 自动缩放 */
+  input, textarea, select { font-size: 16px; }
   .chat-input-bar textarea { font-size: 16px; }
   .topbar { flex-wrap: wrap; }
   .topbar .btn { padding: 8px 12px; }
+  /* 移动端触控目标放大（接近 44px 标准） */
+  .btn { padding: 11px 16px; }
+  .btn.sm { padding: 9px 13px; }
+  .chat-tool { width: 40px; height: 40px; }
+  .act-btn { padding: 9px; }
+  .scroll-bottom-btn { width: 44px; height: 44px; }
+  .switch .track { width: 46px; height: 26px; }
+  .starter-chip { padding: 9px 14px; }
+  .action-panel button { padding: 10px 13px; }
+  .bottom-nav a { padding: 7px 0; }
+  .bottom-nav a svg { width: 22px; height: 22px; }
+}
+
+/* 极小屏（<420px）单列网格，避免卡片拥挤 */
+@media (max-width: 420px) {
+  .grid, .pkg-grid, .editor-grid { grid-template-columns: 1fr !important; }
+  .wb-grid { grid-template-columns: 1fr !important; }
+  .msg { max-width: 95%; }
 }
 
 /* ============ Character detail hero ============ */
