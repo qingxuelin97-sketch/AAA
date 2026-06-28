@@ -646,8 +646,8 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .inovel-bg img { width: 100%; height: 100%; object-fit: cover; filter: saturate(0.9) brightness(0.96); }
 .inovel-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(243,239,230,0.86) 0%, rgba(243,239,230,0.78) 30%, rgba(243,239,230,0.9) 100%); }
 .inovel-bg-fallback { background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 12%, #f3efe6), #efe9dd 70%); }
-/* 顶部不再是一整条白带：改为向下渐隐到透明的薄薄遮罩，让背景透出来更沉浸 */
-.inovel-head { background: linear-gradient(180deg, rgba(243,239,230,0.66) 0%, rgba(243,239,230,0.22) 62%, transparent 100%); border-bottom: none; backdrop-filter: saturate(135%) blur(6px); }
+/* 顶部完全透明：不加任何底色 / 渐变 / 边框，沉浸背景直接透到顶 */
+.inovel-head { background: transparent; border-bottom: none; backdrop-filter: none; }
 .inovel-head .nm b { font-family: var(--serif); }
 .inovel-sub { font-size: 11.5px; color: var(--muted); }
 .inovel-head .btn.ghost.on { color: var(--accent); }
@@ -689,8 +689,8 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .inovel-foot-space { height: 24px; }
 
 /* —— 阅读器底部行动区 —— */
-/* 底部同理：去掉那条大白边，只留极淡的渐隐遮罩（输入框 / 行动按钮各有自己的底色） */
-.inovel-bar { background: linear-gradient(180deg, transparent 0%, rgba(243,239,230,0.22) 55%, rgba(243,239,230,0.45) 100%) !important; backdrop-filter: blur(4px); }
+/* 底部完全透明：删掉渐变，输入框 / 行动按钮各有自己的底色 */
+.inovel-bar { background: none !important; backdrop-filter: none; }
 .inovel-choices { max-width: 680px; margin: 0 auto 8px; display: flex; flex-wrap: wrap; gap: 7px; }
 .inovel-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px 6px 6px; border-radius: 999px; background: var(--panel);
   border: 1px solid var(--border-2); font-size: 12.5px; font-weight: 500; color: var(--text); cursor: pointer; box-shadow: var(--shadow-sm);
@@ -794,13 +794,15 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 [data-theme="dark"] .inovel .chat-main { background: #14110d; }
 [data-theme="dark"] .inovel-bg::after { background: linear-gradient(180deg, rgba(20,17,13,0.86) 0%, rgba(20,17,13,0.78) 30%, rgba(20,17,13,0.92) 100%); }
 [data-theme="dark"] .inovel-bg-fallback { background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 16%, #14110d), #100d0a 70%); }
-[data-theme="dark"] .inovel-head { background: linear-gradient(180deg, rgba(20,17,13,0.7) 0%, rgba(20,17,13,0.28) 62%, transparent 100%); }
+[data-theme="dark"] .inovel-head { background: transparent; }
 [data-theme="dark"] .inovel-narr { color: #cdc3b4; }
 [data-theme="dark"] .inovel-who { color: #d8a88f; }
 [data-theme="dark"] .inovel-me p { color: #cdbfae; }
 /* 暗色下玻璃对白略提高不透明度，保证暗背景上的文字对比度 */
 [data-theme="dark"] .inovel-say { background: color-mix(in srgb, var(--panel) 70%, transparent); border-color: color-mix(in srgb, #fff 12%, transparent); box-shadow: 0 6px 22px rgba(0,0,0,0.32); }
-[data-theme="dark"] .inovel-bar { background: linear-gradient(180deg, transparent 0%, rgba(20,17,13,0.28) 55%, rgba(20,17,13,0.52) 100%) !important; }
+[data-theme="dark"] .inovel-bar { background: none !important; }
+/* 角色对话同样删掉底部输入栏的白色渐变遮罩 —— 输入框自带底色，背景直接透出 */
+.chat-input-bar, [data-theme="dark"] .chat-input-bar, .has-bg .chat-input-bar, [data-theme="dark"] .has-bg .chat-input-bar { background: none !important; }
 
 .seg { display: inline-flex; background: var(--bg-2); padding: 4px; border-radius: 11px; gap: 3px; }
 .seg button { border: none; background: none; color: var(--muted); padding: 7px 16px; border-radius: 8px; font-weight: 600; font-size: 13.5px; transition: 0.15s; }
