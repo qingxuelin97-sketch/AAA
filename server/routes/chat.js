@@ -74,8 +74,28 @@ async function baiduToken(apiKey, secretKey) {
   return d.access_token;
 }
 
+// 朗读前剥离动作 / OOC 内容，绝不送进语音模型读出。
+// 与前端 stripParensForSpeech 保持一致：圆括号（）()、方括号【】、以及 *星号* 包裹的动作文本
+// （角色扮演里 *微笑* 这类写法系统默认按动作处理）。星号限定在同一行内，避免游离星号吞掉整段。
+// 这里在服务端再兜底一次，确保无论调用方是否已清洗，语音模型都收不到动作文本。
+const SPEECH_STRIP_PAIRS = [
+  [/（[^（）]*）/g, /（/g, /）/g],
+  [/\([^()]*\)/g, /\(/g, /\)/g],
+  [/【[^【】]*】/g, /【/g, /】/g],
+  [/\*[^*\n]+\*/g, /\*/g, /\*/g],
+];
+export function stripSpeechActions(input) {
+  let s = String(input || '');
+  let prev, guard = 0;
+  do { prev = s; for (const [re] of SPEECH_STRIP_PAIRS) s = s.replace(re, ''); } while (s !== prev && ++guard < 50);
+  for (const [, , open, close] of SPEECH_STRIP_PAIRS) s = s.replace(open, ' ').replace(close, ' ');
+  return s.replace(/\s{2,}/g, ' ').trim();
+}
+
 // Synthesize speech via the right vendor adapter. Returns { ok, contentType, buffer } or { ok:false, status, error }.
 export async function synthesize({ proto, base, key, model, voice, text, speed, pitch }) {
+  text = stripSpeechActions(text); // 动作 / *星号* 内容一律不读
+  if (!text) return { ok: false, status: 400, error: '无可朗读的内容（动作 / 旁白已跳过）' };
   const b = (base || '').replace(/\/$/, '');
   // SSRF 防护：用户填了 voice base_url 时校验其不指向内网/本机；为空则用各厂商默认地址，跳过校验。
   if (b) assertPublicUrl(b);
