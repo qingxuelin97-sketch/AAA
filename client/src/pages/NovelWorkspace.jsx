@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Modal, Uploader } from '../ui.jsx';
 import { generateImage } from '../imagegen.js';
-import { stripParensForSpeech, speakBrowser, playAudioUrl, stopSpeaking, onVoiceStateChange } from '../voice.js';
+import { stripParensForSpeech, speakBrowser, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import {
   ArrowLeft, Feather, Sparkles, Wand2, Loader2, Send, Square, Palette, Layers,
   BookLock, BookOpen, GitBranch, Trash2, Pin, RefreshCw, Lock, Unlock, Network,
@@ -229,16 +229,19 @@ export default function NovelWorkspace() {
   // ── TTS ──
   const speakBeat = async (beat) => {
     if (playingId === beat.id) { stopSpeaking(); return; }
-    const text = stripParensForSpeech(beat.content || '');
+    const raw = beat.content || '';
+    const text = stripParensForSpeech(raw);
     if (!text) return;
+    // 从原文（含 *动作* 与标点）推断语气，让平台语音按语义调试语速/音调/情绪。
+    const emotion = detectEmotion(raw);
     try {
-      const res = await fetch('/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ text }) });
+      const res = await fetch('/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ text, emotion }) });
       if (!res.ok) throw new Error('platform-tts-unavailable');
       const charged = res.headers.get('X-Gold-Fee');
       const url = URL.createObjectURL(await res.blob());
       playAudioUrl(url, beat.id);
       if (charged) { toast(`平台语音 · 消耗 ${charged} 金币`, 'info'); refreshUser?.(); }
-    } catch { speakBrowser(text, undefined, 1, 1, beat.id); }
+    } catch { speakBrowser(text, undefined, 1, 1, beat.id, emotion); }
   };
 
   const exportNovel = async (fmt = 'md') => {
