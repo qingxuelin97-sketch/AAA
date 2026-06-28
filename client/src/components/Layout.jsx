@@ -10,7 +10,7 @@ import QuickCreate from './QuickCreate.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark, UserRound, Wand2, Medal, Tags as TagsIcon, BookOpen
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark, UserRound, Wand2, Medal, Tags as TagsIcon, BookOpen, Feather
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -30,6 +30,7 @@ const GROUPS = [
   ] },
   { title: '互动', items: [
     { to: '/chats', ic: MessageCircle, label: '对话' },
+    { to: '/atelier', ic: Feather, label: '小说创作' },
     { to: '/draw', ic: Wand2, label: 'AI 绘图' },
     { to: '/friends', ic: UserRound, label: '好友', badge: 'dm' },
     { to: '/groups', ic: Users, label: '群聊' },

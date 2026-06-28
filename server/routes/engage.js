@@ -12,7 +12,7 @@ const TT = (t) => (t === 'script' ? 'script' : 'character');
 // ---- daily tasks ----
 router.post('/track', authRequired, contentLimiter, (req, res) => {
   const a = String(req.body?.action || '');
-  if (['gacha', 'chat', 'fav', 'like', 'checkin'].includes(a)) bumpDaily(req.user.id, a);
+  if (['gacha', 'chat', 'fav', 'like', 'checkin', 'novel'].includes(a)) bumpDaily(req.user.id, a);
   res.json({ ok: true });
 });
 router.get('/tasks', authRequired, (req, res) => {

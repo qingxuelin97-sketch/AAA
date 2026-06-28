@@ -7,6 +7,7 @@ export const DAILY_TASKS = [
   { id: 'gacha', name: '在扭蛋机抽卡 1 次', target: 1, reward: 15, key: 'gacha' },
   { id: 'fav', name: '收藏 1 个喜欢的角色', target: 1, reward: 10, key: 'fav' },
   { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 10, key: 'like' },
+  { id: 'novel', name: 'AI 创作 1 段小说', target: 1, reward: 20, key: 'novel' },
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);
