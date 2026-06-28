@@ -4101,3 +4101,100 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 .atl-run-card-act button.danger:hover { color: var(--danger); }
 
 @media (max-width: 760px) { .atl-ws { height: calc(100vh - 56px); } }
+
+/* ============ 小说工坊 · 深化功能样式 ============ */
+.atl-tabs { width: fit-content; margin-bottom: 18px; }
+.atl-tabs button { display: inline-flex; align-items: center; gap: 5px; }
+.atl-mine-tag { font-size: 10px; font-weight: 700; color: #fff; background: var(--accent); padding: 1px 6px; border-radius: 6px; flex-shrink: 0; }
+
+/* 段落配图 */
+.atl-beat-img { position: relative; margin: 18px 0 4px; border-radius: 12px; overflow: hidden; max-width: 460px; }
+.atl-beat-img img { width: 100%; display: block; }
+.atl-img-x { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 8px; border: none; background: rgba(0,0,0,0.5); color: #fff; cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity 0.15s; }
+.atl-beat-img:hover .atl-img-x { opacity: 1; }
+.atl-beat-tools button.on { color: var(--accent); }
+
+/* 版本历史 */
+.atl-hist { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); padding: 8px; }
+.atl-hist-head { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+.atl-hist-item { display: flex; gap: 8px; width: 100%; text-align: left; border: none; background: none; padding: 6px; border-radius: 8px; cursor: pointer; align-items: baseline; }
+.atl-hist-item:hover { background: var(--bg-2); }
+.atl-hist-n { font-size: 10.5px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+.atl-hist-tx { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 更多菜单 */
+.atl-more-wrap { position: relative; }
+.atl-more-backdrop { position: fixed; inset: 0; z-index: 49; }
+.atl-more-menu { position: absolute; top: 110%; right: 0; min-width: 168px; background: var(--panel); border: 1px solid var(--border-2); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 6px; z-index: 50; }
+.atl-more-menu button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: none; background: none; border-radius: 8px; cursor: pointer; color: var(--text); font-size: 13px; text-align: left; }
+.atl-more-menu button:hover { background: var(--bg-2); color: var(--accent); }
+
+/* 分析面板 */
+.atl-analysis-tabs { width: 100%; margin-bottom: 4px; }
+.atl-analysis-tabs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.atl-analysis-ok { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); border-radius: 10px; padding: 12px 14px; }
+.atl-issues { display: flex; flex-direction: column; gap: 9px; }
+.atl-issue { border: 1px solid var(--border); border-left-width: 3px; border-radius: 10px; padding: 9px 11px; background: var(--panel-2); }
+.atl-issue.sev-high { border-left-color: var(--danger); }
+.atl-issue.sev-medium { border-left-color: var(--gold); }
+.atl-issue.sev-low { border-left-color: var(--faint); }
+.atl-issue-top { font-size: 13px; line-height: 1.55; }
+.atl-sev { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 5px; margin-right: 6px; background: var(--bg-2); color: var(--muted); }
+.atl-issue.sev-high .atl-sev { background: #faeae5; color: var(--danger); }
+.atl-issue-fix { font-size: 12px; color: var(--ok); margin-top: 6px; display: flex; align-items: baseline; gap: 5px; line-height: 1.5; }
+.atl-timeline { position: relative; padding-left: 6px; }
+.atl-tl-item { display: flex; gap: 11px; padding-bottom: 14px; position: relative; }
+.atl-tl-item:not(:last-child)::before { content: ''; position: absolute; left: 4px; top: 14px; bottom: 0; width: 1.5px; background: var(--border-2); }
+.atl-tl-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 4px; z-index: 1; }
+.atl-tl-item b { font-size: 12.5px; }
+.atl-tl-item p { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin-top: 2px; }
+.atl-graph { border: 1px solid var(--border); border-radius: 12px; background: var(--panel-2); padding: 8px; }
+.atl-graph-legend { display: flex; gap: 14px; justify-content: center; font-size: 11px; color: var(--muted); padding-top: 6px; flex-wrap: wrap; }
+.atl-graph-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.atl-graph-legend i { width: 9px; height: 9px; border-radius: 50%; }
+
+/* 作品信息 / 封面 */
+.atl-cover-row { display: flex; gap: 14px; margin-bottom: 6px; }
+.atl-cover-box { width: 96px; height: 130px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: var(--bg-2); border: 1px solid var(--border); }
+.atl-cover-box img { width: 100%; height: 100%; object-fit: cover; }
+.atl-cover-ph { width: 100%; height: 100%; display: grid; place-items: center; color: var(--faint); }
+.atl-cover-act { display: flex; flex-direction: column; gap: 8px; justify-content: center; flex: 1; min-width: 0; }
+.atl-cover-up { width: 100%; }
+.atl-cover-up .uploader { width: 100%; height: 40px; min-height: 40px; flex-direction: row; }
+
+/* 灵感火花 modal */
+.atl-muse-sec { margin-bottom: 14px; }
+.atl-muse-sec h4 { font-size: 12.5px; color: var(--muted); margin: 0 0 7px; font-weight: 650; }
+.atl-muse-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.atl-muse-chip { font-size: 12.5px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--panel-2); color: var(--text); cursor: pointer; transition: border-color 0.15s, background 0.15s; text-align: left; max-width: 100%; }
+.atl-muse-chip:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-2); }
+
+/* 写作统计 modal */
+.atl-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.atl-stat { text-align: center; background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 6px; }
+.atl-stat b { font-family: var(--serif); font-size: 22px; font-weight: 680; display: block; color: var(--accent-2); }
+.atl-stat span { font-size: 11px; color: var(--muted); }
+.atl-stat-runs { display: flex; flex-direction: column; gap: 10px; }
+.atl-stat-run-top { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.atl-stat-bar { height: 7px; border-radius: 4px; background: var(--bg-2); overflow: hidden; }
+.atl-stat-bar div { height: 100%; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #7c5bd9)); border-radius: 4px; }
+@media (max-width: 460px) { .atl-stat-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* 沉浸阅读 overlay + 阅读页 */
+.atl-reader, .atl-read-page { position: fixed; inset: 0; z-index: 200; background: var(--bg); display: flex; flex-direction: column; }
+.atl-read-page { position: static; height: 100vh; z-index: 1; }
+.atl-reader-bar, .atl-read-bar { display: flex; align-items: center; gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--panel); }
+.atl-reader-title, .atl-read-bar-title { flex: 1; font-size: 13.5px; color: var(--muted); font-family: var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atl-reader-font { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.atl-reader-font button { width: 28px; height: 28px; border: 1px solid var(--border-2); background: var(--panel); border-radius: 8px; cursor: pointer; display: grid; place-items: center; color: var(--text); }
+.atl-reader-font button:hover { border-color: var(--accent); color: var(--accent); }
+.atl-reader-scroll, .atl-read-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.atl-reader-page { max-width: 680px; margin-inline: auto; padding: clamp(28px, 5vw, 56px) clamp(20px, 6vw, 56px) 90px; line-height: 2.05; color: var(--text); }
+.atl-reader-page h1 { font-family: var(--serif); font-size: 1.7em; font-weight: 680; text-align: center; margin: 6px 0 8px; line-height: 1.2; }
+.atl-reader-logline { text-align: center; color: var(--muted); font-style: italic; font-size: 0.82em; margin-bottom: 8px; }
+.atl-reader-para { font-family: var(--serif); margin: 1.2em 0; white-space: pre-wrap; word-break: break-word; text-indent: 0; }
+.atl-reader-img { width: 100%; border-radius: 12px; margin: 1.4em 0; }
+.atl-read-cover { width: 180px; height: 240px; object-fit: cover; border-radius: 12px; display: block; margin: 0 auto 18px; box-shadow: var(--shadow); }
+.atl-read-author { display: inline-flex; align-items: center; gap: 7px; margin: 12px auto 0; font-size: 0.8em; color: var(--muted); cursor: pointer; justify-content: center; width: 100%; }
+.atl-read-author:hover { color: var(--accent); }
+.atl-read-end { text-align: center; color: var(--faint); font-family: var(--serif); margin-top: 40px; letter-spacing: 4px; }

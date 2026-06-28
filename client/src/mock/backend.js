@@ -380,7 +380,8 @@ const DAILY_TASKS = [
   { id: 'chat', name: '发起 1 次角色对话', target: 1, reward: 20, key: 'chat' },
   { id: 'gacha', name: '在扭蛋机抽卡 1 次', target: 1, reward: 15, key: 'gacha' },
   { id: 'fav', name: '收藏 1 个喜欢的角色', target: 1, reward: 10, key: 'fav' },
-  { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 10, key: 'like' }
+  { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 10, key: 'like' },
+  { id: 'novel', name: 'AI 创作 1 段小说', target: 1, reward: 20, key: 'novel' }
 ];
 const todayStr = () => new Date().toISOString().slice(0, 10);
 function dailyOf(uid) {
@@ -406,6 +407,9 @@ const ACHIEVEMENTS = [
   { id: 'char_5', name: '角色匠人', desc: '创建 5 个角色', icon: 'Drama', cat: '创作', goal: 5, reward: 240, metric: 'characters', link: '/character/new' },
   { id: 'go_public', name: '广场首秀', desc: '公开 1 个角色到发现广场', icon: 'Globe', cat: '创作', goal: 1, reward: 60, metric: 'public_characters', link: '/publish' },
   { id: 'first_script', name: '编剧入门', desc: '创作你的第一个剧本', icon: 'ScrollText', cat: '创作', goal: 1, reward: 80, metric: 'scripts', link: '/script/new' },
+  { id: 'first_novel', name: '执笔者', desc: '在小说工坊开启你的第一部作品', icon: 'Feather', cat: '创作', goal: 1, reward: 80, metric: 'novels', link: '/atelier' },
+  { id: 'novel_words_5k', name: '初成卷帙', desc: 'AI 协作累计写下 5000 字小说', icon: 'BookText', cat: '创作', goal: 5000, reward: 260, metric: 'novel_words', link: '/atelier' },
+  { id: 'novel_words_50k', name: '著作等身', desc: 'AI 协作累计写下 5 万字小说', icon: 'Library', cat: '创作', goal: 50000, reward: 900, metric: 'novel_words', link: '/atelier' },
   { id: 'creator_v', name: '创作者认证', desc: '获得创作者 V 认证', icon: 'BadgeCheck', cat: '创作', goal: 1, reward: 120, metric: 'creator_bronze', link: '/studio' },
   { id: 'creator_hall', name: '殿堂创作者', desc: '登顶创作者榜成为 TOP 1', icon: 'Crown', cat: '创作', goal: 1, reward: 1000, metric: 'creator_gold', link: '/leaderboard' },
   // 社交
@@ -437,6 +441,8 @@ function achMetric(me, metric) {
     case 'characters': return filter('characters', c => c.owner_id === uid && !c.from_script).length;
     case 'public_characters': return filter('characters', c => c.owner_id === uid && c.is_public).length;
     case 'scripts': return filter('scripts', s => s.author_id === uid).length;
+    case 'novels': return filter('novels', n => n.owner_id === uid).length;
+    case 'novel_words': return filter('novel_runs', r => r.owner_id === uid).reduce((s, r) => s + (r.words || 0), 0);
     case 'creator_bronze': return creatorTier(me) ? 1 : 0;
     case 'creator_gold': return creatorTier(me) === 'gold' ? 1 : 0;
     case 'favorites': return filter('favorites', f => f.user_id === uid).length;
@@ -779,6 +785,14 @@ function nvWords(runId) {
   const w = filter('novel_beats', b => b.run_id === runId).reduce((s, x) => s + (x.content || '').replace(/\s/g, '').length, 0);
   const r = find('novel_runs', x => x.id === runId); if (r) r.words = w; return w;
 }
+// 版本历史：把旧正文压入 beat.history（最多 12 版，最新在前）。
+function nvPushHistory(beat, prevContent) {
+  if (!prevContent || !prevContent.trim()) return;
+  if (!Array.isArray(beat.history)) beat.history = [];
+  if (beat.history[0]?.content === prevContent) return;
+  beat.history.unshift({ content: prevContent, at: new Date().toISOString() });
+  beat.history = beat.history.slice(0, 12);
+}
 function nvForkRun(novel, name) {
   const canon = nvCleanEntries(novel.codex || []).map(e => ({ ...e, source: 'meta', updated_at: new Date().toISOString() }));
   return insert('novel_runs', { novel_id: novel.id, owner_id: novel.owner_id, name: clip(name, 40).trim() || '新线', canon, vars: {}, summary: '', words: 0, archived: 0, updated_at: now() });
@@ -834,15 +848,16 @@ async function nvStreamWrite({ run, novel, settings, directive, beats, me, rewri
       } catch (err) { send({ error: '连接模型服务失败：' + err.message + '（可能是服务商的浏览器跨域限制；可尝试在设置中更换协议或服务商）' }); }
       full = (full || '').trim();
       if (full) {
-        if (rewrite) { rewrite.content = full; send({ beat_id: rewrite.id }); }
+        if (rewrite) { nvPushHistory(rewrite, rewrite.content); rewrite.content = full; send({ beat_id: rewrite.id }); }
         else {
           const seq = filter('novel_beats', b => b.run_id === run.id).reduce((mx, b) => Math.max(mx, b.seq), -1) + 1;
           const meta = { triggered: nvTriggered(canon, directive, recentText).map(e => e.id) };
-          const bt = insert('novel_beats', { run_id: run.id, seq, directive: directive || '', content: full, meta, pinned: 0 });
+          const bt = insert('novel_beats', { run_id: run.id, seq, directive: directive || '', content: full, meta, image: '', history: [], pinned: 0 });
           send({ beat_id: bt.id, seq });
         }
         nvWords(run.id); run.updated_at = now();
         const nv = find('novels', x => x.id === run.novel_id); if (nv) nv.updated_at = now();
+        if (me) { try { bumpDaily(me.id, 'novel'); } catch { /* */ } }
         if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `AI 创作 ·《${novel.title}》` }); send({ fee: feeDue }); } catch { /* */ } }
         save();
       }
@@ -1786,7 +1801,7 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/community/inbox/seen') { return J({ ok: true }); }
 
   // ---------- engagement: views / reviews / reports / leaderboard ----------
-  if (method === 'POST' && path === '/engage/track') { need(); const a = String(body.action || ''); if (['gacha', 'chat', 'fav', 'like', 'checkin'].includes(a)) bumpDaily(me.id, a); return J({ ok: true }); }
+  if (method === 'POST' && path === '/engage/track') { need(); const a = String(body.action || ''); if (['gacha', 'chat', 'fav', 'like', 'checkin', 'novel'].includes(a)) bumpDaily(me.id, a); return J({ ok: true }); }
   if (method === 'GET' && path === '/engage/tasks') {
     need(); const d = dailyOf(me.id);
     const tasks = DAILY_TASKS.map(t => { const cnt = d.counts[t.key] || 0; return { id: t.id, name: t.name, target: t.target, reward: t.reward, progress: Math.min(cnt, t.target), done: cnt >= t.target, claimed: d.claimed.includes(t.id) }; });
@@ -2198,7 +2213,7 @@ async function route(method, path, search, body, headers) {
     const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
     if (method === 'GET') {
       const novel = find('novels', x => x.id === r.novel_id);
-      const beats = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => a.seq - b.seq || a.id - b.id).map(x => ({ ...x, meta: x.meta || {} }));
+      const beats = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => a.seq - b.seq || a.id - b.id).map(x => ({ ...x, meta: x.meta || {}, history: x.history || [] }));
       return J({ run: nvShapeRun(r), novel: nvShape(novel), beats });
     }
     if (method === 'PATCH') {
@@ -2243,10 +2258,11 @@ async function route(method, path, search, body, headers) {
     const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
     const beat = find('novel_beats', b => b.id === +m[2] && b.run_id === r.id); if (!beat) return E('段落不存在', 404);
     if (method === 'PATCH') {
-      if (typeof body.content === 'string') beat.content = clip(body.content, 12000);
+      if (typeof body.content === 'string' && body.content !== beat.content) { nvPushHistory(beat, beat.content); beat.content = clip(body.content, 12000); }
       if (typeof body.directive === 'string') beat.directive = clip(body.directive, 2000);
       if (body.pinned !== undefined) beat.pinned = body.pinned ? 1 : 0;
-      nvWords(r.id); save(); return J({ beat: { ...beat, meta: beat.meta || {} } });
+      if (body.image !== undefined) beat.image = clip(body.image, 600);
+      nvWords(r.id); save(); return J({ beat: { ...beat, meta: beat.meta || {}, history: beat.history || [] } });
     }
     if (method === 'DELETE') { db.novel_beats = filter('novel_beats', b => b.id !== beat.id); nvWords(r.id); save(); return J({ ok: true }); }
   }
@@ -2256,7 +2272,7 @@ async function route(method, path, search, body, headers) {
     const novel = find('novels', x => x.id === r.novel_id);
     const run2 = insert('novel_runs', { novel_id: novel.id, owner_id: me.id, name: clip(body.name, 40).trim() || (r.name + ' · 分支'), canon: nvCleanEntries(r.canon || []), vars: r.vars || {}, summary: r.summary || '', words: 0, archived: 0, updated_at: now() });
     filter('novel_beats', b => b.run_id === r.id && b.seq <= pivot.seq).sort((a, b) => a.seq - b.seq || a.id - b.id)
-      .forEach((bt, i) => insert('novel_beats', { run_id: run2.id, seq: i, directive: bt.directive, content: bt.content, meta: bt.meta || {}, pinned: bt.pinned || 0 }));
+      .forEach((bt, i) => insert('novel_beats', { run_id: run2.id, seq: i, directive: bt.directive, content: bt.content, meta: bt.meta || {}, image: bt.image || '', history: [], pinned: bt.pinned || 0 }));
     nvWords(run2.id); save();
     return J({ run: nvShapeRun(run2) });
   }
@@ -2304,6 +2320,94 @@ async function route(method, path, search, body, headers) {
     let out = md ? `# ${novel.title}\n\n${novel.logline ? '> ' + novel.logline + '\n\n' : ''}` : `${novel.title}\n${novel.logline || ''}\n\n`;
     beats.forEach((b, i) => { out += (md ? `### ${i + 1}\n\n` : `\n— ${i + 1} —\n\n`) + (b.content || '') + '\n\n'; });
     return J({ text: out, words: nvWords(r.id) });
+  }
+
+  if ((m = P(/^\/novels\/runs\/(\d+)\/check$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const s = find('settings', x => x.user_id === me.id);
+    const recent = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => b.seq - a.seq).slice(0, 5).reverse().map(b => b.content).join('\n\n');
+    if (!recent.trim()) return J({ issues: [] });
+    const canon = nvCleanEntries(r.canon || []);
+    const setText = canon.map(e => `- ${e.title}（${NV_CAT_LABEL[e.category]}）：${e.content}`).join('\n') || '（暂无设定）';
+    let arr; try { arr = nvExtractJSON(await llmOnce(s, '你是严谨的小说连续性审校。对照设定库检查正文是否存在自相矛盾、人物/地点/时间错乱、设定违背或前后断裂。只报真正的问题，没有就返回空数组。', `设定库：\n${setText}\n\n最新正文：\n${recent}\n\n输出 JSON 数组，每个元素 {"severity":"high|medium|low","issue":"问题描述","fix":"修正建议"}。只输出 JSON。`, 900)); } catch (e) { return E(e.message, 502); }
+    if (!Array.isArray(arr)) arr = [];
+    return J({ issues: arr.slice(0, 12).map(x => ({ severity: ['high', 'medium', 'low'].includes(x.severity) ? x.severity : 'medium', issue: clip(x.issue, 300), fix: clip(x.fix, 300) })).filter(x => x.issue) });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/timeline$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const s = find('settings', x => x.user_id === me.id);
+    const text = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => a.seq - b.seq || a.id - b.id).map(b => b.content).join('\n\n');
+    if (!text.trim()) return J({ events: [] });
+    let arr; try { arr = nvExtractJSON(await llmOnce(s, '你是小说编辑，把连载正文梳理成「关键事件时间线」，按发生顺序列出，每条聚焦一个推动剧情的事件。', `正文：\n${text.slice(-9000)}\n\n输出 JSON 数组，每个元素 {"label":"阶段/场景短名","event":"该事件一句话"}。最多 12 条。只输出 JSON。`, 1000)); } catch (e) { return E(e.message, 502); }
+    if (!Array.isArray(arr)) arr = [];
+    return J({ events: arr.slice(0, 20).map(x => ({ label: clip(x.label, 30), event: clip(x.event, 240) })).filter(x => x.event) });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/graph$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const s = find('settings', x => x.user_id === me.id);
+    const canon = nvCleanEntries(r.canon || []);
+    const setText = canon.map(e => `- ${e.title}（${NV_CAT_LABEL[e.category]}）：${e.content}`).join('\n');
+    if (!setText.trim()) return J({ nodes: [], edges: [] });
+    const recent = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => b.seq - a.seq).slice(0, 3).reverse().map(b => b.content).join('\n');
+    let obj; try { obj = nvExtractJSON(await llmOnce(s, '你是故事结构分析师。根据设定库与正文，提炼主要实体（人物/势力/地点）及它们之间的关系，用于绘制关系图谱。', `设定库：\n${setText}\n\n近期正文：\n${recent}\n\n输出 JSON：{"nodes":[{"id":"名字","type":"character|faction|location|other"}],"edges":[{"from":"名字","to":"名字","label":"关系，如 师徒/敌对/同伴"}]}。节点不超过 12 个。只输出 JSON。`, 1100)); } catch (e) { return E(e.message, 502); }
+    if (!obj || typeof obj !== 'object') obj = {};
+    const nodes = Array.isArray(obj.nodes) ? obj.nodes.slice(0, 16).map(n => ({ id: clip(n.id, 30), type: ['character', 'faction', 'location', 'other'].includes(n.type) ? n.type : 'other' })).filter(n => n.id) : [];
+    const ids = new Set(nodes.map(n => n.id));
+    const edges = Array.isArray(obj.edges) ? obj.edges.slice(0, 30).map(e => ({ from: clip(e.from, 30), to: clip(e.to, 30), label: clip(e.label, 20) })).filter(e => ids.has(e.from) && ids.has(e.to) && e.from !== e.to) : [];
+    return J({ nodes, edges });
+  }
+  if ((m = P(/^\/novels\/(\d+)\/muse$/)) && method === 'POST') {
+    const n = find('novels', x => x.id === +m[1]); if (!n) return E('小说不存在', 404); need(); if (n.owner_id !== me.id) return E('无权访问', 403);
+    const s = find('settings', x => x.user_id === me.id);
+    let obj; try { obj = nvExtractJSON(await llmOnce(s, `你是脑暴搭子，为《${n.title}》${n.genre ? '（' + n.genre + '）' : ''}提供即兴灵感火花，贴合其题材气质。`, `${n.logline ? '内核：' + n.logline + '\n' : ''}请输出 JSON：{"names":["契合世界观的人名/称号，4个"],"twists":["出人意料的剧情转折，3个，每条一句"],"details":["可增强画面感的具体细节/意象，3个"]}。只输出 JSON。`, 800)); } catch (e) { return E(e.message, 502); }
+    if (!obj || typeof obj !== 'object') obj = {};
+    const arr = (a, n2, len) => (Array.isArray(a) ? a : []).slice(0, n2).map(x => clip(x, len)).filter(Boolean);
+    return J({ names: arr(obj.names, 8, 40), twists: arr(obj.twists, 6, 160), details: arr(obj.details, 6, 160) });
+  }
+  if ((m = P(/^\/novels\/(\d+)\/stats$/)) && method === 'GET') {
+    const n = find('novels', x => x.id === +m[1]); if (!n) return E('小说不存在', 404); need(); if (n.owner_id !== me.id) return E('无权访问', 403);
+    const runs = filter('novel_runs', r => r.novel_id === n.id).map(r => ({ id: r.id, name: r.name, words: r.words || 0, archived: r.archived || 0, beats: filter('novel_beats', b => b.run_id === r.id).length, canon: nvCleanEntries(r.canon || []).length }));
+    return J({ stats: { words: runs.reduce((s, r) => s + r.words, 0), beats: runs.reduce((s, r) => s + r.beats, 0), runs: runs.length, codex: nvCleanEntries(n.codex || []).length, per_run: runs } });
+  }
+  if ((m = P(/^\/novels\/(\d+)\/export$/)) && method === 'GET') {
+    const n = find('novels', x => x.id === +m[1]); if (!n) return E('小说不存在', 404); need(); if (n.owner_id !== me.id) return E('无权访问', 403);
+    const md = search.get('format') === 'md';
+    const runs = search.get('run_id') ? filter('novel_runs', r => r.id === +search.get('run_id') && r.novel_id === n.id) : filter('novel_runs', r => r.novel_id === n.id && !r.archived);
+    let out = md ? `# ${n.title}\n\n${n.logline ? '> ' + n.logline + '\n\n' : ''}` : `${n.title}\n${n.logline || ''}\n\n`;
+    for (const r of runs) {
+      if (runs.length > 1) out += md ? `\n## ${r.name}\n\n` : `\n【${r.name}】\n\n`;
+      filter('novel_beats', b => b.run_id === r.id).sort((a, b) => a.seq - b.seq || a.id - b.id).forEach((b, i) => { out += (md ? `### ${i + 1}\n\n` : `\n— ${i + 1} —\n\n`) + (b.content || '') + '\n\n'; });
+    }
+    return J({ text: out, words: filter('novel_runs', r => r.novel_id === n.id).reduce((s, r) => s + (r.words || 0), 0) });
+  }
+  if ((m = P(/^\/novels\/(\d+)\/publish$/)) && method === 'POST') {
+    const n = find('novels', x => x.id === +m[1]); if (!n) return E('小说不存在', 404); need(); if (n.owner_id !== me.id) return E('无权访问', 403);
+    if (body.publish !== false) {
+      const run = body.run_id ? find('novel_runs', r => r.id === +body.run_id && r.novel_id === n.id) : filter('novel_runs', r => r.novel_id === n.id && !r.archived).sort((a, b) => (b.words || 0) - (a.words || 0))[0];
+      if (!run) return E('请选择要展示的剧情线');
+      if (filter('novel_beats', b => b.run_id === run.id).length === 0) return E('该剧情线还没有正文，先写一点再发布吧');
+      n.published = 1; n.published_run_id = run.id; n.updated_at = now(); save();
+      return J({ novel: nvShape(n), published: true });
+    }
+    n.published = 0; save(); return J({ novel: nvShape(n), published: false });
+  }
+  if (path === '/novels/showcase' && method === 'GET') {
+    need();
+    const rows = filter('novels', n => n.published).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')).slice(0, 60).map(n => {
+      const au = user(n.owner_id); const run = find('novel_runs', r => r.id === n.published_run_id);
+      return { id: n.id, title: n.title, logline: n.logline, cover: n.cover, genre: n.genre, tags: n.tags, owner_id: n.owner_id, published_run_id: n.published_run_id, updated_at: n.updated_at, author_name: au?.display_name, author_avatar: au?.avatar, words: run?.words || 0, beats: run ? filter('novel_beats', b => b.run_id === run.id).length : 0, mine: n.owner_id === me.id };
+    });
+    return J({ novels: rows });
+  }
+  if ((m = P(/^\/novels\/(\d+)\/read$/)) && method === 'GET') {
+    const n = find('novels', x => x.id === +m[1]); if (!n) return E('作品不存在', 404); need();
+    const isOwner = n.owner_id === me.id;
+    if (!n.published && !isOwner) return E('该作品未公开', 403);
+    const runId = search.get('run_id') && isOwner ? +search.get('run_id') : n.published_run_id;
+    const run = find('novel_runs', r => r.id === runId && r.novel_id === n.id) || filter('novel_runs', r => r.novel_id === n.id).sort((a, b) => a.id - b.id)[0];
+    const au = user(n.owner_id);
+    const beats = run ? filter('novel_beats', b => b.run_id === run.id).sort((a, b) => a.seq - b.seq || a.id - b.id).map(b => ({ id: b.id, content: b.content, image: b.image || '' })) : [];
+    return J({ novel: { id: n.id, title: n.title, logline: n.logline, cover: n.cover, genre: n.genre, tags: n.tags, published: n.published, mine: isOwner }, author: au ? { id: au.id, display_name: au.display_name, avatar: au.avatar } : null, run: run ? { id: run.id, name: run.name, words: run.words, summary: run.summary } : null, beats });
   }
 
   throw { status: 404, msg: '接口不存在：' + path };

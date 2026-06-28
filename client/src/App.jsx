@@ -45,6 +45,7 @@ const Worldbooks = lazy(() => import('./pages/Worldbooks.jsx'));
 const WorldbookEditor = lazy(() => import('./pages/WorldbookEditor.jsx'));
 const Atelier = lazy(() => import('./pages/Atelier.jsx'));
 const NovelWorkspace = lazy(() => import('./pages/NovelWorkspace.jsx'));
+const NovelReader = lazy(() => import('./pages/NovelReader.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -91,6 +92,7 @@ export default function App() {
           <Route path="/worldbooks" element={P(<Worldbooks />)} />
           <Route path="/worldbook/:id/edit" element={P(<WorldbookEditor />)} />
           <Route path="/atelier" element={P(<Atelier />)} />
+          <Route path="/atelier/read/:id" element={P(<NovelReader />)} />
           <Route path="/atelier/:id" element={P(<NovelWorkspace />)} />
           <Route path="/studio" element={P(<Studio />)} />
           <Route path="/favorites" element={P(<Favorites />)} />

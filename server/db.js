@@ -537,6 +537,8 @@ CREATE TABLE IF NOT EXISTS novels (
   style TEXT DEFAULT '{}',          -- 整体文风设定（JSON）
   codex TEXT DEFAULT '[]',          -- 局外设定 · 永不可更改的母版（JSON 数组）
   pinned INTEGER DEFAULT 0,
+  published INTEGER DEFAULT 0,       -- 是否发布到「书架精选」供他人阅读
+  published_run_id INTEGER,         -- 发布时选定对外展示的剧情线
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -560,11 +562,20 @@ CREATE TABLE IF NOT EXISTS novel_beats (
   directive TEXT DEFAULT '',        -- 用户给的提示词 / 指令
   content TEXT DEFAULT '',          -- AI 写出的正文
   meta TEXT DEFAULT '{}',           -- 本节拍命中的设定 / 标签（JSON）
+  image TEXT DEFAULT '',            -- 本段配图（AI 生图，可选）
+  history TEXT DEFAULT '[]',        -- 改写 / 编辑前的历史版本（JSON 数组，用于回退）
   pinned INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_novel_runs_novel ON novel_runs (novel_id);
 CREATE INDEX IF NOT EXISTS idx_novel_beats_run ON novel_beats (run_id, seq);
 `);
+// 迁移：为已有数据库补齐新列（忽略已存在）。
+for (const sql of [
+  'ALTER TABLE novels ADD COLUMN published INTEGER DEFAULT 0',
+  'ALTER TABLE novels ADD COLUMN published_run_id INTEGER',
+  "ALTER TABLE novel_beats ADD COLUMN image TEXT DEFAULT ''",
+  "ALTER TABLE novel_beats ADD COLUMN history TEXT DEFAULT '[]'",
+]) { try { db.exec(sql); } catch { /* column exists */ } }
 
 export default db;

@@ -4,7 +4,7 @@ import { api } from '../api.jsx';
 import { useToast, Modal, CountUp } from '../ui.jsx';
 import {
   PenTool, Plus, Sparkles, BookText, Library, Layers, Feather,
-  Trash2, Pin, Wand2, Loader2, ArrowRight, ScrollText,
+  Trash2, Pin, Wand2, Loader2, ArrowRight, ScrollText, BookOpen, Globe, User,
 } from 'lucide-react';
 
 // 纯小说创作板块首页 · 「创作工坊」。列出我的小说，支持一句话灵感开局。
@@ -13,9 +13,12 @@ export default function Atelier() {
   const toast = useToast();
   const [novels, setNovels] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [tab, setTab] = useState('mine');
+  const [showcase, setShowcase] = useState(null);
 
   const load = () => api('/novels').then(d => setNovels(d.novels)).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); }, []);
+  useEffect(() => { if (tab === 'showcase' && showcase === null) api('/novels/showcase').then(d => setShowcase(d.novels)).catch(e => toast(e.message, 'err')); }, [tab]);
 
   const remove = async (n, e) => {
     e.stopPropagation();
@@ -41,7 +44,38 @@ export default function Atelier() {
         <button className="btn primary atl-hero-btn" onClick={() => setCreating(true)}><Plus size={17} /> 开新书</button>
       </div>
 
-      {novels === null ? (
+      <div className="seg atl-tabs">
+        <button className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}><Library size={14} /> 我的书架</button>
+        <button className={tab === 'showcase' ? 'active' : ''} onClick={() => setTab('showcase')}><Globe size={14} /> 书架精选</button>
+      </div>
+
+      {tab === 'showcase' ? (
+        showcase === null ? <div className="empty" style={{ paddingTop: 60 }}>载入中…</div> :
+        showcase.length === 0 ? (
+          <div className="atl-empty"><div className="atl-empty-ic"><BookOpen size={40} /></div><h2>书架还很空</h2><p>把你的作品发布出来，让它成为第一本被人翻开的书。</p></div>
+        ) : (
+          <div className="atl-shelf">
+            {showcase.map(n => (
+              <div key={n.id} className="atl-card" onClick={() => nav(`/atelier/read/${n.id}`)}>
+                <div className="atl-card-spine" />
+                <div className="atl-card-cover">
+                  {n.cover ? <img src={n.cover} alt="" /> : <div className="atl-card-ph"><ScrollText size={26} /></div>}
+                  {n.genre && <span className="atl-card-genre">{n.genre}</span>}
+                </div>
+                <div className="atl-card-body">
+                  <div className="atl-card-titlerow"><b>{n.title}</b>{n.mine && <span className="atl-mine-tag">我的</span>}</div>
+                  <p>{n.logline || '—'}</p>
+                  <div className="atl-card-foot">
+                    <span><User size={13} /> {n.author_name}</span>
+                    <span><PenTool size={13} /> <CountUp value={n.words} /> 字</span>
+                    <span className="atl-card-open">阅读 <ArrowRight size={13} /></span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : novels === null ? (
         <div className="empty" style={{ paddingTop: 80 }}>载入中…</div>
       ) : novels.length === 0 ? (
         <div className="atl-empty">

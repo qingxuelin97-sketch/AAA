@@ -16,6 +16,9 @@ const ACHIEVEMENTS = [
   { id: 'char_5', name: '角色匠人', desc: '创建 5 个角色', icon: 'Drama', cat: '创作', goal: 5, reward: 240, metric: 'characters', link: '/character/new' },
   { id: 'go_public', name: '广场首秀', desc: '公开 1 个角色到发现广场', icon: 'Globe', cat: '创作', goal: 1, reward: 60, metric: 'public_characters', link: '/publish' },
   { id: 'first_script', name: '编剧入门', desc: '创作你的第一个剧本', icon: 'ScrollText', cat: '创作', goal: 1, reward: 80, metric: 'scripts', link: '/script/new' },
+  { id: 'first_novel', name: '执笔者', desc: '在小说工坊开启你的第一部作品', icon: 'Feather', cat: '创作', goal: 1, reward: 80, metric: 'novels', link: '/atelier' },
+  { id: 'novel_words_5k', name: '初成卷帙', desc: 'AI 协作累计写下 5000 字小说', icon: 'BookText', cat: '创作', goal: 5000, reward: 260, metric: 'novel_words', link: '/atelier' },
+  { id: 'novel_words_50k', name: '著作等身', desc: 'AI 协作累计写下 5 万字小说', icon: 'Library', cat: '创作', goal: 50000, reward: 900, metric: 'novel_words', link: '/atelier' },
   { id: 'creator_v', name: '创作者认证', desc: '获得创作者 V 认证', icon: 'BadgeCheck', cat: '创作', goal: 1, reward: 120, metric: 'creator_bronze', link: '/studio' },
   { id: 'creator_hall', name: '殿堂创作者', desc: '登顶创作者榜成为 TOP 1', icon: 'Crown', cat: '创作', goal: 1, reward: 1000, metric: 'creator_gold', link: '/leaderboard' },
   { id: 'first_fav', name: '一见倾心', desc: '收藏 1 个喜欢的角色', icon: 'Star', cat: '社交', goal: 1, reward: 20, metric: 'favorites', link: '/' },
@@ -58,6 +61,8 @@ function metric(u, m) {
     case 'characters': return count('SELECT COUNT(*) n FROM characters WHERE owner_id=?', uid);
     case 'public_characters': return count('SELECT COUNT(*) n FROM characters WHERE owner_id=? AND is_public=1', uid);
     case 'scripts': return count('SELECT COUNT(*) n FROM scripts WHERE author_id=?', uid);
+    case 'novels': return count('SELECT COUNT(*) n FROM novels WHERE owner_id=?', uid);
+    case 'novel_words': return count('SELECT COALESCE(SUM(words),0) n FROM novel_runs WHERE owner_id=?', uid);
     case 'creator_bronze': return creatorWorks(uid) > 0 ? 1 : 0;
     case 'creator_gold': return isTopCreator(uid) ? 1 : 0;
     case 'favorites': return count('SELECT COUNT(*) n FROM favorites WHERE user_id=?', uid);

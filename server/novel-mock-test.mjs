@@ -22,6 +22,10 @@ const llm = http.createServer((req, res) => {
     else if (/世界观架构师/.test(sys)) content = JSON.stringify([{ title: '新洛城', category: 'location', content: '永远下雨的巨型都市。', keys: '新洛城,城市', trigger: 'keyword' }, { title: '侦探K', category: 'character', content: '义体改造的私家侦探。', keys: 'K,侦探', trigger: 'keyword' }]);
     else if (/连续性编辑/.test(sys)) content = JSON.stringify([{ title: '消失的委托人', category: 'plot', content: '委托人始终没有出现。', keys: '委托人', trigger: 'keyword' }]);
     else if (/小说策划/.test(sys)) content = JSON.stringify([{ label: '追查线索', prompt: '让K从烟头里发现端倪' }, { label: '不速之客', prompt: '一个陌生女人撑伞走近' }]);
+    else if (/连续性审校/.test(sys)) content = JSON.stringify([{ severity: 'low', issue: '雨一会儿大一会儿停', fix: '统一雨势' }]);
+    else if (/时间线/.test(sys)) content = JSON.stringify([{ label: '雨夜等待', event: 'K 在街角等委托人' }]);
+    else if (/结构分析师/.test(sys)) content = JSON.stringify({ nodes: [{ id: 'K', type: 'character' }, { id: '新洛城', type: 'location' }], edges: [{ from: 'K', to: '新洛城', label: '栖身' }] });
+    else if (/脑暴搭子/.test(sys)) content = JSON.stringify({ names: ['夜枭', '霓'], twists: ['委托人就是K自己'], details: ['义眼里闪过的红光'] });
     else if (/前情提要/.test(sys)) content = '侦探K在雨夜苦等一个失约的委托人。';
     else content = '（改写）霓虹在雨里晕开，K 吐出一口烟，街角空无一人。';
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -98,6 +102,32 @@ try {
 
   r = await api(`/novels/runs/${rid}/export?format=md`, 'GET', null, tok);
   ok(/霓虹挽歌/.test(r.body.text || ''), '导出 Markdown');
+
+  // —— 新增功能 ——
+  r = await api(`/novels/runs/${rid}/check`, 'POST', {}, tok);
+  ok(r.body.issues?.length >= 1, '一致性检查 ' + (r.body.issues?.length || 0) + ' 条');
+  r = await api(`/novels/runs/${rid}/timeline`, 'POST', {}, tok);
+  ok(r.body.events?.length >= 1, '剧情时间线 ' + (r.body.events?.length || 0) + ' 条');
+  r = await api(`/novels/runs/${rid}/graph`, 'POST', {}, tok);
+  ok(r.body.nodes?.length >= 2 && r.body.edges?.length >= 1, '关系图谱 ' + (r.body.nodes?.length || 0) + ' 节点');
+  r = await api(`/novels/${nid}/muse`, 'POST', {}, tok);
+  ok(r.body.names?.length >= 1 && r.body.twists?.length >= 1, '灵感火花');
+  r = await api(`/novels/runs/${rid}/beats/${bid}`, 'PATCH', { image: 'data:image/png;base64,AAAA' }, tok);
+  ok(r.body.beat?.image === 'data:image/png;base64,AAAA', '段落配图已保存');
+  r = await api(`/novels/${nid}/stats`, 'GET', null, tok);
+  ok(r.body.stats?.words > 0 && r.body.stats?.runs >= 1, `写作统计：${r.body.stats?.words} 字`);
+  r = await api(`/novels/${nid}/export?format=md`, 'GET', null, tok);
+  ok(/霓虹挽歌/.test(r.body.text || ''), '整本导出');
+  r = await api(`/novels/${nid}/publish`, 'POST', { run_id: rid }, tok);
+  ok(r.body.published, '发布到书架');
+  r = await api('/novels/showcase', 'GET', null, tok);
+  ok(r.body.novels?.some(x => x.id === nid), '书架精选含已发布作品');
+  r = await api(`/novels/${nid}/read`, 'GET', null, tok);
+  ok(r.body.beats?.length >= 1 && r.body.author?.display_name, '公开阅读返回正文 + 作者');
+  r = await api('/engage/tasks', 'GET', null, tok);
+  ok(r.body.tasks?.some(t => t.id === 'novel'), '每日任务含 novel');
+  r = await api('/achievements', 'GET', null, tok);
+  ok(r.body.achievements?.some(a => a.id === 'first_novel' && a.unlocked), '成就「执笔者」已解锁');
 
   r = await api(`/novels/${nid}`, 'DELETE', null, tok);
   ok(r.body.ok, '删除小说');

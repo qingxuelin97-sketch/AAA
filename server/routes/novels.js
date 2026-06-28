@@ -5,6 +5,7 @@ import { applyTx } from '../wallet.js';
 import { getPlatform, platformFee } from '../platform.js';
 import { assertPublicUrl } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
+import { bumpDaily } from '../daily.js';
 
 const router = Router();
 
@@ -244,6 +245,17 @@ router.post('/', authRequired, (req, res) => {
   res.json({ novel: shapeNovel(novel) });
 });
 
+// 书架精选：所有已发布作品（公开只读列表）。必须定义在 /:id 之前，避免被其捕获。
+router.get('/showcase', authRequired, (req, res) => {
+  const rows = db.prepare(`SELECT n.id, n.title, n.logline, n.cover, n.genre, n.tags, n.owner_id, n.published_run_id, n.updated_at,
+    u.display_name AS author_name, u.avatar AS author_avatar
+    FROM novels n JOIN users u ON u.id = n.owner_id
+    WHERE n.published = 1 ORDER BY n.updated_at DESC LIMIT 60`).all();
+  const novels = rows.map(n => ({ ...n, words: db.prepare('SELECT COALESCE(words,0) w FROM novel_runs WHERE id = ?').get(n.published_run_id)?.w || 0,
+    beats: db.prepare('SELECT COUNT(*) c FROM novel_beats WHERE run_id = ?').get(n.published_run_id)?.c || 0, mine: n.owner_id === req.user.id }));
+  res.json({ novels });
+});
+
 router.get('/:id', authRequired, (req, res) => {
   const n = ownNovel(req, res); if (!n) return;
   const runs = db.prepare('SELECT id, name, words, archived, summary, created_at, updated_at FROM novel_runs WHERE novel_id = ? ORDER BY archived, updated_at DESC').all(n.id)
@@ -298,7 +310,7 @@ router.get('/runs/:rid', authRequired, (req, res) => {
   const r = ownRun(req, res); if (!r) return;
   const novel = db.prepare('SELECT * FROM novels WHERE id = ?').get(r.novel_id);
   const beats = db.prepare('SELECT * FROM novel_beats WHERE run_id = ? ORDER BY seq, id').all(r.id)
-    .map(x => ({ ...x, meta: parseJSON(x.meta, {}) }));
+    .map(x => ({ ...x, meta: parseJSON(x.meta, {}), history: parseJSON(x.history, []) }));
   res.json({ run: shapeRun(r), novel: shapeNovel(novel), beats });
 });
 
@@ -346,11 +358,16 @@ router.patch('/runs/:rid/beats/:bid', authRequired, (req, res) => {
   const beat = db.prepare('SELECT * FROM novel_beats WHERE id = ? AND run_id = ?').get(req.params.bid, r.id);
   if (!beat) return res.status(404).json({ error: '段落不存在' });
   const b = req.body || {};
-  if (typeof b.content === 'string') db.prepare('UPDATE novel_beats SET content = ? WHERE id = ?').run(clampStr(b.content, 12000), beat.id);
+  if (typeof b.content === 'string' && b.content !== beat.content) {
+    pushHistory(beat.id, beat.content); // 手动编辑前留存旧版
+    db.prepare('UPDATE novel_beats SET content = ? WHERE id = ?').run(clampStr(b.content, 12000), beat.id);
+  }
   if (typeof b.directive === 'string') db.prepare('UPDATE novel_beats SET directive = ? WHERE id = ?').run(clampStr(b.directive, 2000), beat.id);
   if (b.pinned !== undefined) db.prepare('UPDATE novel_beats SET pinned = ? WHERE id = ?').run(b.pinned ? 1 : 0, beat.id);
+  if (b.image !== undefined) db.prepare('UPDATE novel_beats SET image = ? WHERE id = ?').run(clampStr(b.image, 600), beat.id);
   recountWords(r.id);
-  res.json({ beat: { ...db.prepare('SELECT * FROM novel_beats WHERE id = ?').get(beat.id), meta: parseJSON(beat.meta, {}) } });
+  const fresh = db.prepare('SELECT * FROM novel_beats WHERE id = ?').get(beat.id);
+  res.json({ beat: { ...fresh, meta: parseJSON(fresh.meta, {}), history: parseJSON(fresh.history, []) } });
 });
 
 router.delete('/runs/:rid/beats/:bid', authRequired, (req, res) => {
@@ -366,6 +383,16 @@ function recountWords(runId) {
   db.prepare('UPDATE novel_runs SET words = ? WHERE id = ?').run(words, runId);
   return words;
 }
+// 版本历史：把旧正文压入 history（最多保留 12 版，最新在前），供一键回退。
+function pushHistory(beatId, prevContent) {
+  if (!prevContent || !prevContent.trim()) return;
+  const row = db.prepare('SELECT history FROM novel_beats WHERE id = ?').get(beatId);
+  let hist = parseJSON(row?.history, []);
+  if (hist[0]?.content === prevContent) return; // 无变化不重复记
+  hist.unshift({ content: prevContent, at: new Date().toISOString() });
+  hist = hist.slice(0, 12);
+  db.prepare('UPDATE novel_beats SET history = ? WHERE id = ?').run(JSON.stringify(hist), beatId);
+}
 
 // Branch: fork a NEW run that contains beats up to (and including) a chosen beat,
 // carrying over the current 局内 canon snapshot. Lets the author explore alternatives.
@@ -378,8 +405,8 @@ router.post('/runs/:rid/branch/:bid', authRequired, (req, res) => {
   const info = db.prepare('INSERT INTO novel_runs (novel_id, owner_id, name, canon, vars, summary) VALUES (?,?,?,?,?,?)')
     .run(novel.id, novel.owner_id, name, r.canon, r.vars, r.summary);
   const kept = db.prepare('SELECT * FROM novel_beats WHERE run_id = ? AND seq <= ? ORDER BY seq, id').all(r.id, pivot.seq);
-  const ins = db.prepare('INSERT INTO novel_beats (run_id, seq, directive, content, meta, pinned, created_at) VALUES (?,?,?,?,?,?,?)');
-  kept.forEach((bt, i) => ins.run(info.lastInsertRowid, i, bt.directive, bt.content, bt.meta, bt.pinned, bt.created_at));
+  const ins = db.prepare('INSERT INTO novel_beats (run_id, seq, directive, content, meta, image, pinned, created_at) VALUES (?,?,?,?,?,?,?,?)');
+  kept.forEach((bt, i) => ins.run(info.lastInsertRowid, i, bt.directive, bt.content, bt.meta, bt.image || '', bt.pinned, bt.created_at));
   recountWords(info.lastInsertRowid);
   res.json({ run: shapeRun(db.prepare('SELECT * FROM novel_runs WHERE id = ?').get(info.lastInsertRowid)) });
 });
@@ -483,6 +510,7 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
   full = full.trim();
   if (full) {
     if (rewrite) {
+      pushHistory(rewrite.id, rewrite.content);
       db.prepare('UPDATE novel_beats SET content = ? WHERE id = ?').run(full, rewrite.id);
       sse({ beat_id: rewrite.id });
     } else {
@@ -494,6 +522,7 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
     }
     recountWords(run.id);
     touchRun(run.id); touchNovel(run.novel_id);
+    try { bumpDaily(userId, 'novel'); } catch { /* */ }
     if (feeDue) { try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `AI 创作 ·《${novel.title}》` }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ } }
   }
   sse('[DONE]');
@@ -635,6 +664,149 @@ router.get('/runs/:rid/export', authRequired, (req, res) => {
   beats.forEach((b, i) => { out += (md ? `### ${i + 1}\n\n` : `\n— ${i + 1} —\n\n`) + (b.content || '') + '\n\n'; });
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.json({ text: out, words: recountWords(r.id) });
+});
+
+// 一致性检查：扫描最新正文与局内设定，找出潜在矛盾 / 断裂，给出修正建议。
+router.post('/runs/:rid/check', authRequired, aiLimiter, async (req, res) => {
+  const r = ownRun(req, res); if (!r) return;
+  const settings = getSettings(req.user.id);
+  const eff = effectiveLLM(settings);
+  if (!eff) return res.status(400).json({ error: '尚未配置语言模型 API' });
+  if (!eff.platform) { try { assertPublicUrl(eff.base_url); } catch (e) { return res.status(400).json({ error: e.message }); } }
+  const beats = db.prepare('SELECT content FROM novel_beats WHERE run_id = ? ORDER BY seq DESC LIMIT 5').all(r.id).reverse();
+  const recent = beats.map(b => b.content).join('\n\n');
+  if (!recent.trim()) return res.json({ issues: [] });
+  const canon = cleanEntries(parseJSON(r.canon, []));
+  const setText = canon.map(e => `- ${e.title}（${CAT_LABEL[e.category]}）：${e.content}`).join('\n') || '（暂无设定）';
+  const system = '你是严谨的小说连续性审校。对照设定库检查正文是否存在自相矛盾、人物/地点/时间错乱、设定违背或前后断裂。只报真正的问题，没有就返回空数组。';
+  const user = `设定库：\n${setText}\n\n最新正文：\n${recent}\n\n输出 JSON 数组，每个元素 {"severity":"high|medium|low","issue":"问题描述","fix":"修正建议"}。只输出 JSON。`;
+  let arr;
+  try { arr = extractJSON(await llmOnce(eff, system, user, { maxTokens: 900, temperature: 0.2 })); }
+  catch (e) { return res.status(502).json({ error: e.message }); }
+  if (!Array.isArray(arr)) arr = [];
+  const issues = arr.slice(0, 12).map(x => ({ severity: ['high', 'medium', 'low'].includes(x.severity) ? x.severity : 'medium', issue: clampStr(x.issue, 300), fix: clampStr(x.fix, 300) })).filter(x => x.issue);
+  res.json({ issues });
+});
+
+// 剧情时间线：把整线正文提炼成按顺序的关键事件流（派生视图，非创作大纲）。
+router.post('/runs/:rid/timeline', authRequired, aiLimiter, async (req, res) => {
+  const r = ownRun(req, res); if (!r) return;
+  const settings = getSettings(req.user.id);
+  const eff = effectiveLLM(settings);
+  if (!eff) return res.status(400).json({ error: '尚未配置语言模型 API' });
+  if (!eff.platform) { try { assertPublicUrl(eff.base_url); } catch (e) { return res.status(400).json({ error: e.message }); } }
+  const text = db.prepare('SELECT content FROM novel_beats WHERE run_id = ? ORDER BY seq, id').all(r.id).map(b => b.content).join('\n\n');
+  if (!text.trim()) return res.json({ events: [] });
+  const system = '你是小说编辑，把连载正文梳理成「关键事件时间线」，按发生顺序列出，每条聚焦一个推动剧情的事件。';
+  const user = `正文：\n${text.slice(-9000)}\n\n输出 JSON 数组，每个元素 {"label":"阶段/场景短名","event":"该事件一句话"}。最多 12 条。只输出 JSON。`;
+  let arr;
+  try { arr = extractJSON(await llmOnce(eff, system, user, { maxTokens: 1000, temperature: 0.4 })); }
+  catch (e) { return res.status(502).json({ error: e.message }); }
+  if (!Array.isArray(arr)) arr = [];
+  res.json({ events: arr.slice(0, 20).map(x => ({ label: clampStr(x.label, 30), event: clampStr(x.event, 240) })).filter(x => x.event) });
+});
+
+// 设定关系图谱：基于局内设定 + 近期正文，推断角色/势力/地点之间的关系，生成可视化节点与连线。
+router.post('/runs/:rid/graph', authRequired, aiLimiter, async (req, res) => {
+  const r = ownRun(req, res); if (!r) return;
+  const settings = getSettings(req.user.id);
+  const eff = effectiveLLM(settings);
+  if (!eff) return res.status(400).json({ error: '尚未配置语言模型 API' });
+  if (!eff.platform) { try { assertPublicUrl(eff.base_url); } catch (e) { return res.status(400).json({ error: e.message }); } }
+  const canon = cleanEntries(parseJSON(r.canon, []));
+  const setText = canon.map(e => `- ${e.title}（${CAT_LABEL[e.category]}）：${e.content}`).join('\n');
+  if (!setText.trim()) return res.json({ nodes: [], edges: [] });
+  const recent = db.prepare('SELECT content FROM novel_beats WHERE run_id = ? ORDER BY seq DESC LIMIT 3').all(r.id).reverse().map(b => b.content).join('\n');
+  const system = '你是故事结构分析师。根据设定库与正文，提炼主要实体（人物/势力/地点）及它们之间的关系，用于绘制关系图谱。';
+  const user = `设定库：\n${setText}\n\n近期正文：\n${recent}\n\n输出 JSON：{"nodes":[{"id":"名字","type":"character|faction|location|other"}],"edges":[{"from":"名字","to":"名字","label":"关系，如 师徒/敌对/同伴"}]}。节点不超过 12 个。只输出 JSON。`;
+  let obj;
+  try { obj = extractJSON(await llmOnce(eff, system, user, { maxTokens: 1100, temperature: 0.4 })); }
+  catch (e) { return res.status(502).json({ error: e.message }); }
+  if (!obj || typeof obj !== 'object') obj = {};
+  const nodes = Array.isArray(obj.nodes) ? obj.nodes.slice(0, 16).map(n => ({ id: clampStr(n.id, 30), type: ['character', 'faction', 'location', 'other'].includes(n.type) ? n.type : 'other' })).filter(n => n.id) : [];
+  const ids = new Set(nodes.map(n => n.id));
+  const edges = Array.isArray(obj.edges) ? obj.edges.slice(0, 30).map(e => ({ from: clampStr(e.from, 30), to: clampStr(e.to, 30), label: clampStr(e.label, 20) })).filter(e => ids.has(e.from) && ids.has(e.to) && e.from !== e.to) : [];
+  res.json({ nodes, edges });
+});
+
+// 卡文急救 / 灵感火花：随机给出人名、转折、细节，帮作者突破写作瓶颈。
+router.post('/:id/muse', authRequired, aiLimiter, async (req, res) => {
+  const n = ownNovel(req, res); if (!n) return;
+  const settings = getSettings(req.user.id);
+  const eff = effectiveLLM(settings);
+  if (!eff) return res.status(400).json({ error: '尚未配置语言模型 API' });
+  if (!eff.platform) { try { assertPublicUrl(eff.base_url); } catch (e) { return res.status(400).json({ error: e.message }); } }
+  const system = `你是脑暴搭子，为《${n.title}》${n.genre ? '（' + n.genre + '）' : ''}提供即兴灵感火花，贴合其题材气质。`;
+  const user = `${n.logline ? '内核：' + n.logline + '\n' : ''}请输出 JSON：{"names":["契合世界观的人名/称号，4个"],"twists":["出人意料的剧情转折，3个，每条一句"],"details":["可增强画面感的具体细节/意象，3个"]}。只输出 JSON。`;
+  let obj;
+  try { obj = extractJSON(await llmOnce(eff, system, user, { maxTokens: 800, temperature: 1.0 })); }
+  catch (e) { return res.status(502).json({ error: e.message }); }
+  if (!obj || typeof obj !== 'object') obj = {};
+  const arr = (a, n2, len) => (Array.isArray(a) ? a : []).slice(0, n2).map(x => clampStr(x, len)).filter(Boolean);
+  res.json({ names: arr(obj.names, 8, 40), twists: arr(obj.twists, 6, 160), details: arr(obj.details, 6, 160) });
+});
+
+// 写作统计：字数 / 段落 / 剧情线 / 设定条目，按线汇总。
+router.get('/:id/stats', authRequired, (req, res) => {
+  const n = ownNovel(req, res); if (!n) return;
+  const runs = db.prepare('SELECT id, name, words, archived FROM novel_runs WHERE novel_id = ?').all(n.id).map(r => ({
+    ...r, beats: db.prepare('SELECT COUNT(*) c FROM novel_beats WHERE run_id = ?').get(r.id).c,
+    canon: cleanEntries(parseJSON(db.prepare('SELECT canon FROM novel_runs WHERE id = ?').get(r.id).canon, [])).length,
+  }));
+  const totalWords = runs.reduce((s, r) => s + (r.words || 0), 0);
+  const totalBeats = runs.reduce((s, r) => s + r.beats, 0);
+  res.json({ stats: { words: totalWords, beats: totalBeats, runs: runs.length, codex: cleanEntries(parseJSON(n.codex, [])).length, per_run: runs } });
+});
+
+// 整本导出（所有未归档剧情线，或指定一条）。
+router.get('/:id/export', authRequired, (req, res) => {
+  const n = ownNovel(req, res); if (!n) return;
+  const md = req.query.format === 'md';
+  const runs = req.query.run_id
+    ? db.prepare('SELECT * FROM novel_runs WHERE id = ? AND novel_id = ?').all(req.query.run_id, n.id)
+    : db.prepare('SELECT * FROM novel_runs WHERE novel_id = ? AND archived = 0 ORDER BY id').all(n.id);
+  let out = md ? `# ${n.title}\n\n${n.logline ? '> ' + n.logline + '\n\n' : ''}` : `${n.title}\n${n.logline || ''}\n\n`;
+  for (const r of runs) {
+    if (runs.length > 1) out += md ? `\n## ${r.name}\n\n` : `\n【${r.name}】\n\n`;
+    const beats = db.prepare('SELECT content FROM novel_beats WHERE run_id = ? ORDER BY seq, id').all(r.id);
+    beats.forEach((b, i) => { out += (md ? `### ${i + 1}\n\n` : `\n— ${i + 1} —\n\n`) + (b.content || '') + '\n\n'; });
+  }
+  res.json({ text: out, words: n ? db.prepare('SELECT COALESCE(SUM(words),0) w FROM novel_runs WHERE novel_id = ?').get(n.id).w : 0 });
+});
+
+// 发布到「书架精选」：选一条剧情线对外只读展示（或取消发布）。
+router.post('/:id/publish', authRequired, (req, res) => {
+  const n = ownNovel(req, res); if (!n) return;
+  const publish = req.body?.publish !== false;
+  if (publish) {
+    const runId = req.body?.run_id;
+    const run = runId ? db.prepare('SELECT * FROM novel_runs WHERE id = ? AND novel_id = ?').get(runId, n.id) : db.prepare('SELECT * FROM novel_runs WHERE novel_id = ? AND archived = 0 ORDER BY words DESC LIMIT 1').get(n.id);
+    if (!run) return res.status(400).json({ error: '请选择要展示的剧情线' });
+    const beatCount = db.prepare('SELECT COUNT(*) c FROM novel_beats WHERE run_id = ?').get(run.id).c;
+    if (!beatCount) return res.status(400).json({ error: '该剧情线还没有正文，先写一点再发布吧' });
+    db.prepare("UPDATE novels SET published = 1, published_run_id = ?, updated_at = datetime('now') WHERE id = ?").run(run.id, n.id);
+  } else {
+    db.prepare("UPDATE novels SET published = 0 WHERE id = ?").run(n.id);
+  }
+  res.json({ novel: shapeNovel(db.prepare('SELECT * FROM novels WHERE id = ?').get(n.id)), published: publish });
+});
+
+// 公开阅读：已发布作品（任何登录用户可读）或作者本人。
+router.get('/:id/read', authRequired, (req, res) => {
+  const n = db.prepare('SELECT * FROM novels WHERE id = ?').get(req.params.id);
+  if (!n) return res.status(404).json({ error: '作品不存在' });
+  const isOwner = n.owner_id === req.user.id;
+  if (!n.published && !isOwner) return res.status(403).json({ error: '该作品未公开' });
+  const runId = req.query.run_id && isOwner ? req.query.run_id : n.published_run_id;
+  const run = db.prepare('SELECT * FROM novel_runs WHERE id = ? AND novel_id = ?').get(runId, n.id) || db.prepare('SELECT * FROM novel_runs WHERE novel_id = ? ORDER BY id LIMIT 1').get(n.id);
+  const author = db.prepare('SELECT * FROM users WHERE id = ?').get(n.owner_id);
+  const beats = run ? db.prepare('SELECT id, content, image FROM novel_beats WHERE run_id = ? ORDER BY seq, id').all(run.id) : [];
+  res.json({
+    novel: { id: n.id, title: n.title, logline: n.logline, cover: n.cover, genre: n.genre, tags: n.tags, published: n.published, mine: isOwner },
+    author: author ? { id: author.id, display_name: author.display_name, avatar: author.avatar } : null,
+    run: run ? { id: run.id, name: run.name, words: run.words, summary: run.summary } : null,
+    beats,
+  });
 });
 
 export default router;

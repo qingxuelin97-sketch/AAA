@@ -6,7 +6,7 @@ import { getThemeMode, resolveTheme, setThemeMode } from '../theme.js';
 import {
   Search, Compass, PartyPopper, Dices, ScrollText, Users, Trophy, Megaphone,
   MessageCircle, Drama, Library, TrendingUp, Heart, Wallet, Bell, Settings,
-  Sparkles, UserPlus, Moon, Sun, LogOut, CornerDownLeft, Command, ArrowUp, ArrowDown, Landmark, UserRound
+  Sparkles, UserPlus, Moon, Sun, LogOut, CornerDownLeft, Command, ArrowUp, ArrowDown, Landmark, UserRound, Feather
 } from 'lucide-react';
 
 // Flat list of navigable destinations (mirrors the sidebar) + quick actions.
@@ -20,6 +20,7 @@ const NAV = [
   { to: '/parliament', ic: Landmark, label: '议会 · 提案', kw: 'parliament yihui tian proposal' },
   { to: '/announcements', ic: Megaphone, label: '公告', kw: 'announcements gonggao' },
   { to: '/chats', ic: MessageCircle, label: '对话', kw: 'chats duihua' },
+  { to: '/atelier', ic: Feather, label: '小说创作 · 工坊', kw: 'atelier novel xiaoshuo chuangzuo write ai' },
   { to: '/friends', ic: UserRound, label: '好友 · 私信', kw: 'friends haoyou sixin dm' },
   { to: '/groups', ic: Users, label: '群聊', kw: 'groups qunliao' },
   { to: '/theater', ic: Drama, label: '剧场 · 联机', kw: 'theater juchang' },
@@ -82,6 +83,7 @@ export default function CommandPalette() {
   const actions = useMemo(() => ([
     { id: 'a-publish', ic: Sparkles, label: '发布作品', hint: '操作', run: () => nav('/publish') },
     { id: 'a-newchar', ic: UserPlus, label: '新建角色', hint: '操作', run: () => nav('/character/new') },
+    { id: 'a-newnovel', ic: Feather, label: '小说创作工坊', hint: '操作', run: () => nav('/atelier') },
     { id: 'a-theme', ic: dark ? Sun : Moon, label: dark ? '切换到浅色模式' : '切换到深色模式', hint: '操作',
       run: () => setThemeMode(dark ? 'light' : 'dark'), keepOpen: true },
     { id: 'a-wallet', ic: Wallet, label: '前往充值', hint: '操作', run: () => nav('/wallet') },

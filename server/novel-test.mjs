@@ -51,6 +51,10 @@ const llm = http.createServer((req, res) => {
       { label: '揭开秘密', prompt: '让阿岚说出他留下的真正原因' },
       { label: '危机降临', prompt: '门外传来掠夺者的脚步声' },
     ]);
+    else if (/连续性审校/.test(sys)) content = JSON.stringify([{ severity: 'medium', issue: '风灯先说快熄灭后又一直亮着', fix: '统一为风灯将熄' }]);
+    else if (/时间线/.test(sys)) content = JSON.stringify([{ label: '门前相遇', event: '林晚舟在图书馆门前遇到阿岚' }]);
+    else if (/结构分析师/.test(sys)) content = JSON.stringify({ nodes: [{ id: '林晚舟', type: 'character' }, { id: '阿岚', type: 'character' }], edges: [{ from: '林晚舟', to: '阿岚', label: '相识' }] });
+    else if (/脑暴搭子/.test(sys)) content = JSON.stringify({ names: ['守夜人', '灰烬'], twists: ['图书馆其实是一艘船'], details: ['潮湿纸页的霉味'] });
     else if (/前情提要/.test(sys)) content = '林晚舟在末世图书馆守着最后的灯，少年阿岚夜里留了下来。';
     else content = '（改写后的正文）夜色如墨，林晚舟提灯而立，少年阿岚的脚步在身后停住。';
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -150,9 +154,49 @@ try {
   r = await J(`/novels/runs/${rid}/branch/${beatId}`, { method: 'POST', body: JSON.stringify({ name: '支线A' }) });
   ok(r.status === 200 && r.body.run?.id, '从段落开分支');
 
-  // export
+  // export (run)
   r = await J(`/novels/runs/${rid}/export?format=md`);
-  ok(r.status === 200 && /风灯与少年/.test(r.body.text), '导出 Markdown');
+  ok(r.status === 200 && /风灯与少年/.test(r.body.text), '导出 Markdown（单线）');
+
+  // —— 新增功能 ——
+  // 一致性检查
+  r = await J(`/novels/runs/${rid}/check`, { method: 'POST' });
+  ok(r.status === 200 && Array.isArray(r.body.issues) && r.body.issues.length >= 1, '一致性检查返回 ' + (r.body.issues?.length || 0) + ' 条');
+  // 时间线
+  r = await J(`/novels/runs/${rid}/timeline`, { method: 'POST' });
+  ok(r.status === 200 && r.body.events?.length >= 1, '剧情时间线 ' + (r.body.events?.length || 0) + ' 条');
+  // 关系图谱
+  r = await J(`/novels/runs/${rid}/graph`, { method: 'POST' });
+  ok(r.status === 200 && r.body.nodes?.length >= 2 && r.body.edges?.length >= 1, '关系图谱 ' + (r.body.nodes?.length || 0) + ' 节点 / ' + (r.body.edges?.length || 0) + ' 边');
+  // 灵感火花
+  r = await J(`/novels/${nid}/muse`, { method: 'POST' });
+  ok(r.status === 200 && r.body.names?.length >= 1 && r.body.twists?.length >= 1, '灵感火花：名字 ' + r.body.names.length + ' 转折 ' + r.body.twists.length);
+  // 段落配图（PATCH image）
+  r = await J(`/novels/runs/${rid}/beats/${beatId}`, { method: 'PATCH', body: JSON.stringify({ image: 'data:image/png;base64,AAAA' }) });
+  ok(r.body.beat?.image === 'data:image/png;base64,AAAA', '段落配图已保存');
+  // 版本历史（改写后应有 history）
+  r = await J(`/novels/runs/${rid}`);
+  const hb = r.body.beats.find(b => b.id === beatId);
+  ok(Array.isArray(hb?.history) && hb.history.length >= 1, '段落版本历史保留 ' + (hb?.history?.length || 0) + ' 版');
+  // 写作统计
+  r = await J(`/novels/${nid}/stats`);
+  ok(r.status === 200 && r.body.stats?.words > 0 && r.body.stats?.runs >= 1, `写作统计：${r.body.stats?.words} 字 / ${r.body.stats?.runs} 线`);
+  // 整本导出
+  r = await J(`/novels/${nid}/export?format=md`);
+  ok(r.status === 200 && /风灯与少年/.test(r.body.text), '整本导出');
+  // 发布 + 书架精选 + 公开阅读
+  r = await J(`/novels/${nid}/publish`, { method: 'POST', body: JSON.stringify({ run_id: rid }) });
+  ok(r.status === 200 && r.body.published, '发布到书架');
+  r = await J('/novels/showcase');
+  ok(r.status === 200 && r.body.novels?.some(x => x.id === nid), '书架精选含已发布作品');
+  r = await J(`/novels/${nid}/read`);
+  ok(r.status === 200 && r.body.beats?.length >= 1 && r.body.author?.display_name, '公开阅读返回正文 + 作者');
+  // 每日任务联动：novel 计数应已 +（写过正文）
+  r = await J('/engage/tasks');
+  ok(r.body.tasks?.some(t => t.id === 'novel'), '每日任务含「AI 创作小说」');
+  // 成就联动
+  r = await J('/achievements');
+  ok(r.body.achievements?.some(a => a.id === 'first_novel' && a.unlocked), '成就「执笔者」已解锁');
 
   // run count = 2 now
   r = await J(`/novels/${nid}`);

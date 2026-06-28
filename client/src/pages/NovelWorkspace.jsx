@@ -1,11 +1,15 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api, getToken } from '../api.jsx';
-import { useToast, Modal } from '../ui.jsx';
+import { api, getToken, useAuth } from '../api.jsx';
+import { useToast, Modal, Uploader } from '../ui.jsx';
+import { generateImage } from '../imagegen.js';
+import { stripParensForSpeech, speakBrowser, playAudioUrl, stopSpeaking, onVoiceStateChange } from '../voice.js';
 import {
   ArrowLeft, Feather, Sparkles, Wand2, Loader2, Send, Square, Palette, Layers,
-  BookLock, BookOpen, GitBranch, Download, Trash2, Pin, RefreshCw, Lock, Unlock,
+  BookLock, BookOpen, GitBranch, Trash2, Pin, RefreshCw, Lock, Unlock, Network,
   Plus, X, ChevronDown, Check, Pencil, ScrollText, Lightbulb, FileDown, Eye, EyeOff,
+  Image as ImageIcon, Volume2, History, MoreHorizontal, BookMarked, BarChart3, Rocket,
+  ShieldAlert, Clock, Globe, Info, Maximize2, Type, Minus,
 } from 'lucide-react';
 
 /* ───────────────────────── shared option metadata ───────────────────────── */
@@ -19,7 +23,6 @@ export const CAT_OPTS = [
   ['location', '地点'], ['item', '物品'], ['lore', '设定'], ['rule', '规则'],
   ['timeline', '时间线'], ['plot', '剧情'], ['other', '其他'],
 ];
-const CAT_LABEL = Object.fromEntries(CAT_OPTS);
 const SOURCE_BADGE = {
   meta: { label: '局外母版', cls: 'src-meta' },
   manual: { label: '手动', cls: 'src-manual' },
@@ -42,24 +45,32 @@ export default function NovelWorkspace() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
+  const { refreshUser } = useAuth();
 
   const [novel, setNovel] = useState(null);
   const [runs, setRuns] = useState([]);
-  const [run, setRun] = useState(null);     // active run (full, with canon)
+  const [run, setRun] = useState(null);
   const [beats, setBeats] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
-  const [panel, setPanel] = useState(null); // style | codex | canon | runs
+  const [panel, setPanel] = useState(null);            // style|codex|canon|runs|analysis|info
+  const [overlay, setOverlay] = useState(null);        // muse|stats|reader
   const [suggestions, setSuggestions] = useState([]);
   const [suggesting, setSuggesting] = useState(false);
   const [autoSync, setAutoSync] = useState(true);
+  const [autoRunning, setAutoRunning] = useState(false);
+  const [playingId, setPlayingId] = useState(null);
 
   const abortRef = useRef(null);
   const scrollRef = useRef(null);
   const rafRef = useRef(0);
   const bufRef = useRef('');
+  const autoStop = useRef(false);
+
+  useEffect(() => onVoiceStateChange(setPlayingId), []);
+  useEffect(() => () => stopSpeaking(), []);
 
   const loadRun = useCallback(async (rid) => {
     const d = await api(`/novels/runs/${rid}`);
@@ -97,7 +108,7 @@ export default function NovelWorkspace() {
     }
   };
   const stream = async (endpoint, payload, { rewriteId } = {}) => {
-    if (streaming) return;
+    if (streaming) return false;
     setStreaming(true); setSuggestions([]);
     const ctrl = new AbortController(); abortRef.current = ctrl;
     if (!rewriteId) setBeats(b => [...b, { id: localId(), _streaming: true, directive: payload.directive || '', content: '' }]);
@@ -122,35 +133,35 @@ export default function NovelWorkspace() {
               setBeats(b => { const c = [...b]; const last = c[c.length - 1]; if (last?._streaming) c[c.length - 1] = { ...last, content: (last.content || '') + chunk }; return c; });
             });
           }
-          if (j.fee) toast(`本次平台创作扣除 ${j.fee} 金币`, 'info');
+          if (j.fee) { toast(`本次平台创作扣除 ${j.fee} 金币`, 'info'); refreshUser?.(); }
         }
       }
       flush();
     } catch (err) {
       errored = true; flush();
-      if (err.name === 'AbortError') { /* keep partial */ }
-      else toast(err.message, 'err');
+      if (err.name !== 'AbortError') toast(err.message, 'err');
     } finally {
       if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; }
       setBeats(b => b.map(x => x._streaming ? { ...x, _streaming: false } : x));
       setStreaming(false); abortRef.current = null;
     }
-    // reconcile with server truth + auto-sync canon
     if (!errored) {
       try { await loadRun(run.id); } catch { /* */ }
       refreshRuns();
+      try { api('/engage/track', { method: 'POST', body: { action: 'novel' } }); } catch { /* */ }
       if (autoSync && !rewriteId) syncCanon(true);
     } else if (rewriteId) {
       setBeats(b => b.map(x => x.id === rewriteId ? { ...x, content: x._orig ?? x.content } : x));
     }
+    return !errored;
   };
 
   const write = async (directive) => {
     const d = (directive ?? input).trim();
     if (directive === undefined) setInput('');
-    await stream(`/api/novels/runs/${run.id}/write`, { directive: d });
+    return stream(`/api/novels/runs/${run.id}/write`, { directive: d });
   };
-  const stop = () => abortRef.current?.abort();
+  const stop = () => { autoStop.current = true; abortRef.current?.abort(); };
 
   const rewriteBeat = (beat, instruction) => stream(`/api/novels/runs/${run.id}/beats/${beat.id}/rewrite`, { instruction }, { rewriteId: beat.id });
 
@@ -170,6 +181,16 @@ export default function NovelWorkspace() {
     } catch (e) { if (!silent) toast(e.message, 'err'); }
   };
 
+  // ── auto-continue (自动巡航) ──
+  const startAuto = async () => {
+    const n = parseInt(prompt('自动巡航：连续生成几段？（1–10）', '3'), 10);
+    if (!n || n < 1) return;
+    const count = Math.min(10, n);
+    autoStop.current = false; setAutoRunning(true);
+    for (let i = 0; i < count; i++) { if (autoStop.current) break; const ok = await write(''); if (!ok) break; }
+    setAutoRunning(false);
+  };
+
   const switchRun = async (rid) => { if (rid === run?.id) return; setPanel(null); try { await loadRun(rid); } catch (e) { toast(e.message, 'err'); } };
 
   const delBeat = async (beat) => {
@@ -179,14 +200,56 @@ export default function NovelWorkspace() {
     try { await api(`/novels/runs/${run.id}/beats/${beat.id}`, { method: 'DELETE' }); refreshRuns(); }
     catch (e) { toast(e.message, 'err'); loadRun(run.id); }
   };
-  const editBeat = async (beat, content) => {
-    setBeats(b => b.map(x => x.id === beat.id ? { ...x, content } : x));
-    try { await api(`/novels/runs/${run.id}/beats/${beat.id}`, { method: 'PATCH', body: { content } }); }
-    catch (e) { toast(e.message, 'err'); }
+  const patchBeat = async (beat, body, optimistic) => {
+    if (optimistic) setBeats(b => b.map(x => x.id === beat.id ? { ...x, ...optimistic } : x));
+    try { const d = await api(`/novels/runs/${run.id}/beats/${beat.id}`, { method: 'PATCH', body }); setBeats(b => b.map(x => x.id === beat.id ? { ...d.beat } : x)); return d.beat; }
+    catch (e) { toast(e.message, 'err'); loadRun(run.id); }
   };
+  const editBeat = (beat, content) => patchBeat(beat, { content }, { content });
+  const restoreVersion = (beat, content) => patchBeat(beat, { content }, { content });
+
   const branchAt = async (beat) => {
     try { const d = await api(`/novels/runs/${run.id}/branch/${beat.id}`, { method: 'POST' }); toast('已从此处开出新分支', 'ok'); await refreshRuns(); await loadRun(d.run.id); }
     catch (e) { toast(e.message, 'err'); }
+  };
+
+  // ── illustration ──
+  const illustrate = async (beat) => {
+    setBeats(b => b.map(x => x.id === beat.id ? { ...x, _illustrating: true } : x));
+    try {
+      const prompt2 = `${novel.genre || ''}风格小说插画，电影质感，画面：${(beat.content || '').replace(/\s+/g, ' ').slice(0, 180)}`;
+      const d = await generateImage({ prompt: prompt2, size: '1024x1024' });
+      if (!d.image) throw new Error('未返回图片');
+      await patchBeat(beat, { image: d.image });
+      if (d.fee) { toast(`配图生成 · 消耗 ${d.fee} 金币`, 'info'); refreshUser?.(); }
+    } catch (e) { toast(e.message, 'err'); }
+    finally { setBeats(b => b.map(x => x.id === beat.id ? { ...x, _illustrating: false } : x)); }
+  };
+  const removeIllustration = (beat) => patchBeat(beat, { image: '' }, { image: '' });
+
+  // ── TTS ──
+  const speakBeat = async (beat) => {
+    if (playingId === beat.id) { stopSpeaking(); return; }
+    const text = stripParensForSpeech(beat.content || '');
+    if (!text) return;
+    try {
+      const res = await fetch('/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ text }) });
+      if (!res.ok) throw new Error('platform-tts-unavailable');
+      const charged = res.headers.get('X-Gold-Fee');
+      const url = URL.createObjectURL(await res.blob());
+      playAudioUrl(url, beat.id);
+      if (charged) { toast(`平台语音 · 消耗 ${charged} 金币`, 'info'); refreshUser?.(); }
+    } catch { speakBrowser(text, undefined, 1, 1, beat.id); }
+  };
+
+  const exportNovel = async (fmt = 'md') => {
+    try {
+      const d = await api(`/novels/${id}/export?format=${fmt}`);
+      const ext = fmt === 'md' ? 'md' : 'txt';
+      const blob = new Blob([d.text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${novel.title}.${ext}`; a.click(); URL.revokeObjectURL(url);
+      toast('已导出', 'ok');
+    } catch (e) { toast(e.message, 'err'); }
   };
 
   if (loading || !novel || !run) return <div className="empty" style={{ paddingTop: 160 }}>载入创作台…</div>;
@@ -197,6 +260,7 @@ export default function NovelWorkspace() {
         novel={novel} run={run} runs={runs} words={run.words}
         onBack={() => nav('/atelier')} onSwitchRun={switchRun}
         onOpenPanel={setPanel} activePanel={panel}
+        onOverlay={setOverlay} onExport={exportNovel}
       />
 
       <div className="atl-ws-main">
@@ -222,10 +286,11 @@ export default function NovelWorkspace() {
             )}
 
             {beats.map((beat, i) => (
-              <Beat key={beat.id} beat={beat} index={i} streaming={streaming}
-                onRewrite={rewriteBeat} onDelete={delBeat} onEdit={editBeat} onBranch={branchAt} />
+              <Beat key={beat.id} beat={beat} index={i} streaming={streaming} playing={playingId === beat.id}
+                onRewrite={rewriteBeat} onDelete={delBeat} onEdit={editBeat} onBranch={branchAt}
+                onIllustrate={illustrate} onRemoveImage={removeIllustration} onSpeak={speakBeat} onRestore={restoreVersion} />
             ))}
-            {streaming && <div className="atl-writing"><Loader2 size={14} className="spin" /> AI 正在落笔…</div>}
+            {streaming && <div className="atl-writing"><Loader2 size={14} className="spin" /> AI 正在落笔…{autoRunning && ' · 自动巡航中'}</div>}
           </div>
         </div>
 
@@ -237,24 +302,39 @@ export default function NovelWorkspace() {
       </div>
 
       <Composer
-        input={input} setInput={setInput} streaming={streaming}
-        onWrite={() => write()} onFree={() => write('')} onStop={stop}
+        input={input} setInput={setInput} streaming={streaming} autoRunning={autoRunning}
+        onWrite={() => write()} onFree={() => write('')} onStop={stop} onAuto={startAuto}
         onSuggest={suggest} suggesting={suggesting} suggestions={suggestions}
         onPick={(p) => { setInput(p); setSuggestions([]); }}
         autoSync={autoSync} setAutoSync={setAutoSync} onManualSync={() => syncCanon(false)}
+        onMuse={() => setOverlay('muse')}
       />
+
+      {overlay === 'muse' && <MuseModal novelId={novel.id} onClose={() => setOverlay(null)} onInsert={(t) => { setInput(v => (v ? v + ' ' : '') + t); setOverlay(null); }} toast={toast} />}
+      {overlay === 'stats' && <StatsModal novelId={novel.id} onClose={() => setOverlay(null)} toast={toast} />}
+      {overlay === 'reader' && <ReaderOverlay novel={novel} run={run} beats={beats} onClose={() => setOverlay(null)} />}
     </div>
   );
 }
 
 /* ───────────────────────── header ───────────────────────── */
-function WorkspaceHeader({ novel, run, runs, words, onBack, onSwitchRun, onOpenPanel, activePanel }) {
+function WorkspaceHeader({ novel, run, runs, words, onBack, onSwitchRun, onOpenPanel, activePanel, onOverlay, onExport }) {
   const [runMenu, setRunMenu] = useState(false);
+  const [more, setMore] = useState(false);
   const TOOLS = [
     { k: 'style', ic: Palette, label: '文风' },
     { k: 'codex', ic: BookLock, label: '局外设定' },
     { k: 'canon', ic: BookOpen, label: '局内设定' },
+    { k: 'analysis', ic: BarChart3, label: '分析' },
     { k: 'runs', ic: GitBranch, label: '剧情线' },
+  ];
+  const MORE = [
+    { ic: Info, label: '作品信息', run: () => onOpenPanel('info') },
+    { ic: Lightbulb, label: '灵感火花', run: () => onOverlay('muse') },
+    { ic: BookMarked, label: '沉浸阅读', run: () => onOverlay('reader') },
+    { ic: BarChart3, label: '写作统计', run: () => onOverlay('stats') },
+    { ic: FileDown, label: '导出 Markdown', run: () => onExport('md') },
+    { ic: FileDown, label: '导出 TXT', run: () => onExport('txt') },
   ];
   return (
     <div className="atl-ws-head">
@@ -283,25 +363,47 @@ function WorkspaceHeader({ novel, run, runs, words, onBack, onSwitchRun, onOpenP
             <t.ic size={16} /><span>{t.label}</span>
           </button>
         ))}
+        <div className="atl-more-wrap">
+          <button className={'atl-tool' + (more ? ' on' : '')} title="更多" onClick={() => setMore(v => !v)}><MoreHorizontal size={16} /></button>
+          {more && (
+            <>
+              <div className="atl-more-backdrop" onClick={() => setMore(false)} />
+              <div className="atl-more-menu">
+                {MORE.map((it, i) => (
+                  <button key={i} onClick={() => { setMore(false); it.run(); }}><it.ic size={15} /> {it.label}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 /* ───────────────────────── single beat ───────────────────────── */
-function Beat({ beat, index, streaming, onRewrite, onDelete, onEdit, onBranch }) {
-  const [menu, setMenu] = useState(false);
+function Beat({ beat, index, streaming, playing, onRewrite, onDelete, onEdit, onBranch, onIllustrate, onRemoveImage, onSpeak, onRestore }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(beat.content);
   const [rewriting, setRewriting] = useState(false);
   const [instr, setInstr] = useState('');
+  const [histOpen, setHistOpen] = useState(false);
+  const hist = Array.isArray(beat.history) ? beat.history : [];
 
   const save = () => { onEdit(beat, draft); setEditing(false); };
-  const doRewrite = (text) => { onRewrite(beat, text); setRewriting(false); setInstr(''); setMenu(false); };
+  const doRewrite = (text) => { onRewrite(beat, text); setRewriting(false); setInstr(''); };
 
   return (
     <div className={'atl-beat' + (beat._streaming ? ' streaming' : '')}>
       {beat.directive ? <div className="atl-beat-dir"><Feather size={12} /> {beat.directive}</div> : null}
+
+      {beat.image && (
+        <div className="atl-beat-img">
+          <img src={beat.image} alt="" loading="lazy" />
+          {!beat._streaming && <button className="atl-img-x" title="移除配图" onClick={() => onRemoveImage(beat)}><X size={13} /></button>}
+        </div>
+      )}
+
       {editing ? (
         <div className="atl-beat-edit">
           <textarea className="textarea" value={draft} onChange={e => setDraft(e.target.value)} rows={Math.min(20, Math.max(4, Math.ceil(draft.length / 40)))} />
@@ -316,8 +418,11 @@ function Beat({ beat, index, streaming, onRewrite, onDelete, onEdit, onBranch })
 
       {!beat._streaming && !editing && (
         <div className="atl-beat-tools">
+          <button title={playing ? '停止朗读' : '朗读'} className={playing ? 'on' : ''} onClick={() => onSpeak(beat)}><Volume2 size={13} /></button>
+          <button title="为本段配图" onClick={() => onIllustrate(beat)} disabled={beat._illustrating}>{beat._illustrating ? <Loader2 size={13} className="spin" /> : <ImageIcon size={13} />}</button>
           <button title="改写润色" onClick={() => setRewriting(v => !v)}><Wand2 size={13} /></button>
           <button title="手动编辑" onClick={() => { setDraft(beat.content); setEditing(true); }}><Pencil size={13} /></button>
+          {hist.length > 0 && <button title={`版本历史（${hist.length}）`} className={histOpen ? 'on' : ''} onClick={() => setHistOpen(v => !v)}><History size={13} /></button>}
           <button title="从此处开分支" onClick={() => onBranch(beat)}><GitBranch size={13} /></button>
           <button title="删除" className="danger" onClick={() => onDelete(beat)}><Trash2 size={13} /></button>
         </div>
@@ -331,12 +436,24 @@ function Beat({ beat, index, streaming, onRewrite, onDelete, onEdit, onBranch })
           <button className="btn sm primary" onClick={() => doRewrite(instr)}>改写</button>
         </div>
       )}
+
+      {histOpen && hist.length > 0 && (
+        <div className="atl-hist">
+          <div className="atl-hist-head"><History size={12} /> 历史版本 · 点击回退</div>
+          {hist.map((h, i) => (
+            <button key={i} className="atl-hist-item" onClick={() => { onRestore(beat, h.content); setHistOpen(false); }}>
+              <span className="atl-hist-n">v{hist.length - i}</span>
+              <span className="atl-hist-tx">{h.content.slice(0, 90)}…</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-/* ───────────────────────── composer (prompt bar) ───────────────────────── */
-function Composer({ input, setInput, streaming, onWrite, onFree, onStop, onSuggest, suggesting, suggestions, onPick, autoSync, setAutoSync, onManualSync }) {
+/* ───────────────────────── composer ───────────────────────── */
+function Composer({ input, setInput, streaming, autoRunning, onWrite, onFree, onStop, onAuto, onSuggest, suggesting, suggestions, onPick, autoSync, setAutoSync, onManualSync, onMuse }) {
   const onKey = (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); onWrite(); } };
   return (
     <div className="atl-composer">
@@ -353,12 +470,11 @@ function Composer({ input, setInput, streaming, onWrite, onFree, onStop, onSugge
         <textarea className="atl-prompt" placeholder="写下你想要的方向：接下来发生什么？谁登场？气氛如何？（⌘/Ctrl + Enter 发送）"
           value={input} onChange={e => setInput(e.target.value)} onKeyDown={onKey} rows={1} disabled={streaming} />
         <div className="atl-composer-act">
-          <button className="atl-mini" title="续写灵感" onClick={onSuggest} disabled={streaming || suggesting}>
-            {suggesting ? <Loader2 size={15} className="spin" /> : <Lightbulb size={15} />}
-          </button>
-          <button className="atl-mini" title="自由续写（不给方向）" onClick={onFree} disabled={streaming}><Sparkles size={15} /></button>
+          <button className="atl-mini" title="续写灵感" onClick={onSuggest} disabled={streaming || suggesting}>{suggesting ? <Loader2 size={15} className="spin" /> : <Lightbulb size={15} />}</button>
+          <button className="atl-mini" title="灵感火花（人名/转折/细节）" onClick={onMuse} disabled={streaming}><Sparkles size={15} /></button>
+          <button className="atl-mini" title="自动巡航（连续生成多段）" onClick={onAuto} disabled={streaming}><Rocket size={15} /></button>
           {streaming
-            ? <button className="btn primary atl-send" onClick={onStop}><Square size={15} /> 停止</button>
+            ? <button className="btn primary atl-send" onClick={onStop}><Square size={15} /> {autoRunning ? '停止巡航' : '停止'}</button>
             : <button className="btn primary atl-send" onClick={onWrite}><Send size={15} /> 写下去</button>}
         </div>
       </div>
@@ -366,6 +482,7 @@ function Composer({ input, setInput, streaming, onWrite, onFree, onStop, onSugge
         <label className="atl-auto" title="每写完一段，自动把新设定沉淀进局内设定">
           <input type="checkbox" checked={autoSync} onChange={e => setAutoSync(e.target.checked)} /> 自动沉淀设定
         </label>
+        <button className="atl-link" onClick={onFree} disabled={streaming}><Sparkles size={12} /> 自由续写</button>
         <button className="atl-link" onClick={onManualSync}><RefreshCw size={12} /> 立即提炼局内设定</button>
       </div>
     </div>
@@ -374,7 +491,7 @@ function Composer({ input, setInput, streaming, onWrite, onFree, onStop, onSugge
 
 /* ───────────────────────── side panel ───────────────────────── */
 function SidePanel({ panel, novel, run, setRun, onClose, onSaveNovel, refreshRuns, onSwitchRun, onSyncCanon, toast, loadRun, nav }) {
-  const titles = { style: '整体文风', codex: '局外设定 · 永不可改的母版', canon: '局内设定 · 唯一生效', runs: '剧情线' };
+  const titles = { style: '整体文风', codex: '局外设定 · 永不可改的母版', canon: '局内设定 · 唯一生效', runs: '剧情线', analysis: 'AI 分析', info: '作品信息' };
   return (
     <div className="atl-panel">
       <div className="atl-panel-head">
@@ -386,6 +503,8 @@ function SidePanel({ panel, novel, run, setRun, onClose, onSaveNovel, refreshRun
         {panel === 'codex' && <CodexPanel novel={novel} onSaveNovel={onSaveNovel} toast={toast} />}
         {panel === 'canon' && <CanonPanel run={run} setRun={setRun} onSyncCanon={onSyncCanon} toast={toast} />}
         {panel === 'runs' && <RunsPanel novel={novel} run={run} onSwitchRun={onSwitchRun} refreshRuns={refreshRuns} toast={toast} loadRun={loadRun} />}
+        {panel === 'analysis' && <AnalysisPanel run={run} toast={toast} />}
+        {panel === 'info' && <InfoPanel novel={novel} run={run} onSaveNovel={onSaveNovel} refreshRuns={refreshRuns} toast={toast} />}
       </div>
     </div>
   );
@@ -406,9 +525,7 @@ function StylePanel({ novel, onSaveNovel, toast }) {
         <div key={k} className="atl-style-field">
           <label>{f.label}</label>
           <div className="atl-seg">
-            {f.opts.map(([v, l]) => (
-              <button key={v} className={style[k] === v ? 'on' : ''} onClick={() => set(k, v)}>{l}</button>
-            ))}
+            {f.opts.map(([v, l]) => <button key={v} className={style[k] === v ? 'on' : ''} onClick={() => set(k, v)}>{l}</button>)}
           </div>
         </div>
       ))}
@@ -493,11 +610,7 @@ function RunsPanel({ novel, run, onSwitchRun, refreshRuns, toast, loadRun }) {
     try { const d = await api(`/novels/${novel.id}/runs`, { method: 'POST', body: { name } }); toast('已创建新线（已复刻局外母版）', 'ok'); reload(); refreshRuns(); await loadRun(d.run.id); }
     catch (e) { toast(e.message, 'err'); }
   };
-  const rename = async (r) => {
-    const name = prompt('重命名剧情线', r.name); if (!name) return;
-    try { await api(`/novels/runs/${r.id}`, { method: 'PATCH', body: { name } }); reload(); refreshRuns(); }
-    catch (e) { toast(e.message, 'err'); }
-  };
+  const rename = async (r) => { const name = prompt('重命名剧情线', r.name); if (!name) return; try { await api(`/novels/runs/${r.id}`, { method: 'PATCH', body: { name } }); reload(); refreshRuns(); } catch (e) { toast(e.message, 'err'); } };
   const archive = async (r) => { try { await api(`/novels/runs/${r.id}`, { method: 'PATCH', body: { archived: !r.archived } }); reload(); refreshRuns(); } catch (e) { toast(e.message, 'err'); } };
   const del = async (r) => {
     if (!confirm(`删除剧情线《${r.name}》及其全部正文？`)) return;
@@ -508,10 +621,7 @@ function RunsPanel({ novel, run, onSwitchRun, refreshRuns, toast, loadRun }) {
     try { const d = await api(`/novels/runs/${r.id}/export?format=md`); const blob = new Blob([d.text], { type: 'text/markdown;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${novel.title}-${r.name}.md`; a.click(); URL.revokeObjectURL(url); }
     catch (e) { toast(e.message, 'err'); }
   };
-  const recap = async (r) => {
-    try { await api(`/novels/runs/${r.id}/recap`, { method: 'POST' }); toast('已生成前情提要', 'ok'); if (r.id === run.id) loadRun(run.id); }
-    catch (e) { toast(e.message, 'err'); }
-  };
+  const recap = async (r) => { try { await api(`/novels/runs/${r.id}/recap`, { method: 'POST' }); toast('已生成前情提要', 'ok'); if (r.id === run.id) loadRun(run.id); } catch (e) { toast(e.message, 'err'); } };
   return (
     <div>
       <p className="atl-panel-hint"><GitBranch size={13} /> 每条剧情线都是独立的存档：开新线会复刻一份局外母版作为它的局内设定，从此各自生长。</p>
@@ -533,6 +643,239 @@ function RunsPanel({ novel, run, onSwitchRun, refreshRuns, toast, loadRun }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── AI analysis panel ───────────────────────── */
+function AnalysisPanel({ run, toast }) {
+  const [tab, setTab] = useState('check');
+  const [busy, setBusy] = useState(false);
+  const [check, setCheck] = useState(null);
+  const [timeline, setTimeline] = useState(null);
+  const [graph, setGraph] = useState(null);
+  const runIt = async (kind) => {
+    setBusy(true);
+    try {
+      if (kind === 'check') { const d = await api(`/novels/runs/${run.id}/check`, { method: 'POST' }); setCheck(d.issues || []); }
+      else if (kind === 'timeline') { const d = await api(`/novels/runs/${run.id}/timeline`, { method: 'POST' }); setTimeline(d.events || []); }
+      else { const d = await api(`/novels/runs/${run.id}/graph`, { method: 'POST' }); setGraph(d); }
+    } catch (e) { toast(e.message, 'err'); }
+    finally { setBusy(false); }
+  };
+  const TABS = [['check', '一致性', ShieldAlert], ['timeline', '时间线', Clock], ['graph', '关系图谱', Network]];
+  return (
+    <div>
+      <p className="atl-panel-hint"><BarChart3 size={13} /> 让 AI 帮你审视全局：揪出设定矛盾、梳理事件脉络、看清人物关系。结果按需生成。</p>
+      <div className="atl-seg atl-analysis-tabs">
+        {TABS.map(([k, l, Ic]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}><Ic size={13} /> {l}</button>)}
+      </div>
+      <button className="btn sm block" style={{ margin: '10px 0' }} onClick={() => runIt(tab)} disabled={busy}>
+        {busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} {tab === 'check' ? '检查一致性' : tab === 'timeline' ? '梳理时间线' : '生成关系图谱'}
+      </button>
+
+      {tab === 'check' && check && (check.length === 0 ? <div className="atl-analysis-ok"><Check size={16} /> 未发现明显矛盾，连贯性良好。</div> : (
+        <div className="atl-issues">{check.map((c, i) => (
+          <div key={i} className={'atl-issue sev-' + c.severity}>
+            <div className="atl-issue-top"><span className="atl-sev">{c.severity === 'high' ? '严重' : c.severity === 'medium' ? '中等' : '轻微'}</span>{c.issue}</div>
+            {c.fix && <div className="atl-issue-fix"><Check size={12} /> {c.fix}</div>}
+          </div>
+        ))}</div>
+      ))}
+      {tab === 'timeline' && timeline && (timeline.length === 0 ? <div className="atl-analysis-ok">暂无可梳理的事件。</div> : (
+        <div className="atl-timeline">{timeline.map((e, i) => (
+          <div key={i} className="atl-tl-item"><span className="atl-tl-dot" /><div><b>{e.label}</b><p>{e.event}</p></div></div>
+        ))}</div>
+      ))}
+      {tab === 'graph' && graph && <GraphView graph={graph} />}
+    </div>
+  );
+}
+
+function GraphView({ graph }) {
+  const nodes = graph.nodes || [];
+  if (!nodes.length) return <div className="atl-analysis-ok">暂无可呈现的关系。</div>;
+  const W = 320, H = 300, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 44;
+  const pos = {};
+  nodes.forEach((n, i) => { const a = (i / nodes.length) * Math.PI * 2 - Math.PI / 2; pos[n.id] = { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) }; });
+  const COLOR = { character: '#d97757', faction: '#7c5bd9', location: '#3f8195', other: '#8a8577' };
+  return (
+    <div className="atl-graph">
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%">
+        {(graph.edges || []).map((e, i) => {
+          const a = pos[e.from], b = pos[e.to]; if (!a || !b) return null;
+          return (
+            <g key={i}>
+              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--border-2)" strokeWidth="1.2" />
+              {e.label && <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2} fontSize="8.5" fill="var(--faint)" textAnchor="middle">{e.label}</text>}
+            </g>
+          );
+        })}
+        {nodes.map((n, i) => (
+          <g key={i}>
+            <circle cx={pos[n.id].x} cy={pos[n.id].y} r="6" fill={COLOR[n.type] || COLOR.other} />
+            <text x={pos[n.id].x} y={pos[n.id].y - 10} fontSize="10" fill="var(--text)" textAnchor="middle" fontWeight="600">{n.id}</text>
+          </g>
+        ))}
+      </svg>
+      <div className="atl-graph-legend">
+        {Object.entries({ character: '人物', faction: '势力', location: '地点', other: '其他' }).map(([k, l]) => (
+          <span key={k}><i style={{ background: COLOR[k] }} /> {l}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── work info / publish panel ───────────────────────── */
+function InfoPanel({ novel, run, onSaveNovel, refreshRuns, toast }) {
+  const [form, setForm] = useState({ title: novel.title, logline: novel.logline || '', genre: novel.genre || '', tags: novel.tags || '', cover: novel.cover || '' });
+  const [dirty, setDirty] = useState(false);
+  const [genCover, setGenCover] = useState(false);
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setDirty(true); };
+  const save = async () => {
+    try { const d = await api(`/novels/${novel.id}`, { method: 'PATCH', body: form }); onSaveNovel(d.novel); setDirty(false); refreshRuns(); toast('已保存', 'ok'); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  const aiCover = async () => {
+    setGenCover(true);
+    try {
+      const prompt2 = `小说封面插画，${form.genre || ''}，主题：${form.logline || form.title}，氛围感，无文字`;
+      const d = await generateImage({ prompt: prompt2, size: '1024x1024' });
+      if (d.image) { set('cover', d.image); if (d.fee) toast(`封面生成 · 消耗 ${d.fee} 金币`, 'info'); }
+    } catch (e) { toast(e.message, 'err'); }
+    finally { setGenCover(false); }
+  };
+  const publish = async () => {
+    try { const d = await api(`/novels/${novel.id}/publish`, { method: 'POST', body: { publish: !novel.published, run_id: run.id } }); onSaveNovel(d.novel); toast(d.published ? '已发布到书架精选' : '已取消发布', d.published ? 'ok' : 'info'); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  return (
+    <div>
+      <p className="atl-panel-hint"><Info size={13} /> 作品的封面与基础信息。封面可上传或让 AI 生成。</p>
+      <div className="atl-cover-row">
+        <div className="atl-cover-box">
+          {form.cover ? <img src={form.cover} alt="" /> : <div className="atl-cover-ph"><ScrollText size={22} /></div>}
+        </div>
+        <div className="atl-cover-act">
+          <button className="btn sm" onClick={aiCover} disabled={genCover}>{genCover ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />} AI 生成封面</button>
+          <div className="atl-cover-up"><Uploader value={form.cover} onChange={(url) => set('cover', url)} label="上传封面" /></div>
+          {form.cover && <button className="btn sm ghost danger" onClick={() => set('cover', '')}>移除封面</button>}
+        </div>
+      </div>
+      <label className="field-label">作品名</label>
+      <input className="input" value={form.title} onChange={e => set('title', e.target.value)} maxLength={80} />
+      <label className="field-label">一句话内核</label>
+      <input className="input" value={form.logline} onChange={e => set('logline', e.target.value)} maxLength={200} />
+      <div className="atl-form-grid">
+        <div><label className="field-label">类型</label><input className="input" value={form.genre} onChange={e => set('genre', e.target.value)} maxLength={40} /></div>
+        <div><label className="field-label">标签</label><input className="input" value={form.tags} onChange={e => set('tags', e.target.value)} maxLength={200} /></div>
+      </div>
+      <button className="btn primary block" style={{ marginTop: 12 }} onClick={save} disabled={!dirty}><Check size={15} /> 保存信息</button>
+      <div className="atl-rule"><span>发布</span></div>
+      <p className="atl-panel-hint" style={{ marginBottom: 10 }}><Globe size={13} /> 发布后，本作品（以「{run.name}」为展示线）会出现在书架精选，其他人可<b>只读</b>欣赏。</p>
+      <button className={'btn block' + (novel.published ? ' danger' : ' primary')} onClick={publish}>
+        {novel.published ? <><EyeOff size={15} /> 取消发布</> : <><Globe size={15} /> 发布到书架精选（当前线）</>}
+      </button>
+    </div>
+  );
+}
+
+/* ───────────────────────── muse modal ───────────────────────── */
+function MuseModal({ novelId, onClose, onInsert, toast }) {
+  const [data, setData] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const load = async () => {
+    setBusy(true);
+    try { const d = await api(`/novels/${novelId}/muse`, { method: 'POST' }); setData(d); }
+    catch (e) { toast(e.message, 'err'); }
+    finally { setBusy(false); }
+  };
+  useEffect(() => { load(); }, []);
+  const Section = ({ title, items, prefix }) => (
+    <div className="atl-muse-sec">
+      <h4>{title}</h4>
+      <div className="atl-muse-chips">
+        {(items || []).map((it, i) => <button key={i} className="atl-muse-chip" onClick={() => onInsert(prefix ? prefix + it : it)} title="点击插入到提示词">{it}</button>)}
+      </div>
+    </div>
+  );
+  return (
+    <Modal onClose={onClose}>
+      <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Sparkles size={18} /> 灵感火花</h2>
+      <p className="muted" style={{ fontSize: 12.5, marginTop: -6 }}>卡文了？点任意一条插入到创作提示词。</p>
+      {busy && !data ? <div className="empty" style={{ padding: 30 }}><Loader2 size={20} className="spin" /></div> : data && (
+        <>
+          <Section title="人名 / 称号" items={data.names} />
+          <Section title="剧情转折" items={data.twists} prefix="加入转折：" />
+          <Section title="画面细节" items={data.details} prefix="融入细节：" />
+        </>
+      )}
+      <button className="btn block" style={{ marginTop: 12 }} onClick={load} disabled={busy}>{busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} 换一批</button>
+    </Modal>
+  );
+}
+
+/* ───────────────────────── stats modal ───────────────────────── */
+function StatsModal({ novelId, onClose, toast }) {
+  const [stats, setStats] = useState(null);
+  useEffect(() => { api(`/novels/${novelId}/stats`).then(d => setStats(d.stats)).catch(e => toast(e.message, 'err')); }, []);
+  return (
+    <Modal onClose={onClose}>
+      <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart3 size={18} /> 写作统计</h2>
+      {!stats ? <div className="empty" style={{ padding: 30 }}><Loader2 size={20} className="spin" /></div> : (
+        <>
+          <div className="atl-stat-grid">
+            <div className="atl-stat"><b>{stats.words.toLocaleString()}</b><span>总字数</span></div>
+            <div className="atl-stat"><b>{stats.beats}</b><span>段落</span></div>
+            <div className="atl-stat"><b>{stats.runs}</b><span>剧情线</span></div>
+            <div className="atl-stat"><b>{stats.codex}</b><span>母版设定</span></div>
+          </div>
+          <div className="atl-stat-runs">
+            {stats.per_run.map(r => {
+              const max = Math.max(1, ...stats.per_run.map(x => x.words));
+              return (
+                <div key={r.id} className="atl-stat-run">
+                  <div className="atl-stat-run-top"><span>{r.name}{r.archived ? ' · 归档' : ''}</span><span>{r.words.toLocaleString()} 字 · {r.beats} 段</span></div>
+                  <div className="atl-stat-bar"><div style={{ width: (r.words / max * 100) + '%' }} /></div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+/* ───────────────────────── immersive reader ───────────────────────── */
+function ReaderOverlay({ novel, run, beats, onClose }) {
+  const [size, setSize] = useState(18);
+  useEffect(() => { const onKey = (e) => { if (e.key === 'Escape') onClose(); }; document.addEventListener('keydown', onKey); return () => document.removeEventListener('keydown', onKey); }, [onClose]);
+  return (
+    <div className="atl-reader">
+      <div className="atl-reader-bar">
+        <button className="btn ghost sm" onClick={onClose}><X size={16} /> 退出阅读</button>
+        <span className="atl-reader-title">{novel.title} · {run.name}</span>
+        <div className="atl-reader-font">
+          <button onClick={() => setSize(s => Math.max(14, s - 1))} title="缩小"><Minus size={14} /></button>
+          <Type size={14} />
+          <button onClick={() => setSize(s => Math.min(28, s + 1))} title="放大"><Plus size={14} /></button>
+        </div>
+      </div>
+      <div className="atl-reader-scroll">
+        <div className="atl-reader-page" style={{ fontSize: size }}>
+          <h1>{novel.title}</h1>
+          {novel.logline && <p className="atl-reader-logline">{novel.logline}</p>}
+          {beats.filter(b => b.content).map(b => (
+            <React.Fragment key={b.id}>
+              {b.image && <img className="atl-reader-img" src={b.image} alt="" />}
+              <p className="atl-reader-para">{b.content}</p>
+            </React.Fragment>
+          ))}
+          {beats.length === 0 && <p className="muted">还没有正文。</p>}
+        </div>
       </div>
     </div>
   );
@@ -561,10 +904,9 @@ function EntryEditor({ entries, onChange, allowLock, showSource }) {
               <select className="select sm" value={e.trigger || 'keyword'} onChange={ev => upd(i, 'trigger', ev.target.value)} title="触发方式">
                 {TRIGGER_OPTS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
               </select>
-              {e.trigger !== 'always' && (
-                <input className="input sm" placeholder="触发关键词，逗号分隔" value={e.keys || ''} onChange={ev => upd(i, 'keys', ev.target.value)} maxLength={240} />
-              )}
-              {e.trigger === 'always' && <span className="atl-trig-note">每次生成都注入</span>}
+              {e.trigger !== 'always'
+                ? <input className="input sm" placeholder="触发关键词，逗号分隔" value={e.keys || ''} onChange={ev => upd(i, 'keys', ev.target.value)} maxLength={240} />
+                : <span className="atl-trig-note">每次生成都注入</span>}
             </div>
             <textarea className="textarea atl-entry-content" rows={2} placeholder="设定内容" value={e.content || ''} onChange={ev => upd(i, 'content', ev.target.value)} maxLength={4000} />
             <div className="atl-entry-foot">
