@@ -6,7 +6,11 @@ import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
 import { speakBrowser } from '../voice.js';
 import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
-import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Link2, Unlink, BookUp } from 'lucide-react';
+import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Unlink, BookUp, Globe, Search, Sparkles } from 'lucide-react';
+
+// 关联世界书时展示的能力数（与「世界书」页一致，按字段派生）。
+const WB_CAP_KEYS = ['cap_image', 'cap_front', 'cap_overlay', 'cap_recursion', 'cap_variable', 'cap_branch', 'cap_vector'];
+const capCount = (w) => WB_CAP_KEYS.reduce((n, k) => n + (w[k] ? 1 : 0), 0);
 
 const BGM_MAX_SEC = 60;
 
@@ -79,6 +83,10 @@ export default function CharacterEditor() {
   const [myWbs, setMyWbs] = useState([]); // 我的世界书列表，供关联选择
   const [showAttach, setShowAttach] = useState(false);
   const [wbBusy, setWbBusy] = useState(false);
+  const [attachTab, setAttachTab] = useState('mine'); // 关联来源：mine（我的）/ public（广场）
+  const [plazaWbs, setPlazaWbs] = useState([]);        // 公开广场世界书（满血版，可直接关联）
+  const [plazaQ, setPlazaQ] = useState('');
+  const [plazaLoading, setPlazaLoading] = useState(false);
   const draftKey = id || 'new';
   const draft = useDraftAutosave('character', draftKey, c, c.name, loaded);
 
@@ -166,13 +174,35 @@ export default function CharacterEditor() {
 
   // ── 独立世界书关联（跨角色复用）── 仅已保存角色可关联
   const linked = c.linked_worldbooks || [];
-  const attachWb = async (wbId) => {
+
+  // 按需加载公开广场世界书（满血版，任何人发布的公开世界书都可关联）
+  const loadPlaza = (query = plazaQ) => {
+    setPlazaLoading(true);
+    const qs = query ? '?q=' + encodeURIComponent(query) : '';
+    api('/worldbooks/public' + qs)
+      .then(d => setPlazaWbs(d.worldbooks || []))
+      .catch(e => toast(e.message, 'err'))
+      .finally(() => setPlazaLoading(false));
+  };
+  // 打开「关联」面板并切到广场时，首次自动拉取公开世界书
+  const openAttach = () => {
+    setShowAttach(s => {
+      const next = !s;
+      if (next && attachTab === 'public' && plazaWbs.length === 0) loadPlaza('');
+      return next;
+    });
+  };
+  const switchAttachTab = (t) => {
+    setAttachTab(t);
+    if (t === 'public' && plazaWbs.length === 0) loadPlaza('');
+  };
+
+  const attachWb = async (w) => {
     setWbBusy(true);
     try {
-      await api('/worldbooks/' + wbId + '/attach/' + id, { method: 'POST' });
-      const w = myWbs.find(x => x.id === wbId);
+      await api('/worldbooks/' + w.id + '/attach/' + id, { method: 'POST' });
       set('linked_worldbooks', [...linked, { id: w.id, name: w.name, is_public: w.is_public, owner_id: w.owner_id, entry_count: w.entry_count }]);
-      toast('已关联世界书');
+      toast('已关联满血世界书');
     } catch (e) { toast(e.message, 'err'); } finally { setWbBusy(false); }
   };
   const detachWb = async (wbId) => {
@@ -318,11 +348,12 @@ export default function CharacterEditor() {
         {tab === 'world' && (
           <div>
             <div className="section-title">
-              <h2>世界书</h2>
+              <h2>内嵌世界书 <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· 基础</span></h2>
               <button className="btn sm" onClick={addWorld}><Plus size={14} /> 添加条目</button>
             </div>
             <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>
-              当最近的对话中出现「触发关键词」时，对应设定会自动注入提示词，帮助模型记住世界观细节。留空关键词则为常驻设定。
+              内嵌条目为「基础模式」：当最近对话中出现「触发关键词」时自动注入设定，留空关键词则为常驻。
+              如需正则 / 互斥分组 / 概率 / 计时 / 图片注入 / 世界变量 / 分支 / 语义检索等<b>完整（满血）能力</b>，请在下方「关联满血世界书」里关联一本独立世界书 —— 关联后会与内嵌条目一同生效。
             </p>
             {c.world.length === 0 && <div className="empty" style={{ padding: 40 }}>暂无条目，点击右上角添加</div>}
             {c.world.map((w, i) => (
@@ -344,16 +375,16 @@ export default function CharacterEditor() {
             {editing && (
               <div className="card" style={{ marginTop: 22, background: 'var(--bg-2)' }}>
                 <div className="section-title">
-                  <h2 style={{ fontSize: 15 }}><Link2 size={14} style={{ verticalAlign: -2, marginRight: 5 }} />关联独立世界书 ({linked.length})</h2>
+                  <h2 style={{ fontSize: 15 }}><Sparkles size={14} style={{ verticalAlign: -2, marginRight: 5, color: 'var(--accent)' }} />关联满血世界书 ({linked.length})</h2>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn sm" onClick={saveAsWb} disabled={wbBusy} title="把上方内嵌条目另存为独立世界书"><BookUp size={13} /> 另存为</button>
-                    <button className="btn sm" onClick={() => setShowAttach(s => !s)} disabled={wbBusy}><Plus size={13} /> 关联</button>
+                    <button className="btn sm" onClick={saveAsWb} disabled={wbBusy} title="把上方内嵌条目另存为独立世界书（即可升级为满血版编辑）"><BookUp size={13} /> 另存为</button>
+                    <button className="btn sm primary" onClick={openAttach} disabled={wbBusy}><Plus size={13} /> 关联</button>
                   </div>
                 </div>
                 <p className="muted" style={{ fontSize: 12.5, marginTop: -8 }}>
-                  关联后，该世界书的条目会与本角色内嵌条目一起在对话中触发。可在「世界书」页独立编辑，多个角色共享同一本。
+                  关联独立世界书即可让本角色获得<b>完整（满血）能力</b>：可关联<b>自己的</b>世界书，也可直接关联<b>广场上任何人公开</b>的世界书。关联后其条目与内嵌条目一起在对话中触发，且能力（图片注入 / 变量 / 分支 / 语义检索等）全部生效；多个角色可共享同一本。
                 </p>
-                {linked.length === 0 && <div className="muted" style={{ fontSize: 13, padding: '6px 0' }}>尚未关联任何独立世界书</div>}
+                {linked.length === 0 && <div className="muted" style={{ fontSize: 13, padding: '6px 0' }}>尚未关联任何满血世界书</div>}
                 {linked.map(w => (
                   <div key={w.id} className="room-row" style={{ padding: '8px 10px', background: 'var(--panel)', marginBottom: 6, borderRadius: 10 }}>
                     <BookUp size={15} className="muted" />
@@ -365,22 +396,45 @@ export default function CharacterEditor() {
                     <button className="btn sm ghost danger" onClick={() => detachWb(w.id)} disabled={wbBusy} title="解除关联"><Unlink size={13} /></button>
                   </div>
                 ))}
-                {showAttach && (
-                  <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-                    <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>从我的世界书中选择：</div>
-                    {myWbs.filter(w => !linked.some(l => l.id === w.id)).length === 0
-                      ? <div className="muted" style={{ fontSize: 13 }}>没有可关联的世界书（全部已关联或尚未创建）</div>
-                      : myWbs.filter(w => !linked.some(l => l.id === w.id)).map(w => (
-                        <div key={w.id} className="room-row" style={{ padding: '7px 10px', background: 'var(--panel)', marginBottom: 5, borderRadius: 10, cursor: 'pointer' }} onClick={() => attachWb(w.id)}>
-                          <Plus size={14} style={{ color: 'var(--accent)' }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <b style={{ fontSize: 13 }}>{w.name}</b>
-                            <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>{w.entry_count || 0} 条</span>
-                          </div>
+                {showAttach && (() => {
+                  const source = attachTab === 'public' ? plazaWbs : myWbs;
+                  const list = source.filter(w => !linked.some(l => l.id === w.id));
+                  return (
+                    <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                      <div className="seg" style={{ marginBottom: 8 }}>
+                        <button className={attachTab === 'mine' ? 'active' : ''} onClick={() => switchAttachTab('mine')}><BookUp size={12} style={{ verticalAlign: -1, marginRight: 4 }} />我的世界书</button>
+                        <button className={attachTab === 'public' ? 'active' : ''} onClick={() => switchAttachTab('public')}><Globe size={12} style={{ verticalAlign: -1, marginRight: 4 }} />公开广场</button>
+                      </div>
+                      {attachTab === 'public' && (
+                        <div className="wb-search" style={{ marginBottom: 8 }}>
+                          <Search size={14} />
+                          <input placeholder="搜索广场世界书：名称 / 标签 / 简介" value={plazaQ}
+                            onChange={e => setPlazaQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && loadPlaza()} />
                         </div>
-                      ))}
-                  </div>
-                )}
+                      )}
+                      {attachTab === 'public' && plazaLoading
+                        ? <div className="muted" style={{ fontSize: 13, padding: '6px 0' }}>加载中…</div>
+                        : list.length === 0
+                          ? <div className="muted" style={{ fontSize: 13, padding: '6px 0' }}>
+                              {attachTab === 'public' ? '没有匹配的公开世界书' : '没有可关联的世界书（全部已关联或尚未创建）'}
+                            </div>
+                          : list.map(w => (
+                            <div key={w.id} className="room-row" style={{ padding: '7px 10px', background: 'var(--panel)', marginBottom: 5, borderRadius: 10, cursor: wbBusy ? 'default' : 'pointer' }} onClick={() => !wbBusy && attachWb(w)}>
+                              <Plus size={14} style={{ color: 'var(--accent)' }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <b style={{ fontSize: 13 }}>{w.name}</b>
+                                <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>{w.entry_count || 0} 条</span>
+                                {capCount(w) > 0 && <span style={{ fontSize: 12, marginLeft: 8, color: 'var(--accent)' }}>· {capCount(w)} 项能力</span>}
+                                {attachTab === 'public' && w.owner_name && <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>· {w.owner_name}</span>}
+                              </div>
+                            </div>
+                          ))}
+                      <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={() => nav('/worldbook/new/edit')} title="去创建一本满血世界书，创建后回到这里关联">
+                        <Sparkles size={13} /> 新建满血世界书
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
