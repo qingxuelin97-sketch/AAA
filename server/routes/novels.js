@@ -173,11 +173,13 @@ function renderCanon(entries) {
 }
 
 // Build the full system prompt for writing the next passage.
-function buildWriterSystem(novel, style, canon, run, directive, recentText) {
+function buildWriterSystem(novel, style, canon, run, directive, recentText, isOpening) {
   const hits = triggeredEntries(canon, { directive, sceneText: recentText });
   const parts = [];
   parts.push('你是一位顶尖的中文小说家，正在与作者协作创作一部连载小说。作者给出方向，你负责把它写成富有文学性、画面感和情感张力的正文。');
   parts.push(`【作品】《${novel.title}》${novel.genre ? '｜类型：' + novel.genre : ''}${novel.logline ? '\n内核：' + novel.logline : ''}`);
+  // 故事梗概 / 起点：开篇时这是 AI 唯一的依据，务必注入；连载中作为整体基调参考。
+  if (novel.synopsis && novel.synopsis.trim()) parts.push(`【故事梗概 / 起点${isOpening ? '（本次为开篇，请据此展开）' : ''}】\n${novel.synopsis.trim()}`);
   parts.push('【文风要求】\n' + styleDirectives(style));
   if (run.summary) parts.push('【前情提要（务必保持连贯）】\n' + run.summary);
   const canonText = renderCanon(hits);
@@ -448,7 +450,8 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
   const style = cleanStyle(parseJSON(novel.style, {}));
   const canon = cleanEntries(parseJSON(run.canon, []));
   const recentText = beats.slice(-4).map(b => b.content).join('\n\n');
-  const system = buildWriterSystem(novel, style, canon, run, directive || (rewrite ? rewrite.directive : ''), recentText + ' ' + (directive || ''));
+  const isOpening = !rewrite && beats.length === 0;
+  const system = buildWriterSystem(novel, style, canon, run, directive || (rewrite ? rewrite.directive : ''), recentText + ' ' + (directive || ''), isOpening);
 
   // 上下文消息：把已有节拍折叠成 assistant 正文 + user 方向，保持模型“接着写”。
   const ctx = [];
@@ -459,6 +462,10 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
   let task;
   if (rewrite) {
     task = `请改写下面这段正文${instruction ? '，要求：' + instruction : '，让它更精彩、更具文学性，但保持情节与设定不变'}。只输出改写后的正文：\n\n${rewrite.content}`;
+  } else if (isOpening) {
+    task = directive
+      ? `作者方向：${directive}\n\n请据此写下这部小说的开篇正文，立刻把读者带入情境。`
+      : '请据「故事梗概 / 起点」写下这部小说富有画面感的开篇正文，立刻把读者带入情境。';
   } else {
     task = directive
       ? `作者方向：${directive}\n\n请据此写出接下来的正文。`

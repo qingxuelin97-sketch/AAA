@@ -4198,3 +4198,28 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 .atl-read-author { display: inline-flex; align-items: center; gap: 7px; margin: 12px auto 0; font-size: 0.8em; color: var(--muted); cursor: pointer; justify-content: center; width: 100%; }
 .atl-read-author:hover { color: var(--accent); }
 .atl-read-end { text-align: center; color: var(--faint); font-family: var(--serif); margin-top: 40px; letter-spacing: 4px; }
+
+/* 开篇起点 / 设置提示 */
+.atl-premise { max-width: 38em; margin: 4px auto 14px; text-align: left; background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; font-size: 14px; line-height: 1.75; color: var(--text); font-family: var(--serif); }
+.atl-premise span { display: block; font-family: var(--sans); font-size: 11px; letter-spacing: 1px; color: var(--accent); text-transform: uppercase; margin-bottom: 6px; font-weight: 700; }
+.atl-setup-hint { margin-top: 22px; font-size: 12px; color: var(--faint); }
+.atl-setup-hint a { color: var(--accent); cursor: pointer; }
+.atl-setup-hint a:hover { text-decoration: underline; }
+
+/* —— 工坊移动端适配 —— */
+@media (max-width: 760px) {
+  /* 顶部移动 topbar 50px（sticky）+ 底部全局导航 71px（fixed）都要让位，工坊正好嵌在中间 */
+  .atl-ws { height: calc(100dvh - 50px - 71px); }
+  .atl-ws-head { padding: 8px 10px; gap: 8px; flex-wrap: nowrap; }
+  .atl-head-id { flex: 1; min-width: 0; }
+  .atl-head-id > b { max-width: 30vw; }
+  .atl-words { display: none; }
+  .atl-tools { gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-shrink: 1; }
+  .atl-tools::-webkit-scrollbar { display: none; }
+  .atl-tool { padding: 7px 8px; }
+  .atl-panel { position: absolute; right: 0; top: 0; bottom: 0; width: 100%; max-width: 100%; box-shadow: var(--shadow-lg); z-index: 40; }
+  .atl-more-menu { right: 0; }
+  /* 阅读 / 工坊全屏覆盖层在底部导航之上：保证不被遮挡 */
+  .atl-reader { z-index: 200; }
+  .atl-read-page { height: calc(100dvh - 50px - 71px); }
+}

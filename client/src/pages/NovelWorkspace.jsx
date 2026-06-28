@@ -145,13 +145,12 @@ export default function NovelWorkspace() {
       setBeats(b => b.map(x => x._streaming ? { ...x, _streaming: false } : x));
       setStreaming(false); abortRef.current = null;
     }
+    // 始终以服务端为准对齐：成功时拉取落库正文，失败时清掉空占位段（避免残留「（空）」幽灵段）。
+    try { await loadRun(run.id); } catch { /* 网络异常则保留本地，避免丢内容 */ }
     if (!errored) {
-      try { await loadRun(run.id); } catch { /* */ }
       refreshRuns();
       try { api('/engage/track', { method: 'POST', body: { action: 'novel' } }); } catch { /* */ }
       if (autoSync && !rewriteId) syncCanon(true);
-    } else if (rewriteId) {
-      setBeats(b => b.map(x => x.id === rewriteId ? { ...x, content: x._orig ?? x.content } : x));
     }
     return !errored;
   };
@@ -276,12 +275,23 @@ export default function NovelWorkspace() {
             {beats.length === 0 && (
               <div className="atl-ms-empty">
                 <Feather size={30} />
-                <p>空白的第一页。在下方写下你想要的开场或方向，或点「灵感」让 AI 给你几条思路。</p>
-                <div className="atl-starter">
-                  {['以一个充满画面感的场景开场', '直接进入一段紧张的冲突', '从主角的一个清晨写起'].map(s => (
-                    <button key={s} className="btn sm ghost" onClick={() => write(s)} disabled={streaming}>{s}</button>
-                  ))}
-                </div>
+                {novel.synopsis ? (
+                  <>
+                    <div className="atl-premise"><span>故事起点</span>{novel.synopsis}</div>
+                    <p>就从这里开始 —— AI 会据此写下开篇，你也可以在下方给个更具体的方向。</p>
+                    <button className="btn primary" onClick={() => write('')} disabled={streaming}><Feather size={15} /> 据此写开篇</button>
+                  </>
+                ) : (
+                  <>
+                    <p>空白的第一页。在下方写下你想要的开场或方向，或点「灵感」让 AI 给你几条思路。</p>
+                    <div className="atl-starter">
+                      {['以一个充满画面感的场景开场', '直接进入一段紧张的冲突', '从主角的一个清晨写起'].map(s => (
+                        <button key={s} className="btn sm ghost" onClick={() => write(s)} disabled={streaming}>{s}</button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                <p className="atl-setup-hint">首次使用？若尚未配置语言模型，请先到 <a onClick={() => nav('/settings')}>设置 → 语言模型</a> 填写 API（或由管理员开启平台服务）。</p>
               </div>
             )}
 

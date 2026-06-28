@@ -768,11 +768,12 @@ function nvTriggered(canon, directive = '', sceneText = '') {
   }
   return hit;
 }
-function nvBuildWriterSystem(novel, style, canon, run, directive, recentText) {
+function nvBuildWriterSystem(novel, style, canon, run, directive, recentText, isOpening) {
   const hits = nvTriggered(canon, directive, recentText);
   const s = nvCleanStyle(style), parts = [];
   parts.push('你是一位顶尖的中文小说家，正在与作者协作创作一部连载小说。作者给出方向，你负责把它写成富有文学性、画面感和情感张力的正文。');
   parts.push(`【作品】《${novel.title}》${novel.genre ? '｜类型：' + novel.genre : ''}${novel.logline ? '\n内核：' + novel.logline : ''}`);
+  if (novel.synopsis && novel.synopsis.trim()) parts.push(`【故事梗概 / 起点${isOpening ? '（本次为开篇，请据此展开）' : ''}】\n${novel.synopsis.trim()}`);
   parts.push('【文风要求】\n' + nvStyleDirectives(style));
   if (run.summary) parts.push('【前情提要（务必保持连贯）】\n' + run.summary);
   if (hits.length) parts.push('【当前生效设定（局内·须严格遵守，不得自相矛盾）】\n' + hits.map(e => `【${NV_CAT_LABEL[e.category] || '设定'}·${e.title}】${e.content}`).join('\n'));
@@ -817,11 +818,13 @@ async function nvStreamWrite({ run, novel, settings, directive, beats, me, rewri
   } }
   const style = nvCleanStyle(novel.style), canon = nvCleanEntries(run.canon || []);
   const recentText = beats.slice(-4).map(b => b.content).join('\n\n');
-  const system = nvBuildWriterSystem(novel, style, canon, run, directive || (rewrite ? rewrite.directive : ''), recentText + ' ' + (directive || ''));
+  const isOpening = !rewrite && beats.length === 0;
+  const system = nvBuildWriterSystem(novel, style, canon, run, directive || (rewrite ? rewrite.directive : ''), recentText + ' ' + (directive || ''), isOpening);
   const ctx = [];
   for (const b of beats.slice(-8)) { if (b.directive) ctx.push({ role: 'user', content: b.directive }); if (b.content) ctx.push({ role: 'assistant', content: b.content }); }
   let task;
   if (rewrite) task = `请改写下面这段正文${instruction ? '，要求：' + instruction : '，让它更精彩、更具文学性，但保持情节与设定不变'}。只输出改写后的正文：\n\n${rewrite.content}`;
+  else if (isOpening) task = directive ? `作者方向：${directive}\n\n请据此写下这部小说的开篇正文，立刻把读者带入情境。` : '请据「故事梗概 / 起点」写下这部小说富有画面感的开篇正文，立刻把读者带入情境。';
   else task = directive ? `作者方向：${directive}\n\n请据此写出接下来的正文。` : '请顺着前文，自然地写出接下来的正文（推进一个有张力的小情节）。';
   let sysFull = system;
   if (eff.platform) { const gp = (platformCfg().system_prompt || '').trim(); if (gp) sysFull = gp + '\n\n' + system; }
