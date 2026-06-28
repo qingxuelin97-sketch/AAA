@@ -4,7 +4,8 @@ import { api, useAuth } from '../api.jsx';
 import { useToast } from '../ui.jsx';
 import { Plus, ArrowLeft, Trash, BookOpen, Save, Globe, ChevronDown, ChevronUp,
   Settings2, Image as ImageIcon, Layout, Play, Eye, Sliders, Filter, Clock, Percent, Layers,
-  Copy, Folder, FolderOpen, Search, Download, Upload, Variable, GitBranch, Sparkles, Timer } from 'lucide-react';
+  Copy, Folder, FolderOpen, Search, Download, Upload, Variable, GitBranch, Sparkles, Timer,
+  BookCheck, AlertTriangle, ArrowRight } from 'lucide-react';
 
 const BLANK = {
   name: '', description: '', tags: '', is_public: false,
@@ -252,6 +253,53 @@ export default function WorldbookEditor() {
   const hasVector = wb.entries.some(e => e.vectorize);
   const advancedOn = wb.entries.some(e => e.required_keys || e.max_turns || e.cooldown || e.sticky || e.depth || e.group_name || e.exclude_keys || (e.probability != null && e.probability < 100) || e.min_turns);
 
+  // —— 世界书概览：条目统计 + Token 估算（创作者一眼掌握全书规模与构成）——
+  const stats = useMemo(() => {
+    const es = wb.entries;
+    const total = es.length;
+    const enabled = es.filter(e => e.enabled !== false).length;
+    const always = es.filter(e => e.mode === 'always').length;
+    const trigger = es.filter(e => (e.mode || 'keyword') !== 'always').length;
+    // 中文约 1 token/字，这里用 0.6 系数做粗略估算（含标点/英文混排），仅供参考。
+    const tok = (arr) => Math.round(arr.reduce((n, e) => n + (e.content || '').length, 0) * 0.6);
+    return {
+      total, enabled, disabled: total - enabled, always, trigger,
+      tokens: tok(es.filter(e => e.enabled !== false)),
+      alwaysTokens: tok(es.filter(e => e.enabled !== false && e.mode === 'always')),
+    };
+  }, [wb.entries]);
+
+  // —— 健康检查：揪出不会触发 / 配置不全的条目，避免「写了却没生效」——
+  const lints = useMemo(() => {
+    const out = [];
+    wb.entries.forEach((e, i) => {
+      const mode = e.mode || 'keyword';
+      if (e.enabled === false) return;
+      if ((mode === 'keyword' || mode === 'regex') && !(e.keys || '').trim())
+        out.push({ i, msg: `第 ${i + 1} 条 · ${mode === 'regex' ? '正则' : '关键词'}模式却没填关键词，永远不会触发（改为「常驻」或补关键词）` });
+      if (!(e.content || '').trim())
+        out.push({ i, msg: `第 ${i + 1} 条 · 内容为空，触发了也注入不了任何设定` });
+      if ((e.image_urls && !e.image_keys) || (!e.image_urls && e.image_keys))
+        out.push({ i, msg: `第 ${i + 1} 条 · 预注入图片需同时填「图片地址」与「触发关键词」` });
+      if ((e.front_slot || '').trim() && !(wb.front_schema || '').trim())
+        out.push({ i, msg: `第 ${i + 1} 条 · 指定了前端槽位，但还没配置「自构前端」Schema` });
+    });
+    return out;
+  }, [wb.entries, wb.front_schema]);
+  const [showLints, setShowLints] = useState(false);
+
+  // 跳转并展开某条目（清掉过滤，确保它可见），平滑滚动到视图中央。
+  const jumpTo = (i) => {
+    setSearch(''); setFolderFilter('');
+    setCollapsedFolders({});
+    setExpanded(p => ({ ...p, [i]: true }));
+    setTimeout(() => {
+      const el = document.querySelector(`.world-entry[data-eidx="${i}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (el) { el.classList.add('wb-flash'); setTimeout(() => el.classList.remove('wb-flash'), 1400); }
+    }, 80);
+  };
+
   if (!loaded) return (
     <><div className="topbar"><button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button><div style={{ flex: 1 }}><h1>世界书</h1></div></div>
       <div className="page"><div className="empty">载入中…</div></div></>
@@ -285,6 +333,38 @@ export default function WorldbookEditor() {
           {hasBranch && <span className="wb-cap-badge tier-expert on"><GitBranch size={11} /> 分支</span>}
           {hasVector && <span className="wb-cap-badge tier-expert on"><Sparkles size={11} /> 语义检索</span>}
         </div>
+
+        {/* —— 世界书概览：规模统计 + Token 估算 + 健康检查 —— */}
+        {wb.entries.length > 0 && (
+          <div className="wb-overview">
+            <div className="wb-ov-stats">
+              <div className="wb-ov-stat"><b>{stats.total}</b><span>条目</span></div>
+              <div className="wb-ov-stat"><b>{stats.always}</b><span>常驻</span></div>
+              <div className="wb-ov-stat"><b>{stats.trigger}</b><span>触发型</span></div>
+              {stats.disabled > 0 && <div className="wb-ov-stat dim"><b>{stats.disabled}</b><span>已停用</span></div>}
+              <div className="wb-ov-stat tokens" title="按启用条目内容粗略估算，常驻条目恒定占用上下文">
+                <b>≈{stats.tokens}</b><span>预估 Token{stats.alwaysTokens > 0 ? ` · 常驻${stats.alwaysTokens}` : ''}</span>
+              </div>
+            </div>
+            {lints.length === 0 ? (
+              <div className="wb-ov-health ok"><BookCheck size={14} /> 配置健康，没有发现明显问题</div>
+            ) : (
+              <div className="wb-ov-health warn">
+                <button className="wb-ov-health-toggle" onClick={() => setShowLints(s => !s)}>
+                  <AlertTriangle size={14} /> {lints.length} 处可能影响触发的配置
+                  {showLints ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+                {showLints && (
+                  <ul className="wb-ov-lint-list">
+                    {lints.map((l, k) => (
+                      <li key={k}><button onClick={() => jumpTo(l.i)}>{l.msg} <ArrowRight size={12} /></button></li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* —— 基础信息 —— */}
         <div className="card" style={{ marginBottom: 16 }}>
@@ -468,7 +548,7 @@ export default function WorldbookEditor() {
                 const w = wb.entries[i];
                 const isSel = selected.has(i);
                 return (
-                  <div key={i} className="world-entry" data-selected={isSel}>
+                  <div key={i} className="world-entry" data-selected={isSel} data-eidx={i}>
                     <div className="top">
                       {!readOnly && (
                         <label className="switch" style={{ flexShrink: 0 }}>

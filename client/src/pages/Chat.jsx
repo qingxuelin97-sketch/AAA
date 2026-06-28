@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { speakBrowser, stripParensForSpeech } from '../voice.js';
+import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange } from '../voice.js';
+import { useKeyboardInsetBar } from '../mobile.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles } from 'lucide-react';
 
@@ -77,8 +78,11 @@ export default function Chat() {
   const [reactFor, setReactFor] = useState(null);
   const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
   const [previewImg, setPreviewImg] = useState(null);
-  // 键盘弹起标志：用于隐藏滚动到底部按钮，避免覆盖输入区导致点击失灵
-  const [kbdOpen, setKbdOpen] = useState(false);
+  // 当前正在朗读的消息标识（消息 id 或 true）；用于切换「朗读 / 停止」按钮态
+  const [playingId, setPlayingId] = useState(null);
+  // 已生成的平台语音缓存：消息 id -> blob URL。「再听一遍」直接重放，不重新合成、不再计费。
+  const voiceCacheRef = useRef(new Map());
+  const [voicedIds, setVoicedIds] = useState(() => new Set());
   const [loadingConv, setLoadingConv] = useState(false);
   const scrollRef = useRef();
   const abortRef = useRef(null);
@@ -91,42 +95,20 @@ export default function Chat() {
   const autoReadRef = useRef(autoRead);
   useEffect(() => { autoReadRef.current = autoRead; }, [autoRead]);
 
-  // 输入栏独立 fixed：键盘弹起时 visualViewport 驱动输入栏 bottom 上移到键盘上方。
-  // chat-main 不收缩，下方被键盘覆盖是自然的（键盘挡住就是挡住），只有输入框被顶上去。
-  // 这样根本不会"拉出半屏原色背景" —— 布局不动，只是输入框上移。
+  // 移动端软键盘适配：把 fixed 输入栏始终顶在键盘上方（稳健跨浏览器实现见 mobile.js）。
+  useKeyboardInsetBar(inputBarRef, [conv]);
+
+  // 订阅全局朗读状态，驱动「朗读 / 停止 / 再听一遍」按钮切换。
+  useEffect(() => onVoiceStateChange(setPlayingId), []);
+  // 离开对话或卸载时停止朗读，并回收缓存的语音 blob URL，避免叠音与内存泄漏。
   useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    let raf = 0;
-    const apply = () => {
-      const bar = inputBarRef.current;
-      if (bar) {
-        // 键盘高度 = 布局视口 - 视觉视口高度 - 视觉视口顶部偏移
-        // 输入栏 bottom = 键盘高度（上移到键盘上方）
-        const kbdH = window.innerHeight - vv.height - vv.offsetTop;
-        bar.style.bottom = (kbdH > 0 ? kbdH : 0) + 'px';
-      }
-      const kbd = (window.innerHeight - vv.height) > 120;
-      setKbdOpen(kbd);
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        const el = document.activeElement;
-        if (el && el.tagName === 'TEXTAREA' && inputBarRef.current?.contains(el)) {
-          el.scrollIntoView({ block: 'nearest' });
-        }
-      });
-    };
-    vv.addEventListener('resize', apply);
-    vv.addEventListener('scroll', apply);
-    apply();
     return () => {
-      vv.removeEventListener('resize', apply);
-      vv.removeEventListener('scroll', apply);
-      if (inputBarRef.current) inputBarRef.current.style.bottom = '';
-      if (raf) cancelAnimationFrame(raf);
+      stopSpeaking();
+      for (const url of voiceCacheRef.current.values()) { try { URL.revokeObjectURL(url); } catch { /* */ } }
+      voiceCacheRef.current.clear();
+      setVoicedIds(new Set());
     };
-  }, [conv]);
+  }, [id]);
 
   // 浮层（抽屉/菜单/搜索/反应面板/编辑）拦截浏览器后退键：打开时压栈，后退先关浮层而非跳路由。
   const closeAllOverlays = () => {
@@ -411,12 +393,25 @@ export default function Chat() {
     });
   };
 
-  const speak = async (raw) => {
+  // 标记一条助手消息已生成过语音（已生成的不再重新合成，只能停止或再听一遍）。
+  const markVoiced = (mid) => { if (mid != null) setVoicedIds(s => { if (s.has(mid)) return s; const n = new Set(s); n.add(mid); return n; }); };
+
+  // 朗读一条消息。mid 为消息 id（用于状态联动与缓存）。
+  // 设计要点：单例播放，重复点击不叠加；平台语音首次合成后缓存音频，
+  // 「再听一遍」直接重放缓存，绝不重新合成、不再次扣费。
+  const speak = async (raw, mid) => {
     // 括号内的内容（动作 / OOC 说明）默认不朗读
     const text = stripParensForSpeech(raw);
     if (!text) return;
-    // Browser Web Speech needs no server round-trip (offline / no CORS).
-    if (voiceCfg?.voice_protocol === 'browser') { speakBrowser(text, voiceCfg.voice_name, character?.voice_speed, character?.voice_pitch); return; }
+    // Browser Web Speech needs no server round-trip (offline / no CORS)，免费，重放即可。
+    if (voiceCfg?.voice_protocol === 'browser') {
+      speakBrowser(text, voiceCfg.voice_name, character?.voice_speed, character?.voice_pitch, mid ?? true);
+      markVoiced(mid);
+      return;
+    }
+    // 平台语音：已有缓存则直接重放，不再请求服务器（省钱、防叠音）。
+    const cached = mid != null && voiceCacheRef.current.get(mid);
+    if (cached) { playAudioUrl(cached, mid); return; }
     try {
       const res = await fetch('/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
@@ -426,9 +421,17 @@ export default function Chat() {
       // Platform voice is billed per sentence — the server reports the charge via headers.
       const charged = res.headers.get('X-Gold-Fee');
       const blob = await res.blob();
-      new Audio(URL.createObjectURL(blob)).play();
+      const url = URL.createObjectURL(blob);
+      if (mid != null) { voiceCacheRef.current.set(mid, url); markVoiced(mid); }
+      playAudioUrl(url, mid ?? true);
       if (charged) { toast(`平台语音 · 本次消耗 ${charged} 金币`); refreshUser?.(); }
     } catch (err) { toast(err.message, 'err'); }
+  };
+
+  // 朗读按钮点击：正在播放本条→停止；否则播放（缓存则重放）。
+  const toggleSpeak = (m) => {
+    if (playingId === m.id) { stopSpeaking(); return; }
+    speak(m.content, m.id);
   };
 
   const delConv = async (e, cv) => {
@@ -597,7 +600,9 @@ export default function Chat() {
                     {!m._streaming && m.content && editingId !== m.id && (
                       <div className="msg-acts">
                         {m.role === 'assistant' && <>
-                          <button className="speak" onClick={() => speak(m.content)}><Volume2 size={13} /> 朗读</button>
+                          {playingId === m.id
+                            ? <button className="speak on" onClick={() => stopSpeaking()} title="停止播放"><Square size={12} fill="currentColor" /> 停止</button>
+                            : <button className="speak" onClick={() => toggleSpeak(m)} title={voicedIds.has(m.id) ? '重放已生成的语音（不再重新合成）' : '朗读这段话'}><Volume2 size={13} /> {voicedIds.has(m.id) ? '再听一遍' : '朗读'}</button>}
                           <button className="speak" onClick={() => copyMsg(m.content)}><Copy size={13} /> 复制</button>
                           {i === messages.length - 1 && <button className="speak" onClick={regenerate} disabled={streaming}><RotateCcw size={13} /> 重新生成</button>}
                           {m.id && (
@@ -625,7 +630,7 @@ export default function Chat() {
               </div>
             </div>
 
-            {!atBottom && !kbdOpen && (
+            {!atBottom && (
               <button className="scroll-bottom-btn" onClick={() => scrollToBottom()} title="回到底部" aria-label="回到底部">
                 <ArrowDown size={18} />
               </button>
