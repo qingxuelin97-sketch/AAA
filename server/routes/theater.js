@@ -11,6 +11,29 @@ function castOf(tid) {
   return db.prepare(`SELECT c.* FROM theater_cast tc JOIN characters c ON c.id = tc.character_id WHERE tc.theater_id = ?`).all(tid);
 }
 
+// 舞台设定（互动小说背景系统，全部由创作者自定义）：
+//   charAuto — 角色发言时是否自动切到该角色背景
+//   charBg   — { 角色id: 背景图 }，覆盖该角色在本小说里的背景（留空则用角色自带背景）
+//   scenes   — [{ name, keys, image }]，剧情命中关键词时切到对应场景背景
+// 入库前做大小/数量/类型收敛，防止超长字段与脏数据。
+function cleanStage(raw) {
+  let cfg = raw;
+  if (typeof raw === 'string') { try { cfg = JSON.parse(raw); } catch { cfg = {}; } }
+  if (!cfg || typeof cfg !== 'object') cfg = {};
+  const charBg = {};
+  if (cfg.charBg && typeof cfg.charBg === 'object') {
+    for (const [k, v] of Object.entries(cfg.charBg)) {
+      if (/^\d+$/.test(String(k)) && typeof v === 'string' && v && v.length < 2000) charBg[k] = v;
+    }
+  }
+  const scenes = (Array.isArray(cfg.scenes) ? cfg.scenes : []).slice(0, 30).map(s => ({
+    name: String(s?.name || '').slice(0, 40),
+    keys: String(s?.keys || '').slice(0, 300),
+    image: typeof s?.image === 'string' ? s.image.slice(0, 2000) : '',
+  })).filter(s => s.image && s.keys);
+  return { charAuto: cfg.charAuto !== false, charBg, scenes };
+}
+
 router.get('/', authRequired, (req, res) => {
   const theaters = db.prepare(`SELECT t.*, u.display_name AS owner_name,
     (SELECT COUNT(*) FROM theater_members tm WHERE tm.theater_id = t.id) AS member_count,
@@ -21,11 +44,11 @@ router.get('/', authRequired, (req, res) => {
 });
 
 router.post('/', authRequired, (req, res) => {
-  const { name, scene, cover, cast, is_public } = req.body || {};
+  const { name, scene, cover, cast, is_public, stage_config } = req.body || {};
   if (!name) return res.status(400).json({ error: '剧场名称必填' });
   if (!Array.isArray(cast) || cast.length === 0) return res.status(400).json({ error: '请至少选择一位 AI 角色登场' });
-  const info = db.prepare('INSERT INTO theaters (name, owner_id, scene, cover, is_public) VALUES (?,?,?,?,?)')
-    .run(name, req.user.id, scene || '', cover || null, is_public === false ? 0 : 1);
+  const info = db.prepare('INSERT INTO theaters (name, owner_id, scene, cover, is_public, stage_config) VALUES (?,?,?,?,?,?)')
+    .run(name, req.user.id, scene || '', cover || null, is_public === false ? 0 : 1, JSON.stringify(cleanStage(stage_config)));
   const tid = info.lastInsertRowid;
   db.prepare('INSERT INTO theater_members (theater_id, user_id) VALUES (?,?)').run(tid, req.user.id);
   const add = db.prepare('INSERT OR IGNORE INTO theater_cast (theater_id, character_id) VALUES (?,?)');
@@ -42,7 +65,24 @@ router.get('/:id', authRequired, (req, res) => {
   const cast = castOf(t.id);
   const members = db.prepare(`SELECT u.id, u.display_name, u.avatar FROM theater_members tm JOIN users u ON u.id = tm.user_id WHERE tm.theater_id = ?`).all(t.id);
   const messages = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id').all(t.id);
+  t.stage_config = cleanStage(t.stage_config);
   res.json({ theater: t, cast, members, messages, joined: memberOf(t.id, req.user.id) });
+});
+
+// 更新舞台设定（背景系统）—— 仅作者可改。也可顺带改名称 / 序章 / 封面。
+router.patch('/:id', authRequired, (req, res) => {
+  const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (t.owner_id !== req.user.id) return res.status(403).json({ error: '仅作者可修改舞台设定' });
+  const fields = [], vals = [];
+  if (req.body?.stage_config !== undefined) { fields.push('stage_config = ?'); vals.push(JSON.stringify(cleanStage(req.body.stage_config))); }
+  if (typeof req.body?.name === 'string' && req.body.name.trim()) { fields.push('name = ?'); vals.push(req.body.name.trim().slice(0, 80)); }
+  if (typeof req.body?.scene === 'string') { fields.push('scene = ?'); vals.push(req.body.scene.slice(0, 4000)); }
+  if (req.body?.cover !== undefined) { fields.push('cover = ?'); vals.push(req.body.cover || null); }
+  if (fields.length) { vals.push(t.id); db.prepare(`UPDATE theaters SET ${fields.join(', ')} WHERE id = ?`).run(...vals); }
+  const updated = db.prepare('SELECT * FROM theaters WHERE id = ?').get(t.id);
+  updated.stage_config = cleanStage(updated.stage_config);
+  res.json({ theater: updated });
 });
 
 router.post('/:id/join', authRequired, (req, res) => {

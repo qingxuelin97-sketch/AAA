@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Uploader, Modal, Avatar } from '../ui.jsx';
-import { BookOpen, Users, Plus, Check, Feather, Sparkles, ChevronRight } from 'lucide-react';
+import StageEditor from '../components/StageEditor.jsx';
+import { BookOpen, Users, Plus, Check, Feather, Sparkles, ChevronRight, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 
 // 互动小说（原「剧场」）：以你为主角的即兴叙事。挑选登场角色、写下序章，
 // 进入后写行动 / 台词，旁白续写后果，角色随时接话 —— 一部由你共同写就的小说。
@@ -63,6 +64,8 @@ function CreateModal({ onClose, onDone }) {
   const [form, setForm] = useState({ name: '', scene: '', cover: '' });
   const [pool, setPool] = useState([]);
   const [picked, setPicked] = useState([]);
+  const [stageCfg, setStageCfg] = useState({ charAuto: true, charBg: {}, scenes: [] });
+  const [showStage, setShowStage] = useState(false);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
@@ -82,7 +85,7 @@ function CreateModal({ onClose, onDone }) {
     if (picked.length === 0) return toast('至少选择一位登场角色', 'err');
     setBusy(true);
     try {
-      const d = await api('/theater', { method: 'POST', body: { ...form, cast: picked } });
+      const d = await api('/theater', { method: 'POST', body: { ...form, cast: picked, stage_config: stageCfg } });
       onDone(d.theater.id);
     } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
   };
@@ -115,6 +118,21 @@ function CreateModal({ onClose, onDone }) {
           ))}
         </div>
       </div>
+      <div className="stage-fold">
+        <button type="button" className="stage-fold-head" onClick={() => setShowStage(s => !s)}>
+          <ImageIcon size={15} /> 舞台背景 <span className="muted">（进阶 · 可后续在故事内修改）</span>
+          {(stageCfg.scenes.length > 0 || Object.keys(stageCfg.charBg).length > 0) && (
+            <span className="stage-fold-badge">{Object.keys(stageCfg.charBg).length + stageCfg.scenes.length} 项</span>
+          )}
+          <span style={{ marginLeft: 'auto' }}>{showStage ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</span>
+        </button>
+        {showStage && (
+          <div className="stage-fold-body">
+            <StageEditor cast={pool.filter(c => picked.includes(c.id))} value={stageCfg} onChange={setStageCfg} />
+          </div>
+        )}
+      </div>
+
       <div className="row">
         <button className="btn block" onClick={onClose}>取消</button>
         <button className="btn primary block" onClick={create} disabled={busy}><Sparkles size={15} /> {busy ? '落笔中…' : '落笔开篇'}</button>

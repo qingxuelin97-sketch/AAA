@@ -73,6 +73,7 @@ export default function WorldbookEditor() {
   const [preview, setPreview] = useState({ texts: [''], multi: false, result: null, loading: false });
   const [search, setSearch] = useState('');
   const [folderFilter, setFolderFilter] = useState('');     // '' = 全部
+  const [statFilter, setStatFilter] = useState('all');      // all | always | trigger | disabled（概览仪表盘点选）
   const [collapsedFolders, setCollapsedFolders] = useState({});
   const [selected, setSelected] = useState(new Set());
   const fileRef = React.useRef(null);
@@ -137,6 +138,9 @@ export default function WorldbookEditor() {
     return wb.entries.map((e, i) => i).filter(i => {
       const e = wb.entries[i];
       if (folderFilter && e.folder !== folderFilter) return false;
+      if (statFilter === 'always' && e.mode !== 'always') return false;
+      if (statFilter === 'trigger' && (e.mode || 'keyword') === 'always') return false;
+      if (statFilter === 'disabled' && e.enabled !== false) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
       return (e.keys || '').toLowerCase().includes(q) ||
@@ -144,7 +148,7 @@ export default function WorldbookEditor() {
         (e.comment || '').toLowerCase().includes(q) ||
         (e.group_name || '').toLowerCase().includes(q);
     });
-  }, [wb.entries, search, folderFilter]);
+  }, [wb.entries, search, folderFilter, statFilter]);
 
   // 按文件夹分组（无文件夹归到「未分组」）
   const grouped = useMemo(() => {
@@ -338,10 +342,10 @@ export default function WorldbookEditor() {
         {wb.entries.length > 0 && (
           <div className="wb-overview">
             <div className="wb-ov-stats">
-              <div className="wb-ov-stat"><b>{stats.total}</b><span>条目</span></div>
-              <div className="wb-ov-stat"><b>{stats.always}</b><span>常驻</span></div>
-              <div className="wb-ov-stat"><b>{stats.trigger}</b><span>触发型</span></div>
-              {stats.disabled > 0 && <div className="wb-ov-stat dim"><b>{stats.disabled}</b><span>已停用</span></div>}
+              <button type="button" className={'wb-ov-stat' + (statFilter === 'all' ? ' active' : '')} onClick={() => setStatFilter('all')}><b>{stats.total}</b><span>全部条目</span></button>
+              <button type="button" className={'wb-ov-stat' + (statFilter === 'always' ? ' active' : '')} onClick={() => setStatFilter(f => f === 'always' ? 'all' : 'always')}><b>{stats.always}</b><span>常驻</span></button>
+              <button type="button" className={'wb-ov-stat' + (statFilter === 'trigger' ? ' active' : '')} onClick={() => setStatFilter(f => f === 'trigger' ? 'all' : 'trigger')}><b>{stats.trigger}</b><span>触发型</span></button>
+              {stats.disabled > 0 && <button type="button" className={'wb-ov-stat dim' + (statFilter === 'disabled' ? ' active' : '')} onClick={() => setStatFilter(f => f === 'disabled' ? 'all' : 'disabled')}><b>{stats.disabled}</b><span>已停用</span></button>}
               <div className="wb-ov-stat tokens" title="按启用条目内容粗略估算，常驻条目恒定占用上下文">
                 <b>≈{stats.tokens}</b><span>预估 Token{stats.alwaysTokens > 0 ? ` · 常驻${stats.alwaysTokens}` : ''}</span>
               </div>
@@ -529,6 +533,12 @@ export default function WorldbookEditor() {
         )}
 
         {wb.entries.length === 0 && <div className="empty" style={{ padding: 40 }}>暂无条目{readOnly ? '' : '，点击右上角添加或导入 JSON'}</div>}
+        {wb.entries.length > 0 && filteredIdx.length === 0 && (
+          <div className="empty" style={{ padding: 30, fontSize: 13.5 }}>
+            没有符合当前筛选的条目
+            <div style={{ marginTop: 10 }}><button className="btn sm ghost" onClick={() => { setStatFilter('all'); setSearch(''); setFolderFilter(''); }}>清除筛选</button></div>
+          </div>
+        )}
 
         {/* —— 按文件夹分组渲染 —— */}
         {grouped.map(([folder, idxs]) => {

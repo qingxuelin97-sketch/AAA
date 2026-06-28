@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar } from '../ui.jsx';
+import { useToast, Avatar, Modal } from '../ui.jsx';
 import { useKeyboardInsetBar } from '../mobile.js';
-import { Send, Sparkles, ArrowLeft, Feather, Users, LogOut, BookOpen, Zap, ZapOff, ChevronRight } from 'lucide-react';
+import StageEditor from '../components/StageEditor.jsx';
+import { Send, Sparkles, ArrowLeft, Feather, Users, LogOut, BookOpen, Zap, ZapOff, ChevronRight, Palette, Image as ImageIcon } from 'lucide-react';
 
 // 互动小说阅读器：以你为主角的即兴叙事。你写下行动 / 台词，旁白会续写后果，
 // 也可点登场角色让其接话。整体按「小说阅读」体验重构 —— 旁白为文学化散文，
@@ -26,6 +27,10 @@ export default function TheaterRoom() {
   const [acting, setActing] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [autoFlow, setAutoFlow] = useState(() => localStorage.getItem('inovel_autoflow') !== '0');
+  // 舞台背景设定（创作者自定义）；离线/在线后端均通过 stage_config 返回
+  const [stageConfig, setStageConfig] = useState({ charAuto: true, charBg: {}, scenes: [] });
+  const [stageOpen, setStageOpen] = useState(false);
+  const [savingStage, setSavingStage] = useState(false);
   const scrollRef = useRef();
   const barRef = useRef();
   const lastId = useRef(0);
@@ -44,6 +49,7 @@ export default function TheaterRoom() {
       const d = await api('/theater/' + id);
       setData(d);
       setMessages(d.messages);
+      if (d.theater?.stage_config) setStageConfig({ charAuto: true, charBg: {}, scenes: [], ...d.theater.stage_config });
       lastId.current = d.messages.length ? d.messages[d.messages.length - 1].id : 0;
       if (!d.joined) api('/theater/' + id + '/join', { method: 'POST' }).catch(() => {});
     } catch (e) { toast(e.message, 'err'); }
@@ -90,16 +96,64 @@ export default function TheaterRoom() {
     } catch (e) { toast(e.message, 'err'); }
   };
 
+  const saveStage = async () => {
+    setSavingStage(true);
+    try {
+      const d = await api('/theater/' + id, { method: 'PATCH', body: { stage_config: stageConfig } });
+      if (d.theater?.stage_config) setStageConfig({ charAuto: true, charBg: {}, scenes: [], ...d.theater.stage_config });
+      setData(prev => prev ? { ...prev, theater: { ...prev.theater, ...d.theater } } : prev);
+      toast('舞台设定已保存');
+      setStageOpen(false);
+    } catch (e) { toast(e.message, 'err'); } finally { setSavingStage(false); }
+  };
+
+  // 当前舞台背景：按时间顺序折叠每条消息 —— 命中场景关键词→切场景背景；
+  // 重要角色（设了背景）发言→切其背景；最近一次触发持续生效，直到下一次触发。
+  const stageBg = useMemo(() => {
+    const cfg = stageConfig || {};
+    const scenes = (cfg.scenes || []).filter(s => s.image && s.keys);
+    const charAuto = cfg.charAuto !== false;
+    const charBg = cfg.charBg || {};
+    const list = data?.cast || [];
+    const byId = {};
+    list.forEach(c => { byId[c.id] = c; });
+    let url = data?.theater?.cover || null, label = null, kind = 'cover';
+    for (const msg of messages) {
+      const text = (msg.content || '').toLowerCase();
+      let hit = false;
+      for (const s of scenes) {
+        const ks = s.keys.split(/[，,]/).map(k => k.trim().toLowerCase()).filter(Boolean);
+        if (ks.some(k => k && text.includes(k))) { url = s.image; label = s.name || '场景'; kind = 'scene'; hit = true; break; }
+      }
+      if (hit) continue;
+      if (charAuto && msg.sender_type === 'ai') {
+        const ch = byId[msg.sender_id];
+        const cb = charBg[msg.sender_id] || charBg[String(msg.sender_id)] || ch?.background;
+        if (cb) { url = cb; label = ch?.name || null; kind = 'char'; }
+      }
+    }
+    return { url, label, kind };
+  }, [messages, stageConfig, data]);
+
   if (!data) return <div className="empty" style={{ paddingTop: 120 }}>翻开书页…</div>;
   const { theater, cast } = data;
+  const isOwner = user && theater.owner_id === user.id;
   const passages = messages.length;
 
   return (
     <div className="chat-layout immersive inovel">
       <div className="chat-main">
-        {theater.cover
-          ? <div className="chat-bg inovel-bg"><img src={theater.cover} alt="" /></div>
-          : <div className="inovel-bg inovel-bg-fallback" aria-hidden="true" />}
+        <div className="chat-bg inovel-bg" aria-hidden="true">
+          {stageBg.url
+            ? <img key={stageBg.url} src={stageBg.url} alt="" className="inovel-bg-img" />
+            : <div className="inovel-bg-fallback" />}
+        </div>
+        {stageBg.label && stageBg.kind !== 'cover' && (
+          <div className="inovel-scene-tag" key={stageBg.kind + stageBg.label + stageBg.url}>
+            {stageBg.kind === 'scene' ? <ImageIcon size={12} /> : <Feather size={12} />}
+            {stageBg.label}
+          </div>
+        )}
 
         <div className="chat-head inovel-head">
           <button className="btn ghost sm" onClick={() => nav('/theater')}><ArrowLeft size={16} /></button>
@@ -110,6 +164,7 @@ export default function TheaterRoom() {
           <button className={'btn ghost sm' + (autoFlow ? ' on' : '')} onClick={toggleAuto} title={autoFlow ? '自动续写：开（你行动后旁白自动接续）' : '自动续写：关（手动推进剧情）'}>
             {autoFlow ? <Zap size={15} /> : <ZapOff size={15} />}
           </button>
+          {isOwner && <button className="btn ghost sm" onClick={() => setStageOpen(true)} title="舞台背景设定（角色 / 场景背景）"><Palette size={15} /></button>}
           <button className="btn ghost sm" onClick={() => setShowMembers(v => !v)} title="读者列表"><Users size={15} /> {data.members.length}</button>
           <button className="btn ghost sm" onClick={leave} title="离开"><LogOut size={15} /></button>
         </div>
@@ -196,6 +251,18 @@ export default function TheaterRoom() {
           </div>
         </div>
       </div>
+
+      {stageOpen && (
+        <Modal onClose={() => setStageOpen(false)}>
+          <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Palette size={18} /> 舞台背景设定</h2>
+          <p className="muted" style={{ marginTop: -4, fontSize: 13 }}>设定将即时预览于背景；点「保存」后对所有读者生效。</p>
+          <StageEditor cast={cast} value={stageConfig} onChange={setStageConfig} />
+          <div className="row" style={{ marginTop: 16 }}>
+            <button className="btn block" onClick={() => setStageOpen(false)}>关闭</button>
+            <button className="btn primary block" onClick={saveStage} disabled={savingStage}>{savingStage ? '保存中…' : '保存设定'}</button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
