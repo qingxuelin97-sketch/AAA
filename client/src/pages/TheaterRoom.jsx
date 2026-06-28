@@ -229,50 +229,53 @@ export default function TheaterRoom() {
           </div>
         )}
 
-        <div className="chat-head inovel-head">
-          <button className="btn ghost sm" onClick={() => nav('/theater')}><ArrowLeft size={16} /></button>
-          <div className="nm" style={{ flex: 1, minWidth: 0 }}>
-            <b style={{ display: 'flex', alignItems: 'center', gap: 6 }}><BookOpen size={15} /> {theater.name}</b>
-            <span className="inovel-sub">{cast.length} 位角色 · 第 {passages} 段 · {data.members.length} 位读者</span>
-          </div>
-          <button className={'btn ghost sm' + (autoFlow ? ' on' : '')} onClick={toggleAuto} title={autoFlow ? '自动续写：开（你行动后旁白自动接续）' : '自动续写：关（手动推进剧情）'}>
-            {autoFlow ? <Zap size={15} /> : <ZapOff size={15} />}
-          </button>
-          <div className="chat-menu-wrap">
-            <button className={'btn ghost sm' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={16} /></button>
-            {menuOpen && (
-              <>
-                <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />
-                <div className="chat-menu">
-                  <div className="chat-menu-row"><span><Type size={15} /> 字号</span>
-                    <div className="seg seg-mini">
-                      {[['sm', '小'], ['md', '中'], ['lg', '大']].map(([v, l]) => (
-                        <button key={v} className={fontSize === v ? 'active' : ''} onClick={() => setFont(v)}>{l}</button>
-                      ))}
+        {/* 取消整条标题栏：功能键悬浮成独立 UI，阅读区直通到顶，空间更宽阔。标题已在封面区呈现。 */}
+        <div className="inovel-topbar">
+          <button className="inovel-fab" onClick={() => nav('/theater')} title="返回"><ArrowLeft size={17} /></button>
+          <div className="inovel-topbar-actions">
+            <button className={'inovel-fab' + (autoFlow ? ' on' : '')} onClick={toggleAuto} title={autoFlow ? '自动续写：开' : '自动续写：关'}>
+              {autoFlow ? <Zap size={16} /> : <ZapOff size={16} />}
+            </button>
+            <div className="chat-menu-wrap">
+              <button className={'inovel-fab' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
+              {menuOpen && (
+                <>
+                  <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />
+                  <div className="chat-menu">
+                    <div className="chat-menu-row"><span><Type size={15} /> 字号</span>
+                      <div className="seg seg-mini">
+                        {[['sm', '小'], ['md', '中'], ['lg', '大']].map(([v, l]) => (
+                          <button key={v} className={fontSize === v ? 'active' : ''} onClick={() => setFont(v)}>{l}</button>
+                        ))}
+                      </div>
                     </div>
+                    <button onClick={toggleSerif}><Feather size={15} /> 衬线字体 <span className={'chat-menu-toggle' + (serif ? ' on' : '')}>{serif ? '已开启' : '已关闭'}</span></button>
+                    <div className="chat-menu-sep" />
+                    <button onClick={() => { setShowMembers(v => !v); setMenuOpen(false); }}><Users size={15} /> 读者列表（{data.members.length}）</button>
+                    <button onClick={exportMd}><Download size={15} /> 导出为 Markdown</button>
+                    {isOwner && <button onClick={() => { setStageOpen(true); setMenuOpen(false); }}><Palette size={15} /> 舞台 · 世界书设定</button>}
+                    <div className="chat-menu-sep" />
+                    <button className="danger" onClick={leave}><LogOut size={15} /> 离开故事</button>
                   </div>
-                  <button onClick={toggleSerif}><Feather size={15} /> 衬线字体 <span className={'chat-menu-toggle' + (serif ? ' on' : '')}>{serif ? '已开启' : '已关闭'}</span></button>
-                  <div className="chat-menu-sep" />
-                  <button onClick={() => { setShowMembers(v => !v); setMenuOpen(false); }}><Users size={15} /> 读者列表（{data.members.length}）</button>
-                  <button onClick={exportMd}><Download size={15} /> 导出为 Markdown</button>
-                  {isOwner && <button onClick={() => { setStageOpen(true); setMenuOpen(false); }}><Palette size={15} /> 舞台 · 世界书设定</button>}
-                  <div className="chat-menu-sep" />
-                  <button className="danger" onClick={leave}><LogOut size={15} /> 离开故事</button>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
         {showMembers && (
-          <div className="group-members">
-            {data.members.map((mb, i) => (
-              <div key={i} className="gm-row">
-                <Avatar src={mb.avatar} name={mb.display_name} size={30} />
-                <span>{mb.display_name || '读者'}</span>
-                {mb.id === theater.owner_id && <span className="gm-owner">作者</span>}
-              </div>
-            ))}
-          </div>
+          <>
+            <div className="chat-menu-mask" onClick={() => setShowMembers(false)} />
+            <div className="inovel-members">
+              <div className="inovel-members-hd"><Users size={13} /> 读者（{data.members.length}）</div>
+              {data.members.map((mb, i) => (
+                <div key={i} className="gm-row">
+                  <Avatar src={mb.avatar} name={mb.display_name} size={28} />
+                  <span>{mb.display_name || '读者'}</span>
+                  {mb.id === theater.owner_id && <span className="gm-owner">作者</span>}
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         <div className="chat-scroll inovel-scroll" ref={scrollRef} onScroll={onScroll}>
