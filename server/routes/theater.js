@@ -34,6 +34,57 @@ function cleanStage(raw) {
   return { charAuto: cfg.charAuto !== false, charBg, scenes };
 }
 
+// 互动小说专属世界书（创作者自定义）：叠加在所有登场角色之上的额外设定。
+//   每条 { keys（关键词，逗号分隔）, content（设定内容）, always（常驻：始终注入） }
+function cleanWorld(raw) {
+  let arr = raw;
+  if (typeof raw === 'string') { try { arr = JSON.parse(raw); } catch { arr = []; } }
+  if (!Array.isArray(arr)) arr = [];
+  return arr.slice(0, 60).map(e => ({
+    keys: String(e?.keys || '').slice(0, 200),
+    content: String(e?.content || '').slice(0, 2000),
+    always: !!e?.always,
+  })).filter(e => e.content.trim());
+}
+
+const splitKeys = (s) => String(s || '').split(/[，,]/).map(k => k.trim().toLowerCase()).filter(Boolean);
+// 关键词触发：留空关键词或标记常驻 => 始终注入；否则任一关键词命中近期剧情即注入。
+function triggerEntries(entries, hay) {
+  const out = [];
+  for (const e of entries) {
+    const keys = splitKeys(e.keys);
+    if (e.always || keys.length === 0 || keys.some(k => hay.includes(k))) { if (e.content) out.push(e.content); }
+  }
+  return out;
+}
+// 取登场角色的「角色世界书」：内嵌 world_entries + 关联的独立世界书条目（默认关键词触发）。
+function charWorldEntries(charIds) {
+  if (!charIds.length) return [];
+  const ph = charIds.map(() => '?').join(',');
+  const own = db.prepare(`SELECT keys, content FROM world_entries WHERE enabled = 1 AND character_id IN (${ph})`).all(...charIds);
+  let linked = [];
+  try {
+    linked = db.prepare(`SELECT we.keys, we.content FROM worldbook_entries we
+      JOIN character_worldbooks cw ON cw.worldbook_id = we.worldbook_id
+      WHERE we.enabled = 1 AND cw.character_id IN (${ph})`).all(...charIds);
+  } catch { /* 极简部署可能无独立世界书表 */ }
+  return [...own, ...linked];
+}
+// 汇总注入文本：剧情近况扫描 + 小说世界书 + 相关角色世界书，去重并截断。
+function buildWorldBlock(theater, transcript, charIds) {
+  const hay = transcript.slice(-12).map(m => (m.content || '')).join('\n').toLowerCase();
+  const hits = [
+    ...triggerEntries(cleanWorld(theater.worldbook), hay),
+    ...triggerEntries(charWorldEntries(charIds), hay),
+  ];
+  if (!hits.length) return '';
+  const seen = new Set(), uniq = [];
+  for (const c of hits) { const k = c.trim(); if (k && !seen.has(k)) { seen.add(k); uniq.push(k); } }
+  let block = '\n\n【世界设定（务必遵守，可自然融入叙述，但不要直接复述原文）】\n' + uniq.join('\n---\n');
+  if (block.length > 4000) block = block.slice(0, 4000);
+  return block;
+}
+
 router.get('/', authRequired, (req, res) => {
   const theaters = db.prepare(`SELECT t.*, u.display_name AS owner_name,
     (SELECT COUNT(*) FROM theater_members tm WHERE tm.theater_id = t.id) AS member_count,
@@ -44,11 +95,11 @@ router.get('/', authRequired, (req, res) => {
 });
 
 router.post('/', authRequired, (req, res) => {
-  const { name, scene, cover, cast, is_public, stage_config } = req.body || {};
+  const { name, scene, cover, cast, is_public, stage_config, worldbook } = req.body || {};
   if (!name) return res.status(400).json({ error: '剧场名称必填' });
   if (!Array.isArray(cast) || cast.length === 0) return res.status(400).json({ error: '请至少选择一位 AI 角色登场' });
-  const info = db.prepare('INSERT INTO theaters (name, owner_id, scene, cover, is_public, stage_config) VALUES (?,?,?,?,?,?)')
-    .run(name, req.user.id, scene || '', cover || null, is_public === false ? 0 : 1, JSON.stringify(cleanStage(stage_config)));
+  const info = db.prepare('INSERT INTO theaters (name, owner_id, scene, cover, is_public, stage_config, worldbook) VALUES (?,?,?,?,?,?,?)')
+    .run(name, req.user.id, scene || '', cover || null, is_public === false ? 0 : 1, JSON.stringify(cleanStage(stage_config)), JSON.stringify(cleanWorld(worldbook)));
   const tid = info.lastInsertRowid;
   db.prepare('INSERT INTO theater_members (theater_id, user_id) VALUES (?,?)').run(tid, req.user.id);
   const add = db.prepare('INSERT OR IGNORE INTO theater_cast (theater_id, character_id) VALUES (?,?)');
@@ -66,6 +117,8 @@ router.get('/:id', authRequired, (req, res) => {
   const members = db.prepare(`SELECT u.id, u.display_name, u.avatar FROM theater_members tm JOIN users u ON u.id = tm.user_id WHERE tm.theater_id = ?`).all(t.id);
   const messages = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id').all(t.id);
   t.stage_config = cleanStage(t.stage_config);
+  // 世界书条目仅作者可见可编（避免泄露隐藏设定给普通读者）。
+  t.worldbook = (t.owner_id === req.user.id) ? cleanWorld(t.worldbook) : undefined;
   res.json({ theater: t, cast, members, messages, joined: memberOf(t.id, req.user.id) });
 });
 
@@ -76,12 +129,14 @@ router.patch('/:id', authRequired, (req, res) => {
   if (t.owner_id !== req.user.id) return res.status(403).json({ error: '仅作者可修改舞台设定' });
   const fields = [], vals = [];
   if (req.body?.stage_config !== undefined) { fields.push('stage_config = ?'); vals.push(JSON.stringify(cleanStage(req.body.stage_config))); }
+  if (req.body?.worldbook !== undefined) { fields.push('worldbook = ?'); vals.push(JSON.stringify(cleanWorld(req.body.worldbook))); }
   if (typeof req.body?.name === 'string' && req.body.name.trim()) { fields.push('name = ?'); vals.push(req.body.name.trim().slice(0, 80)); }
   if (typeof req.body?.scene === 'string') { fields.push('scene = ?'); vals.push(req.body.scene.slice(0, 4000)); }
   if (req.body?.cover !== undefined) { fields.push('cover = ?'); vals.push(req.body.cover || null); }
   if (fields.length) { vals.push(t.id); db.prepare(`UPDATE theaters SET ${fields.join(', ')} WHERE id = ?`).run(...vals); }
   const updated = db.prepare('SELECT * FROM theaters WHERE id = ?').get(t.id);
   updated.stage_config = cleanStage(updated.stage_config);
+  updated.worldbook = cleanWorld(updated.worldbook);
   res.json({ theater: updated });
 });
 
@@ -128,6 +183,11 @@ router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
     target = c;
     system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`;
   }
+
+  // 注入世界书：小说专属世界书 + 相关角色世界书（默认关键词触发）。
+  // 旁白通晓全局，故扫描全体登场角色的世界书；角色发言仅注入该角色自己的世界书。
+  const wbCharIds = req.body?.narrator ? cast.map(c => c.id) : [target.id].filter(Boolean);
+  system += buildWorldBlock(t, transcript, wbCharIds);
 
   // SSRF 防护：发起 fetch 前校验用户配置的 llm_base_url 不指向内网/本机。
   assertPublicUrl(settings.llm_base_url);
