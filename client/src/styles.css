@@ -668,19 +668,22 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 @keyframes inovelRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .inovel-passage { animation: none; } }
 
-.inovel-narr { font-family: var(--serif); font-size: 16.5px; line-height: 1.95; color: #4a4136; margin: 18px 0; white-space: pre-wrap; word-break: break-word;
+.inovel-narr { font-family: var(--serif); font-size: 16.5px; line-height: 2.0; color: #4a4136; margin: 26px 0; white-space: pre-wrap; word-break: break-word;
   text-indent: 2em; letter-spacing: 0.2px; }
-.inovel-dlg { display: flex; gap: 11px; margin: 18px 0; align-items: flex-start; }
-.inovel-dlg .avatar { box-shadow: 0 2px 6px rgba(0,0,0,0.12); margin-top: 2px; flex-shrink: 0; }
+.inovel-dlg { display: flex; gap: 12px; margin: 26px 0; align-items: flex-start; }
+.inovel-dlg .avatar { box-shadow: 0 2px 6px rgba(0,0,0,0.12); margin-top: 4px; flex-shrink: 0; }
 .inovel-dlg-body { min-width: 0; flex: 1; }
-.inovel-who { display: flex; align-items: center; gap: 6px; font-family: var(--serif); font-size: 13.5px; font-weight: 650; color: #6a4a3a; margin-bottom: 3px; }
+.inovel-who { display: flex; align-items: center; gap: 6px; font-family: var(--serif); font-size: 13.5px; font-weight: 650; color: #6a4a3a; margin-bottom: 6px; }
 .inovel-ai-tag { font-size: 9.5px; font-weight: 700; color: #fff; background: color-mix(in srgb, var(--accent) 80%, #7c5bd9); padding: 1px 6px; border-radius: 999px; letter-spacing: 0.5px; }
-.inovel-say { font-size: 15.5px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word;
-  background: var(--panel); border: 1px solid var(--border); border-left: 3px solid color-mix(in srgb, var(--accent) 60%, var(--border)); border-radius: 4px 14px 14px 14px; padding: 11px 15px; }
-.inovel-me { margin: 18px 0; padding-left: 14px; border-left: 3px solid var(--accent); }
-.inovel-me-tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--accent); margin-bottom: 4px; }
-.inovel-me p { margin: 0; font-size: 15.5px; line-height: 1.78; color: #5a4a3a; white-space: pre-wrap; word-break: break-word; }
-.inovel-writing { display: flex; align-items: center; gap: 8px; font-style: italic; color: var(--muted); font-size: 14px; margin: 18px 0; }
+/* 对白用「半透明玻璃」面板，而非贴在背景上的实色方块 —— 与沉浸背景自然融合，留白更舒展 */
+.inovel-say { font-size: 15.5px; line-height: 1.85; color: var(--text); white-space: pre-wrap; word-break: break-word;
+  background: color-mix(in srgb, var(--panel) 62%, transparent); backdrop-filter: blur(14px) saturate(135%); -webkit-backdrop-filter: blur(14px) saturate(135%);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent); border-left: 3px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  border-radius: 5px 16px 16px 16px; padding: 14px 18px; box-shadow: 0 6px 22px rgba(20,16,10,0.12); }
+.inovel-me { margin: 26px 0; padding: 6px 0 6px 16px; border-left: 3px solid var(--accent); }
+.inovel-me-tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--accent); margin-bottom: 6px; }
+.inovel-me p { margin: 0; font-size: 15.5px; line-height: 1.85; color: #5a4a3a; white-space: pre-wrap; word-break: break-word; }
+.inovel-writing { display: flex; align-items: center; gap: 8px; font-style: italic; color: var(--muted); font-size: 14px; margin: 24px 0; }
 .inovel-quill { color: var(--accent); }
 .inovel-foot-space { height: 24px; }
 
@@ -760,7 +763,7 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .inovel-me p { font-size: calc(15.5px * var(--inovel-fs, 1)); }
 .inovel-book.sans .inovel-narr, .inovel-book.sans .inovel-who, .inovel-book.sans .inovel-title, .inovel-book.sans .inovel-rule span { font-family: inherit; }
 /* 首字下沉：开篇旁白更有「翻开一本书」的仪式感 */
-.inovel-narr-wrap { margin: 18px 0; }
+.inovel-narr-wrap { margin: 26px 0; }
 .inovel-narr-wrap .inovel-narr { margin: 0; }
 .inovel-narr.dropcap { text-indent: 0; }
 .inovel-narr.dropcap::first-letter { font-size: 3.1em; line-height: 0.78; float: left; margin: 4px 10px 0 0; font-family: var(--serif); color: var(--accent); font-weight: 700; }
@@ -793,6 +796,8 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 [data-theme="dark"] .inovel-narr { color: #cdc3b4; }
 [data-theme="dark"] .inovel-who { color: #d8a88f; }
 [data-theme="dark"] .inovel-me p { color: #cdbfae; }
+/* 暗色下玻璃对白略提高不透明度，保证暗背景上的文字对比度 */
+[data-theme="dark"] .inovel-say { background: color-mix(in srgb, var(--panel) 70%, transparent); border-color: color-mix(in srgb, #fff 12%, transparent); box-shadow: 0 6px 22px rgba(0,0,0,0.32); }
 [data-theme="dark"] .inovel-bar { background: linear-gradient(180deg, transparent 0%, rgba(20,17,13,0.9) 34%, rgba(20,17,13,0.99) 100%) !important; }
 
 .seg { display: inline-flex; background: var(--bg-2); padding: 4px; border-radius: 11px; gap: 3px; }
