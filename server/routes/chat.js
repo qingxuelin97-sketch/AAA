@@ -92,15 +92,56 @@ export function stripSpeechActions(input) {
   return s.replace(/\s{2,}/g, ' ').trim();
 }
 
+// —— 情绪/语气检测 —— 让语音 API 根据对话情境自动调试语气。
+// 从「原文」（含 *动作* 与标点，朗读前剥离）推断情绪：动作与情绪词信号最强，标点兜底。
+// 规则按强度从强到弱匹配，先命中者为准；无命中则中性。
+const EMOTION_RULES = [
+  ['angry',     /怒|愤|吼|咆哮|生气|发火|暴怒|可恶|混蛋|滚开|岂有此理|怒视|咬牙|瞪/],
+  ['sad',       /哭|泪|呜咽|抽泣|伤心|难过|悲伤|哀伤|叹气|叹息|绝望|哽咽|失落|委屈|低落/],
+  ['fearful',   /颤抖|发抖|害怕|恐惧|惊恐|战栗|瑟瑟|不敢|畏惧|惶恐|心惊/],
+  ['surprised', /震惊|吃惊|惊讶|不会吧|竟然|居然|难以置信|目瞪口呆|啊？|什么[?？！]/],
+  ['happy',     /微笑|大笑|欢笑|高兴|开心|欣喜|喜悦|兴奋|雀跃|哈哈|嘿嘿|嘻嘻|太好了|耶！|笑着|笑道/],
+  ['gentle',    /温柔|轻声|柔声|低语|呢喃|轻轻|安抚|抱抱|温和|宠溺|耳语/],
+];
+export function detectEmotion(raw) {
+  const s = String(raw || '');
+  if (!s) return 'neutral';
+  for (const [emo, re] of EMOTION_RULES) if (re.test(s)) return emo;
+  if (/[!！]{2,}/.test(s)) return 'surprised'; // 连续感叹 → 偏激动/惊讶
+  return 'neutral';
+}
+const EMOTION_ALL = new Set(['neutral', 'happy', 'sad', 'angry', 'fearful', 'surprised', 'gentle']);
+const normalizeEmotion = (e) => EMOTION_ALL.has(e) ? e : '';
+// 通用韵律微调（所有厂商都支持 speed/pitch）：在创作者配置的基准上做相对小幅叠加。
+const EMOTION_PROSODY = {
+  happy:     { rate: 1.08, pitch: 1.06 },
+  angry:     { rate: 1.10, pitch: 1.05 },
+  sad:       { rate: 0.90, pitch: 0.95 },
+  fearful:   { rate: 1.07, pitch: 1.06 },
+  surprised: { rate: 1.06, pitch: 1.08 },
+  gentle:    { rate: 0.94, pitch: 0.98 },
+  neutral:   { rate: 1, pitch: 1 },
+};
+// MiniMax voice_setting.emotion 支持集（gentle/neutral 不下发，走韵律即可）。
+const MINIMAX_EMOTION = { happy: 'happy', sad: 'sad', angry: 'angry', fearful: 'fearful', surprised: 'surprised' };
+// Azure <mstts:express-as style=…>：未支持该 style 的音色会自动回退，安全。
+const AZURE_STYLE = { happy: 'cheerful', sad: 'sad', angry: 'angry', fearful: 'fearful', surprised: 'excited', gentle: 'gentle' };
+// OpenAI gpt-4o-mini-tts 的 instructions（老模型忽略该字段，安全）。
+const OPENAI_TONE = { happy: '欢快愉悦', sad: '低落伤感', angry: '愤怒激动', fearful: '紧张害怕', surprised: '惊讶意外', gentle: '温柔轻缓' };
+
 // Synthesize speech via the right vendor adapter. Returns { ok, contentType, buffer } or { ok:false, status, error }.
-export async function synthesize({ proto, base, key, model, voice, text, speed, pitch }) {
+export async function synthesize({ proto, base, key, model, voice, text, speed, pitch, emotion }) {
+  // 情绪取「显式传入」优先，否则从原文（含 *动作*）自动检测——动作剥离前检测，信号更全。
+  const emo = normalizeEmotion(emotion) || detectEmotion(text);
   text = stripSpeechActions(text); // 动作 / *星号* 内容一律不读
   if (!text) return { ok: false, status: 400, error: '无可朗读的内容（动作 / 旁白已跳过）' };
   const b = (base || '').replace(/\/$/, '');
   // SSRF 防护：用户填了 voice base_url 时校验其不指向内网/本机；为空则用各厂商默认地址，跳过校验。
   if (b) assertPublicUrl(b);
-  const rate = Math.min(2, Math.max(0.5, Number(speed) || 1)); // shared playback-rate tuning
-  const pit = Math.min(1.5, Math.max(0.5, Number(pitch) || 1)); // shared pitch tuning (1 = natural)
+  // 通用韵律微调：在创作者配置的语速/音调基准上，按情绪做相对叠加（再夹紧到合法区间）。
+  const pros = EMOTION_PROSODY[emo] || EMOTION_PROSODY.neutral;
+  const rate = Math.min(2, Math.max(0.5, (Number(speed) || 1) * pros.rate)); // shared playback-rate tuning
+  const pit = Math.min(1.5, Math.max(0.5, (Number(pitch) || 1) * pros.pitch)); // shared pitch tuning (1 = natural)
   const pitPct = Math.round((pit - 1) * 100);                   // SSML pitch as +/-N%
   const pitSemi = Math.max(-12, Math.min(12, Math.round((pit - 1) * 24))); // semitone-based vendors
   try {
@@ -169,11 +210,14 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       if (!mm.apiKey) return { ok: false, status: 400, error: 'MiniMax 缺少 API Key：请在 API Key 处填写 MiniMax 控制台的接口密钥' };
       const mmModel = model || 'speech-02-hd';
       const t2aUrl = mm.gid ? `${mm.root}/t2a_v2?GroupId=${encodeURIComponent(mm.gid)}` : `${mm.root}/t2a_v2`;
+      // 情绪：speech-02 / speech-01-turbo 等支持 voice_setting.emotion；中性不下发。
+      const voiceSetting = { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi };
+      if (MINIMAX_EMOTION[emo]) voiceSetting.emotion = MINIMAX_EMOTION[emo];
       const r = await fetch(t2aUrl, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mm.apiKey}` },
         body: JSON.stringify({
           model: mmModel, text, stream: false,
-          voice_setting: { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi },
+          voice_setting: voiceSetting,
           audio_setting: { format: 'mp3', sample_rate: 32000, channel: 1, bitrate: 128000 },
           output_format: 'hex',
         }) });
@@ -205,7 +249,11 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
     }
     if (proto === 'azure') {
       const rPct = Math.round((rate - 1) * 100); // SSML prosody rate as +/-N%
-      const ssml = `<speak version='1.0' xml:lang='zh-CN'><voice xml:lang='zh-CN' name='${voice || 'zh-CN-XiaoxiaoNeural'}'><prosody rate='${rPct >= 0 ? '+' : ''}${rPct}%' pitch='${pitPct >= 0 ? '+' : ''}${pitPct}%'>${text.replace(/[<&>]/g, '')}</prosody></voice></speak>`;
+      const safeText = text.replace(/[<&>]/g, '');
+      const inner = `<prosody rate='${rPct >= 0 ? '+' : ''}${rPct}%' pitch='${pitPct >= 0 ? '+' : ''}${pitPct}%'>${safeText}</prosody>`;
+      // 情绪：用 mstts:express-as 包裹；音色若不支持该 style 会自动回退，安全。
+      const styled = AZURE_STYLE[emo] ? `<mstts:express-as style='${AZURE_STYLE[emo]}'>${inner}</mstts:express-as>` : inner;
+      const ssml = `<speak version='1.0' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='zh-CN'><voice xml:lang='zh-CN' name='${voice || 'zh-CN-XiaoxiaoNeural'}'>${styled}</voice></speak>`;
       const r = await fetch(`${b}/cognitiveservices/v1`, { method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3' }, body: ssml });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
@@ -224,9 +272,11 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
     }
-    // OpenAI-compatible /audio/speech
+    // OpenAI-compatible /audio/speech（gpt-4o-mini-tts 支持 instructions 控制语气；老模型忽略该字段）
+    const payload = { model, input: text, voice, speed: rate };
+    if (OPENAI_TONE[emo]) payload.instructions = `请用${OPENAI_TONE[emo]}的语气朗读。`;
     const r = await fetch(b + '/audio/speech', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model, input: text, voice, speed: rate }) });
+      body: JSON.stringify(payload) });
     if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
     return { ok: true, contentType: r.headers.get('content-type') || 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
   } catch (e) { return { ok: false, status: 502, error: '语音服务连接失败：' + e.message }; }
@@ -721,7 +771,7 @@ async function streamReply(res, conv, character, settings, userContent) {
 router.post('/tts', authRequired, aiLimiter, async (req, res) => {
   const settings = getSettings(req.user.id);
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(req.user.id);
-  const { text: rawText, voice: reqVoice, speed: reqSpeed, pitch: reqPitch, character_id } = req.body || {};
+  const { text: rawText, voice: reqVoice, speed: reqSpeed, pitch: reqPitch, emotion: reqEmotion, character_id } = req.body || {};
   if (!rawText) return res.status(400).json({ error: '缺少文本' });
   const text = String(rawText).slice(0, 4000);
   const speed = reqSpeed != null ? Math.min(2, Math.max(0.5, Number(reqSpeed) || 1)) : 1;
@@ -741,7 +791,7 @@ router.post('/tts', authRequired, aiLimiter, async (req, res) => {
     return res.status(503).json({ error: '尚未配置语音模型 API，且平台语音服务暂未开启。' });
   }
 
-  const out = await synthesize({ proto, base, key, model, voice, text, speed, pitch });
+  const out = await synthesize({ proto, base, key, model, voice, text, speed, pitch, emotion: reqEmotion });
   if (!out.ok) return res.status(out.status || 502).json({ error: out.error });
   if (fee) {
     try { const w = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}`, ref_owner: ttsRefOwner }); res.setHeader('X-Gold-Fee', String(fee)); res.setHeader('X-Gold-Balance', String(w.gold)); }

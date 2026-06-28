@@ -29,6 +29,33 @@ export function stripParensForSpeech(input) {
   return s.replace(/\s{2,}/g, ' ').trim();
 }
 
+// —— 情绪/语气检测 —— 与服务端 detectEmotion 保持一致：从「原文」（含 *动作* 与标点）推断语气。
+// 朗读时据此微调浏览器语音的语速/音调，并把情绪传给平台语音 API（让其调试语气）。
+const EMOTION_RULES = [
+  ['angry',     /怒|愤|吼|咆哮|生气|发火|暴怒|可恶|混蛋|滚开|岂有此理|怒视|咬牙|瞪/],
+  ['sad',       /哭|泪|呜咽|抽泣|伤心|难过|悲伤|哀伤|叹气|叹息|绝望|哽咽|失落|委屈|低落/],
+  ['fearful',   /颤抖|发抖|害怕|恐惧|惊恐|战栗|瑟瑟|不敢|畏惧|惶恐|心惊/],
+  ['surprised', /震惊|吃惊|惊讶|不会吧|竟然|居然|难以置信|目瞪口呆|啊？|什么[?？！]/],
+  ['happy',     /微笑|大笑|欢笑|高兴|开心|欣喜|喜悦|兴奋|雀跃|哈哈|嘿嘿|嘻嘻|太好了|耶！|笑着|笑道/],
+  ['gentle',    /温柔|轻声|柔声|低语|呢喃|轻轻|安抚|抱抱|温和|宠溺|耳语/],
+];
+export function detectEmotion(raw) {
+  const s = String(raw || '');
+  if (!s) return 'neutral';
+  for (const [emo, re] of EMOTION_RULES) if (re.test(s)) return emo;
+  if (/[!！]{2,}/.test(s)) return 'surprised';
+  return 'neutral';
+}
+const EMOTION_PROSODY = {
+  happy:     { rate: 1.08, pitch: 1.06 },
+  angry:     { rate: 1.10, pitch: 1.05 },
+  sad:       { rate: 0.90, pitch: 0.95 },
+  fearful:   { rate: 1.07, pitch: 1.06 },
+  surprised: { rate: 1.06, pitch: 1.08 },
+  gentle:    { rate: 0.94, pitch: 0.98 },
+  neutral:   { rate: 1, pitch: 1 },
+};
+
 export function browserVoices() {
   try { return (window.speechSynthesis?.getVoices() || []); } catch { return []; }
 }
@@ -55,16 +82,19 @@ export function stopSpeaking() {
 }
 
 // 浏览器内置 TTS（离线、无 CORS、免费）。playId 用于状态联动；返回是否成功开播。
-export function speakBrowser(text, voiceName, rate, pitch, playId) {
+// emotion 可显式传入，否则按文本自动检测，用于在配置基准上微调语速/音调，模拟语气变化。
+export function speakBrowser(text, voiceName, rate, pitch, playId, emotion) {
   try {
     const synth = window.speechSynthesis; if (!synth) return false;
     stopSpeaking();
     const token = _token; // stopSpeaking 已自增，此处即本次播放令牌
     const u = new SpeechSynthesisUtterance(String(text).slice(0, 4000));
-    const r = Number(rate);
-    if (r && r >= 0.5 && r <= 2) u.rate = r; // 语速调优
-    const p = Number(pitch);
-    if (p && p >= 0.5 && p <= 1.5) u.pitch = Math.max(0, Math.min(2, p)); // 音调调优
+    const emo = (emotion && EMOTION_PROSODY[emotion]) ? emotion : detectEmotion(text);
+    const pros = EMOTION_PROSODY[emo] || EMOTION_PROSODY.neutral;
+    const r = (Number(rate) || 1) * pros.rate;
+    if (r && r >= 0.5 && r <= 2) u.rate = r; // 语速调优（叠加情绪）
+    const p = (Number(pitch) || 1) * pros.pitch;
+    if (p && p >= 0.5 && p <= 1.5) u.pitch = Math.max(0, Math.min(2, p)); // 音调调优（叠加情绪）
     const vs = synth.getVoices();
     const v = voiceName && vs.find(x => x.name === voiceName);
     if (v) { u.voice = v; u.lang = v.lang; }

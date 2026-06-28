@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
-import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange } from '../voice.js';
+import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { useKeyboardInsetBar } from '../mobile.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles } from 'lucide-react';
@@ -403,9 +403,11 @@ export default function Chat() {
     // 括号内的内容（动作 / OOC 说明）默认不朗读
     const text = stripParensForSpeech(raw);
     if (!text) return;
+    // 从「原文」（含 *动作* 与标点）检测语气，让语音根据情境调试语速/音调/情绪。
+    const emotion = detectEmotion(raw);
     // Browser Web Speech needs no server round-trip (offline / no CORS)，免费，重放即可。
     if (voiceCfg?.voice_protocol === 'browser') {
-      speakBrowser(text, voiceCfg.voice_name, character?.voice_speed, character?.voice_pitch, mid ?? true);
+      speakBrowser(text, voiceCfg.voice_name, character?.voice_speed, character?.voice_pitch, mid ?? true, emotion);
       markVoiced(mid);
       return;
     }
@@ -415,7 +417,7 @@ export default function Chat() {
     try {
       const res = await fetch('/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ text, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, pitch: character?.voice_pitch || undefined, character_id: character?.id })
+        body: JSON.stringify({ text, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, pitch: character?.voice_pitch || undefined, emotion, character_id: character?.id })
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
       // Platform voice is billed per sentence — the server reports the charge via headers.
