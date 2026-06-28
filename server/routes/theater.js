@@ -160,6 +160,50 @@ router.post('/:id/say', authRequired, aiLimiter, (req, res) => {
   res.json({ message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
 });
 
+// 生成一段续写（旁白 / 角色），含世界书注入。excludeId 用于「重写」时排除被替换的那段。
+// 成功返回 { target, content, narrator }，失败 throw 带 code 的错误（由调用方决定状态码）。
+async function runGeneration(t, settings, body, excludeId) {
+  const cast = castOf(t.id);
+  let transcript = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 31').all(t.id).reverse();
+  if (excludeId) transcript = transcript.filter(m => m.id !== excludeId);
+  transcript = transcript.slice(-30);
+  const log = transcript.map(m => `${m.name}：${m.content}`).join('\n');
+  const castList = cast.map(c => `「${c.name}」(${c.tagline || '登场角色'})`).join('、');
+
+  let target, system;
+  if (body?.narrator) {
+    target = { id: null, name: '旁白', avatar: null };
+    system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。你是「旁白」，请用富有画面感的第三人称，推进剧情、描写环境氛围或引出转折，控制在 2-4 句话，不要替具体角色说出对白。`;
+  } else {
+    const c = cast.find(x => x.id === body?.character_id) || cast[0];
+    if (!c) { const e = new Error('剧场没有 AI 角色'); e.code = 400; throw e; }
+    target = c;
+    system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`;
+  }
+
+  // 注入世界书：小说专属世界书 + 相关角色世界书（默认关键词触发）。
+  // 旁白通晓全局，故扫描全体登场角色的世界书；角色发言仅注入该角色自己的世界书。
+  const wbCharIds = body?.narrator ? cast.map(c => c.id) : [target.id].filter(Boolean);
+  system += buildWorldBlock(t, transcript, wbCharIds);
+
+  // SSRF 防护：发起 fetch 前校验用户配置的 llm_base_url 不指向内网/本机。
+  assertPublicUrl(settings.llm_base_url);
+  const r = await fetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
+    body: JSON.stringify({
+      model: settings.llm_model, temperature: settings.llm_temperature, max_tokens: 400,
+      messages: [{ role: 'system', content: system }, { role: 'user', content: `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请继续：` }]
+    })
+  });
+  if (!r.ok) { const e = new Error('模型服务暂不可用'); e.code = 502; throw e; }
+  const data = await r.json();
+  const content = (data.choices?.[0]?.message?.content || '').trim();
+  if (!content) { const e = new Error('模型未返回内容'); e.code = 502; throw e; }
+  return { target, content, narrator: !!body?.narrator };
+}
+const insertReply = (t, gen) => db.prepare('INSERT INTO theater_messages (theater_id, sender_type, sender_id, name, avatar, content) VALUES (?,?,?,?,?,?)')
+  .run(t.id, gen.narrator ? 'narrator' : 'ai', gen.target.id || null, gen.target.name, gen.target.avatar, gen.content);
+
 // Drive an AI character (or narrator) to speak. Uses the caller's LLM settings.
 router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
@@ -167,46 +211,29 @@ router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
   if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
   const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
   if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
-
-  const cast = castOf(t.id);
-  const transcript = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 30').all(t.id).reverse();
-  const log = transcript.map(m => `${m.name}：${m.content}`).join('\n');
-  const castList = cast.map(c => `「${c.name}」(${c.tagline || '登场角色'})`).join('、');
-
-  let target, system;
-  if (req.body?.narrator) {
-    target = { name: '旁白', avatar: null, persona: '' };
-    system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。你是「旁白」，请用富有画面感的第三人称，推进剧情、描写环境氛围或引出转折，控制在 2-4 句话，不要替具体角色说出对白。`;
-  } else {
-    const c = cast.find(x => x.id === req.body?.character_id) || cast[0];
-    if (!c) return res.status(400).json({ error: '剧场没有 AI 角色' });
-    target = c;
-    system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`;
-  }
-
-  // 注入世界书：小说专属世界书 + 相关角色世界书（默认关键词触发）。
-  // 旁白通晓全局，故扫描全体登场角色的世界书；角色发言仅注入该角色自己的世界书。
-  const wbCharIds = req.body?.narrator ? cast.map(c => c.id) : [target.id].filter(Boolean);
-  system += buildWorldBlock(t, transcript, wbCharIds);
-
-  // SSRF 防护：发起 fetch 前校验用户配置的 llm_base_url 不指向内网/本机。
-  assertPublicUrl(settings.llm_base_url);
   try {
-    const r = await fetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
-      body: JSON.stringify({
-        model: settings.llm_model, temperature: settings.llm_temperature, max_tokens: 400,
-        messages: [{ role: 'system', content: system }, { role: 'user', content: `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请继续：` }]
-      })
-    });
-    if (!r.ok) { return res.status(502).json({ error: '模型服务暂不可用' }); }
-    const data = await r.json();
-    const content = (data.choices?.[0]?.message?.content || '').trim();
-    if (!content) return res.status(502).json({ error: '模型未返回内容' });
-    const info = db.prepare('INSERT INTO theater_messages (theater_id, sender_type, sender_id, name, avatar, content) VALUES (?,?,?,?,?,?)')
-      .run(t.id, req.body?.narrator ? 'narrator' : 'ai', target.id || null, target.name, target.avatar, content);
+    const gen = await runGeneration(t, settings, req.body || {});
+    const info = insertReply(t, gen);
     res.json({ message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
-  } catch (e) { res.status(502).json({ error: '模型服务暂不可用' }); }
+  } catch (e) { res.status(e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
+});
+
+// 重写最近一段 AI 续写（旁白 / 角色）：先生成新内容，成功后替换旧段，失败则保留原文。
+router.post('/:id/retry', authRequired, aiLimiter, async (req, res) => {
+  const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
+  if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
+  const last = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 1').get(t.id);
+  if (!last || (last.sender_type !== 'ai' && last.sender_type !== 'narrator')) return res.status(400).json({ error: '最近一段不是 AI 续写，无法重写' });
+  const body = last.sender_type === 'narrator' ? { narrator: true } : { character_id: last.sender_id };
+  try {
+    const gen = await runGeneration(t, settings, body, last.id);
+    db.prepare('DELETE FROM theater_messages WHERE id = ?').run(last.id);
+    const info = insertReply(t, gen);
+    res.json({ removedId: last.id, message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
+  } catch (e) { res.status(e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
 });
 
 // 仅成员可拉取消息，防 IDOR 读取他人剧场历史。

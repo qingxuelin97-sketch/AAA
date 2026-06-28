@@ -1439,6 +1439,30 @@ async function route(method, path, search, body, headers) {
     if (!Array.isArray(arr)) arr = [];
     return arr.slice(0, 60).map(e => ({ keys: String((e && e.keys) || '').slice(0, 200), content: String((e && e.content) || '').slice(0, 2000), always: !!(e && e.always) })).filter(e => e.content.trim());
   };
+  // 生成一段续写（旁白 / 角色）含世界书注入。excludeId 用于「重写」排除被替换的那段。
+  const genTheaterReply = async (t, s, body, excludeId) => {
+    const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean);
+    let transcript = filter('theater_messages', x => x.theater_id === t.id);
+    if (excludeId) transcript = transcript.filter(x => x.id !== excludeId);
+    transcript = transcript.slice(-30);
+    const log = transcript.map(x => `${x.name}：${x.content}`).join('\n');
+    const castList = cast.map(c => `「${c.name}」(${c.tagline || '登场角色'})`).join('、');
+    let target, system;
+    if (body.narrator) { target = { id: null, name: '旁白', avatar: null }; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。你是「旁白」，请用富有画面感的第三人称，推进剧情、描写环境氛围或引出转折，控制在 2-4 句话，不要替具体角色说出对白。`; }
+    else { const c = cast.find(x => x.id === body.character_id) || cast[0]; if (!c) throw new Error('剧场没有 AI 角色'); target = c; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`; }
+    const hay = transcript.slice(-12).map(x => (x.content || '')).join('\n').toLowerCase();
+    const sk = (str) => String(str || '').split(/[，,]/).map(k => k.trim().toLowerCase()).filter(Boolean);
+    const wbCharIds = body.narrator ? cast.map(c => c.id) : [target.id].filter(v => v != null);
+    const entries = [...cleanWorld(t.worldbook)];
+    filter('world_entries', w => wbCharIds.includes(w.character_id) && w.enabled).forEach(w => entries.push({ keys: w.keys, content: w.content }));
+    const hits = [];
+    for (const e of entries) { const keys = sk(e.keys); if ((e.always || keys.length === 0 || keys.some(k => hay.includes(k))) && e.content) hits.push(e.content.trim()); }
+    const uniq = [...new Set(hits)].filter(Boolean);
+    if (uniq.length) system += '\n\n【世界设定（务必遵守，可自然融入叙述，但不要直接复述原文）】\n' + uniq.join('\n---\n').slice(0, 4000);
+    const content = await llmOnce(s, system, `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请继续：`);
+    if (!content) throw new Error('模型未返回内容');
+    return { target, content, narrator: !!body.narrator };
+  };
   if (method === 'GET' && path === '/theater') { need(); const rows = filter('theaters', t => t.is_public || t.owner_id === me.id).sort((a, b) => b.id - a.id).map(t => ({ ...t, owner_name: user(t.owner_id)?.display_name, member_count: filter('theater_members', x => x.theater_id === t.id).length, cast_count: filter('theater_cast', x => x.theater_id === t.id).length })); return J({ theaters: rows }); }
   if (method === 'POST' && path === '/theater') { need(); if (!body.name) return E('剧场名称必填'); if (!Array.isArray(body.cast) || !body.cast.length) return E('请至少选择一位 AI 角色登场'); const t = insert('theaters', { name: body.name, owner_id: me.id, scene: body.scene || '', cover: body.cover || null, is_public: body.is_public === false ? 0 : 1, stage_config: cleanStage(body.stage_config), worldbook: cleanWorld(body.worldbook) }); insert('theater_members', { theater_id: t.id, user_id: me.id }); body.cast.forEach(cid => { if (!find('theater_cast', x => x.theater_id === t.id && x.character_id === cid)) insert('theater_cast', { theater_id: t.id, character_id: cid }); }); if (body.scene) insert('theater_messages', { theater_id: t.id, sender_type: 'narrator', sender_id: null, name: '旁白', avatar: null, content: body.scene }); return J({ theater: t }); }
   if ((m = P(/^\/theater\/(\d+)\/join$/)) && method === 'POST') { need(); const tid = +m[1]; if (!find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) insert('theater_members', { theater_id: tid, user_id: me.id }); return J({ ok: true }); }
@@ -1449,25 +1473,31 @@ async function route(method, path, search, body, headers) {
     const s = find('settings', x => x.user_id === me.id);
     const eff = effectiveLLM(s);
     if (eff.platform) { const fee = platformFee(me, 0); if (me.gold < fee) return E(`金币不足，剧场联机平台 AI 需 ${fee} 金币（当前 ${me.gold}）`); }
-    const cast = filter('theater_cast', x => x.theater_id === tid).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean);
-    const transcript = filter('theater_messages', x => x.theater_id === tid).slice(-30); const log = transcript.map(x => `${x.name}：${x.content}`).join('\n');
-    const castList = cast.map(c => `「${c.name}」(${c.tagline || '登场角色'})`).join('、');
-    let target, system;
-    if (body.narrator) { target = { id: null, name: '旁白', avatar: null }; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。你是「旁白」，请用富有画面感的第三人称，推进剧情、描写环境氛围或引出转折，控制在 2-4 句话，不要替具体角色说出对白。`; }
-    else { const c = cast.find(x => x.id === body.character_id) || cast[0]; if (!c) return E('剧场没有 AI 角色'); target = c; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`; }
-    // 注入世界书：小说专属世界书 + 相关角色世界书（默认关键词触发）。旁白扫描全体角色，角色仅注入自己。
-    {
-      const hay = transcript.slice(-12).map(x => (x.content || '')).join('\n').toLowerCase();
-      const sk = (str) => String(str || '').split(/[，,]/).map(k => k.trim().toLowerCase()).filter(Boolean);
-      const wbCharIds = body.narrator ? cast.map(c => c.id) : [target.id].filter(v => v != null);
-      const entries = [...cleanWorld(t.worldbook)];
-      filter('world_entries', w => wbCharIds.includes(w.character_id) && w.enabled).forEach(w => entries.push({ keys: w.keys, content: w.content }));
-      const hits = [];
-      for (const e of entries) { const keys = sk(e.keys); if ((e.always || keys.length === 0 || keys.some(k => hay.includes(k))) && e.content) hits.push(e.content.trim()); }
-      const uniq = [...new Set(hits)].filter(Boolean);
-      if (uniq.length) system += '\n\n【世界设定（务必遵守，可自然融入叙述，但不要直接复述原文）】\n' + uniq.join('\n---\n').slice(0, 4000);
-    }
-    try { const content = await llmOnce(s, system, `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请继续：`); if (!content) return E('模型未返回内容', 502); const msg = insert('theater_messages', { theater_id: tid, sender_type: body.narrator ? 'narrator' : 'ai', sender_id: target.id, name: target.name, avatar: target.avatar, content }); if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 剧场联机' }); } catch { /* */ } } return J({ message: msg }); } catch (e) { return E(e.message, 502); }
+    try {
+      const { target, content, narrator } = await genTheaterReply(t, s, body, null);
+      const msg = insert('theater_messages', { theater_id: tid, sender_type: narrator ? 'narrator' : 'ai', sender_id: target.id, name: target.name, avatar: target.avatar, content });
+      if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 剧场联机' }); } catch { /* */ } }
+      return J({ message: msg });
+    } catch (e) { return E(e.message, 502); }
+  }
+  if ((m = P(/^\/theater\/(\d+)\/retry$/)) && method === 'POST') {
+    need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (!t) return E('剧场不存在', 404);
+    if (t.owner_id !== me.id && !find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) return E('请先加入该剧场', 403);
+    const s = find('settings', x => x.user_id === me.id);
+    const eff = effectiveLLM(s);
+    if (eff.platform) { const fee = platformFee(me, 0); if (me.gold < fee) return E(`金币不足，剧场联机平台 AI 需 ${fee} 金币（当前 ${me.gold}）`); }
+    const msgs = filter('theater_messages', x => x.theater_id === tid);
+    const last = msgs[msgs.length - 1];
+    if (!last || (last.sender_type !== 'ai' && last.sender_type !== 'narrator')) return E('最近一段不是 AI 续写，无法重写', 400);
+    const body2 = last.sender_type === 'narrator' ? { narrator: true } : { character_id: last.sender_id };
+    try {
+      const { target, content, narrator } = await genTheaterReply(t, s, body2, last.id);
+      db.theater_messages = filter('theater_messages', x => x.id !== last.id);
+      const msg = insert('theater_messages', { theater_id: tid, sender_type: narrator ? 'narrator' : 'ai', sender_id: target.id, name: target.name, avatar: target.avatar, content });
+      if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 剧场重写' }); } catch { /* */ } }
+      save();
+      return J({ removedId: last.id, message: msg });
+    } catch (e) { return E(e.message, 502); }
   }
   if ((m = P(/^\/theater\/(\d+)\/messages$/)) && method === 'GET') { const tid = +m[1]; const after = parseInt(search.get('after'), 10) || 0; return J({ messages: filter('theater_messages', x => x.theater_id === tid && x.id > after) }); }
   if ((m = P(/^\/theater\/(\d+)$/)) && method === 'PATCH') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); if (t.owner_id !== me.id) return E('仅作者可修改舞台设定', 403); if (body.stage_config !== undefined) t.stage_config = cleanStage(body.stage_config); if (body.worldbook !== undefined) t.worldbook = cleanWorld(body.worldbook); if (typeof body.name === 'string' && body.name.trim()) t.name = body.name.trim().slice(0, 80); if (typeof body.scene === 'string') t.scene = body.scene.slice(0, 4000); if (body.cover !== undefined) t.cover = body.cover || null; save(); return J({ theater: { ...t, stage_config: cleanStage(t.stage_config), worldbook: cleanWorld(t.worldbook) } }); }

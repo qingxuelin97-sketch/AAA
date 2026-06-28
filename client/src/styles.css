@@ -751,6 +751,41 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .novel-wb-row .textarea { font-size: 13.5px; }
 [data-theme="dark"] .novel-wb-row, [data-theme="dark"] .novel-wb-empty { background: var(--panel); }
 
+/* —— 阅读排版设置（字号 / 衬线）—— */
+.inovel-book.font-sm { --inovel-fs: 0.92; }
+.inovel-book.font-md { --inovel-fs: 1; }
+.inovel-book.font-lg { --inovel-fs: 1.14; }
+.inovel-narr { font-size: calc(16.5px * var(--inovel-fs, 1)); }
+.inovel-say { font-size: calc(15.5px * var(--inovel-fs, 1)); }
+.inovel-me p { font-size: calc(15.5px * var(--inovel-fs, 1)); }
+.inovel-book.sans .inovel-narr, .inovel-book.sans .inovel-who, .inovel-book.sans .inovel-title, .inovel-book.sans .inovel-rule span { font-family: inherit; }
+/* 首字下沉：开篇旁白更有「翻开一本书」的仪式感 */
+.inovel-narr-wrap { margin: 18px 0; }
+.inovel-narr-wrap .inovel-narr { margin: 0; }
+.inovel-narr.dropcap { text-indent: 0; }
+.inovel-narr.dropcap::first-letter { font-size: 3.1em; line-height: 0.78; float: left; margin: 4px 10px 0 0; font-family: var(--serif); color: var(--accent); font-weight: 700; }
+.inovel-book.sans .inovel-narr.dropcap::first-letter { font-family: inherit; }
+
+/* —— 段落操作（复制 / 重写）—— */
+.inovel-acts { display: flex; gap: 4px; margin-top: 6px; opacity: 0; transition: opacity 0.15s; }
+.inovel-passage:hover .inovel-acts, .inovel-acts:focus-within { opacity: 1; }
+.inovel-acts button { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--faint); background: none; border: none; padding: 4px 8px; border-radius: 8px; cursor: pointer; transition: color 0.15s, background 0.15s; }
+.inovel-acts button:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
+.inovel-acts button:disabled { opacity: 0.4; cursor: default; }
+@media (max-width: 860px) { .inovel-acts { opacity: 0.62; } }
+
+/* —— 回到最新浮钮 —— */
+.inovel-jump { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--inovel-bar-h, 150px) + 14px); z-index: 8;
+  width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border-2); background: var(--panel); color: var(--accent);
+  display: grid; place-items: center; cursor: pointer; box-shadow: var(--shadow); animation: sceneTagIn 0.25s ease both; }
+.inovel-jump:hover { transform: translateX(-50%) translateY(-2px); box-shadow: var(--shadow-lg); }
+
+/* 移动端 fixed 输入栏据其实测高度留白，避免遮挡末段；键盘弹起时收起行动建议腾出空间 */
+@media (max-width: 860px) {
+  .inovel-foot-space { height: calc(var(--inovel-bar-h, 150px) + 12px); }
+  html.kbd-open .inovel-hints { display: none; }
+}
+
 [data-theme="dark"] .inovel .chat-main { background: #14110d; }
 [data-theme="dark"] .inovel-bg::after { background: linear-gradient(180deg, rgba(20,17,13,0.86) 0%, rgba(20,17,13,0.78) 30%, rgba(20,17,13,0.92) 100%); }
 [data-theme="dark"] .inovel-bg-fallback { background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 16%, #14110d), #100d0a 70%); }
