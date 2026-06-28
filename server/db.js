@@ -514,4 +514,57 @@ for (const sql of [
   "ALTER TABLE worldbook_entries ADD COLUMN folder TEXT DEFAULT ''",
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 纯小说创作板块（AI Atelier）— 与角色扮演/剧场完全独立的「人写提示词 · AI 写正文」模块。
+// 设计要点（与传统大纲式写作彻底区分）：
+//   · 一部小说（novels）持有：整体文风设定 style、以及「局外设定」codex。
+//   · 「局外设定」codex 是永不被剧情改动的母版模板（immutable template）。
+//   · 开一条「剧情线」（novel_runs）时，会把 codex「复刻」进该线的「局内设定」canon。
+//   · 「局内设定」canon 是唯一真正生效、并随剧情推进被 AI 自动增补/更新的设定。
+//   · 设定条目的触发方式分：always 随时常驻 / keyword 关键提示词触发 / scene 关键场合触发。
+//   · 一条剧情线由若干「节拍」（novel_beats）组成：每个节拍 = 用户提示词 directive + AI 正文 content。
+// 这些 JSON 字段（style/codex/canon/vars/meta）在服务端按字符串存取，读取时再 JSON.parse。
+db.exec(`
+CREATE TABLE IF NOT EXISTS novels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  logline TEXT DEFAULT '',          -- 一句话故事内核
+  synopsis TEXT DEFAULT '',         -- 故事梗概 / 起点
+  cover TEXT,
+  genre TEXT DEFAULT '',
+  tags TEXT DEFAULT '',
+  style TEXT DEFAULT '{}',          -- 整体文风设定（JSON）
+  codex TEXT DEFAULT '[]',          -- 局外设定 · 永不可更改的母版（JSON 数组）
+  pinned INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS novel_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  novel_id INTEGER REFERENCES novels(id) ON DELETE CASCADE,
+  owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT DEFAULT '主线',
+  canon TEXT DEFAULT '[]',          -- 局内设定 · 唯一生效、随剧情自动更新（JSON 数组）
+  vars TEXT DEFAULT '{}',           -- 故事世界变量（JSON）
+  summary TEXT DEFAULT '',          -- 滚动剧情摘要（长篇记忆）
+  words INTEGER DEFAULT 0,
+  archived INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS novel_beats (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id INTEGER REFERENCES novel_runs(id) ON DELETE CASCADE,
+  seq INTEGER DEFAULT 0,
+  directive TEXT DEFAULT '',        -- 用户给的提示词 / 指令
+  content TEXT DEFAULT '',          -- AI 写出的正文
+  meta TEXT DEFAULT '{}',           -- 本节拍命中的设定 / 标签（JSON）
+  pinned INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_novel_runs_novel ON novel_runs (novel_id);
+CREATE INDEX IF NOT EXISTS idx_novel_beats_run ON novel_beats (run_id, seq);
+`);
+
 export default db;

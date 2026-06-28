@@ -13,6 +13,8 @@
     "start": "node server/index.js",
     "seed": "node server/seed.js",
     "smoke": "node server/smoke.mjs",
+    "test:novels": "node server/novel-test.mjs",
+    "test:novels:mock": "node server/novel-mock-test.mjs",
     "app:build": "npm run build:static && npx cap sync",
     "app:android": "npm run build:static && npx cap sync android && npx cap open android",
     "app:ios": "npm run build:static && npx cap sync ios && npx cap open ios",

@@ -687,6 +687,171 @@ async function llmOnce(settings, system, userMsg, maxTokens = 400) {
   return (data.choices?.[0]?.message?.content || '').trim();
 }
 
+/* ───────────────────────── 纯小说创作（AI Atelier） ─────────────────────────
+   与服务端 routes/novels.js 等价的浏览器内实现：人写提示词 → AI 写正文。
+   局外设定 codex（永不可改母版） / 局内设定 canon（唯一生效、随剧情自动更新）。 */
+const NV_TRIGGERS = new Set(['always', 'keyword', 'scene']);
+const NV_CATS = new Set(['world', 'character', 'relationship', 'faction', 'location', 'item', 'lore', 'rule', 'timeline', 'plot', 'other']);
+const NV_SOURCES = new Set(['meta', 'manual', 'auto']);
+const NV_CAT_LABEL = { world: '世界观', character: '角色', relationship: '关系', faction: '势力', location: '地点', item: '物品', lore: '设定', rule: '规则', timeline: '时间线', plot: '剧情', other: '其他' };
+const clip = (v, n) => String(v == null ? '' : v).slice(0, n);
+let _nvid = Date.now();
+const nvNewId = () => 'e' + (++_nvid).toString(36) + Math.random().toString(36).slice(2, 6);
+function nvCleanEntry(e, defaultSource = 'manual') {
+  if (!e || typeof e !== 'object') return null;
+  const title = clip(e.title, 80).trim(), content = clip(e.content, 4000).trim();
+  if (!title && !content) return null;
+  return {
+    id: clip(e.id, 40) || nvNewId(), title: title || '未命名设定',
+    category: NV_CATS.has(e.category) ? e.category : 'other',
+    trigger: NV_TRIGGERS.has(e.trigger) ? e.trigger : 'keyword',
+    keys: clip(e.keys, 240), content,
+    source: NV_SOURCES.has(e.source) ? e.source : defaultSource,
+    locked: e.locked ? 1 : 0, enabled: e.enabled === false ? 0 : 1,
+    updated_at: clip(e.updated_at, 30) || new Date().toISOString(),
+  };
+}
+function nvCleanEntries(arr, defaultSource) {
+  if (!Array.isArray(arr)) return [];
+  const out = [], seen = new Set();
+  for (const e of arr.slice(0, 200)) { const c = nvCleanEntry(e, defaultSource); if (!c) continue; if (seen.has(c.id)) c.id = nvNewId(); seen.add(c.id); out.push(c); }
+  return out;
+}
+const NV_POV = { first: '第一人称（“我”）', second: '第二人称（“你”）', third_limited: '第三人称限知视角', third_omni: '第三人称全知视角' };
+const NV_TENSE = { past: '过去时叙述', present: '现在进行时叙述' };
+const NV_PACING = { slow: '舒缓细腻、重氛围与心理', medium: '张弛有度', fast: '快节奏、强情节驱动' };
+const NV_PARA = { short: '短段落、留白多', medium: '中等段落', long: '长段落、绵密铺陈' };
+const NV_DLG = { low: '以叙述与描写为主，少对白', balanced: '叙述与对白均衡', high: '以对白和人物交锋为主' };
+const NV_RATING = { all: '全年龄向，避免露骨描写', teen: '可含轻度暴力与情感张力', mature: '成人向，可含强烈情感、暴力与黑暗主题（仍须文学化处理）' };
+const NV_LENGTH = { short: '约 200–350 字', medium: '约 400–700 字', long: '约 800–1200 字' };
+const NV_DEFAULT_STYLE = { pov: 'third_limited', tense: 'past', pacing: 'medium', paragraph: 'medium', dialogue: 'balanced', rating: 'all', beat_length: 'medium', tone: '', influences: '', forbidden: '', custom: '' };
+function nvCleanStyle(s) {
+  const o = { ...NV_DEFAULT_STYLE };
+  if (s && typeof s === 'object') {
+    if (NV_POV[s.pov]) o.pov = s.pov;
+    if (NV_TENSE[s.tense]) o.tense = s.tense;
+    if (NV_PACING[s.pacing]) o.pacing = s.pacing;
+    if (NV_PARA[s.paragraph]) o.paragraph = s.paragraph;
+    if (NV_DLG[s.dialogue]) o.dialogue = s.dialogue;
+    if (NV_RATING[s.rating]) o.rating = s.rating;
+    if (NV_LENGTH[s.beat_length]) o.beat_length = s.beat_length;
+    o.tone = clip(s.tone, 200); o.influences = clip(s.influences, 200);
+    o.forbidden = clip(s.forbidden, 400); o.custom = clip(s.custom, 1200);
+  }
+  return o;
+}
+function nvStyleDirectives(style) {
+  const s = nvCleanStyle(style);
+  const lines = [`· 叙述视角：${NV_POV[s.pov]}`, `· 时态：${NV_TENSE[s.tense]}`, `· 节奏：${NV_PACING[s.pacing]}`, `· 段落：${NV_PARA[s.paragraph]}`, `· 对白比重：${NV_DLG[s.dialogue]}`, `· 尺度：${NV_RATING[s.rating]}`];
+  if (s.tone) lines.push(`· 语气基调：${s.tone}`);
+  if (s.influences) lines.push(`· 笔法参照：${s.influences}（仅借鉴气质，不得抄袭原文）`);
+  if (s.forbidden) lines.push(`· 须避免：${s.forbidden}`);
+  if (s.custom) lines.push(`· 作者额外指令：${s.custom}`);
+  return lines.join('\n');
+}
+function nvSplitKeys(k) { return String(k || '').split(/[,，、]/).map(x => x.trim().toLowerCase()).filter(Boolean); }
+function nvTriggered(canon, directive = '', sceneText = '') {
+  const promptHay = (directive + ' ' + sceneText).toLowerCase(), sceneHay = sceneText.toLowerCase(), hit = [];
+  for (const e of canon) {
+    if (!e.enabled) continue;
+    if (e.trigger === 'always') { hit.push(e); continue; }
+    const keys = nvSplitKeys(e.keys);
+    if (!keys.length) { hit.push(e); continue; }
+    const hay = e.trigger === 'scene' ? sceneHay : promptHay;
+    if (keys.some(k => hay.includes(k))) hit.push(e);
+  }
+  return hit;
+}
+function nvBuildWriterSystem(novel, style, canon, run, directive, recentText) {
+  const hits = nvTriggered(canon, directive, recentText);
+  const s = nvCleanStyle(style), parts = [];
+  parts.push('你是一位顶尖的中文小说家，正在与作者协作创作一部连载小说。作者给出方向，你负责把它写成富有文学性、画面感和情感张力的正文。');
+  parts.push(`【作品】《${novel.title}》${novel.genre ? '｜类型：' + novel.genre : ''}${novel.logline ? '\n内核：' + novel.logline : ''}`);
+  parts.push('【文风要求】\n' + nvStyleDirectives(style));
+  if (run.summary) parts.push('【前情提要（务必保持连贯）】\n' + run.summary);
+  if (hits.length) parts.push('【当前生效设定（局内·须严格遵守，不得自相矛盾）】\n' + hits.map(e => `【${NV_CAT_LABEL[e.category] || '设定'}·${e.title}】${e.content}`).join('\n'));
+  parts.push(['【写作守则】', '1. 只输出小说正文本身，不要任何解释、标题、小标题、序号或「好的」之类的话。', `2. 本次篇幅约束：${NV_LENGTH[s.beat_length]}。在自然的情节落点收束，不要烂尾也不要强行收尾。`, '3. 严格延续前文的人物、时间、地点与已发生的事件，不要重写已写过的情节。', '4. 用具体的动作、感官细节与对白推进，避免空泛概述与“总结式”叙述。', '5. 始终贴合作者本次给出的方向；若方向与既有设定冲突，以作者方向为先并自然圆场。'].join('\n'));
+  return parts.join('\n\n');
+}
+function nvShape(n) { return n && { ...n, style: nvCleanStyle(n.style), codex: nvCleanEntries(n.codex || []) }; }
+function nvShapeRun(r) { return r && { ...r, canon: nvCleanEntries(r.canon || []), vars: (r.vars && typeof r.vars === 'object') ? r.vars : {} }; }
+function nvWords(runId) {
+  const w = filter('novel_beats', b => b.run_id === runId).reduce((s, x) => s + (x.content || '').replace(/\s/g, '').length, 0);
+  const r = find('novel_runs', x => x.id === runId); if (r) r.words = w; return w;
+}
+function nvForkRun(novel, name) {
+  const canon = nvCleanEntries(novel.codex || []).map(e => ({ ...e, source: 'meta', updated_at: new Date().toISOString() }));
+  return insert('novel_runs', { novel_id: novel.id, owner_id: novel.owner_id, name: clip(name, 40).trim() || '新线', canon, vars: {}, summary: '', words: 0, archived: 0, updated_at: now() });
+}
+// Pull first JSON value out of a model reply (handles ```json fences / prose wrapping).
+function nvExtractJSON(text) {
+  if (!text) return null;
+  let s = String(text).trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i); if (fence) s = fence[1].trim();
+  try { return JSON.parse(s); } catch { /* */ }
+  for (const [o, c] of [['[', ']'], ['{', '}']]) { const a = s.indexOf(o), b = s.lastIndexOf(c); if (a >= 0 && b > a) { try { return JSON.parse(s.slice(a, b + 1)); } catch { /* */ } } }
+  return null;
+}
+// Streaming write (browser → provider), persists a beat (or rewrites one).
+async function nvStreamWrite({ run, novel, settings, directive, beats, me, rewrite, instruction }) {
+  const eff = effectiveLLM(settings);
+  const enc = new TextEncoder();
+  let feeDue = 0;
+  if (eff.platform && me) { feeDue = platformFee(me, beats.length); if (me.gold < feeDue) {
+    const msg = `金币不足，本次平台 AI 创作需 ${feeDue} 金币（当前 ${me.gold}）。可前往钱包签到/兑换，或在设置中填写自己的 API。`;
+    return new Response(new ReadableStream({ start(c) { c.enqueue(enc.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)); c.enqueue(enc.encode('data: [DONE]\n\n')); c.close(); } }), { headers: { 'content-type': 'text/event-stream' } });
+  } }
+  const style = nvCleanStyle(novel.style), canon = nvCleanEntries(run.canon || []);
+  const recentText = beats.slice(-4).map(b => b.content).join('\n\n');
+  const system = nvBuildWriterSystem(novel, style, canon, run, directive || (rewrite ? rewrite.directive : ''), recentText + ' ' + (directive || ''));
+  const ctx = [];
+  for (const b of beats.slice(-8)) { if (b.directive) ctx.push({ role: 'user', content: b.directive }); if (b.content) ctx.push({ role: 'assistant', content: b.content }); }
+  let task;
+  if (rewrite) task = `请改写下面这段正文${instruction ? '，要求：' + instruction : '，让它更精彩、更具文学性，但保持情节与设定不变'}。只输出改写后的正文：\n\n${rewrite.content}`;
+  else task = directive ? `作者方向：${directive}\n\n请据此写出接下来的正文。` : '请顺着前文，自然地写出接下来的正文（推进一个有张力的小情节）。';
+  let sysFull = system;
+  if (eff.platform) { const gp = (platformCfg().system_prompt || '').trim(); if (gp) sysFull = gp + '\n\n' + system; }
+  const history = [...ctx, { role: 'user', content: task }];
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (o) => controller.enqueue(enc.encode(`data: ${JSON.stringify(o)}\n\n`));
+      const done = () => { controller.enqueue(enc.encode('data: [DONE]\n\n')); controller.close(); };
+      if (!eff.api_key) { send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key（浏览器将直连你的服务商）。' }); return done(); }
+      let full = '';
+      try {
+        const req = llmRequest({ ...eff, temperature: eff.temperature ?? 0.9, max_tokens: eff.max_tokens || 1600 }, sysFull, history);
+        let up = await realFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify(req.body) });
+        if (!up.ok && eff.protocol === 'openai') {
+          const up2 = await realFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify({ ...req.body, stream: false }) }).catch(() => null);
+          if (up2 && up2.ok) { const d = await up2.json().catch(() => ({})); const txt = d.choices?.[0]?.message?.content || ''; if (txt) { full = txt; send({ delta: txt }); } up = { ok: true, body: null, _handled: true }; }
+          else { const t1 = await up.text().catch(() => ''); send({ error: `模型服务返回 ${up.status}：${t1.slice(0, 200)}` }); up = { ok: false }; }
+        }
+        if (up.ok && up.body) {
+          const reader = up.body.getReader(), dec = new TextDecoder(); let buf = '';
+          while (true) { const { done: d, value } = await reader.read(); if (d) break; buf += dec.decode(value, { stream: true }); const lines = buf.split(/\r?\n/); buf = lines.pop() || '';
+            for (const line of lines) { const t = line.trim(); if (!t.startsWith('data:')) continue; const dd = t.slice(5).trim(); if (dd === '[DONE]') continue; const delta = parseDelta(dd, eff.protocol); if (delta) { full += delta; send({ delta }); } } }
+        } else if (!up.ok && !up._handled) { const t = await (up.text ? up.text().catch(() => '') : Promise.resolve('')); if (t || !full) send({ error: `模型服务返回 ${up.status || ''}：${(t || '').slice(0, 200)}` }); }
+      } catch (err) { send({ error: '连接模型服务失败：' + err.message + '（可能是服务商的浏览器跨域限制；可尝试在设置中更换协议或服务商）' }); }
+      full = (full || '').trim();
+      if (full) {
+        if (rewrite) { rewrite.content = full; send({ beat_id: rewrite.id }); }
+        else {
+          const seq = filter('novel_beats', b => b.run_id === run.id).reduce((mx, b) => Math.max(mx, b.seq), -1) + 1;
+          const meta = { triggered: nvTriggered(canon, directive, recentText).map(e => e.id) };
+          const bt = insert('novel_beats', { run_id: run.id, seq, directive: directive || '', content: full, meta, pinned: 0 });
+          send({ beat_id: bt.id, seq });
+        }
+        nvWords(run.id); run.updated_at = now();
+        const nv = find('novels', x => x.id === run.novel_id); if (nv) nv.updated_at = now();
+        if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `AI 创作 ·《${novel.title}》` }); send({ fee: feeDue }); } catch { /* */ } }
+        save();
+      }
+      done();
+    },
+  });
+  return new Response(stream, { headers: { 'content-type': 'text/event-stream' } });
+}
+
 /* ----------------------------- router ----------------------------- */
 const CATEGORIES = [['fantasy', '奇幻', ''], ['scifi', '科幻', ''], ['romance', '恋爱', ''], ['healing', '治愈', ''], ['mystery', '悬疑', ''], ['history', '历史', ''], ['game', '游戏', ''], ['anime', '二次元', '愈'], ['daily', '日常', ''], ['horror', '惊悚', ''], ['wuxia', '武侠', ''], ['other', '其他', '']];
 const PACKAGES = [{ id: 'p1', cny: 6, diamond: 60, bonus: 0 }, { id: 'p2', cny: 30, diamond: 300, bonus: 30 }, { id: 'p3', cny: 68, diamond: 680, bonus: 120 }, { id: 'p4', cny: 128, diamond: 1280, bonus: 320 }, { id: 'p5', cny: 328, diamond: 3280, bonus: 1080 }, { id: 'p6', cny: 648, diamond: 6480, bonus: 2880 }];
@@ -1962,6 +2127,184 @@ async function route(method, path, search, body, headers) {
     return J({ reports: rows });
   }
   if ((m = P(/^\/admin\/reports\/(\d+)\/resolve$/)) && method === 'POST') { gmOnly(); const r = find('reports', x => x.id === +m[1]); if (r) { r.status = 'resolved'; save(); } return J({ ok: true }); }
+
+  // ---------- 纯小说创作（AI Atelier） ----------
+  if (path === '/novels' && method === 'GET') {
+    need();
+    const rows = filter('novels', n => n.owner_id === me.id).sort((a, b) => (b.pinned || 0) - (a.pinned || 0) || (b.updated_at || '').localeCompare(a.updated_at || ''));
+    const novels = rows.map(n => { const s = nvShape(n); const runs = filter('novel_runs', r => r.novel_id === n.id); return { ...s, codex_count: s.codex.length, run_count: runs.length, words: runs.reduce((x, r) => x + (r.words || 0), 0) }; });
+    return J({ novels });
+  }
+  if (path === '/novels' && method === 'POST') {
+    need(); const title = clip(body.title, 80).trim(); if (!title) return E('请填写作品名');
+    const n = insert('novels', { owner_id: me.id, title, logline: clip(body.logline, 200), synopsis: clip(body.synopsis, 4000), cover: body.cover || null, genre: clip(body.genre, 40), tags: clip(body.tags, 200), style: nvCleanStyle(body.style), codex: nvCleanEntries(body.codex, 'meta'), pinned: 0, updated_at: now() });
+    nvForkRun(n, '主线'); save();
+    return J({ novel: nvShape(n) });
+  }
+  if (path === '/novels/brainstorm' && method === 'POST') {
+    need(); const seed = clip(body.seed, 600).trim(); if (!seed) return E('请先写一句你的创意');
+    const s = find('settings', x => x.user_id === me.id);
+    let obj; try { obj = nvExtractJSON(await llmOnce(s, '你是小说企划。根据用户的一句创意，构思一部有吸引力的小说雏形。', `创意：${seed}\n\n输出 JSON：{"title":"作品名","logline":"一句话故事内核(40字内)","genre":"类型","synopsis":"100-200字开篇梗概","tags":"逗号分隔的3-5个标签"}。只输出 JSON。`, 800)); } catch (e) { return E(e.message, 502); }
+    if (!obj || typeof obj !== 'object') return E('AI 返回格式异常，请重试', 502);
+    return J({ draft: { title: clip(obj.title, 80), logline: clip(obj.logline, 200), genre: clip(obj.genre, 40), synopsis: clip(obj.synopsis, 4000), tags: clip(obj.tags, 200) } });
+  }
+  if ((m = P(/^\/novels\/(\d+)$/))) {
+    const n = find('novels', x => x.id === +m[1]);
+    if (!n) return E('小说不存在', 404); need(); if (n.owner_id !== me.id) return E('无权访问', 403);
+    if (method === 'GET') {
+      const runs = filter('novel_runs', r => r.novel_id === n.id).sort((a, b) => (a.archived || 0) - (b.archived || 0) || (b.updated_at || '').localeCompare(a.updated_at || ''))
+        .map(r => ({ id: r.id, name: r.name, words: r.words || 0, archived: r.archived || 0, summary: r.summary || '', created_at: r.created_at, updated_at: r.updated_at, beats: filter('novel_beats', b => b.run_id === r.id).length }));
+      return J({ novel: nvShape(n), runs });
+    }
+    if (method === 'PATCH') {
+      if (typeof body.title === 'string' && body.title.trim()) n.title = clip(body.title, 80).trim();
+      if (typeof body.logline === 'string') n.logline = clip(body.logline, 200);
+      if (typeof body.synopsis === 'string') n.synopsis = clip(body.synopsis, 4000);
+      if (body.cover !== undefined) n.cover = body.cover || null;
+      if (typeof body.genre === 'string') n.genre = clip(body.genre, 40);
+      if (typeof body.tags === 'string') n.tags = clip(body.tags, 200);
+      if (body.style !== undefined) n.style = nvCleanStyle(body.style);
+      if (body.codex !== undefined) n.codex = nvCleanEntries(body.codex, 'meta');
+      if (body.pinned !== undefined) n.pinned = body.pinned ? 1 : 0;
+      n.updated_at = now(); save();
+      return J({ novel: nvShape(n) });
+    }
+    if (method === 'DELETE') {
+      const runIds = filter('novel_runs', r => r.novel_id === n.id).map(r => r.id);
+      db.novel_beats = filter('novel_beats', b => !runIds.includes(b.run_id));
+      db.novel_runs = filter('novel_runs', r => r.novel_id !== n.id);
+      db.novels = filter('novels', x => x.id !== n.id); save();
+      return J({ ok: true });
+    }
+  }
+  if ((m = P(/^\/novels\/(\d+)\/runs$/)) && method === 'POST') {
+    const n = find('novels', x => x.id === +m[1]); if (!n) return E('小说不存在', 404); need(); if (n.owner_id !== me.id) return E('无权访问', 403);
+    const cnt = filter('novel_runs', r => r.novel_id === n.id).length;
+    const run = nvForkRun(n, body.name || `第 ${cnt + 1} 线`); save();
+    return J({ run: nvShapeRun(run) });
+  }
+  if ((m = P(/^\/novels\/(\d+)\/codex\/generate$/)) && method === 'POST') {
+    const n = find('novels', x => x.id === +m[1]); if (!n) return E('小说不存在', 404); need(); if (n.owner_id !== me.id) return E('无权访问', 403);
+    const s = find('settings', x => x.user_id === me.id); const focus = clip(body.focus, 300).trim();
+    const base = `《${n.title}》${n.genre ? '（' + n.genre + '）' : ''}\n内核：${n.logline || '—'}\n梗概：${n.synopsis || '—'}`;
+    let arr; try { arr = nvExtractJSON(await llmOnce(s, '你是世界观架构师。为这部小说搭建一套可落地的「设定母版」：涵盖世界观背景、核心主角与重要配角、关键关系、主要势力/地点、独特设定或规则、以及悬而未决的核心剧情线。条目精炼、彼此自洽。', `${base}\n${focus ? '侧重：' + focus + '\n' : ''}\n请输出 JSON 数组（8-14 条），每个元素 {"title":"条目名","category":"world|character|relationship|faction|location|item|lore|rule|timeline|plot","content":"1-3句设定","keys":"触发关键词,逗号分隔","trigger":"always|keyword|scene"}。世界观/基调类用 always；具体人物地点物品用 keyword 或 scene。只输出 JSON。`, 1800)); } catch (e) { return E(e.message, 502); }
+    if (!Array.isArray(arr)) return E('AI 返回格式异常，请重试', 502);
+    const generated = nvCleanEntries(arr.map(x => ({ ...x, source: 'meta' })), 'meta');
+    const existing = body.append !== false ? nvCleanEntries(n.codex || []) : [];
+    n.codex = nvCleanEntries(existing.concat(generated), 'meta'); n.updated_at = now(); save();
+    return J({ novel: nvShape(n), generated: generated.length });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)$/))) {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    if (method === 'GET') {
+      const novel = find('novels', x => x.id === r.novel_id);
+      const beats = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => a.seq - b.seq || a.id - b.id).map(x => ({ ...x, meta: x.meta || {} }));
+      return J({ run: nvShapeRun(r), novel: nvShape(novel), beats });
+    }
+    if (method === 'PATCH') {
+      if (typeof body.name === 'string' && body.name.trim()) r.name = clip(body.name, 40).trim();
+      if (body.canon !== undefined) r.canon = nvCleanEntries(body.canon);
+      if (body.vars !== undefined && body.vars && typeof body.vars === 'object') r.vars = body.vars;
+      if (typeof body.summary === 'string') r.summary = clip(body.summary, 6000);
+      if (body.archived !== undefined) r.archived = body.archived ? 1 : 0;
+      r.updated_at = now(); save();
+      return J({ run: nvShapeRun(r) });
+    }
+    if (method === 'DELETE') {
+      if (filter('novel_runs', x => x.novel_id === r.novel_id).length <= 1) return E('至少保留一条剧情线');
+      db.novel_beats = filter('novel_beats', b => b.run_id !== r.id);
+      db.novel_runs = filter('novel_runs', x => x.id !== r.id); save();
+      return J({ ok: true });
+    }
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/refork$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const novel = find('novels', x => x.id === r.novel_id);
+    const cur = nvCleanEntries(r.canon || []);
+    let canon = nvCleanEntries(novel.codex || []).map(e => ({ ...e, source: 'meta', updated_at: new Date().toISOString() }));
+    if (body.keep_auto) canon = canon.concat(cur.filter(e => e.source === 'auto' || e.source === 'manual'));
+    r.canon = nvCleanEntries(canon); r.updated_at = now(); save();
+    return J({ run: nvShapeRun(r) });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/write$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const novel = find('novels', x => x.id === r.novel_id); const s = find('settings', x => x.user_id === me.id);
+    const beats = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => a.seq - b.seq || a.id - b.id);
+    return nvStreamWrite({ run: r, novel, settings: s, directive: clip(body.directive, 2000).trim(), beats, me });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/beats\/(\d+)\/rewrite$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const beat = find('novel_beats', b => b.id === +m[2] && b.run_id === r.id); if (!beat) return E('段落不存在', 404);
+    const novel = find('novels', x => x.id === r.novel_id); const s = find('settings', x => x.user_id === me.id);
+    const before = filter('novel_beats', b => b.run_id === r.id && b.seq < beat.seq).sort((a, b) => a.seq - b.seq || a.id - b.id);
+    return nvStreamWrite({ run: r, novel, settings: s, beats: before, me, rewrite: beat, instruction: clip(body.instruction, 600).trim() });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/beats\/(\d+)$/))) {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const beat = find('novel_beats', b => b.id === +m[2] && b.run_id === r.id); if (!beat) return E('段落不存在', 404);
+    if (method === 'PATCH') {
+      if (typeof body.content === 'string') beat.content = clip(body.content, 12000);
+      if (typeof body.directive === 'string') beat.directive = clip(body.directive, 2000);
+      if (body.pinned !== undefined) beat.pinned = body.pinned ? 1 : 0;
+      nvWords(r.id); save(); return J({ beat: { ...beat, meta: beat.meta || {} } });
+    }
+    if (method === 'DELETE') { db.novel_beats = filter('novel_beats', b => b.id !== beat.id); nvWords(r.id); save(); return J({ ok: true }); }
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/branch\/(\d+)$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const pivot = find('novel_beats', b => b.id === +m[2] && b.run_id === r.id); if (!pivot) return E('段落不存在', 404);
+    const novel = find('novels', x => x.id === r.novel_id);
+    const run2 = insert('novel_runs', { novel_id: novel.id, owner_id: me.id, name: clip(body.name, 40).trim() || (r.name + ' · 分支'), canon: nvCleanEntries(r.canon || []), vars: r.vars || {}, summary: r.summary || '', words: 0, archived: 0, updated_at: now() });
+    filter('novel_beats', b => b.run_id === r.id && b.seq <= pivot.seq).sort((a, b) => a.seq - b.seq || a.id - b.id)
+      .forEach((bt, i) => insert('novel_beats', { run_id: run2.id, seq: i, directive: bt.directive, content: bt.content, meta: bt.meta || {}, pinned: bt.pinned || 0 }));
+    nvWords(run2.id); save();
+    return J({ run: nvShapeRun(run2) });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/sync-canon$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const s = find('settings', x => x.user_id === me.id);
+    const recent = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => b.seq - a.seq).slice(0, 3).reverse().map(b => b.content).join('\n\n');
+    if (!recent.trim()) return J({ run: nvShapeRun(r), added: 0, updated: 0 });
+    const canon = nvCleanEntries(r.canon || []);
+    const known = canon.map(e => `- ${e.title}（${NV_CAT_LABEL[e.category]}）：${e.content.slice(0, 60)}`).join('\n') || '（暂无）';
+    let arr; try { arr = nvExtractJSON(await llmOnce(s, '你是小说连续性编辑。任务：从最新正文中提炼出「应当长期记住的设定事实」（新出场角色、关系变化、地点、物品、势力、世界规则、关键剧情状态），用于维护设定库，保证后续创作不矛盾。只提炼确实在正文中发生/确立的事实，不要臆造、不要写转瞬即逝的细节。', `已知设定：\n${known}\n\n最新正文：\n${recent}\n\n请输出一个 JSON 数组，每个元素形如 {"title":"简短条目名","category":"world|character|relationship|faction|location|item|lore|rule|timeline|plot","content":"一句到两句话的设定描述","keys":"触发关键词，逗号分隔","trigger":"keyword 或 scene 或 always"}。若是对已知条目的更新，请沿用同名 title。若没有任何值得沉淀的新设定，输出空数组 []。只输出 JSON。`, 900)); } catch (e) { return E(e.message, 502); }
+    if (!Array.isArray(arr)) arr = [];
+    let added = 0, updated = 0; const byTitle = new Map(canon.map(e => [e.title.trim(), e]));
+    for (const raw of arr.slice(0, 24)) {
+      const c = nvCleanEntry({ ...raw, source: 'auto' }, 'auto'); if (!c) continue;
+      const exist = byTitle.get(c.title.trim());
+      if (exist) { if (exist.locked || exist.source === 'meta') continue; exist.content = c.content || exist.content; if (c.keys) exist.keys = c.keys; exist.updated_at = new Date().toISOString(); updated++; }
+      else { canon.push(c); byTitle.set(c.title.trim(), c); added++; }
+    }
+    if (added || updated) { r.canon = nvCleanEntries(canon); r.updated_at = now(); save(); }
+    return J({ run: nvShapeRun(r), added, updated });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/recap$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const s = find('settings', x => x.user_id === me.id);
+    const text = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => a.seq - b.seq || a.id - b.id).map(b => b.content).join('\n\n');
+    if (!text.trim()) return J({ run: nvShapeRun(r) });
+    let recap; try { recap = await llmOnce(s, '你是小说编辑，请把以下连载内容压缩成简洁连贯的「前情提要」，覆盖关键人物、已发生的核心事件、当前局势与悬念，控制在 300 字内。只输出提要本身。', text.slice(-8000), 600); } catch (e) { return E(e.message, 502); }
+    r.summary = clip(recap, 6000); r.updated_at = now(); save();
+    return J({ run: nvShapeRun(r) });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/suggest$/)) && method === 'POST') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const novel = find('novels', x => x.id === r.novel_id); const s = find('settings', x => x.user_id === me.id);
+    const recent = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => b.seq - a.seq).slice(0, 3).reverse().map(b => b.content).join('\n\n') || novel.synopsis || novel.logline || '故事尚未开始。';
+    let arr; try { arr = nvExtractJSON(await llmOnce(s, `你是资深小说策划，为《${novel.title}》构思接下来的剧情走向。给出 4 个差异明显、各有张力的方向（有的推进主线、有的制造冲突或转折、有的深化人物或埋伏笔）。`, `当前进展：\n${recent}\n\n请输出 JSON 数组，每个元素 {"label":"6字内方向标签","prompt":"可直接作为创作指令的一句话方向（30字内）"}。只输出 JSON。`, 700)); } catch (e) { return E(e.message, 502); }
+    if (!Array.isArray(arr)) arr = [];
+    return J({ suggestions: arr.slice(0, 6).map(x => ({ label: clip(x.label, 24), prompt: clip(x.prompt, 200) })).filter(x => x.prompt) });
+  }
+  if ((m = P(/^\/novels\/runs\/(\d+)\/export$/)) && method === 'GET') {
+    const r = find('novel_runs', x => x.id === +m[1]); if (!r) return E('剧情线不存在', 404); need(); if (r.owner_id !== me.id) return E('无权访问', 403);
+    const novel = find('novels', x => x.id === r.novel_id);
+    const beats = filter('novel_beats', b => b.run_id === r.id).sort((a, b) => a.seq - b.seq || a.id - b.id);
+    const md = search.get('format') === 'md';
+    let out = md ? `# ${novel.title}\n\n${novel.logline ? '> ' + novel.logline + '\n\n' : ''}` : `${novel.title}\n${novel.logline || ''}\n\n`;
+    beats.forEach((b, i) => { out += (md ? `### ${i + 1}\n\n` : `\n— ${i + 1} —\n\n`) + (b.content || '') + '\n\n'; });
+    return J({ text: out, words: nvWords(r.id) });
+  }
 
   throw { status: 404, msg: '接口不存在：' + path };
 }
