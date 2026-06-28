@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { seedQiushuoyueNovel } from './seed-data/qiushuoyue-novel.js';
 
 // 生产环境禁止运行 seed（会清库并预置弱口令 demo 账号），避免误操作导致管理员后门。
 if (process.env.NODE_ENV === 'production') {
@@ -233,6 +234,9 @@ const cid = conv.lastInsertRowid; const M = db.prepare('INSERT INTO messages (co
 M.run(cid, 'assistant', '*林叶沙沙作响，一道翠色身影从树影中浮现*\n\n旅人，你踏入了永青森林的领地。别害怕……只要你心怀善意，这里的每一棵树都会为你低语。说吧，是什么风把你吹来的？');
 M.run(cid, 'user', '我在寻找传说中的贤者之泉，听说它能治愈一切伤痛。');
 M.run(cid, 'assistant', '*薇尔的眼中闪过一丝了然，藤蔓温柔地向你舒展*\n\n贤者之泉……就在森林最深处。但旅人，泉水的恩赐一生只此一次。你要治愈的，是身体的伤，还是心上的呢？');
+
+// ---- 小说工坊：为 demo 预置架空政治小说《朔月当空 · 平行2026》（含局外设定母版 + 主线） ----
+seedQiushuoyueNovel(db, u1);
 
 // ---- scripts ----
 function script(author, s) {
