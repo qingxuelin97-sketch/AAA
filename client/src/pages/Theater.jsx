@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Uploader, Modal, Avatar } from '../ui.jsx';
 import StageEditor from '../components/StageEditor.jsx';
+import NovelWorldEditor from '../components/NovelWorldEditor.jsx';
 import { BookOpen, Users, Plus, Check, Feather, Sparkles, ChevronRight, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 
 // 互动小说（原「剧场」）：以你为主角的即兴叙事。挑选登场角色、写下序章，
@@ -65,6 +66,7 @@ function CreateModal({ onClose, onDone }) {
   const [pool, setPool] = useState([]);
   const [picked, setPicked] = useState([]);
   const [stageCfg, setStageCfg] = useState({ charAuto: true, charBg: {}, scenes: [] });
+  const [novelWb, setNovelWb] = useState([]);
   const [showStage, setShowStage] = useState(false);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -85,7 +87,7 @@ function CreateModal({ onClose, onDone }) {
     if (picked.length === 0) return toast('至少选择一位登场角色', 'err');
     setBusy(true);
     try {
-      const d = await api('/theater', { method: 'POST', body: { ...form, cast: picked, stage_config: stageCfg } });
+      const d = await api('/theater', { method: 'POST', body: { ...form, cast: picked, stage_config: stageCfg, worldbook: novelWb } });
       onDone(d.theater.id);
     } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
   };
@@ -120,15 +122,15 @@ function CreateModal({ onClose, onDone }) {
       </div>
       <div className="stage-fold">
         <button type="button" className="stage-fold-head" onClick={() => setShowStage(s => !s)}>
-          <ImageIcon size={15} /> 舞台背景 <span className="muted">（进阶 · 可后续在故事内修改）</span>
-          {(stageCfg.scenes.length > 0 || Object.keys(stageCfg.charBg).length > 0) && (
-            <span className="stage-fold-badge">{Object.keys(stageCfg.charBg).length + stageCfg.scenes.length} 项</span>
-          )}
+          <ImageIcon size={15} /> 舞台背景 · 专属世界书 <span className="muted">（进阶 · 可后续在故事内修改）</span>
+          {(() => { const n = Object.keys(stageCfg.charBg).length + stageCfg.scenes.length + novelWb.length; return n > 0 ? <span className="stage-fold-badge">{n} 项</span> : null; })()}
           <span style={{ marginLeft: 'auto' }}>{showStage ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</span>
         </button>
         {showStage && (
           <div className="stage-fold-body">
             <StageEditor cast={pool.filter(c => picked.includes(c.id))} value={stageCfg} onChange={setStageCfg} />
+            <div className="stage-sec-title" style={{ marginTop: 14 }}><BookOpen size={13} /> 互动小说专属世界书</div>
+            <NovelWorldEditor value={novelWb} onChange={setNovelWb} />
           </div>
         )}
       </div>

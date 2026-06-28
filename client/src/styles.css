@@ -740,6 +740,17 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .stage-fold-body { padding: 12px 14px; border-top: 1px solid var(--border); }
 [data-theme="dark"] .stage-char-row, [data-theme="dark"] .stage-scene-row, [data-theme="dark"] .stage-fold-head { background: var(--panel); }
 
+/* —— 互动小说专属世界书编辑器 —— */
+.novel-wb { display: flex; flex-direction: column; gap: 8px; }
+.novel-wb-empty { display: flex; align-items: center; gap: 7px; padding: 14px; border: 1px dashed var(--border-2); border-radius: 11px; color: var(--muted); font-size: 12.5px; background: var(--bg-2); }
+.novel-wb-row { border: 1px solid var(--border); border-radius: 11px; padding: 9px 10px; background: var(--bg-2); display: flex; flex-direction: column; gap: 7px; }
+.novel-wb-top { display: flex; align-items: center; gap: 8px; }
+.novel-wb-top .input { flex: 1; min-width: 0; }
+.novel-wb-always { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--muted); white-space: nowrap; cursor: pointer; }
+.novel-wb-always input { accent-color: var(--accent); }
+.novel-wb-row .textarea { font-size: 13.5px; }
+[data-theme="dark"] .novel-wb-row, [data-theme="dark"] .novel-wb-empty { background: var(--panel); }
+
 [data-theme="dark"] .inovel .chat-main { background: #14110d; }
 [data-theme="dark"] .inovel-bg::after { background: linear-gradient(180deg, rgba(20,17,13,0.86) 0%, rgba(20,17,13,0.78) 30%, rgba(20,17,13,0.92) 100%); }
 [data-theme="dark"] .inovel-bg-fallback { background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 16%, #14110d), #100d0a 70%); }

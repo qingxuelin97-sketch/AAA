@@ -4,6 +4,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { useKeyboardInsetBar } from '../mobile.js';
 import StageEditor from '../components/StageEditor.jsx';
+import NovelWorldEditor from '../components/NovelWorldEditor.jsx';
 import { Send, Sparkles, ArrowLeft, Feather, Users, LogOut, BookOpen, Zap, ZapOff, ChevronRight, Palette, Image as ImageIcon } from 'lucide-react';
 
 // 互动小说阅读器：以你为主角的即兴叙事。你写下行动 / 台词，旁白会续写后果，
@@ -29,6 +30,7 @@ export default function TheaterRoom() {
   const [autoFlow, setAutoFlow] = useState(() => localStorage.getItem('inovel_autoflow') !== '0');
   // 舞台背景设定（创作者自定义）；离线/在线后端均通过 stage_config 返回
   const [stageConfig, setStageConfig] = useState({ charAuto: true, charBg: {}, scenes: [] });
+  const [novelWb, setNovelWb] = useState([]);
   const [stageOpen, setStageOpen] = useState(false);
   const [savingStage, setSavingStage] = useState(false);
   const scrollRef = useRef();
@@ -50,6 +52,7 @@ export default function TheaterRoom() {
       setData(d);
       setMessages(d.messages);
       if (d.theater?.stage_config) setStageConfig({ charAuto: true, charBg: {}, scenes: [], ...d.theater.stage_config });
+      if (Array.isArray(d.theater?.worldbook)) setNovelWb(d.theater.worldbook);
       lastId.current = d.messages.length ? d.messages[d.messages.length - 1].id : 0;
       if (!d.joined) api('/theater/' + id + '/join', { method: 'POST' }).catch(() => {});
     } catch (e) { toast(e.message, 'err'); }
@@ -99,10 +102,11 @@ export default function TheaterRoom() {
   const saveStage = async () => {
     setSavingStage(true);
     try {
-      const d = await api('/theater/' + id, { method: 'PATCH', body: { stage_config: stageConfig } });
+      const d = await api('/theater/' + id, { method: 'PATCH', body: { stage_config: stageConfig, worldbook: novelWb } });
       if (d.theater?.stage_config) setStageConfig({ charAuto: true, charBg: {}, scenes: [], ...d.theater.stage_config });
+      if (Array.isArray(d.theater?.worldbook)) setNovelWb(d.theater.worldbook);
       setData(prev => prev ? { ...prev, theater: { ...prev.theater, ...d.theater } } : prev);
-      toast('舞台设定已保存');
+      toast('舞台与世界书已保存');
       setStageOpen(false);
     } catch (e) { toast(e.message, 'err'); } finally { setSavingStage(false); }
   };
@@ -254,9 +258,11 @@ export default function TheaterRoom() {
 
       {stageOpen && (
         <Modal onClose={() => setStageOpen(false)}>
-          <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Palette size={18} /> 舞台背景设定</h2>
-          <p className="muted" style={{ marginTop: -4, fontSize: 13 }}>设定将即时预览于背景；点「保存」后对所有读者生效。</p>
+          <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Palette size={18} /> 舞台背景 · 专属世界书</h2>
+          <p className="muted" style={{ marginTop: -4, fontSize: 13 }}>背景改动即时预览；点「保存」后对所有读者生效。</p>
           <StageEditor cast={cast} value={stageConfig} onChange={setStageConfig} />
+          <div className="stage-sec-title" style={{ marginTop: 16 }}><BookOpen size={13} /> 互动小说专属世界书</div>
+          <NovelWorldEditor value={novelWb} onChange={setNovelWb} />
           <div className="row" style={{ marginTop: 16 }}>
             <button className="btn block" onClick={() => setStageOpen(false)}>关闭</button>
             <button className="btn primary block" onClick={saveStage} disabled={savingStage}>{savingStage ? '保存中…' : '保存设定'}</button>

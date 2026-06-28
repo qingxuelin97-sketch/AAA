@@ -372,6 +372,8 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN locked_until INTEGER DEFAULT 0',
   // 互动小说舞台设定：角色发言自动切背景 / 角色背景覆盖 / 场景关键词触发背景（创作者自定义）
   "ALTER TABLE theaters ADD COLUMN stage_config TEXT DEFAULT '{}'",
+  // 互动小说专属世界书：叠加在所有登场角色之上的额外设定（关键词触发 / 常驻）
+  "ALTER TABLE theaters ADD COLUMN worldbook TEXT DEFAULT '[]'",
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 // 安全相关：剧本点赞去重表，PRIMARY KEY(script_id,user_id) 防重复点赞刷数。
