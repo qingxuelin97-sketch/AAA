@@ -96,12 +96,12 @@ export function stripSpeechActions(input) {
 // 从「原文」（含 *动作* 与标点，朗读前剥离）推断情绪：动作与情绪词信号最强，标点兜底。
 // 规则按强度从强到弱匹配，先命中者为准；无命中则中性。
 const EMOTION_RULES = [
-  ['angry',     /怒|愤|吼|咆哮|生气|发火|暴怒|可恶|混蛋|滚开|岂有此理|怒视|咬牙|瞪/],
-  ['sad',       /哭|泪|呜咽|抽泣|伤心|难过|悲伤|哀伤|叹气|叹息|绝望|哽咽|失落|委屈|低落/],
-  ['fearful',   /颤抖|发抖|害怕|恐惧|惊恐|战栗|瑟瑟|不敢|畏惧|惶恐|心惊/],
-  ['surprised', /震惊|吃惊|惊讶|不会吧|竟然|居然|难以置信|目瞪口呆|啊？|什么[?？！]/],
-  ['happy',     /微笑|大笑|欢笑|高兴|开心|欣喜|喜悦|兴奋|雀跃|哈哈|嘿嘿|嘻嘻|太好了|耶！|笑着|笑道/],
-  ['gentle',    /温柔|轻声|柔声|低语|呢喃|轻轻|安抚|抱抱|温和|宠溺|耳语/],
+  ['angry',     /怒|愤|吼|咆哮|生气|发火|暴怒|可恶|混蛋|滚开|岂有此理|怒视|咬牙|瞪|恼怒|气恼|恼火|怒喝|怒斥|训斥|斥责|喝道/],
+  ['sad',       /哭|泪|呜咽|抽泣|伤心|难过|悲伤|哀伤|叹气|叹息|绝望|哽咽|失落|委屈|低落|泪流|啜泣|哀痛|哀愁|怅然|落寞|凄凉|心碎|黯然|神伤/],
+  ['fearful',   /颤抖|发抖|害怕|恐惧|惊恐|战栗|瑟瑟|不敢|畏惧|惶恐|心惊|慌乱|心慌|胆寒|心悸|惊慌|忐忑/],
+  ['surprised', /震惊|吃惊|惊讶|不会吧|竟然|居然|难以置信|目瞪口呆|啊？|什么[?？！]|天啊|天哪|我的天|哎呀/],
+  ['happy',     /微笑|大笑|欢笑|高兴|开心|欣喜|喜悦|兴奋|雀跃|哈哈|嘿嘿|嘻嘻|太好了|耶！|笑着|笑道|乐呵|美滋滋|喜滋滋|乐开怀|美极了|乐不可支/],
+  ['gentle',    /温柔|轻声|柔声|低语|呢喃|轻轻|安抚|抱抱|温和|宠溺|耳语|缓缓|徐徐|娓娓|软语|嗔怪|轻笑/],
 ];
 export function detectEmotion(raw) {
   const s = String(raw || '');
@@ -124,6 +124,8 @@ const EMOTION_PROSODY = {
 };
 // MiniMax voice_setting.emotion 支持集（gentle/neutral 不下发，走韵律即可）。
 const MINIMAX_EMOTION = { happy: 'happy', sad: 'sad', angry: 'angry', fearful: 'fearful', surprised: 'surprised' };
+// 火山引擎 request.emotion：仅多情感音色支持，不支持的音色会忽略该字段，安全。
+const VOLCANO_EMOTION = { happy: 'happy', sad: 'sad', angry: 'angry', surprised: 'surprised', fearful: 'fear' };
 // Azure <mstts:express-as style=…>：未支持该 style 的音色会自动回退，安全。
 const AZURE_STYLE = { happy: 'cheerful', sad: 'sad', angry: 'angry', fearful: 'fearful', surprised: 'excited', gentle: 'gentle' };
 // OpenAI gpt-4o-mini-tts 的 instructions（老模型忽略该字段，安全）。
@@ -166,7 +168,7 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       const reqid = (globalThis.crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2)));
       const r = await fetch(`${b || 'https://openspeech.bytedance.com'}/api/v1/tts`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer;${vtok}` },
-        body: JSON.stringify({ app: { appid, token: vtok, cluster }, user: { uid: 'huanyu' }, audio: { voice_type: voice || 'BV001_streaming', encoding: 'mp3', speed_ratio: rate, volume_ratio: 1, pitch_ratio: pit }, request: { reqid, text, operation: 'query' } }) });
+        body: JSON.stringify({ app: { appid, token: vtok, cluster }, user: { uid: 'huanyu' }, audio: { voice_type: voice || 'BV001_streaming', encoding: 'mp3', speed_ratio: rate, volume_ratio: 1, pitch_ratio: pit }, request: { reqid, text, operation: 'query', ...(VOLCANO_EMOTION[emo] ? { emotion: VOLCANO_EMOTION[emo] } : {}) } }) });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
       const d = await r.json().catch(() => null);
       if (d?.code !== 3000 || !d?.data) return { ok: false, status: 502, error: '火山语音失败：' + (d?.message || JSON.stringify(d || {}).slice(0, 200)) };
@@ -190,9 +192,10 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(resp.Audio, 'base64') };
     }
     if (proto === 'elevenlabs') {
+      // ElevenLabs voice_settings.speed 取值 [0.7,1.2]（仅 v2 模型支持，老模型忽略该字段，安全）。
       const r = await fetch(`${b}/text-to-speech/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'xi-api-key': key, Accept: 'audio/mpeg' },
-        body: JSON.stringify({ text, model_id: model || 'eleven_multilingual_v2' }) });
+        body: JSON.stringify({ text, model_id: model || 'eleven_multilingual_v2', voice_settings: { speed: Math.max(0.7, Math.min(1.2, rate)) } }) });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
     }
