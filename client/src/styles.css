@@ -36,7 +36,7 @@ body {
   background: var(--bg);
   background-image:
     radial-gradient(900px 520px at 88% -8%, rgba(204, 106, 68, 0.07), transparent 60%),
-    radial-gradient(760px 480px at -6% 108%, rgba(63, 129, 149, 0.06), transparent 55%);
+    radial-gradient(760px 480px at -6% 108%, rgba(178, 137, 47, 0.045), transparent 55%);
   background-attachment: fixed;
   color: var(--text);
   font-size: 15px;
@@ -1697,19 +1697,19 @@ body { background-image:
    深色主题 (data-theme="dark") — 暖炭色系，保留橙色品牌色
    ============================================================ */
 [data-theme="dark"] {
-  --bg: #131318;
-  --bg-2: #1c1c23;
-  --panel: #21222b;
-  --panel-2: #2b2c36;
-  --border: #30313c;
-  --border-2: #40414e;
-  --text: #eef0f4;
-  --muted: #a8aab6;
-  --faint: #73757f;
-  --accent: #ea8c64;
-  --accent-2: #f4a784;
-  --accent-soft: #2d2823;
-  --accent-ring: rgba(234, 140, 100, 0.32);
+  --bg: #262624;          /* Claude warm charcoal canvas */
+  --bg-2: #1d1c1a;        /* recessed surface (inputs) */
+  --panel: #30302e;       /* cards / raised paper */
+  --panel-2: #3a3a37;     /* secondary surface */
+  --border: #3b3a36;      /* hairline */
+  --border-2: #4a4842;    /* stronger border */
+  --text: #f5f3ec;        /* warm ink */
+  --muted: #b4ada0;       /* secondary text */
+  --faint: #807a6e;       /* tertiary text */
+  --accent: #e0855f;      /* Claude clay (lifted for dark) */
+  --accent-2: #ef9d77;    /* lighter (hover) */
+  --accent-soft: #352a23; /* warm tint surface */
+  --accent-ring: rgba(224, 133, 95, 0.32);
   --gold: #e2b358;
   --diamond: #66c4da;
   --ok: #86ca95;
@@ -1719,41 +1719,41 @@ body { background-image:
   --shadow-lg: 0 8px 18px rgba(0, 0, 0, 0.5), 0 24px 56px rgba(0, 0, 0, 0.64);
 }
 [data-theme="dark"] body { background-image:
-  radial-gradient(1100px 600px at 90% -12%, rgba(234,140,100,0.07), transparent 60%),
-  radial-gradient(820px 520px at -8% 110%, rgba(102,196,218,0.05), transparent 55%); }
+  radial-gradient(1100px 600px at 90% -12%, rgba(224,133,95,0.08), transparent 60%),
+  radial-gradient(820px 520px at -8% 110%, rgba(160,120,86,0.05), transparent 55%); }
 /* inputs & surfaces */
 [data-theme="dark"] .input, [data-theme="dark"] .textarea, [data-theme="dark"] .select { background: var(--bg-2); }
 [data-theme="dark"] .chat-input-bar .box { background: var(--panel); }
 [data-theme="dark"] .uploader { background: var(--bg-2); }
-[data-theme="dark"] .skel, [data-theme="dark"] .skeleton { background: #2b2c36; }
-[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #3a3b46; }
+[data-theme="dark"] .skel, [data-theme="dark"] .skeleton { background: #3a3a37; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #46433c; }
 /* buttons */
 [data-theme="dark"] .btn:hover { border-color: var(--border-2); background: var(--panel-2); }
-[data-theme="dark"] .btn.ghost:hover { background: #2b2c36; }
+[data-theme="dark"] .btn.ghost:hover { background: #34322e; }
 [data-theme="dark"] .btn.danger { background: #34211f; border-color: #5e3833; }
 [data-theme="dark"] .btn.danger:hover { background: #422823; border-color: #74443c; }
-[data-theme="dark"] .checkin-btn:disabled { background: #2b2c36; }
+[data-theme="dark"] .checkin-btn:disabled { background: #3a3a37; }
 /* sidebar / nav / bars */
-[data-theme="dark"] .sidebar { background: linear-gradient(180deg, #18181f, #111116); }
-[data-theme="dark"] .nav-item:hover, [data-theme="dark"] .conv-item:hover, [data-theme="dark"] .sb-toggle:hover { background: #2b2c36; }
-[data-theme="dark"] .chat-list { background: #16161c; }
-[data-theme="dark"] .topbar { background: rgba(19,19,24,0.82); }
-[data-theme="dark"] .mobile-topbar { background: rgba(19,19,24,0.9); }
-[data-theme="dark"] .bottom-nav { background: rgba(15,15,20,0.94); }
+[data-theme="dark"] .sidebar { background: linear-gradient(180deg, #232220, #1a1917); }
+[data-theme="dark"] .nav-item:hover, [data-theme="dark"] .conv-item:hover, [data-theme="dark"] .sb-toggle:hover { background: #34322e; }
+[data-theme="dark"] .chat-list { background: #1d1c1a; }
+[data-theme="dark"] .topbar { background: rgba(38,38,36,0.82); }
+[data-theme="dark"] .mobile-topbar { background: rgba(38,38,36,0.9); }
+[data-theme="dark"] .bottom-nav { background: rgba(29,28,26,0.94); }
 /* dark 主题：顶部栏深色稍不透明，输入栏三段渐变。之前是纯色 rgba(22,22,28,0.82)，键盘弹起露出原色块。 */
-[data-theme="dark"] .chat-head { background: rgba(22,22,28,0.9); }
+[data-theme="dark"] .chat-head { background: rgba(38,38,36,0.92); }
 [data-theme="dark"] .chat-input-bar { background: linear-gradient(180deg, transparent 0%, rgba(21,18,14,0.82) 38%, rgba(21,18,14,0.97) 100%); }
 /* dark + has-bg：之前是 transparent（优先级 0,3,0 覆盖一切），导致深色背景图 + 输入栏完全透明，文字看不清且露 body。
    改为深色半透明渐变：顶部透明看背景，底部 95% 不透明压暗保证可读。 */
 [data-theme="dark"] .has-bg .chat-head { background: transparent; }
 [data-theme="dark"] .has-bg .chat-input-bar { background: linear-gradient(180deg, transparent 0%, rgba(21,18,14,0.82) 38%, rgba(21,18,14,0.98) 100%); }
-[data-theme="dark"] .theater-stage { background: rgba(22,22,28,0.7); }
+[data-theme="dark"] .theater-stage { background: rgba(48,48,46,0.7); }
 /* toggles / segmented / tabs */
-[data-theme="dark"] .switch .track { background: #45464f; }
+[data-theme="dark"] .switch .track { background: #4a4842; }
 [data-theme="dark"] .seg button.active, [data-theme="dark"] .auth-tabs button.active { background: var(--panel-2); color: var(--text); }
 /* covers / heros / overlays */
-[data-theme="dark"] .char-card .cover, [data-theme="dark"] .dcard-cover { background: linear-gradient(135deg, #272832, #1b1c23); }
-[data-theme="dark"] .char-hero-bg::after { background: linear-gradient(180deg, rgba(19,19,24,0.45), rgba(19,19,24,0.94)); }
+[data-theme="dark"] .char-card .cover, [data-theme="dark"] .dcard-cover { background: linear-gradient(135deg, #34322e, #232220); }
+[data-theme="dark"] .char-hero-bg::after { background: linear-gradient(180deg, rgba(38,38,36,0.45), rgba(38,38,36,0.94)); }
 [data-theme="dark"] .modal-backdrop { background: rgba(0,0,0,0.58); }
 [data-theme="dark"] .auth-feat span { background: rgba(255,255,255,0.05); color: var(--muted); border-color: var(--border); }
 [data-theme="dark"] .group-members { background: var(--bg-2); }
@@ -1770,24 +1770,24 @@ body { background-image:
 .theme-seg button:active { transform: scale(0.96); }
 
 /* dark-mode fixes for remaining light surfaces */
-[data-theme="dark"] .ann-banner { background: linear-gradient(120deg, #262531, #1f1e28); border-color: #383947; }
+[data-theme="dark"] .ann-banner { background: linear-gradient(120deg, #2c2a26, #232220); border-color: #423f39; }
 [data-theme="dark"] .ann-item.pinned { border-color: rgba(234,140,100,0.34); background: linear-gradient(120deg, #2a2620, var(--panel)); }
 [data-theme="dark"] .gm-tag { background: #2d2a24; color: #f0cdb1; }
 /* welcome popup — was fully hardcoded-light; restyle for dark so it isn't a glaring cream card */
 [data-theme="dark"] .welcome-pop .wp-x { background: rgba(255,255,255,0.08); }
 [data-theme="dark"] .welcome-pop .wp-x:hover { background: rgba(255,255,255,0.16); }
-[data-theme="dark"] .welcome-pop .wp-hero { background: radial-gradient(520px 220px at 18% 0%, rgba(234,140,100,0.18), transparent 62%), linear-gradient(150deg, #29242d, #20202a); }
+[data-theme="dark"] .welcome-pop .wp-hero { background: radial-gradient(520px 220px at 18% 0%, rgba(224,133,95,0.18), transparent 62%), linear-gradient(150deg, #2c2823, #211f1c); }
 [data-theme="dark"] .welcome-pop .wp-badge { background: rgba(255,255,255,0.06); border-color: rgba(234,140,100,0.3); color: var(--accent-2); }
 [data-theme="dark"] .welcome-pop .wp-hero p { color: var(--muted); }
-[data-theme="dark"] .welcome-pop .wp-bounty { background: linear-gradient(120deg, #2a231d, #241f29); border-color: rgba(234,140,100,0.26); }
+[data-theme="dark"] .welcome-pop .wp-bounty { background: linear-gradient(120deg, #2a231d, #251f1a); border-color: rgba(224,133,95,0.26); }
 [data-theme="dark"] .welcome-pop .wp-rewards span { background: rgba(255,255,255,0.05); border-color: var(--border-2); color: #e9c19f; }
 [data-theme="dark"] .welcome-pop .wp-qq { background: var(--bg-2); border-color: var(--border); }
-[data-theme="dark"] .recharge-mask { background: rgba(15,15,20,0.55); color: var(--muted); }
-[data-theme="dark"] .poster .p-cat { background: rgba(17,17,22,0.7); color: var(--text); }
+[data-theme="dark"] .recharge-mask { background: rgba(29,28,26,0.55); color: var(--muted); }
+[data-theme="dark"] .poster .p-cat { background: rgba(30,29,27,0.7); color: var(--text); }
 [data-theme="dark"] .ann-banner .ann-x:hover { background: rgba(255,255,255,0.08); }
 [data-theme="dark"] .icon-chip.gold, [data-theme="dark"] .icon-chip.diamond { background: none; }
 [data-theme="dark"] .vip-card { background: linear-gradient(140deg, #2e2616, #241d12); border-color: #4a3c22; }
-[data-theme="dark"] .wallet-hero { background: linear-gradient(135deg, #232229, #191921); }
+[data-theme="dark"] .wallet-hero { background: linear-gradient(135deg, #2c2a26, #201f1c); }
 
 /* chat: inline message edit */
 .msg-edit { display: flex; flex-direction: column; gap: 8px; min-width: min(420px, 70vw); }
@@ -2154,7 +2154,7 @@ body { -webkit-touch-callout: none; }
   .sp-nav { display: none; }
 }
 [data-theme="dark"] .cmdk-backdrop { background: rgba(0,0,0,0.55); }
-[data-theme="dark"] .sp-stage { background: linear-gradient(135deg, #272832, #1b1c23); }
+[data-theme="dark"] .sp-stage { background: linear-gradient(135deg, #34322e, #232220); }
 
 /* ============================================================
    大更新：登录页 v2 · 议会 · 隐私 · 对话工具 · GM 控制台
@@ -2195,7 +2195,7 @@ body { -webkit-touch-callout: none; }
 .auth-demo { display: block; width: 100%; margin-top: 12px; padding: 9px; border: 1px dashed var(--border-2); border-radius: 10px;
   background: none; color: var(--muted); font-size: 12.5px; cursor: pointer; transition: 0.15s; }
 .auth-demo:hover { border-color: var(--accent); color: var(--accent-2); background: var(--accent-soft); }
-[data-theme="dark"] .auth-hero { background: radial-gradient(620px 460px at 26% 18%, rgba(234,140,100,0.14), transparent 62%), linear-gradient(158deg, #1d1d24, #16161c); }
+[data-theme="dark"] .auth-hero { background: radial-gradient(620px 460px at 26% 18%, rgba(224,133,95,0.16), transparent 62%), linear-gradient(158deg, #2a2724, #1d1c1a); }
 [data-theme="dark"] .auth-hero p, [data-theme="dark"] .auth-feat-card small, [data-theme="dark"] .auth-stats > div span { color: var(--muted); }
 [data-theme="dark"] .auth-feat-card { background: rgba(255,255,255,0.04); border-color: var(--border); }
 [data-theme="dark"] .auth-tab-ink { background: var(--panel-2); }
@@ -2999,7 +2999,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   padding: 11px 15px; font-size: 14.5px; max-height: 130px; line-height: 1.5; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
 .fr-dm-input textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); background: var(--panel); }
 .fr-dm-input textarea:disabled { opacity: 0.6; }
-[data-theme="dark"] .fr-list { background: #16161c; }
+[data-theme="dark"] .fr-list { background: #1d1c1a; }
 @media (max-width: 760px) {
   .friends-layout { height: calc(100vh - 56px); }
   .fr-list { width: 100%; }

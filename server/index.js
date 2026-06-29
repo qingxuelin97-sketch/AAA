@@ -49,10 +49,12 @@ app.use(cors({
 }));
 
 // 安全头（CSP 由前端 index.html meta 单独配置，这里不覆盖以避免冲突）。
+// 防点击劫持：frame-ancestors 在 <meta> 中被忽略，故由 X-Frame-Options: DENY 头兜底。
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // 上传资源可被前端同源/跨域加载
+  frameguard: { action: 'deny' },
 }));
 
 // 全局速率限制：每分钟 240 次/IP，防基础滥用。

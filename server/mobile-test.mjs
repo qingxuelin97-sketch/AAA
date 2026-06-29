@@ -150,6 +150,7 @@ try {
     vv.dispatchEvent(new Event('resize'));
     const after = {
       barBottom: bar.style.bottom,
+      barTransform: bar.style.transform,
       barRect: rect(bar),
       layoutHeight: layout.offsetHeight,
       chatMainHeight: chatMain.offsetHeight,
@@ -169,11 +170,13 @@ try {
     // 1. 输入栏 fixed
     if (kbdSim.before.barPosition === 'fixed') console.log(`✅ 输入栏 position=fixed`);
     else { findings.push(`[kbd] 输入栏 position=${kbdSim.before.barPosition} 期望 fixed`); console.log(`❌ 输入栏 position=${kbdSim.before.barPosition}`); }
-    // 2. bottom 上移到键盘高度
-    const expectedBottom = kbdSim.before.innerHeight - kbdH; // 844-500=344
-    const actualBottom = parseInt(kbdSim.after.barBottom);
-    if (actualBottom === expectedBottom) console.log(`✅ 输入栏 bottom=${actualBottom}px = 键盘高度 ${expectedBottom}px`);
-    else { findings.push(`[kbd] 输入栏 bottom=${kbdSim.after.barBottom} 期望 ${expectedBottom}px`); console.log(`❌ 输入栏 bottom=${kbdSim.after.barBottom}`); }
+    // 2. 输入栏上移到键盘高度（实现用 transform: translate3d(0,-inset,0)，比改 bottom 更顺，
+    //    且不与 CSS bottom:0 冲突 —— 见 client/src/mobile.js）。容差 ±2px。
+    const expectedInset = kbdSim.before.innerHeight - kbdH; // 844-500=344
+    const m = /translate3d\(\s*0(?:px)?\s*,\s*(-?[\d.]+)px/.exec(kbdSim.after.barTransform || '');
+    const actualInset = m ? Math.abs(parseFloat(m[1])) : NaN;
+    if (Math.abs(actualInset - expectedInset) <= 2) console.log(`✅ 输入栏 上移 ${actualInset}px ≈ 键盘高度 ${expectedInset}px（transform）`);
+    else { findings.push(`[kbd] 输入栏 transform=${kbdSim.after.barTransform || '(空)'} 期望上移 ${expectedInset}px`); console.log(`❌ 输入栏 transform=${kbdSim.after.barTransform}`); }
     // 3. 输入栏在键盘上方（barRect.bottom ≤ 可见区 + 容差）
     const barBottom = kbdSim.after.barRect?.bottom;
     if (barBottom != null && barBottom <= kbdH + 2) console.log(`✅ 输入栏 barRect.bottom=${barBottom.toFixed(0)} ≤ 可见区=${kbdH}`);

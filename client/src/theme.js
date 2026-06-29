@@ -12,7 +12,7 @@ export function applyTheme(mode = getThemeMode()) {
   document.documentElement.dataset.theme = resolved;
   // keep the mobile status-bar / PWA theme color in sync
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#15120e' : '#f4f2ec');
+  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#262624' : '#f4f2ec');
   try { window.dispatchEvent(new Event('huanyu-theme')); } catch { /* */ }
 }
 export function setThemeMode(mode) { localStorage.setItem(KEY, mode); applyTheme(mode); }
