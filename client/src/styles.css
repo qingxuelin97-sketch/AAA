@@ -27,6 +27,27 @@
   --shadow-lg: 0 2px 6px rgba(40, 33, 22, 0.05), 0 16px 42px rgba(40, 33, 22, 0.09);
   --serif: "Fraunces Variable", "Fraunces", "Songti SC", Georgia, "Times New Roman", serif;
   --sans: "Inter Variable", "Inter", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+
+  /* ---- Typographic scale (Claude-style editorial rhythm) ----
+     Fluid type ramp + leading tokens. Used by layout primitives so the whole
+     app shares one vertical rhythm instead of ad-hoc per-component sizes. */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 15.5px;
+  --fs-md: 16.5px;
+  --fs-lg: clamp(18px, 1.3vw, 20px);
+  --fs-xl: clamp(20px, 1.9vw, 24px);
+  --fs-2xl: clamp(24px, 2.7vw, 31px);
+  --fs-3xl: clamp(31px, 4.2vw, 46px);
+  --lh-tight: 1.14;   /* display headings */
+  --lh-snug: 1.3;     /* sub-headings */
+  --lh-body: 1.65;    /* running text */
+  /* 8px spacing rhythm */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+  /* content widths */
+  --measure: 64ch;    /* comfortable reading / form column */
+  --content: 1120px;  /* app content max width */
 }
 
 * { box-sizing: border-box; }
@@ -39,8 +60,8 @@ body {
     radial-gradient(760px 480px at -6% 108%, rgba(178, 137, 47, 0.045), transparent 55%);
   background-attachment: fixed;
   color: var(--text);
-  font-size: 15px;
-  line-height: 1.58;
+  font-size: var(--fs-base);
+  line-height: var(--lh-body);
   letter-spacing: -0.003em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -54,13 +75,16 @@ h1, h2, h3, h4 {
   font-family: var(--serif);
   font-weight: 540;
   letter-spacing: -0.016em;
-  line-height: 1.18;
+  line-height: var(--lh-snug);
+  margin: 0 0 0.5em;
   font-optical-sizing: auto;
   font-variation-settings: "opsz" 36, "SOFT" 28, "WONK" 0;
   text-wrap: balance;
 }
-h1 { font-weight: 560; letter-spacing: -0.022em; font-variation-settings: "opsz" 60, "SOFT" 22, "WONK" 0; }
-h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz" 20, "SOFT" 34, "WONK" 0; }
+h1 { font-size: var(--fs-2xl); font-weight: 560; letter-spacing: -0.022em; line-height: var(--lh-tight); font-variation-settings: "opsz" 60, "SOFT" 22, "WONK" 0; }
+h2 { font-size: var(--fs-xl); }
+h3 { font-size: var(--fs-lg); }
+h4 { font-size: var(--fs-md); font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz" 20, "SOFT" 34, "WONK" 0; }
 ::selection { background: var(--accent-soft); }
 ::-webkit-scrollbar { width: 11px; height: 11px; }
 ::-webkit-scrollbar-thumb { background: #ddd6c6; border-radius: 8px; border: 3px solid transparent; background-clip: padding-box; }
@@ -106,16 +130,22 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar {
   display: flex; align-items: center; gap: 14px;
-  padding: clamp(14px, 2.4vw, 22px) clamp(16px, 3.4vw, 40px);
+  padding: clamp(16px, 2.4vw, 26px) clamp(18px, 3.4vw, 44px);
   border-bottom: 1px solid var(--border); position: sticky; top: 0;
   background: rgba(244, 242, 236, 0.82); backdrop-filter: saturate(140%) blur(12px); z-index: 20;
 }
-.topbar h1 { font-size: clamp(21px, 2.4vw, 28px); margin: 0; line-height: 1.08;
-  font-family: var(--serif); font-weight: 640; letter-spacing: -0.012em;
-  background: linear-gradient(110deg, var(--text) 30%, color-mix(in srgb, var(--accent) 65%, var(--text)) 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent; }
-.topbar .sub { color: var(--muted); font-size: 13.5px; margin-top: 4px; letter-spacing: 0; line-height: 1.45; }
-.page { width: 100%; max-width: 1180px; margin-inline: auto; padding: clamp(20px, 3vw, 36px) clamp(16px, 3.4vw, 40px) 72px; }
+/* Solid editorial heading — Claude renders titles as flat ink, no gradient fill. */
+.topbar h1 { font-size: var(--fs-2xl); margin: 0; line-height: var(--lh-tight);
+  font-family: var(--serif); font-weight: 580; letter-spacing: -0.02em; color: var(--text); }
+.topbar .sub { color: var(--muted); font-size: var(--fs-sm); margin-top: 6px; letter-spacing: 0; line-height: 1.5; }
+/* Left-aligned content column. The topbar title and .page share the same left
+   padding (clamp 18–44px), so left-aligning (instead of centering) makes the
+   page heading line up with its content on every page — regardless of each
+   page's own max-width — while the right-hand whitespace keeps it calm. */
+.page { width: 100%; max-width: var(--content); margin-inline: 0; padding: clamp(24px, 3vw, 40px) clamp(18px, 3.4vw, 44px) 80px; }
+/* Reading column — long-form text & forms sit on a comfortable measure, not the full width. */
+.measure { max-width: var(--measure); }
+.page.narrow { max-width: 780px; }
 
 /* ---------- Generic ---------- */
 .avatar { border-radius: 50%; object-fit: cover; background: var(--panel-2); flex-shrink: 0; }
@@ -139,12 +169,12 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .btn.sm { padding: 6px 11px; font-size: 12.5px; border-radius: 9px; }
 .btn.block { width: 100%; }
 
-.field { margin-bottom: 16px; }
-.field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 7px; font-weight: 600; }
-.field .hint { font-size: 12px; color: var(--faint); margin-top: 6px; line-height: 1.5; }
+.field { margin-bottom: var(--sp-5); }
+.field label { display: block; font-size: var(--fs-sm); color: var(--muted); margin-bottom: 8px; font-weight: 600; letter-spacing: 0.002em; }
+.field .hint { font-size: var(--fs-xs); color: var(--faint); margin-top: 7px; line-height: 1.55; }
 .input, .textarea, .select {
-  width: 100%; padding: 11px 13px; border-radius: var(--radius-sm); border: 1px solid var(--border-2);
-  background: #fff; color: var(--text); font-size: 14px; transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%; padding: 11px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-2);
+  background: #fff; color: var(--text); font-size: 15px; transition: border-color 0.15s, box-shadow 0.15s;
 }
 .input::placeholder, .textarea::placeholder { color: var(--faint); }
 .input:focus, .textarea:focus, .select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
@@ -157,12 +187,12 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 
 .card {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: clamp(16px, 2.2vw, 24px); box-shadow: var(--shadow);
+  padding: clamp(18px, 2.4vw, 28px); box-shadow: var(--shadow);
 }
 .tag { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
   background: var(--accent-soft); color: var(--accent-2); margin: 2px 4px 2px 0; }
-.section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 16px; }
-.section-title h2 { font-size: clamp(17px, 2vw, 20px); margin: 0; }
+.section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 18px; }
+.section-title h2 { font-size: clamp(18px, 2vw, 22px); margin: 0; }
 .muted { color: var(--muted); }
 .empty { text-align: center; padding: clamp(40px, 8vw, 72px) 20px; color: var(--faint); }
 .empty .big { font-size: 46px; margin-bottom: 12px; opacity: 0.7; }
@@ -3753,9 +3783,8 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 .pubpage-nav-link.on { background: var(--accent-soft); color: var(--accent-2); }
 .pubpage-enter { margin-left: auto; }
 .pubpage-hero { text-align: center; padding: clamp(34px, 6vw, 64px) 20px clamp(20px, 3vw, 30px); max-width: 760px; margin-inline: auto; }
-.pubpage-hero h1 { font-size: clamp(28px, 5vw, 42px); margin: 0 0 12px; letter-spacing: -0.02em;
-  background: linear-gradient(110deg, var(--text) 32%, var(--accent-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.pubpage-hero p { margin: 0; color: var(--muted); font-size: clamp(14px, 2vw, 16px); line-height: 1.7; }
+.pubpage-hero h1 { font-size: clamp(30px, 5vw, 46px); margin: 0 0 14px; letter-spacing: -0.022em; color: var(--text); }
+.pubpage-hero p { margin: 0; color: var(--muted); font-size: clamp(15px, 2vw, 17px); line-height: 1.7; }
 .pubpage-body { flex: 1; width: 100%; max-width: 1120px; margin-inline: auto; padding: 8px clamp(16px, 3.4vw, 40px) 40px; }
 .pubpage-foot { border-top: 1px solid var(--border); padding: 24px 20px 36px; text-align: center; }
 .pubpage-copy { margin-top: 10px; font-size: 11.5px; color: var(--faint); line-height: 1.7; }
