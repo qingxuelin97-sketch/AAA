@@ -39,4 +39,25 @@ router.get('/:id', authOptional, (req, res) => {
   res.json({ user: u, characters, scripts, moments, stats, following });
 });
 
+// 粉丝 / 关注列表：供个人主页弹窗展示。每项含 followInList 所需的字段。
+function followsList(req, res, dir) {
+  const u = db.prepare('SELECT id, username, display_name, avatar, bio, vip_until, svip, verified FROM users WHERE id = ?').get(req.params.id);
+  if (!u) return res.status(404).json({ error: '用户不存在' });
+  // dir === 'followers' => 关注了 :id 的人；dir === 'following' => :id 关注的人。
+  const joinCol = dir === 'followers' ? 'follower_id' : 'following_id';
+  const targetCol = dir === 'followers' ? 'following_id' : 'follower_id';
+  const rows = db.prepare(`SELECT u.id, u.username, u.display_name, u.avatar, u.bio, u.vip_until, u.svip, u.verified
+    FROM follows f JOIN users u ON u.id = f.${joinCol}
+    WHERE f.${targetCol} = ? ORDER BY f.rowid DESC LIMIT 200`).all(u.id);
+  const meId = req.user?.id;
+  const users = rows.map(r => ({
+    id: r.id, username: r.username, display_name: r.display_name, avatar: r.avatar, bio: r.bio || '',
+    vip: isVip(r), svip: !!r.svip, verified: !!r.verified,
+    following: meId ? !!db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?').get(meId, r.id) : false,
+  }));
+  res.json({ users });
+}
+router.get('/:id/followers', authOptional, (req, res) => followsList(req, res, 'followers'));
+router.get('/:id/following', authOptional, (req, res) => followsList(req, res, 'following'));
+
 export default router;

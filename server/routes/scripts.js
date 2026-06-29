@@ -129,4 +129,31 @@ router.post('/:id/like', authRequired, (req, res) => {
   }
 });
 
+// 进入剧本 · 开始互动扮演：以剧本内容作为主持人设定，开一条对话。
+// 访问权限与「解锁」逻辑一致：作者 / 已购买者可进入；免费剧本人人可进。
+// 复用调用者名下、按 tags=script:<id> 标记的私人「主持人」角色，避免每次进入都新建角色。
+router.post('/:id/play', authRequired, (req, res) => {
+  const s = db.prepare('SELECT * FROM scripts WHERE id = ?').get(req.params.id);
+  if (!s) return res.status(404).json({ error: '剧本不存在' });
+  const isAuthor = s.author_id === req.user.id;
+  const hasPurchased = !!db.prepare('SELECT 1 FROM script_purchases WHERE script_id = ? AND user_id = ? AND refunded = 0').get(s.id, req.user.id);
+  if (!isAuthor && !hasPurchased && s.price_gold > 0) return res.status(403).json({ error: '请先购买该剧本' });
+
+  const tag = `script:${s.id}`;
+  let ch = db.prepare('SELECT * FROM characters WHERE owner_id = ? AND tags = ? AND is_public = 0 ORDER BY id DESC LIMIT 1').get(req.user.id, tag);
+  if (!ch) {
+    const info = db.prepare('INSERT INTO characters (owner_id, name, avatar, persona, greeting, tags, is_public, category) VALUES (?,?,?,?,?,?,?,?)')
+      .run(req.user.id, `剧本《${s.title}》`, s.cover || null,
+        `你是一款互动剧本的主持人（Game Master）。请严格依据以下剧本设定引导玩家进行沉浸式角色扮演，推进剧情、描写场景、扮演除玩家以外的所有 NPC，不要替玩家发言：\n\n${s.content || s.summary || ''}`,
+        s.summary ? `（剧本《${s.title}》开始）\n${s.summary}` : `（剧本《${s.title}》开始，请告诉我你的角色与行动。）`,
+        tag, 0, s.category || '剧本');
+    ch = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);
+  }
+  const info = db.prepare('INSERT INTO conversations (user_id, character_id, title) VALUES (?,?,?)').run(req.user.id, ch.id, s.title);
+  if (ch.greeting) db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(info.lastInsertRowid, 'assistant', ch.greeting);
+  db.prepare('UPDATE characters SET uses = uses + 1 WHERE id = ?').run(ch.id);
+  db.prepare('UPDATE scripts SET plays = plays + 1 WHERE id = ?').run(s.id);
+  res.json({ conversation: db.prepare('SELECT * FROM conversations WHERE id = ?').get(info.lastInsertRowid) });
+});
+
 export default router;

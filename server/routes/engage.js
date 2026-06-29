@@ -105,11 +105,18 @@ router.delete('/reviews/:id', authRequired, (req, res) => {
 });
 
 // ---- reports ----
+// 支持 character / script / moment / user 四类举报，与 reports 表 target_type 设计一致，
+// 也与前端 ReportButton 的 type 取值（character|script|user）对齐。
 router.post('/report', authRequired, (req, res) => {
   const { type, id, reason } = req.body || {};
   if (!type || !id) return res.status(400).json({ error: '参数不全' });
+  const tbl = type === 'script' ? 'scripts'
+    : type === 'character' ? 'characters'
+    : type === 'moment' ? 'moments'
+    : type === 'user' ? 'users'
+    : null;
+  if (!tbl) return res.status(400).json({ error: '不支持的举报类型' });
   // 校验目标存在，防对不存在的 id 提举报污染队列。
-  const tbl = TT(type) === 'script' ? 'scripts' : 'characters';
   if (!db.prepare(`SELECT 1 FROM ${tbl} WHERE id = ?`).get(id)) return res.status(404).json({ error: '目标不存在' });
   db.prepare('INSERT INTO reports (target_type, target_id, reporter_id, reason) VALUES (?,?,?,?)').run(type, id, req.user.id, (reason || '').slice(0, 500));
   res.json({ ok: true });
