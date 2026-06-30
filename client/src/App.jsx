@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './api.jsx';
 import { ToastProvider } from './ui.jsx';
 import Layout from './components/Layout.jsx';
+import AppLayout from './components/AppLayout.jsx';
+import { isAppMode } from './appmode.js';
 import Auth from './pages/Auth.jsx';
 
 // Route-level code splitting — each page is fetched on demand so the initial
@@ -46,12 +48,16 @@ const WorldbookEditor = lazy(() => import('./pages/WorldbookEditor.jsx'));
 const Atelier = lazy(() => import('./pages/Atelier.jsx'));
 const NovelWorkspace = lazy(() => import('./pages/NovelWorkspace.jsx'));
 const NovelReader = lazy(() => import('./pages/NovelReader.jsx'));
+const AppHome = lazy(() => import('./pages/AppHome.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="empty" style={{ paddingTop: 160 }}>载入中…</div>;
   if (!user) return <Navigate to="/auth" replace />;
-  return <Layout>{children}</Layout>;
+  // Pick the chrome at render time (after initAppMode resolved the flag): the
+  // native/app shell or the responsive web shell.
+  const Shell = isAppMode() ? AppLayout : Layout;
+  return <Shell>{children}</Shell>;
 }
 
 const P = (el) => <Protected>{el}</Protected>;
@@ -66,6 +72,7 @@ export default function App() {
           <Route path="/features" element={<Features />} />
           <Route path="/help" element={<Help />} />
           <Route path="/" element={P(<Home />)} />
+          <Route path="/today" element={P(<AppHome />)} />
           <Route path="/scripts" element={P(<Scripts />)} />
           <Route path="/script/new" element={P(<ScriptEditor />)} />
           <Route path="/script/:id" element={P(<ScriptDetail />)} />

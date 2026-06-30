@@ -6,6 +6,7 @@ import { AuthProvider } from './api.jsx';
 import { initTheme } from './theme.js';
 import { initPerf } from './perf.js';
 import { initFx } from './fx.js';
+import { initAppMode } from './appmode.js';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/fraunces';
 import '@fontsource/cinzel/latin-500.css';
@@ -16,9 +17,10 @@ import '@fontsource/cinzel-decorative/latin-700.css';
 import '@fontsource/cinzel-decorative/latin-900.css';
 import './styles.css';
 
-initTheme(); // apply saved theme before first paint (no flash)
-initPerf();  // resolve device perf tier → data-perf, gating heavy GPU effects
-initFx();    // global click ripples + tap bursts
+initTheme();   // apply saved theme before first paint (no flash)
+initPerf();    // resolve device perf tier → data-perf, gating heavy GPU effects
+initFx();      // global click ripples + tap bursts
+initAppMode(); // resolve native/app shell → data-app (before React mounts)
 
 // Register the PWA service worker (web only; Capacitor serves from a native scheme).
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
