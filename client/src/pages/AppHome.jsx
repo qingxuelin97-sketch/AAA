@@ -45,16 +45,18 @@ export default function AppHome() {
 
   useEffect(() => {
     api('/chat/conversations').then(d => setResume((d.conversations || []).slice(0, 10))).catch(() => setResume([]));
-    // Featured pick → hero; the rest fill the "为你挑选" grid (recommended first).
-    api('/characters/public?sort=hot')
-      .then(d => {
-        const list = d.characters || [];
-        setHero(list.find(c => c.featured) || list[0] || null);
-      }).catch(() => {});
+    // One hot fetch feeds both the featured hero and the picks fallback; the
+    // personalised "recommended" set takes precedence for picks when present.
+    // (null = loading → skeleton; false/[] = loaded-empty → hidden.)
+    api('/characters/public?sort=hot').then(d => {
+      const hot = d.characters || [];
+      const top = hot.find(c => c.featured) || hot[0] || null;
+      setHero(top || false);
+      setPick(p => (p && p.length) ? p : hot.filter(c => !top || c.id !== top.id).slice(0, 6));
+    }).catch(() => { setHero(false); setPick(p => p || []); });
     api('/characters/recommended')
       .then(d => { const cs = d.characters || []; if (cs.length) setPick(cs.slice(0, 6)); })
       .catch(() => {});
-    api('/characters/public?sort=hot').then(d => setPick(p => p || (d.characters || []).slice(0, 6))).catch(() => {});
     api('/engage/tasks').then(d => setTasks((d.tasks || []).filter(t => !t.claimed).slice(0, 3))).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -114,6 +116,7 @@ export default function AppHome() {
       </div>
 
       {/* daily featured hero */}
+      {hero === null && <div className="ah-hero-skel" />}
       {hero && (
         <button className="ah-hero-card" onClick={() => openChat(hero)}>
           {hero.avatar ? <img className="ah-hc-bg" src={hero.avatar} alt="" /> : <div className="ah-hc-bg ph" />}
@@ -169,6 +172,12 @@ export default function AppHome() {
       )}
 
       {/* personalised pick */}
+      {pick === null && (
+        <section className="ah-sec">
+          <div className="ah-sec-head"><h2><Sparkles size={16} /> 为你挑选</h2></div>
+          <div className="ah-picks">{[0, 1].map(i => <div key={i} className="ah-pick-skel" />)}</div>
+        </section>
+      )}
       {pick && pick.length > 0 && (
         <section className="ah-sec">
           <div className="ah-sec-head"><h2><Sparkles size={16} /> 为你挑选</h2>

@@ -4230,6 +4230,9 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
    under [data-app="1"] so the web / mobile-web layout is untouched.
    ========================================================================== */
 html[data-app="1"], html[data-app="1"] body { background: var(--bg-2); }
+/* Chrome heights (header / tab bar incl. safe areas) — single source of truth so
+   page-fit overrides below stay in sync with the actual fixed chrome. */
+html[data-app="1"] { --app-top: calc(52px + env(safe-area-inset-top)); --app-bot: calc(64px + env(safe-area-inset-bottom)); }
 
 /* Phone frame: full-bleed on phones, a centered device column on wide screens
    (handy for the ?app=1 browser preview). Fixed chrome aligns to this column. */
@@ -4256,11 +4259,16 @@ html[data-app="1"], html[data-app="1"] body { background: var(--bg-2); }
   background: var(--bg-2) !important; padding: 6px 11px !important; border-radius: 999px !important; }
 
 /* ---- pull-to-refresh indicator ---- */
-.app-ptr { position: fixed; top: calc(52px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+.app-ptr { position: fixed; top: var(--app-top); left: 50%; transform: translateX(-50%);
   width: min(480px, 100%); z-index: 40; display: grid; place-items: center; color: var(--accent);
   overflow: hidden; transition: opacity 0.2s; pointer-events: none; }
 .app-ptr.spin svg { animation: spin360 0.7s linear infinite; }
 @keyframes spin360 { to { transform: rotate(360deg); } }
+
+/* ---- offline banner (slim, under the header) ---- */
+.app-offline { position: fixed; top: var(--app-top); left: 50%; transform: translateX(-50%); width: min(480px, 100%); z-index: 55;
+  display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 12px;
+  font-size: 12px; font-weight: 600; color: #fff; background: #b5562f; }
 
 /* ---- content area ---- */
 .app-main { min-height: 100dvh; display: flex; flex-direction: column;
@@ -4269,13 +4277,36 @@ html[data-app="1"], html[data-app="1"] body { background: var(--bg-2); }
   transition: transform 0.26s var(--spring); }
 .app-main > .route-fade { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
-/* Immersive pages (chat / theater / parliament / novel) take the whole screen. */
+/* Full-screen / immersive pages (chat-conversation · theater · parliament ·
+   novel workspace · novel reader) take the whole screen — they carry their own
+   top bar, so the app chrome steps aside. */
 .app-root:has(.immersive) .app-header,
 .app-root:has(.immersive) .app-tabbar,
 .app-root:has(.pl-immersive) .app-header,
-.app-root:has(.pl-immersive) .app-tabbar { display: none; }
+.app-root:has(.pl-immersive) .app-tabbar,
+.app-root:has(.atl-ws) .app-header,
+.app-root:has(.atl-ws) .app-tabbar,
+.app-root:has(.atl-read-page) .app-header,
+.app-root:has(.atl-read-page) .app-tabbar { display: none; }
 .app-root:has(.immersive) .app-main,
-.app-root:has(.pl-immersive) .app-main { padding: 0; }
+.app-root:has(.pl-immersive) .app-main,
+.app-root:has(.atl-ws) .app-main,
+.app-root:has(.atl-read-page) .app-main { padding: 0; }
+/* These page roots hard-code "100dvh − web chrome (50+71)"; in the app shell the
+   chrome is hidden, so let them reclaim the full viewport. */
+html[data-app="1"] .atl-ws,
+html[data-app="1"] .atl-read-page { height: 100dvh; }
+/* Non-immersive full-height pages (e.g. the chat *list*) fit the content band
+   between header and tab bar instead of overflowing past them. */
+html[data-app="1"] .chat-layout:not(.immersive) { height: calc(100dvh - var(--app-top) - var(--app-bot)); }
+
+/* Toasts ride above the tab bar; the back-to-top FAB too. */
+html[data-app="1"] .toast-stack { bottom: calc(80px + env(safe-area-inset-bottom)); }
+
+/* Lite perf tier: drop the (expensive) chrome blur for a flat translucent fill. */
+html[data-app="1"][data-perf="lite"] .app-header,
+html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; background: var(--panel); }
+@media (prefers-reduced-motion: reduce) { .app-ptr.spin svg { animation: none; } .app-main { transition: none; } }
 
 /* ---- bottom tab bar with raised center FAB ---- */
 .app-tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: min(480px, 100%); z-index: 60;
@@ -4386,6 +4417,10 @@ html[data-app="1"], html[data-app="1"] body { background: var(--bg-2); }
 .ah-hc-body p { margin: 3px 0 11px; font-size: 13px; opacity: 0.92; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .ah-hc-cta { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 8px 16px;
   border-radius: 999px; background: #fff; color: var(--accent); }
+
+/* skeletons (hero / picks) — same shimmer as the global .skel */
+.ah-hero-skel { aspect-ratio: 16 / 10; border-radius: 20px; background: linear-gradient(90deg, var(--bg-2) 25%, color-mix(in srgb, var(--bg-2) 60%, var(--panel)) 50%, var(--bg-2) 75%); background-size: 200% 100%; animation: skel-shimmer 1.4s ease-in-out infinite; }
+.ah-pick-skel { aspect-ratio: 0.78; border-radius: 16px; background: linear-gradient(90deg, var(--bg-2) 25%, color-mix(in srgb, var(--bg-2) 60%, var(--panel)) 50%, var(--bg-2) 75%); background-size: 200% 100%; animation: skel-shimmer 1.4s ease-in-out infinite; }
 
 /* continue-story empty state */
 .ah-empty { display: flex; align-items: center; gap: 13px; width: 100%; text-align: left; cursor: pointer;

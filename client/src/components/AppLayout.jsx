@@ -18,7 +18,7 @@ import {
   Sparkles, Feather, Wand2, Drama, Users, Megaphone, Trophy, Landmark,
   ScrollText, PartyPopper, Dices, Library, BookOpen, TrendingUp, Medal,
   Heart, Wallet, Settings, Shield, Crown, LogOut, Download, UserRound,
-  Tags as TagsIcon, Send, RefreshCw
+  Tags as TagsIcon, Send, RefreshCw, WifiOff
 } from 'lucide-react';
 
 // Top-level tabs that horizontal swipe cycles through.
@@ -88,12 +88,20 @@ export default function AppLayout({ children }) {
   const [pull, setPull] = useState(0);        // pull-to-refresh distance (px)
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // bump → remount route → refetch
+  const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
   const mainRef = useRef(null);
 
   useEffect(() => {
     const h = (e) => { e.preventDefault(); setInstallEvt(e); };
     window.addEventListener('beforeinstallprompt', h);
-    return () => window.removeEventListener('beforeinstallprompt', h);
+    const on = () => setOffline(false), off = () => setOffline(true);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', h);
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
   }, []);
 
   // Cold start lands on the 今日 launcher home (not the discover grid). Only the
@@ -150,15 +158,17 @@ export default function AppLayout({ children }) {
   return (
     <div className="app-root">
       <AppHeader user={user} unread={unread} />
+      {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
       <div className={'app-ptr' + (refreshing ? ' spin' : '')} style={{ height: ptr, opacity: ptr ? 1 : 0 }} aria-hidden="true">
         <RefreshCw size={20} style={{ transform: refreshing ? 'none' : `rotate(${ptr * 3}deg)` }} />
       </div>
-      <main className="app-main" ref={mainRef} style={pull && !refreshing ? { transform: `translateY(${Math.min(pull, 90)}px)` } : undefined}>
+      <main className="app-main" ref={mainRef}
+        style={pull && !refreshing ? { transform: `translateY(${Math.min(pull, 90)}px)`, transition: 'none' } : undefined}>
         <div className="route-fade" key={loc.pathname + '#' + refreshKey}>{children}</div>
       </main>
 
       <nav className="app-tabbar">
-        {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} />)}
+        {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
         <button className="app-fab" onClick={() => setSheet(s => s === 'create' ? null : 'create')} aria-label="创建">
           <Plus size={26} />
         </button>
@@ -166,7 +176,7 @@ export default function AppLayout({ children }) {
           ? <button key="grid" className={'app-tab' + (sheet === 'grid' ? ' active' : '')} onClick={() => setSheet(s => s === 'grid' ? null : 'grid')}>
               <t.ic size={22} /><span>{t.label}</span>
             </button>
-          : <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} />)}
+          : <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
       </nav>
 
       {sheet === 'create' && <CreateSheet onClose={() => setSheet(null)} />}
@@ -182,9 +192,13 @@ export default function AppLayout({ children }) {
   );
 }
 
-function Tab({ t, unread, dmUnread }) {
+function Tab({ t, unread, dmUnread, curPath }) {
+  // Tapping the already-active tab scrolls the page back to the top (native pattern).
+  const onClick = (e) => {
+    if (curPath === t.to) { e.preventDefault(); tick(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  };
   return (
-    <NavLink to={t.to} end={t.end} viewTransition className={({ isActive }) => 'app-tab' + (isActive ? ' active' : '')}>
+    <NavLink to={t.to} end={t.end} viewTransition onClick={onClick} className={({ isActive }) => 'app-tab' + (isActive ? ' active' : '')}>
       <span className="app-tab-ic">
         <t.ic size={22} />
         {t.badge === 'noti' && unread > 0 && <i className="app-dot" />}
