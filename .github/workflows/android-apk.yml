@@ -59,8 +59,21 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
+      # 用项目自带的 PWA 图标（assets/ 下）生成原生 App 图标 + 启动屏，
+      # 替掉 Capacitor 默认的蓝色占位图标。生成失败不阻断打包（图标退化为默认值）。
+      - name: Generate app icon & splash screen
+        run: npx --yes @capacitor/assets@3.0.5 generate --android
+        continue-on-error: true
+
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+      # 用仓库里固定的 debug 签名证书覆盖 Gradle 自动生成的临时证书，确保每次构建
+      # 签名一致 —— 这样你装上新 APK 时可以直接覆盖安装，不用先卸载旧版本。
+      - name: Use stable debug signing key
+        run: |
+          mkdir -p ~/.android
+          cp ci/android-debug.keystore ~/.android/debug.keystore
 
       - name: Build debug APK
         run: |
