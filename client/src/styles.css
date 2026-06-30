@@ -3584,8 +3584,10 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   transition-delay: calc(var(--rv-i, 0) * 0.06s); }
 .reveal.reveal-in { opacity: 1; transform: none; }
 
-/* —— 原生 View Transitions：仅内容区做转场，侧栏保持纹丝不动（精细之处） —— */
-.main { view-transition-name: vt-main; }
+/* —— 原生 View Transitions：仅内容区做转场，侧栏/底部 tab 保持纹丝不动 —— */
+/* 必须同时给 App 壳的 .app-main 命名，否则 App 内切页时根快照交叉淡入被禁用、
+   .app-main 又没有命名转场 → 进/出动画双双缺失（「切场动画不全」）。 */
+.main, .app-main { view-transition-name: vt-main; }
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-old(vt-main) { animation: vtOut 0.34s cubic-bezier(0.4, 0, 0.2, 1) both; }
   ::view-transition-new(vt-main) { animation: vtIn 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
@@ -4537,7 +4539,9 @@ html[data-app="1"][data-perf="lite"] .app-sheet { backdrop-filter: none; backgro
 /* scroll-snap feed: native browser scrolling handles the swipe physics, so the
    global horizontal-tab-swipe gesture is explicitly excluded from this surface
    (see appgestures.js NO_SWIPE) and pull-to-refresh never triggers inside it. */
-.app-feed-scroll { flex: 1; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior-y: contain; }
+.app-feed-scroll { flex: 1; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior-y: contain;
+  scrollbar-width: none; -ms-overflow-style: none; }
+.app-feed-scroll::-webkit-scrollbar { display: none; }
 .app-feed-card { position: relative; height: 100dvh; width: 100%; scroll-snap-align: start; scroll-snap-stop: always;
   overflow: hidden; background: #15120e; }
 .afc-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -4545,8 +4549,10 @@ html[data-app="1"][data-perf="lite"] .app-sheet { backdrop-filter: none; backgro
 .afc-scrim { position: absolute; inset: 0;
   background: linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.04) 32%, rgba(0,0,0,0.34) 64%, rgba(0,0,0,0.82) 100%); }
 
-/* bottom info block (name / tagline / owner / category) */
-.afc-body { position: absolute; left: 0; right: 76px; bottom: 0; z-index: 5; padding: 0 16px calc(22px + env(safe-area-inset-bottom)); color: #fff; }
+/* bottom info block (name / tagline / owner / category). The card image fills the
+   whole screen (behind the translucent tab bar for true immersion), but the TEXT
+   and rail are lifted clear of the tab bar (--app-bot) so nothing is clipped. */
+.afc-body { position: absolute; left: 0; right: 76px; bottom: 0; z-index: 5; padding: 0 16px calc(var(--app-bot) + 16px); color: #fff; }
 .afc-owner { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; opacity: 0.92; margin-bottom: 8px; }
 .afc-name { display: block; font-family: var(--serif); font-size: 23px; font-weight: 800; text-shadow: 0 2px 10px rgba(0,0,0,0.45); margin-bottom: 4px; }
 .afc-tag { font-size: 13.5px; line-height: 1.5; opacity: 0.92; margin: 0 0 9px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -4554,7 +4560,7 @@ html[data-app="1"][data-perf="lite"] .app-sheet { backdrop-filter: none; backgro
   border-radius: 999px; background: rgba(255,255,255,0.16); backdrop-filter: blur(4px); }
 
 /* right action rail */
-.afc-rail { position: absolute; right: 10px; bottom: calc(28px + env(safe-area-inset-bottom)); z-index: 6;
+.afc-rail { position: absolute; right: 10px; bottom: calc(var(--app-bot) + 18px); z-index: 6;
   display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .afc-rail-av { background: none; border: 2px solid rgba(255,255,255,0.8); border-radius: 50%; padding: 0; cursor: pointer;
   box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
@@ -4601,9 +4607,21 @@ html[data-app="1"][data-perf="lite"] .app-feed-hint { backdrop-filter: none; }
 .app-feed-end p { font-size: 13px; color: rgba(255,255,255,0.55); margin: 0; }
 .afe-acts { display: flex; gap: 10px; margin-top: 6px; }
 
-/* This page owns the whole screen: hide the global app-header, but (unlike
-   chat/.immersive) KEEP the bottom tab bar — Douyin always keeps its tab bar
-   visible over the feed, so app-tabbar's existing translucent/fixed styling
-   naturally overlays the bottom of each card. */
+/* This page owns the whole screen: hide the global app-header, keep the bottom
+   tab bar (Douyin keeps it over the feed). The card image fills behind the tab
+   bar; to make that read as immersion rather than "boxed above a cream bar",
+   the tab bar goes dark + translucent ONLY while the feed is showing, so the
+   artwork bleeds through it. */
 .app-root:has(.app-feed-page) .app-header { display: none; }
 .app-root:has(.app-feed-page) .app-main { padding: 0; }
+.app-root:has(.app-feed-page) .app-tabbar {
+  background: linear-gradient(0deg, rgba(8,6,4,0.82), rgba(8,6,4,0.42));
+  backdrop-filter: saturate(140%) blur(14px); border-top-color: rgba(255,255,255,0.08); }
+.app-root:has(.app-feed-page) .app-tab { color: rgba(255,255,255,0.62); }
+.app-root:has(.app-feed-page) .app-tab.active { color: #fff; }
+html[data-app="1"][data-perf="lite"] .app-root:has(.app-feed-page) .app-tabbar { backdrop-filter: none; background: rgba(8,6,4,0.9); }
+
+/* category switch: cross-fade the freshly-keyed scroll list in rather than a hard cut */
+.app-feed-scroll { animation: feedFade 0.28s ease; }
+@keyframes feedFade { from { opacity: 0.4; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .app-feed-scroll { animation: none; } }

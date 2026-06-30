@@ -13,8 +13,6 @@ import { useToast, Avatar } from '../ui.jsx';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 import { Heart, MessageCircle, Search, Info, Flame, Drama, ChevronUp } from 'lucide-react';
 
-const DOUBLE_TAP_MS = 280;
-
 export default function AppDiscoverFeed() {
   const nav = useNavigate();
   const toast = useToast();
@@ -27,8 +25,7 @@ export default function AppDiscoverFeed() {
   // affordances once, then never again. Dismisses on the first real interaction.
   const [hint, setHint] = useState(() => { try { return localStorage.getItem('huanyu_feed_hint') !== '1'; } catch { return false; } });
   const dismissHint = () => { if (!hint) return; setHint(false); try { localStorage.setItem('huanyu_feed_hint', '1'); } catch { /* */ } };
-  const tapRef = useRef({ id: 0, t: 0 });
-  const tapTimerRef = useRef(0);
+  const opening = useRef(false); // guard against double-firing chat open
 
   useEffect(() => { api('/meta/categories').then(d => setCats(d.categories || [])).catch(() => {}); }, []);
 
@@ -53,36 +50,24 @@ export default function AppDiscoverFeed() {
   }, [cat]);
 
   const openChat = async (c) => {
-    try { const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } }); nav('/chats/' + d.conversation.id); }
+    if (opening.current) return; opening.current = true;
+    try { const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } }); nav('/chats/' + d.conversation.id, { viewTransition: true }); }
     catch { nav('/character/' + c.id); }
+    finally { setTimeout(() => { opening.current = false; }, 600); }
   };
 
-  const toggleFav = async (c) => {
+  const toggleFav = async (c, burst) => {
     try {
       const d = await api(`/characters/${c.id}/favorite`, { method: 'POST' });
       setFavOverride(f => ({ ...f, [c.id]: d.faved }));
+      if (burst && d.faved) setBurstKey(b => ({ ...b, [c.id]: (b[c.id] || 0) + 1 }));
     } catch (e) { toast(e?.message || '操作失败'); }
   };
 
-  // Double-tap-to-like (Douyin convention: always likes, never un-likes) vs.
-  // single-tap-to-view-detail. A single shared ref is enough since only one
-  // card is interactive at a time in a snap feed.
-  const onCardTap = (c) => () => {
-    dismissHint();
-    const now = Date.now();
-    const last = tapRef.current;
-    if (last.id === c.id && now - last.t < DOUBLE_TAP_MS) {
-      clearTimeout(tapTimerRef.current);
-      tapRef.current = { id: 0, t: 0 };
-      const isFaved = favOverride[c.id] ?? c.faved;
-      if (!isFaved) toggleFav(c);
-      setBurstKey(b => ({ ...b, [c.id]: (b[c.id] || 0) + 1 }));
-      return;
-    }
-    tapRef.current = { id: c.id, t: now };
-    clearTimeout(tapTimerRef.current);
-    tapTimerRef.current = setTimeout(() => nav('/character/' + c.id), DOUBLE_TAP_MS - 20);
-  };
+  // Tap the card body → 直接开聊, immediately (no double-tap timer gating it).
+  // Liking is the prominent heart button on the right rail (with the same big
+  // heart-pop animation), so there's no tap-vs-double-tap ambiguity to delay chat.
+  const onCardTap = (c) => () => { dismissHint(); openChat(c); };
 
   return (
     <div className="app-feed-page">
@@ -113,7 +98,7 @@ export default function AppDiscoverFeed() {
               <div className="afh-card">
                 <span className="afh-up"><ChevronUp size={26} /></span>
                 <b>上滑，探索更多角色</b>
-                <p>双击喜欢 · 点头像看作者 · 点「聊天」直接开聊</p>
+                <p>点卡片直接开聊 · 右侧 ♥ 喜欢 · 点头像看作者</p>
                 <span className="afh-go">知道了</span>
               </div>
             </div>
@@ -137,7 +122,7 @@ export default function AppDiscoverFeed() {
                   <button className="afc-rail-av" onClick={() => nav('/user/' + c.owner_id)} aria-label="查看创作者主页">
                     <Avatar src={c.owner_avatar} name={c.owner_name} size={44} />
                   </button>
-                  <button className={'afc-rail-btn' + (isFaved ? ' on' : '')} data-burst onClick={() => toggleFav(c)} aria-label="喜欢">
+                  <button className={'afc-rail-btn' + (isFaved ? ' on' : '')} data-burst onClick={() => toggleFav(c, true)} aria-label="喜欢">
                     <Heart size={26} fill={isFaved ? 'currentColor' : 'none'} />
                     <span>{isFaved ? '已喜欢' : '喜欢'}</span>
                   </button>
