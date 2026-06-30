@@ -1,0 +1,76 @@
+name: Build Android APK
+
+# 纯云端打包：无需本地安装 Node / Android Studio。
+# 在 GitHub 网页 Actions 标签页手动运行，填上你的服务器地址即可。
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "服务器地址（数据共通）。例：https://你的域名 或 http://你的IP:4000。留空=离线演示版"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: "1"
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+
+      - name: Build web assets
+        run: npm run build:static
+
+      # 若填了服务器地址：让 App 直接连你的服务器（与网页共用同一数据库）。
+      - name: Point app at your server (data sync)
+        if: ${{ github.event.inputs.server_url != '' }}
+        env:
+          SERVER_URL: ${{ github.event.inputs.server_url }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const p = "capacitor.config.json";
+            const c = JSON.parse(fs.readFileSync(p, "utf8"));
+            const url = process.env.SERVER_URL.trim();
+            c.server = c.server || {};
+            c.server.androidScheme = c.server.androidScheme || "https";
+            c.server.url = url;
+            if (url.startsWith("http://")) c.server.cleartext = true;
+            fs.writeFileSync(p, JSON.stringify(c, null, 2));
+            console.log("App will load from:", url);
+          '
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Generate Android project
+        run: npx cap add android
+
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: huanyu-app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
