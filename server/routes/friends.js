@@ -4,6 +4,7 @@ import { authRequired } from '../auth.js';
 import { notify } from '../wallet.js';
 import { creatorTier } from '../creator.js';
 import { areFriends, friendIds, isOnline, dmAllowed, friendState, dmThread, pairKey } from '../relations.js';
+import { push } from '../realtime.js';
 
 const router = Router();
 const U = (id) => db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -44,11 +45,13 @@ router.post('/request/:id', authRequired, (req, res) => {
     db.prepare("UPDATE friend_requests SET status='accepted' WHERE id=?").run(incoming.id);
     const [a, b] = pairKey(me.id, tid); db.prepare('INSERT INTO friendships (a_id, b_id) VALUES (?,?)').run(a, b);
     notify(tid, `${me.display_name} 接受了你的好友申请 🎉`, '/friends');
+    push(tid, 'friend', { kind: 'accepted', by: { id: me.id, display_name: me.display_name, avatar: me.avatar } });
     return res.json({ state: 'friends' });
   }
   if (db.prepare("SELECT 1 FROM friend_requests WHERE from_id=? AND to_id=? AND status='pending'").get(me.id, tid)) return res.status(400).json({ error: '已发送过好友申请，等待对方通过' });
   db.prepare("INSERT INTO friend_requests (from_id, to_id, status) VALUES (?,?,'pending')").run(me.id, tid);
   notify(tid, `${me.display_name} 申请加你为好友`, '/friends');
+  push(tid, 'friend', { kind: 'request', by: { id: me.id, display_name: me.display_name, avatar: me.avatar, creator_tier: creatorTier(me.id) } });
   res.json({ state: 'pending_out' });
 });
 
@@ -60,6 +63,7 @@ router.post('/requests/:id/:action', authRequired, (req, res) => {
     db.prepare("UPDATE friend_requests SET status='accepted' WHERE id=?").run(r.id);
     if (!areFriends(me.id, r.from_id)) { const [a, b] = pairKey(me.id, r.from_id); db.prepare('INSERT INTO friendships (a_id, b_id) VALUES (?,?)').run(a, b); }
     notify(r.from_id, `${me.display_name} 通过了你的好友申请，开始聊天吧～`, '/friends');
+    push(r.from_id, 'friend', { kind: 'accepted', by: { id: me.id, display_name: me.display_name, avatar: me.avatar } });
     return res.json({ ok: true, state: 'friends' });
   }
   db.prepare("UPDATE friend_requests SET status='rejected' WHERE id=?").run(r.id);

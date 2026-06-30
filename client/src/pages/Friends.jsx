@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api.jsx';
+import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV, CouncilorBadge } from '../ui.jsx';
 import {
   Users, UserPlus, Search, Send, Check, X, MessageCircle, ArrowLeft, MoreVertical,
@@ -26,15 +27,36 @@ export default function Friends() {
   useEffect(() => { loadFriends(); loadRequests(); }, []);
   useEffect(() => { const dmId = params.get('dm'); if (dmId) setSel(Number(dmId)); }, [params]);
 
-  // load + poll the open DM thread
+  // load + poll the open DM thread。实时事件由 SSE 秒级推送（见下方 useRealtimeEvent），
+  // 这里的轮询只作为 SSE 断线时的兜底（15s），避免漏收。
   useEffect(() => {
     if (!sel) { setDm(null); return; }
     let alive = true;
     const load = () => api('/dm/' + sel).then(d => { if (alive) setDm(d); }).catch(() => {});
     load();
-    const t = setInterval(load, 4000);
+    const t = setInterval(load, 15000);
     return () => { alive = false; clearInterval(t); };
   }, [sel]);
+
+  // 实时私信：对方发来的消息秒级到达。若正打开该会话则追加并刷新列表，
+  // 否则只刷新好友列表（last_message + 未读数 +1）。
+  useRealtimeEvent('dm', (data) => {
+    const fromId = data?.from?.id;
+    if (sel && fromId === sel) {
+      setDm(p => p ? { ...p, messages: [...p.messages, { ...data.message, mine: false }] } : p);
+      // 标记已读 + 同步列表未读：复用 GET 触发服务端 mark-read。
+      api('/dm/' + sel).then(d => setDm(d)).catch(() => {});
+      loadFriends();
+    } else {
+      loadFriends();
+    }
+  });
+
+  // 实时好友事件：有人发来申请 → 刷新 incoming；对方通过申请 → 刷新好友列表。
+  useRealtimeEvent('friend', (data) => {
+    if (data?.kind === 'request') { loadRequests(); loadFriends(); }
+    else if (data?.kind === 'accepted') { loadRequests(); loadFriends(); toast(`${data.by?.display_name || '对方'} 通过了你的好友申请 🎉`); }
+  });
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [dm?.messages?.length]);
 

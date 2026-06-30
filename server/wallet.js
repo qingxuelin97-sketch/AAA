@@ -1,4 +1,5 @@
 import db from './db.js';
+import { push } from './realtime.js';
 
 export const GOLD_PER_DIAMOND = 100; // 1 钻石 = 100 金币
 export const VIP_COST_GOLD = 30000;  // 30 天 VIP 价格
@@ -34,5 +35,7 @@ export const applyTx = db.transaction((userId, { kind, gold = 0, diamond = 0, me
 });
 
 export function notify(userId, text, link = '') {
-  db.prepare('INSERT INTO notifications (user_id, text, link) VALUES (?,?,?)').run(userId, text, link);
+  const info = db.prepare('INSERT INTO notifications (user_id, text, link) VALUES (?,?,?)').run(userId, text, link);
+  // 秒级推送给在线用户；离线则仅落库，下次拉取仍可见。
+  push(userId, 'notification', { id: Number(info.lastInsertRowid), text, link, created_at: new Date().toISOString(), read: 0 });
 }

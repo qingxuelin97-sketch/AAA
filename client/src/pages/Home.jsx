@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
+import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, GridSkeleton, CreatorV, CoinIcon } from '../ui.jsx';
 import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare, ListChecks, Check, Shuffle } from 'lucide-react';
 import { CategoryIcon, categoryName } from '../assets.jsx';
@@ -116,6 +117,13 @@ export default function Home() {
       .then(d => setChars(d.characters)).catch(e => toast(e.message, 'err')).finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [cat, sort]);
+
+  // 实时新角色卡：他人发布公开角色时秒级广播到达，直接插到列表顶部第一时间可见，并弹提示。
+  useRealtimeEvent('character_new', (data) => {
+    const c = data?.character; if (!c) return;
+    setChars(prev => prev.some(x => x.id === c.id) ? prev : [{ ...c, uses: 0, likes: 0, faved: false }, ...prev]);
+    toast(`✨ ${c.owner_name || '有人'} 发布了新角色「${c.name}」`);
+  });
 
   const view = (c) => nav('/character/' + c.id);
   const fav = async (e, c) => {

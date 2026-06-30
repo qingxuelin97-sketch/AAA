@@ -3,6 +3,7 @@ import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter } from '../limiters.js';
 import { bumpDaily } from '../daily.js';
+import { broadcast } from '../realtime.js';
 
 const router = Router();
 
@@ -56,6 +57,14 @@ router.post('/publish-character/:id', authRequired, (req, res) => {
     VALUES (?,?,?,?,?,?,?,?)`).run(
     req.user.id, 'card', c.name, c.tagline || c.intro.slice(0, 120), c.avatar, c.id, JSON.stringify(payload), c.tags
   );
+  // 秒级广播给所有在线用户：有人发布新角色卡，第一时间在广场/角色库收到提示。
+  broadcast('character_new', {
+    character: {
+      id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline || '',
+      category: c.category || '', tags: c.tags || '', nsfw: !!c.nsfw,
+      owner_id: c.owner_id, owner_name: req.user.display_name, created_at: c.created_at,
+    }
+  }, req.user.id);
   res.json({ post: db.prepare('SELECT * FROM posts WHERE id = ?').get(info.lastInsertRowid) });
 });
 

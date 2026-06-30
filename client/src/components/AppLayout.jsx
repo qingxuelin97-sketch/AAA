@@ -9,6 +9,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
+import { useRealtimeEvent } from '../realtime.jsx';
 import { Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
@@ -130,6 +131,10 @@ export default function AppLayout({ children }) {
     const t = setInterval(load, 20000);
     return () => { alive = false; clearInterval(t); };
   }, []);
+
+  // 实时未读数：通知/私信到达时秒级更新角标。
+  useRealtimeEvent('notification', () => setUnread(u => u + 1));
+  useRealtimeEvent('dm', () => { api('/dm').then(d => setDmUnread(d.unread_total || 0)).catch(() => {}); });
 
   // Gestures: swipe between top tabs, left-edge swipe-back, pull-to-refresh.
   const swipeGo = (dir) => {

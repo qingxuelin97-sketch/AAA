@@ -12,7 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // 又保证未配置环境变量时开箱可用（不会 process.exit 导致服务起不来）。
 // 生产环境强烈建议显式设置 JWT_SECRET 环境变量。
 const SECRET_FILE = path.join(__dirname, '.jwt-secret');
-let SECRET = process.env.JWT_SECRET;
+export let SECRET = process.env.JWT_SECRET;
 if (!SECRET || SECRET.length < 32) {
   if (fs.existsSync(SECRET_FILE)) {
     SECRET = fs.readFileSync(SECRET_FILE, 'utf8').trim();

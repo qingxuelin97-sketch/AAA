@@ -4,6 +4,7 @@ import { authRequired, authOptional } from '../auth.js';
 import { bumpDaily } from '../daily.js';
 import { creatorTier } from '../creator.js';
 import { contentLimiter } from '../limiters.js';
+import { broadcast } from '../realtime.js';
 
 const router = Router();
 
@@ -25,6 +26,18 @@ function ownerView(c) {
     FROM character_worldbooks cw JOIN worldbooks w ON w.id = cw.worldbook_id
     WHERE cw.character_id = ? ORDER BY w.id`).all(c.id);
   return c;
+}
+
+// 角色卡「秒级广播」用的精简预览：只携带前端弹提示/插到列表头部所需的最小字段，
+// 避免把 persona/intro 等大字段全量广播给所有在线用户。
+function cardPreview(c, ownerName) {
+  if (!c) return null;
+  return {
+    id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline || '',
+    category: c.category || '', tags: c.tags || '', nsfw: !!c.nsfw,
+    owner_id: c.owner_id, owner_name: ownerName || '',
+    created_at: c.created_at,
+  };
 }
 
 // List my characters
@@ -121,6 +134,10 @@ router.post('/', authRequired, (req, res) => {
     });
   saveWorld(info.lastInsertRowid, b.world);
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);
+  // 新建即公开的角色卡：秒级广播给所有在线用户（排除发布者本人，避免自打扰）。
+  if (b.is_public) {
+    broadcast('character_new', { character: cardPreview(c, req.user.display_name) }, req.user.id);
+  }
   res.json({ character: ownerView(c) });
 });
 

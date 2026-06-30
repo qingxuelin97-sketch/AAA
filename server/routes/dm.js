@@ -5,6 +5,7 @@ import { contentLimiter } from '../limiters.js';
 import { notify } from '../wallet.js';
 import { creatorTier } from '../creator.js';
 import { areFriends, isOnline, dmAllowed, dmThread } from '../relations.js';
+import { push } from '../realtime.js';
 
 const router = Router();
 const U = (id) => db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -37,9 +38,13 @@ router.post('/:id', authRequired, contentLimiter, (req, res) => {
   if (!target) return res.status(404).json({ error: '用户不存在' });
   const text = String(req.body?.text || '').trim(); if (!text) return res.status(400).json({ error: '消息不能为空' });
   if (!dmAllowed(me, target)) return res.status(403).json({ error: '对方的隐私设置不允许你私信，需先成为好友或关注' });
-  const info = db.prepare('INSERT INTO dm_messages (from_id, to_id, text, read) VALUES (?,?,?,0)').run(me.id, tid, text.slice(0, 2000));
-  notify(tid, `${me.display_name} 发来私信：${text.slice(0, 24)}`, '/friends');
-  res.json({ message: { id: info.lastInsertRowid, from_id: me.id, text: text.slice(0, 2000), created_at: new Date().toISOString(), mine: true } });
+  const slice = text.slice(0, 2000);
+  const info = db.prepare('INSERT INTO dm_messages (from_id, to_id, text, read) VALUES (?,?,?,0)').run(me.id, tid, slice);
+  const msg = { id: Number(info.lastInsertRowid), from_id: me.id, to_id: tid, text: slice, created_at: new Date().toISOString(), mine: false };
+  // 秒级推送到收件人：在线且正打开该会话则直接追加气泡，否则只更新未读数。
+  push(tid, 'dm', { message: msg, from: { id: me.id, display_name: me.display_name, avatar: me.avatar } });
+  notify(tid, `${me.display_name} 发来私信：${slice.slice(0, 24)}`, '/friends');
+  res.json({ message: { ...msg, mine: true } });
 });
 
 export default router;

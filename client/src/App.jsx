@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './api.jsx';
 import { ToastProvider } from './ui.jsx';
+import { RealtimeProvider } from './realtime.jsx';
 import Layout from './components/Layout.jsx';
 import AppLayout from './components/AppLayout.jsx';
 import { isAppMode } from './appmode.js';
@@ -66,55 +67,57 @@ export default function App() {
   const { user } = useAuth();
   return (
     <ToastProvider>
-      <Suspense fallback={<div className="empty" style={{ paddingTop: 160 }}>载入中…</div>}>
-        <Routes>
-          <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/" element={P(<Home />)} />
-          <Route path="/today" element={P(<AppHome />)} />
-          <Route path="/scripts" element={P(<Scripts />)} />
-          <Route path="/script/new" element={P(<ScriptEditor />)} />
-          <Route path="/script/:id" element={P(<ScriptDetail />)} />
-          <Route path="/script/:id/edit" element={P(<ScriptEditor />)} />
-          <Route path="/community" element={P(<Community />)} />
-          <Route path="/search" element={P(<Search />)} />
-          <Route path="/tags" element={P(<Tags />)} />
-          <Route path="/announcements" element={P(<Announcements />)} />
-          <Route path="/leaderboard" element={P(<Leaderboard />)} />
-          <Route path="/events" element={P(<Events />)} />
-          <Route path="/gacha" element={P(<Gacha />)} />
-          <Route path="/parliament" element={P(<Parliament />)} />
-          <Route path="/achievements" element={P(<Achievements />)} />
-          <Route path="/draw" element={P(<Draw />)} />
-          <Route path="/friends" element={P(<Friends />)} />
-          <Route path="/admin" element={P(<Admin />)} />
-          <Route path="/chats" element={P(<Chat />)} />
-          <Route path="/chats/:id" element={P(<Chat />)} />
-          <Route path="/groups" element={P(<Groups />)} />
-          <Route path="/group/:id" element={P(<GroupRoom />)} />
-          <Route path="/theater" element={P(<Theater />)} />
-          <Route path="/theater/:id" element={P(<TheaterRoom />)} />
-          <Route path="/library" element={P(<Library />)} />
-          <Route path="/worldbooks" element={P(<Worldbooks />)} />
-          <Route path="/worldbook/:id/edit" element={P(<WorldbookEditor />)} />
-          <Route path="/atelier" element={P(<Atelier />)} />
-          <Route path="/atelier/read/:id" element={P(<NovelReader />)} />
-          <Route path="/atelier/:id" element={P(<NovelWorkspace />)} />
-          <Route path="/studio" element={P(<Studio />)} />
-          <Route path="/favorites" element={P(<Favorites />)} />
-          <Route path="/wallet" element={P(<Wallet />)} />
-          <Route path="/notifications" element={P(<Notifications />)} />
-          <Route path="/settings" element={P(<Settings />)} />
-          <Route path="/character/new" element={P(<CharacterEditor />)} />
-          <Route path="/character/:id" element={P(<CharacterView />)} />
-          <Route path="/character/:id/edit" element={P(<CharacterEditor />)} />
-          <Route path="/publish" element={P(<Publish />)} />
-          <Route path="/profile" element={P(<Profile />)} />
-          <Route path="/user/:id" element={P(<Profile />)} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      <RealtimeProvider>
+        <Suspense fallback={<div className="empty" style={{ paddingTop: 160 }}>载入中…</div>}>
+          <Routes>
+            <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
+            <Route path="/features" element={<Features />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/" element={P(<Home />)} />
+            <Route path="/today" element={P(<AppHome />)} />
+            <Route path="/scripts" element={P(<Scripts />)} />
+            <Route path="/script/new" element={P(<ScriptEditor />)} />
+            <Route path="/script/:id" element={P(<ScriptDetail />)} />
+            <Route path="/script/:id/edit" element={P(<ScriptEditor />)} />
+            <Route path="/community" element={P(<Community />)} />
+            <Route path="/search" element={P(<Search />)} />
+            <Route path="/tags" element={P(<Tags />)} />
+            <Route path="/announcements" element={P(<Announcements />)} />
+            <Route path="/leaderboard" element={P(<Leaderboard />)} />
+            <Route path="/events" element={P(<Events />)} />
+            <Route path="/gacha" element={P(<Gacha />)} />
+            <Route path="/parliament" element={P(<Parliament />)} />
+            <Route path="/achievements" element={P(<Achievements />)} />
+            <Route path="/draw" element={P(<Draw />)} />
+            <Route path="/friends" element={P(<Friends />)} />
+            <Route path="/admin" element={P(<Admin />)} />
+            <Route path="/chats" element={P(<Chat />)} />
+            <Route path="/chats/:id" element={P(<Chat />)} />
+            <Route path="/groups" element={P(<Groups />)} />
+            <Route path="/group/:id" element={P(<GroupRoom />)} />
+            <Route path="/theater" element={P(<Theater />)} />
+            <Route path="/theater/:id" element={P(<TheaterRoom />)} />
+            <Route path="/library" element={P(<Library />)} />
+            <Route path="/worldbooks" element={P(<Worldbooks />)} />
+            <Route path="/worldbook/:id/edit" element={P(<WorldbookEditor />)} />
+            <Route path="/atelier" element={P(<Atelier />)} />
+            <Route path="/atelier/read/:id" element={P(<NovelReader />)} />
+            <Route path="/atelier/:id" element={P(<NovelWorkspace />)} />
+            <Route path="/studio" element={P(<Studio />)} />
+            <Route path="/favorites" element={P(<Favorites />)} />
+            <Route path="/wallet" element={P(<Wallet />)} />
+            <Route path="/notifications" element={P(<Notifications />)} />
+            <Route path="/settings" element={P(<Settings />)} />
+            <Route path="/character/new" element={P(<CharacterEditor />)} />
+            <Route path="/character/:id" element={P(<CharacterView />)} />
+            <Route path="/character/:id/edit" element={P(<CharacterEditor />)} />
+            <Route path="/publish" element={P(<Publish />)} />
+            <Route path="/profile" element={P(<Profile />)} />
+            <Route path="/user/:id" element={P(<Profile />)} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </RealtimeProvider>
     </ToastProvider>
   );
 }
