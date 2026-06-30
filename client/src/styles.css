@@ -881,9 +881,17 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .wallet-hero { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: clamp(12px, 2vw, 28px); align-items: center;
   background: linear-gradient(135deg, #fbfaf6, #f3efe5); border: 1px solid var(--border); border-radius: var(--radius);
   padding: clamp(18px, 2.4vw, 26px) clamp(20px, 3vw, 30px); box-shadow: var(--shadow); }
-.wallet-hero .col { display: flex; align-items: center; gap: 13px; position: relative; }
+/* min-width:0 lets the column actually shrink to its 1fr track instead of the
+   default grid-item min-width:auto forcing it to stay as wide as its content —
+   without this, a large balance (e.g. "18,600") overflows past the track and
+   visually crosses through the divider on narrow viewports (app shell / narrow
+   mobile web). The bal-num clamp floor is also lowered so the number itself
+   shrinks to fit rather than relying on overflow. */
+.wallet-hero .col { display: flex; align-items: center; gap: 13px; position: relative; min-width: 0; }
+.wallet-hero .col > div { min-width: 0; }
 .wallet-hero .col:not(:first-child)::before { content: ''; position: absolute; left: -14px; top: 50%; transform: translateY(-50%); height: 38px; width: 1px; background: var(--border); }
-.bal-num { font-family: var(--serif); font-size: clamp(26px, 3vw, 34px); font-weight: 560; line-height: 1.05; letter-spacing: -0.01em; }
+.bal-num { font-family: var(--serif); font-size: clamp(19px, 5.5vw, 34px); font-weight: 560; line-height: 1.05; letter-spacing: -0.01em;
+  white-space: nowrap; }
 .bal-lbl { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
 .checkin-btn { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   padding: 12px 20px; border-radius: 14px; border: none; background: var(--accent); color: #fff; font-weight: 650; font-size: 14px;
@@ -918,7 +926,10 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 @media (max-width: 720px) {
   .wallet-hero { grid-template-columns: 1fr 1fr; }
   .wallet-hero .col:nth-child(3)::before { display: none; }
-  .checkin-btn { grid-column: 1 / -1; flex-direction: row; }
+  /* the 2px gap from the stacked (column) layout reads fine vertically, but
+     reused as-is for this row layout, the label and streak/CTA span end up
+     running together with no visible separation — give the row its own gap. */
+  .checkin-btn { grid-column: 1 / -1; flex-direction: row; gap: 7px; }
 }
 
 /* ============ Motion, glass & immersive (v3) ============ */
@@ -4336,9 +4347,13 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 /* ---- bottom sheets (create / generic) ---- */
 .app-sheet-mask { position: fixed; inset: 0; z-index: 120; background: rgba(0,0,0,0.42);
   display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.18s ease; }
-.app-sheet { width: min(480px, 100%); background: var(--panel); border-radius: 22px 22px 0 0;
+/* frosted (not flat opaque) — the sheet floats above the feed/page content, a hint
+   of it bleeding through reinforces "this is layered above," not a separate screen */
+.app-sheet { width: min(480px, 100%); background: color-mix(in srgb, var(--panel) 88%, transparent);
+  backdrop-filter: saturate(160%) blur(20px); border-radius: 22px 22px 0 0;
   padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 40px rgba(0,0,0,0.25);
   animation: sheetUp 0.26s var(--spring); }
+html[data-app="1"][data-perf="lite"] .app-sheet { backdrop-filter: none; background: var(--panel); }
 @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .app-sheet-grip { width: 38px; height: 4px; border-radius: 3px; background: var(--border-2); margin: 4px auto 12px; }
 .app-sheet-title { font-family: var(--serif); font-size: 17px; font-weight: 700; margin: 0 4px 12px; }
