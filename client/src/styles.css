@@ -1030,8 +1030,14 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
   /* 兜底：裸 input/textarea/select（无类名）也走 16px 防 iOS 自动缩放 */
   input, textarea, select { font-size: 16px; }
   .chat-input-bar textarea { font-size: 16px; }
-  .topbar { flex-wrap: wrap; }
+  .topbar { flex-wrap: wrap; row-gap: 10px; }
   .topbar .btn { padding: 8px 12px; }
+  /* The title block has inline style flex:1 (→ flex-basis:0%); Chinese text has no
+     spaces so its min-content is a single glyph — on a narrow row crammed with
+     返回/暂存/开关/保存 it collapses to ~0 width and wraps vertically (字-by-字).
+     Force a full-width row (!important beats the inline flex-basis:0%) so the
+     action controls flow onto the next line instead of strangling the title. */
+  .topbar > div { flex: 1 1 100% !important; min-width: 0; }
   /* 移动端触控目标放大（接近 44px 标准） */
   .btn { padding: 11px 16px; }
   .btn.sm { padding: 9px 13px; }

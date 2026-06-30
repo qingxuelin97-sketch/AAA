@@ -7,6 +7,9 @@ import { useKeyboardInsetBar } from '../mobile.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles } from 'lucide-react';
 
+// Touch devices have no Enter/Shift+Enter concept — don't show desktop keyboard
+// hints in the input placeholder (and they'd overflow the bar on a phone).
+const touchDevice = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
 const LIST_KEY = 'huanyu_chatlist_mini';
 const FONT_KEY = 'huanyu_chat_font';
 const AUTOREAD_KEY = 'huanyu_chat_autoread';
@@ -485,7 +488,7 @@ export default function Chat() {
             {!character?.background && <div className="chat-aura" aria-hidden="true"><span /><span /><span /></div>}
             {character?.bgm && <audio ref={bgmRef} src={character.bgm} loop preload="auto" />}
             <div className="chat-head">
-              <button className="btn ghost sm mobile-only" onClick={() => nav('/chats')}><ArrowLeft size={16} /></button>
+              <button className="btn ghost sm mobile-only" onClick={() => { if (window.history.length > 1) nav(-1); else nav('/chats'); }} aria-label="返回"><ArrowLeft size={16} /></button>
               <div className={'ch-av' + (streaming ? ' live' : '')}><Avatar src={character?.avatar} name={character?.name} size={44} /></div>
               <div className="nm"><b>{character?.name}</b><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : (character?.tagline || '在线 · 沉浸扮演中')}</span></div>
               {(() => { const af = affinityInfo(affinity); return (
@@ -656,7 +659,7 @@ export default function Chat() {
               )}
               <div className="box">
                 <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => setActionsOpen(o => !o)} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
-                <textarea ref={inputRef} rows={1} value={input} placeholder={`对 ${character?.name} 说点什么…（Enter 发送，Shift+Enter 换行）`}
+                <textarea ref={inputRef} rows={1} value={input} placeholder={touchDevice ? `对 ${character?.name} 说点什么…` : `对 ${character?.name} 说点什么…（Enter 发送，Shift+Enter 换行）`}
                   enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
                 {streaming
