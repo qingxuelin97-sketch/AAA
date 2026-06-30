@@ -9,7 +9,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import {
   Check, Flame, MessagesSquare, ChevronRight, Sparkles, Wand2, Feather,
-  Drama, PartyPopper, Dices, Gift, Crown
+  Drama, PartyPopper, Dices, Gift, Crown, Star, Compass
 } from 'lucide-react';
 
 function greeting() {
@@ -37,16 +37,24 @@ export default function AppHome() {
   const nav = useNavigate();
   const [resume, setResume] = useState(null);
   const [pick, setPick] = useState(null);
+  const [hero, setHero] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [checked, setChecked] = useState(false);
+  const [streak, setStreak] = useState(0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api('/chat/conversations').then(d => setResume((d.conversations || []).slice(0, 10))).catch(() => setResume([]));
+    // Featured pick → hero; the rest fill the "为你挑选" grid (recommended first).
+    api('/characters/public?sort=hot')
+      .then(d => {
+        const list = d.characters || [];
+        setHero(list.find(c => c.featured) || list[0] || null);
+      }).catch(() => {});
     api('/characters/recommended')
-      .then(d => setPick((d.characters || []).slice(0, 6)))
+      .then(d => { const cs = d.characters || []; if (cs.length) setPick(cs.slice(0, 6)); })
       .catch(() => {});
-    if (!pick) api('/characters/public?sort=hot').then(d => setPick(p => p || (d.characters || []).slice(0, 6))).catch(() => {});
+    api('/characters/public?sort=hot').then(d => setPick(p => p || (d.characters || []).slice(0, 6))).catch(() => {});
     api('/engage/tasks').then(d => setTasks((d.tasks || []).filter(t => !t.claimed).slice(0, 3))).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -56,7 +64,7 @@ export default function AppHome() {
     setBusy(true);
     try {
       const d = await api('/economy/checkin', { method: 'POST' });
-      setChecked(true);
+      setChecked(true); setStreak(d.streak || 0);
       toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
     } catch (e) {
       // already signed in today (or no endpoint) — mark done so the CTA settles
@@ -88,7 +96,9 @@ export default function AppHome() {
           <button className="ah-coin" onClick={() => nav('/wallet')}><CoinIcon size={15} /> {user?.gold ?? 0}</button>
           <button className="ah-coin di" onClick={() => nav('/wallet')}><DiamondIcon size={15} /> {user?.diamond ?? 0}</button>
           <button className={'ah-checkin' + (checked ? ' done' : '')} onClick={checkin} disabled={busy}>
-            {checked ? <><Check size={15} /> 已签到</> : <><Gift size={15} /> 签到领币</>}
+            {checked
+              ? <><Check size={15} /> {streak ? `连签 ${streak} 天` : '已签到'}</>
+              : <><Gift size={15} /> 签到领币</>}
           </button>
         </div>
       </header>
@@ -103,10 +113,24 @@ export default function AppHome() {
         ))}
       </div>
 
+      {/* daily featured hero */}
+      {hero && (
+        <button className="ah-hero-card" onClick={() => openChat(hero)}>
+          {hero.avatar ? <img className="ah-hc-bg" src={hero.avatar} alt="" /> : <div className="ah-hc-bg ph" />}
+          <div className="ah-hc-scrim" />
+          <div className="ah-hc-body">
+            <span className="ah-hc-tag"><Star size={11} fill="currentColor" /> 今日精选</span>
+            <b>{hero.name}</b>
+            <p>{hero.tagline || hero.intro || '一个等待被开启的故事'}</p>
+            <span className="ah-hc-cta"><MessagesSquare size={14} /> 开始对话</span>
+          </div>
+        </button>
+      )}
+
       {/* continue your story */}
       {resume === null ? (
         <div className="ah-rail-skel" />
-      ) : resume.length > 0 && (
+      ) : resume.length > 0 ? (
         <section className="ah-sec">
           <div className="ah-sec-head"><h2><MessagesSquare size={16} /> 继续你的故事</h2>
             <button className="ah-more" onClick={() => nav('/chats')}>全部 <ChevronRight size={14} /></button>
@@ -121,6 +145,12 @@ export default function AppHome() {
             ))}
           </div>
         </section>
+      ) : (
+        <button className="ah-empty" onClick={() => nav('/')}>
+          <Compass size={22} />
+          <div><b>还没有开始任何故事</b><span>去发现广场，挑一个角色聊聊吧</span></div>
+          <ChevronRight size={18} />
+        </button>
       )}
 
       {/* daily tasks */}

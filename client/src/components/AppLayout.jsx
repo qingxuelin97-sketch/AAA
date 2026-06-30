@@ -6,19 +6,23 @@
 //   · a full-screen 九宫格 launcher ("更多") replacing the drawer
 //   · safe-area aware, phone-framed on wide screens for preview
 // Content pages are reused as-is; only the chrome differs.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
 import { Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
+import { useAppGestures, tick } from '../appgestures.js';
 import {
   Home, Compass, MessageCircle, Plus, LayoutGrid, X, Bell, Search,
   Sparkles, Feather, Wand2, Drama, Users, Megaphone, Trophy, Landmark,
   ScrollText, PartyPopper, Dices, Library, BookOpen, TrendingUp, Medal,
   Heart, Wallet, Settings, Shield, Crown, LogOut, Download, UserRound,
-  Tags as TagsIcon, Send
+  Tags as TagsIcon, Send, RefreshCw
 } from 'lucide-react';
+
+// Top-level tabs that horizontal swipe cycles through.
+const SWIPE_TABS = ['/today', '/', '/chats'];
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
@@ -81,6 +85,10 @@ export default function AppLayout({ children }) {
   const [dmUnread, setDmUnread] = useState(0);
   const [sheet, setSheet] = useState(null); // 'create' | 'grid' | null
   const [installEvt, setInstallEvt] = useState(null);
+  const [pull, setPull] = useState(0);        // pull-to-refresh distance (px)
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // bump → remount route → refetch
+  const mainRef = useRef(null);
 
   useEffect(() => {
     const h = (e) => { e.preventDefault(); setInstallEvt(e); };
@@ -115,11 +123,38 @@ export default function AppLayout({ children }) {
     return () => { alive = false; clearInterval(t); };
   }, []);
 
+  // Gestures: swipe between top tabs, left-edge swipe-back, pull-to-refresh.
+  const swipeGo = (dir) => {
+    const i = SWIPE_TABS.indexOf(loc.pathname);
+    if (i < 0) return;                 // only the swipeable top-levels respond
+    const n = i + dir;
+    if (n < 0 || n >= SWIPE_TABS.length) return;
+    tick(); nav(SWIPE_TABS[n], { viewTransition: true });
+  };
+  const doRefresh = () => {
+    if (refreshing) return;
+    tick(12); setRefreshing(true);
+    setRefreshKey(k => k + 1);          // remount current route → its effects refetch
+    setTimeout(() => { setRefreshing(false); setPull(0); }, 720);
+  };
+  useAppGestures(mainRef, {
+    onNext: () => swipeGo(1),
+    onPrev: () => swipeGo(-1),
+    onBack: () => { if (window.history.length > 1) { tick(); window.history.back(); } },
+    onPullMove: (px) => { if (!refreshing) setPull(px); },
+    onPullEnd: (ok) => { if (ok) doRefresh(); else setPull(0); }
+  });
+
+  const ptr = refreshing ? 56 : pull;
+
   return (
     <div className="app-root">
       <AppHeader user={user} unread={unread} />
-      <main className="app-main">
-        <div className="route-fade" key={loc.pathname}>{children}</div>
+      <div className={'app-ptr' + (refreshing ? ' spin' : '')} style={{ height: ptr, opacity: ptr ? 1 : 0 }} aria-hidden="true">
+        <RefreshCw size={20} style={{ transform: refreshing ? 'none' : `rotate(${ptr * 3}deg)` }} />
+      </div>
+      <main className="app-main" ref={mainRef} style={pull && !refreshing ? { transform: `translateY(${Math.min(pull, 90)}px)` } : undefined}>
+        <div className="route-fade" key={loc.pathname + '#' + refreshKey}>{children}</div>
       </main>
 
       <nav className="app-tabbar">
