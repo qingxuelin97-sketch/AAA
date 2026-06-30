@@ -38,7 +38,6 @@ export default function AppHome() {
   const toast = useToast();
   const nav = useNavigate();
   const [resume, setResume] = useState(null);
-  const [pick, setPick] = useState(null);
   const [hero, setHero] = useState(null);
   const [tasks, setTasks] = useState([]);
   // Derived from the real account state (same source Wallet.jsx uses), not guessed
@@ -51,18 +50,14 @@ export default function AppHome() {
 
   useEffect(() => {
     api('/chat/conversations').then(d => setResume((d.conversations || []).slice(0, 10))).catch(() => setResume([]));
-    // One hot fetch feeds both the featured hero and the picks fallback; the
-    // personalised "recommended" set takes precedence for picks when present.
-    // (null = loading → skeleton; false/[] = loaded-empty → hidden.)
+    // 今日 is the personal hub; broad "browse" lives entirely in the 发现 feed now.
+    // Here we keep just ONE editorial highlight (今日精选 hero) — a single daily
+    // pick, not a browse grid — so the surface still feels alive without
+    // duplicating 发现's job.
     api('/characters/public?sort=hot').then(d => {
       const hot = d.characters || [];
-      const top = hot.find(c => c.featured) || hot[0] || null;
-      setHero(top || false);
-      setPick(p => (p && p.length) ? p : hot.filter(c => !top || c.id !== top.id).slice(0, 6));
-    }).catch(() => { setHero(false); setPick(p => p || []); });
-    api('/characters/recommended')
-      .then(d => { const cs = d.characters || []; if (cs.length) setPick(cs.slice(0, 6)); })
-      .catch(() => {});
+      setHero(hot.find(c => c.featured) || hot[0] || false);
+    }).catch(() => setHero(false));
     loadTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -198,33 +193,12 @@ export default function AppHome() {
         </section>
       )}
 
-      {/* personalised pick */}
-      {pick === null && (
-        <section className="ah-sec">
-          <div className="ah-sec-head"><h2><Sparkles size={16} /> 为你挑选</h2></div>
-          <div className="ah-picks">{[0, 1].map(i => <div key={i} className="ah-pick-skel" />)}</div>
-        </section>
-      )}
-      {pick && pick.length > 0 && (
-        <section className="ah-sec">
-          <div className="ah-sec-head"><h2><Sparkles size={16} /> 为你挑选</h2>
-            <button className="ah-more" onClick={() => nav('/')}>逛广场 <ChevronRight size={14} /></button>
-          </div>
-          <div className="ah-picks">
-            {pick.map(c => (
-              <button key={c.id} className="ah-pick" onClick={() => openChat(c)}>
-                <div className="ah-pick-av">
-                  {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ah-pick-ph"><Drama size={28} /></div>}
-                </div>
-                <div className="ah-pick-tx">
-                  <b>{c.name}</b>
-                  <span>{c.tagline || c.intro || '一个等待开启的故事'}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* 浏览发现入口 —— 不在今日页重复角色网格，引导到沉浸式发现页 */}
+      <button className="ah-discover-cta" onClick={() => nav('/')}>
+        <Compass size={20} />
+        <div><b>去发现更多角色</b><span>沉浸式信息流，上滑挑你心动的那一个</span></div>
+        <ChevronRight size={18} />
+      </button>
     </div>
   );
 }

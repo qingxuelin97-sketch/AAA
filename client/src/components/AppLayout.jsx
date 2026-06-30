@@ -21,15 +21,19 @@ import {
   Tags as TagsIcon, Send, RefreshCw, WifiOff
 } from 'lucide-react';
 
-// Top-level tabs that horizontal swipe cycles through.
-const SWIPE_TABS = ['/today', '/', '/chats'];
+// Top-level tabs that horizontal swipe cycles through (visual left-to-right order).
+// 发现 itself is a vertical scroll-snap feed and is excluded from horizontal
+// tab-swipe (see appgestures NO_SWIPE), so in practice this connects 今日 ⇆ 对话.
+const SWIPE_TABS = ['/', '/today', '/chats'];
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
-// Bottom tab bar — 4 destinations split around the center FAB.
+// Bottom tab bar — 4 destinations split around the center FAB. 发现 (the immersive
+// feed) is the home/first tab and the cold-start landing surface; 今日 is the
+// personal hub (check-in / continue / tasks).
 const TABS_L = [
-  { to: '/today', ic: Home, label: '今日', end: true },
-  { to: '/', ic: Compass, label: '发现', end: true }
+  { to: '/', ic: Compass, label: '发现', end: true },
+  { to: '/today', ic: Home, label: '今日', end: true, badge: 'checkin' }
 ];
 const TABS_R = [
   { to: '/chats', ic: MessageCircle, label: '对话', badge: 'dm' },
@@ -81,6 +85,9 @@ const GRID = [
 export default function AppLayout({ children }) {
   const { user } = useAuth();
   const loc = useLocation();
+  // Gentle nudge: a dot on the 今日 tab while today's check-in is still unclaimed
+  // (cheap retention cue now that 今日 is no longer the cold-start surface).
+  const needCheckin = !!user && user.last_checkin !== new Date().toISOString().slice(0, 10);
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
   const [sheet, setSheet] = useState(null); // 'create' | 'grid' | null
@@ -104,16 +111,9 @@ export default function AppLayout({ children }) {
     };
   }, []);
 
-  // Cold start lands on the 今日 launcher home (not the discover grid). Only the
-  // very first navigation of the session is redirected, so the 发现 tab (also '/')
-  // keeps working afterwards.
+  // Cold start lands on 发现 (the immersive feed = the default '/' route) for
+  // instant immersion — no redirect needed; 今日 is now a deliberate tab tap.
   const nav = useNavigate();
-  useEffect(() => {
-    if (sessionStorage.getItem('huanyu_app_booted')) return;
-    sessionStorage.setItem('huanyu_app_booted', '1');
-    if (loc.pathname === '/') nav('/today', { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Close any open sheet on navigation.
   useEffect(() => { setSheet(null); }, [loc.pathname]);
@@ -168,7 +168,7 @@ export default function AppLayout({ children }) {
       </main>
 
       <nav className="app-tabbar">
-        {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+        {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} needCheckin={needCheckin} curPath={loc.pathname} />)}
         <button className="app-fab" onClick={() => setSheet(s => s === 'create' ? null : 'create')} aria-label="创建">
           <Plus size={26} />
         </button>
@@ -176,7 +176,7 @@ export default function AppLayout({ children }) {
           ? <button key="grid" className={'app-tab' + (sheet === 'grid' ? ' active' : '')} onClick={() => setSheet(s => s === 'grid' ? null : 'grid')}>
               <t.ic size={22} /><span>{t.label}</span>
             </button>
-          : <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+          : <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} needCheckin={needCheckin} curPath={loc.pathname} />)}
       </nav>
 
       {sheet === 'create' && <CreateSheet onClose={() => setSheet(null)} />}
@@ -192,7 +192,7 @@ export default function AppLayout({ children }) {
   );
 }
 
-function Tab({ t, unread, dmUnread, curPath }) {
+function Tab({ t, unread, dmUnread, needCheckin, curPath }) {
   // Tapping the already-active tab scrolls the page back to the top (native pattern).
   const onClick = (e) => {
     if (curPath === t.to) { e.preventDefault(); tick(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
@@ -203,6 +203,7 @@ function Tab({ t, unread, dmUnread, curPath }) {
         <t.ic size={22} />
         {t.badge === 'noti' && unread > 0 && <i className="app-dot" />}
         {t.badge === 'dm' && dmUnread > 0 && <i className="app-dot" />}
+        {t.badge === 'checkin' && needCheckin && <i className="app-dot" />}
       </span>
       <span>{t.label}</span>
     </NavLink>
@@ -213,7 +214,7 @@ function AppHeader({ user, unread }) {
   const nav = useNavigate();
   return (
     <header className="app-header">
-      <button className="ahd-brand" onClick={() => nav('/today')} aria-label="今日">
+      <button className="ahd-brand" onClick={() => nav('/')} aria-label="发现">
         <b>幻域</b>
       </button>
       <div className="ahd-actions">

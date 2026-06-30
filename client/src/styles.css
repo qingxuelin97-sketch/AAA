@@ -4449,6 +4449,16 @@ html[data-app="1"][data-perf="lite"] .app-sheet { backdrop-filter: none; backgro
 .ah-empty b { display: block; font-size: 14px; color: var(--text); }
 .ah-empty span { font-size: 12px; color: var(--faint); }
 
+/* 今日页底部「去发现」入口 —— 引导到沉浸式 feed，取代原来重复的角色网格 */
+.ah-discover-cta { display: flex; align-items: center; gap: 13px; width: 100%; text-align: left; cursor: pointer;
+  padding: 15px 16px; border-radius: 16px; border: 1px solid var(--border); color: var(--accent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--panel)), var(--panel));
+  transition: transform 0.18s var(--spring), border-color 0.15s; }
+.ah-discover-cta:active { transform: scale(0.98); border-color: var(--accent); }
+.ah-discover-cta > div { flex: 1; min-width: 0; }
+.ah-discover-cta b { display: block; font-size: 14.5px; color: var(--text); }
+.ah-discover-cta span { font-size: 12px; color: var(--faint); }
+
 .ah-sec { display: flex; flex-direction: column; gap: 11px; }
 .ah-sec-head { display: flex; align-items: center; justify-content: space-between; }
 .ah-sec-head h2 { display: inline-flex; align-items: center; gap: 7px; font-family: var(--serif); font-size: 17px; font-weight: 700; margin: 0; }
@@ -4568,6 +4578,20 @@ html[data-app="1"][data-perf="lite"] .app-sheet { backdrop-filter: none; backgro
 .app-feed-skel { flex: 1; background: linear-gradient(150deg, var(--bg-2), #1c1814); }
 .app-feed-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
   color: rgba(255,255,255,0.6); padding: 0 40px; text-align: center; }
+
+/* first-launch coach overlay — teaches swipe-up + double-tap once */
+.app-feed-hint { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); animation: fadeIn 0.2s ease; }
+.afh-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7px; padding: 26px 28px;
+  color: #fff; max-width: 80%; }
+.afh-up { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 4px;
+  background: rgba(255,255,255,0.16); border: 1.5px solid rgba(255,255,255,0.5); animation: afhUp 1.4s ease-in-out infinite; }
+@keyframes afhUp { 0%,100% { transform: translateY(4px); opacity: 0.85; } 50% { transform: translateY(-4px); opacity: 1; } }
+.afh-card b { font-family: var(--serif); font-size: 18px; }
+.afh-card p { font-size: 13px; opacity: 0.85; margin: 0; line-height: 1.6; }
+.afh-go { margin-top: 12px; padding: 8px 24px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 13.5px; font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .afh-up { animation: none; } }
+html[data-app="1"][data-perf="lite"] .app-feed-hint { backdrop-filter: none; }
 
 /* trailing "you've reached the end" card */
 .app-feed-end { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;

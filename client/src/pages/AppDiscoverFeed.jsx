@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { CategoryIcon, categoryName } from '../assets.jsx';
-import { Heart, MessageCircle, Search, Info, Flame, Drama } from 'lucide-react';
+import { Heart, MessageCircle, Search, Info, Flame, Drama, ChevronUp } from 'lucide-react';
 
 const DOUBLE_TAP_MS = 280;
 
@@ -23,6 +23,10 @@ export default function AppDiscoverFeed() {
   const [list, setList] = useState(null); // null = loading
   const [favOverride, setFavOverride] = useState({});
   const [burstKey, setBurstKey] = useState({});
+  // First-launch coach overlay (foolproofing): teach the swipe-up + double-tap
+  // affordances once, then never again. Dismisses on the first real interaction.
+  const [hint, setHint] = useState(() => { try { return localStorage.getItem('huanyu_feed_hint') !== '1'; } catch { return false; } });
+  const dismissHint = () => { if (!hint) return; setHint(false); try { localStorage.setItem('huanyu_feed_hint', '1'); } catch { /* */ } };
   const tapRef = useRef({ id: 0, t: 0 });
   const tapTimerRef = useRef(0);
 
@@ -64,6 +68,7 @@ export default function AppDiscoverFeed() {
   // single-tap-to-view-detail. A single shared ref is enough since only one
   // card is interactive at a time in a snap feed.
   const onCardTap = (c) => () => {
+    dismissHint();
     const now = Date.now();
     const last = tapRef.current;
     if (last.id === c.id && now - last.t < DOUBLE_TAP_MS) {
@@ -102,7 +107,17 @@ export default function AppDiscoverFeed() {
           <p>这个分类还没有角色，换一个看看？</p>
         </div>
       ) : (
-        <div className="app-feed-scroll" key={cat}>
+        <div className="app-feed-scroll" key={cat} onScroll={dismissHint}>
+          {hint && (
+            <div className="app-feed-hint" onClick={dismissHint}>
+              <div className="afh-card">
+                <span className="afh-up"><ChevronUp size={26} /></span>
+                <b>上滑，探索更多角色</b>
+                <p>双击喜欢 · 点头像看作者 · 点「聊天」直接开聊</p>
+                <span className="afh-go">知道了</span>
+              </div>
+            </div>
+          )}
           {list.map(c => {
             const isFaved = favOverride[c.id] ?? c.faved;
             return (
