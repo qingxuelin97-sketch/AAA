@@ -1253,7 +1253,7 @@ async function route(method, path, search, body, headers) {
     if (cat && cat !== 'all') rows = rows.filter(c => c.category === cat);
     if (q) rows = rows.filter(c => (c.name + c.tags + c.tagline).toLowerCase().includes(q));
     rows = rows.sort((a, b) => sort === 'new' ? b.id - a.id : (b.uses - a.uses) || (b.likes - a.likes)).slice(0, 80);
-    rows = rows.map(c => ({ ...c, owner_name: user(c.owner_id)?.display_name, owner_tier: creatorTier(user(c.owner_id)), faved: me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false }));
+    rows = rows.map(c => ({ ...c, owner_name: user(c.owner_id)?.display_name, owner_avatar: user(c.owner_id)?.avatar, owner_verified: !!user(c.owner_id)?.verified, owner_tier: creatorTier(user(c.owner_id)), faved: me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false }));
     return J({ characters: rows });
   }
   // Personalized recommendations — rank public characters by the categories the
@@ -1273,7 +1273,7 @@ async function route(method, path, search, body, headers) {
     const rows = pool
       .map(c => ({ c, score: (weight[c.category] || 0) * 3 + Math.log10((c.uses || 0) + (c.likes || 0) + 1) + (c.featured ? 0.4 : 0) }))
       .sort((a, b) => b.score - a.score).slice(0, 12)
-      .map(({ c }) => ({ ...c, owner_name: user(c.owner_id)?.display_name, owner_tier: creatorTier(user(c.owner_id)), faved: false }));
+      .map(({ c }) => ({ ...c, owner_name: user(c.owner_id)?.display_name, owner_avatar: user(c.owner_id)?.avatar, owner_verified: !!user(c.owner_id)?.verified, owner_tier: creatorTier(user(c.owner_id)), faved: false }));
     return J({ characters: rows, personalized });
   }
   if (method === 'GET' && path === '/characters/favorites/list') { need(); const rows = filter('favorites', f => f.user_id === me.id).map(f => { const c = find('characters', x => x.id === f.character_id); return c && { ...c, owner_name: user(c.owner_id)?.display_name }; }).filter(Boolean).reverse(); return J({ characters: rows }); }

@@ -31,17 +31,23 @@ const CREATE_SHORTCUTS = [
   { to: '/events', ic: PartyPopper, label: '活动' }
 ];
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 export default function AppHome() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const toast = useToast();
   const nav = useNavigate();
   const [resume, setResume] = useState(null);
   const [pick, setPick] = useState(null);
   const [hero, setHero] = useState(null);
   const [tasks, setTasks] = useState([]);
-  const [checked, setChecked] = useState(false);
-  const [streak, setStreak] = useState(0);
+  // Derived from the real account state (same source Wallet.jsx uses), not guessed
+  // from a catch block — so a page revisit same-day correctly shows "已签到" up front.
+  const [checked, setChecked] = useState(() => user?.last_checkin === today());
+  const [streak, setStreak] = useState(() => user?.checkin_streak || 0);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => { setChecked(user?.last_checkin === today()); setStreak(user?.checkin_streak || 0); }, [user?.last_checkin, user?.checkin_streak]);
 
   useEffect(() => {
     api('/chat/conversations').then(d => setResume((d.conversations || []).slice(0, 10))).catch(() => setResume([]));
@@ -57,21 +63,39 @@ export default function AppHome() {
     api('/characters/recommended')
       .then(d => { const cs = d.characters || []; if (cs.length) setPick(cs.slice(0, 6)); })
       .catch(() => {});
-    api('/engage/tasks').then(d => setTasks((d.tasks || []).filter(t => !t.claimed).slice(0, 3))).catch(() => {});
+    loadTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadTasks = () => api('/engage/tasks').then(d => setTasks((d.tasks || []).filter(t => !t.claimed).slice(0, 3))).catch(() => {});
+
+  const claimTask = async (t) => {
+    if (!t.done || t.claimed) return;
+    try {
+      await api(`/engage/tasks/${t.id}/claim`, { method: 'POST' });
+      toast(`领取成功！+${t.reward} 金币`);
+      await refreshUser();
+      loadTasks();
+    } catch (e) { toast(e?.message || '领取失败'); }
+  };
 
   const checkin = async () => {
     if (busy || checked) return;
     setBusy(true);
     try {
       const d = await api('/economy/checkin', { method: 'POST' });
+      // Refresh the shared auth/user object (not just local state) so the gold
+      // figure updates everywhere it's shown — header pill, wallet page, etc. —
+      // without waiting for a full reload.
+      await refreshUser();
       setChecked(true); setStreak(d.streak || 0);
       toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
     } catch (e) {
-      // already signed in today (or no endpoint) — mark done so the CTA settles
-      setChecked(true);
-      toast(e?.message || '今天已签到');
+      // Genuinely already checked in today → settle into the done state.
+      // Anything else (network blip, server error) must NOT be silently
+      // treated as success, or the user loses the reward with no error shown.
+      if (/已经?签到/.test(e?.message || '')) setChecked(true);
+      else toast(e?.message || '签到失败，请重试');
     } finally { setBusy(false); }
   };
 
@@ -162,10 +186,13 @@ export default function AppHome() {
           <div className="ah-sec-head"><h2><Flame size={16} /> 今日任务</h2></div>
           <div className="ah-tasks">
             {tasks.map(t => (
-              <div key={t.id} className="ah-task">
-                <div className="ah-task-tx"><b>{t.title || t.name}</b><span>+{t.reward} 金币</span></div>
-                <div className="ah-task-bar"><i style={{ width: Math.min(100, Math.round((t.progress || 0) / (t.goal || 1) * 100)) + '%' }} /></div>
-              </div>
+              <button key={t.id} className={'ah-task' + (t.done ? ' done' : '')} onClick={() => claimTask(t)} disabled={!t.done}>
+                <div className="ah-task-tx">
+                  <b>{t.name}</b>
+                  <span>{t.done ? <><Check size={12} /> 领 {t.reward}</> : `${t.progress}/${t.target}`}</span>
+                </div>
+                <div className="ah-task-bar"><i style={{ width: Math.min(100, Math.round((t.progress || 0) / (t.target || 1) * 100)) + '%' }} /></div>
+              </button>
             ))}
           </div>
         </section>

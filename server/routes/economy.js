@@ -78,7 +78,10 @@ router.post('/checkin', authRequired, (req, res) => {
   const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200;
   if (isVip(u)) reward *= 2;
   // 仅当今天尚未签到时才更新；并发请求只有一个能成功。
-  const upd = db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ? AND last_checkin != ?').run(today, streak, req.user.id, today);
+  // 注意：必须用 IS NOT 而非 !=  —— SQL 的三值逻辑下 NULL != '今天' 既非真也非假（UNKNOWN），
+  // WHERE 会直接排除该行，导致从未签到过（last_checkin 为 NULL）的新用户永远 0 行更新、
+  // 被误判为「今天已签到」，第一次签到必现失败。IS NOT 对 NULL 比较是安全的。
+  const upd = db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ? AND last_checkin IS NOT ?').run(today, streak, req.user.id, today);
   if (upd.changes === 0) return res.status(400).json({ error:'今天已经签到过啦' });
   const w = applyTx(req.user.id, { kind:'checkin', gold: reward, memo:`第 ${streak} 天签到` });
   bumpDaily(req.user.id, 'checkin');

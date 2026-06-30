@@ -9,7 +9,7 @@ export function tick(ms = 8) { try { navigator.vibrate?.(ms); } catch { /* */ } 
 
 // Elements that own horizontal scrolling / their own touch semantics — swiping
 // inside them must NOT trigger tab navigation.
-const NO_SWIPE = '.ah-rail, .chat-scroll, .chat-input-bar, input, textarea, [data-noswipe], .app-launcher, .app-sheet, .sp-stage';
+const NO_SWIPE = '.ah-rail, .chat-scroll, .chat-input-bar, input, textarea, [data-noswipe], .app-launcher, .app-sheet, .sp-stage, .app-feed-page';
 
 export function useAppGestures(scrollRef, handlers) {
   const cb = useRef(handlers);

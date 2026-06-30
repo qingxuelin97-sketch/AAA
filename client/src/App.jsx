@@ -49,6 +49,7 @@ const Atelier = lazy(() => import('./pages/Atelier.jsx'));
 const NovelWorkspace = lazy(() => import('./pages/NovelWorkspace.jsx'));
 const NovelReader = lazy(() => import('./pages/NovelReader.jsx'));
 const AppHome = lazy(() => import('./pages/AppHome.jsx'));
+const AppDiscoverFeed = lazy(() => import('./pages/AppDiscoverFeed.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -61,6 +62,9 @@ function Protected({ children }) {
 }
 
 const P = (el) => <Protected>{el}</Protected>;
+// "发现" itself differs by shell: the app gets a 抖音-style swipe feed, the web
+// keeps the poster-grid Home — same route, same data, just a different surface.
+const Discover = () => isAppMode() ? <AppDiscoverFeed /> : <Home />;
 
 export default function App() {
   const { user } = useAuth();
@@ -71,7 +75,7 @@ export default function App() {
           <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
           <Route path="/features" element={<Features />} />
           <Route path="/help" element={<Help />} />
-          <Route path="/" element={P(<Home />)} />
+          <Route path="/" element={P(<Discover />)} />
           <Route path="/today" element={P(<AppHome />)} />
           <Route path="/scripts" element={P(<Scripts />)} />
           <Route path="/script/new" element={P(<ScriptEditor />)} />

@@ -36,8 +36,10 @@ router.get('/mine', authRequired, (req, res) => {
 // Public gallery of characters, with category + search filters
 router.get('/public', authOptional, (req, res) => {
   const { category, q, sort } = req.query;
-  let sql = `SELECT c.*, u.display_name AS owner_name FROM characters c
-    JOIN users u ON u.id = c.owner_id WHERE c.is_public = 1`;
+  // owner_avatar/owner_verified are cheap columns from the existing JOIN — unlike
+  // creatorTier() (full-table-scan, only safe to call once per page, not in a list).
+  let sql = `SELECT c.*, u.display_name AS owner_name, u.avatar AS owner_avatar, u.verified AS owner_verified
+    FROM characters c JOIN users u ON u.id = c.owner_id WHERE c.is_public = 1`;
   const args = [];
   if (category && category !== 'all') { sql += ' AND c.category = ?'; args.push(category); }
   if (q) { sql += ' AND (c.name LIKE ? OR c.tags LIKE ? OR c.tagline LIKE ?)'; const k = `%${q}%`; args.push(k, k, k); }
@@ -62,8 +64,8 @@ router.get('/recommended', authRequired, (req, res) => {
   db.prepare(`SELECT c.category FROM favorites f JOIN characters c ON c.id = f.character_id WHERE f.user_id = ?`).all(uid).forEach(r => bump(r.category, 2));
   db.prepare(`SELECT c.category FROM conversations cv JOIN characters c ON c.id = cv.character_id WHERE cv.user_id = ?`).all(uid).forEach(r => bump(r.category, 1));
   const personalized = Object.keys(weight).length > 0;
-  const pool = db.prepare(`SELECT c.*, u.display_name AS owner_name FROM characters c
-    JOIN users u ON u.id = c.owner_id
+  const pool = db.prepare(`SELECT c.*, u.display_name AS owner_name, u.avatar AS owner_avatar, u.verified AS owner_verified
+    FROM characters c JOIN users u ON u.id = c.owner_id
     WHERE c.is_public = 1 AND c.owner_id != ?`).all(uid);
   const rows = pool
     .filter(c => !favIds.has(c.id))
