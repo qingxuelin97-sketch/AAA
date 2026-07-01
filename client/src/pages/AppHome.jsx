@@ -23,6 +23,15 @@ function greeting() {
   return '夜深了';
 }
 
+// 问候卡天色：随真实时段切换渐变（晨曦 / 白昼 / 暮色 / 夜晚）。
+function skyClass() {
+  const h = new Date().getHours();
+  if (h < 5 || h >= 20) return 'sky-night';
+  if (h < 11) return 'sky-morning';
+  if (h < 17) return '';        // 白昼用默认暖阳渐变
+  return 'sky-dusk';
+}
+
 const CREATE_SHORTCUTS = [
   { to: '/character/new', ic: Sparkles, label: '建角色' },
   { to: '/atelier', ic: Feather, label: '写小说' },
@@ -86,8 +95,8 @@ export default function AppHome() {
 
   return (
     <div className="apphome">
-      {/* greeting band */}
-      <header className="ah-hero">
+      {/* greeting band — 天色渐变问候卡 */}
+      <header className={'ah-hero ' + skyClass()}>
         <div className="ah-hero-row">
           <div>
             <div className="ah-greet">{greeting()}，</div>

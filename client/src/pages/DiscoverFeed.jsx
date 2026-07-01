@@ -50,10 +50,10 @@ export default function DiscoverFeed() {
 
   useEffect(() => { load(cat); }, [cat, load]);
 
-  // 收藏状态初始拉取（轻量：只拉 id 集合）
+  // 收藏状态初始拉取。此前打的是不存在的 /favorites（双端都 404），
+  // 导致流里的收藏态永远显示「未收藏」。
   useEffect(() => {
-    api('/characters/mine').catch(() => {});
-    api('/favorites').then(d => { setFavSet(new Set((d.characters || []).map(c => c.id))); }).catch(() => {});
+    api('/characters/favorites/list').then(d => { setFavSet(new Set((d.characters || []).map(c => c.id))); }).catch(() => {});
   }, []);
 
   // SSE：他人发布新公开角色卡时秒级插入到流顶部（首次提示），不打断当前观看。

@@ -547,11 +547,13 @@ export default function Chat() {
             )}
 
             <div className={'chat-scroll font-' + fontSize} ref={scrollRef} onScroll={onScroll}>
-              {/* 专家档世界书：自构对话前端 banner 槽（若 front_schema 含 banner 类型 slot） */}
-              {character?.linked_worldbooks?.some(w => w.tier === 'expert' && w.front_schema) && (() => {
+              {/* 专家档世界书：自构对话前端 banner 槽（若 front_schema 含 banner 类型 slot）。
+                  注意按 front_schema 是否有数据判定 —— 服务端已不下发 tier 字段，
+                  旧的 tier==='expert' 闸门会让 banner 永远不渲染。 */}
+              {character?.linked_worldbooks?.some(w => w.front_schema) && (() => {
                 let schema = null;
                 for (const w of character.linked_worldbooks) {
-                  if (w.tier !== 'expert' || !w.front_schema) continue;
+                  if (!w.front_schema) continue;
                   try { schema = JSON.parse(w.front_schema); break; } catch { /* */ }
                 }
                 const banner = schema?.slots?.find(s => s.type === 'banner');
