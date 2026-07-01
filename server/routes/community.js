@@ -4,6 +4,7 @@ import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter } from '../limiters.js';
 import { bumpDaily } from '../daily.js';
 import { broadcast } from '../realtime.js';
+import { creatorTier } from '../creator.js';
 
 const router = Router();
 
@@ -61,8 +62,9 @@ router.post('/publish-character/:id', authRequired, (req, res) => {
   broadcast('character_new', {
     character: {
       id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline || '',
-      category: c.category || '', tags: c.tags || '', nsfw: !!c.nsfw,
-      owner_id: c.owner_id, owner_name: req.user.display_name, created_at: c.created_at,
+      category: c.category || '', tags: c.tags || '', nsfw: !!c.nsfw, featured: !!c.featured,
+      owner_id: c.owner_id, owner_name: req.user.display_name, owner_avatar: req.user.avatar || '',
+      owner_tier: creatorTier(req.user.id), created_at: c.created_at,
     }
   }, req.user.id);
   res.json({ post: db.prepare('SELECT * FROM posts WHERE id = ?').get(info.lastInsertRowid) });

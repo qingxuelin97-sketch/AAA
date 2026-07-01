@@ -2,6 +2,10 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const TOKEN_KEY = 'huanyu_token';
 
+// API 基址：Web 同源部署留空（走相对 /api）；Capacitor 原生壳里 webview 运行在
+// https://localhost，需通过 VITE_API_BASE 指向真实后端才能连通 REST 与 SSE。
+export const API_BASE = import.meta.env.VITE_API_BASE || '';
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -19,7 +23,7 @@ export async function api(path, { method = 'GET', body, raw } = {}) {
     headers['Content-Type'] = 'application/json';
     payload = JSON.stringify(body);
   }
-  const res = await fetch('/api' + path, { method, headers, body: payload });
+  const res = await fetch(API_BASE + '/api' + path, { method, headers, body: payload });
   if (raw) return res;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `请求失败 (${res.status})`);
