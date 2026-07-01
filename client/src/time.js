@@ -38,3 +38,10 @@ export function fmtDateTime(s) {
   if (!d) return s || '';
   return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
+
+// Clock only ("14:05"), in the viewer's timezone — for chat/DM bubbles.
+export function fmtClock(s) {
+  const d = parseTime(s);
+  if (!d) return '';
+  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.jsx';
 import { useToast, Modal } from '../ui.jsx';
+import { fmtDateTime } from '../time.js';
 import { Megaphone, Plus, Trash2, Pin, ShieldCheck } from 'lucide-react';
 
 export default function Announcements() {
@@ -46,7 +47,7 @@ export default function Announcements() {
                 <h3>{a.pinned ? <span className="pin"><Pin size={11} style={{ verticalAlign: -1 }} /> 置顶</span> : null}{a.title}</h3>
                 <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, margin: 0, color: 'var(--text)' }}>{a.body}</p>
                 <div className="meta" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span>{a.author_name || '官方'} · {String(a.created_at || '').slice(0, 16)}</span>
+                  <span>{a.author_name || '官方'} · {fmtDateTime(a.created_at)}</span>
                   {isGm && <button className="btn sm danger" style={{ marginLeft: 'auto' }} onClick={() => del(a)}><Trash2 size={13} /> 删除</button>}
                 </div>
               </div>

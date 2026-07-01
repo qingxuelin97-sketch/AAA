@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar, CreatorV, CouncilorBadge } from '../ui.jsx';
+import { fmtClock } from '../time.js';
 import {
   Users, UserPlus, Search, Send, Check, X, MessageCircle, ArrowLeft, MoreVertical,
   Trash2, BadgeCheck, Inbox,
@@ -156,7 +157,7 @@ export default function Friends() {
               {dm.messages.map(mm => (
                 <div key={mm.id} className={'dm-msg ' + (mm.mine ? 'mine' : 'theirs')}>
                   {!mm.mine && <Avatar src={dm.peer.avatar} name={dm.peer.display_name} size={30} />}
-                  <div className="dm-bubble">{mm.text}<span className="dm-time">{(mm.created_at || '').slice(11, 16)}</span></div>
+                  <div className="dm-bubble">{mm.text}<span className="dm-time">{fmtClock(mm.created_at)}</span></div>
                 </div>
               ))}
             </div>

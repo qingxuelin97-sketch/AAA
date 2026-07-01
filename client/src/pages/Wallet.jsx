@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { fmtDateTime } from '../time.js';
 import { Crown, CalendarCheck, Gift, ArrowRight, Check, Sparkles, Wallet as WalletIcon, Trophy } from 'lucide-react';
 
 export default function Wallet() {
@@ -147,7 +148,7 @@ export default function Wallet() {
           <div className="card" style={{ padding: '4px 22px' }}>
             {transactions.map(t => (
               <div key={t.id} className="tx-row">
-                <div><div style={{ fontWeight: 500 }}>{t.memo || t.kind}</div><div className="muted" style={{ fontSize: 12 }}>{String(t.created_at || '').slice(0, 16)}</div></div>
+                <div><div style={{ fontWeight: 500 }}>{t.memo || t.kind}</div><div className="muted" style={{ fontSize: 12 }}>{fmtDateTime(t.created_at)}</div></div>
                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {!!t.gold && <span className={'amt ' + (t.gold > 0 ? 'pos' : 'neg')}>{t.gold > 0 ? '+' : ''}{fmt(t.gold)} 金币</span>}
                   {!!t.diamond && <span className={'amt ' + (t.diamond > 0 ? 'pos' : 'neg')}>{t.diamond > 0 ? '+' : ''}{fmt(t.diamond)} 钻石</span>}

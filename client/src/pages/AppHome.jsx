@@ -11,6 +11,7 @@ import {
   Check, Flame, MessagesSquare, ChevronRight, Sparkles, Wand2, Feather,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass
 } from 'lucide-react';
+import { isVectorAvatar } from '../faces.js';
 
 function greeting() {
   const h = new Date().getHours();
@@ -138,7 +139,13 @@ export default function AppHome() {
       {hero === null && <div className="ah-hero-skel" />}
       {hero && (
         <button className="ah-hero-card" onClick={() => openChat(hero)}>
-          {hero.avatar ? <img className="ah-hc-bg" src={hero.avatar} alt="" /> : <div className="ah-hc-bg ph" />}
+          {!hero.avatar ? (
+            <div className="ah-hc-bg ph" />
+          ) : isVectorAvatar(hero.avatar) ? (
+            <div className="ah-hc-bg ph ah-hc-vec"><img className="ah-hc-portrait" src={hero.avatar} alt="" /></div>
+          ) : (
+            <img className="ah-hc-bg" src={hero.avatar} alt="" />
+          )}
           <div className="ah-hc-scrim" />
           <div className="ah-hc-body">
             <span className="ah-hc-tag"><Star size={11} fill="currentColor" /> 今日精选</span>

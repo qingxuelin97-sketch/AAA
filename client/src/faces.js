@@ -3,6 +3,13 @@
 // Shared by the avatar picker (UI) and the in-browser backend seed.
 
 const svgUrl = (svg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg.replace(/\s+/g, ' ').trim());
+
+// True for our generated / letter-style SVG avatars (seed a_*.svg, faces.js data
+// URIs, etc.). These are tiny 200–400px squares built to be shown inside a small
+// circle — stretched edge-to-edge as a full-bleed feed background they blow up
+// into one giant glyph. Callers use this to switch to a bounded "portrait" layout
+// for vector avatars while keeping real raster photos full-bleed.
+export const isVectorAvatar = (u) => !!u && (/\.svg(?:[?#]|$)/i.test(u) || /^data:image\/svg/i.test(u));
 const rng = (s) => { let x = 0; for (const c of String(s)) x = (x * 31 + c.charCodeAt(0)) % 9973; return () => (x = (x * 73 + 41) % 9973) / 9973; };
 
 const SKIN_SHADE = (hex) => {

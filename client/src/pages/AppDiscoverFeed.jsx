@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { CategoryIcon, categoryName } from '../assets.jsx';
+import { isVectorAvatar } from '../faces.js';
 import { Heart, MessageCircle, Search, Info, Flame, Drama, ChevronUp } from 'lucide-react';
 
 export default function AppDiscoverFeed() {
@@ -107,7 +108,16 @@ export default function AppDiscoverFeed() {
             const isFaved = favOverride[c.id] ?? c.faved;
             return (
               <div className="app-feed-card" key={c.id} onClick={onCardTap(c)}>
-                {c.avatar ? <img className="afc-bg" src={c.avatar} alt="" loading="lazy" /> : <div className="afc-bg ph" />}
+                {!c.avatar ? (
+                  <div className="afc-bg ph" />
+                ) : isVectorAvatar(c.avatar) ? (
+                  // Generated/letter avatars are tiny squares — showing one as a
+                  // full-bleed cover blows it into a giant glyph (worse with blur
+                  // off in 省电模式). Present it as a bounded portrait over a wash.
+                  <div className="afc-bg afc-bg-vec"><img className="afc-portrait" src={c.avatar} alt="" loading="lazy" /></div>
+                ) : (
+                  <img className="afc-bg" src={c.avatar} alt="" loading="lazy" />
+                )}
                 <div className="afc-scrim" />
                 {!!burstKey[c.id] && <Heart key={burstKey[c.id]} className="afc-heart-burst" size={96} fill="currentColor" />}
 
