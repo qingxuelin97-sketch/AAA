@@ -8,6 +8,7 @@ import { creatorTier } from '../creator.js';
 import { councilCfg, saveCouncil, councilSeats, councilSize, baseSeats, totalUsers, USERS_PER_SEAT, MIN_SEATS } from '../council.js';
 import { exportAll, importAll } from '../snapshot.js';
 import { flush } from '../persist.js';
+import { cnToday } from '../daily.js';
 
 const router = Router();
 const isGm = (uid) => !!db.prepare('SELECT is_gm FROM users WHERE id = ?').get(uid)?.is_gm;
@@ -171,7 +172,7 @@ router.post('/users/:id/councilor', (req, res) => {
 
 router.get('/stats', (req, res) => {
   const c = (t) => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = cnToday(); // last_checkin 现按北京时间记日，此处口径一致
   const series = (tbl, days = 14) => {
     let rows = []; try { rows = db.prepare(`SELECT created_at FROM ${tbl}`).all(); } catch { rows = []; }
     const out = [];

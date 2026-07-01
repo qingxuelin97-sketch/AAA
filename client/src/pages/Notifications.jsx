@@ -29,7 +29,10 @@ export default function Notifications() {
       .then(d => { if (alive) setItems(d.notifications || []); }) // snapshot keeps original read flags this session
       .catch(e => toast(e.message, 'err'))
       .finally(() => { if (alive) setLoading(false); });
-    api('/social/notifications/read', { method: 'POST' }).catch(() => { /* ignore */ });
+    api('/social/notifications/read', { method: 'POST' })
+      // 通知壳层（Layout / AppLayout）立即清零角标，不用等下一轮轮询
+      .then(() => { try { window.dispatchEvent(new Event('huanyu-noti-read')); } catch { /* */ } })
+      .catch(() => { /* ignore */ });
     return () => { alive = false; };
     /* eslint-disable-next-line */
   }, []);

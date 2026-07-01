@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { cnToday } from '../util.js';
 import {
   Check, Flame, MessagesSquare, ChevronRight, Sparkles, Wand2, Feather,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass
@@ -22,6 +23,15 @@ function greeting() {
   return '夜深了';
 }
 
+// 问候卡天色：随真实时段切换渐变（晨曦 / 白昼 / 暮色 / 夜晚）。
+function skyClass() {
+  const h = new Date().getHours();
+  if (h < 5 || h >= 20) return 'sky-night';
+  if (h < 11) return 'sky-morning';
+  if (h < 17) return '';        // 白昼用默认暖阳渐变
+  return 'sky-dusk';
+}
+
 const CREATE_SHORTCUTS = [
   { to: '/character/new', ic: Sparkles, label: '建角色' },
   { to: '/atelier', ic: Feather, label: '写小说' },
@@ -32,15 +42,17 @@ const CREATE_SHORTCUTS = [
 ];
 
 export default function AppHome() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const toast = useToast();
   const nav = useNavigate();
   const [resume, setResume] = useState(null);
   const [pick, setPick] = useState(null);
   const [hero, setHero] = useState(null);
   const [tasks, setTasks] = useState([]);
-  const [checked, setChecked] = useState(false);
-  const [streak, setStreak] = useState(0);
+  // 用 /auth/me 带回的 last_checkin 初始化，已签到就直接呈现「已签到」态，
+  // 而不是等到用户点了按钮吃 400 才知道。
+  const [checked, setChecked] = useState(() => !!user?.last_checkin && user.last_checkin === cnToday());
+  const [streak, setStreak] = useState(user?.checkin_streak || 0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -68,6 +80,7 @@ export default function AppHome() {
       const d = await api('/economy/checkin', { method: 'POST' });
       setChecked(true); setStreak(d.streak || 0);
       toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
+      refreshUser?.(); // 顶部金币余额立即更新，不留旧值
     } catch (e) {
       // already signed in today (or no endpoint) — mark done so the CTA settles
       setChecked(true);
@@ -82,8 +95,8 @@ export default function AppHome() {
 
   return (
     <div className="apphome">
-      {/* greeting band */}
-      <header className="ah-hero">
+      {/* greeting band — 天色渐变问候卡 */}
+      <header className={'ah-hero ' + skyClass()}>
         <div className="ah-hero-row">
           <div>
             <div className="ah-greet">{greeting()}，</div>

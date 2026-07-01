@@ -4,6 +4,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CountUp, IdentityBadges, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, BadgeCheck, Crown, X, Pencil, Share2, Check, MessageSquare } from 'lucide-react';
 import { pid } from '../assets.jsx';
+import { shareUrl } from '../util.js';
 import ReportButton from '../components/ReportButton.jsx';
 
 export default function Profile() {
@@ -34,7 +35,7 @@ export default function Profile() {
   const u = data.user;
 
   const shareProfile = async () => {
-    const url = location.origin + location.pathname + '#/user/' + u.id;
+    const url = shareUrl('/user/' + u.id);
     try { await navigator.clipboard.writeText(url); toast('主页链接已复制'); }
     catch { toast('复制失败：' + url, 'err'); }
   };

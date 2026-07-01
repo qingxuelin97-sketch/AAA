@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
+import { shareUrl } from '../util.js';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 import { Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp } from 'lucide-react';
 
@@ -49,10 +50,10 @@ export default function DiscoverFeed() {
 
   useEffect(() => { load(cat); }, [cat, load]);
 
-  // 收藏状态初始拉取（轻量：只拉 id 集合）
+  // 收藏状态初始拉取。此前打的是不存在的 /favorites（双端都 404），
+  // 导致流里的收藏态永远显示「未收藏」。
   useEffect(() => {
-    api('/characters/mine').catch(() => {});
-    api('/favorites').then(d => { setFavSet(new Set((d.characters || []).map(c => c.id))); }).catch(() => {});
+    api('/characters/favorites/list').then(d => { setFavSet(new Set((d.characters || []).map(c => c.id))); }).catch(() => {});
   }, []);
 
   // SSE：他人发布新公开角色卡时秒级插入到流顶部（首次提示），不打断当前观看。
@@ -114,7 +115,7 @@ export default function DiscoverFeed() {
     catch { nav('/character/' + c.id); }
   };
   const share = async (c) => {
-    const url = location.origin + '/#/character/' + c.id;
+    const url = shareUrl('/character/' + c.id);
     try { if (navigator.share) { await navigator.share({ title: c.name, url }); return; } } catch { /* */ }
     try { await navigator.clipboard.writeText(url); toast('链接已复制'); }
     catch { toast('分享：' + c.name); }

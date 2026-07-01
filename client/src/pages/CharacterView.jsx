@@ -28,8 +28,8 @@ export default function CharacterView() {
 
   useEffect(() => {
     setWbOpen(false);
-    api('/characters/' + id).then(d => { setC(d.character); setRelated(d.related || []); recordRecent(d.character); }).catch(e => toast(e.message, 'err'));
-    api('/characters/public').then(d => { const hit = d.characters.find(x => x.id === +id); if (hit) setFaved(!!hit.faved); }).catch(() => {});
+    // 详情接口已带 faved 字段，无需再全量拉一遍公开列表来找收藏态。
+    api('/characters/' + id).then(d => { setC(d.character); setRelated(d.related || []); setFaved(!!d.character.faved); recordRecent(d.character); }).catch(e => toast(e.message, 'err'));
     api('/engage/view', { method: 'POST', body: { type: 'character', id: +id } }).catch(() => {});
   }, [id]);
 

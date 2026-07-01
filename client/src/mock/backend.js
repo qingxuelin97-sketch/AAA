@@ -172,6 +172,28 @@ function migrate() {
     if (mochi) mochi.last_active = Date.now() - 20 * 60 * 1000; // 离线
     db._mig.friends = 1;
   }
+  if (!db._mig.worldbooks) {
+    // 预置一本公开世界书并挂到 demo 的第一个角色上，让世界书库/编辑器开箱有内容。
+    const demo = find('users', x => x.username === 'demo');
+    if (demo) {
+      const eid = () => (db._seq.worldbook_entries = (db._seq.worldbook_entries || 0) + 1);
+      const wb = insert('worldbooks', {
+        owner_id: demo.id, name: '星环学园设定集', description: '悬浮于云海之上的魔导学园：学制、地标与禁忌。挂载后按关键词自动注入设定。',
+        tags: '奇幻,学园,魔法', tier: 'normal', is_public: 1, front_schema: '', prompt_overlay: '',
+        scan_depth: 4, token_budget: 0, recursion: 0, max_active: 6, variable_schema: '', system_pos: 'after', recursion_depth: 2, uses: 1,
+        entries: [
+          { id: eid(), keys: '学园,星环', content: '星环学园悬浮于云海之上，由十二座浮岛组成，岛间以光桥相连。新生需通过「共鸣仪式」唤醒自己的星纹。', enabled: 1, position: 0, mode: 'keyword', inject_pos: 'after', priority: 60, case_sensitive: 0, group_name: '', comment: '总设定', image_urls: '', image_keys: '', image_position: 'inline', front_slot: '', probability: 100, min_turns: 0, exclude_keys: '', max_turns: 0, cooldown: 0, required_keys: '', sticky: 0, depth: 0, variable_write: '', branch: '', vectorize: 0, tone: '', folder: '' },
+          { id: eid(), keys: '图书馆,禁书', content: '中央浮岛的「回声图书馆」在夜间会重排书架。第十三层禁书区需要院长手令，传闻里面封存着上一纪元的星图。', enabled: 1, position: 1, mode: 'keyword', inject_pos: 'after', priority: 55, case_sensitive: 0, group_name: '', comment: '地标', image_urls: '', image_keys: '', image_position: 'inline', front_slot: '', probability: 100, min_turns: 0, exclude_keys: '', max_turns: 0, cooldown: 0, required_keys: '', sticky: 0, depth: 0, variable_write: '', branch: '', vectorize: 0, tone: '', folder: '' },
+          { id: eid(), keys: '', content: '当前学年为「潮汐学年」，季末的星轨考核决定浮岛排名。', enabled: 1, position: 2, mode: 'always', inject_pos: 'after', priority: 50, case_sensitive: 0, group_name: '', comment: '常驻背景', image_urls: '', image_keys: '', image_position: 'inline', front_slot: '', probability: 100, min_turns: 0, exclude_keys: '', max_turns: 0, cooldown: 0, required_keys: '', sticky: 0, depth: 0, variable_write: '', branch: '', vectorize: 0, tone: '', folder: '' },
+        ],
+      });
+      const c = find('characters', x => x.owner_id === demo.id);
+      if (c && !find('character_worldbooks', x => x.character_id === c.id && x.worldbook_id === wb.id)) {
+        insert('character_worldbooks', { character_id: c.id, worldbook_id: wb.id });
+      }
+    }
+    db._mig.worldbooks = 1;
+  }
   if (!db._mig.qsy_novel) {
     // 小说工坊：为 demo 预置架空政治小说《朔月当空 · 平行2026》（局外母版 + 主线）。
     const demo = find('users', u => u.username === 'demo');
@@ -439,7 +461,8 @@ const DAILY_TASKS = [
   { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 10, key: 'like' },
   { id: 'novel', name: 'AI 创作 1 段小说', target: 1, reward: 20, key: 'novel' }
 ];
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// 「今天」统一北京时间（UTC+8）口径，与真实服务端 server/daily.js 一致。
+const todayStr = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
 function dailyOf(uid) {
   let d = find('daily_progress', x => x.user_id === uid);
   if (!d) d = insert('daily_progress', { user_id: uid, date: todayStr(), counts: {}, claimed: [] });
@@ -941,7 +964,21 @@ const EVENTS = [
   { id: 'invite', kind: 'info', tag: '裂变', title: '邀请好友共创', desc: '在「设置 / 钱包」使用邀请密钥，邀请越多奖励越丰厚。与好友一起把幻域写满故事。', link: '/wallet', linkText: '查看兑换码', accent: '#c25a38' }
 ];
 
-function charView(c) { return { ...c, world: filter('world_entries', w => w.character_id === c.id).sort((a, b) => a.position - b.position) }; }
+function charView(c) {
+  // 关联的独立世界书 + 图片触发映射（与服务端 withWorld/ownerView 同构）
+  const linked = filter('character_worldbooks', x => x.character_id === c.id)
+    .map(x => find('worldbooks', y => y.id === x.worldbook_id)).filter(Boolean);
+  const wbImageMap = {};
+  for (const w of linked) for (const e of (w.entries || [])) {
+    if (e.enabled === false || !e.image_urls || !e.image_keys) continue;
+    const urls = String(e.image_urls).split(',').map(u => u.trim()).filter(Boolean);
+    if (urls.length) wbImageMap[e.id] = { urls, position: e.image_position || 'inline', slot: e.front_slot || '', worldbook_id: w.id };
+  }
+  return { ...c, world: filter('world_entries', w => w.character_id === c.id).sort((a, b) => a.position - b.position),
+    linked_worldbooks: linked.map(w => ({ id: w.id, name: w.name, is_public: w.is_public, owner_id: w.owner_id,
+      entry_count: (w.entries || []).length, front_schema: w.front_schema || '', prompt_overlay: w.prompt_overlay || '' })),
+    wb_image_map: wbImageMap };
+}
 
 /* ----------------------------- creator V tiers ----------------------------- */
 // Creators earn a tiered V badge by their public works' popularity:
@@ -1193,6 +1230,15 @@ async function route(method, path, search, body, headers) {
 
   // ---------- meta ----------
   if (method === 'GET' && path === '/meta/categories') return J({ categories: CATEGORIES.map(([slug, name, icon]) => ({ slug, name, icon })) });
+  // 标签广场：聚合公开角色与剧本 tags（与服务端 /meta/tags 同构；此前缺失导致 App 版标签页报错）
+  if (method === 'GET' && path === '/meta/tags') {
+    const counts = {};
+    const bump = (tags) => String(tags || '').split(',').map(s => s.trim()).filter(Boolean).forEach(t => { const k = t.slice(0, 20); counts[k] = (counts[k] || 0) + 1; });
+    filter('characters', c => c.is_public && c.tags).forEach(c => bump(c.tags));
+    filter('scripts', s => s.tags).forEach(s => bump(s.tags));
+    const tags = Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 80);
+    return J({ tags });
+  }
 
   // ---------- announcements ----------
   if (path === '/announcements' && method === 'GET') {
@@ -1292,7 +1338,8 @@ async function route(method, path, search, body, headers) {
         .map(x => ({ id: x.id, name: x.name, avatar: x.avatar, tagline: x.tagline, uses: x.uses || 0, category: x.category }))
         .sort((a, b) => b.uses - a.uses).slice(0, 6);
       const author_char_count = filter('characters', x => x.is_public && x.owner_id === c.owner_id && x.id !== c.id && !x.from_script).length;
-      return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(owner), fav_count, author_char_count }, related });
+      const faved = me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false;
+      return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(owner), fav_count, author_char_count, faved }, related });
     }
     if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'bgm', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'voice_speed', 'voice_pitch', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0; if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
     if (method === 'DELETE') { need(); if (!c || c.owner_id !== me.id) return E('无权删除', 403); db.characters = filter('characters', x => x.id !== cid); save(); return J({ ok: true }); }
@@ -1584,8 +1631,8 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/economy/exchange') { need(); const n = parseInt(body.diamond, 10); if (!n || n <= 0) return E('请输入有效的钻石数量'); try { return J({ wallet: applyTx(me.id, { kind: 'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo: `${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` }) }); } catch (e) { return E(e.message); } }
   if (method === 'POST' && path === '/economy/vip') { need(); try { applyTx(me.id, { kind: 'vip', gold: -VIP_COST_GOLD, memo: `购买 ${VIP_DAYS} 天 VIP` }); } catch (e) { return E(e.message); } const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + VIP_DAYS * 86400000).toISOString(); save(); return J({ wallet: publicUser(me) }); }
   if (method === 'POST' && path === '/economy/checkin') {
-    need(); const today = new Date().toISOString().slice(0, 10); if (me.last_checkin === today) return E('今天已经签到过啦');
-    const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10); const streak = me.last_checkin === y ? (me.checkin_streak || 0) + 1 : 1;
+    need(); const today = todayStr(); if (me.last_checkin === today) return E('今天已经签到过啦');
+    const y = new Date(Date.now() - 86400000 + 8 * 3600e3).toISOString().slice(0, 10); const streak = me.last_checkin === y ? (me.checkin_streak || 0) + 1 : 1;
     // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
     const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200; if (isVip(me)) reward *= 2;
     me.last_checkin = today; me.checkin_streak = streak;
@@ -2477,6 +2524,215 @@ async function route(method, path, search, body, headers) {
     const au = user(n.owner_id);
     const beats = run ? filter('novel_beats', b => b.run_id === run.id).sort((a, b) => a.seq - b.seq || a.id - b.id).map(b => ({ id: b.id, content: b.content, image: b.image || '' })) : [];
     return J({ novel: { id: n.id, title: n.title, logline: n.logline, cover: n.cover, genre: n.genre, tags: n.tags, published: n.published, mine: isOwner }, author: au ? { id: au.id, display_name: au.display_name, avatar: au.avatar } : null, run: run ? { id: run.id, name: run.name, words: run.words, summary: run.summary } : null, beats });
+  }
+
+  // ---------- 粉丝 / 关注列表（个人主页弹窗；与服务端 /users/:id/followers|following 同构） ----------
+  if ((m = P(/^\/users\/(\d+)\/(followers|following)$/)) && method === 'GET') {
+    const uid = +m[1]; const dir = m[2];
+    if (!user(uid)) return E('用户不存在', 404);
+    const rows = dir === 'followers'
+      ? filter('follows', f => f.following_id === uid).map(f => user(f.follower_id))
+      : filter('follows', f => f.follower_id === uid).map(f => user(f.following_id));
+    const users = rows.filter(Boolean).reverse().slice(0, 200).map(r => ({
+      id: r.id, username: r.username, display_name: r.display_name, avatar: r.avatar, bio: r.bio || '',
+      vip: isVip(r), svip: !!r.svip, verified: !!r.verified,
+      following: me ? !!find('follows', f => f.follower_id === me.id && f.following_id === r.id) : false,
+    }));
+    return J({ users });
+  }
+
+  // ---------- 导入角色卡（与服务端 /characters/import 同构） ----------
+  if (method === 'POST' && path === '/characters/import') {
+    need();
+    const ch = body.character || body;
+    if (!ch || !ch.name || typeof ch.name !== 'string' || ch.name.length > 60) return E('角色卡格式无效：缺少 name 或长度超限');
+    const world = Array.isArray(body.world) ? body.world.filter(w => w && typeof w === 'object') : [];
+    if (world.length > 200) return E('世界书条目过多（上限 200）');
+    const s = (v, max) => v == null ? '' : String(v).slice(0, max);
+    const c = insert('characters', {
+      owner_id: me.id, name: s(ch.name, 60), avatar: s(ch.avatar, 500) || null,
+      background: s(ch.background, 500) || null, background_type: ['image', 'color', 'video'].includes(ch.background_type) ? ch.background_type : 'image',
+      bgm: s(ch.bgm, 500), tagline: s(ch.tagline, 200), intro: s(ch.intro, 4000), greeting: s(ch.greeting, 4000),
+      persona: s(ch.persona, 8000), voice_name: s(ch.voice_name, 60), voice_speed: 1, voice_pitch: 1,
+      category: s(ch.category, 40), tags: s(ch.tags, 200), is_public: 0, nsfw: ch.nsfw ? 1 : 0, uses: 0, likes: 0,
+    });
+    saveWorld(c.id, world); save();
+    return J({ character: charView(c) });
+  }
+
+  // ---------- worldbooks（世界书：与服务端同构的轻量实现，条目内嵌存储） ----------
+  const wbStr = (v, max) => v == null ? '' : String(v).slice(0, max);
+  const wbNormEntries = (entries) => (Array.isArray(entries) ? entries.filter(e => e && typeof e === 'object') : []).slice(0, 500)
+    .filter(e => e.content || e.keys)
+    .map((e, i) => ({
+      id: (db._seq.worldbook_entries = (db._seq.worldbook_entries || 0) + 1),
+      keys: wbStr(e.keys, 500), content: wbStr(e.content, 4000), enabled: e.enabled === false ? 0 : 1, position: i,
+      mode: e.mode === 'regex' ? 'regex' : e.mode === 'always' ? 'always' : 'keyword',
+      inject_pos: e.inject_pos === 'before' ? 'before' : 'after',
+      priority: Math.max(0, Math.min(100, parseInt(e.priority) || 50)),
+      case_sensitive: e.case_sensitive ? 1 : 0, group_name: wbStr(e.group_name, 60), comment: wbStr(e.comment, 500),
+      image_urls: wbStr(e.image_urls, 2000), image_keys: wbStr(e.image_keys, 300),
+      image_position: ['inline', 'before', 'after', 'side'].includes(e.image_position) ? e.image_position : 'inline',
+      front_slot: wbStr(e.front_slot, 32),
+      probability: Math.max(0, Math.min(100, e.probability == null ? 100 : parseInt(e.probability) || 0)),
+      min_turns: Math.max(0, Math.min(999, parseInt(e.min_turns) || 0)), exclude_keys: wbStr(e.exclude_keys, 300),
+      max_turns: Math.max(0, Math.min(999, parseInt(e.max_turns) || 0)), cooldown: Math.max(0, Math.min(999, parseInt(e.cooldown) || 0)),
+      required_keys: wbStr(e.required_keys, 500), sticky: Math.max(0, Math.min(99, parseInt(e.sticky) || 0)),
+      depth: Math.max(0, Math.min(50, parseInt(e.depth) || 0)),
+      variable_write: wbStr(e.variable_write, 1000), branch: wbStr(e.branch, 4000), vectorize: e.vectorize ? 1 : 0,
+      tone: wbStr(e.tone, 100), folder: wbStr(e.folder, 60),
+    }));
+  const wbApply = (w, b) => {
+    if (b.name !== undefined) w.name = wbStr(b.name, 60);
+    if (b.description !== undefined) w.description = wbStr(b.description, 500);
+    if (b.tags !== undefined) w.tags = wbStr(b.tags, 200);
+    w.is_public = b.is_public ? 1 : 0;
+    if (b.front_schema !== undefined) w.front_schema = typeof b.front_schema === 'string' ? b.front_schema.slice(0, 4000) : '';
+    if (b.prompt_overlay !== undefined) w.prompt_overlay = wbStr(b.prompt_overlay, 2000);
+    if (b.scan_depth !== undefined) w.scan_depth = Math.max(1, Math.min(50, parseInt(b.scan_depth) || 4));
+    if (b.token_budget !== undefined) w.token_budget = Math.max(0, Math.min(8000, parseInt(b.token_budget) || 0));
+    if (b.recursion !== undefined) w.recursion = b.recursion ? 1 : 0;
+    if (b.max_active !== undefined) w.max_active = Math.max(1, Math.min(50, parseInt(b.max_active) || 6));
+    if (b.variable_schema !== undefined) w.variable_schema = wbStr(b.variable_schema, 4000);
+    if (b.system_pos !== undefined) w.system_pos = ['before', 'after', 'front'].includes(b.system_pos) ? b.system_pos : 'after';
+    if (b.recursion_depth !== undefined) w.recursion_depth = Math.max(1, Math.min(10, parseInt(b.recursion_depth) || 2));
+    if (Array.isArray(b.entries)) w.entries = wbNormEntries(b.entries);
+  };
+  // 列表卡片视图：条目数 + 能力徽章（按字段是否有数据派生，与服务端 withCount 同构）
+  const wbView = (w) => {
+    const es = w.entries || [];
+    const { entries, ...rest } = w;
+    return { ...rest, entry_count: es.length,
+      cap_image: es.some(e => e.image_urls && e.image_keys),
+      cap_front: !!(w.front_schema && String(w.front_schema).trim()),
+      cap_overlay: !!(w.prompt_overlay && String(w.prompt_overlay).trim()),
+      cap_recursion: !!w.recursion,
+      cap_variable: es.some(e => e.variable_write) || !!(w.variable_schema && String(w.variable_schema).trim()),
+      cap_branch: es.some(e => e.branch), cap_vector: es.some(e => e.vectorize) };
+  };
+  if (method === 'GET' && path === '/worldbooks/mine') {
+    need();
+    return J({ worldbooks: filter('worldbooks', w => w.owner_id === me.id).slice().reverse().map(wbView) });
+  }
+  if (method === 'GET' && path === '/worldbooks/public') {
+    const q = (search.get('q') || '').toLowerCase(); const tier = search.get('tier');
+    let rows = filter('worldbooks', w => w.is_public);
+    if (tier && ['normal', 'advanced', 'expert'].includes(tier)) rows = rows.filter(w => w.tier === tier);
+    if (q) rows = rows.filter(w => (w.name + ' ' + (w.tags || '') + ' ' + (w.description || '')).toLowerCase().includes(q));
+    rows = rows.slice().sort((a, b) => ((b.uses || 0) - (a.uses || 0)) || (b.id - a.id)).slice(0, 80)
+      .map(w => ({ ...wbView(w), owner_name: user(w.owner_id)?.display_name, owned: me ? w.owner_id === me.id : false }));
+    return J({ worldbooks: rows });
+  }
+  if (method === 'POST' && path === '/worldbooks') {
+    need();
+    if (!body.name || typeof body.name !== 'string' || body.name.length > 60) return E('世界书名称必填（60字内）');
+    const w = insert('worldbooks', { owner_id: me.id, name: '', description: '', tags: '', tier: 'expert', is_public: 0,
+      front_schema: '', prompt_overlay: '', scan_depth: 4, token_budget: 0, recursion: 0, max_active: 6,
+      variable_schema: '', system_pos: 'after', recursion_depth: 2, uses: 0, entries: [] });
+    wbApply(w, body); save();
+    return J({ worldbook: { ...w } });
+  }
+  if ((m = P(/^\/worldbooks\/from-character\/(\d+)$/)) && method === 'POST') {
+    need();
+    const c = find('characters', x => x.id === +m[1]);
+    if (!c || c.owner_id !== me.id) return E('无权操作该角色', 403);
+    const entries = filter('world_entries', x => x.character_id === c.id)
+      .map(e => ({ keys: e.keys, content: e.content, enabled: e.enabled !== false && e.enabled !== 0, position: e.position }));
+    const w = insert('worldbooks', { owner_id: me.id, name: wbStr(body.name || (c.name + ' 的世界书'), 60),
+      description: wbStr(body.description, 500), tags: wbStr(body.tags, 200), tier: 'normal', is_public: 0,
+      front_schema: '', prompt_overlay: '', scan_depth: 4, token_budget: 0, recursion: 0, max_active: 6,
+      variable_schema: '', system_pos: 'after', recursion_depth: 2, uses: 0, entries: wbNormEntries(entries) });
+    save();
+    return J({ worldbook: { ...w } });
+  }
+  if ((m = P(/^\/worldbooks\/(\d+)\/attach\/(\d+)$/))) {
+    need();
+    const w = find('worldbooks', x => x.id === +m[1]);
+    const c = find('characters', x => x.id === +m[2]);
+    if (method === 'POST') {
+      if (!w) return E('世界书不存在', 404);
+      if (!w.is_public && w.owner_id !== me.id) return E('无权使用该世界书', 403);
+      if (!c || c.owner_id !== me.id) return E('无权操作该角色', 403);
+      if (!find('character_worldbooks', x => x.character_id === c.id && x.worldbook_id === w.id)) {
+        insert('character_worldbooks', { character_id: c.id, worldbook_id: w.id });
+        w.uses = (w.uses || 0) + 1; save();
+      }
+      return J({ ok: true });
+    }
+    if (method === 'DELETE') {
+      if (!c || c.owner_id !== me.id) return E('无权操作该角色', 403);
+      db.character_worldbooks = filter('character_worldbooks', x => !(x.character_id === c.id && x.worldbook_id === +m[1]));
+      if (w) w.uses = Math.max(0, (w.uses || 0) - 1);
+      save();
+      return J({ ok: true });
+    }
+  }
+  if ((m = P(/^\/worldbooks\/(\d+)\/test-trigger$/)) && method === 'POST') {
+    need();
+    const w = find('worldbooks', x => x.id === +m[1]);
+    if (!w || (!w.is_public && w.owner_id !== me.id)) return E('无权访问', 403);
+    const texts = Array.isArray(body.texts) ? body.texts.map(t => wbStr(t, 4000)).filter(Boolean) : null;
+    const samples = texts && texts.length ? texts : (body.text ? [wbStr(body.text, 4000)] : ['']);
+    const entries = (w.entries || []).filter(e => e.enabled !== false && e.enabled !== 0);
+    const groupHits = new Map();
+    const runOne = (text) => entries.map(e => {
+      const mode = e.mode || 'keyword';
+      const keysRaw = (e.keys || '').split(',').map(k => k.trim()).filter(Boolean);
+      let triggered;
+      if (mode === 'always' || keysRaw.length === 0) triggered = true;
+      else if (mode === 'regex') triggered = keysRaw.some(k => { try { return new RegExp(k, e.case_sensitive ? '' : 'i').test(text); } catch { return false; } });
+      else triggered = keysRaw.some(k => { const hay = e.case_sensitive ? text : text.toLowerCase(); return hay.includes(e.case_sensitive ? k : k.toLowerCase()); });
+      const reqRaw = (e.required_keys || '').split(',').map(k => k.trim()).filter(Boolean);
+      if (triggered && reqRaw.length) triggered = reqRaw.every(k => { const hay = e.case_sensitive ? text : text.toLowerCase(); return hay.includes(e.case_sensitive ? k : k.toLowerCase()); });
+      const exRaw = (e.exclude_keys || '').split(',').map(k => k.trim()).filter(Boolean);
+      if (triggered && exRaw.length) triggered = !exRaw.some(k => text.toLowerCase().includes(k.toLowerCase()));
+      let imgTriggered = false;
+      const urls = e.image_urls ? e.image_urls.split(',').map(u => u.trim()).filter(Boolean) : [];
+      if (urls.length && e.image_keys) {
+        const ik = e.image_keys.split(',').map(k => k.trim()).filter(Boolean);
+        imgTriggered = ik.length === 0 || ik.some(k => text.toLowerCase().includes(k.toLowerCase()));
+      }
+      if (triggered && e.group_name) {
+        if (!groupHits.has(e.group_name)) groupHits.set(e.group_name, []);
+        groupHits.get(e.group_name).push(e.id);
+      }
+      return { id: e.id, keys: e.keys, content: (e.content || '').slice(0, 200), mode, priority: e.priority,
+        inject_pos: e.inject_pos, group_name: e.group_name, front_slot: e.front_slot,
+        probability: e.probability ?? 100, min_turns: e.min_turns ?? 0, exclude_keys: e.exclude_keys || '',
+        max_turns: e.max_turns ?? 0, cooldown: e.cooldown ?? 0, required_keys: e.required_keys || '',
+        sticky: e.sticky ?? 0, depth: e.depth ?? 0, tone: e.tone || '',
+        variable_write: e.variable_write || '', branch: e.branch || '', vectorize: !!e.vectorize,
+        triggered, imgTriggered, image_urls: urls, image_position: e.image_position };
+    }).filter(r => r.triggered || r.imgTriggered);
+    const results = samples.map(text => ({ text: text.slice(0, 80) + (text.length > 80 ? '…' : ''), hits: runOne(text) }));
+    const conflicts = [...groupHits.entries()].filter(([, arr]) => arr.length > 1).map(([g, arr]) => ({ group: g, entries: arr }));
+    const estChars = results.reduce((s2, r) => s2 + r.hits.reduce((s3, h) => s3 + (h.content?.length || 0), 0), 0);
+    return J({ results, scan_depth: w.scan_depth, token_budget: w.token_budget, recursion: !!w.recursion,
+      max_active: w.max_active ?? 6, system_pos: w.system_pos || 'after', recursion_depth: w.recursion_depth ?? 2,
+      variable_schema: w.variable_schema || '', est_tokens: Math.ceil(estChars / 4), conflicts, total: entries.length });
+  }
+  if ((m = P(/^\/worldbooks\/(\d+)$/))) {
+    const w = find('worldbooks', x => x.id === +m[1]);
+    if (method === 'GET') {
+      if (!w) return E('世界书不存在', 404);
+      if (!w.is_public && (!me || me.id !== w.owner_id)) return E('无权访问', 403);
+      const o = user(w.owner_id);
+      return J({ worldbook: { ...w, owner_name: o?.display_name, owner_avatar: o?.avatar, owner_verified: !!o?.verified } });
+    }
+    if (method === 'PUT') {
+      need();
+      if (!w || w.owner_id !== me.id) return E('无权编辑', 403);
+      wbApply(w, body); save();
+      return J({ worldbook: { ...w } });
+    }
+    if (method === 'DELETE') {
+      need();
+      if (!w || w.owner_id !== me.id) return E('无权删除', 403);
+      db.worldbooks = filter('worldbooks', x => x.id !== w.id);
+      db.character_worldbooks = filter('character_worldbooks', x => x.worldbook_id !== w.id);
+      save();
+      return J({ ok: true });
+    }
   }
 
   throw { status: 404, msg: '接口不存在：' + path };

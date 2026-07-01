@@ -10,7 +10,11 @@ export const DAILY_TASKS = [
   { id: 'novel', name: 'AI 创作 1 段小说', target: 1, reward: 20, key: 'novel' },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+// 「今天」的业务口径：北京时间（UTC+8）。此前按 UTC 切日，中国用户每天
+// 早上 8 点前完成的签到 / 任务会被记到「昨天」，连签也随之断档。
+// 与服务器所在时区无关（显式 +8h 折算），客户端 util.js cnToday 同口径。
+export const cnToday = (d = new Date()) => new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+const today = cnToday;
 
 export function dailyOf(userId) {
   let row = db.prepare('SELECT * FROM daily_progress WHERE user_id = ?').get(userId);

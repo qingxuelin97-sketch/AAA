@@ -141,6 +141,12 @@ export default function AppLayout({ children }) {
   // 实时未读数：通知/私信到达时秒级更新角标。
   useRealtimeEvent('notification', () => setUnread(u => u + 1));
   useRealtimeEvent('dm', () => { api('/dm').then(d => setDmUnread(d.unread_total || 0)).catch(() => {}); });
+  // 进入通知中心标记全读后，角标立即清零（不等下一轮 45s 轮询）。
+  useEffect(() => {
+    const clear = () => setUnread(0);
+    window.addEventListener('huanyu-noti-read', clear);
+    return () => window.removeEventListener('huanyu-noti-read', clear);
+  }, []);
 
   // Gestures: swipe between top tabs, left-edge swipe-back, pull-to-refresh.
   const swipeGo = (dir) => {

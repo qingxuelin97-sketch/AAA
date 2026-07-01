@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV, CouncilorBadge } from '../ui.jsx';
+import { useAutoGrow } from '../util.js';
 import {
   Users, UserPlus, Search, Send, Check, X, MessageCircle, ArrowLeft, MoreVertical,
   Trash2, BadgeCheck, Inbox,
@@ -20,7 +21,10 @@ export default function Friends() {
   const [results, setResults] = useState([]);
   const [menu, setMenu] = useState(false);
   const scrollRef = useRef();
+  const dmInputRef = useRef();
   const [params] = useSearchParams();
+  // 私信输入框随内容自动增高（与对话页一致），封顶后转内部滚动
+  useAutoGrow(dmInputRef, text, 130);
 
   const loadFriends = () => api('/friends').then(d => setFriends(d.friends || [])).catch(() => {});
   const loadRequests = () => api('/friends/requests').then(setRequests).catch(() => {});
@@ -184,7 +188,7 @@ export default function Friends() {
             </div>
 
             <div className="fr-dm-input">
-              <textarea rows={1} value={text} onChange={e => setText(e.target.value)} placeholder={dm.can_dm ? `给 ${dm.peer.display_name} 发消息…` : '对方不接受私信'} disabled={!dm.can_dm}
+              <textarea ref={dmInputRef} rows={1} value={text} enterKeyHint="send" onChange={e => setText(e.target.value)} placeholder={dm.can_dm ? `给 ${dm.peer.display_name} 发消息…` : '对方不接受私信'} disabled={!dm.can_dm}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
               <button className="send-btn" onClick={send} disabled={!text.trim() || !dm.can_dm}><Send size={17} /></button>
             </div>
