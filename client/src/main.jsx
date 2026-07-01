@@ -9,12 +9,6 @@ import { initFx } from './fx.js';
 import { initAppMode } from './appmode.js';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/fraunces';
-import '@fontsource/cinzel/latin-500.css';
-import '@fontsource/cinzel/latin-600.css';
-import '@fontsource/cinzel/latin-700.css';
-import '@fontsource/cinzel/latin-800.css';
-import '@fontsource/cinzel-decorative/latin-700.css';
-import '@fontsource/cinzel-decorative/latin-900.css';
 import './styles.css';
 
 initTheme();   // apply saved theme before first paint (no flash)

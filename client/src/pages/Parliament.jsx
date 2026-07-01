@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal, CountUp, CreatorV, CouncilorBadge } from '../ui.jsx';
 import { startBgm, stopBgm, resume as resumeBgm, setMuted as setBgmMuted } from '../parliamentBgm.js';
+// 议会页专用的装饰性拉丁字体（Cinzel），仅在此 lazy 路由挂载时加载，避免进主入口拖慢首屏。
+import '@fontsource/cinzel/latin-600.css';
+import '@fontsource/cinzel/latin-700.css';
+import '@fontsource/cinzel-decorative/latin-700.css';
 import {
   Gavel, Scale, ThumbsUp, ThumbsDown, MinusCircle, Check, X, Plus,
   Users, Sparkles, BadgeCheck, Trash2, ChevronDown, ChevronUp, Lock, ScrollText, Feather,

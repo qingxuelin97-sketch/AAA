@@ -25,7 +25,7 @@ function Spotlight({ items, onView, onChat }) {
       <div className="sp-stage">
         {list.map((it, n) => (
           <div key={it.id} className={'sp-slide' + (n === i ? ' on' : '')} aria-hidden={n !== i}>
-            {it.avatar ? <img src={it.avatar} alt="" /> : <div className="sp-ph"><Drama size={64} /></div>}
+            {it.avatar ? <img src={it.avatar} alt="" loading="lazy" decoding="async" /> : <div className="sp-ph"><Drama size={64} /></div>}
           </div>
         ))}
         <div className="sp-scrim" />

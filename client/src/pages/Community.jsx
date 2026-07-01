@@ -189,7 +189,7 @@ export default function Community() {
                   )}
                 </div>
                 {m.text && <div className="text" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>}
-                {m.image && <img className="pic" src={m.image} alt="" />}
+                {m.image && <img className="pic" src={m.image} alt="" loading="lazy" decoding="async" />}
                 <div className="acts">
                   <button className={m.liked ? 'on' : ''} onClick={() => like(m)}
                     style={m.liked ? { color: 'var(--accent)' } : undefined}>

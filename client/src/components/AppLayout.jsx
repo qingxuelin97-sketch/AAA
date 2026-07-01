@@ -119,17 +119,23 @@ export default function AppLayout({ children }) {
   // Close any open sheet on navigation.
   useEffect(() => { setSheet(null); }, [loc.pathname]);
 
-  // Notification / DM counts + online heartbeat (same cadence as the web shell).
+  // Notification / DM counts + online heartbeat。
+  // SSE 已秒级推送 dm/notification 事件（见下方 useRealtimeEvent），轮询只作兜底：
+  // 间隔放宽到 45s 减少电耗/流量；app 切后台时暂停，回前台立即刷新一次再恢复。
   useEffect(() => {
     let alive = true;
+    let timer = null;
     const load = () => {
       api('/social/notifications').then(d => alive && setUnread(d.unread)).catch(() => {});
       api('/dm').then(d => alive && setDmUnread(d.unread_total || 0)).catch(() => {});
       api('/social/heartbeat', { method: 'POST' }).catch(() => {});
     };
-    load();
-    const t = setInterval(load, 20000);
-    return () => { alive = false; clearInterval(t); };
+    const start = () => { if (!timer) { load(); timer = setInterval(load, 45000); } };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const onVis = () => { if (document.visibilityState === 'visible') start(); else stop(); };
+    start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { alive = false; stop(); document.removeEventListener('visibilitychange', onVis); };
   }, []);
 
   // 实时未读数：通知/私信到达时秒级更新角标。

@@ -85,30 +85,41 @@ export function RealtimeProvider({ children }) {
   }, [user?.id, connect]);
 
   // 移动端生命周期：app 切到后台时 OS 会杀掉 SSE 长连接，回前台后需立即重连。
-  // Web 端同理：标签页切到后台一段时间后连接也会断。监听 visibilitychange + Capacitor resume。
+  // Web 端同理：标签页切到后台一段时间后连接也会断。监听 visibilitychange + Capacitor pause/resume。
   useEffect(() => {
     if (STATIC || !user) return;
+    // 切到后台：主动关闭 SSE，省电省流量，避免移动 OS 维持半开 TCP 跑心跳。
+    const onHidden = () => {
+      if (document.visibilityState !== 'hidden') return;
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+      if (esRef.current) { esRef.current.close(); esRef.current = null; }
+      setStatus('closed');
+    };
+    // 回前台：连接已断，立即重连。
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
-      // 连接还活着就不必重连。
       if (esRef.current && esRef.current.readyState === EventSource.OPEN) return;
-      // 重置重试计数，给恢复后的重连一个干净起点。
       retryRef.current = 0;
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
       connect();
     };
-    document.addEventListener('visibilitychange', onVisible);
-    // Capacitor 原生壳的 resume 事件（仅 app 内有效，Web 端 import 静默失败）。
-    let resumeUnsub;
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') onHidden();
+      else if (document.visibilityState === 'visible') onVisible();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    // Capacitor 原生壳：pause/resume 与 visibilitychange 在部分 WebView 不同步，双保险。
+    let pauseUnsub, resumeUnsub;
     try {
       import('@capacitor/app').then(({ App }) => {
+        App.addListener('pause', onHidden).then?.(h => { pauseUnsub = h; });
         App.addListener('resume', onVisible).then?.(h => { resumeUnsub = h; });
       }).catch(() => {});
     } catch { /* not in native shell */ }
     return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      try { resumeUnsub?.remove?.(); } catch { /* */ }
+      document.removeEventListener('visibilitychange', onVis);
+      try { pauseUnsub?.remove?.(); resumeUnsub?.remove?.(); } catch { /* */ }
     };
   }, [user?.id, connect]);
 

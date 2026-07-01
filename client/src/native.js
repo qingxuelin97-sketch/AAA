@@ -19,10 +19,12 @@ export async function syncStatusBar() {
 
 export async function initNative() {
   await syncStatusBar();
-  // Android hardware back: navigate back, or exit at the root.
+  // Android hardware back: 有历史则后退，否则退出 app。
+  // 旧实现用 location.hash 判断根页，但 BrowserRouter 下 hash 恒空，
+  // 导致只要不在首屏按返回键就直接退出 app，历史回退完全失效。
   try {
     App.addListener('backButton', () => {
-      if (window.history.length > 1 && location.hash && location.hash !== '#/') window.history.back();
+      if (window.history.length > 1) window.history.back();
       else App.exitApp();
     });
   } catch { /* */ }

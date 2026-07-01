@@ -127,9 +127,9 @@ export function IdentityBadges({ u, className = '' }) {
   return <div className={'idb-row ' + className}>{chips}</div>;
 }
 
-export function Avatar({ src, name = '', size = 40 }) {
+export function Avatar({ src, name = '', size = 40, eager }) {
   const initial = (name || '?').trim().charAt(0).toUpperCase();
-  if (src) return <img className="avatar" src={src} style={{ width: size, height: size }} alt="" />;
+  if (src) return <img className="avatar" src={src} style={{ width: size, height: size }} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" />;
   return (
     <div className="avatar" style={{
       width: size, height: size, display: 'grid', placeItems: 'center',
