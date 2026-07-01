@@ -50,6 +50,69 @@ npm run app:build     # = build:static + npx cap sync
 
 ---
 
+## 让 App 连接真实服务器（重点）
+
+打包成原生 App 后，webview 运行在 `https://localhost`，前端代码里的相对路径 `/api/...`
+会请求到 **localhost 本地**而非你的服务器——表现为 App 能打开但登录、数据全部失败。
+必须让前端在打包时把后端地址写死成绝对地址。
+
+### 一、配置后端地址
+
+复制环境变量模板并填入你的后端域名：
+
+```bash
+cp client/.env.example client/.env
+# 编辑 client/.env，填入后端完整 HTTPS 地址，例如：
+#   VITE_API_BASE=https://api.your-domain.com
+```
+
+要求：
+- **必须 `https://`**：Android 9+ 默认禁止明文 HTTP 请求，iOS 同理。
+- 前后端同域（由 Nginx 反代分流 `/api`）就填主域名；后端独立子域就填子域。
+- REST 请求和 SSE 长连接都会自动用这个地址（见 `client/src/api.jsx` 的 `API_BASE`）。
+
+### 二、后端 CORS 放行 App 来源
+
+App 的 webview 来源是 `https://localhost`，后端需放行它：
+
+```bash
+# 启动后端时设置环境变量
+CORS_ORIGINS=https://localhost node server/index.js
+```
+
+或若你的后端供应商支持环境变量配置，加上 `https://localhost`。不配 `CORS_ORIGINS`
+时后端默认允许所有来源（开发友好），生产建议显式配白名单：`https://localhost,https://你的网站域名`。
+
+### 三、用「连服务器」脚本打包
+
+```bash
+npm run app:android:remote   # 构建（注入后端地址）+ 同步 + 打开 Android Studio
+# 或 iOS（仅 macOS）：
+npm run app:ios:remote
+```
+
+这组 `*:remote` 脚本用 `npm run build`（**不带** `VITE_STATIC`），读取 `client/.env`
+里的 `VITE_API_BASE`，产出连真实后端的 `client/dist`，再 `cap sync` 进原生工程。
+
+> 对比：`app:android`（不带 `:remote`）用的是 `build:static`，产物走浏览器内置 mock
+> 后端，**不连服务器**，适合离线演示。两套脚本对应两种用途，别用混。
+
+### 四、在 Android Studio 出 APK
+
+1. `npm run app:android:remote` 会自动打开 Android Studio。
+2. 菜单 `Build → Build Bundle(s)/APK(s) → Build APK`。
+3. 装到手机测试：登录、聊天、收发消息应全部正常，SSE 秒级推送生效。
+
+### 常见问题
+
+- **App 打开白屏 / 登录一直转圈**：99% 是 `VITE_API_BASE` 没填或填成了 http。
+- **登录失败但页面能开**：后端 CORS 没放行 `https://localhost`，看后端日志有无跨域拒绝。
+- **改了后端地址没生效**：`.env` 改完必须重新 `npm run app:android:remote`，Vite 在构建时把环境变量编译进 JS。
+- **真机调试看日志**：`chrome://inspect` 连手机 webview，或 Android Studio Logcat 过滤 `Capacitor`。
+- **SSE 不通**：确认反代/Nginx 没缓冲 SSE 流，需加 `proxy_buffering off;`（Nginx）让 `text/event-stream` 实时下发。
+
+---
+
 ## 资源清单
 - `client/public/manifest.webmanifest` — PWA 清单
 - `client/public/sw.js` — Service Worker（离线 App 壳）
