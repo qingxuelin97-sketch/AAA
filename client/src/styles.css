@@ -4631,3 +4631,86 @@ html[data-app="1"][data-perf="lite"] .app-root:has(.app-feed-page) .app-tabbar {
 .app-feed-scroll { animation: feedFade 0.28s ease; }
 @keyframes feedFade { from { opacity: 0.4; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .app-feed-scroll { animation: none; } }
+
+/* ============================================================================
+   GLASS v2 — 重磅毛玻璃 (app shell only). Ambient aurora gives the frosted
+   surfaces something colourful to refract; a hairline top highlight sells the
+   "pane of glass" look. Everything degrades to flat opaque on the lite perf
+   tier and honours reduced-motion. Scoped to html[data-app="1"].
+   ========================================================================== */
+html[data-app="1"] {
+  --glass-blur: saturate(175%) blur(22px);
+  --glass-hi: inset 0 1px 0 rgba(255,255,255,0.55);
+}
+[data-theme="dark"] html[data-app="1"], html[data-app="1"][data-theme="dark"] { --glass-hi: inset 0 1px 0 rgba(255,255,255,0.10); }
+
+/* ambient aurora — painted directly into the .app-root background (NOT a stacked
+   pseudo-element, so it never disturbs the fixed positioning / z-index of the
+   header, tab bar, launcher…). Soft, low-alpha colour so text contrast is intact;
+   glass surfaces' backdrop-filter blurs it into a gentle refraction. */
+html[data-app="1"] .app-root {
+  background:
+    radial-gradient(42% 30% at 8% 4%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(34% 24% at 96% 10%, color-mix(in srgb, #7c5cff 14%, transparent), transparent 70%),
+    radial-gradient(50% 36% at 84% 100%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 74%),
+    var(--bg);
+}
+[data-theme="dark"] html[data-app="1"] .app-root {
+  background:
+    radial-gradient(42% 30% at 8% 4%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%),
+    radial-gradient(34% 24% at 96% 10%, color-mix(in srgb, #7c5cff 22%, transparent), transparent 70%),
+    radial-gradient(50% 36% at 84% 100%, color-mix(in srgb, var(--accent-2) 20%, transparent), transparent 74%),
+    var(--bg);
+}
+
+/* header / tab bar — refined frosted panes with a glass edge. NB: use a plain
+   class selector (no !important on tabbar bg) so the feed's dark-glass tabbar
+   override (higher specificity) still wins on the discover page. */
+.app-header { background: color-mix(in srgb, var(--panel) 72%, transparent);
+  backdrop-filter: var(--glass-blur); box-shadow: var(--glass-hi); }
+.app-tabbar { background: color-mix(in srgb, var(--panel) 78%, transparent);
+  backdrop-filter: var(--glass-blur); box-shadow: var(--glass-hi); }
+
+/* create sheet — deeper frost + grip + top highlight */
+.app-sheet { background: color-mix(in srgb, var(--panel) 78%, transparent) !important;
+  backdrop-filter: saturate(180%) blur(26px); box-shadow: var(--glass-hi), 0 -12px 44px rgba(0,0,0,0.26); }
+
+/* 更多 launcher — the showcase: a true frosted overlay that blurs the page
+   behind it, with frosted-glass tiles floating on top */
+.app-launcher { background: color-mix(in srgb, var(--bg) 52%, transparent) !important;
+  backdrop-filter: saturate(160%) blur(30px); }
+.al-cell, .al-wallet button, .al-foot-btn {
+  background: color-mix(in srgb, var(--panel) 55%, transparent) !important;
+  backdrop-filter: saturate(150%) blur(8px);
+  box-shadow: var(--glass-hi), 0 4px 16px rgba(30,24,18,0.07); }
+.al-x { background: color-mix(in srgb, var(--panel) 60%, transparent) !important; backdrop-filter: blur(8px); box-shadow: var(--glass-hi); }
+
+/* 今日 — frosted quick-action chips, wallet pills, task cards, hero glass tag */
+.ah-sc-ic, .ah-coin, .ah-task {
+  background: color-mix(in srgb, var(--panel) 62%, transparent) !important;
+  backdrop-filter: saturate(150%) blur(10px);
+  box-shadow: var(--glass-hi), 0 2px 10px rgba(30,24,18,0.05); }
+.ah-discover-cta { backdrop-filter: saturate(150%) blur(10px); box-shadow: var(--glass-hi); }
+
+/* lite tier: kill every blur, fall back to solid so weak phones stay smooth */
+html[data-app="1"][data-perf="lite"] .app-root::before { display: none; }
+html[data-app="1"][data-perf="lite"] .app-header,
+html[data-app="1"][data-perf="lite"] .app-tabbar,
+html[data-app="1"][data-perf="lite"] .app-sheet,
+html[data-app="1"][data-perf="lite"] .app-launcher,
+html[data-app="1"][data-perf="lite"] .al-cell,
+html[data-app="1"][data-perf="lite"] .al-wallet button,
+html[data-app="1"][data-perf="lite"] .al-foot-btn,
+html[data-app="1"][data-perf="lite"] .al-x,
+html[data-app="1"][data-perf="lite"] .ah-sc-ic,
+html[data-app="1"][data-perf="lite"] .ah-coin,
+html[data-app="1"][data-perf="lite"] .ah-task {
+  backdrop-filter: none !important; }
+html[data-app="1"][data-perf="lite"] .app-header,
+html[data-app="1"][data-perf="lite"] .app-tabbar { background: var(--panel) !important; }
+html[data-app="1"][data-perf="lite"] .app-launcher { background: var(--bg) !important; }
+html[data-app="1"][data-perf="lite"] .al-cell,
+html[data-app="1"][data-perf="lite"] .ah-sc-ic,
+html[data-app="1"][data-perf="lite"] .ah-coin,
+html[data-app="1"][data-perf="lite"] .ah-task,
+html[data-app="1"][data-perf="lite"] .app-sheet { background: var(--panel) !important; }
