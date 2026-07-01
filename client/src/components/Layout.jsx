@@ -110,7 +110,11 @@ export default function Layout({ children }) {
     };
     load();
     const t = setInterval(load, 20000);
-    return () => { alive = false; clearInterval(t); };
+    // Notifications page marks all read → drop the bell badge immediately
+    // instead of waiting for the next 20s poll.
+    const clear = () => alive && setUnread(0);
+    window.addEventListener('huanyu:noti-read', clear);
+    return () => { alive = false; clearInterval(t); window.removeEventListener('huanyu:noti-read', clear); };
   }, []);
 
   // Scroll-reveal — section-level surfaces elegantly rise in as they enter the

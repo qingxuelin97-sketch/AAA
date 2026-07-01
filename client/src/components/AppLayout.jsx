@@ -128,7 +128,11 @@ export default function AppLayout({ children }) {
     };
     load();
     const t = setInterval(load, 20000);
-    return () => { alive = false; clearInterval(t); };
+    // The Notifications page fires this the moment it marks everything read, so
+    // the bell badge clears instantly instead of lingering until the next poll.
+    const clear = () => alive && setUnread(0);
+    window.addEventListener('huanyu:noti-read', clear);
+    return () => { alive = false; clearInterval(t); window.removeEventListener('huanyu:noti-read', clear); };
   }, []);
 
   // Gestures: swipe between top tabs, left-edge swipe-back, pull-to-refresh.

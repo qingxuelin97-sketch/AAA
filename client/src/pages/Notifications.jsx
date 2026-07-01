@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
+import { timeAgo } from '../time.js';
 import { Bell, Heart, MessageCircle, Gift, Megaphone, Landmark, CheckCheck, Sparkles } from 'lucide-react';
 
 // Infer an icon + accent from the notification text (no schema change needed).
@@ -29,14 +30,17 @@ export default function Notifications() {
       .then(d => { if (alive) setItems(d.notifications || []); }) // snapshot keeps original read flags this session
       .catch(e => toast(e.message, 'err'))
       .finally(() => { if (alive) setLoading(false); });
+    // Mark everything read server-side, and tell the shells to drop the bell
+    // badge NOW (optimistically) — otherwise the header count lingers up to
+    // one 20s poll after you've clearly already seen the notifications.
     api('/social/notifications/read', { method: 'POST' }).catch(() => { /* ignore */ });
+    try { window.dispatchEvent(new Event('huanyu:noti-read')); } catch { /* */ }
     return () => { alive = false; };
     /* eslint-disable-next-line */
   }, []);
 
   const unreadCount = useMemo(() => items.filter(n => !n.read).length, [items]);
   const shown = useMemo(() => tab === 'unread' ? items.filter(n => !n.read) : items, [items, tab]);
-  const fmtDate = (s) => (s ? String(s).replace('T', ' ').slice(0, 16) : '');
 
   return (
     <>
@@ -68,7 +72,7 @@ export default function Notifications() {
                   <span className="noti-ic"><Ic size={17} /></span>
                   <div className="noti-tx">
                     <div className="noti-body">{n.text}</div>
-                    <div className="noti-time">{fmtDate(n.created_at)}</div>
+                    <div className="noti-time">{timeAgo(n.created_at)}</div>
                   </div>
                   {!n.read && <span className="noti-dot" />}
                 </div>

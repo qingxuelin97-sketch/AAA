@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Uploader } from '../ui.jsx';
 import ReportButton from '../components/ReportButton.jsx';
+import { fmtDateTime } from '../time.js';
 import { Heart, MessageCircle, Send, Trash2, Inbox, UserPlus, Check, Sparkles } from 'lucide-react';
 
 function SuggestedPeople() {
@@ -38,12 +39,9 @@ function SuggestedPeople() {
   );
 }
 
-function fmtDate(s) {
-  if (!s) return '';
-  const d = new Date(s);
-  if (isNaN(d)) return s;
-  return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
+// Timestamps are stored UTC (see time.js) — parse them zone-aware so a UTC+8
+// viewer doesn't see every post dated 8 hours in the past.
+const fmtDate = fmtDateTime;
 
 function Comments({ moment, onCount }) {
   const { user } = useAuth();
