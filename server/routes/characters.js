@@ -46,7 +46,8 @@ router.get('/mine', authRequired, (req, res) => {
   res.json({ characters: rows });
 });
 
-// Public gallery of characters, with category + search filters
+// Public gallery of characters, with category + search filters.
+// 支持 limit/offset 分页：沉浸式信息流按页加载，避免一次性返回全量。
 router.get('/public', authOptional, (req, res) => {
   const { category, q, sort } = req.query;
   let sql = `SELECT c.*, u.display_name AS owner_name FROM characters c
@@ -55,7 +56,10 @@ router.get('/public', authOptional, (req, res) => {
   if (category && category !== 'all') { sql += ' AND c.category = ?'; args.push(category); }
   if (q) { sql += ' AND (c.name LIKE ? OR c.tags LIKE ? OR c.tagline LIKE ?)'; const k = `%${q}%`; args.push(k, k, k); }
   sql += sort === 'new' ? ' ORDER BY c.created_at DESC' : ' ORDER BY c.uses DESC, c.likes DESC';
-  sql += ' LIMIT 80';
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 80, 1), 100);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+  sql += ' LIMIT ? OFFSET ?';
+  args.push(limit, offset);
   const rows = db.prepare(sql).all(...args);
   if (req.user) {
     const fav = new Set(db.prepare('SELECT character_id FROM favorites WHERE user_id = ?').all(req.user.id).map(r => r.character_id));

@@ -50,6 +50,7 @@ const Atelier = lazy(() => import('./pages/Atelier.jsx'));
 const NovelWorkspace = lazy(() => import('./pages/NovelWorkspace.jsx'));
 const NovelReader = lazy(() => import('./pages/NovelReader.jsx'));
 const AppHome = lazy(() => import('./pages/AppHome.jsx'));
+const DiscoverFeed = lazy(() => import('./pages/DiscoverFeed.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -73,7 +74,7 @@ export default function App() {
             <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
             <Route path="/features" element={<Features />} />
             <Route path="/help" element={<Help />} />
-            <Route path="/" element={P(<Home />)} />
+            <Route path="/" element={P(isAppMode() ? <DiscoverFeed /> : <Home />)} />
             <Route path="/today" element={P(<AppHome />)} />
             <Route path="/scripts" element={P(<Scripts />)} />
             <Route path="/script/new" element={P(<ScriptEditor />)} />
