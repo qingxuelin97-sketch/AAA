@@ -961,8 +961,8 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 
 /* subtle glass sheen on key surfaces */
 .card, .room-row, .pkg, .world-entry { position: relative; }
-.wallet-hero, .vip-card { backdrop-filter: saturate(140%) blur(6px); }
-.modal-backdrop .card { backdrop-filter: blur(10px); }
+/* 注：不给不透明卡片挂 backdrop-filter —— 底色不透明时模糊完全不可见，
+   却让移动端 GPU 每帧白算一遍（低端机实测掉帧），玻璃拟态由 data-glass 单独开。 */
 
 /* ---- mobile immersive rooms (no double header) ---- */
 /* 输入栏独立 fixed：键盘弹起时只输入栏 bottom 上移到键盘上方，
@@ -1866,7 +1866,13 @@ body { background-image:
 .stat-row .s:hover { transform: translateY(-2px); }
 
 /* ============ 移动端完整导航抽屉 ============ */
-.mt-menu { background: none; border: none; color: var(--text); padding: 4px; margin: -4px 2px -4px -2px; display: grid; place-items: center; cursor: pointer; }
+.mt-menu { background: none; border: none; color: var(--text); padding: 10px; margin: -10px 0 -10px -8px; display: grid; place-items: center; cursor: pointer; border-radius: 10px; }
+.mt-menu:active { background: var(--bg-2); }
+/* 顶栏图标动作：40px 触控区（与 app 壳 .ahd-actions 一致的手感） */
+.mt-act { position: relative; background: none; border: none; color: var(--text); padding: 10px; margin: -10px -2px; display: grid; place-items: center; cursor: pointer; border-radius: 10px; }
+.mt-act:active { background: var(--bg-2); }
+.mt-bell { margin-right: -8px; }
+.mt-bell .nb { position: absolute; top: 3px; right: 3px; background: var(--accent); color: #fff; font-size: 9px; font-weight: 700; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; display: grid; place-items: center; }
 .mnav-mask { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,0.42); backdrop-filter: blur(2px); animation: fadeIn 0.2s ease both; }
 .mnav { position: fixed; top: 0; left: 0; height: 100dvh; width: min(300px, 84vw); background: var(--bg);
   border-right: 1px solid var(--border); display: flex; flex-direction: column;
@@ -3001,7 +3007,9 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 .fr-dm-input textarea:disabled { opacity: 0.6; }
 [data-theme="dark"] .fr-list { background: #16161c; }
 @media (max-width: 760px) {
-  .friends-layout { height: calc(100vh - 56px); }
+  /* 移动端要同时刨去顶栏与底部导航（含安全区），否则私信输入栏会被压到
+     固定 bottom-nav 之下、折叠在首屏之外。 */
+  .friends-layout { height: calc(100dvh - 56px - 68px - env(safe-area-inset-bottom, 0px)); }
   .fr-list { width: 100%; }
   .friends-layout.has-dm .fr-list { display: none; }
   .friends-layout:not(.has-dm) .fr-dm { display: none; }
@@ -3171,6 +3179,9 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   background: radial-gradient(circle, rgba(63,129,149,0.16), transparent 65%); animation: auroraB 26s ease-in-out infinite; }
 .chat-aura span:nth-child(3) { width: 34vmax; height: 34vmax; left: 30%; bottom: -18vmax;
   background: radial-gradient(circle, rgba(179,137,47,0.14), transparent 65%); animation: auroraA 30s ease-in-out infinite reverse; }
+/* 光晕漂移关键帧（此前缺失定义，导致背景光斑完全静止） */
+@keyframes auroraA { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(6vmax, 4vmax, 0) scale(1.12); } }
+@keyframes auroraB { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(-5vmax, -3vmax, 0) scale(1.08); } }
 [data-theme="dark"] .chat-main { background:
   radial-gradient(1100px 600px at 12% -10%, rgba(226,136,95,0.10), transparent 60%),
   radial-gradient(900px 600px at 100% 110%, rgba(63,129,149,0.10), transparent 55%),
@@ -3633,6 +3644,8 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 }
 [data-perf="lite"] .topbar { background: color-mix(in srgb, var(--bg) 96%, transparent); backdrop-filter: none; -webkit-backdrop-filter: none; }
 [data-perf="lite"] .modal-backdrop .card.modal { animation: none; }
+/* 低端机：弹窗遮罩不做背景模糊（软件合成下既慢又可能出现残影伪像） */
+[data-perf="lite"] .modal-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
 [data-perf="lite"] .bottom-nav { background: color-mix(in srgb, var(--bg) 97%, transparent); backdrop-filter: none; -webkit-backdrop-filter: none; }
 [data-perf="lite"] .mobile-topbar { background: color-mix(in srgb, var(--bg) 97%, transparent); backdrop-filter: none; -webkit-backdrop-filter: none; }
 [data-perf="lite"] .mnav-mask,
@@ -4299,6 +4312,9 @@ html[data-app="1"] .atl-read-page { height: 100dvh; }
 /* Non-immersive full-height pages (e.g. the chat *list*) fit the content band
    between header and tab bar instead of overflowing past them. */
 html[data-app="1"] .chat-layout:not(.immersive) { height: calc(100dvh - var(--app-top) - var(--app-bot)); }
+/* 好友 / 私信页同理：app 壳内要贴合 header 与 tabbar 之间的内容带，
+   否则 DM 输入栏落在 tab bar 之下无法触达。 */
+html[data-app="1"] .friends-layout { height: calc(100dvh - var(--app-top) - var(--app-bot)); }
 
 /* Toasts ride above the tab bar; the back-to-top FAB too. */
 html[data-app="1"] .toast-stack { bottom: calc(80px + env(safe-area-inset-bottom)); }

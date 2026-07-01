@@ -169,11 +169,11 @@ try {
     // 1. 输入栏 fixed
     if (kbdSim.before.barPosition === 'fixed') console.log(`✅ 输入栏 position=fixed`);
     else { findings.push(`[kbd] 输入栏 position=${kbdSim.before.barPosition} 期望 fixed`); console.log(`❌ 输入栏 position=${kbdSim.before.barPosition}`); }
-    // 2. bottom 上移到键盘高度
-    const expectedBottom = kbdSim.before.innerHeight - kbdH; // 844-500=344
-    const actualBottom = parseInt(kbdSim.after.barBottom);
-    if (actualBottom === expectedBottom) console.log(`✅ 输入栏 bottom=${actualBottom}px = 键盘高度 ${expectedBottom}px`);
-    else { findings.push(`[kbd] 输入栏 bottom=${kbdSim.after.barBottom} 期望 ${expectedBottom}px`); console.log(`❌ 输入栏 bottom=${kbdSim.after.barBottom}`); }
+    // 2. 输入栏实际上移了键盘高度（现实现经 transform 合成层上移，而非改 bottom）
+    const expectedShift = kbdSim.before.innerHeight - kbdH; // 844-500=344
+    const actualShift = (kbdSim.before.barRect?.top ?? 0) - (kbdSim.after.barRect?.top ?? 0);
+    if (Math.abs(actualShift - expectedShift) <= 2) console.log(`✅ 输入栏上移 ${actualShift.toFixed(0)}px = 键盘高度 ${expectedShift}px`);
+    else { findings.push(`[kbd] 输入栏上移 ${actualShift.toFixed(0)}px 期望 ${expectedShift}px`); console.log(`❌ 输入栏上移 ${actualShift.toFixed(0)}px`); }
     // 3. 输入栏在键盘上方（barRect.bottom ≤ 可见区 + 容差）
     const barBottom = kbdSim.after.barRect?.bottom;
     if (barBottom != null && barBottom <= kbdH + 2) console.log(`✅ 输入栏 barRect.bottom=${barBottom.toFixed(0)} ≤ 可见区=${kbdH}`);

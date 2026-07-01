@@ -439,7 +439,8 @@ const DAILY_TASKS = [
   { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 10, key: 'like' },
   { id: 'novel', name: 'AI 创作 1 段小说', target: 1, reward: 20, key: 'novel' }
 ];
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// 「今天」统一北京时间（UTC+8）口径，与真实服务端 server/daily.js 一致。
+const todayStr = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
 function dailyOf(uid) {
   let d = find('daily_progress', x => x.user_id === uid);
   if (!d) d = insert('daily_progress', { user_id: uid, date: todayStr(), counts: {}, claimed: [] });
@@ -1292,7 +1293,8 @@ async function route(method, path, search, body, headers) {
         .map(x => ({ id: x.id, name: x.name, avatar: x.avatar, tagline: x.tagline, uses: x.uses || 0, category: x.category }))
         .sort((a, b) => b.uses - a.uses).slice(0, 6);
       const author_char_count = filter('characters', x => x.is_public && x.owner_id === c.owner_id && x.id !== c.id && !x.from_script).length;
-      return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(owner), fav_count, author_char_count }, related });
+      const faved = me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false;
+      return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(owner), fav_count, author_char_count, faved }, related });
     }
     if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'bgm', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'voice_speed', 'voice_pitch', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0; if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
     if (method === 'DELETE') { need(); if (!c || c.owner_id !== me.id) return E('无权删除', 403); db.characters = filter('characters', x => x.id !== cid); save(); return J({ ok: true }); }
@@ -1584,8 +1586,8 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/economy/exchange') { need(); const n = parseInt(body.diamond, 10); if (!n || n <= 0) return E('请输入有效的钻石数量'); try { return J({ wallet: applyTx(me.id, { kind: 'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo: `${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` }) }); } catch (e) { return E(e.message); } }
   if (method === 'POST' && path === '/economy/vip') { need(); try { applyTx(me.id, { kind: 'vip', gold: -VIP_COST_GOLD, memo: `购买 ${VIP_DAYS} 天 VIP` }); } catch (e) { return E(e.message); } const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + VIP_DAYS * 86400000).toISOString(); save(); return J({ wallet: publicUser(me) }); }
   if (method === 'POST' && path === '/economy/checkin') {
-    need(); const today = new Date().toISOString().slice(0, 10); if (me.last_checkin === today) return E('今天已经签到过啦');
-    const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10); const streak = me.last_checkin === y ? (me.checkin_streak || 0) + 1 : 1;
+    need(); const today = todayStr(); if (me.last_checkin === today) return E('今天已经签到过啦');
+    const y = new Date(Date.now() - 86400000 + 8 * 3600e3).toISOString().slice(0, 10); const streak = me.last_checkin === y ? (me.checkin_streak || 0) + 1 : 1;
     // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
     const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200; if (isVip(me)) reward *= 2;
     me.last_checkin = today; me.checkin_streak = streak;

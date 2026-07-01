@@ -117,6 +117,12 @@ export default function Layout({ children }) {
   // 实时未读数：通知/私信到达时秒级更新角标，无需等 20s 轮询。
   useRealtimeEvent('notification', () => setUnread(u => u + 1));
   useRealtimeEvent('dm', () => { api('/dm').then(d => setDmUnread(d.unread_total || 0)).catch(() => {}); });
+  // 进入通知中心标记全读后，角标立即清零。
+  useEffect(() => {
+    const clear = () => setUnread(0);
+    window.addEventListener('huanyu-noti-read', clear);
+    return () => window.removeEventListener('huanyu-noti-read', clear);
+  }, []);
 
   // Scroll-reveal — section-level surfaces elegantly rise in as they enter the
   // viewport (not just on first paint). JS-only opt-in, so no-JS/reduced-motion
@@ -274,11 +280,12 @@ function MobileTop({ user, unread, onMenu }) {
       <button className="mt-menu" onClick={onMenu} aria-label="菜单"><Menu size={22} /></button>
       <b style={{ fontSize: 17, flex: 1 }}>幻域</b>
       <span className="coin gold" onClick={() => nav('/wallet')}><CoinIcon size={13} /> {user?.gold ?? 0}</span>
-      <Search size={20} onClick={openCmdk} aria-label="搜索" />
-      <div style={{ position: 'relative' }} onClick={() => nav('/notifications')}>
+      {/* 图标动作用真按钮承载 ≥40px 触控区（裸 svg 只有 20px，指头很难点中） */}
+      <button className="mt-act" onClick={openCmdk} aria-label="搜索"><Search size={20} /></button>
+      <button className="mt-act mt-bell" onClick={() => nav('/notifications')} aria-label="通知">
         <Bell size={20} />
-        {unread > 0 && <span className="nb" style={{ position: 'absolute', top: -4, right: -6 }}>{unread}</span>}
-      </div>
+        {unread > 0 && <span className="nb">{unread > 99 ? '99+' : unread}</span>}
+      </button>
     </div>
   );
 }

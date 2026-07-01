@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import db from'../db.js';
 import { authRequired } from'../auth.js';
 import { applyTx, isVip, publicUser, GOLD_PER_DIAMOND, VIP_COST_GOLD, VIP_DAYS, notify } from'../wallet.js';
-import { bumpDaily } from '../daily.js';
+import { bumpDaily, cnToday } from '../daily.js';
 
 const router = Router();
 
@@ -70,9 +70,9 @@ router.post('/vip', authRequired, (req, res) => {
 // Daily check-in — VIP earns double, streak bonus. 用条件 UPDATE 原子化防并发重复签到。
 router.post('/checkin', authRequired, (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = cnToday();
   if (u.last_checkin === today) return res.status(400).json({ error:'今天已经签到过啦' });
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const yesterday = cnToday(new Date(Date.now() - 86400000));
   const streak = u.last_checkin === yesterday ? (u.checkin_streak || 0) + 1 : 1;
   // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
   const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200;

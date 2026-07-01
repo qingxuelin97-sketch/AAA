@@ -4,8 +4,12 @@ import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { useKeyboardInsetBar } from '../mobile.js';
+import { useAutoGrow } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles } from 'lucide-react';
+
+// 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
+const COARSE = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
 
 const LIST_KEY = 'huanyu_chatlist_mini';
 const FONT_KEY = 'huanyu_chat_font';
@@ -97,6 +101,8 @@ export default function Chat() {
 
   // 移动端软键盘适配：把 fixed 输入栏始终顶在键盘上方（稳健跨浏览器实现见 mobile.js）。
   useKeyboardInsetBar(inputBarRef, [conv]);
+  // 输入框随内容自动增高（发送清空后回落单行），多行长文不再挤在一行内滚动。
+  useAutoGrow(inputRef, input);
 
   // 订阅全局朗读状态，驱动「朗读 / 停止 / 再听一遍」按钮切换。
   useEffect(() => onVoiceStateChange(setPlayingId), []);
@@ -439,9 +445,11 @@ export default function Chat() {
   const delConv = async (e, cv) => {
     e.stopPropagation();
     if (!confirm('删除该对话？')) return;
-    await api('/chat/conversations/' + cv.id, { method: 'DELETE' });
-    if (String(cv.id) === String(id)) nav('/chats');
-    loadConvs();
+    try {
+      await api('/chat/conversations/' + cv.id, { method: 'DELETE' });
+      if (String(cv.id) === String(id)) nav('/chats');
+      loadConvs();
+    } catch (err) { toast(err.message, 'err'); }
   };
 
   const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
@@ -656,7 +664,8 @@ export default function Chat() {
               )}
               <div className="box">
                 <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => setActionsOpen(o => !o)} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
-                <textarea ref={inputRef} rows={1} value={input} placeholder={`对 ${character?.name} 说点什么…（Enter 发送，Shift+Enter 换行）`}
+                <textarea ref={inputRef} rows={1} value={input}
+                  placeholder={`对 ${character?.name} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
                   enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
                 {streaming

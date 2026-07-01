@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { cnToday } from '../util.js';
 import { Crown, CalendarCheck, Gift, ArrowRight, Check, Sparkles, Wallet as WalletIcon, Trophy } from 'lucide-react';
 
 export default function Wallet() {
@@ -38,8 +39,7 @@ export default function Wallet() {
   const goldPer = rates.gold_per_diamond || 100;
   const vipCost = rates.vip_cost || 30000, vipDays = rates.vip_days || 30;
   const exN = parseInt(exDiamond, 10) || 0;
-  const today = new Date().toISOString().slice(0, 10);
-  const signed = wallet.last_checkin === today;
+  const signed = wallet.last_checkin === cnToday(); // 北京时间口径，与服务端一致
   const fmt = (n) => (n || 0).toLocaleString('en-US');
 
   return (

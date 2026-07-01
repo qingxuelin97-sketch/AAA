@@ -9,7 +9,9 @@
     <title>幻域 · AI 角色扮演平台</title>
     <meta name="description" content="自定义角色、世界书、好感度与对话记忆，与你创造的角色沉浸对话。" />
     <!-- 内容安全策略：默认同源，限制脚本/样式来源，降低 XSS 与供应链风险 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' https: wss:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'" />
+    <!-- frame-ancestors 在 <meta> 里按规范会被忽略且每页刷 console 报错，故不写；
+         防嵌套由服务端 helmet 的 X-Frame-Options 承担。 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'" />
 
     <!-- PWA / installable app -->
     <link rel="manifest" href="manifest.webmanifest" />

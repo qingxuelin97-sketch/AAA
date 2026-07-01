@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
+import { shareUrl } from '../util.js';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 import { Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp } from 'lucide-react';
 
@@ -114,7 +115,7 @@ export default function DiscoverFeed() {
     catch { nav('/character/' + c.id); }
   };
   const share = async (c) => {
-    const url = location.origin + '/#/character/' + c.id;
+    const url = shareUrl('/character/' + c.id);
     try { if (navigator.share) { await navigator.share({ title: c.name, url }); return; } } catch { /* */ }
     try { await navigator.clipboard.writeText(url); toast('链接已复制'); }
     catch { toast('分享：' + c.name); }

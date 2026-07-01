@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
+import { useKeyboardInsetBar } from '../mobile.js';
+import { useAutoGrow } from '../util.js';
 import { Send, ArrowLeft, Users, LogOut, MessageCircle } from 'lucide-react';
 
 export default function GroupRoom() {
@@ -16,6 +18,11 @@ export default function GroupRoom() {
   const [showMembers, setShowMembers] = useState(false);
   const scrollRef = useRef();
   const lastId = useRef(0);
+  const barRef = useRef(null);
+  const inputRef = useRef(null);
+  // 移动端沉浸式布局下输入栏是 fixed 的：键盘弹起时顶到键盘上方（与对话页一致）
+  useKeyboardInsetBar(barRef, [group]);
+  useAutoGrow(inputRef, input);
 
   const leave = async () => {
     if (!confirm('确定退出该群聊？')) return;
@@ -93,9 +100,11 @@ export default function GroupRoom() {
             );
           })}
         </div>
-        <div className="chat-input-bar">
+        {/* 移动端 fixed 输入栏的占位，避免最后一条消息被遮挡 */}
+        <div className="chat-input-spacer" aria-hidden="true" />
+        <div className="chat-input-bar" ref={barRef}>
           <div className="box">
-            <textarea rows={1} value={input} placeholder="说点什么…"
+            <textarea ref={inputRef} rows={1} value={input} placeholder="说点什么…" enterKeyHint="send"
               onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
             <button className="send-btn" onClick={send} disabled={!input.trim()}><Send size={17} /></button>
           </div>

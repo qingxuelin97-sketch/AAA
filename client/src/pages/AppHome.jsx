@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { cnToday } from '../util.js';
 import {
   Check, Flame, MessagesSquare, ChevronRight, Sparkles, Wand2, Feather,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass
@@ -32,15 +33,17 @@ const CREATE_SHORTCUTS = [
 ];
 
 export default function AppHome() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const toast = useToast();
   const nav = useNavigate();
   const [resume, setResume] = useState(null);
   const [pick, setPick] = useState(null);
   const [hero, setHero] = useState(null);
   const [tasks, setTasks] = useState([]);
-  const [checked, setChecked] = useState(false);
-  const [streak, setStreak] = useState(0);
+  // 用 /auth/me 带回的 last_checkin 初始化，已签到就直接呈现「已签到」态，
+  // 而不是等到用户点了按钮吃 400 才知道。
+  const [checked, setChecked] = useState(() => !!user?.last_checkin && user.last_checkin === cnToday());
+  const [streak, setStreak] = useState(user?.checkin_streak || 0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -68,6 +71,7 @@ export default function AppHome() {
       const d = await api('/economy/checkin', { method: 'POST' });
       setChecked(true); setStreak(d.streak || 0);
       toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
+      refreshUser?.(); // 顶部金币余额立即更新，不留旧值
     } catch (e) {
       // already signed in today (or no endpoint) — mark done so the CTA settles
       setChecked(true);
