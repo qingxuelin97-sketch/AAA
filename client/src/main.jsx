@@ -4,6 +4,7 @@ import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { AuthProvider } from './api.jsx';
 import { initTheme } from './theme.js';
+import { initAccent } from './accent.js';
 import { initPerf } from './perf.js';
 import { initFx } from './fx.js';
 import { initAppMode } from './appmode.js';
@@ -12,6 +13,7 @@ import '@fontsource-variable/fraunces';
 import './styles.css';
 
 initTheme();   // apply saved theme before first paint (no flash)
+initAccent();  // apply saved accent palette before first paint
 initPerf();    // resolve device perf tier → data-perf, gating heavy GPU effects
 initFx();      // global click ripples + tap bursts
 initAppMode(); // resolve native/app shell → data-app (before React mounts)

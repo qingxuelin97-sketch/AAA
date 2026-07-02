@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
 import { Avatar } from '../ui.jsx';
 import { getThemeMode, resolveTheme, setThemeMode } from '../theme.js';
+import { ACCENTS, getAccent, setAccent } from '../accent.js';
 import {
   Search, Compass, PartyPopper, Dices, ScrollText, Users, Trophy, Megaphone,
   MessageCircle, Drama, Library, TrendingUp, Heart, Wallet, Bell, Settings,
-  Sparkles, UserPlus, Moon, Sun, LogOut, CornerDownLeft, Command, ArrowUp, ArrowDown, Landmark, UserRound, Feather
+  Sparkles, UserPlus, Moon, Sun, LogOut, CornerDownLeft, Command, ArrowUp, ArrowDown, Landmark, UserRound, Feather, Orbit, Palette
 } from 'lucide-react';
 
 // Flat list of navigable destinations (mirrors the sidebar) + quick actions.
@@ -26,6 +27,7 @@ const NAV = [
   { to: '/theater', ic: Drama, label: '剧场 · 联机', kw: 'theater juchang' },
   { to: '/library', ic: Library, label: '我的角色', kw: 'library wodejuese' },
   { to: '/studio', ic: TrendingUp, label: '创作中心', kw: 'studio chuangzuo' },
+  { to: '/insights', ic: Orbit, label: '星轨 · 我的旅程', kw: 'insights xinggui journey stats shuju' },
   { to: '/achievements', ic: Trophy, label: '成就', kw: 'achievements chengjiu trophy' },
   { to: '/favorites', ic: Heart, label: '收藏', kw: 'favorites shoucang' },
   { to: '/wallet', ic: Wallet, label: '钱包 / 充值', kw: 'wallet qianbao chongzhi recharge' },
@@ -86,6 +88,8 @@ export default function CommandPalette() {
     { id: 'a-newnovel', ic: Feather, label: '小说创作工坊', hint: '操作', run: () => nav('/atelier') },
     { id: 'a-theme', ic: dark ? Sun : Moon, label: dark ? '切换到浅色模式' : '切换到深色模式', hint: '操作',
       run: () => setThemeMode(dark ? 'light' : 'dark'), keepOpen: true },
+    { id: 'a-accent', ic: Palette, label: '换个主题色', hint: '操作',
+      run: () => { const ids = ACCENTS.map(a => a.id); setAccent(ids[(ids.indexOf(getAccent()) + 1) % ids.length]); } },
     { id: 'a-wallet', ic: Wallet, label: '前往充值', hint: '操作', run: () => nav('/wallet') },
     { id: 'a-logout', ic: LogOut, label: '退出登录', hint: '操作', run: () => logout() },
   ]), [dark, nav, logout]);

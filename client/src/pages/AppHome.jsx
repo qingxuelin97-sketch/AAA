@@ -177,9 +177,10 @@ export default function AppHome() {
           <div className="ah-sec-head"><h2><Flame size={16} /> 今日任务</h2></div>
           <div className="ah-tasks">
             {tasks.map(t => (
-              <div key={t.id} className="ah-task">
-                <div className="ah-task-tx"><b>{t.title || t.name}</b><span>+{t.reward} 金币</span></div>
-                <div className="ah-task-bar"><i style={{ width: Math.min(100, Math.round((t.progress || 0) / (t.goal || 1) * 100)) + '%' }} /></div>
+              <div key={t.id} className="ah-task" role="button" tabIndex={0} onClick={() => nav('/events')}
+                onKeyDown={e => e.key === 'Enter' && nav('/events')}>
+                <div className="ah-task-tx"><b>{t.name}</b><span>{t.done ? '可领取 · ' : ''}+{t.reward} 金币</span></div>
+                <div className="ah-task-bar"><i style={{ width: Math.min(100, Math.round((t.progress || 0) / (t.target || 1) * 100)) + '%' }} /></div>
               </div>
             ))}
           </div>
