@@ -5,11 +5,21 @@ import {
   Drama, Image, MessagesSquare, Heart, Users, Brain, Languages,
   UserPlus, Share2, SquarePen, Database, Type, Images,
   Palette, Camera, Sparkles, Check,
+  BookOpen, Key, Layers, ListTree, SlidersHorizontal,
+  Clapperboard, Store, Play, FolderOpen,
+  Feather, CirclePlus, MessageCircle,
+  PenTool, PenLine, Compass, ImagePlus,
+  Globe, Trophy, Gift, ChartColumn, Landmark, Search,
 } from 'lucide-react';
 
 const ICONS = {
   Drama, Image, MessagesSquare, Heart, Users, Brain, Languages,
   UserPlus, Share2, SquarePen, Database, Type, Images, Palette, Camera,
+  BookOpen, Key, Layers, ListTree, SlidersHorizontal,
+  Clapperboard, Store, Play, FolderOpen,
+  Feather, CirclePlus, MessageCircle,
+  PenTool, PenLine, Compass, ImagePlus,
+  Globe, Trophy, Gift, ChartColumn, Landmark, Search,
 };
 
 export default function Features() {
