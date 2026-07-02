@@ -46,6 +46,7 @@ const Help = lazy(() => import('./pages/Help.jsx'));
 const Tags = lazy(() => import('./pages/Tags.jsx'));
 const Worldbooks = lazy(() => import('./pages/Worldbooks.jsx'));
 const WorldbookEditor = lazy(() => import('./pages/WorldbookEditor.jsx'));
+const WorldbookView = lazy(() => import('./pages/WorldbookView.jsx'));
 const Atelier = lazy(() => import('./pages/Atelier.jsx'));
 const NovelWorkspace = lazy(() => import('./pages/NovelWorkspace.jsx'));
 const NovelReader = lazy(() => import('./pages/NovelReader.jsx'));
@@ -102,6 +103,7 @@ export default function App() {
             <Route path="/theater/:id" element={P(<TheaterRoom />)} />
             <Route path="/library" element={P(<Library />)} />
             <Route path="/worldbooks" element={P(<Worldbooks />)} />
+            <Route path="/worldbook/:id" element={P(<WorldbookView />)} />
             <Route path="/worldbook/:id/edit" element={P(<WorldbookEditor />)} />
             <Route path="/atelier" element={P(<Atelier />)} />
             <Route path="/atelier/read/:id" element={P(<NovelReader />)} />

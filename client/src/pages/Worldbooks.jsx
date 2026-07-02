@@ -22,6 +22,7 @@ export default function Worldbooks() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
+  const [sort, setSort] = useState('hot');   // hot | new（仅公开广场）
   const toast = useToast();
   const nav = useNavigate();
 
@@ -30,13 +31,14 @@ export default function Worldbooks() {
     const base = tab === 'mine' ? '/worldbooks/mine' : '/worldbooks/public';
     const params = new URLSearchParams();
     if (tab === 'public' && q) params.set('q', q);
+    if (tab === 'public' && sort !== 'hot') params.set('sort', sort);
     const qs = params.toString();
     api(qs ? `${base}?${qs}` : base)
       .then(d => setList(d.worldbooks || []))
       .catch(e => toast(e.message, 'err'))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab, sort]);
 
   return (
     <>
@@ -72,10 +74,16 @@ export default function Worldbooks() {
             <button className={tab === 'public' ? 'active' : ''} onClick={() => setTab('public')}>公开广场</button>
           </div>
           {tab === 'public' && (
-            <div className="wb-search">
-              <Search size={14} />
-              <input placeholder="搜索名称/标签/简介" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && load()} />
-            </div>
+            <>
+              <div className="seg seg-mini" style={{ marginBottom: 0 }}>
+                <button className={sort === 'hot' ? 'active' : ''} onClick={() => setSort('hot')}>最热</button>
+                <button className={sort === 'new' ? 'active' : ''} onClick={() => setSort('new')}>最新</button>
+              </div>
+              <div className="wb-search">
+                <Search size={14} />
+                <input placeholder="搜索名称/标签/简介" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && load()} />
+              </div>
+            </>
           )}
         </div>
 
@@ -92,7 +100,8 @@ export default function Worldbooks() {
                 // 能力徽章：按字段派生
                 const caps = CAPS.filter(c => w[c.key]);
                 return (
-                  <div key={w.id} className="char-card wb-card" style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }} onClick={() => nav('/worldbook/' + w.id + '/edit')}>
+                  <div key={w.id} className="char-card wb-card" style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }}
+                    onClick={() => nav(owned ? '/worldbook/' + w.id + '/edit' : '/worldbook/' + w.id)}>
                     <div className="cover wb-cover">
                       <div className="wb-cover-aurora" />
                       <div className="wb-cover-icon"><BookOpen size={30} /></div>
@@ -115,6 +124,7 @@ export default function Worldbooks() {
                       )}
                       <div className="foot">
                         <span className="muted" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}><BookCheck size={12} /> {w.entry_count || 0} 条</span>
+                        {tab === 'public' && w.uses > 0 && <span className="muted" style={{ fontSize: 12 }}>· {w.uses} 次使用</span>}
                         {tab === 'public' && w.owner_name && <span className="muted" style={{ fontSize: 12 }}>· {w.owner_name}</span>}
                         <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent)', fontSize: 12.5 }}>
                           {owned ? '编辑' : '查看'} <ArrowRight size={12} />

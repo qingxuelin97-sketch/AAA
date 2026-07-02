@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { useToast } from '../ui.jsx';
+import { useToast, Modal } from '../ui.jsx';
 import { Plus, ArrowLeft, Trash, BookOpen, Save, Globe, ChevronDown, ChevronUp,
   Settings2, Image as ImageIcon, Layout, Play, Eye, Sliders, Filter, Clock, Percent, Layers,
   Copy, Folder, FolderOpen, Search, Download, Upload, Variable, GitBranch, Sparkles, Timer,
-  BookCheck, AlertTriangle, ArrowRight } from 'lucide-react';
+  BookCheck, AlertTriangle, ArrowRight, Wand2, Check } from 'lucide-react';
 
 const BLANK = {
   name: '', description: '', tags: '', is_public: false,
@@ -76,6 +76,7 @@ export default function WorldbookEditor() {
   const [statFilter, setStatFilter] = useState('all');      // all | always | trigger | disabled（概览仪表盘点选）
   const [collapsedFolders, setCollapsedFolders] = useState({});
   const [selected, setSelected] = useState(new Set());
+  const [aiSplit, setAiSplit] = useState(null);   // AI 拆书：null 关闭 | { text, loading, result, picked }
   const fileRef = React.useRef(null);
   const readOnly = editing && user && ownerId != null && ownerId !== user.id;
 
@@ -187,12 +188,39 @@ export default function WorldbookEditor() {
     a.href = url; a.download = `${wb.name || 'worldbook'}.json`; a.click();
     URL.revokeObjectURL(url);
   };
+  // SillyTavern（酒馆）世界书：entries 为 { uid: {...} } 对象且字段名不同，识别后逐字段映射。
+  const fromSillyTavern = (d) => {
+    const src = d?.entries && !Array.isArray(d.entries) && typeof d.entries === 'object' ? Object.values(d.entries) : null;
+    if (!src || !src.length || !src.some(e => e && (Array.isArray(e.key) || 'constant' in e || 'uid' in e))) return null;
+    return src.map(e => ({
+      keys: Array.isArray(e.key) ? e.key.join(', ') : String(e.key || ''),
+      required_keys: Array.isArray(e.keysecondary) && e.selective ? e.keysecondary.join(', ') : '',
+      content: String(e.content || ''),
+      comment: String(e.comment || ''),
+      enabled: !e.disable,
+      mode: e.constant ? 'always' : 'keyword',
+      priority: Math.max(0, Math.min(100, parseInt(e.order, 10) || 50)),
+      probability: e.useProbability === false ? 100 : Math.max(0, Math.min(100, parseInt(e.probability ?? 100, 10) || 0)),
+      case_sensitive: !!e.caseSensitive,
+      group_name: String(e.group || ''),
+      depth: Math.max(0, Math.min(50, parseInt(e.depth, 10) || 0)),
+      sticky: Math.max(0, Math.min(99, parseInt(e.sticky, 10) || 0)),
+      cooldown: Math.max(0, Math.min(999, parseInt(e.cooldown, 10) || 0)),
+    })).filter(e => e.content || e.keys);
+  };
   const importJson = (file) => {
     const reader = new FileReader();
     reader.onload = () => {
       try {
         const d = JSON.parse(reader.result);
         if (!d || typeof d !== 'object') throw new Error('格式非法');
+        // 优先识别酒馆格式：只并入条目，不覆盖本书元信息。
+        const st = fromSillyTavern(d);
+        if (st) {
+          setWb(p => ({ ...p, name: p.name || d.name || '', entries: [...p.entries, ...normalizeEntries(st)] }));
+          toast(`已识别 SillyTavern 格式，导入 ${st.length} 条条目`);
+          return;
+        }
         const imported = normalizeEntries(Array.isArray(d.entries) ? d.entries : []);
         setWb(p => ({
           ...p,
@@ -208,6 +236,24 @@ export default function WorldbookEditor() {
       } catch (e) { toast('导入失败：' + e.message, 'err'); }
     };
     reader.readAsText(file);
+  };
+
+  // —— AI 拆书：粘贴整段自由设定，交给用户自己的 LLM 拆成结构化条目，预览勾选后并入。
+  const runAiSplit = async () => {
+    const text = (aiSplit?.text || '').trim();
+    if (!text) { toast('请先粘贴设定文本', 'err'); return; }
+    setAiSplit(s => ({ ...s, loading: true }));
+    try {
+      const d = await api('/worldbooks/assist/extract', { method: 'POST', body: { text } });
+      setAiSplit(s => s ? { ...s, loading: false, result: d.entries, picked: new Set(d.entries.map((_, i) => i)) } : s);
+    } catch (e) { toast(e.message, 'err'); setAiSplit(s => s ? { ...s, loading: false } : s); }
+  };
+  const mergeAiSplit = () => {
+    const list = (aiSplit?.result || []).filter((_, i) => aiSplit.picked.has(i));
+    if (!list.length) { toast('未勾选任何条目', 'err'); return; }
+    set('entries', [...wb.entries, ...normalizeEntries(list.map(e => ({ ...newEntry(), ...e })))]);
+    toast(`已并入 ${list.length} 条条目，记得保存`);
+    setAiSplit(null);
   };
 
   const save = async () => {
@@ -318,7 +364,8 @@ export default function WorldbookEditor() {
           <div className="sub"><BookOpen size={11} style={{ verticalAlign: -1 }} /> 独立世界书 · 可跨角色复用 · 通常/高级/专家能力可共存{readOnly ? ' · 只读' : ''}</div>
         </div>
         {editing && !readOnly && <button className="btn ghost" onClick={exportJson} title="导出 JSON"><Download size={15} /></button>}
-        {!readOnly && <button className="btn ghost" onClick={() => fileRef.current?.click()} title="导入 JSON"><Upload size={15} /></button>}
+        {!readOnly && <button className="btn ghost" onClick={() => fileRef.current?.click()} title="导入 JSON（支持本站与 SillyTavern 酒馆格式）"><Upload size={15} /></button>}
+        {!readOnly && <button className="btn ghost" onClick={() => setAiSplit({ text: '', loading: false, result: null, picked: new Set() })} title="AI 拆书：粘贴大段设定，自动拆成条目"><Wand2 size={15} /></button>}
         <input ref={fileRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={e => { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ''; }} />
         {editing && !readOnly && <button className="btn ghost danger" onClick={del} title="删除"><Trash size={15} /></button>}
         {!readOnly && <button className="btn primary" onClick={save} disabled={busy}><Save size={15} /> {busy ? '保存中…' : '保存'}</button>}
@@ -821,6 +868,57 @@ export default function WorldbookEditor() {
           </div>
         )}
       </div>
+
+      {/* —— AI 拆书 —— */}
+      {aiSplit && (
+        <Modal onClose={() => setAiSplit(null)}>
+          <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Wand2 size={18} /> AI 拆书</h2>
+          <p className="muted" style={{ marginTop: -4, fontSize: 13 }}>
+            把小说设定、维基条目、跑团模组等大段文本粘贴进来，AI 会拆成带触发关键词的世界书条目；预览勾选后并入本书。使用你在设置中配置的语言模型。
+          </p>
+          {!aiSplit.result && (
+            <>
+              <textarea className="textarea" rows={9} placeholder="粘贴设定文本（最长约 1.2 万字）…"
+                value={aiSplit.text} onChange={e => setAiSplit(s => ({ ...s, text: e.target.value }))} />
+              <div className="row" style={{ marginTop: 12 }}>
+                <button className="btn block" onClick={() => setAiSplit(null)}>取消</button>
+                <button className="btn primary block" onClick={runAiSplit} disabled={aiSplit.loading}>
+                  <Sparkles size={14} /> {aiSplit.loading ? '拆解中，请稍候…' : '开始拆解'}
+                </button>
+              </div>
+            </>
+          )}
+          {aiSplit.result && (
+            <>
+              <div className="muted" style={{ fontSize: 12.5, margin: '4px 0 10px' }}>
+                拆出 {aiSplit.result.length} 条 · 已勾选 {aiSplit.picked.size} 条（点击卡片切换）
+              </div>
+              <div style={{ maxHeight: '46vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {aiSplit.result.map((e, i) => {
+                  const on = aiSplit.picked.has(i);
+                  return (
+                    <div key={i} className={'wbv-entry' + (on ? '' : ' off')} style={{ cursor: 'pointer' }}
+                      onClick={() => setAiSplit(s => { const p = new Set(s.picked); p.has(i) ? p.delete(i) : p.add(i); return { ...s, picked: p }; })}>
+                      <div className="wbv-entry-hd" style={{ pointerEvents: 'none' }}>
+                        <div className="wbv-entry-keys">
+                          {(e.keys || '').split(',').map(k => k.trim()).filter(Boolean).slice(0, 6).map((k, j) => <span key={j} className="wbv-key">{k}</span>)}
+                        </div>
+                        {e.comment && <span className="wbv-entry-note">{e.comment}</span>}
+                        {on && <Check size={14} style={{ color: 'var(--accent)' }} />}
+                      </div>
+                      <div className="wbv-entry-body" style={{ pointerEvents: 'none' }}>{e.content}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="row" style={{ marginTop: 12 }}>
+                <button className="btn block" onClick={() => setAiSplit(s => ({ ...s, result: null }))}>重新拆解</button>
+                <button className="btn primary block" onClick={mergeAiSplit}><Plus size={14} /> 并入 {aiSplit.picked.size} 条</button>
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
     </>
   );
 }

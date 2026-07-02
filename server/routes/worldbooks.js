@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
-import { contentLimiter } from '../limiters.js';
+import { contentLimiter, aiLimiter } from '../limiters.js';
+import { assertPublicUrl } from '../safeUrl.js';
 
 const router = Router();
 
@@ -75,15 +76,15 @@ router.get('/mine', authRequired, (req, res) => {
   res.json({ worldbooks: withCount(rows) });
 });
 
-// 公开世界书广场
+// 公开世界书广场（sort=hot 热度 / new 最新）
 router.get('/public', authOptional, (req, res) => {
-  const { q, tier } = req.query;
+  const { q, tier, sort } = req.query;
   let sql = `SELECT w.*, u.display_name AS owner_name FROM worldbooks w
     JOIN users u ON u.id = w.owner_id WHERE w.is_public = 1`;
   const args = [];
   if (tier && TIERS.includes(tier)) { sql += ' AND w.tier = ?'; args.push(tier); }
   if (q) { sql += ' AND (w.name LIKE ? OR w.tags LIKE ? OR w.description LIKE ?)'; const k = `%${q}%`; args.push(k, k, k); }
-  sql += ' ORDER BY w.uses DESC, w.id DESC LIMIT 80';
+  sql += sort === 'new' ? ' ORDER BY w.id DESC LIMIT 80' : ' ORDER BY w.uses DESC, w.id DESC LIMIT 80';
   const rows = db.prepare(sql).all(...args);
   if (req.user) {
     const mine = new Set(db.prepare('SELECT id FROM worldbooks WHERE owner_id = ?').all(req.user.id).map(r => r.id));
@@ -220,6 +221,67 @@ router.delete('/:id/attach/:characterId', authRequired, (req, res) => {
   db.prepare('DELETE FROM character_worldbooks WHERE character_id = ? AND worldbook_id = ?').run(c.id, req.params.id);
   db.prepare('UPDATE worldbooks SET uses = MAX(0, uses - 1) WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
+});
+
+// 一键 Fork：把公开世界书（或自己的书）连条目完整复制为「我的世界书」，
+// 复制品默认私有，便于自由改造；Fork 他人作品会给原作 +1 使用数（热度信号）。
+router.post('/:id/fork', authRequired, contentLimiter, (req, res) => {
+  const w = db.prepare('SELECT * FROM worldbooks WHERE id = ?').get(req.params.id);
+  if (!w) return res.status(404).json({ error: '世界书不存在' });
+  if (!w.is_public && w.owner_id !== req.user.id) return res.status(403).json({ error: '无权复制该世界书' });
+  const info = db.prepare(`INSERT INTO worldbooks (owner_id, name, description, tags, tier, is_public, front_schema, prompt_overlay,
+    scan_depth, token_budget, recursion, max_active, variable_schema, system_pos, recursion_depth)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(req.user.id, (w.name + ' · 副本').slice(0, 60), w.description, w.tags, w.tier, 0, w.front_schema, w.prompt_overlay,
+      w.scan_depth, w.token_budget, w.recursion, w.max_active, w.variable_schema, w.system_pos, w.recursion_depth);
+  saveEntries(info.lastInsertRowid, loadEntries(w.id));
+  if (w.owner_id !== req.user.id) db.prepare('UPDATE worldbooks SET uses = uses + 1 WHERE id = ?').run(w.id);
+  const copy = db.prepare('SELECT * FROM worldbooks WHERE id = ?').get(info.lastInsertRowid);
+  res.json({ worldbook: { ...copy, entries: loadEntries(copy.id) } });
+});
+
+// 我的角色对某本世界书的挂载状态（详情页「挂载到角色」面板用）。
+router.get('/:id/attachments', authRequired, (req, res) => {
+  const w = db.prepare('SELECT id FROM worldbooks WHERE id = ?').get(req.params.id);
+  if (!w) return res.status(404).json({ error: '世界书不存在' });
+  const chars = db.prepare('SELECT id, name, avatar, tagline FROM characters WHERE owner_id = ? ORDER BY id DESC').all(req.user.id);
+  const attached = new Set(db.prepare('SELECT character_id FROM character_worldbooks WHERE worldbook_id = ?').all(w.id).map(r => r.character_id));
+  res.json({ characters: chars.map(c => ({ ...c, attached: attached.has(c.id) })) });
+});
+
+// AI 拆书：把一大段自由设定文本交给用户自己的 LLM，拆解为结构化世界书条目。
+// 只返回候选条目，由创作者在前端预览确认后并入，不直接写库。
+router.post('/assist/extract', authRequired, aiLimiter, async (req, res) => {
+  const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
+  if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
+  const text = str(req.body?.text, 12000);
+  if (!text.trim()) return res.status(400).json({ error: '请粘贴需要拆解的设定文本' });
+  const system = `你是世界观设定整理专家。把用户给出的设定文本拆解成「世界书条目」：每条聚焦一个独立概念（人物 / 地点 / 组织 / 物品 / 规则 / 事件…），并提炼触发关键词（含常见别称）。只输出 JSON 数组，每项形如 {"keys":"关键词1, 关键词2","content":"该概念的设定内容（尽量保留原文关键细节，300字内）","comment":"8字内概括"}。数量以覆盖全部概念为准（通常 5-20 条），不要输出任何 JSON 以外的文字。`;
+  try {
+    assertPublicUrl(settings.llm_base_url);
+    const r = await fetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
+      body: JSON.stringify({
+        model: settings.llm_model, temperature: 0.3, max_tokens: 3000,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: text }]
+      })
+    });
+    if (!r.ok) return res.status(502).json({ error: '模型服务暂不可用' });
+    const data = await r.json();
+    let raw = (data.choices?.[0]?.message?.content || '').trim();
+    const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i); if (fence) raw = fence[1].trim();
+    let arr = [];
+    try { arr = JSON.parse(raw); } catch {
+      // 宽松回退：截取首个 [ … ] 片段再试一次
+      const seg = raw.match(/\[[\s\S]*\]/); if (seg) { try { arr = JSON.parse(seg[0]); } catch { /* */ } }
+    }
+    if (!Array.isArray(arr)) return res.status(502).json({ error: '模型未返回有效条目，请重试或换个模型' });
+    const entries = arr.filter(e => e && typeof e === 'object' && (e.content || e.keys)).slice(0, 40).map(e => ({
+      keys: str(e.keys, 300), content: str(e.content, 4000), comment: str(e.comment, 60)
+    })).filter(e => e.content.trim());
+    if (!entries.length) return res.status(502).json({ error: '模型未拆出有效条目，请重试' });
+    res.json({ entries });
+  } catch { res.status(502).json({ error: '模型服务暂不可用' }); }
 });
 
 // 把角色内嵌世界书另存为独立世界书

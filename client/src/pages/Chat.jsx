@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
-import { useToast, Avatar } from '../ui.jsx';
+import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { EmptyArt } from '../art.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark } from 'lucide-react';
 
 // 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
 const COARSE = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
@@ -125,6 +125,9 @@ export default function Chat() {
   const [newMem, setNewMem] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  // 消息书签：本地存储（三端通用、不依赖服务端），按会话隔离。
+  const [marks, setMarks] = useState(new Set());
+  const [marksOpen, setMarksOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [fontSize, setFontSize] = useState(() => localStorage.getItem(FONT_KEY) || 'md');
   const [autoRead, setAutoRead] = useState(() => localStorage.getItem(AUTOREAD_KEY) === '1');
@@ -419,6 +422,29 @@ export default function Chat() {
     catch { toast('复制失败', 'err'); }
   };
 
+  // —— 消息书签：收藏重要段落，随时跳回。纯本地存储，按会话隔离，三端通用。
+  useEffect(() => {
+    try { setMarks(new Set(JSON.parse(localStorage.getItem('huanyu_chat_marks_' + id) || '[]'))); }
+    catch { setMarks(new Set()); }
+  }, [id]);
+  const toggleMark = (m) => {
+    if (!m.id) return;
+    setMarks(prev => {
+      const n = new Set(prev);
+      if (n.has(m.id)) n.delete(m.id); else n.add(m.id);
+      try { localStorage.setItem('huanyu_chat_marks_' + id, JSON.stringify([...n])); } catch { /* */ }
+      return n;
+    });
+  };
+  const jumpToMark = (mid) => {
+    setMarksOpen(false);
+    const el = document.getElementById('msg-' + mid);
+    if (!el) { toast('未找到该消息（可能已被删除）', 'err'); return; }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('mark-flash');
+    setTimeout(() => el.classList.remove('mark-flash'), 1800);
+  };
+
   // 专家档世界书的预注入图片映射；引用稳定（随 character 一次性到位），
   // 保证 BubbleContent 的 memo 对老消息始终命中。
   const imageMap = character?.wb_image_map;
@@ -554,6 +580,7 @@ export default function Chat() {
                           </div>
                         </div>
                         <button onClick={toggleAutoRead}><Volume2 size={15} /> 自动朗读 <span className={'chat-menu-toggle' + (autoRead ? ' on' : '')}>{autoRead ? '已开启' : '已关闭'}</span></button>
+                        <button onClick={() => { setMarksOpen(true); setMenuOpen(false); }}><Bookmark size={15} /> 消息书签{marks.size ? `（${marks.size}）` : ''}</button>
                       </div>
                     </>
                   )}
@@ -611,7 +638,7 @@ export default function Chat() {
                 if (q && !(m.content || '').toLowerCase().includes(q)) return null;
                 const firstOfRun = i === 0 || messages[i - 1].role !== m.role;
                 return (
-                <div key={m.id || i} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}>
+                <div key={m.id || i} id={m.id ? 'msg-' + m.id : undefined} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}>
                   {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={38} />}
                   <div className="msg-col">
                     {m.role === 'assistant' && firstOfRun && (
@@ -661,6 +688,7 @@ export default function Chat() {
                           )}
                         </>}
                         {m.role === 'user' && <button className="speak" onClick={() => startEdit(m)} disabled={streaming}><Pencil size={13} /> 编辑</button>}
+                        {m.id && <button className={'speak' + (marks.has(m.id) ? ' on' : '')} onClick={() => toggleMark(m)} title={marks.has(m.id) ? '取消书签' : '加入书签，可从菜单快速跳回'}><Bookmark size={13} /> {marks.has(m.id) ? '已收藏' : '书签'}</button>}
                         {m.id && <button className="speak" onClick={() => delMsg(m)} disabled={streaming}><Trash2 size={13} /> 删除</button>}
                       </div>
                     )}
@@ -751,6 +779,19 @@ export default function Chat() {
         </>
       )}
       </div>
+      {marksOpen && (
+        <Modal onClose={() => setMarksOpen(false)}>
+          <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Bookmark size={18} /> 消息书签</h2>
+          {marks.size === 0 && <div className="empty" style={{ padding: 24 }}>还没有书签 —— 在消息操作里点「书签」收藏重要段落，之后可从这里一键跳回。</div>}
+          {messages.filter(mm => mm.id && marks.has(mm.id)).map(mm => (
+            <button key={mm.id} className="chat-mark-row" onClick={() => jumpToMark(mm.id)}>
+              <b>{mm.role === 'user' ? '我' : (character?.name || '角色')}</b>
+              <span>{(mm.content || '').slice(0, 90)}{(mm.content || '').length > 90 ? '…' : ''}</span>
+            </button>
+          ))}
+          <button className="btn block" style={{ marginTop: 12 }} onClick={() => setMarksOpen(false)}>关闭</button>
+        </Modal>
+      )}
       {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
       {previewImg && (
         <div className="img-lightbox" onClick={() => setPreviewImg(null)}>
