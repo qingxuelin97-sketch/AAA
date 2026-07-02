@@ -371,19 +371,36 @@ export default function Chat() {
     catch { toast('复制失败', 'err'); }
   };
 
+  // —— 角色扮演排版：*动作/神态* 渲染为柔和的斜体强调，与台词在视觉上分层。
+  // RP 对话的行文约定是「*叹了口气* 你来了。」，纯文本渲染时动作和台词糊成
+  // 一团；这里把星号段落变成带色斜体，读起来像剧本舞台指示，沉浸感立增。
+  const renderRp = (text, keyBase = 0) => {
+    if (!text || text.indexOf('*') === -1) return text;
+    const out = [];
+    const re = /\*([^*\n]{1,120})\*/g;
+    let last = 0, m2, k = 0;
+    while ((m2 = re.exec(text))) {
+      if (m2.index > last) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last, m2.index)}</span>);
+      out.push(<em key={`${keyBase}-a${k++}`} className="rp-act">{m2[1]}</em>);
+      last = m2.index + m2[0].length;
+    }
+    if (last < text.length) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last)}</span>);
+    return out;
+  };
+
   // 气泡内容渲染：专家档助手消息可含 [[wbimg:id]] 标记，标记位置直接展示创建者预注入的图片（不调用 AI 生图）。
-  // 无标记时退化为纯文本，保持原有打字机/换行行为。
+  // 无标记时退化为 RP 排版文本，保持原有打字机/换行行为。
   const imageMap = character?.wb_image_map;
   const renderBubbleContent = (content, role) => {
     if (!content) return null;
     if (role !== 'assistant' || !imageMap || !WBIMG_RE.test(content)) {
       WBIMG_RE.lastIndex = 0;
-      return content;
+      return renderRp(content);
     }
     WBIMG_RE.lastIndex = 0;
     const parts = splitWbMarkers(content, imageMap);
     return parts.map((seg, i) => {
-      if (!seg.marker) return <span key={i}>{seg.text}</span>;
+      if (!seg.marker) return <span key={i}>{renderRp(seg.text, i)}</span>;
       const meta = seg.meta;
       if (!meta || !meta.urls || meta.urls.length === 0) {
         return <span key={i} className="wb-img-missing" title="该标记未预注入图片"><ImageIcon size={12} /> 〔未注入图片〕</span>;
@@ -591,7 +608,11 @@ export default function Chat() {
                 <div key={m.id || i} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}>
                   {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={38} />}
                   <div className="msg-col">
-                    {m.role === 'assistant' && firstOfRun && <div className="msg-name">{character?.name}</div>}
+                    {m.role === 'assistant' && firstOfRun && (
+                      <div className="msg-name">{character?.name}
+                        {m.created_at && <span className="msg-time">{String(m.created_at).slice(11, 16)}</span>}
+                      </div>
+                    )}
                     {editingId === m.id ? (
                       <div className="msg-edit">
                         <textarea value={editText} autoFocus autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
