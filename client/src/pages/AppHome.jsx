@@ -98,6 +98,7 @@ export default function AppHome() {
     <div className="apphome">
       {/* greeting band — 天色渐变问候卡 */}
       <header className={'ah-hero ' + skyClass()}>
+        <span className="ah-celestial" aria-hidden="true" />
         <div className="ah-hero-row">
           <div>
             <div className="ah-greet">{greeting()}，</div>

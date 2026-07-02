@@ -184,7 +184,7 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   background: rgba(42, 39, 34, 0.92); color: #f7f4ec; border: 1px solid #3a352d;
   border-radius: 13px; box-shadow: var(--shadow-lg); font-size: 14px; font-weight: 500;
   backdrop-filter: blur(10px) saturate(140%); max-width: calc(100vw - 32px);
-  animation: toastIn 0.42s var(--spring-soft) both;
+  animation: toastIn 0.42s var(--spring-soft) both, toastOut 0.32s ease 2.42s both;
 }
 .toast-ic { display: inline-flex; flex-shrink: 0; }
 .toast-msg { line-height: 1.45; }
@@ -193,6 +193,8 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .toast-err .toast-ic { color: #ff9a86; }
 .toast-info .toast-ic { color: #79c6e0; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+/* 到时优雅退场（此前是硬移除，一闪就没） */
+@keyframes toastOut { to { opacity: 0; transform: translateY(8px) scale(0.95); } }
 
 /* ============ click ripple + tap burst (fx.js) ============ */
 .ripple-dot { position: absolute; border-radius: 50%; background: currentColor; opacity: 0.22;
@@ -4583,6 +4585,32 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 /* 未读角标弹性入场 */
 .ahd-nb, .app-dot { animation: badgeIn 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @keyframes badgeIn { from { opacity: 0; transform: scale(0.3); } to { opacity: 1; transform: scale(1); } }
+
+/* ---- 第四轮精修：RP 排版 / 流式光标 / 天体点缀 / 签到对勾 ---- */
+/* *动作/神态* → 柔和斜体强调：像剧本的舞台指示，与台词视觉分层 */
+.msg .bubble .rp-act { font-style: italic; opacity: 0.82; letter-spacing: 0.01em; }
+.msg.assistant .bubble .rp-act { color: color-mix(in srgb, var(--accent-2) 72%, var(--text)); }
+.msg.user .bubble .rp-act { color: color-mix(in srgb, #fff 88%, transparent); }
+[data-theme="dark"] .msg.assistant .bubble .rp-act { color: color-mix(in srgb, var(--accent) 70%, var(--text)); }
+/* 流式生成中的呼吸光标：贴在正在打字的气泡末尾 */
+.msg.streaming .bubble:not(:has(.typing))::after { content: ''; display: inline-block; width: 2px; height: 1em;
+  margin-left: 3px; vertical-align: -0.12em; background: var(--accent); border-radius: 1px;
+  animation: caretBlink 0.9s steps(2, start) infinite; }
+@keyframes caretBlink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .msg.streaming .bubble::after { animation: none; } }
+/* 助手名字行的时间戳（轻声细语，不抢戏） */
+.msg-name .msg-time { margin-left: 8px; font-size: 10.5px; font-weight: 500; color: var(--faint); opacity: 0.85; }
+/* 问候卡天体：白昼/晨曦挂一轮暖阳，暮色/夜晚换上月牙 */
+.ah-celestial { position: absolute; top: 12px; right: 88px; width: 36px; height: 36px; pointer-events: none; z-index: 0;
+  border-radius: 50%; background: radial-gradient(circle at 50% 50%, #ffedbe 0 38%, rgba(255,233,184,0.4) 52%, transparent 68%);
+  animation: floaty 5s ease-in-out infinite; }
+.ah-hero.sky-dusk .ah-celestial, .ah-hero.sky-night .ah-celestial {
+  background: radial-gradient(circle at 66% 34%, transparent 0 55%, #f2e6c4 60% 100%);
+  box-shadow: 0 0 22px rgba(242, 230, 196, 0.35); }
+@media (prefers-reduced-motion: reduce) { .ah-celestial { animation: none; } }
+/* 签到完成对勾弹跳一下，给足确认感 */
+.ah-checkin.done svg { animation: checkPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes checkPop { from { transform: scale(0.2) rotate(-30deg); } to { transform: none; } }
 
 /* ---- 抖音化沉浸式角色流（DiscoverFeed） ---- */
 /* 外层 wrap 拿确定高度：app 壳下显式按视口减去 header/dock 计算，
