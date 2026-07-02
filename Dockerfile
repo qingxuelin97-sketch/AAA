@@ -1,5 +1,6 @@
 # 幻域 — 全栈单服务镜像（Express API + SQLite + 已构建前端）
-FROM node:20-bookworm-slim
+# vite 8 / rolldown 引擎要求 ^20.19.0 || >=22.12.0，用 22 LTS
+FROM node:22-bookworm-slim
 
 # better-sqlite3 native build deps
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \

@@ -64,4 +64,15 @@ export function initPerf() {
       if (getPerfPref() === 'auto') applyPerf('auto');
     });
   } catch { /* */ }
+  // Pause every CSS animation while the tab is hidden (styles.css keys off
+  // [data-page-hidden]). Ambient loops otherwise keep the compositor busy in
+  // background tabs; resuming on return is instant and invisible to the user.
+  try {
+    const sync = () => {
+      if (document.hidden) document.documentElement.dataset.pageHidden = '';
+      else delete document.documentElement.dataset.pageHidden;
+    };
+    document.addEventListener('visibilitychange', sync);
+    sync();
+  } catch { /* */ }
 }
