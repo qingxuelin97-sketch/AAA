@@ -14,3 +14,9 @@ server/mobile-test.tmp.sqlite*
 server/smoke.tmp.sqlite*
 server/.jwt-secret
 .env
+# 安卓原生工程 —— 本地生成，不进仓库，避免 pull/push 冲突
+android/
+ios/
+*.apk
+*.aab
+*.ipa
