@@ -34,6 +34,14 @@ if (window.Capacitor?.isNativePlatform?.()) {
 // Static build (GitHub Pages): use an in-browser backend + hash routing so the
 // app works as pure static files with no server.
 const STATIC = import.meta.env.VITE_STATIC === '1';
+
+// 开源中文衬线（Noto Serif SC · OFL）：仅 web 版加载 —— 标题的 CJK 字形从系统默认
+// 升级为真正的设计衬线。按 unicode-range 切片，浏览器只取用到的子集（~百 KB 级）；
+// 静态/APK 构建跳过，安装包不膨胀（App 内继续用系统字体）。
+if (!STATIC) {
+  import('@fontsource/noto-serif-sc/500.css').catch(() => {});
+  import('@fontsource/noto-serif-sc/600.css').catch(() => {});
+}
 const Router = STATIC ? HashRouter : BrowserRouter;
 
 function render() {

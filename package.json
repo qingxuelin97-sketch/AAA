@@ -36,6 +36,7 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource/cinzel": "^5.2.8",
     "@fontsource/cinzel-decorative": "^5.2.8",
+    "@fontsource/noto-serif-sc": "^5.2.9",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.11.1",
     "cors": "^2.8.6",

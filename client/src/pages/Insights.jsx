@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar, CountUp } from '../ui.jsx';
+import { fmtNum } from '../util.js';
 import {
   Orbit, MessageCircle, MessagesSquare, CalendarDays, Flame, Sparkles,
   BookOpen, ScrollText, Feather, Wand2, Heart, Users, UserRound, TrendingUp, TrendingDown
@@ -136,16 +137,16 @@ export default function Insights() {
               <div className="c-sub">金币的来与去</div>
               <div className="ins-eco">
                 <div className="pill">
-                  <b style={{ color: 'var(--ok)' }}><TrendingUp size={15} style={{ verticalAlign: -2, marginRight: 4 }} />{d.economy.earned}</b>
+                  <b style={{ color: 'var(--ok)' }}><TrendingUp size={15} style={{ verticalAlign: -2, marginRight: 4 }} />{fmtNum(d.economy.earned)}</b>
                   <span>累计获得金币</span>
                 </div>
                 <div className="pill">
-                  <b style={{ color: 'var(--danger)' }}><TrendingDown size={15} style={{ verticalAlign: -2, marginRight: 4 }} />{d.economy.spent}</b>
+                  <b style={{ color: 'var(--danger)' }}><TrendingDown size={15} style={{ verticalAlign: -2, marginRight: 4 }} />{fmtNum(d.economy.spent)}</b>
                   <span>累计消耗金币</span>
                 </div>
                 <div className="pill">
-                  <b>{d.economy.gold}</b>
-                  <span>当前余额 · 钻石 {d.economy.diamond}</span>
+                  <b>{fmtNum(d.economy.gold)}</b>
+                  <span>当前余额 · 钻石 {fmtNum(d.economy.diamond)}</span>
                 </div>
               </div>
             </div>
