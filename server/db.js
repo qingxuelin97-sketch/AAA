@@ -374,6 +374,13 @@ for (const sql of [
   "ALTER TABLE theaters ADD COLUMN stage_config TEXT DEFAULT '{}'",
   // 互动小说专属世界书：叠加在所有登场角色之上的额外设定（关键词触发 / 常驻）
   "ALTER TABLE theaters ADD COLUMN worldbook TEXT DEFAULT '[]'",
+  // 互动小说 · 导演台：文风 / 导演密令（仅作者可见，暗中影响旁白）/ 连载状态 / 背景音乐
+  "ALTER TABLE theaters ADD COLUMN style TEXT DEFAULT ''",
+  "ALTER TABLE theaters ADD COLUMN directive TEXT DEFAULT ''",
+  "ALTER TABLE theaters ADD COLUMN status TEXT DEFAULT 'ongoing'",
+  "ALTER TABLE theaters ADD COLUMN bgm TEXT DEFAULT ''",
+  // 段落读者反应：JSON { emoji: [userId,…] }
+  "ALTER TABLE theater_messages ADD COLUMN reactions TEXT DEFAULT ''",
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 
 // 安全相关：剧本点赞去重表，PRIMARY KEY(script_id,user_id) 防重复点赞刷数。

@@ -85,21 +85,34 @@ function buildWorldBlock(theater, transcript, charIds) {
   return block;
 }
 
+// 文风白名单之外也允许自定义短语；密令与 BGM 有长度上限。
+const cleanStyle = (s) => String(s || '').slice(0, 30);
+const cleanDirective = (s) => String(s || '').slice(0, 1000);
+const cleanStatus = (s) => (s === 'finished' ? 'finished' : 'ongoing');
+
 router.get('/', authRequired, (req, res) => {
-  const theaters = db.prepare(`SELECT t.*, u.display_name AS owner_name,
+  const q = String(req.query.q || '').trim();
+  let sql = `SELECT t.id, t.name, t.owner_id, t.scene, t.cover, t.is_public, t.created_at, t.style, t.status,
+    u.display_name AS owner_name,
     (SELECT COUNT(*) FROM theater_members tm WHERE tm.theater_id = t.id) AS member_count,
-    (SELECT COUNT(*) FROM theater_cast tc WHERE tc.theater_id = t.id) AS cast_count
+    (SELECT COUNT(*) FROM theater_cast tc WHERE tc.theater_id = t.id) AS cast_count,
+    (SELECT COUNT(*) FROM theater_messages tm2 WHERE tm2.theater_id = t.id) AS message_count,
+    (SELECT MAX(tm3.created_at) FROM theater_messages tm3 WHERE tm3.theater_id = t.id) AS last_at,
+    EXISTS(SELECT 1 FROM theater_members tj WHERE tj.theater_id = t.id AND tj.user_id = ?) AS joined
     FROM theaters t JOIN users u ON u.id = t.owner_id
-    WHERE t.is_public = 1 OR t.owner_id = ? ORDER BY t.created_at DESC`).all(req.user.id);
-  res.json({ theaters });
+    WHERE (t.is_public = 1 OR t.owner_id = ?)`;
+  const args = [req.user.id, req.user.id];
+  if (q) { sql += ' AND (t.name LIKE ? OR t.scene LIKE ?)'; const k = `%${q}%`; args.push(k, k); }
+  sql += ' ORDER BY COALESCE(last_at, t.created_at) DESC LIMIT 200';
+  res.json({ theaters: db.prepare(sql).all(...args) });
 });
 
 router.post('/', authRequired, (req, res) => {
-  const { name, scene, cover, cast, is_public, stage_config, worldbook } = req.body || {};
+  const { name, scene, cover, cast, is_public, stage_config, worldbook, style } = req.body || {};
   if (!name) return res.status(400).json({ error: '剧场名称必填' });
   if (!Array.isArray(cast) || cast.length === 0) return res.status(400).json({ error: '请至少选择一位 AI 角色登场' });
-  const info = db.prepare('INSERT INTO theaters (name, owner_id, scene, cover, is_public, stage_config, worldbook) VALUES (?,?,?,?,?,?,?)')
-    .run(name, req.user.id, scene || '', cover || null, is_public === false ? 0 : 1, JSON.stringify(cleanStage(stage_config)), JSON.stringify(cleanWorld(worldbook)));
+  const info = db.prepare('INSERT INTO theaters (name, owner_id, scene, cover, is_public, stage_config, worldbook, style) VALUES (?,?,?,?,?,?,?,?)')
+    .run(name, req.user.id, scene || '', cover || null, is_public === false ? 0 : 1, JSON.stringify(cleanStage(stage_config)), JSON.stringify(cleanWorld(worldbook)), cleanStyle(style));
   const tid = info.lastInsertRowid;
   db.prepare('INSERT INTO theater_members (theater_id, user_id) VALUES (?,?)').run(tid, req.user.id);
   const add = db.prepare('INSERT OR IGNORE INTO theater_cast (theater_id, character_id) VALUES (?,?)');
@@ -117,8 +130,9 @@ router.get('/:id', authRequired, (req, res) => {
   const members = db.prepare(`SELECT u.id, u.display_name, u.avatar FROM theater_members tm JOIN users u ON u.id = tm.user_id WHERE tm.theater_id = ?`).all(t.id);
   const messages = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id').all(t.id);
   t.stage_config = cleanStage(t.stage_config);
-  // 世界书条目仅作者可见可编（避免泄露隐藏设定给普通读者）。
-  t.worldbook = (t.owner_id === req.user.id) ? cleanWorld(t.worldbook) : undefined;
+  // 世界书条目与导演密令仅作者可见可编（避免泄露隐藏设定给普通读者）。
+  if (t.owner_id === req.user.id) { t.worldbook = cleanWorld(t.worldbook); }
+  else { t.worldbook = undefined; t.directive = undefined; }
   res.json({ theater: t, cast, members, messages, joined: memberOf(t.id, req.user.id) });
 });
 
@@ -133,6 +147,11 @@ router.patch('/:id', authRequired, (req, res) => {
   if (typeof req.body?.name === 'string' && req.body.name.trim()) { fields.push('name = ?'); vals.push(req.body.name.trim().slice(0, 80)); }
   if (typeof req.body?.scene === 'string') { fields.push('scene = ?'); vals.push(req.body.scene.slice(0, 4000)); }
   if (req.body?.cover !== undefined) { fields.push('cover = ?'); vals.push(req.body.cover || null); }
+  // 导演台：文风 / 密令 / 连载状态 / 背景音乐
+  if (req.body?.style !== undefined) { fields.push('style = ?'); vals.push(cleanStyle(req.body.style)); }
+  if (req.body?.directive !== undefined) { fields.push('directive = ?'); vals.push(cleanDirective(req.body.directive)); }
+  if (req.body?.status !== undefined) { fields.push('status = ?'); vals.push(cleanStatus(req.body.status)); }
+  if (req.body?.bgm !== undefined) { fields.push('bgm = ?'); vals.push(String(req.body.bgm || '').slice(0, 500)); }
   if (fields.length) { vals.push(t.id); db.prepare(`UPDATE theaters SET ${fields.join(', ')} WHERE id = ?`).run(...vals); }
   const updated = db.prepare('SELECT * FROM theaters WHERE id = ?').get(t.id);
   updated.stage_config = cleanStage(updated.stage_config);
@@ -147,11 +166,30 @@ router.post('/:id/join', authRequired, (req, res) => {
   res.json({ ok: true });
 });
 
+// 离开故事（此前仅 mock 有此接口，真实服务端缺失导致「离开」按钮报错）。
+router.post('/:id/leave', authRequired, (req, res) => {
+  const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (t.owner_id === req.user.id) return res.status(400).json({ error: '作者不能离开自己的作品，可在导演台完结或删除' });
+  db.prepare('DELETE FROM theater_members WHERE theater_id = ? AND user_id = ?').run(t.id, req.user.id);
+  res.json({ ok: true });
+});
+
+// 删除作品（仅作者）：级联清理成员 / 阵容 / 段落（外键 ON DELETE CASCADE）。
+router.delete('/:id', authRequired, (req, res) => {
+  const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (t.owner_id !== req.user.id) return res.status(403).json({ error: '仅作者可删除作品' });
+  db.prepare('DELETE FROM theaters WHERE id = ?').run(t.id);
+  res.json({ ok: true });
+});
+
 // A human speaks — 仅成员可发言，不再自动加成员，防任意用户干扰他人剧场。
 router.post('/:id/say', authRequired, aiLimiter, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  if (t.status === 'finished') return res.status(400).json({ error: '本作已完结，作者可在导演台重新开启连载' });
   const { content } = req.body || {};
   if (!content) return res.status(400).json({ error: '内容不能为空' });
   const u = db.prepare('SELECT display_name, avatar FROM users WHERE id = ?').get(req.user.id);
@@ -167,7 +205,8 @@ async function runGeneration(t, settings, body, excludeId) {
   let transcript = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 31').all(t.id).reverse();
   if (excludeId) transcript = transcript.filter(m => m.id !== excludeId);
   transcript = transcript.slice(-30);
-  const log = transcript.map(m => `${m.name}：${m.content}`).join('\n');
+  // 章节分隔在剧情日志里呈现为醒目的章节标记，让模型理解叙事节奏。
+  const log = transcript.map(m => m.sender_type === 'chapter' ? `【新章节 · ${m.content}】` : `${m.name}：${m.content}`).join('\n');
   const castList = cast.map(c => `「${c.name}」(${c.tagline || '登场角色'})`).join('、');
 
   let target, system;
@@ -180,6 +219,9 @@ async function runGeneration(t, settings, body, excludeId) {
     target = c;
     system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`;
   }
+  // 导演台：文风约束对所有生成生效；导演密令仅注入旁白（角色不知晓幕后安排，读者不可见）。
+  if (t.style) system += `\n【文风要求】整体行文风格：${t.style}。`;
+  if (t.directive && body?.narrator) system += `\n【导演密令（读者不可见，请在续写中悄然遵循，勿直接透露）】${cleanDirective(t.directive)}`;
 
   // 注入世界书：小说专属世界书 + 相关角色世界书（默认关键词触发）。
   // 旁白通晓全局，故扫描全体登场角色的世界书；角色发言仅注入该角色自己的世界书。
@@ -209,6 +251,7 @@ router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  if (t.status === 'finished') return res.status(400).json({ error: '本作已完结，作者可在导演台重新开启连载' });
   const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
   if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
   try {
@@ -223,6 +266,7 @@ router.post('/:id/retry', authRequired, aiLimiter, async (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  if (t.status === 'finished') return res.status(400).json({ error: '本作已完结，作者可在导演台重新开启连载' });
   const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
   if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
   const last = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 1').get(t.id);
@@ -234,6 +278,73 @@ router.post('/:id/retry', authRequired, aiLimiter, async (req, res) => {
     const info = insertReply(t, gen);
     res.json({ removedId: last.id, message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
   } catch (e) { res.status(e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
+});
+
+// —— 章节分隔：作者在正文中插入一个章节标记（sender_type = 'chapter'）。
+// 阅读器据此渲染装饰性分章与目录；剧情日志里呈现为【新章节】提示模型换幕。
+router.post('/:id/chapter', authRequired, (req, res) => {
+  const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (t.owner_id !== req.user.id) return res.status(403).json({ error: '仅作者可以分章' });
+  const title = String(req.body?.title || '').trim().slice(0, 60);
+  if (!title) return res.status(400).json({ error: '请填写章节标题' });
+  const info = db.prepare('INSERT INTO theater_messages (theater_id, sender_type, name, content) VALUES (?,?,?,?)')
+    .run(t.id, 'chapter', '章节', title);
+  res.json({ message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
+});
+
+// —— 命运抉择：让 AI 根据当前剧情给主角生成 3 个可选行动（不入库，选中后走 /say）。
+router.post('/:id/choices', authRequired, aiLimiter, async (req, res) => {
+  const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  if (t.status === 'finished') return res.status(400).json({ error: '本作已完结' });
+  const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
+  if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
+  const transcript = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 20').all(t.id).reverse();
+  const log = transcript.map(m => m.sender_type === 'chapter' ? `【新章节 · ${m.content}】` : `${m.name}：${m.content}`).join('\n');
+  let system = `这是一部互动小说，读者是故事的主角。场景：${t.scene || '自由发挥'}。`;
+  if (t.style) system += `文风：${t.style}。`;
+  system += `\n请根据剧情进展，为主角设计 3 个风格迥异、都能推动剧情的下一步行动（每个 8-24 字，第一人称视角的行动或台词，不要编号），只输出 JSON 字符串数组，例如 ["推开吱呀作响的门","质问薇尔为何隐瞒","悄悄退回阴影中"]。`;
+  try {
+    assertPublicUrl(settings.llm_base_url);
+    const r = await fetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
+      body: JSON.stringify({
+        model: settings.llm_model, temperature: Math.min(1.2, (settings.llm_temperature || 0.8) + 0.15), max_tokens: 200,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请给出 3 个抉择：` }]
+      })
+    });
+    if (!r.ok) return res.status(502).json({ error: '模型服务暂不可用' });
+    const data = await r.json();
+    let raw = (data.choices?.[0]?.message?.content || '').trim();
+    const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i); if (fence) raw = fence[1].trim();
+    let choices = [];
+    try { const arr = JSON.parse(raw); if (Array.isArray(arr)) choices = arr; } catch { /* 走行解析回退 */ }
+    if (!choices.length) choices = raw.split('\n').map(s => s.replace(/^[\s\d\-.、*"'\[\]]+|["'\],]+$/g, '').trim()).filter(Boolean);
+    choices = choices.map(c => String(c).slice(0, 60)).filter(Boolean).slice(0, 3);
+    if (!choices.length) return res.status(502).json({ error: '模型未返回可用抉择' });
+    res.json({ choices });
+  } catch { res.status(502).json({ error: '模型服务暂不可用' }); }
+});
+
+// —— 段落反应：读者对任意段落点 emoji，同一 emoji 再点一次取消。
+const REACT_EMOJI = ['❤️', '🔥', '😂', '😮', '👏', '😢'];
+router.post('/:id/messages/:mid/react', authRequired, (req, res) => {
+  const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  const msg = db.prepare('SELECT * FROM theater_messages WHERE id = ? AND theater_id = ?').get(req.params.mid, t.id);
+  if (!msg) return res.status(404).json({ error: '段落不存在' });
+  const emoji = String(req.body?.emoji || '');
+  if (!REACT_EMOJI.includes(emoji)) return res.status(400).json({ error: '不支持的反应' });
+  let map = {};
+  try { map = JSON.parse(msg.reactions || '{}') || {}; } catch { map = {}; }
+  const uids = Array.isArray(map[emoji]) ? map[emoji] : [];
+  map[emoji] = uids.includes(req.user.id) ? uids.filter(u => u !== req.user.id) : [...uids, req.user.id];
+  if (!map[emoji].length) delete map[emoji];
+  db.prepare('UPDATE theater_messages SET reactions = ? WHERE id = ?').run(JSON.stringify(map), msg.id);
+  res.json({ id: msg.id, reactions: map });
 });
 
 // 仅成员可拉取消息，防 IDOR 读取他人剧场历史。

@@ -1901,11 +1901,14 @@ async function route(method, path, search, body, headers) {
     let transcript = filter('theater_messages', x => x.theater_id === t.id);
     if (excludeId) transcript = transcript.filter(x => x.id !== excludeId);
     transcript = transcript.slice(-30);
-    const log = transcript.map(x => `${x.name}：${x.content}`).join('\n');
+    const log = transcript.map(x => x.sender_type === 'chapter' ? `【新章节 · ${x.content}】` : `${x.name}：${x.content}`).join('\n');
     const castList = cast.map(c => `「${c.name}」(${c.tagline || '登场角色'})`).join('、');
     let target, system;
     if (body.narrator) { target = { id: null, name: '旁白', avatar: null }; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。你是「旁白」，请用富有画面感的第三人称，推进剧情、描写环境氛围或引出转折，控制在 2-4 句话，不要替具体角色说出对白。`; }
     else { const c = cast.find(x => x.id === body.character_id) || cast[0]; if (!c) throw new Error('剧场没有 AI 角色'); target = c; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`; }
+    // 导演台：文风约束全体；导演密令仅注入旁白（与真实服务端口径一致）。
+    if (t.style) system += `\n【文风要求】整体行文风格：${t.style}。`;
+    if (t.directive && body.narrator) system += `\n【导演密令（读者不可见，请在续写中悄然遵循，勿直接透露）】${String(t.directive).slice(0, 1000)}`;
     const hay = transcript.slice(-12).map(x => (x.content || '')).join('\n').toLowerCase();
     const sk = (str) => String(str || '').split(/[，,]/).map(k => k.trim().toLowerCase()).filter(Boolean);
     const wbCharIds = body.narrator ? cast.map(c => c.id) : [target.id].filter(v => v != null);
@@ -1919,13 +1922,26 @@ async function route(method, path, search, body, headers) {
     if (!content) throw new Error('模型未返回内容');
     return { target, content, narrator: !!body.narrator };
   };
-  if (method === 'GET' && path === '/theater') { need(); const rows = filter('theaters', t => t.is_public || t.owner_id === me.id).sort((a, b) => b.id - a.id).map(t => ({ ...t, owner_name: user(t.owner_id)?.display_name, member_count: filter('theater_members', x => x.theater_id === t.id).length, cast_count: filter('theater_cast', x => x.theater_id === t.id).length })); return J({ theaters: rows }); }
-  if (method === 'POST' && path === '/theater') { need(); if (!body.name) return E('剧场名称必填'); if (!Array.isArray(body.cast) || !body.cast.length) return E('请至少选择一位 AI 角色登场'); const t = insert('theaters', { name: body.name, owner_id: me.id, scene: body.scene || '', cover: body.cover || null, is_public: body.is_public === false ? 0 : 1, stage_config: cleanStage(body.stage_config), worldbook: cleanWorld(body.worldbook) }); insert('theater_members', { theater_id: t.id, user_id: me.id }); body.cast.forEach(cid => { if (!find('theater_cast', x => x.theater_id === t.id && x.character_id === cid)) insert('theater_cast', { theater_id: t.id, character_id: cid }); }); if (body.scene) insert('theater_messages', { theater_id: t.id, sender_type: 'narrator', sender_id: null, name: '旁白', avatar: null, content: body.scene }); return J({ theater: t }); }
+  if (method === 'GET' && path === '/theater') {
+    need();
+    const rows = filter('theaters', t => t.is_public || t.owner_id === me.id).map(t => {
+      const msgs = filter('theater_messages', x => x.theater_id === t.id);
+      return { ...t, owner_name: user(t.owner_id)?.display_name,
+        member_count: filter('theater_members', x => x.theater_id === t.id).length,
+        cast_count: filter('theater_cast', x => x.theater_id === t.id).length,
+        message_count: msgs.length, last_at: msgs.length ? msgs[msgs.length - 1].created_at : t.created_at,
+        joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id),
+        status: t.status || 'ongoing', style: t.style || '' };
+    }).sort((a, b) => String(b.last_at || '').localeCompare(String(a.last_at || '')));
+    return J({ theaters: rows });
+  }
+  if (method === 'POST' && path === '/theater') { need(); if (!body.name) return E('剧场名称必填'); if (!Array.isArray(body.cast) || !body.cast.length) return E('请至少选择一位 AI 角色登场'); const t = insert('theaters', { name: body.name, owner_id: me.id, scene: body.scene || '', cover: body.cover || null, is_public: body.is_public === false ? 0 : 1, stage_config: cleanStage(body.stage_config), worldbook: cleanWorld(body.worldbook), style: String(body.style || '').slice(0, 30), directive: '', status: 'ongoing', bgm: '' }); insert('theater_members', { theater_id: t.id, user_id: me.id }); body.cast.forEach(cid => { if (!find('theater_cast', x => x.theater_id === t.id && x.character_id === cid)) insert('theater_cast', { theater_id: t.id, character_id: cid }); }); if (body.scene) insert('theater_messages', { theater_id: t.id, sender_type: 'narrator', sender_id: null, name: '旁白', avatar: null, content: body.scene }); return J({ theater: t }); }
   if ((m = P(/^\/theater\/(\d+)\/join$/)) && method === 'POST') { need(); const tid = +m[1]; if (!find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) insert('theater_members', { theater_id: tid, user_id: me.id }); return J({ ok: true }); }
   if ((m = P(/^\/theater\/(\d+)\/leave$/)) && method === 'POST') { need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (t && t.owner_id === me.id) return E('房主不能退出，请先解散剧场', 400); db.theater_members = filter('theater_members', x => !(x.theater_id === tid && x.user_id === me.id)); save(); return J({ ok: true }); }
-  if ((m = P(/^\/theater\/(\d+)\/say$/)) && method === 'POST') { need(); const tid = +m[1]; if (!body.content) return E('内容不能为空'); if (!find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) insert('theater_members', { theater_id: tid, user_id: me.id }); const msg = insert('theater_messages', { theater_id: tid, sender_type: 'user', sender_id: me.id, name: me.display_name, avatar: me.avatar, content: body.content }); return J({ message: msg }); }
+  if ((m = P(/^\/theater\/(\d+)\/say$/)) && method === 'POST') { need(); const tid = +m[1]; const t0 = find('theaters', x => x.id === tid); if (t0 && (t0.status || 'ongoing') === 'finished') return E('本作已完结，作者可在导演台重新开启连载'); if (!body.content) return E('内容不能为空'); if (!find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) insert('theater_members', { theater_id: tid, user_id: me.id }); const msg = insert('theater_messages', { theater_id: tid, sender_type: 'user', sender_id: me.id, name: me.display_name, avatar: me.avatar, content: body.content }); return J({ message: msg }); }
   if ((m = P(/^\/theater\/(\d+)\/act$/)) && method === 'POST') {
     need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (!t) return E('剧场不存在', 404);
+    if ((t.status || 'ongoing') === 'finished') return E('本作已完结，作者可在导演台重新开启连载');
     const s = find('settings', x => x.user_id === me.id);
     const eff = effectiveLLM(s);
     if (eff.platform) { const fee = platformFee(me, 0); if (me.gold < fee) return E(`金币不足，剧场联机平台 AI 需 ${fee} 金币（当前 ${me.gold}）`); }
@@ -1956,8 +1972,45 @@ async function route(method, path, search, body, headers) {
     } catch (e) { return E(e.message, 502); }
   }
   if ((m = P(/^\/theater\/(\d+)\/messages$/)) && method === 'GET') { const tid = +m[1]; const after = parseInt(search.get('after'), 10) || 0; return J({ messages: filter('theater_messages', x => x.theater_id === tid && x.id > after) }); }
-  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'PATCH') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); if (t.owner_id !== me.id) return E('仅作者可修改舞台设定', 403); if (body.stage_config !== undefined) t.stage_config = cleanStage(body.stage_config); if (body.worldbook !== undefined) t.worldbook = cleanWorld(body.worldbook); if (typeof body.name === 'string' && body.name.trim()) t.name = body.name.trim().slice(0, 80); if (typeof body.scene === 'string') t.scene = body.scene.slice(0, 4000); if (body.cover !== undefined) t.cover = body.cover || null; save(); return J({ theater: { ...t, stage_config: cleanStage(t.stage_config), worldbook: cleanWorld(t.worldbook) } }); }
-  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'GET') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean); const members = filter('theater_members', x => x.theater_id === t.id).map(x => ({ id: x.user_id, display_name: user(x.user_id)?.display_name, avatar: user(x.user_id)?.avatar })); const messages = filter('theater_messages', x => x.theater_id === t.id); return J({ theater: { ...t, owner_name: user(t.owner_id)?.display_name, stage_config: cleanStage(t.stage_config), worldbook: t.owner_id === me.id ? cleanWorld(t.worldbook) : undefined }, cast, members, messages, joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id) }); }
+  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'PATCH') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); if (t.owner_id !== me.id) return E('仅作者可修改舞台设定', 403); if (body.stage_config !== undefined) t.stage_config = cleanStage(body.stage_config); if (body.worldbook !== undefined) t.worldbook = cleanWorld(body.worldbook); if (typeof body.name === 'string' && body.name.trim()) t.name = body.name.trim().slice(0, 80); if (typeof body.scene === 'string') t.scene = body.scene.slice(0, 4000); if (body.cover !== undefined) t.cover = body.cover || null; if (body.style !== undefined) t.style = String(body.style || '').slice(0, 30); if (body.directive !== undefined) t.directive = String(body.directive || '').slice(0, 1000); if (body.status !== undefined) t.status = body.status === 'finished' ? 'finished' : 'ongoing'; if (body.bgm !== undefined) t.bgm = String(body.bgm || '').slice(0, 500); save(); return J({ theater: { ...t, stage_config: cleanStage(t.stage_config), worldbook: cleanWorld(t.worldbook) } }); }
+  if ((m = P(/^\/theater\/(\d+)\/chapter$/)) && method === 'POST') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); if (t.owner_id !== me.id) return E('仅作者可以分章', 403); const title = String(body.title || '').trim().slice(0, 60); if (!title) return E('请填写章节标题'); const msg = insert('theater_messages', { theater_id: t.id, sender_type: 'chapter', sender_id: null, name: '章节', avatar: null, content: title }); return J({ message: msg }); }
+  if ((m = P(/^\/theater\/(\d+)\/choices$/)) && method === 'POST') {
+    need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404);
+    if ((t.status || 'ongoing') === 'finished') return E('本作已完结');
+    const s = find('settings', x => x.user_id === me.id);
+    const eff = effectiveLLM(s);
+    if (eff.platform) { const fee = platformFee(me, 0); if (me.gold < fee) return E(`金币不足，命运抉择平台 AI 需 ${fee} 金币（当前 ${me.gold}）`); }
+    const transcript = filter('theater_messages', x => x.theater_id === t.id).slice(-20);
+    const log = transcript.map(x => x.sender_type === 'chapter' ? `【新章节 · ${x.content}】` : `${x.name}：${x.content}`).join('\n');
+    const system = `这是一部互动小说，读者是故事的主角。场景：${t.scene || '自由发挥'}。` + (t.style ? `文风：${t.style}。` : '') +
+      '\n请根据剧情进展，为主角设计 3 个风格迥异、都能推动剧情的下一步行动（每个 8-24 字，第一人称视角的行动或台词，不要编号），只输出 JSON 字符串数组，例如 ["推开吱呀作响的门","质问薇尔为何隐瞒","悄悄退回阴影中"]。';
+    try {
+      let raw = await llmOnce(s, system, `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请给出 3 个抉择：`, 200);
+      const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i); if (fence) raw = fence[1].trim();
+      let choices = [];
+      try { const arr = JSON.parse(raw); if (Array.isArray(arr)) choices = arr; } catch { /* 行解析回退 */ }
+      if (!choices.length) choices = raw.split('\n').map(x => x.replace(/^[\s\d\-.、*"'[\]]+|["'\],]+$/g, '').trim()).filter(Boolean);
+      choices = choices.map(c => String(c).slice(0, 60)).filter(Boolean).slice(0, 3);
+      if (!choices.length) return E('模型未返回可用抉择', 502);
+      if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 命运抉择' }); } catch { /* */ } }
+      return J({ choices });
+    } catch (e) { return E(e.message, 502); }
+  }
+  if ((m = P(/^\/theater\/(\d+)\/messages\/(\d+)\/react$/)) && method === 'POST') {
+    need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404);
+    const msg = find('theater_messages', x => x.id === +m[2] && x.theater_id === t.id); if (!msg) return E('段落不存在', 404);
+    const emoji = String(body.emoji || '');
+    if (!['❤️', '🔥', '😂', '😮', '👏', '😢'].includes(emoji)) return E('不支持的反应');
+    let map = {};
+    try { map = (msg.reactions && typeof msg.reactions === 'object') ? msg.reactions : (JSON.parse(msg.reactions || '{}') || {}); } catch { map = {}; }
+    const uids = Array.isArray(map[emoji]) ? map[emoji] : [];
+    map[emoji] = uids.includes(me.id) ? uids.filter(u => u !== me.id) : [...uids, me.id];
+    if (!map[emoji].length) delete map[emoji];
+    msg.reactions = map; save();
+    return J({ id: msg.id, reactions: map });
+  }
+  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'DELETE') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); if (t.owner_id !== me.id) return E('仅作者可删除作品', 403); db.theaters = filter('theaters', x => x.id !== t.id); db.theater_members = filter('theater_members', x => x.theater_id !== t.id); db.theater_cast = filter('theater_cast', x => x.theater_id !== t.id); db.theater_messages = filter('theater_messages', x => x.theater_id !== t.id); save(); return J({ ok: true }); }
+  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'GET') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean); const members = filter('theater_members', x => x.theater_id === t.id).map(x => ({ id: x.user_id, display_name: user(x.user_id)?.display_name, avatar: user(x.user_id)?.avatar })); const messages = filter('theater_messages', x => x.theater_id === t.id); return J({ theater: { ...t, owner_name: user(t.owner_id)?.display_name, stage_config: cleanStage(t.stage_config), worldbook: t.owner_id === me.id ? cleanWorld(t.worldbook) : undefined, directive: t.owner_id === me.id ? (t.directive || '') : undefined }, cast, members, messages, joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id) }); }
 
   // ---------- community (cards / inbox) ----------
   if ((m = P(/^\/community\/publish-character\/(\d+)$/)) && method === 'POST') { need(); const c = find('characters', x => x.id === +m[1]); if (!c || c.owner_id !== me.id) return E('无权发布', 403); c.is_public = 1; save(); return J({ ok: true }); }
@@ -2663,13 +2716,61 @@ async function route(method, path, search, body, headers) {
     return J({ worldbooks: filter('worldbooks', w => w.owner_id === me.id).slice().reverse().map(wbView) });
   }
   if (method === 'GET' && path === '/worldbooks/public') {
-    const q = (search.get('q') || '').toLowerCase(); const tier = search.get('tier');
+    const q = (search.get('q') || '').toLowerCase(); const tier = search.get('tier'); const sort = search.get('sort');
     let rows = filter('worldbooks', w => w.is_public);
     if (tier && ['normal', 'advanced', 'expert'].includes(tier)) rows = rows.filter(w => w.tier === tier);
     if (q) rows = rows.filter(w => (w.name + ' ' + (w.tags || '') + ' ' + (w.description || '')).toLowerCase().includes(q));
-    rows = rows.slice().sort((a, b) => ((b.uses || 0) - (a.uses || 0)) || (b.id - a.id)).slice(0, 80)
+    rows = rows.slice().sort(sort === 'new' ? (a, b) => b.id - a.id : (a, b) => ((b.uses || 0) - (a.uses || 0)) || (b.id - a.id)).slice(0, 80)
       .map(w => ({ ...wbView(w), owner_name: user(w.owner_id)?.display_name, owned: me ? w.owner_id === me.id : false }));
     return J({ worldbooks: rows });
+  }
+  if ((m = P(/^\/worldbooks\/(\d+)\/fork$/)) && method === 'POST') {
+    need();
+    const w = find('worldbooks', x => x.id === +m[1]);
+    if (!w) return E('世界书不存在', 404);
+    if (!w.is_public && w.owner_id !== me.id) return E('无权复制该世界书', 403);
+    const copy = insert('worldbooks', { owner_id: me.id, name: (w.name + ' · 副本').slice(0, 60), description: w.description, tags: w.tags,
+      tier: w.tier, is_public: 0, front_schema: w.front_schema, prompt_overlay: w.prompt_overlay, scan_depth: w.scan_depth,
+      token_budget: w.token_budget, recursion: w.recursion, max_active: w.max_active, variable_schema: w.variable_schema,
+      system_pos: w.system_pos, recursion_depth: w.recursion_depth, uses: 0, entries: (w.entries || []).map(e => ({ ...e })) });
+    if (w.owner_id !== me.id) w.uses = (w.uses || 0) + 1;
+    save();
+    return J({ worldbook: { ...copy } });
+  }
+  if ((m = P(/^\/worldbooks\/(\d+)\/attachments$/)) && method === 'GET') {
+    need();
+    const w = find('worldbooks', x => x.id === +m[1]);
+    if (!w) return E('世界书不存在', 404);
+    const attached = new Set(filter('character_worldbooks', x => x.worldbook_id === w.id).map(x => x.character_id));
+    return J({ characters: filter('characters', c => c.owner_id === me.id).slice().reverse()
+      .map(c => ({ id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline, attached: attached.has(c.id) })) });
+  }
+  if (method === 'POST' && path === '/worldbooks/assist/extract') {
+    need();
+    const text = wbStr(body.text, 12000);
+    if (!text.trim()) return E('请粘贴需要拆解的设定文本');
+    // 优先用用户配置的 LLM 拆解；未配置或失败时退化为启发式分段，保证静态版可用。
+    const s = find('settings', x => x.user_id === me.id);
+    try {
+      const system = '你是世界观设定整理专家。把用户给出的设定文本拆解成「世界书条目」：每条聚焦一个独立概念（人物 / 地点 / 组织 / 物品 / 规则 / 事件…），并提炼触发关键词（含常见别称）。只输出 JSON 数组，每项形如 {"keys":"关键词1, 关键词2","content":"该概念的设定内容（尽量保留原文关键细节，300字内）","comment":"8字内概括"}。数量以覆盖全部概念为准（通常 5-20 条），不要输出任何 JSON 以外的文字。';
+      let raw = await llmOnce(s, system, text, 3000);
+      const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i); if (fence) raw = fence[1].trim();
+      let arr = [];
+      try { arr = JSON.parse(raw); } catch { const seg = raw.match(/\[[\s\S]*\]/); if (seg) { try { arr = JSON.parse(seg[0]); } catch { /* */ } } }
+      if (Array.isArray(arr)) {
+        const entries = arr.filter(e => e && typeof e === 'object' && (e.content || e.keys)).slice(0, 40)
+          .map(e => ({ keys: wbStr(e.keys, 300), content: wbStr(e.content, 4000), comment: wbStr(e.comment, 60) }))
+          .filter(e => e.content.trim());
+        if (entries.length) return J({ entries });
+      }
+    } catch { /* 未配置模型或调用失败 → 启发式兜底 */ }
+    const chunks = text.split(/\n{2,}/).map(x => x.trim()).filter(x => x.length > 20).slice(0, 30);
+    const entries = chunks.map(ch => {
+      const firstLine = ch.split('\n')[0].replace(/^[#\-*\d.、【】\s]+/, '').replace(/[:：].*$/, '').slice(0, 20);
+      return { keys: firstLine, content: ch.slice(0, 2000), comment: firstLine.slice(0, 8) };
+    }).filter(e => e.keys);
+    if (!entries.length) return E('文本太短，无法拆解；建议用空行分隔各个设定概念');
+    return J({ entries });
   }
   if (method === 'POST' && path === '/worldbooks') {
     need();

@@ -1,21 +1,54 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Modal, Avatar } from '../ui.jsx';
 import StageEditor from '../components/StageEditor.jsx';
 import NovelWorldEditor from '../components/NovelWorldEditor.jsx';
-import { BookOpen, Users, Plus, Check, Feather, Sparkles, ChevronRight, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
+import { BookOpen, Users, Plus, Check, Feather, Sparkles, ChevronRight, ChevronDown, ChevronUp,
+  Image as ImageIcon, Search, Flag, Clock3, AlignLeft } from 'lucide-react';
+
+const STYLE_PRESETS = ['古典雅致', '轻快幽默', '悬疑紧张', '热血激昂', '温柔治愈', '黑暗残酷', '武侠古风', '赛博科幻'];
+
+// 相对时间：书架上的「x 前更新」。服务端给的是 UTC 的 'YYYY-MM-DD HH:MM:SS'。
+function timeAgo(s) {
+  if (!s) return '';
+  const t = new Date(String(s).replace(' ', 'T') + (String(s).includes('Z') || String(s).includes('T') ? '' : 'Z')).getTime();
+  if (!t) return '';
+  const d = Date.now() - t;
+  if (d < 60_000) return '刚刚';
+  if (d < 3_600_000) return Math.floor(d / 60_000) + ' 分钟前';
+  if (d < 86_400_000) return Math.floor(d / 3_600_000) + ' 小时前';
+  if (d < 30 * 86_400_000) return Math.floor(d / 86_400_000) + ' 天前';
+  return new Date(t).toLocaleDateString();
+}
 
 // 互动小说（原「剧场」）：以你为主角的即兴叙事。挑选登场角色、写下序章，
 // 进入后写行动 / 台词，旁白续写后果，角色随时接话 —— 一部由你共同写就的小说。
 export default function Theater() {
+  const { user } = useAuth();
   const [theaters, setTheaters] = useState([]);
   const [creating, setCreating] = useState(false);
+  const [tab, setTab] = useState('all');   // all | mine | reading
+  const [q, setQ] = useState('');
   const nav = useNavigate();
   const toast = useToast();
 
   const load = () => api('/theater').then(d => setTheaters(d.theaters)).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+
+  const shown = useMemo(() => {
+    let list = theaters;
+    if (tab === 'mine') list = list.filter(t => user && t.owner_id === user.id);
+    if (tab === 'reading') list = list.filter(t => t.joined && (!user || t.owner_id !== user.id));
+    const k = q.trim().toLowerCase();
+    if (k) list = list.filter(t => (t.name || '').toLowerCase().includes(k) || (t.scene || '').toLowerCase().includes(k) || (t.style || '').toLowerCase().includes(k));
+    return list;
+  }, [theaters, tab, q, user]);
+
+  const counts = useMemo(() => ({
+    mine: theaters.filter(t => user && t.owner_id === user.id).length,
+    reading: theaters.filter(t => t.joined && (!user || t.owner_id !== user.id)).length,
+  }), [theaters, user]);
 
   return (
     <>
@@ -27,28 +60,44 @@ export default function Theater() {
         <button className="btn primary" onClick={() => setCreating(true)}><Plus size={16} /> 创作新故事</button>
       </div>
       <div className="page">
-        {theaters.length === 0 ? (
+        <div className="wb-list-controls">
+          <div className="seg" style={{ marginBottom: 0 }}>
+            <button className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>全部</button>
+            <button className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>我创作的{counts.mine ? ` (${counts.mine})` : ''}</button>
+            <button className={tab === 'reading' ? 'active' : ''} onClick={() => setTab('reading')}>在读{counts.reading ? ` (${counts.reading})` : ''}</button>
+          </div>
+          <div className="wb-search">
+            <Search size={14} />
+            <input placeholder="搜索书名 / 序章 / 文风" value={q} onChange={e => setQ(e.target.value)} />
+          </div>
+        </div>
+        {shown.length === 0 ? (
           <div className="empty">
             <div className="big"><BookOpen size={46} /></div>
-            还没有故事
+            {q ? '没有匹配的故事' : tab === 'mine' ? '你还没有创作过故事' : tab === 'reading' ? '还没有在读的故事' : '还没有故事'}
             <div style={{ marginTop: 14 }}><button className="btn primary" onClick={() => setCreating(true)}><Feather size={15} /> 开写你的第一部互动小说</button></div>
           </div>
         ) : (
           <div className="inovel-shelf">
-            {theaters.map(t => (
+            {shown.map(t => (
               <div key={t.id} className="inovel-book-card" onClick={() => nav('/theater/' + t.id)}>
                 <div className="inovel-spine" />
                 <div className="inovel-bc-cover">
                   {t.cover ? <img src={t.cover} alt="" /> : <div className="inovel-bc-ph"><BookOpen size={26} /></div>}
                   <div className="inovel-bc-kicker"><Feather size={11} /> 互动小说</div>
+                  {t.status === 'finished'
+                    ? <div className="inovel-bc-status fin"><Flag size={10} /> 完结</div>
+                    : <div className="inovel-bc-status"><Clock3 size={10} /> 连载中</div>}
                 </div>
                 <div className="inovel-bc-meta">
-                  <b>{t.name}</b>
+                  <b>{t.name}{t.style && <span className="inovel-style-tag">{t.style}</span>}</b>
                   <p>{t.scene || '一个等待被写下的故事…'}</p>
                   <div className="inovel-bc-foot">
                     <span><BookOpen size={11} /> {t.cast_count} 位角色</span>
                     <span><Users size={11} /> {t.member_count} 读者</span>
-                    <span className="inovel-bc-open">进入故事 <ChevronRight size={12} /></span>
+                    {t.message_count > 0 && <span><AlignLeft size={11} /> {t.message_count} 段</span>}
+                    {t.last_at && <span className="inovel-bc-time">{timeAgo(t.last_at)}更新</span>}
+                    <span className="inovel-bc-open">{t.joined ? '继续阅读' : '进入故事'} <ChevronRight size={12} /></span>
                   </div>
                 </div>
               </div>
@@ -62,7 +111,7 @@ export default function Theater() {
 }
 
 function CreateModal({ onClose, onDone }) {
-  const [form, setForm] = useState({ name: '', scene: '', cover: '' });
+  const [form, setForm] = useState({ name: '', scene: '', cover: '', style: '' });
   const [pool, setPool] = useState([]);
   const [picked, setPicked] = useState([]);
   const [stageCfg, setStageCfg] = useState({ charAuto: true, charBg: {}, scenes: [] });
@@ -99,6 +148,14 @@ function CreateModal({ onClose, onDone }) {
         <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：永青森林的不速之客" /></div>
       <div className="field"><label>序章 / 开场设定</label>
         <textarea className="textarea" value={form.scene} onChange={e => setForm({ ...form, scene: e.target.value })} placeholder="描述故事发生的舞台与起始情境，将作为开篇旁白引你入戏…" /></div>
+      <div className="field"><label>文风基调 <span className="muted">(可选 · 影响旁白与角色的行文，之后可在导演台修改)</span></label>
+        <div className="inovel-style-row">
+          {STYLE_PRESETS.map(s => (
+            <button key={s} type="button" className={'inovel-style-chip' + (form.style === s ? ' on' : '')}
+              onClick={() => setForm(f => ({ ...f, style: f.style === s ? '' : s }))}>{s}</button>
+          ))}
+        </div>
+      </div>
       <div className="field"><label>封面 <span className="muted">(可选)</span></label>
         <Uploader value={form.cover} onChange={url => setForm({ ...form, cover: url })} accept="image/*" /></div>
       <div className="field">
