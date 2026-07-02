@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV, CouncilorBadge } from '../ui.jsx';
+import { EmptyArt } from '../art.jsx';
 import { useAutoGrow } from '../util.js';
 import {
   Users, UserPlus, Search, Send, Check, X, MessageCircle, ArrowLeft, MoreVertical,
@@ -145,7 +146,7 @@ export default function Friends() {
           )}
 
           {friends.length === 0 && requests.incoming.length === 0 ? (
-            <div className="fr-empty"><div className="big"><Users size={40} /></div>还没有好友<br /><span>点击右上角「添加」结识新朋友</span></div>
+            <div className="fr-empty"><EmptyArt kind="friends" size={116} />还没有好友<br /><span>点击右上角「添加」结识新朋友</span></div>
           ) : (
             friends.map(f => (
               <button key={f.id} className={'fr-item' + (sel === f.id ? ' active' : '')} onClick={() => setSel(f.id)}>
@@ -164,7 +165,7 @@ export default function Friends() {
       {/* ---- right: DM ---- */}
       <section className="fr-dm">
         {!sel || !dm ? (
-          <div className="fr-dm-empty"><div className="big"><MessageCircle size={48} /></div>选择一位好友开始私聊</div>
+          <div className="fr-dm-empty"><EmptyArt kind="chat" />选择一位好友开始私聊</div>
         ) : (
           <>
             <div className="fr-dm-head">

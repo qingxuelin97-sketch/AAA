@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid, parsePid } from '../assets.jsx';
+import { EmptyArt, CoverArt } from '../art.jsx';
 import { Search as SearchIcon, Drama, ScrollText, Play, User } from 'lucide-react';
 
 const TABS = [
@@ -76,7 +77,7 @@ export default function Search() {
         </div>
 
         {loading ? <div className="empty">搜索中…</div> : !res ? (
-          <div className="empty"><div className="big"><SearchIcon size={44} /></div>输入上方关键词或 ID 开始搜索</div>
+          <div className="empty"><EmptyArt kind="search" />输入上方关键词或 ID 开始搜索</div>
         ) : res.tab === 'user' ? (
           res.users.length === 0 ? <div className="empty"><div className="big"><User size={44} /></div>没有找到匹配的用户</div> : (
             res.users.map(u => (
@@ -95,7 +96,7 @@ export default function Search() {
             <div className="grid">
               {res.characters.map(c => (
                 <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
-                  <div className="cover">{c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={40} /></div>}
+                  <div className="cover">{c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
                     <div className="pill-pub">{pid('character', c.id)}</div></div>
                   <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro || '暂无简介'}</p></div>
                 </div>

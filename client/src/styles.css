@@ -170,6 +170,13 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .muted { color: var(--muted); }
 .empty { text-align: center; padding: clamp(40px, 8vw, 72px) 20px; color: var(--faint); }
 .empty .big { font-size: 46px; margin-bottom: 12px; opacity: 0.7; }
+/* —— 自制矢量资产（art.jsx）—— */
+/* 空态场景插画：居中呈现并轻微悬浮，替代单只 lucide 图标 */
+.empty-art { display: block; margin: 0 auto 10px; animation: floaty 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .empty-art { animation: none; } }
+/* 占位封面：铺满容器（等价 object-fit: cover），文字/角标浮于其上 */
+.cover-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cover-art-box { position: relative; overflow: hidden; }
 .toast-stack { position: fixed; bottom: calc(26px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
   z-index: 1000; display: flex; flex-direction: column; gap: 9px; align-items: center; pointer-events: none; }
 .toast {
@@ -4357,8 +4364,13 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
   box-shadow: var(--shadow-float); }
 .app-tab { flex: 1; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 2px; color: var(--faint); font-size: 10.5px; font-weight: 600; text-decoration: none;
-  border-radius: 999px; transition: color 0.18s, background 0.2s, transform 0.24s var(--spring); }
-.app-tab.active { color: var(--accent-2); background: var(--accent-soft); }
+  border-radius: 999px; position: relative; z-index: 1; transition: color 0.18s, transform 0.24s var(--spring); }
+.app-tab.active { color: var(--accent-2); }
+/* Dock「墨迹」滑块：JS 量位，弹性滑到活跃 tab 之下（替代生硬的背景切换） */
+.dock-ink { position: absolute; top: 6px; bottom: 6px; left: 0; width: 0; border-radius: 999px;
+  background: var(--accent-soft); opacity: 0;
+  transition: transform 0.42s var(--spring), width 0.42s var(--spring), opacity 0.2s; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .dock-ink { transition: none; } }
 .app-tab.active .app-tab-ic svg { transform: translateY(-1px) scale(1.08); }
 .app-tab:active { transform: scale(0.9); }
 .app-tab-ic { position: relative; display: grid; place-items: center; }
@@ -4381,7 +4393,9 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 .app-sheet-grip { width: 38px; height: 4px; border-radius: 3px; background: var(--border-2); margin: 4px auto 12px; }
 .app-sheet-title { font-family: var(--serif); font-size: 17px; font-weight: 700; margin: 0 4px 12px; }
 .app-create-row { width: 100%; display: flex; align-items: center; gap: 13px; background: none; border: none; cursor: pointer;
-  padding: 11px 8px; border-radius: 14px; text-align: left; transition: background 0.15s; }
+  padding: 11px 8px; border-radius: 14px; text-align: left; transition: background 0.15s;
+  animation: rowIn 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; animation-delay: calc(60ms + var(--i, 0) * 45ms); }
+@keyframes rowIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .app-create-row:active { background: var(--bg-2); }
 .ac-ic { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center;
   background: color-mix(in srgb, var(--accent) 12%, var(--bg-2)); color: var(--accent); }
@@ -4413,7 +4427,9 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 .al-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .al-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 13px 4px; border-radius: 18px;
   background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 11.5px; font-weight: 600; cursor: pointer;
-  transition: transform 0.18s var(--spring), border-color 0.15s; }
+  transition: transform 0.18s var(--spring), border-color 0.15s;
+  animation: cellPop 0.32s cubic-bezier(0.34, 1.3, 0.64, 1) both; animation-delay: calc(var(--i, 0) * 28ms); }
+@keyframes cellPop { from { opacity: 0; transform: scale(0.86); } to { opacity: 1; transform: none; } }
 .al-cell:active { transform: scale(0.92); border-color: var(--accent); }
 /* 图标坐进四色轮换的圆角磁贴，宫格一眼可分区 */
 .al-cell-ic { position: relative; color: var(--accent); display: grid; place-items: center;
@@ -4437,6 +4453,12 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 .ah-hero.sky-night { background: linear-gradient(140deg, #5b4a72, #3a3153 55%, #262038); box-shadow: 0 10px 30px rgba(38, 32, 56, 0.4); }
 .ah-hero::after { content: ''; position: absolute; right: -46px; top: -58px; width: 190px; height: 190px; border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.28), transparent 68%); pointer-events: none; }
+/* 星尘纹理（内联 SVG 资产）：细碎四芒星 + 光点洒在问候卡上 */
+.ah-hero::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='140' viewBox='0 0 240 140'%3E%3Cg fill='%23fff'%3E%3Cpath d='M196 18c.7 3.6 1.6 4.5 5.2 5.2-3.6.7-4.5 1.6-5.2 5.2-.7-3.6-1.6-4.5-5.2-5.2 3.6-.7 4.5-1.6 5.2-5.2Z' opacity='.7'/%3E%3Cpath d='M52 84c.5 2.6 1.1 3.2 3.7 3.7-2.6.5-3.2 1.1-3.7 3.7-.5-2.6-1.1-3.2-3.7-3.7 2.6-.5 3.2-1.1 3.7-3.7Z' opacity='.45'/%3E%3Ccircle cx='30' cy='26' r='1.4' opacity='.55'/%3E%3Ccircle cx='120' cy='12' r='1.1' opacity='.4'/%3E%3Ccircle cx='226' cy='96' r='1.5' opacity='.4'/%3E%3Ccircle cx='86' cy='120' r='1.2' opacity='.35'/%3E%3Ccircle cx='160' cy='64' r='1' opacity='.4'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 240px 140px; animation: starTwinkle 3.6s ease-in-out infinite; }
+@keyframes starTwinkle { 0%, 100% { opacity: 0.32; } 50% { opacity: 0.62; } }
+@media (prefers-reduced-motion: reduce) { .ah-hero::before { animation: none; } }
 .ah-hero-row { display: flex; align-items: flex-start; justify-content: space-between; position: relative; z-index: 1; }
 .ah-greet { font-size: 13.5px; color: rgba(255,255,255,0.78); }
 .ah-name { font-family: var(--serif); font-size: 26px; font-weight: 800; margin: 2px 0 0; line-height: 1.1; text-shadow: 0 1px 10px rgba(0,0,0,0.18); }
@@ -4536,10 +4558,57 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
   .app-launcher, .app-sheet { width: 100%; }
 }
 
+/* ---- 启动品牌闪屏（每会话一次，月门 logo 呼吸浮现 → 整层淡出） ---- */
+.app-boot { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 50% 8%, color-mix(in srgb, var(--dusk) 16%, var(--bg)), var(--bg) 70%);
+  animation: bootOut 0.4s ease 0.85s both; pointer-events: none; }
+.app-boot-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.app-boot-logo { display: grid; place-items: center; border-radius: 22px;
+  box-shadow: 0 18px 50px rgba(125, 68, 104, 0.35);
+  animation: bootLogo 0.7s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.app-boot-name { font-family: var(--serif); font-size: 30px; font-weight: 800; letter-spacing: 6px; margin-left: 6px;
+  background: linear-gradient(120deg, var(--accent), var(--dusk)); -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: bootRise 0.6s ease 0.16s both; }
+.app-boot-sub { font-size: 12.5px; color: var(--faint); letter-spacing: 1px; animation: bootRise 0.6s ease 0.3s both; }
+.app-boot-star { position: absolute; width: 8px; height: 8px; border-radius: 50%;
+  background: radial-gradient(circle, var(--gold), transparent 70%); animation: bootStar 1.1s ease-in-out infinite; }
+.app-boot-star.s1 { top: 26%; left: 24%; }
+.app-boot-star.s2 { top: 20%; right: 22%; animation-delay: 0.25s; }
+.app-boot-star.s3 { bottom: 26%; right: 30%; animation-delay: 0.5s; }
+@keyframes bootLogo { from { opacity: 0; transform: scale(0.6) rotate(-8deg); } to { opacity: 1; transform: none; } }
+@keyframes bootRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes bootStar { 0%, 100% { opacity: 0.15; transform: scale(0.7); } 50% { opacity: 0.9; transform: scale(1.25); } }
+@keyframes bootOut { to { opacity: 0; visibility: hidden; } }
+
+/* 未读角标弹性入场 */
+.ahd-nb, .app-dot { animation: badgeIn 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes badgeIn { from { opacity: 0; transform: scale(0.3); } to { opacity: 1; transform: scale(1); } }
+
 /* ---- 抖音化沉浸式角色流（DiscoverFeed） ---- */
+/* 外层 wrap 拿确定高度：app 壳下显式按视口减去 header/dock 计算，
+   彻底摆脱「flex 百分比链在部分 WebView 下解析为 auto → 模块塌掉」的老 bug。 */
+.feed-wrap { position: relative; height: 100%; min-height: 0; overflow: hidden; background: #000; }
+html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-top) - var(--app-bot)); }
 .feed-root { height: 100%; min-height: 0; overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; background: #000; position: relative; }
+  overscroll-behavior: contain; scrollbar-width: none; background: #000; position: relative; }
 .feed-root::-webkit-scrollbar { display: none; }
+/* 双击点赞层：盖住画面（信息/按钮层 z 更高不受影响） */
+.feed-tap { position: absolute; inset: 0; z-index: 1; }
+/* 爱心迸发（抖音式双击反馈） */
+.feed-heart { position: absolute; z-index: 5; color: #ff5d7e; pointer-events: none;
+  transform: translate(-50%, -50%); filter: drop-shadow(0 4px 18px rgba(255,93,126,0.55));
+  animation: feedHeart 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+@keyframes feedHeart {
+  0% { transform: translate(-50%, -50%) scale(0.3) rotate(-14deg); opacity: 0; }
+  22% { transform: translate(-50%, -50%) scale(1.12) rotate(4deg); opacity: 1; }
+  55% { transform: translate(-50%, -56%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -120%) scale(0.72); opacity: 0; }
+}
+/* 悬浮加载 / 到底提示胶囊（不进滚动流，mandatory snap 不再被页脚卡死） */
+.feed-hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6;
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 15px; border-radius: 999px;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); color: #fff; font-size: 12.5px; font-weight: 600;
+  pointer-events: none; animation: fadeIn 0.25s ease both; }
 .feed-card { position: relative; height: 100%; width: 100%; scroll-snap-align: start; scroll-snap-stop: always;
   overflow: hidden; display: flex; align-items: flex-end; }
 .feed-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -4573,7 +4642,7 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
   cursor: pointer; box-shadow: 0 8px 24px rgba(194,90,56,0.45); transition: transform 0.16s var(--spring); }
 .feed-chat:active { transform: translateX(-50%) scale(0.94); }
 
-/* 顶部分类条 —— 半透明悬浮，相对 feed-root 定位避免遮挡 header */
+/* 顶部分类条 —— 悬浮在 wrap 上（不在滚动容器内，划卡不再被卷走） */
 .feed-cats { position: absolute; top: 8px; left: 0; right: 0; z-index: 4;
   display: flex; gap: 7px; padding: 0 12px; overflow-x: auto; scrollbar-width: none; pointer-events: auto; }
 .feed-cats::-webkit-scrollbar { display: none; }
@@ -4586,7 +4655,9 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 .feed-loading, .feed-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   color: var(--faint); font-size: 14px; background: var(--bg); }
 .feed-loading .feed-spin { animation: skel-spin 1.1s linear infinite; color: var(--accent); }
-.feed-empty .big { color: var(--faint); }
-.feed-more, .feed-end { height: 88px; scroll-snap-align: start; display: flex; align-items: center; justify-content: center;
-  gap: 7px; color: var(--faint); font-size: 13px; background: #000; }
 @keyframes skel-spin { to { transform: rotate(360deg); } }
+/* 信息区随卡片进场轻盈上浮（滚动驱动动画，支持的浏览器渐进增强） */
+@supports (animation-timeline: view()) {
+  .feed-body { animation: feedRise both linear; animation-timeline: view(); animation-range: entry 30% entry 90%; }
+  @keyframes feedRise { from { opacity: 0.2; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+}

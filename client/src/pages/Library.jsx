@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
-import { Drama, Globe, MessageCircle, Plus, X, Upload } from 'lucide-react';
+import { EmptyArt, CoverArt } from '../art.jsx';
+import { Globe, MessageCircle, Plus, X, Upload } from 'lucide-react';
 
 export default function Library() {
   const [chars, setChars] = useState([]);
@@ -66,7 +67,7 @@ export default function Library() {
         {loading ? <GridSkeleton n={6} /> :
           chars.length === 0 ? (
             <div className="empty">
-              <div className="big"><Drama size={46} /></div>还没有角色
+              <EmptyArt kind="library" />还没有角色
               <div style={{ marginTop: 16 }}><button className="btn primary" onClick={() => nav('/character/new')}>创建第一个角色</button></div>
             </div>
           ) : (
@@ -74,7 +75,7 @@ export default function Library() {
               {chars.map(c => (
                 <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id + '/edit')}>
                   <div className="cover">
-                    {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={46} /></div>}
+                    {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
                     {c.is_public ? <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Globe size={12} /> 已公开</div> : null}
                   </div>
                   <div className="meta">

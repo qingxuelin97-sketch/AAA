@@ -6,6 +6,7 @@ import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoice
 import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
+import { EmptyArt } from '../art.jsx';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles } from 'lucide-react';
 
 // 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
@@ -465,11 +466,12 @@ export default function Chat() {
           {!listMini && <button className="btn sm" onClick={() => nav('/library')} title="从角色库新建对话"><Plus size={15} /></button>}
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {convs.length === 0 && !listMini && <div className="empty" style={{ padding: 30, fontSize: 13 }}>从「我的角色」开始一段对话</div>}
+          {convs.length === 0 && !listMini && <div className="empty" style={{ padding: 30, fontSize: 13 }}><EmptyArt kind="chat" size={112} />从「我的角色」开始一段对话</div>}
           {convs.map(cv => (
             <div key={cv.id} className={'conv-item' + (String(cv.id) === String(id) ? ' active' : '')} onClick={() => nav('/chats/' + cv.id)} title={listMini ? cv.character_name : undefined}>
               <Avatar src={cv.character_avatar} name={cv.character_name} size={40} />
-              <div className="tx"><b>{cv.character_name}</b><span>{cv.title}</span></div>
+              {/* 副标题：默认标题与角色同名时显示引导语，避免上下两行重复同一个名字 */}
+              <div className="tx"><b>{cv.character_name}</b><span>{cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话'}</span></div>
               <button className="speak" onClick={e => delConv(e, cv)}><X size={14} /></button>
             </div>
           ))}
@@ -479,7 +481,7 @@ export default function Chat() {
       <div className={'chat-main' + (character?.background ? ' has-bg' : '')}>
         {!conv ? (
           <div className="empty" style={{ margin: 'auto' }}>
-            <div className="big"><MessageCircle size={46} /></div>选择左侧对话，或从角色库开启新对话
+            <EmptyArt kind="chat" />选择左侧对话，或从角色库开启新对话
           </div>
         ) : (
           <>

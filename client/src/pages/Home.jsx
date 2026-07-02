@@ -5,6 +5,7 @@ import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, GridSkeleton, CreatorV, CoinIcon } from '../ui.jsx';
 import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare, ListChecks, Check, Shuffle } from 'lucide-react';
 import { CategoryIcon, categoryName } from '../assets.jsx';
+import { EmptyArt, CoverArt } from '../art.jsx';
 
 // Auto-rotating spotlight of featured characters — the hero of the discover page.
 function Spotlight({ items, onView, onChat }) {
@@ -60,7 +61,7 @@ function Spotlight({ items, onView, onChat }) {
 function Poster({ c, onView, onFav, onChat }) {
   return (
     <article className="poster" onClick={() => onView(c)}>
-      {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={44} /></div>}
+      {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
       {c.featured ? <span className="p-feat"><Star size={11} fill="currentColor" /> 推荐</span>
         : c.category ? <span className="p-cat"><CategoryIcon slug={c.category} size={12} /> {categoryName(c.category)}</span> : null}
       <button className={'p-fav' + (c.faved ? ' on' : '')} onClick={e => onFav(e, c)} title="收藏"><Heart size={15} fill={c.faved ? 'currentColor' : 'none'} /></button>
@@ -246,7 +247,7 @@ export default function Home() {
         </div>
 
         {loading ? <GridSkeleton n={8} /> :
-          chars.length === 0 ? <div className="empty"><div className="big"><Drama size={46} /></div>该分类下还没有公开角色</div> : (
+          chars.length === 0 ? <div className="empty"><EmptyArt kind="library" />该分类下还没有公开角色</div> : (
             <div className="poster-grid">
               {chars.map(c => <Poster key={c.id} c={c} onView={view} onFav={fav} onChat={chat} />)}
             </div>

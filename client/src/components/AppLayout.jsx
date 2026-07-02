@@ -10,7 +10,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
-import { Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { Avatar, CoinIcon, DiamondIcon, CountUp } from '../ui.jsx';
+import { Logo } from '../assets.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
@@ -91,6 +92,39 @@ export default function AppLayout({ children }) {
   const [refreshKey, setRefreshKey] = useState(0); // bump → remount route → refetch
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
   const mainRef = useRef(null);
+  const tabbarRef = useRef(null);
+  const inkRef = useRef(null);
+  // 启动品牌闪屏：每会话一次，尊重减弱动效 / 低端机档
+  const [boot, setBoot] = useState(() => {
+    try {
+      return !sessionStorage.getItem('huanyu_boot_fx')
+        && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+        && document.documentElement.dataset.perf !== 'lite';
+    } catch { return false; }
+  });
+  useEffect(() => {
+    if (!boot) return;
+    try { sessionStorage.setItem('huanyu_boot_fx', '1'); } catch { /* */ }
+    const t = setTimeout(() => setBoot(false), 1250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Dock「墨迹」滑块：量出活跃 tab 的位置，让指示 pill 弹性滑过去（原生质感）。
+  useEffect(() => {
+    const bar = tabbarRef.current, ink = inkRef.current;
+    if (!bar || !ink) return;
+    const place = () => {
+      const act = bar.querySelector('.app-tab.active');
+      if (!act) { ink.style.opacity = '0'; return; }
+      ink.style.opacity = '1';
+      ink.style.transform = `translateX(${act.offsetLeft}px)`;
+      ink.style.width = act.offsetWidth + 'px';
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [loc.pathname, sheet]);
 
   useEffect(() => {
     const h = (e) => { e.preventDefault(); setInstallEvt(e); };
@@ -184,7 +218,8 @@ export default function AppLayout({ children }) {
         <div className="route-fade" key={loc.pathname + '#' + refreshKey}>{children}</div>
       </main>
 
-      <nav className="app-tabbar">
+      <nav className="app-tabbar" ref={tabbarRef}>
+        <span className="dock-ink" ref={inkRef} aria-hidden="true" />
         {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
         <button className="app-fab" onClick={() => setSheet(s => s === 'create' ? null : 'create')} aria-label="创建">
           <Plus size={26} />
@@ -205,6 +240,16 @@ export default function AppLayout({ children }) {
 
       <CommandPalette />
       <WelcomePopup />
+      {boot && (
+        <div className="app-boot" aria-hidden="true">
+          <div className="app-boot-inner">
+            <span className="app-boot-logo"><Logo size={76} /></span>
+            <b className="app-boot-name">幻域</b>
+            <span className="app-boot-sub">与你创造的角色一同呼吸</span>
+          </div>
+          <span className="app-boot-star s1" /><span className="app-boot-star s2" /><span className="app-boot-star s3" />
+        </div>
+      )}
     </div>
   );
 }
@@ -239,7 +284,7 @@ function AppHeader({ user, unread }) {
           <Bell size={20} />
           {unread > 0 && <span className="ahd-nb">{unread > 99 ? '99+' : unread}</span>}
         </button>
-        <button className="ahd-coin" onClick={() => nav('/wallet')}><CoinIcon size={14} /> {user?.gold ?? 0}</button>
+        <button className="ahd-coin" onClick={() => nav('/wallet')}><CoinIcon size={14} /> <CountUp value={user?.gold ?? 0} dur={700} /></button>
       </div>
     </header>
   );
@@ -253,8 +298,8 @@ function CreateSheet({ onClose }) {
       <div className="app-sheet" onClick={e => e.stopPropagation()}>
         <div className="app-sheet-grip" />
         <h3 className="app-sheet-title">想创作点什么？</h3>
-        {CREATE.map(c => (
-          <button key={c.to} className="app-create-row" onClick={() => go(c.to)}>
+        {CREATE.map((c, i) => (
+          <button key={c.to} className="app-create-row" style={{ '--i': i }} onClick={() => go(c.to)}>
             <span className="ac-ic"><c.ic size={20} /></span>
             <span className="ac-tx"><b>{c.label}</b><small>{c.hint}</small></span>
           </button>
@@ -290,8 +335,8 @@ function LauncherGrid({ user, unread, dmUnread, onClose, installEvt, onInstall }
           <section key={g.title} className="al-group">
             <h4>{g.title}</h4>
             <div className="al-grid">
-              {g.items.map(n => (
-                <button key={n.to} className="al-cell" onClick={() => go(n.to)}>
+              {g.items.map((n, i) => (
+                <button key={n.to} className="al-cell" style={{ '--i': i }} onClick={() => go(n.to)}>
                   <span className="al-cell-ic">
                     <n.ic size={22} />
                     {n.badge === 'noti' && unread > 0 && <i className="app-dot" />}
