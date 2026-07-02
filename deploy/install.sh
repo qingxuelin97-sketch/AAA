@@ -16,22 +16,19 @@ if ! swapon --show 2>/dev/null | grep -q /swapfile; then
   fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile || true
 fi
 
-echo "==> 2/6 Node 20（国内镜像）"
-if ! command -v node >/dev/null 2>&1; then
-  cd /opt
-  curl -fsSL https://registry.npmmirror.com/-/binary/node/v20.18.1/node-v20.18.1-linux-x64.tar.gz -o node.tar.gz
-  tar -xzf node.tar.gz && rm -f node.tar.gz && mv -f node-v20.18.1-linux-x64 /opt/node20
-  ln -sf /opt/node20/bin/node /usr/local/bin/node
-  ln -sf /opt/node20/bin/npm  /usr/local/bin/npm
-  ln -sf /opt/node20/bin/npx  /usr/local/bin/npx
-  cd "$ROOT"
-fi
+echo "==> 2/6 Node 22（国内镜像；vite 8 / rolldown 要求 ^20.19.0 || >=22.12.0，老的 v20.18 不够）"
+source "$ROOT/deploy/ensure-node.sh"
 
 echo "==> 3/6 编译依赖（better-sqlite3 需要）"
 apt-get update -y && apt-get install -y python3 make g++ git
 
 echo "==> 4/6 安装依赖 + 修复 Vite 原生二进制 + 构建前端"
-npm install --registry=https://registry.npmmirror.com
+# 仓库根 .npmrc 已把 @fontsource*/@rolldown 这些镜像常漏同步的 scope 固定到官方源；
+# 其余包正常走镜像。镜像整体故障（E404/超时）时整体回退官方源重试一次。
+npm install --registry=https://registry.npmmirror.com || {
+  echo "!! 镜像安装失败（常见：个别 tarball 未同步导致 npm error E404），改用官方源整体重试"
+  npm install --registry=https://registry.npmjs.org
+}
 # 关键坑：国内镜像常缺 rolldown 的平台二进制，单独从官方源补一个匹配版本
 V=$(node -p "require('rolldown/package.json').version" 2>/dev/null || echo "")
 [ -n "$V" ] && npm install --no-save "@rolldown/binding-linux-x64-gnu@$V" --registry=https://registry.npmjs.org || true
@@ -43,7 +40,8 @@ echo "==> 5/6 首次写入演示数据（已有数据则跳过）"
 
 echo "==> 6/6 pm2 常驻（端口 $PORT）"
 npm i -g pm2
-ln -sf /opt/node20/bin/pm2 /usr/local/bin/pm2 2>/dev/null || true
+PM2_BIN="$(npm prefix -g 2>/dev/null)/bin/pm2"
+[ -x "$PM2_BIN" ] && ln -sf "$PM2_BIN" /usr/local/bin/pm2 2>/dev/null || true
 pm2 delete huanyu 2>/dev/null || true
 PORT="$PORT" pm2 start server/index.js --name huanyu --update-env
 pm2 save || true

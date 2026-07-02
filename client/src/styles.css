@@ -450,9 +450,12 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 /* —— 世界书列表：高阶灵动画风 —— */
 .wb-list-topbar { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent), transparent); }
 .wb-hero { position: relative; border-radius: 18px; padding: 22px 22px 18px; margin-bottom: 18px; overflow: hidden; border: 1px solid var(--border); background: var(--panel); }
-.wb-hero-aurora { position: absolute; inset: -30% -10% auto auto; width: 60%; height: 220%; background: conic-gradient(from 180deg at 50% 50%, #c97a3f, #7c5bd9, #d4677a, #e89a5b, #c97a3f); filter: blur(60px); opacity: 0.22; animation: wb-aurora 18s linear infinite; }
+/* 降采样技巧：盒子取原来的一半、blur 减半，再用 transform: scale(2) 放大回原视觉尺寸。
+   模糊像素量降到 1/16 而旋转的彩色柔光观感不变（旧写法每帧对 60%×220% 大层做 60px 模糊）。
+   inset 由 -30%/-10% 换算为 25%/5%，保证放大后的视觉中心与原来完全一致。 */
+.wb-hero-aurora { position: absolute; inset: 25% 5% auto auto; width: 30%; height: 110%; background: conic-gradient(from 180deg at 50% 50%, #c97a3f, #7c5bd9, #d4677a, #e89a5b, #c97a3f); filter: blur(30px); opacity: 0.22; transform: scale(2); animation: wb-aurora 18s linear infinite; will-change: transform; }
 [data-theme="dark"] .wb-hero-aurora { opacity: 0.35; }
-@keyframes wb-aurora { to { transform: rotate(360deg); } }
+@keyframes wb-aurora { from { transform: scale(2) rotate(0deg); } to { transform: scale(2) rotate(360deg); } }
 .wb-hero-content { position: relative; z-index: 1; }
 .wb-hero-title { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; margin-bottom: 12px; }
 .wb-hero-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -2191,10 +2194,12 @@ body { -webkit-touch-callout: none; }
 /* ---------- Auth v2 ---------- */
 .auth-wrap.v2 .auth-hero h1 { margin-bottom: 18px; }
 .auth-orbs { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.auth-orbs i { position: absolute; border-radius: 50%; filter: blur(50px); opacity: 0.5; animation: orbFloat 14s ease-in-out infinite; }
-.auth-orbs i:nth-child(1) { width: 320px; height: 320px; background: radial-gradient(rgba(217,119,87,0.55), transparent 70%); top: -60px; left: -40px; }
-.auth-orbs i:nth-child(2) { width: 260px; height: 260px; background: radial-gradient(rgba(63,129,149,0.4), transparent 70%); bottom: -50px; right: 10%; animation-delay: -5s; }
-.auth-orbs i:nth-child(3) { width: 200px; height: 200px; background: radial-gradient(rgba(179,137,47,0.4), transparent 70%); top: 40%; right: -30px; animation-delay: -9s; }
+/* 柔焦烘焙进渐变（不再用 filter: blur(50px)）：光斑永续浮动，逐帧模糊代价太高；
+   多级渐变停靠点视觉上等效，合成器只需平移缓存纹理。 */
+.auth-orbs i { position: absolute; border-radius: 50%; opacity: 0.5; animation: orbFloat 14s ease-in-out infinite; will-change: transform; }
+.auth-orbs i:nth-child(1) { width: 320px; height: 320px; background: radial-gradient(rgba(217,119,87,0.55) 0%, rgba(217,119,87,0.38) 34%, rgba(217,119,87,0.14) 58%, transparent 80%); top: -60px; left: -40px; }
+.auth-orbs i:nth-child(2) { width: 260px; height: 260px; background: radial-gradient(rgba(63,129,149,0.4) 0%, rgba(63,129,149,0.28) 34%, rgba(63,129,149,0.10) 58%, transparent 80%); bottom: -50px; right: 10%; animation-delay: -5s; }
+.auth-orbs i:nth-child(3) { width: 200px; height: 200px; background: radial-gradient(rgba(179,137,47,0.4) 0%, rgba(179,137,47,0.28) 34%, rgba(179,137,47,0.10) 58%, transparent 80%); top: 40%; right: -30px; animation-delay: -9s; }
 @keyframes orbFloat { 0%,100% { transform: translate(0,0); } 50% { transform: translate(20px,-26px); } }
 .auth-tagline { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 2.1em; }
 .atl-line { display: block; animation: atlIn 0.6s cubic-bezier(0.22,0.61,0.36,1) both; }
@@ -3193,14 +3198,18 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   radial-gradient(1100px 600px at 12% -10%, rgba(217,119,87,0.06), transparent 60%),
   radial-gradient(900px 600px at 100% 110%, rgba(63,129,149,0.05), transparent 55%),
   var(--bg); }
-.chat-aura { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; filter: blur(60px); opacity: 0.85; }
-.chat-aura span { position: absolute; border-radius: 50%; mix-blend-mode: normal; }
+/* 性能关键：柔焦不再用容器级 filter: blur(60px)（那会让浏览器每帧对整个视口
+   重新栅格化 + 重模糊——子元素在无限动，滤镜结果无法缓存，是 GPU 吃满的头号元凶）。
+   等效柔和度直接烘焙进每个光斑的径向渐变里；光斑只动 transform，
+   合成器用缓存纹理平移即可，每帧成本从「全屏 60px 模糊」降到「三次贴图合成」。 */
+.chat-aura { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; opacity: 0.85; }
+.chat-aura span { position: absolute; border-radius: 50%; mix-blend-mode: normal; will-change: transform; }
 .chat-aura span:nth-child(1) { width: 44vmax; height: 44vmax; left: -10vmax; top: -16vmax;
-  background: radial-gradient(circle, rgba(217,119,87,0.20), transparent 65%); animation: auroraA 22s ease-in-out infinite; }
+  background: radial-gradient(circle, rgba(217,119,87,0.20) 0%, rgba(217,119,87,0.15) 32%, rgba(217,119,87,0.06) 56%, transparent 78%); animation: auroraA 22s ease-in-out infinite; }
 .chat-aura span:nth-child(2) { width: 40vmax; height: 40vmax; right: -14vmax; top: 18%;
-  background: radial-gradient(circle, rgba(63,129,149,0.16), transparent 65%); animation: auroraB 26s ease-in-out infinite; }
+  background: radial-gradient(circle, rgba(63,129,149,0.16) 0%, rgba(63,129,149,0.12) 32%, rgba(63,129,149,0.05) 56%, transparent 78%); animation: auroraB 26s ease-in-out infinite; }
 .chat-aura span:nth-child(3) { width: 34vmax; height: 34vmax; left: 30%; bottom: -18vmax;
-  background: radial-gradient(circle, rgba(179,137,47,0.14), transparent 65%); animation: auroraA 30s ease-in-out infinite reverse; }
+  background: radial-gradient(circle, rgba(179,137,47,0.14) 0%, rgba(179,137,47,0.10) 32%, rgba(179,137,47,0.04) 56%, transparent 78%); animation: auroraA 30s ease-in-out infinite reverse; }
 /* 光晕漂移关键帧（此前缺失定义，导致背景光斑完全静止） */
 @keyframes auroraA { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(6vmax, 4vmax, 0) scale(1.12); } }
 @keyframes auroraB { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(-5vmax, -3vmax, 0) scale(1.08); } }
@@ -3254,10 +3263,13 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   border-bottom-right-radius: 7px; overflow: hidden; position: relative;
   box-shadow: 0 2px 8px rgba(194,90,56,0.26), 0 14px 30px rgba(194,90,56,0.22); }
 .msg.user.run-cont .bubble { border-top-right-radius: 12px; }
-/* 用户气泡缓慢流光 */
+/* 用户气泡缓慢流光 —— 只在线程末尾几条上循环：老消息各自挂一个无限动画会随
+   对话变长线性堆积合成层与逐帧开销；观感不变（视线只落在最新消息附近，
+   旧气泡的流光本来就在视口外/余光里）。未激活时初始位移在气泡外，被
+   overflow:hidden 裁掉，零绘制成本。 */
 .msg.user .bubble::before { content: ''; position: absolute; top: 0; left: 0; width: 60%; height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.22), transparent); transform: translateX(-150%) skewX(-18deg);
-  animation: bubbleSheen 6s ease-in-out 1.2s infinite; }
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.22), transparent); transform: translateX(-150%) skewX(-18deg); }
+.msg.user:nth-last-child(-n+6) .bubble::before { animation: bubbleSheen 6s ease-in-out 1.2s infinite; }
 @keyframes bubbleSheen { 0% { transform: translateX(-150%) skewX(-18deg); } 18%,100% { transform: translateX(260%) skewX(-18deg); } }
 [data-theme="dark"] .msg.assistant .bubble { background: color-mix(in srgb, var(--panel) 80%, transparent); }
 @media (prefers-reduced-motion: reduce) { .msg.user .bubble::before { display: none; } }
@@ -3697,12 +3709,20 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 }
 [data-perf="lite"][data-glass="on"] .sidebar { background: var(--panel-2) !important; }
 
+/* --- 1.5 标签页不可见时暂停一切 CSS 动画（perf.js 监听 visibilitychange 写入标记）。
+   后台标签页里 65+ 个 infinite 动画会继续驱动合成器空转；反正看不见，
+   全部挂起，回到前台立刻恢复 —— 零视觉差异，纯省 GPU/电。 */
+html[data-page-hidden] *, html[data-page-hidden] *::before, html[data-page-hidden] *::after {
+  animation-play-state: paused !important;
+}
+
 /* --- 2. Lite tier: silence perpetual decorative animation (battery) ---
    These are the forever-looping ambient layers (blurred auroras, rotating
    rays, breathing glows, shimmer sweeps). One-shot entrance animations are
    left alone — they're cheap and run once. */
 [data-perf="lite"] .chat-aura span,
 [data-perf="lite"] .auth-orbs i,
+[data-perf="lite"] .wb-hero-aurora,
 [data-perf="lite"] .ach-page::before,
 [data-perf="lite"] .ach-hall-glow,
 [data-perf="lite"] .title-glow,
@@ -4878,13 +4898,15 @@ html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-top) - var(--app
 .auth-ring, .auth-ring-mobile { max-width: 100%; min-width: 0; }
 .auth-form-side { min-width: 0; }
 .auth-ring { width: 100%; }
-.ring-track { display: inline-flex; gap: 10px; width: max-content; animation: ringSlide 36s linear infinite; }
+.ring-track { display: inline-flex; gap: 10px; width: max-content; animation: ringSlide 36s linear infinite; will-change: transform; }
 .ring-row.rev .ring-track { animation-direction: reverse; animation-duration: 42s; }
 .ring-row:hover .ring-track { animation-play-state: paused; }
 @keyframes ringSlide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+/* 跑马灯里的芯片不能挂 backdrop-filter：它们永远在平移，每帧都得重新采样身后
+   背景做模糊。提高底色不透明度即可获得几乎相同的观感，成本归零。 */
 .ring-chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px 5px 6px; border-radius: 999px;
-  background: color-mix(in srgb, var(--panel) 72%, transparent); border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm); backdrop-filter: blur(6px); }
+  background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm); }
 .ring-chip em { font-style: normal; font-size: 12.5px; font-weight: 600; color: var(--muted); white-space: nowrap;
   max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
 [data-perf="lite"] .ring-track, [data-perf="lite"] .ring-row.rev .ring-track { animation: none; }

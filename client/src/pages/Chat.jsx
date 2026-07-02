@@ -55,6 +55,54 @@ function splitWbMarkers(text, imageMap) {
   return out;
 }
 
+// —— 角色扮演排版：*动作/神态* 渲染为柔和的斜体强调，与台词在视觉上分层。
+// RP 对话的行文约定是「*叹了口气* 你来了。」，纯文本渲染时动作和台词糊成
+// 一团；这里把星号段落变成带色斜体，读起来像剧本舞台指示，沉浸感立增。
+function renderRp(text, keyBase = 0) {
+  if (!text || text.indexOf('*') === -1) return text;
+  const out = [];
+  const re = /\*([^*\n]{1,120})\*/g;
+  let last = 0, m2, k = 0;
+  while ((m2 = re.exec(text))) {
+    if (m2.index > last) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last, m2.index)}</span>);
+    out.push(<em key={`${keyBase}-a${k++}`} className="rp-act">{m2[1]}</em>);
+    last = m2.index + m2[0].length;
+  }
+  if (last < text.length) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last)}</span>);
+  return out;
+}
+
+// 气泡内容：专家档助手消息可含 [[wbimg:id]] 标记，标记位置直接展示创建者预注入的
+// 图片（不调用 AI 生图）；无标记时退化为 RP 排版文本。
+// React.memo 是这里的性能关键：流式生成期间线程每帧 setMessages 一次，除最后一条外
+// 其余消息的 content 引用都没变，memo 让老消息跳过整段正则解析与片段重建 ——
+// 否则解析成本随对话长度线性增长，长对话时打字都会掉帧。
+const BubbleContent = React.memo(function BubbleContent({ content, role, imageMap, onPreview }) {
+  if (!content) return null;
+  if (role !== 'assistant' || !imageMap || !WBIMG_RE.test(content)) {
+    WBIMG_RE.lastIndex = 0;
+    return renderRp(content);
+  }
+  WBIMG_RE.lastIndex = 0;
+  const parts = splitWbMarkers(content, imageMap);
+  return parts.map((seg, i) => {
+    if (!seg.marker) return <span key={i}>{renderRp(seg.text, i)}</span>;
+    const meta = seg.meta;
+    if (!meta || !meta.urls || meta.urls.length === 0) {
+      return <span key={i} className="wb-img-missing" title="该标记未预注入图片"><ImageIcon size={12} /> 〔未注入图片〕</span>;
+    }
+    // 多张时堆叠展示，点击任一张进入全屏预览（支持 pinch-zoom 与双指缩放）
+    return (
+      <span key={i} className="wb-inline-imgs">
+        {meta.urls.map((u, j) => (
+          <img key={j} className="wb-inline-img" src={u} alt={`场景插图 ${j + 1}（点击放大）`} loading="lazy"
+            onClick={() => onPreview(u)} />
+        ))}
+      </span>
+    );
+  });
+});
+
 export default function Chat() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -371,51 +419,9 @@ export default function Chat() {
     catch { toast('复制失败', 'err'); }
   };
 
-  // —— 角色扮演排版：*动作/神态* 渲染为柔和的斜体强调，与台词在视觉上分层。
-  // RP 对话的行文约定是「*叹了口气* 你来了。」，纯文本渲染时动作和台词糊成
-  // 一团；这里把星号段落变成带色斜体，读起来像剧本舞台指示，沉浸感立增。
-  const renderRp = (text, keyBase = 0) => {
-    if (!text || text.indexOf('*') === -1) return text;
-    const out = [];
-    const re = /\*([^*\n]{1,120})\*/g;
-    let last = 0, m2, k = 0;
-    while ((m2 = re.exec(text))) {
-      if (m2.index > last) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last, m2.index)}</span>);
-      out.push(<em key={`${keyBase}-a${k++}`} className="rp-act">{m2[1]}</em>);
-      last = m2.index + m2[0].length;
-    }
-    if (last < text.length) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last)}</span>);
-    return out;
-  };
-
-  // 气泡内容渲染：专家档助手消息可含 [[wbimg:id]] 标记，标记位置直接展示创建者预注入的图片（不调用 AI 生图）。
-  // 无标记时退化为 RP 排版文本，保持原有打字机/换行行为。
+  // 专家档世界书的预注入图片映射；引用稳定（随 character 一次性到位），
+  // 保证 BubbleContent 的 memo 对老消息始终命中。
   const imageMap = character?.wb_image_map;
-  const renderBubbleContent = (content, role) => {
-    if (!content) return null;
-    if (role !== 'assistant' || !imageMap || !WBIMG_RE.test(content)) {
-      WBIMG_RE.lastIndex = 0;
-      return renderRp(content);
-    }
-    WBIMG_RE.lastIndex = 0;
-    const parts = splitWbMarkers(content, imageMap);
-    return parts.map((seg, i) => {
-      if (!seg.marker) return <span key={i}>{renderRp(seg.text, i)}</span>;
-      const meta = seg.meta;
-      if (!meta || !meta.urls || meta.urls.length === 0) {
-        return <span key={i} className="wb-img-missing" title="该标记未预注入图片"><ImageIcon size={12} /> 〔未注入图片〕</span>;
-      }
-      // 多张时堆叠展示，点击任一张进入全屏预览（支持 pinch-zoom 与双指缩放）
-      return (
-        <span key={i} className="wb-inline-imgs">
-          {meta.urls.map((u, j) => (
-            <img key={j} className="wb-inline-img" src={u} alt={`场景插图 ${j + 1}（点击放大）`} loading="lazy"
-              onClick={() => setPreviewImg(u)} />
-          ))}
-        </span>
-      );
-    });
-  };
 
   // 标记一条助手消息已生成过语音（已生成的不再重新合成，只能停止或再听一遍）。
   const markVoiced = (mid) => { if (mid != null) setVoicedIds(s => { if (s.has(mid)) return s; const n = new Set(s); n.add(mid); return n; }); };
@@ -628,7 +634,7 @@ export default function Chat() {
                         title={m.content ? '长按或右键复制' : undefined}>
                         {m._streaming && !m.content
                           ? <span className="typing"><span></span><span></span><span></span></span>
-                          : renderBubbleContent(m.content, m.role)}
+                          : <BubbleContent content={m.content} role={m.role} imageMap={imageMap} onPreview={setPreviewImg} />}
                         {m.reaction && <span className="msg-reaction" title="我的反应">{m.reaction}</span>}
                       </div>
                     )}

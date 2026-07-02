@@ -4,6 +4,9 @@
   "description": "AI 角色扮演聊天平台 — 自定义角色、世界书、自定义 LLM/语音 API、社区分享",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "dev:server": "node server/index.js",
     "dev:client": "vite --config client/vite.config.js",
