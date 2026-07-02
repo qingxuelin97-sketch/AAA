@@ -29,6 +29,11 @@ npm install --registry=https://registry.npmmirror.com || {
 V=$(node -p "require('rolldown/package.json').version" 2>/dev/null || echo "")
 [ -n "$V" ] && npm install --no-save "@rolldown/binding-linux-x64-gnu@$V" --registry=https://registry.npmjs.org || true
 
+# Node 升级后 better-sqlite3 的 .node 二进制 ABI 会失配（NODE_MODULE_VERSION 变），
+# 而 npm install 看到版本号不变就跳过，不会重编译。必须显式 rebuild 对齐当前 Node，
+# 否则 server/db.js 第 8 行 ERR_DLOPEN_FAILED，进程秒崩、端口不监听 → 拒绝连接。
+npm rebuild better-sqlite3
+
 echo "==> 构建前端"
 NODE_OPTIONS=--max-old-space-size=2048 npm run build
 [ -f client/dist/index.html ] || { echo "!! 前端构建失败：client/dist/index.html 未生成"; exit 1; }
