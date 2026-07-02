@@ -5,6 +5,7 @@ import { useToast, Avatar, CountUp, IdentityBadges, CoinIcon, DiamondIcon } from
 import { Settings, ScrollText, UserPlus, UserCheck, LogOut, Wallet, Drama, Heart, BadgeCheck, Crown, X, Pencil, Share2, Check, MessageSquare } from 'lucide-react';
 import { pid } from '../assets.jsx';
 import { shareUrl } from '../util.js';
+import { CoverArt } from '../art.jsx';
 import ReportButton from '../components/ReportButton.jsx';
 
 export default function Profile() {
@@ -120,7 +121,7 @@ export default function Profile() {
           <div className="grid">
             {data.characters.map(c => (
               <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
-                <div className="cover">{c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={46} /></div>}</div>
+                <div className="cover">{c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}</div>
                 <div className="meta"><h3>{c.name}</h3><p>{c.tagline || c.intro}</p></div>
               </div>
             ))}

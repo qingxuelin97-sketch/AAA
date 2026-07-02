@@ -8,6 +8,7 @@ import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { shareUrl } from '../util.js';
 import { CategoryIcon, categoryName } from '../assets.jsx';
+import { EmptyArt, CoverArt } from '../art.jsx';
 import { Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp } from 'lucide-react';
 
 export default function DiscoverFeed() {
@@ -125,7 +126,7 @@ export default function DiscoverFeed() {
     return <div className="feed-root feed-loading"><Drama size={40} className="feed-spin" /><span>正在挑选精彩角色…</span></div>;
   }
   if (chars.length === 0) {
-    return <div className="feed-root feed-empty"><div className="big"><Drama size={46} /></div>暂无角色，快来发布第一个</div>;
+    return <div className="feed-root feed-empty"><EmptyArt kind="library" />暂无角色，快来发布第一个</div>;
   }
 
   return (
@@ -149,7 +150,7 @@ export default function DiscoverFeed() {
           <section key={c.id} className="feed-card" data-idx={i}>
             {c.avatar
               ? <img className="feed-bg" src={c.avatar} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
-              : <div className="feed-bg ph"><Drama size={64} /></div>}
+              : <div className="feed-bg cover-art-box"><CoverArt name={c.name} /></div>}
             <div className="feed-scrim" />
             <div className="feed-body">
               <div className="feed-info">

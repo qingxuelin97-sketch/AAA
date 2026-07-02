@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
-import { Heart, HeartCrack, Drama } from 'lucide-react';
+import { EmptyArt, CoverArt } from '../art.jsx';
+import { Heart } from 'lucide-react';
 
 export default function Favorites() {
   const [chars, setChars] = useState([]);
@@ -47,13 +48,13 @@ export default function Favorites() {
         {loading ? (
           <GridSkeleton n={4} />
         ) : chars.length === 0 ? (
-          <div className="empty"><div className="big"><HeartCrack size={46} /></div>还没有收藏角色</div>
+          <div className="empty"><EmptyArt kind="favorites" />还没有收藏角色<br /><span style={{ fontSize: 13 }}>在发现广场点亮心形，喜欢的角色就会住进这里</span></div>
         ) : (
           <div className="grid">
             {chars.map(c => (
               <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
                 <div className="cover">
-                  {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={46} /></div>}
+                  {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
                   <button
                     className="btn sm danger"
                     style={{ position: 'absolute', top: 8, right: 8 }}

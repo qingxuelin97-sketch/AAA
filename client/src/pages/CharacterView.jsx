@@ -5,6 +5,7 @@ import { useToast, Avatar, Modal, CreatorV } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
+import { CoverArt } from '../art.jsx';
 import { MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye, ChevronRight, Drama, BadgeCheck, Download } from 'lucide-react';
 
 function recordRecent(c) {
@@ -147,7 +148,7 @@ export default function CharacterView() {
             <div className="grid">
               {related.map(rc => (
                 <div key={rc.id} className="char-card" onClick={() => nav('/character/' + rc.id)}>
-                  <div className="cover">{rc.avatar ? <img src={rc.avatar} alt="" loading="lazy" /> : <div className="ph"><Drama size={42} /></div>}</div>
+                  <div className="cover">{rc.avatar ? <img src={rc.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={rc.name} /></div>}</div>
                   <div className="meta"><h3>{rc.name}</h3><p>{rc.tagline || '——'}</p>
                     <div className="foot"><span className="muted" style={{ fontSize: 12 }}><MessageCircle size={11} /> {rc.uses}</span></div></div>
                 </div>

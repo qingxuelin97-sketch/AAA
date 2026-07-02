@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
+import { EmptyArt } from '../art.jsx';
 import { Bell, Heart, MessageCircle, Gift, Megaphone, Landmark, CheckCheck, Sparkles } from 'lucide-react';
 
 // Infer an icon + accent from the notification text (no schema change needed).
@@ -60,7 +61,7 @@ export default function Notifications() {
         {loading ? (
           <div className="empty">载入中…</div>
         ) : shown.length === 0 ? (
-          <div className="empty"><div className="big"><Bell size={46} /></div>{tab === 'unread' ? '没有未读通知' : '暂时没有新通知'}</div>
+          <div className="empty"><EmptyArt kind="notifications" />{tab === 'unread' ? '没有未读通知' : '暂时没有新通知'}</div>
         ) : (
           <div className="noti-list">
             {shown.map(n => {

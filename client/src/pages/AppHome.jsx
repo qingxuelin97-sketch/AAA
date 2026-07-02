@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday } from '../util.js';
+import { CoverArt } from '../art.jsx';
 import {
   Check, Flame, MessagesSquare, ChevronRight, Sparkles, Wand2, Feather,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass
@@ -132,7 +133,7 @@ export default function AppHome() {
       {hero === null && <div className="ah-hero-skel" />}
       {hero && (
         <button className="ah-hero-card" onClick={() => openChat(hero)}>
-          {hero.avatar ? <img className="ah-hc-bg" src={hero.avatar} alt="" /> : <div className="ah-hc-bg ph" />}
+          {hero.avatar ? <img className="ah-hc-bg" src={hero.avatar} alt="" /> : <div className="ah-hc-bg cover-art-box"><CoverArt name={hero.name} /></div>}
           <div className="ah-hc-scrim" />
           <div className="ah-hc-body">
             <span className="ah-hc-tag"><Star size={11} fill="currentColor" /> 今日精选</span>
@@ -200,7 +201,7 @@ export default function AppHome() {
             {pick.map(c => (
               <button key={c.id} className="ah-pick" onClick={() => openChat(c)}>
                 <div className="ah-pick-av">
-                  {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ah-pick-ph"><Drama size={28} /></div>}
+                  {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ah-pick-ph cover-art-box"><CoverArt name={c.name} /></div>}
                 </div>
                 <div className="ah-pick-tx">
                   <b>{c.name}</b>
