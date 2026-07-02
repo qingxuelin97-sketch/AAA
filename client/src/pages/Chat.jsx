@@ -470,7 +470,8 @@ export default function Chat() {
           {convs.map(cv => (
             <div key={cv.id} className={'conv-item' + (String(cv.id) === String(id) ? ' active' : '')} onClick={() => nav('/chats/' + cv.id)} title={listMini ? cv.character_name : undefined}>
               <Avatar src={cv.character_avatar} name={cv.character_name} size={40} />
-              <div className="tx"><b>{cv.character_name}</b><span>{cv.title}</span></div>
+              {/* 副标题：默认标题与角色同名时显示引导语，避免上下两行重复同一个名字 */}
+              <div className="tx"><b>{cv.character_name}</b><span>{cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话'}</span></div>
               <button className="speak" onClick={e => delConv(e, cv)}><X size={14} /></button>
             </div>
           ))}

@@ -2,17 +2,24 @@
   "appId": "ai.huanyu.app",
   "appName": "幻域",
   "webDir": "client/dist",
-  "backgroundColor": "#15120e",
-  "server": { "androidScheme": "https" },
+  "backgroundColor": "#1b1733",
+  "server": {
+    "androidScheme": "https"
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 700,
       "launchAutoHide": false,
-      "backgroundColor": "#15120e",
+      "backgroundColor": "#1b1733",
       "showSpinner": false,
       "androidScaleType": "CENTER_CROP"
     },
-    "StatusBar": { "overlaysWebView": false },
-    "Keyboard": { "resize": "native", "resizeOnFullScreen": true }
+    "StatusBar": {
+      "overlaysWebView": false
+    },
+    "Keyboard": {
+      "resize": "native",
+      "resizeOnFullScreen": true
+    }
   }
 }

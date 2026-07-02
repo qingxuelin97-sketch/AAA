@@ -62,6 +62,15 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
+      # 品牌启动器图标 + 启动屏：从 resources/ 里的官方图标源生成安卓全套
+      # mipmap（含自适应图标前景/背景）。没有这一步 APK 会顶着 Capacitor 默认图标。
+      - name: Generate launcher icons & splash
+        run: |
+          npm i -D --no-save @capacitor/assets
+          npx capacitor-assets generate --android --assetPath resources \
+            --iconBackgroundColor '#211c3f' --iconBackgroundColorDark '#211c3f' \
+            --splashBackgroundColor '#1b1733' --splashBackgroundColorDark '#15120e'
+
       - name: Build debug APK
         run: |
           cd android
