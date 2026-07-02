@@ -50,6 +50,7 @@ const Atelier = lazy(() => import('./pages/Atelier.jsx'));
 const NovelWorkspace = lazy(() => import('./pages/NovelWorkspace.jsx'));
 const NovelReader = lazy(() => import('./pages/NovelReader.jsx'));
 const AppHome = lazy(() => import('./pages/AppHome.jsx'));
+const Insights = lazy(() => import('./pages/Insights.jsx'));
 const DiscoverFeed = lazy(() => import('./pages/DiscoverFeed.jsx'));
 
 function Protected({ children }) {
@@ -89,6 +90,7 @@ export default function App() {
             <Route path="/gacha" element={P(<Gacha />)} />
             <Route path="/parliament" element={P(<Parliament />)} />
             <Route path="/achievements" element={P(<Achievements />)} />
+            <Route path="/insights" element={P(<Insights />)} />
             <Route path="/draw" element={P(<Draw />)} />
             <Route path="/friends" element={P(<Friends />)} />
             <Route path="/admin" element={P(<Admin />)} />

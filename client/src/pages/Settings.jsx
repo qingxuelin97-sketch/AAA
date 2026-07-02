@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker, CoinIcon } from '../ui.jsx';
 import { getThemeMode, setThemeMode, getGlass, setGlass } from '../theme.js';
+import { ACCENTS, getAccent, setAccent } from '../accent.js';
 import { getPerfPref, setPerfPref, resolvePerf } from '../perf.js';
 import { browserVoices, speakBrowser } from '../voice.js';
 import HelpCenter from '../components/HelpCenter.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
-import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, LifeBuoy, LayoutGrid, Scale } from 'lucide-react';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, LifeBuoy, LayoutGrid, Scale, Check } from 'lucide-react';
 
 // Renders a gold price; when a membership discount applies it shows the full
 // price struck through next to the discounted one so VIP/SVIP can see the deal.
@@ -83,6 +84,8 @@ export default function Settings() {
   const [testing, setTesting] = useState(false);
   const [theme, setTheme] = useState(getThemeMode());
   const [glass, setGlassOn] = useState(getGlass());
+  const [accent, setAccentId] = useState(getAccent());
+  const changeAccent = (id) => { setAccentId(id); setAccent(id); };
   const [perf, setPerf] = useState(getPerfPref());
   const changePerf = (mode) => { setPerf(mode); setPerfPref(mode); };
   const [bvoices, setBvoices] = useState(() => browserVoices());
@@ -438,6 +441,19 @@ export default function Settings() {
                 ))}
               </div>
               <div className="hint">即时生效并记忆在本机；「跟随系统」会随设备深/浅色自动切换。</div>
+            </div>
+            <div className="field">
+              <label>主题色</label>
+              <div className="accent-row">
+                {ACCENTS.map(a => (
+                  <button key={a.id} type="button" className={'accent-dot' + (accent === a.id ? ' on' : '')}
+                    style={{ '--dot': a.c }} onClick={() => changeAccent(a.id)} aria-label={a.name} title={a.name}>
+                    {accent === a.id && <Check size={17} strokeWidth={3} />}
+                    <small>{a.name}</small>
+                  </button>
+                ))}
+              </div>
+              <div className="hint">全站按钮、导航与图表即刻换上你选的颜色，深浅色模式都会各自适配。</div>
             </div>
             <div className="field">
               <label>性能模式</label>

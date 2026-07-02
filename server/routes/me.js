@@ -87,4 +87,75 @@ router.post('/revenue-plan/claim', authRequired, (req, res) => {
   res.json({ ok: true, reward: amount, wallet: w, plan: revenuePlan(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
 });
 
+// 星轨 · 个人旅程数据（/insights 页）——聊天足迹、羁绊角色、创作与经济全景。
+// 全部由现有表聚合而来，只读不写；任何一项查询失败都不该拖垮整页，故逐项兜底。
+router.get('/insights', authRequired, (req, res) => {
+  const uid = req.user.id;
+  const one = (sql, ...args) => { try { return db.prepare(sql).get(...args) || {}; } catch { return {}; } };
+  const all = (sql, ...args) => { try { return db.prepare(sql).all(...args); } catch { return []; } };
+
+  const u = one('SELECT created_at, gold, diamond, checkin_streak FROM users WHERE id = ?', uid);
+
+  // —— 聊天足迹 ——
+  const msg = one(`SELECT COUNT(*) n,
+      SUM(CASE WHEN m.role = 'user' THEN 1 ELSE 0 END) sent,
+      SUM(CASE WHEN m.role != 'user' THEN 1 ELSE 0 END) received
+    FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE c.user_id = ?`, uid);
+  const convCount = one('SELECT COUNT(*) n FROM conversations WHERE user_id = ?', uid).n || 0;
+  const activeDays = one(`SELECT COUNT(DISTINCT substr(m.created_at, 1, 10)) n
+    FROM messages m JOIN conversations c ON c.id = m.conversation_id
+    WHERE c.user_id = ? AND m.role = 'user'`, uid).n || 0;
+
+  // 近 14 天逐日消息量（含 0 的日子，前端画条形图）。
+  const perDay = Object.fromEntries(all(`SELECT substr(m.created_at, 1, 10) d, COUNT(*) n
+    FROM messages m JOIN conversations c ON c.id = m.conversation_id
+    WHERE c.user_id = ? AND m.created_at >= datetime('now', '-14 days')
+    GROUP BY d`, uid).map(r => [r.d, r.n]));
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    days.push({ date: d.slice(5), n: perDay[d] || 0 });
+  }
+
+  // —— 羁绊最深的角色（按消息量 Top 5）——
+  const companions = all(`SELECT ch.id, ch.name, ch.avatar, COUNT(m.id) n,
+      MIN(m.created_at) first_at
+    FROM messages m
+    JOIN conversations c ON c.id = m.conversation_id
+    JOIN characters ch ON ch.id = c.character_id
+    WHERE c.user_id = ?
+    GROUP BY ch.id ORDER BY n DESC LIMIT 5`, uid);
+
+  // —— 创作全景 ——
+  const creations = {
+    characters: one('SELECT COUNT(*) n FROM characters WHERE owner_id = ?', uid).n || 0,
+    worldbooks: one('SELECT COUNT(*) n FROM worldbooks WHERE owner_id = ?', uid).n || 0,
+    scripts: one('SELECT COUNT(*) n FROM scripts WHERE author_id = ?', uid).n || 0,
+    novels: one('SELECT COUNT(*) n FROM novels WHERE owner_id = ?', uid).n || 0,
+    images: one('SELECT COUNT(*) n FROM ai_images WHERE user_id = ?', uid).n || 0,
+    favorites: one('SELECT COUNT(*) n FROM favorites WHERE user_id = ?', uid).n || 0,
+  };
+
+  // —— 经济脉络 ——
+  const economy = {
+    gold: u.gold || 0, diamond: u.diamond || 0,
+    earned: one('SELECT COALESCE(SUM(gold),0) n FROM transactions WHERE user_id = ? AND gold > 0', uid).n || 0,
+    spent: -(one('SELECT COALESCE(SUM(gold),0) n FROM transactions WHERE user_id = ? AND gold < 0', uid).n || 0),
+  };
+
+  // —— 社交 ——
+  const social = {
+    followers: one('SELECT COUNT(*) n FROM follows WHERE following_id = ?', uid).n || 0,
+    following: one('SELECT COUNT(*) n FROM follows WHERE follower_id = ?', uid).n || 0,
+    friends: one('SELECT COUNT(*) n FROM friendships WHERE a_id = ? OR b_id = ?', uid, uid).n || 0,
+  };
+
+  res.json({
+    since: (u.created_at || '').slice(0, 10),
+    streak: u.checkin_streak || 0,
+    chat: { conversations: convCount, messages: msg.n || 0, sent: msg.sent || 0, received: msg.received || 0, active_days: activeDays },
+    days, companions, creations, economy, social,
+  });
+});
+
 export default router;

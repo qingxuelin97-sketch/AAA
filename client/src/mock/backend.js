@@ -1283,6 +1283,54 @@ async function route(method, path, search, body, headers) {
     };
     return J({ totals, characters: charRows.sort((a, b) => b.uses - a.uses), scripts: scriptRows.sort((a, b) => b.revenue - a.revenue), series: incomeSeries(me.id, 14), revenue_plan: revenuePlan(me) });
   }
+  // 星轨 · 个人旅程数据（与服务端 /me/insights 同构，静态离线版也能看）
+  if (method === 'GET' && path === '/me/insights') {
+    need();
+    const myConvs = filter('conversations', c => c.user_id === me.id);
+    const convIds = myConvs.map(c => c.id);
+    const myMsgs = filter('messages', m => convIds.includes(m.conversation_id));
+    const sent = myMsgs.filter(m => m.role === 'user');
+    const dayKey = (t) => (t || '').slice(0, 10);
+    const perDay = {};
+    for (const m of myMsgs) { const d = dayKey(m.created_at); if (d) perDay[d] = (perDay[d] || 0) + 1; }
+    const days = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      days.push({ date: d.slice(5), n: perDay[d] || 0 });
+    }
+    const byChar = {};
+    for (const c of myConvs) {
+      const n = myMsgs.filter(m => m.conversation_id === c.id).length;
+      if (!n) continue;
+      byChar[c.character_id] = byChar[c.character_id] || { n: 0, first: '' };
+      byChar[c.character_id].n += n;
+    }
+    const companions = Object.entries(byChar).map(([id, v]) => {
+      const ch = find('characters', x => x.id === Number(id));
+      return ch ? { id: ch.id, name: ch.name, avatar: ch.avatar, n: v.n, first_at: '' } : null;
+    }).filter(Boolean).sort((a, b) => b.n - a.n).slice(0, 5);
+    const txs = filter('transactions', t => t.user_id === me.id);
+    return J({
+      since: dayKey(me.created_at) || new Date().toISOString().slice(0, 10),
+      streak: me.checkin_streak || 0,
+      chat: { conversations: myConvs.length, messages: myMsgs.length, sent: sent.length, received: myMsgs.length - sent.length, active_days: new Set(sent.map(m => dayKey(m.created_at)).filter(Boolean)).size },
+      days, companions,
+      creations: {
+        characters: filter('characters', c => c.owner_id === me.id && !c.from_script).length,
+        worldbooks: filter('worldbooks', w => w.owner_id === me.id).length,
+        scripts: filter('scripts', s => s.author_id === me.id).length,
+        novels: filter('novels', n => n.owner_id === me.id).length,
+        images: filter('ai_images', i => i.user_id === me.id).length,
+        favorites: filter('favorites', f => f.user_id === me.id).length,
+      },
+      economy: { gold: me.gold || 0, diamond: me.diamond || 0,
+        earned: txs.filter(t => t.gold > 0).reduce((a, t) => a + t.gold, 0),
+        spent: -txs.filter(t => t.gold < 0).reduce((a, t) => a + t.gold, 0) },
+      social: { followers: filter('follows', f => f.following_id === me.id).length,
+        following: filter('follows', f => f.follower_id === me.id).length,
+        friends: filter('friendships', f => f.a_id === me.id || f.b_id === me.id).length },
+    });
+  }
   if (method === 'GET' && path === '/me/revenue-plan') { need(); return J({ plan: revenuePlan(me) }); }
   if (method === 'POST' && path === '/me/revenue-plan/claim') {
     need(); const plan = revenuePlan(me);

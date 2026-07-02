@@ -20,7 +20,7 @@ import {
   Sparkles, Feather, Wand2, Drama, Users, Megaphone, Trophy, Landmark,
   ScrollText, PartyPopper, Dices, Library, BookOpen, TrendingUp, Medal,
   Heart, Wallet, Settings, Shield, Crown, LogOut, Download, UserRound,
-  Tags as TagsIcon, Send, RefreshCw, WifiOff
+  Tags as TagsIcon, Send, RefreshCw, WifiOff, Orbit
 } from 'lucide-react';
 
 // Top-level tabs that horizontal swipe cycles through.
@@ -72,6 +72,7 @@ const GRID = [
     { to: '/library', ic: Library, label: '我的角色' },
     { to: '/worldbooks', ic: BookOpen, label: '世界书' },
     { to: '/studio', ic: TrendingUp, label: '创作中心' },
+    { to: '/insights', ic: Orbit, label: '星轨' },
     { to: '/achievements', ic: Medal, label: '成就' },
     { to: '/favorites', ic: Heart, label: '收藏' },
     { to: '/wallet', ic: Wallet, label: '钱包' },
@@ -221,7 +222,7 @@ export default function AppLayout({ children }) {
       <nav className="app-tabbar" ref={tabbarRef}>
         <span className="dock-ink" ref={inkRef} aria-hidden="true" />
         {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-        <button className="app-fab" onClick={() => setSheet(s => s === 'create' ? null : 'create')} aria-label="创建">
+        <button className={'app-fab' + (sheet === 'create' ? ' open' : '')} onClick={() => setSheet(s => s === 'create' ? null : 'create')} aria-label={sheet === 'create' ? '关闭' : '创建'}>
           <Plus size={26} />
         </button>
         {TABS_R.map(t => t.kind === 'grid'
