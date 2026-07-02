@@ -4,6 +4,7 @@ import { useAuth, api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
+import { fmtNum } from '../util.js';
 import WelcomePopup from './WelcomePopup.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import ScrollChrome from './ScrollChrome.jsx';
@@ -78,6 +79,24 @@ export default function Layout({ children }) {
   const [installEvt, setInstallEvt] = useState(null);
   const peekRef = useRef('closed');
   const closeTimer = useRef();
+  const bnRef = useRef(null);
+  const bnInkRef = useRef(null);
+
+  // 底栏「墨迹」滑块：量出活跃 tab 位置，让指示 pill 弹性滑过去（与 App dock 同款）。
+  useEffect(() => {
+    const bar = bnRef.current, ink = bnInkRef.current;
+    if (!bar || !ink) return;
+    const place = () => {
+      const act = bar.querySelector('a.active');
+      if (!act) { ink.style.opacity = '0'; return; }
+      ink.style.opacity = '1';
+      ink.style.transform = `translateX(${act.offsetLeft}px)`;
+      ink.style.width = act.offsetWidth + 'px';
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [loc.pathname]);
 
   useEffect(() => {
     const h = (e) => { e.preventDefault(); setInstallEvt(e); };
@@ -182,7 +201,8 @@ export default function Layout({ children }) {
       </main>
       <CommandPalette />
       <QuickCreate />
-      <nav className="bottom-nav">
+      <nav className="bottom-nav" ref={bnRef}>
+        <span className="bn-ink" ref={bnInkRef} aria-hidden="true" />
         {TABS.map(t => (
           <NavLink key={t.to} to={t.to} end={t.end} viewTransition className={({ isActive }) => isActive ? 'active' : ''}>
             <t.ic size={21} />
@@ -220,8 +240,8 @@ function Sidebar({ user, unread, dmUnread, mode, peek, cycle, onLeave }) {
       </div>
       {!collapsed && (
         <div className="wallet-mini">
-          <span className="coin gold"><CoinIcon size={14} /> {user?.gold ?? 0}</span>
-          <span className="coin diamond"><DiamondIcon size={14} /> {user?.diamond ?? 0}</span>
+          <span className="coin gold"><CoinIcon size={14} /> {fmtNum(user?.gold)}</span>
+          <span className="coin diamond"><DiamondIcon size={14} /> {fmtNum(user?.diamond)}</span>
           {user?.svip ? <span className="svip-badge">SVIP</span> : user?.vip ? <span className="vip-badge"><Crown size={12} /> VIP</span> : null}
           {user?.verified && <span className="v-badge" title="官方认证"><BadgeCheck size={16} /></span>}
         </div>
@@ -280,7 +300,7 @@ function MobileTop({ user, unread, onMenu }) {
     <div className="mobile-topbar mobile-only">
       <button className="mt-menu" onClick={onMenu} aria-label="菜单"><Menu size={22} /></button>
       <b style={{ fontSize: 17, flex: 1 }}>幻域</b>
-      <span className="coin gold" onClick={() => nav('/wallet')}><CoinIcon size={13} /> {user?.gold ?? 0}</span>
+      <span className="coin gold" onClick={() => nav('/wallet')}><CoinIcon size={13} /> {fmtNum(user?.gold)}</span>
       {/* 图标动作用真按钮承载 ≥40px 触控区（裸 svg 只有 20px，指头很难点中） */}
       <button className="mt-act" onClick={openCmdk} aria-label="搜索"><Search size={20} /></button>
       <button className="mt-act mt-bell" onClick={() => nav('/notifications')} aria-label="通知">
@@ -310,8 +330,8 @@ function MobileNav({ user, unread, dmUnread, onClose, installEvt, doInstall }) {
           <button className="mnav-x" onClick={onClose} aria-label="关闭"><X size={20} /></button>
         </div>
         <div className="wallet-mini" style={{ margin: '0 16px 8px' }}>
-          <span className="coin gold" onClick={() => go('/wallet')}><CoinIcon size={14} /> {user?.gold ?? 0}</span>
-          <span className="coin diamond" onClick={() => go('/wallet')}><DiamondIcon size={14} /> {user?.diamond ?? 0}</span>
+          <span className="coin gold" onClick={() => go('/wallet')}><CoinIcon size={14} /> {fmtNum(user?.gold)}</span>
+          <span className="coin diamond" onClick={() => go('/wallet')}><DiamondIcon size={14} /> {fmtNum(user?.diamond)}</span>
           {user?.svip ? <span className="svip-badge">SVIP</span> : user?.vip ? <span className="vip-badge"><Crown size={12} /> VIP</span> : null}
         </div>
         <div className="mnav-scroll">

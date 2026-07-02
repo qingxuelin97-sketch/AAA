@@ -5,7 +5,7 @@ import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
-import { Heart, Play, Lock, Trash2, Eye } from 'lucide-react';
+import { Heart, Play, Lock, Trash2, Eye , ArrowLeft } from 'lucide-react';
 
 export default function ScriptDetail() {
   const { id } = useParams();
@@ -75,7 +75,7 @@ export default function ScriptDetail() {
   return (
     <>
       <div className="topbar">
-        <button className="btn ghost sm" onClick={() => nav(-1)}>← 返回</button>
+        <button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /> 返回</button>
         <div style={{ flex: 1 }}>
           <h1>{script.title}</h1>
           <div className="sub">{pid('script', script.id)} · 由 {script.author_name} 创作</div>

@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
-import { cnToday } from '../util.js';
+import { cnToday, fmtNum } from '../util.js';
 import { CoverArt } from '../art.jsx';
 import {
   Check, Flame, MessagesSquare, ChevronRight, Sparkles, Wand2, Feather,
@@ -110,8 +110,8 @@ export default function AppHome() {
           </button>
         </div>
         <div className="ah-wallet">
-          <button className="ah-coin" onClick={() => nav('/wallet')}><CoinIcon size={15} /> {user?.gold ?? 0}</button>
-          <button className="ah-coin di" onClick={() => nav('/wallet')}><DiamondIcon size={15} /> {user?.diamond ?? 0}</button>
+          <button className="ah-coin" onClick={() => nav('/wallet')}><CoinIcon size={15} /> {fmtNum(user?.gold)}</button>
+          <button className="ah-coin di" onClick={() => nav('/wallet')}><DiamondIcon size={15} /> {fmtNum(user?.diamond)}</button>
           <button className={'ah-checkin' + (checked ? ' done' : '')} onClick={checkin} disabled={busy}>
             {checked
               ? <><Check size={15} /> {streak ? `连签 ${streak} 天` : '已签到'}</>

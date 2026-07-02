@@ -20,6 +20,12 @@ export function shareUrl(path) {
     : location.origin + path;
 }
 
+// fmtNum —— 金币/钻石等数额统一千分位显示（人类习惯：18,600 比 18600 好读）。
+// 此前各处显示不一：App 顶栏有千分位、侧边栏/今日页没有。
+export function fmtNum(n) {
+  return (Number(n) || 0).toLocaleString('en-US');
+}
+
 export function cnToday(d = new Date()) {
   return new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../api.jsx';
-import { useToast } from '../ui.jsx';
+import { api, useAuth } from '../api.jsx';
+import { useToast, Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
 import { Drama, Plug, Volume2, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare, LayoutGrid, LifeBuoy } from 'lucide-react';
@@ -22,6 +22,32 @@ const FEATURES = [
 ];
 const STATS = [['12+', '玩法模块'], ['∞', '角色可能'], ['100%', '本地密钥']];
 
+// 角色星环 — 用广场上真实的公开角色点亮登录页。接口无鉴权可访问；
+// 拉不到就静默隐藏，登录页不依赖它。桌面双排反向流动，移动端一排。
+function CharacterRing({ chars, compact }) {
+  if (!chars.length) return null;
+  const row = (list, dir) => (
+    <div className={'ring-row' + (dir < 0 ? ' rev' : '')}>
+      <div className="ring-track">
+        {[...list, ...list].map((c, i) => (
+          <span className="ring-chip" key={c.id + '-' + i} title={c.name}>
+            <Avatar src={c.avatar} name={c.name} size={compact ? 34 : 42} />
+            <em>{c.name}</em>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+  if (compact) return <div className="auth-ring compact">{row(chars.slice(0, 10), 1)}</div>;
+  const half = Math.ceil(chars.length / 2);
+  return (
+    <div className="auth-ring">
+      {row(chars.slice(0, half), 1)}
+      {row(chars.slice(half), -1)}
+    </div>
+  );
+}
+
 export default function Auth() {
   const { login, register } = useAuth();
   const toast = useToast();
@@ -33,8 +59,14 @@ export default function Auth() {
   const [tl, setTl] = useState(0);
   const [agree, setAgree] = useState(false);
   const [legal, setLegal] = useState(null); // null | 'terms' | 'privacy' | 'copyright' | 'disclaimer'
+  const [ring, setRing] = useState([]);
 
   useEffect(() => { const t = setInterval(() => setTl(i => (i + 1) % TAGLINES.length), 3600); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    api('/characters/public?sort=hot')
+      .then(d => setRing((d.characters || []).filter(c => c.avatar).slice(0, 16)))
+      .catch(() => {});
+  }, []);
   const upd = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const submit = async (e) => {
@@ -79,9 +111,15 @@ export default function Auth() {
         <div className="auth-stats">
           {STATS.map(([n, l]) => <div key={l}><b>{n}</b><span>{l}</span></div>)}
         </div>
+
+        <CharacterRing chars={ring} />
       </div>
 
       <div className="auth-form-side">
+        <div className="auth-ring-mobile mobile-only">
+          <CharacterRing chars={ring} compact />
+          {ring.length > 0 && <div className="arm-cap">{ring.length}+ 位角色正在幻域等你</div>}
+        </div>
         <div className="card auth-card">
           <div className="auth-card-badge"><Sparkles size={13} /> AI 角色扮演平台</div>
           <h2>{mode === 'login' ? '登录账号' : '创建账号'}</h2>

@@ -15,6 +15,7 @@ import { Logo } from '../assets.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
+import { fmtNum } from '../util.js';
 import {
   Home, Compass, MessageCircle, Plus, LayoutGrid, X, Bell, Search,
   Sparkles, Feather, Wand2, Drama, Users, Megaphone, Trophy, Landmark,
@@ -328,8 +329,8 @@ function LauncherGrid({ user, unread, dmUnread, onClose, installEvt, onInstall }
         <button className="al-x" onClick={onClose} aria-label="关闭"><X size={22} /></button>
       </div>
       <div className="al-wallet">
-        <button onClick={() => go('/wallet')}><CoinIcon size={15} /> {user?.gold ?? 0} 金币</button>
-        <button onClick={() => go('/wallet')}><DiamondIcon size={15} /> {user?.diamond ?? 0} 钻石</button>
+        <button onClick={() => go('/wallet')}><CoinIcon size={15} /> {fmtNum(user?.gold)} 金币</button>
+        <button onClick={() => go('/wallet')}><DiamondIcon size={15} /> {fmtNum(user?.diamond)} 钻石</button>
       </div>
       <div className="al-scroll">
         {GRID.map(g => (
