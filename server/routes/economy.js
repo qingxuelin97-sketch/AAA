@@ -7,6 +7,15 @@ import { bumpDaily, cnToday } from '../daily.js';
 
 const router = Router();
 
+// VIP 档位：周卡 / 月卡（特惠推荐）/ 季卡。金币计价，越长越划算。
+// month 档保持与旧常量一致（VIP_COST_GOLD / VIP_DAYS），无 plan 参数时回退到 month，
+// 老调用（钱包页 /economy/vip 无 body）行为不变。
+export const VIP_PLANS = {
+  week:   { id: 'week',   label: '周卡', days: 7,        gold: 8000 },
+  month:  { id: 'month',  label: '月卡', days: VIP_DAYS, gold: VIP_COST_GOLD },
+  season: { id: 'season', label: '季卡', days: 90,       gold: 78000 }
+};
+
 // 兑换码：每分钟最多 5 次/IP，防爆破。
 const redeemLimiter = rateLimit({ windowMs: 60_000, max: 5, standardHeaders: true, legacyHeaders: false,
   message: { error: '兑换尝试过于频繁，请稍后再试' } });
@@ -25,7 +34,8 @@ router.get('/wallet', authRequired, (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   const txs = db.prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 50').all(req.user.id);
   res.json({ wallet: publicUser(u), transactions: txs, packages: PACKAGES,
-    rates: { gold_per_diamond: GOLD_PER_DIAMOND, vip_cost: VIP_COST_GOLD, vip_days: VIP_DAYS } });
+    rates: { gold_per_diamond: GOLD_PER_DIAMOND, vip_cost: VIP_COST_GOLD, vip_days: VIP_DAYS,
+      vip_plans: Object.values(VIP_PLANS) } });
 });
 
 router.get('/packages', (req, res) => res.json({ packages: PACKAGES }));
@@ -54,14 +64,15 @@ router.post('/exchange', authRequired, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// Buy VIP with gold
+// Buy VIP with gold. 可选 plan（week/month/season）；缺省 month（向后兼容）。
 router.post('/vip', authRequired, (req, res) => {
+  const plan = VIP_PLANS[(req.body || {}).plan] || VIP_PLANS.month;
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   try {
-    applyTx(req.user.id, { kind:'vip', gold: -VIP_COST_GOLD, memo:`购买 ${VIP_DAYS} 天 VIP` });
+    applyTx(req.user.id, { kind:'vip', gold: -plan.gold, memo:`购买 ${plan.days} 天 VIP（${plan.label}）` });
   } catch (e) { return res.status(400).json({ error: e.message }); }
   const base = isVip(u) ? new Date(u.vip_until).getTime() : Date.now();
-  const until = new Date(base + VIP_DAYS * 86400000).toISOString();
+  const until = new Date(base + plan.days * 86400000).toISOString();
   db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(until, req.user.id);
   notify(req.user.id,`VIP 已开通，有效期至 ${until.slice(0, 10)}`);
   res.json({ wallet: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });
