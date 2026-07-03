@@ -6122,3 +6122,43 @@ html[data-app="1"] .chat-main.has-bg .chat-suggest svg { color: rgba(255,255,255
 .pf-subtabs::-webkit-scrollbar { display: none; }
 .pf-subtabs button { flex: 0 0 auto; background: none; border: none; cursor: pointer; padding: 4px 0; font-size: 13.5px; font-weight: 600; color: var(--faint); white-space: nowrap; }
 .pf-subtabs button.on { color: var(--accent); font-weight: 700; }
+
+/* ============================================================
+   组件库（设计系统）· 徽章/标签 · 开关 · 列表项 · DM 气泡
+   ============================================================ */
+/* 徽章/标签 */
+.bdg { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 7px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.3px; line-height: 1.5; }
+.bdg-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.bdg-new { background: linear-gradient(120deg, #ff5b9d, #e23d7a); color: #fff; box-shadow: 0 3px 8px rgba(226,61,122,0.35); }
+.bdg-rec { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.bdg-online { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.bdg-online .bdg-dot { background: var(--ok); }
+.bdg-offline { background: var(--bg-2); color: var(--faint); }
+.bdg-offline .bdg-dot { background: var(--faint); }
+.bdg-star { background: color-mix(in srgb, var(--accent) 18%, transparent); color: #cbb6ff; border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent); }
+
+/* 开关 switch（复用于设置等；label.switch > input + i） */
+.switch { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch > i { width: 44px; height: 26px; border-radius: 999px; background: var(--border-2); transition: background 0.2s; position: relative; flex: 0 0 auto; }
+.switch > i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.22s var(--spring); }
+.switch input:checked + i { background: var(--accent); }
+.switch input:checked + i::after { transform: translateX(18px); }
+/* 单选 radio（复用钱包支付等） */
+.radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-2); flex: 0 0 auto; display: inline-block; }
+.radio.on { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 42%, transparent 46%); }
+
+/* 列表项（设计系统）：左标题 + 右箭头 */
+.ds-list-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 15px 16px; border-radius: 14px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 14.5px; font-weight: 600; text-align: left; }
+.ds-list-item:active { background: var(--bg-2); }
+.ds-list-item .ds-chev { margin-left: auto; color: var(--faint); }
+
+/* DM 气泡（设计系统）：对方灰入（左）/ 自己紫出（右）带对勾 */
+.dm-msg.theirs .dm-bubble { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-top-left-radius: 6px; }
+.dm-msg.mine .dm-bubble { background: var(--grad); color: #fff; border: none; border-top-right-radius: 6px; }
+.dm-msg.mine .dm-bubble .dm-time { color: rgba(255,255,255,0.75); }
+.dm-msg.mine .dm-bubble::after { content: '✓'; margin-left: 6px; font-size: 11px; opacity: 0.8; }
+/* 群聊：他人灰、自己紫（沿用主对话 .msg 结构）*/
+html[data-app="1"] .group-room .msg.user .bubble { background: var(--grad); color: #fff; }

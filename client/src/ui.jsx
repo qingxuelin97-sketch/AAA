@@ -127,6 +127,19 @@ export function IdentityBadges({ u, className = '' }) {
   return <div className={'idb-row ' + className}>{chips}</div>;
 }
 
+// 统一徽章/标签（设计系统）：new / rec 推荐 / online 在线 / offline 离线 / star 星夜同行。
+const BADGE = {
+  new: { cls: 'bdg-new', label: 'NEW' },
+  rec: { cls: 'bdg-rec', label: '推荐' },
+  online: { cls: 'bdg-online', label: '在线' },
+  offline: { cls: 'bdg-offline', label: '离线' },
+  star: { cls: 'bdg-star', label: '星夜同行' },
+};
+export function Badge({ kind = 'rec', children, dot = false }) {
+  const b = BADGE[kind] || BADGE.rec;
+  return <span className={'bdg ' + b.cls}>{dot && <i className="bdg-dot" />}{children || b.label}</span>;
+}
+
 export function Avatar({ src, name = '', size = 40, eager }) {
   const initial = (name || '?').trim().charAt(0).toUpperCase();
   if (src) return <img className="avatar" src={src} style={{ width: size, height: size }} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" />;
