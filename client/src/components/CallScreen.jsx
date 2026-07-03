@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { getToken } from '../api.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, detectEmotion } from '../voice.js';
 import { Avatar } from '../ui.jsx';
-import { PhoneOff, Mic, Square, Keyboard, Send, Loader2 } from 'lucide-react';
+import { PhoneOff, Mic, Square, Keyboard, Send, Loader2, Video, Volume2 } from 'lucide-react';
 
 // 幻域 · 通话模式（APP 端沉浸形态）—— 给角色「打电话」。
 // -----------------------------------------------------------------------------
@@ -14,6 +14,9 @@ const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.w
 const canRecord = typeof window !== 'undefined' && !!(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== 'undefined';
 
 export default function CallScreen({ character, onClose }) {
+  const [char, setChar] = useState(character);            // 完整角色（挂载后拉取，含背景）
+  const [mode, setMode] = useState(character?.background ? 'video' : 'voice');
+  const touchedMode = useRef(false);                      // 用户是否手动切过语音/视频
   const [convId, setConvId] = useState(null);
   const [phase, setPhase] = useState('dialing');     // dialing → live
   const [seconds, setSeconds] = useState(0);
@@ -45,6 +48,14 @@ export default function CallScreen({ character, onClose }) {
       } catch { /* 建会话失败仍展示界面 */ }
       try { const s = await (await fetch('/api/settings', { headers: H })).json(); if (alive) setVoiceCfg({ voice_protocol: s.settings?.voice_protocol, voice_name: s.settings?.voice_name }); } catch { /* */ }
       try { const a = await (await fetch('/api/asr/status', { headers: H })).json(); if (alive) setAsrReady(!!a.ready); } catch { if (alive) setAsrReady(false); }
+      // 拉完整角色（含背景），据此决定是否进入视频形态。
+      try {
+        const cd = await (await fetch('/api/characters/' + character.id, { headers: H })).json();
+        if (alive && cd.character) {
+          setChar(prev => ({ ...prev, ...cd.character }));
+          if (!touchedMode.current) setMode(cd.character.background ? 'video' : 'voice');
+        }
+      } catch { /* 拉取失败则沿用列表数据 */ }
     })();
     const t = setTimeout(() => alive && setPhase('live'), 1600);
     return () => { alive = false; clearTimeout(t); };
@@ -162,24 +173,45 @@ export default function CallScreen({ character, onClose }) {
     : '通话中';
   const micLabel = recording ? '松开发送' : listening ? '停止' : transcribing ? '识别中' : '按住说';
 
+  const bg = char?.background;
+  const videoOn = mode === 'video' && !!bg;
+  const toggleMode = () => { if (!bg) return; touchedMode.current = true; setMode(m => (m === 'video' ? 'voice' : 'video')); };
+
   return (
-    <div className="call-screen" style={{ '--call-hue': hue }}>
-      <div className="call-bg" />
+    <div className={'call-screen' + (videoOn ? ' video' : '')} style={{ '--call-hue': hue }}>
+      {videoOn
+        ? <div className="call-video">
+            {char.background_type === 'video'
+              ? <video src={bg} muted loop autoPlay playsInline />
+              : <img src={bg} alt="" />}
+          </div>
+        : <div className="call-bg" />}
       <div className="call-scrim" />
 
       <div className="call-top">
         <span className="call-state">{stateText}</span>
         <span className="call-timer">{phase === 'live' ? mmss : ''}</span>
+        <button className="call-modeswitch" onClick={toggleMode} disabled={!bg}
+          title={!bg ? '该角色没有背景，无法视频' : videoOn ? '切换到语音' : '切换到视频'}>
+          {videoOn ? <><Volume2 size={14} /> 语音</> : <><Video size={14} /> 视频</>}
+        </button>
       </div>
 
-      <div className={'call-orb' + (phase === 'dialing' ? ' dialing' : '') + (micActive ? ' listening' : '') + (thinking ? ' speaking' : '')}>
-        <span className="call-ring r1" /><span className="call-ring r2" /><span className="call-ring r3" />
-        <div className="call-avatar"><Avatar src={character?.avatar} name={character?.name} size={132} /></div>
-      </div>
+      {/* 视频形态：角色背景铺满，头像缩为顶部小窗（PiP）；语音形态：脉动光环头像 */}
+      {videoOn ? (
+        <div className={'call-pip' + (thinking ? ' speaking' : '') + (micActive ? ' listening' : '')}>
+          <Avatar src={char?.avatar} name={char?.name} size={72} />
+        </div>
+      ) : (
+        <div className={'call-orb' + (phase === 'dialing' ? ' dialing' : '') + (micActive ? ' listening' : '') + (thinking ? ' speaking' : '')}>
+          <span className="call-ring r1" /><span className="call-ring r2" /><span className="call-ring r3" />
+          <div className="call-avatar"><Avatar src={char?.avatar} name={char?.name} size={132} /></div>
+        </div>
+      )}
 
       <div className="call-id">
-        <h2>{character?.name || '角色'}</h2>
-        <p>{character?.tagline || '语音陪伴 · 沉浸通话'}</p>
+        <h2>{char?.name || '角色'}</h2>
+        <p>{char?.tagline || '语音陪伴 · 沉浸通话'}</p>
       </div>
 
       <div className="call-caption">
