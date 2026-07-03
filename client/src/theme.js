@@ -26,7 +26,8 @@ export function setThemeMode(mode) { localStorage.setItem(KEY, mode); applyTheme
 
 // 毛玻璃（玻璃拟态）外观开关 — persisted, applied via data-glass on <html>.
 const GLASS_KEY = 'huanyu_glass';
-export function getGlass() { return localStorage.getItem(GLASS_KEY) === '1'; }
+// 默认开启毛玻璃：未显式设置过时返回 true（APP 端高度玻璃拟态，掩饰粗糙感）。
+export function getGlass() { const v = localStorage.getItem(GLASS_KEY); return v === null ? true : v === '1'; }
 export function applyGlass(on = getGlass()) { document.documentElement.dataset.glass = on ? 'on' : 'off'; }
 export function setGlass(on) { localStorage.setItem(GLASS_KEY, on ? '1' : '0'); applyGlass(on); }
 
