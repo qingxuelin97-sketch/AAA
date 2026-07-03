@@ -52,6 +52,7 @@ const NovelWorkspace = lazy(() => import('./pages/NovelWorkspace.jsx'));
 const NovelReader = lazy(() => import('./pages/NovelReader.jsx'));
 const AppHome = lazy(() => import('./pages/AppHome.jsx'));
 const Messages = lazy(() => import('./pages/Messages.jsx'));
+const AppProfile = lazy(() => import('./pages/AppProfile.jsx'));
 const Vip = lazy(() => import('./pages/Vip.jsx'));
 const Insights = lazy(() => import('./pages/Insights.jsx'));
 const DiscoverFeed = lazy(() => import('./pages/DiscoverFeed.jsx'));
@@ -98,6 +99,7 @@ export default function App() {
             <Route path="/friends" element={P(<Friends />)} />
             <Route path="/admin" element={P(<Admin />)} />
             <Route path="/messages" element={P(<Messages />)} />
+            <Route path="/me" element={P(<AppProfile />)} />
             <Route path="/vip" element={P(<Vip />)} />
             <Route path="/chats" element={P(<Chat />)} />
             <Route path="/chats/:id" element={P(<Chat />)} />

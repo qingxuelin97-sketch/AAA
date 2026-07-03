@@ -1,11 +1,18 @@
 // Theme controller — light / dark / system, persisted in localStorage so it applies
 // before React mounts (no flash) and works even on the login screen.
+import { isAppMode } from './appmode.js';
+
 const KEY = 'huanyu_theme';
 const mq = () => window.matchMedia('(prefers-color-scheme: dark)');
 
 export function getThemeMode() { return localStorage.getItem(KEY) || 'system'; }
 export function resolveTheme(mode = getThemeMode()) {
-  return mode === 'system' ? (mq().matches ? 'dark' : 'light') : mode;
+  if (mode === 'system') {
+    // App 壳的原生观感默认深色（对标沉浸式内容 App）；用户在设置里显式选浅色仍然生效。
+    if (isAppMode()) return 'dark';
+    return mq().matches ? 'dark' : 'light';
+  }
+  return mode;
 }
 export function applyTheme(mode = getThemeMode()) {
   const resolved = resolveTheme(mode);

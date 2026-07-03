@@ -12,11 +12,11 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/fraunces';
 import './styles.css';
 
-initTheme();   // apply saved theme before first paint (no flash)
+initAppMode(); // resolve native/app shell → data-app first (theme defaults depend on it)
+initTheme();   // apply saved theme before first paint (no flash; app shell defaults dark)
 initAccent();  // apply saved accent palette before first paint
 initPerf();    // resolve device perf tier → data-perf, gating heavy GPU effects
 initFx();      // global click ripples + tap bursts
-initAppMode(); // resolve native/app shell → data-app (before React mounts)
 
 // Register the PWA service worker (web only; Capacitor serves from a native scheme).
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {

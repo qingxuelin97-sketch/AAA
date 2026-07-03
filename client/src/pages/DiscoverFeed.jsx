@@ -20,11 +20,24 @@ import { shareUrl } from '../util.js';
 import { tick } from '../appgestures.js';
 import {
   Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp,
-  ChevronRight, ScrollText, Maximize2, Phone, Plus, Send
+  ChevronRight, ScrollText, Maximize2, Phone, Plus, Send, Search, History, X
 } from 'lucide-react';
 
 // 开场白预览：*动作* 星号只是排版标记，流里展示时去掉更干净。
 const cleanGreeting = (t) => (t || '').replace(/\*/g, '').replace(/\n{2,}/g, '\n').trim();
+// 互动计数：过万转「1.2w」，与内容平台习惯一致。
+const fmtW = (n) => { n = n || 0; return n >= 10000 ? (n / 10000).toFixed(n >= 100000 ? 0 : 1) + 'w' : String(n); };
+// 「历史」浏览记录（与角色详情页共用同一份 recent_chars 本地存储）。
+const readRecent = () => { try { return JSON.parse(localStorage.getItem('recent_chars') || '[]'); } catch { return []; } };
+const pushRecent = (c) => {
+  try {
+    const prev = readRecent().filter(x => x.id !== c.id);
+    const item = { id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline, owner_name: c.owner_name, category: c.category, uses: c.uses };
+    localStorage.setItem('recent_chars', JSON.stringify([item, ...prev].slice(0, 12)));
+  } catch { /* */ }
+};
+
+const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
 export default function DiscoverFeed() {
   const nav = useNavigate();
@@ -44,6 +57,7 @@ export default function DiscoverFeed() {
   const [expandedId, setExpandedId] = useState(null); // 介绍卡展开态（每次只展开一张）
   const [say, setSay] = useState('');              // 自由输入内容（跟随当前卡）
   const [entering, setEntering] = useState(false); // 正在建立对话
+  const [histOpen, setHistOpen] = useState(false); // 「历史」最近看过面板
   const containerRef = useRef(null);
   const loadFlag = useRef(0);   // 防竞态
   const lastTap = useRef({ t: 0, id: null });
@@ -154,6 +168,7 @@ export default function DiscoverFeed() {
   const chat = async (c, draft) => {
     if (entering) return;
     setEntering(true);
+    pushRecent(c);
     try {
       const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } });
       nav('/chats/' + d.conversation.id, draft ? { state: { draft } } : undefined);
@@ -178,14 +193,17 @@ export default function DiscoverFeed() {
 
   return (
     <div className="feed-wrap">
-      {/* 顶部分类条 —— 悬浮于滚动流之上，划卡不再被卷走 */}
-      <div className="feed-cats">
-        <button className={'feed-cat' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>全部</button>
-        {cats.map(c => (
-          <button key={c.slug} className={'feed-cat' + (cat === c.slug ? ' on' : '')} onClick={() => setCat(c.slug)}>
-            <CategoryIcon slug={c.slug} size={13} /> {c.name}
-          </button>
-        ))}
+      {/* 顶部：分类条（悬浮于滚动流之上）+ 右侧搜索浮钮 */}
+      <div className="feed-top">
+        <div className="feed-cats">
+          <button className={'feed-cat' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>全部</button>
+          {cats.map(c => (
+            <button key={c.slug} className={'feed-cat' + (cat === c.slug ? ' on' : '')} onClick={() => setCat(c.slug)}>
+              <CategoryIcon slug={c.slug} size={13} /> {c.name}
+            </button>
+          ))}
+        </div>
+        <button className="feed-search" onClick={openCmdk} aria-label="搜索"><Search size={18} /></button>
       </div>
 
       <div className="feed-root" ref={containerRef}>
@@ -248,7 +266,7 @@ export default function DiscoverFeed() {
                   <div className="fd2-acts">
                     <button className={'fd2-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label="点赞">
                       <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
-                      <span>{(c.likes || 0) + (liked ? 1 : 0)}</span>
+                      <span>{fmtW((c.likes || 0) + (liked ? 1 : 0))}</span>
                     </button>
                     <button className={'fd2-act' + (faved ? ' on gold' : '')} onClick={() => fav(c)} aria-label="收藏">
                       <Star size={24} fill={faved ? 'currentColor' : 'none'} />
@@ -256,11 +274,15 @@ export default function DiscoverFeed() {
                     </button>
                     <button className="fd2-act" onClick={() => nav('/character/' + c.id)} aria-label="评论">
                       <MessageCircle size={24} />
-                      <span>{c.uses || 0}</span>
+                      <span>{fmtW(c.uses)}</span>
                     </button>
                     <button className="fd2-act" onClick={() => share(c)} aria-label="分享">
                       <Share2 size={24} />
                       <span>分享</span>
+                    </button>
+                    <button className="fd2-act" onClick={() => setHistOpen(true)} aria-label="历史">
+                      <History size={24} />
+                      <span>历史</span>
                     </button>
                   </div>
                 </div>
@@ -295,6 +317,34 @@ export default function DiscoverFeed() {
       {/* 加载 / 到底提示 —— 悬浮胶囊，不参与 snap 流 */}
       {loadingMore && <div className="feed-hint"><Sparkles size={14} /> 正在加载更多…</div>}
       {atEnd && !loadingMore && <div className="feed-hint"><ChevronUp size={15} /> 已经到底啦，上滑回顶</div>}
+
+      {/* 「历史」—— 最近看过的角色（本地记录），一键回访 / 续聊 */}
+      {histOpen && (
+        <div className="app-sheet-mask" onClick={() => setHistOpen(false)}>
+          <div className="app-sheet" onClick={e => e.stopPropagation()}>
+            <div className="app-sheet-grip" />
+            <h3 className="app-sheet-title"><History size={16} style={{ verticalAlign: -2, marginRight: 6 }} />最近看过</h3>
+            {readRecent().length === 0 && (
+              <div className="fd2-hist-empty">还没有浏览记录 —— 滑一滑，喜欢的角色都会记在这里</div>
+            )}
+            {readRecent().map(rc => (
+              <div key={rc.id} className="fd2-hist-row" role="button" tabIndex={0}
+                onClick={() => { setHistOpen(false); nav('/character/' + rc.id); }}
+                onKeyDown={e => e.key === 'Enter' && (setHistOpen(false), nav('/character/' + rc.id))}>
+                <Avatar src={rc.avatar} name={rc.name} size={44} />
+                <div className="fd2-hist-tx">
+                  <b>{rc.name}</b>
+                  <span>{rc.tagline || `@${rc.owner_name || '佚名'}`}</span>
+                </div>
+                <button className="fd2-hist-go" onClick={e => { e.stopPropagation(); setHistOpen(false); chat(rc); }}>
+                  <MessageCircle size={13} /> 续聊
+                </button>
+              </div>
+            ))}
+            <button className="fd2-hist-close" onClick={() => setHistOpen(false)}><X size={15} /> 关闭</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

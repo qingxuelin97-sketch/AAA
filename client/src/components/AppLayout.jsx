@@ -1,42 +1,36 @@
-// AppLayout — the dedicated *native app* shell (game-launcher flavour), used in
-// place of the web Layout whenever isAppMode() is true (Capacitor app, or the
-// `?app=1` browser preview). It is deliberately NOT the mobile-web chrome:
-//   · no browser-style top bar / hamburger drawer
-//   · a bottom tab bar with a raised center "create" FAB
-//   · a full-screen 九宫格 launcher ("更多") replacing the drawer
+// AppLayout — the dedicated *native app* shell, used in place of the web Layout
+// whenever isAppMode() is true (Capacitor app, or the `?app=1` browser preview).
+// 对标一线内容 App 的形态：
+//   · 无持久顶栏 —— 每个一级页自带头部（今日=问候区 / 发现=分类浮层 /
+//     消息=双 tab / 我的=个人卡），内容直通状态栏下沿
+//   · 扁平全宽底栏：今日 / 发现 / [+AI] / 消息 / 我的，中央为描边「+AI」创建钮
+//   · 深色优先（theme.js 在 app 壳把 system 解析为 dark）
 //   · safe-area aware, phone-framed on wide screens for preview
 // Content pages are reused as-is; only the chrome differs.
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth, api } from '../api.jsx';
+import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
-import { Avatar, CoinIcon, DiamondIcon, CountUp } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
-import { fmtNum } from '../util.js';
 import {
-  Home, Compass, MessageCircle, Plus, X, Bell, Search,
-  Sparkles, Feather, Wand2, Drama, Users, Megaphone, Trophy, Landmark,
-  ScrollText, PartyPopper, Dices, Library, BookOpen, TrendingUp, Medal,
-  Heart, Wallet, Settings, Shield, Crown, LogOut, Download, UserRound,
-  Tags as TagsIcon, Send, RefreshCw, WifiOff, Orbit
+  Home, Compass, MessageCircle, Plus, UserRound,
+  Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff
 } from 'lucide-react';
 
 // Top-level tabs that horizontal swipe cycles through.
-const SWIPE_TABS = ['/today', '/', '/messages'];
+const SWIPE_TABS = ['/today', '/', '/messages', '/me'];
 
-const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
-
-// Bottom tab bar — 4 destinations split around the center FAB.
+// Bottom tab bar — 4 destinations split around the center create button.
 const TABS_L = [
   { to: '/today', ic: Home, label: '今日', end: true },
   { to: '/', ic: Compass, label: '发现', end: true }
 ];
 const TABS_R = [
   { to: '/messages', ic: MessageCircle, label: '消息', badge: 'msg' },
-  { kind: 'grid', ic: UserRound, label: '我的' }
+  { to: '/me', ic: UserRound, label: '我的' }
 ];
 
 // FAB create-sheet actions.
@@ -48,48 +42,11 @@ const CREATE = [
   { to: '/publish', ic: Send, label: '发布作品', hint: '角色 / 剧本 / 动态' }
 ];
 
-// 九宫格 launcher — every section, grouped (replaces the web hamburger drawer).
-const GRID = [
-  { title: '探索', items: [
-    { to: '/', ic: Compass, label: '发现', end: true },
-    { to: '/events', ic: PartyPopper, label: '活动' },
-    { to: '/gacha', ic: Dices, label: '扭蛋机' },
-    { to: '/scripts', ic: ScrollText, label: '剧本' },
-    { to: '/community', ic: Users, label: '社区' },
-    { to: '/leaderboard', ic: Trophy, label: '排行榜' },
-    { to: '/parliament', ic: Landmark, label: '议会' },
-    { to: '/announcements', ic: Megaphone, label: '公告' },
-    { to: '/tags', ic: TagsIcon, label: '标签' }
-  ] },
-  { title: '互动', items: [
-    { to: '/messages', ic: MessageCircle, label: '消息', badge: 'msg' },
-    { to: '/atelier', ic: Feather, label: '小说' },
-    { to: '/draw', ic: Wand2, label: 'AI 绘图' },
-    { to: '/friends', ic: UserRound, label: '好友', badge: 'dm' },
-    { to: '/groups', ic: Users, label: '群聊' },
-    { to: '/theater', ic: Drama, label: '剧场' }
-  ] },
-  { title: '我的', items: [
-    { to: '/vip', ic: Crown, label: '会员中心' },
-    { to: '/library', ic: Library, label: '我的角色' },
-    { to: '/worldbooks', ic: BookOpen, label: '世界书' },
-    { to: '/studio', ic: TrendingUp, label: '创作中心' },
-    { to: '/insights', ic: Orbit, label: '星轨' },
-    { to: '/achievements', ic: Medal, label: '成就' },
-    { to: '/favorites', ic: Heart, label: '收藏' },
-    { to: '/wallet', ic: Wallet, label: '钱包' },
-    { to: '/notifications', ic: Bell, label: '通知', badge: 'noti' },
-    { to: '/settings', ic: Settings, label: '设置' }
-  ] }
-];
-
 export default function AppLayout({ children }) {
-  const { user } = useAuth();
   const loc = useLocation();
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
-  const [sheet, setSheet] = useState(null); // 'create' | 'grid' | null
-  const [installEvt, setInstallEvt] = useState(null);
+  const [sheet, setSheet] = useState(false); // create sheet open?
   const [pull, setPull] = useState(0);        // pull-to-refresh distance (px)
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // bump → remount route → refetch
@@ -129,8 +86,9 @@ export default function AppLayout({ children }) {
     return () => window.removeEventListener('resize', place);
   }, [loc.pathname, sheet]);
 
+  // PWA 安装事件：存到全局，「我的」页里提供「安装到桌面」入口。
   useEffect(() => {
-    const h = (e) => { e.preventDefault(); setInstallEvt(e); };
+    const h = (e) => { e.preventDefault(); window.__hyInstallEvt = e; try { window.dispatchEvent(new Event('huanyu-install-ready')); } catch { /* */ } };
     window.addEventListener('beforeinstallprompt', h);
     const on = () => setOffline(false), off = () => setOffline(true);
     window.addEventListener('online', on);
@@ -142,7 +100,7 @@ export default function AppLayout({ children }) {
     };
   }, []);
 
-  // Cold start lands on the 今日 launcher home (not the discover grid). Only the
+  // Cold start lands on the 今日 launcher home (not the discover feed). Only the
   // very first navigation of the session is redirected, so the 发现 tab (also '/')
   // keeps working afterwards.
   const nav = useNavigate();
@@ -153,8 +111,8 @@ export default function AppLayout({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Close any open sheet on navigation.
-  useEffect(() => { setSheet(null); }, [loc.pathname]);
+  // Close the create sheet on navigation.
+  useEffect(() => { setSheet(false); }, [loc.pathname]);
 
   // Notification / DM counts + online heartbeat。
   // SSE 已秒级推送 dm/notification 事件（见下方 useRealtimeEvent），轮询只作兜底：
@@ -211,7 +169,6 @@ export default function AppLayout({ children }) {
 
   return (
     <div className="app-root">
-      <AppHeader user={user} unread={unread} />
       {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
       <div className={'app-ptr' + (refreshing ? ' spin' : '')} style={{ height: ptr, opacity: ptr ? 1 : 0 }} aria-hidden="true">
         <RefreshCw size={20} style={{ transform: refreshing ? 'none' : `rotate(${ptr * 3}deg)` }} />
@@ -224,23 +181,14 @@ export default function AppLayout({ children }) {
       <nav className="app-tabbar" ref={tabbarRef}>
         <span className="dock-ink" ref={inkRef} aria-hidden="true" />
         {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-        <button className={'app-fab' + (sheet === 'create' ? ' open' : '')} onClick={() => setSheet(s => s === 'create' ? null : 'create')} aria-label={sheet === 'create' ? '关闭' : '创建'}>
-          <Plus size={24} />
+        <button className={'app-fab' + (sheet ? ' open' : '')} onClick={() => setSheet(s => !s)} aria-label={sheet ? '关闭' : '创建'}>
+          <Plus size={20} strokeWidth={2.8} />
           <i className="app-fab-ai" aria-hidden="true">AI</i>
         </button>
-        {TABS_R.map(t => t.kind === 'grid'
-          ? <button key="grid" className={'app-tab' + (sheet === 'grid' ? ' active' : '')} onClick={() => setSheet(s => s === 'grid' ? null : 'grid')}>
-              <t.ic size={22} /><span>{t.label}</span>
-            </button>
-          : <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+        {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
       </nav>
 
-      {sheet === 'create' && <CreateSheet onClose={() => setSheet(null)} />}
-      {sheet === 'grid' && (
-        <LauncherGrid user={user} unread={unread} dmUnread={dmUnread}
-          installEvt={installEvt} onInstall={() => { installEvt?.prompt(); installEvt?.userChoice?.finally(() => setInstallEvt(null)); }}
-          onClose={() => setSheet(null)} />
-      )}
+      {sheet && <CreateSheet onClose={() => setSheet(false)} />}
 
       <CommandPalette />
       <WelcomePopup />
@@ -266,32 +214,13 @@ function Tab({ t, unread, dmUnread, curPath }) {
   return (
     <NavLink to={t.to} end={t.end} viewTransition onClick={onClick} className={({ isActive }) => 'app-tab' + (isActive ? ' active' : '')}>
       <span className="app-tab-ic">
-        <t.ic size={22} />
+        <t.ic size={23} />
         {t.badge === 'noti' && unread > 0 && <i className="app-dot" />}
         {t.badge === 'dm' && dmUnread > 0 && <i className="app-dot" />}
         {t.badge === 'msg' && unread + dmUnread > 0 && <i className="app-dot" />}
       </span>
       <span>{t.label}</span>
     </NavLink>
-  );
-}
-
-function AppHeader({ user, unread }) {
-  const nav = useNavigate();
-  return (
-    <header className="app-header">
-      <button className="ahd-brand" onClick={() => nav('/today')} aria-label="今日">
-        <b>幻域</b>
-      </button>
-      <div className="ahd-actions">
-        <button onClick={openCmdk} aria-label="搜索"><Search size={20} /></button>
-        <button onClick={() => nav('/notifications')} aria-label="通知" className="ahd-bell">
-          <Bell size={20} />
-          {unread > 0 && <span className="ahd-nb">{unread > 99 ? '99+' : unread}</span>}
-        </button>
-        <button className="ahd-coin" onClick={() => nav('/wallet')}><CoinIcon size={14} /> <CountUp value={user?.gold ?? 0} dur={700} /></button>
-      </div>
-    </header>
   );
 }
 
@@ -309,63 +238,6 @@ function CreateSheet({ onClose }) {
             <span className="ac-tx"><b>{c.label}</b><small>{c.hint}</small></span>
           </button>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function LauncherGrid({ user, unread, dmUnread, onClose, installEvt, onInstall }) {
-  const { logout } = useAuth();
-  const nav = useNavigate();
-  const go = (to) => { nav(to, { viewTransition: true }); onClose(); };
-  return (
-    <div className="app-launcher">
-      <div className="app-launcher-top">
-        <button className="al-user" onClick={() => go('/profile')}>
-          <Avatar src={user?.avatar} name={user?.display_name} size={48} />
-          <div className="al-user-tx">
-            <b>{user?.display_name}</b>
-            <span>@{user?.username}</span>
-          </div>
-          {user?.svip ? <span className="ah-tier svip">SVIP</span> : user?.vip ? <span className="ah-tier vip"><Crown size={12} /> VIP</span> : null}
-        </button>
-        <button className="al-x" onClick={onClose} aria-label="关闭"><X size={22} /></button>
-      </div>
-      <div className="al-wallet">
-        <button onClick={() => go('/wallet')}><CoinIcon size={15} /> {fmtNum(user?.gold)} 金币</button>
-        <button onClick={() => go('/wallet')}><DiamondIcon size={15} /> {fmtNum(user?.diamond)} 钻石</button>
-      </div>
-      <div className="al-scroll">
-        {GRID.map(g => (
-          <section key={g.title} className="al-group">
-            <h4>{g.title}</h4>
-            <div className="al-grid">
-              {g.items.map((n, i) => (
-                <button key={n.to} className="al-cell" style={{ '--i': i }} onClick={() => go(n.to)}>
-                  <span className="al-cell-ic">
-                    <n.ic size={22} />
-                    {n.badge === 'noti' && unread > 0 && <i className="app-dot" />}
-                    {n.badge === 'dm' && dmUnread > 0 && <i className="app-dot" />}
-                    {n.badge === 'msg' && unread + dmUnread > 0 && <i className="app-dot" />}
-                  </span>
-                  <span>{n.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        ))}
-        {user?.is_gm && (
-          <section className="al-group">
-            <h4>管理</h4>
-            <div className="al-grid">
-              <button className="al-cell" onClick={() => go('/admin')}><span className="al-cell-ic"><Shield size={22} /></span><span>管理后台</span></button>
-            </div>
-          </section>
-        )}
-        <div className="al-foot">
-          {installEvt && <button className="al-foot-btn" onClick={() => { onInstall(); onClose(); }}><Download size={17} /> 安装到桌面</button>}
-          <button className="al-foot-btn danger" onClick={() => { logout(); onClose(); }}><LogOut size={17} /> 退出登录</button>
-        </div>
       </div>
     </div>
   );

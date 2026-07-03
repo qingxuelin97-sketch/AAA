@@ -10,6 +10,7 @@ import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
+import { Logo } from '../assets.jsx';
 import {
   Bell, ChevronRight, Heart, MessageCircle, Search, UserRound, Users, X, Flame
 } from 'lucide-react';
@@ -53,8 +54,9 @@ export default function Messages() {
 
   return (
     <div className="msgs">
-      {/* 顶部：双分段 + 搜索 */}
+      {/* 顶部：品牌 · 双分段 · 搜索（对齐一级页自带头部的壳层形态） */}
       <div className="msgs-head">
+        <span className="msgs-logo" aria-hidden="true"><Logo size={30} /></span>
         <div className="msgs-tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'liked'} className={tab === 'liked' ? 'on' : ''} onClick={() => setTab('liked')}>赞过</button>
           <button role="tab" aria-selected={tab === 'chatted'} className={tab === 'chatted' ? 'on' : ''} onClick={() => setTab('chatted')}>聊过</button>
