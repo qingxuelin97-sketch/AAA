@@ -5971,3 +5971,52 @@ html[data-app="1"][data-theme="dark"] body { background: #0e0f14; background-ima
   radial-gradient(900px 520px at 88% -8%, rgba(123, 92, 255, 0.08), transparent 60%),
   radial-gradient(760px 480px at -6% 108%, rgba(255, 91, 157, 0.05), transparent 55%); }
 html[data-app="1"][data-theme="dark"], html[data-app="1"][data-theme="dark"] body { background-color: #0e0f14; }
+
+/* ---- 「我的」钻石卡（按设计系统）---- */
+.pf-diamond { margin-top: 14px; padding: 15px 16px; border-radius: 18px; background: var(--panel); border: 1px solid var(--border); }
+.pf-diamond-head { display: flex; align-items: center; justify-content: space-between; }
+.pf-diamond-l { display: inline-flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 700; }
+.pf-diamond-n { display: inline-flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 800; }
+.pf-diamond-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.pf-diamond-acts { display: flex; gap: 10px; margin-top: 14px; }
+.pf-diamond-acts button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 3px; padding: 12px;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--bg-2); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; }
+.pf-diamond-acts button svg { color: var(--faint); }
+.pf-diamond-acts button:active { border-color: var(--accent); }
+
+/* ---- 钱包（app 壳）· 按设计系统：钻石/星币双余额卡 + 充值网格 + 支付方式 ---- */
+.wal-bals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wal-bal { position: relative; overflow: hidden; padding: 16px 16px 18px; border-radius: 18px; color: #fff; }
+.wal-bal.dia { background: linear-gradient(135deg, #6f57d6, #4a37a0); box-shadow: 0 10px 26px rgba(80, 58, 175, 0.4); }
+.wal-bal.gold { background: linear-gradient(135deg, #caa24a, #8a6a24); box-shadow: 0 10px 26px rgba(150, 110, 30, 0.36); }
+.wal-bal-t { display: block; font-size: 12.5px; font-weight: 600; opacity: 0.86; }
+.wal-bal-n { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.wal-bal-n b { font-size: 28px; font-weight: 900; }
+.wal-sub { display: flex; gap: 10px; margin-top: 12px; }
+.wal-checkin { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border-radius: 14px;
+  border: none; cursor: pointer; background: var(--grad); color: #fff; font-size: 13.5px; font-weight: 700; }
+.wal-checkin.done { background: var(--panel); color: var(--muted); border: 1px solid var(--border); }
+.wal-checkin:disabled { opacity: 0.85; }
+.wal-member { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; padding: 12px 16px; border-radius: 14px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text); font-size: 13px; font-weight: 700; }
+.wal-member.vip, .wal-member.svip { border-color: transparent; color: #4a3410;
+  background: linear-gradient(120deg, #ffdf8e, #e0973a); }
+/* app 充值网格：3 列，钻石数为主 */
+html[data-app="1"] .recharge-wrap { margin-top: 12px; }
+html[data-app="1"] .pkg-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+html[data-app="1"] .pkg { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px 6px 12px; gap: 4px; }
+html[data-app="1"] .pkg .icon-chip { display: none; }
+html[data-app="1"] .pkg .d { font-size: 20px; font-weight: 900; color: var(--text); }
+html[data-app="1"] .pkg .d::after { content: ' 钻'; font-size: 12px; font-weight: 700; color: var(--muted); }
+html[data-app="1"] .pkg .b { font-size: 10.5px; color: var(--accent); }
+html[data-app="1"] .pkg .pkg-pay { font-size: 14px; font-weight: 800; color: var(--gold); }
+/* 支付方式 */
+.wal-pay { margin-top: 22px; padding: 6px 4px; }
+.wal-pay-t { font-size: 13px; font-weight: 700; color: var(--muted); margin: 0 4px 10px; }
+.wal-pay-row { display: flex; align-items: center; gap: 11px; padding: 13px 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--border); margin-bottom: 10px; }
+.wal-pay-ic { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: #fff; }
+.wal-pay-ic.wx { background: #22ac38; }
+.wal-pay-ic.zfb { background: #1477fe; }
+.wal-pay-nm { flex: 1; font-size: 14px; font-weight: 600; }
+.wal-pay-radio { flex: 0 0 auto; width: 19px; height: 19px; border-radius: 50%; border: 2px solid var(--border-2); }
+.wal-pay-radio.on { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 42%, transparent 46%); }

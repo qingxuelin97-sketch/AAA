@@ -177,15 +177,15 @@ export default function AppProfile() {
       {/* 横幅轮播：我的小世界 / 开通会员（含小圆点）*/}
       <ProfileBanners user={user} nav={nav} />
 
-      {/* 资产卡 */}
-      <div className="pf-assets">
-        <div className="pf-asset-head">
-          <span className="pf-asset-bal"><CoinIcon size={19} /> <b>{fmtNum(user?.gold)}</b> 金币</span>
-          <span className="pf-asset-bal"><DiamondIcon size={19} /> <b>{fmtNum(user?.diamond)}</b> 钻石</span>
+      {/* 钻石卡（按设计系统）*/}
+      <div className="pf-diamond">
+        <div className="pf-diamond-head">
+          <span className="pf-diamond-l"><DiamondIcon size={22} /> 钻石</span>
+          <span className="pf-diamond-n"><i className="pf-diamond-dot" />{fmtNum(user?.diamond)}</span>
         </div>
-        <div className="pf-asset-acts">
-          <button onClick={() => nav('/wallet')}>充值 / 兑换 <ChevronRight size={14} /></button>
-          <button onClick={() => nav('/wallet')}><Gift size={14} /> 签到领币 <ChevronRight size={14} /></button>
+        <div className="pf-diamond-acts">
+          <button onClick={() => nav('/wallet')}>购买钻石 <ChevronRight size={15} /></button>
+          <button onClick={() => nav('/events')}>看广告免费钻石 <ChevronRight size={15} /></button>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday } from '../util.js';
+import { isAppMode } from '../appmode.js';
 import { Crown, CalendarCheck, Gift, ArrowRight, Check, Sparkles, Wallet as WalletIcon, Trophy } from 'lucide-react';
 
 export default function Wallet() {
@@ -41,6 +42,7 @@ export default function Wallet() {
   const exN = parseInt(exDiamond, 10) || 0;
   const signed = wallet.last_checkin === cnToday(); // 北京时间口径，与服务端一致
   const fmt = (n) => (n || 0).toLocaleString('en-US');
+  const app = isAppMode();
 
   return (
     <>
@@ -53,7 +55,29 @@ export default function Wallet() {
             <ArrowRight size={18} className="muted" />
           </div>
         )}
-        {/* balance hero */}
+        {/* balance hero —— app 壳按设计系统用「钻石余额/星币余额」双卡；web 保留原三栏 */}
+        {app ? (
+          <>
+            <div className="wal-bals">
+              <div className="wal-bal dia">
+                <span className="wal-bal-t">钻石余额</span>
+                <span className="wal-bal-n"><DiamondIcon size={24} /> <b><CountUp value={wallet.diamond} /></b></span>
+              </div>
+              <div className="wal-bal gold">
+                <span className="wal-bal-t">星币余额</span>
+                <span className="wal-bal-n"><CoinIcon size={24} /> <b><CountUp value={wallet.gold} /></b></span>
+              </div>
+            </div>
+            <div className="wal-sub">
+              <button className={'wal-checkin' + (signed ? ' done' : '')} disabled={signed || busy === 'checkin'} onClick={checkin}>
+                <CalendarCheck size={15} /> {signed ? '今日已签到' : '每日签到'}{wallet.checkin_streak ? ` · 连${wallet.checkin_streak}天` : ''}
+              </button>
+              <button className={'wal-member' + (wallet.svip ? ' svip' : wallet.vip ? ' vip' : '')} onClick={() => nav('/vip')}>
+                <Crown size={14} /> {wallet.svip ? 'SVIP 尊享' : wallet.vip ? 'VIP 会员' : '开通会员'}
+              </button>
+            </div>
+          </>
+        ) : (
         <div className="wallet-hero">
           <div className="col gold">
             <span className="asset-chip gold"><CoinIcon size={46} /></span>
@@ -78,6 +102,7 @@ export default function Wallet() {
             <span>{wallet.checkin_streak ? `连续 ${wallet.checkin_streak} 天` : '领金币'}</span>
           </button>
         </div>
+        )}
 
         {/* recharge (disabled in this build) */}
         <div className="section-title" style={{ marginTop: 30 }}>
@@ -98,6 +123,23 @@ export default function Wallet() {
             <Sparkles size={20} /><span>测试版本，暂不提供充值服务</span>
           </div>
         </div>
+
+        {/* 支付方式（按设计系统；充值未开启时为展示态）*/}
+        {app && (
+          <div className="wal-pay">
+            <div className="wal-pay-t">支付方式</div>
+            <div className="wal-pay-row">
+              <span className="wal-pay-ic wx"><Check size={13} strokeWidth={3} /></span>
+              <span className="wal-pay-nm">微信支付</span>
+              <i className="wal-pay-radio on" aria-hidden="true" />
+            </div>
+            <div className="wal-pay-row">
+              <span className="wal-pay-ic zfb"><Check size={13} strokeWidth={3} /></span>
+              <span className="wal-pay-nm">支付宝支付</span>
+              <i className="wal-pay-radio" aria-hidden="true" />
+            </div>
+          </div>
+        )}
 
         {/* exchange + vip */}
         <div className="editor-grid" style={{ marginTop: 26 }}>
