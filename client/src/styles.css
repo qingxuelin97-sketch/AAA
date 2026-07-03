@@ -3446,11 +3446,43 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 .auth-agree input { margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
 .auth-agree button, .auth-link { background: none; border: none; padding: 0; color: var(--accent-2); font-weight: 600; cursor: pointer; font-size: inherit; }
 .auth-agree button:hover, .auth-link:hover { text-decoration: underline; }
-.legal-intro { font-size: 13px; color: var(--muted); line-height: 1.7; margin: 0 0 6px; }
-.legal-body { max-height: 52vh; overflow-y: auto; padding-right: 6px; margin: 0 -2px; }
-.legal-body section { margin-bottom: 12px; }
-.legal-body h4 { margin: 0 0 4px; font-size: 14px; color: var(--text); }
-.legal-body p { margin: 0; font-size: 12.8px; line-height: 1.75; color: var(--muted); }
+.legal-title { margin: 0 0 4px; font-size: 19px; letter-spacing: -0.01em; }
+.legal-intro { font-size: 13px; color: var(--muted); line-height: 1.75; margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--panel-2, rgba(0,0,0,0.02)); border: 1px solid var(--border); }
+.legal-body { max-height: 56vh; overflow-y: auto; padding-right: 6px; margin: 0 -2px; scroll-behavior: smooth; }
+.legal-body section { margin-bottom: 14px; padding: 0 2px; }
+.legal-body section + section { border-top: 1px solid var(--border); padding-top: 14px; }
+.legal-body h4 { margin: 0 0 6px; font-size: 14.5px; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 700; }
+.legal-body p { margin: 0; font-size: 13px; line-height: 1.8; color: var(--muted); }
+
+/* 重点条款徽标 */
+.legal-key-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; color: #b91c1c; background: rgba(220,38,38,0.10); border: 1px solid rgba(220,38,38,0.22); white-space: nowrap; }
+[data-theme="dark"] .legal-key-badge { color: #fca5a5; background: rgba(248,113,113,0.14); border-color: rgba(248,113,113,0.30); }
+
+/* 可折叠目录 */
+.legal-toc { margin: 0 0 12px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel-2, rgba(0,0,0,0.02)); }
+.legal-toc-toggle { width: 100%; display: flex; align-items: center; gap: 7px; padding: 9px 12px; background: none; border: none;
+  color: var(--text); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.legal-toc-toggle:hover { background: rgba(0,0,0,0.03); }
+[data-theme="dark"] .legal-toc-toggle:hover { background: rgba(255,255,255,0.04); }
+.legal-toc-chev { margin-left: auto; transition: transform 0.2s; color: var(--muted); }
+.legal-toc-chev.open { transform: rotate(180deg); }
+.legal-toc-list { display: flex; flex-direction: column; gap: 1px; padding: 4px 6px 8px; max-height: 200px; overflow-y: auto; }
+.legal-toc-item { text-align: left; background: none; border: none; padding: 5px 8px; border-radius: 6px;
+  color: var(--muted); font-size: 12px; line-height: 1.5; cursor: pointer; transition: 0.15s; }
+.legal-toc-item:hover { background: var(--accent-soft, rgba(234,88,12,0.08)); color: var(--accent-2); }
+
+/* 正文中回到顶部链接 */
+.legal-to-top-end { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 16px auto 4px;
+  padding: 7px 16px; border-radius: 999px; border: 1px dashed var(--border-2); background: none;
+  color: var(--muted); font-size: 12px; cursor: pointer; transition: 0.15s; }
+.legal-to-top-end:hover { color: var(--accent-2); border-color: var(--accent); }
+
+/* 浮动回到顶部按钮（滚动时出现） */
+.legal-fab-top { position: absolute; right: 14px; bottom: 64px; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; border: 1px solid var(--border-2); background: var(--panel);
+  color: var(--text); box-shadow: var(--shadow-lg); cursor: pointer; z-index: 5; animation: fade 0.2s ease; transition: 0.15s; }
+.legal-fab-top:hover { color: var(--accent-2); border-color: var(--accent); transform: translateY(-2px); }
 
 /* ============================================================
    数据看板 / 图表 + 创作中心分析 + 收益分成 + 成就殿堂升级
@@ -3994,6 +4026,13 @@ html[data-page-hidden] *, html[data-page-hidden] *::before, html[data-page-hidde
 @media (max-width: 640px) {
   .pubpage-nav { display: none; }
   .help-groups, .feat-grid { grid-template-columns: 1fr; }
+  /* 法律弹窗：移动端正文更高、目录更紧凑、按钮全宽排列 */
+  .legal-body { max-height: 64vh; }
+  .legal-intro { font-size: 12.5px; padding: 8px 10px; }
+  .legal-body h4 { font-size: 13.5px; }
+  .legal-body p { font-size: 12.5px; line-height: 1.75; }
+  .legal-toc-list { max-height: 160px; }
+  .legal-switch .btn { flex: 1 1 100%; }
 }
 
 /* ===================================================================== */
