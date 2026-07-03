@@ -6,13 +6,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
+import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday, fmtNum } from '../util.js';
 import { CoverArt } from '../art.jsx';
 import {
   Check, Flame, MessagesSquare, ChevronRight, Sparkles, Wand2, Feather,
-  Drama, PartyPopper, Dices, Gift, Crown, Star, Compass
+  Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell
 } from 'lucide-react';
+
+const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
 function greeting() {
   const h = new Date().getHours();
@@ -55,6 +58,10 @@ export default function AppHome() {
   const [checked, setChecked] = useState(() => !!user?.last_checkin && user.last_checkin === cnToday());
   const [streak, setStreak] = useState(user?.checkin_streak || 0);
   const [busy, setBusy] = useState(false);
+  // 顶栏已随 app 壳移除，通知铃移到页面自己的顶部行；SSE 秒级刷角标。
+  const [unread, setUnread] = useState(0);
+  useEffect(() => { api('/social/notifications').then(d => setUnread(d.unread || 0)).catch(() => {}); }, []);
+  useRealtimeEvent('notification', () => setUnread(u => u + 1));
 
   useEffect(() => {
     api('/chat/conversations').then(d => setResume((d.conversations || []).slice(0, 10))).catch(() => setResume([]));
@@ -96,6 +103,18 @@ export default function AppHome() {
 
   return (
     <div className="apphome">
+      {/* 页首行：品牌 × 搜索 / 通知（壳层无持久顶栏，一级页自带头部） */}
+      <div className="aht">
+        <b className="aht-brand">幻域</b>
+        <div className="aht-acts">
+          <button onClick={openCmdk} aria-label="搜索"><Search size={20} /></button>
+          <button onClick={() => nav('/notifications')} aria-label="通知" className="aht-bell">
+            <Bell size={20} />
+            {unread > 0 && <span className="aht-nb">{unread > 99 ? '99+' : unread}</span>}
+          </button>
+        </div>
+      </div>
+
       {/* greeting band — 天色渐变问候卡 */}
       <header className={'ah-hero ' + skyClass()}>
         <span className="ah-celestial" aria-hidden="true" />

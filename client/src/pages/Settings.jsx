@@ -440,7 +440,7 @@ export default function Settings() {
                   </button>
                 ))}
               </div>
-              <div className="hint">即时生效并记忆在本机；「跟随系统」会随设备深/浅色自动切换。</div>
+              <div className="hint">即时生效并记忆在本机；「跟随系统」随设备深/浅色自动切换（App 内默认深色沉浸观感）。</div>
             </div>
             <div className="field">
               <label>主题色</label>
