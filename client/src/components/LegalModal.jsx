@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Modal } from '../ui.jsx';
 import { LEGAL, LEGAL_LINKS } from '../legal.js';
-import { X, List, ChevronUp, AlertTriangle } from 'lucide-react';
+import { X, List, ChevronUp, Flag } from 'lucide-react';
 
 // Shared legal document modal — renders any of 服务条款 / 隐私政策 / 版权声明 / 免责声明.
 // `docKey` is one of the LEGAL keys; siblings let the reader jump between docs.
@@ -71,7 +71,7 @@ export function LegalModal({ docKey, onClose, onOpen }) {
             <section key={i} data-idx={i}>
               <h4>
                 {cleanH}
-                {m && <span className="legal-key-badge"><AlertTriangle size={11} /> {m[1]}</span>}
+                {m && <span className="legal-key-badge"><Flag size={11} /> {m[1]}</span>}
               </h4>
               <p>{s.p}</p>
             </section>
