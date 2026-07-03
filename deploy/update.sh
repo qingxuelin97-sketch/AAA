@@ -30,9 +30,12 @@ V=$(node -p "require('rolldown/package.json').version" 2>/dev/null || echo "")
 [ -n "$V" ] && npm install --no-save "@rolldown/binding-linux-x64-gnu@$V" --registry=https://registry.npmjs.org || true
 
 # Node 升级后 better-sqlite3 的 .node 二进制 ABI 会失配（NODE_MODULE_VERSION 变），
-# 而 npm install 看到版本号不变就跳过，不会重编译。必须显式 rebuild 对齐当前 Node，
-# 否则 server/db.js 第 8 行 ERR_DLOPEN_FAILED，进程秒崩、端口不监听 → 拒绝连接。
-npm rebuild better-sqlite3
+# 而 npm install 看到版本号不变就跳过、不会重走 install 脚本；npm rebuild 也只跑
+# rebuild 脚本、不触发 prebuild-install，照样没有 .node 文件。所以必须删掉包重装，
+# 强制重新走 install 脚本下载/编译对齐当前 Node 的二进制，否则 server/db.js 第 8 行
+# ERR_DLOPEN_FAILED / 找不到 .node，进程秒崩、端口不监听 → 拒绝连接。
+rm -rf node_modules/better-sqlite3
+npm install better-sqlite3 --registry=https://registry.npmjs.org
 
 echo "==> 构建前端"
 NODE_OPTIONS=--max-old-space-size=2048 npm run build
