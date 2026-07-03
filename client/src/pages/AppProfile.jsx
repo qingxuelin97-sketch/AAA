@@ -2,7 +2,7 @@
 // 结构采用个人主页通用范式（资料头 → 统计 → 会员横幅 → 资产卡 → 快捷功能条 →
 // 内容 Tab → 全部功能），全部为幻域自有品牌/文案/lucide 图标的原创实现。
 // 「全部功能」宫格保底承接原 launcher 的每一个入口，确保功能不丢。
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon, IdentityBadges } from '../ui.jsx';
@@ -62,6 +62,37 @@ const GRID = [
     { to: '/settings', ic: Settings, label: '设置' }
   ] }
 ];
+
+// 横幅轮播：我的小世界（星空紫）/ 开通会员（促销紫）—— 横向 snap + 小圆点。
+function ProfileBanners({ user, nav }) {
+  const [idx, setIdx] = useState(0);
+  const ref = useRef(null);
+  const onScroll = () => { const el = ref.current; if (el) setIdx(Math.round(el.scrollLeft / el.clientWidth)); };
+  const isMember = user?.vip || user?.svip;
+  return (
+    <div className="pf-carousel">
+      <div className="pf-carousel-track" ref={ref} onScroll={onScroll}>
+        <button className="pf-banner world" onClick={() => nav('/studio')}>
+          <span className="pf-banner-sky" aria-hidden="true" />
+          <span className="pf-banner-moon" aria-hidden="true" />
+          <div className="pf-banner-tx"><b>我的小世界</b><span>你的天地，你的故事</span></div>
+          <span className="pf-banner-door" aria-hidden="true"><Sparkles size={22} /></span>
+        </button>
+        <button className="pf-banner vip" onClick={() => nav('/vip')}>
+          <span className="pf-vip-glow" aria-hidden="true" />
+          <div className="pf-banner-tx">
+            <b>{isMember ? (user?.svip ? 'SVIP 尊享会员' : 'VIP 会员') : '开通幻域会员'}</b>
+            {isMember
+              ? <span>{user?.svip ? '平台 AI 5 折 · 至高权益' : `有效期至 ${String(user?.vip_until || '').slice(0, 10)}`}</span>
+              : <div className="pf-vip-perks"><span>无限沉浸</span><span>记忆增强</span><span>语音朗读</span><span>免打扰</span></div>}
+          </div>
+          <span className="pf-banner-go">{isMember ? '查看' : '立即开通'}</span>
+        </button>
+      </div>
+      <div className="pf-dots">{[0, 1].map(i => <i key={i} className={i === idx ? 'on' : ''} />)}</div>
+    </div>
+  );
+}
 
 export default function AppProfile() {
   const { user, logout } = useAuth();
@@ -143,17 +174,8 @@ export default function AppProfile() {
         ))}
       </div>
 
-      {/* 会员横幅（紫调促销卡 + 权益词条）*/}
-      <button className={'pf-vip' + (user?.svip ? ' svip' : user?.vip ? ' on' : '')} onClick={() => nav('/vip')}>
-        <span className="pf-vip-glow" aria-hidden="true" />
-        <div className="pf-vip-l">
-          <b>{user?.svip ? 'SVIP 尊享会员' : user?.vip ? 'VIP 会员' : '开通幻域会员'}</b>
-          {user?.vip || user?.svip
-            ? <span className="pf-vip-exp">{user?.svip ? '平台 AI 5 折 · 至高权益' : `有效期至 ${String(user?.vip_until || '').slice(0, 10)}`}</span>
-            : <div className="pf-vip-perks"><span>无限沉浸</span><span>记忆增强</span><span>语音朗读</span><span>免打扰</span></div>}
-        </div>
-        <span className="pf-vip-go">{user?.vip || user?.svip ? '查看' : '立即开通'}</span>
-      </button>
+      {/* 横幅轮播：我的小世界 / 开通会员（含小圆点）*/}
+      <ProfileBanners user={user} nav={nav} />
 
       {/* 资产卡 */}
       <div className="pf-assets">
@@ -187,9 +209,10 @@ export default function AppProfile() {
       ) : content.length === 0 ? (
         <div className="pf-empty">
           <EmptyArt kind={tab === 'chars' ? 'library' : 'chat'} size={104} />
-          <p>{tab === 'chars' ? '还没有创建角色' : '还没有收藏的角色'}</p>
+          <b>没有可用的内容哦</b>
+          <p>快去探索更多有趣的内容吧</p>
           <button className="btn primary sm" onClick={() => nav(tab === 'chars' ? '/character/new' : '/')}>
-            {tab === 'chars' ? '去创建' : '去发现'}
+            {tab === 'chars' ? '去创建角色' : '去发现'}
           </button>
         </div>
       ) : (

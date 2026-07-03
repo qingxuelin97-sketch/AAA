@@ -20,16 +20,16 @@ import {
   Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff
 } from 'lucide-react';
 
-// Top-level tabs that horizontal swipe cycles through.
-const SWIPE_TABS = ['/today', '/', '/messages', '/me'];
+// Top-level tabs that horizontal swipe cycles through (visual order).
+const SWIPE_TABS = ['/today', '/messages', '/', '/me'];
 
-// Bottom tab bar — 4 destinations split around the center create button.
+// Bottom tab bar — 首页 / 消息 / [+] / 发现 / 我的（对齐设计系统）。
 const TABS_L = [
-  { to: '/today', ic: Home, label: '今日', end: true },
-  { to: '/', ic: Compass, label: '发现', end: true }
+  { to: '/today', ic: Home, label: '首页', end: true },
+  { to: '/messages', ic: MessageCircle, label: '消息', badge: 'msg' }
 ];
 const TABS_R = [
-  { to: '/messages', ic: MessageCircle, label: '消息', badge: 'msg' },
+  { to: '/', ic: Compass, label: '发现', end: true },
   { to: '/me', ic: UserRound, label: '我的' }
 ];
 
@@ -182,8 +182,7 @@ export default function AppLayout({ children }) {
         <span className="dock-ink" ref={inkRef} aria-hidden="true" />
         {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
         <button className={'app-fab' + (sheet ? ' open' : '')} onClick={() => setSheet(s => !s)} aria-label={sheet ? '关闭' : '创建'}>
-          <Plus size={20} strokeWidth={2.8} />
-          <i className="app-fab-ai" aria-hidden="true">AI</i>
+          <Plus size={24} strokeWidth={2.6} />
         </button>
         {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
       </nav>
