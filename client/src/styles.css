@@ -4460,6 +4460,13 @@ html[data-page-hidden] *, html[data-page-hidden] *::before, html[data-page-hidde
    under [data-app="1"] so the web / mobile-web layout is untouched.
    ========================================================================== */
 html[data-app="1"], html[data-app="1"] body { background: var(--bg-2); }
+/* App 壳：隐藏经典滚动条 —— 全局把 ::-webkit-scrollbar 设成 11px 实体条，会在
+   WebView 右侧占掉一条竖向留白，破坏原生沉浸感。这里在 app 模式下彻底隐藏
+   （内容仍可滚，只是不显示轨道/滑块）。 */
+html[data-app="1"], html[data-app="1"] body { scrollbar-width: none; -ms-overflow-style: none; }
+html[data-app="1"]::-webkit-scrollbar,
+html[data-app="1"] body::-webkit-scrollbar,
+html[data-app="1"] .app-main::-webkit-scrollbar { width: 0; height: 0; display: none; }
 /* Chrome heights (header / tab bar incl. safe areas) — single source of truth so
    page-fit overrides below stay in sync with the actual fixed chrome. */
 /* 壳层无持久顶栏：--app-top 只剩状态栏安全区；--app-bot = 扁平底栏整体占位 */
@@ -5474,19 +5481,21 @@ html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-bot)); margin-to
 .mep-wallet span { font-size: 12px; color: var(--faint); }
 
 .mep-vip { display: flex; align-items: center; gap: 12px; padding: 13px 15px; border: none; border-radius: 18px; cursor: pointer;
-  text-align: left; color: #fdf6e9;
-  background: radial-gradient(130% 140% at 88% -20%, rgba(245,196,81,0.4), transparent 55%),
-    linear-gradient(135deg, #4a3563, #33254a 55%, #211836);
-  box-shadow: 0 10px 26px rgba(38, 28, 60, 0.35); transition: transform 0.16s var(--spring); }
+  text-align: left; color: #4a3410;
+  background:
+    radial-gradient(130% 150% at 88% -10%, rgba(255,255,255,0.5), transparent 46%),
+    linear-gradient(135deg, #ffdf8e, #f2bf4f 46%, #e0973a);
+  box-shadow: 0 12px 28px rgba(224, 154, 47, 0.34), inset 0 1px 0 rgba(255,255,255,0.5); transition: transform 0.16s var(--spring); }
 .mep-vip:active { transform: scale(0.98); }
-.mep-vip.svip { background: radial-gradient(130% 140% at 85% -20%, rgba(255,214,110,0.6), transparent 58%),
-  linear-gradient(135deg, #6d4d2a, #4a3116 55%, #2c1c0a); }
-.mep-vip-ic { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center;
-  background: rgba(255,255,255,0.12); color: #f5c451; }
+.mep-vip.svip { background:
+  radial-gradient(130% 150% at 85% -10%, rgba(255,255,255,0.55), transparent 48%),
+  linear-gradient(135deg, #fff0c2, #f0b63f 48%, #c9781c); }
+.mep-vip-ic { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(74,52,16,0.16); color: #6e4d0e; }
 .mep-vip-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .mep-vip-tx b { font-size: 14.5px; font-weight: 800; }
-.mep-vip-tx small { font-size: 11.5px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mep-vip-chev { opacity: 0.6; flex: 0 0 auto; }
+.mep-vip-tx small { font-size: 11.5px; opacity: 0.72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mep-vip-chev { opacity: 0.55; flex: 0 0 auto; }
 
 .mep-group h4 { font-size: 12px; font-weight: 700; color: var(--faint); letter-spacing: 1px; margin: 4px 4px 10px; }
 .mep-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
@@ -5517,3 +5526,109 @@ html[data-app="1"][data-perf="lite"] .topbar { backdrop-filter: none; -webkit-ba
 html[data-app="1"] .topbar h1 { font-size: 18px; }
 html[data-app="1"] .topbar .sub { font-size: 12px; margin-top: 2px; }
 html[data-app="1"] .page { padding: 14px 16px 84px; }
+
+/* ============================================================
+   会员中心 v2（vx2）· App 专属亮金视觉（与网页钱包完全分离）
+   ============================================================ */
+.vx2 { display: flex; flex-direction: column; min-height: 100%; }
+.vx2.immersive { position: fixed; inset: 0; z-index: 80; background: var(--bg);
+  left: 50%; transform: translateX(-50%); width: min(480px, 100%); }
+.vx2-top { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) 14px 8px; }
+.vx2:not(.immersive) .vx2-top { padding-top: 14px; }
+.vx2-top h1 { flex: 1; margin: 0; text-align: center; font-size: 17px; font-weight: 700; }
+.vx2-back { width: 36px; height: 36px; border: none; border-radius: 50%; background: var(--bg-2); color: var(--text);
+  display: grid; place-items: center; cursor: pointer; }
+.vx2-wallet { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 999px; border: none;
+  background: color-mix(in srgb, #f5c451 16%, var(--bg-2)); color: #e0a02a; font-size: 12.5px; font-weight: 800; cursor: pointer; }
+.vx2-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 16px 0; scrollbar-width: none; }
+.vx2-scroll::-webkit-scrollbar { display: none; }
+
+/* —— 会员卡 hero —— */
+.vx2-card { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between;
+  border-radius: 26px; padding: 22px 8px 22px 24px; min-height: 158px; color: #4a3410;
+  background:
+    radial-gradient(120% 130% at 82% 0%, rgba(255,255,255,0.55), transparent 46%),
+    linear-gradient(135deg, #ffe3971a 0%, transparent 40%),
+    linear-gradient(135deg, #ffdf8e, #f6c454 46%, #e79a2f);
+  box-shadow: 0 16px 40px rgba(224, 154, 47, 0.4), inset 0 1px 0 rgba(255,255,255,0.6); }
+.vx2-card.svip { color: #3a2606;
+  background:
+    radial-gradient(120% 130% at 82% 0%, rgba(255,255,255,0.6), transparent 46%),
+    linear-gradient(135deg, #fff0c2, #f3b73f 48%, #c9781c); }
+.vx2-shine { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(114deg, transparent 32%, rgba(255,255,255,0.5) 46%, transparent 60%);
+  background-size: 240% 100%; animation: vx2Shine 4.5s ease-in-out infinite; }
+@keyframes vx2Shine { 0%, 100% { background-position: 130% 0; } 55% { background-position: -50% 0; } }
+[data-perf="lite"] .vx2-shine, [data-page-hidden] .vx2-shine { animation: none; }
+@media (prefers-reduced-motion: reduce) { .vx2-shine { animation: none; } }
+.vx2-card-l { position: relative; z-index: 1; min-width: 0; }
+.vx2-eyebrow { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px;
+  background: rgba(74,52,16,0.16); font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+.vx2-word { display: block; margin: 8px 0 4px; font-family: var(--serif); font-size: 52px; font-weight: 900; line-height: 0.95;
+  letter-spacing: 1px; text-shadow: 0 2px 0 rgba(255,255,255,0.35), 0 5px 14px rgba(120,80,10,0.3); }
+.vx2-slogan { margin: 0; font-size: 12.5px; font-weight: 650; opacity: 0.82; max-width: 190px; }
+.vx2-card svg { position: relative; z-index: 1; flex: 0 0 auto; margin-right: 8px;
+  filter: drop-shadow(0 10px 18px rgba(80,50,6,0.35)); }
+
+/* —— 权益宫格 —— */
+.vx2-h { margin: 20px 4px 12px; font-size: 15px; font-weight: 800; }
+.vx2-perks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.vx2-perk { display: flex; align-items: center; gap: 11px; padding: 13px 12px; border-radius: 17px;
+  background: var(--panel); border: 1px solid var(--border); }
+.vx2-perk-ic { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+  color: #b3822a; background: radial-gradient(circle at 34% 28%, #fff2cf, #f3cf74 70%, #e0a83a);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.6), 0 4px 10px rgba(224,168,58,0.28); }
+.vx2-perk-ic svg { color: #6e4d0e; }
+.vx2-perk-tx { min-width: 0; }
+.vx2-perk-tx b { display: block; font-size: 13px; font-weight: 700; }
+.vx2-perk-tx small { font-size: 11px; color: var(--faint); }
+
+/* —— 套餐卡 —— */
+.vx2-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 18px; }
+.vx2-plan { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 22px 10px 15px; border-radius: 20px; border: 2px solid var(--border); background: var(--panel); cursor: pointer;
+  color: var(--text); transition: transform 0.16s var(--spring); }
+.vx2-plan:active { transform: scale(0.97); }
+.vx2-plan.on { border-color: #e0a83a; background: color-mix(in srgb, #f5c451 9%, var(--panel));
+  box-shadow: 0 8px 24px rgba(224, 168, 58, 0.22); }
+.vx2-ribbon { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); padding: 3px 12px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 800; white-space: nowrap; background: var(--bg-2); color: var(--muted); border: 1px solid var(--border); }
+.vx2-plan.on .vx2-ribbon { background: linear-gradient(120deg, #ffe296, #e0973a); color: #3a2606; border-color: transparent;
+  box-shadow: 0 4px 12px rgba(224,151,58,0.4); }
+.vx2-ribbon.gold { background: color-mix(in srgb, #f5c451 22%, var(--panel)); color: #b3822a; }
+.vx2-plan-name { font-size: 16px; font-weight: 800; }
+.vx2-plan-price { display: inline-flex; align-items: center; gap: 5px; font-size: 25px; font-weight: 900; }
+.vx2-plan-price.gold { color: #c98f25; font-size: 22px; }
+.vx2-plan-sub { font-size: 11px; color: var(--faint); }
+
+/* —— 兑换码 —— */
+.vx2-redeem { display: flex; align-items: center; gap: 9px; margin-top: 14px; padding: 8px 8px 8px 14px;
+  border-radius: 16px; background: var(--panel); border: 1px solid var(--border); }
+.vx2-redeem-ic { color: #e0a02a; flex: 0 0 auto; }
+.vx2-redeem input { flex: 1; min-width: 0; border: none; outline: none; background: none; color: var(--text); font-size: 13px; }
+.vx2-redeem button { flex: 0 0 auto; padding: 9px 18px; border: none; border-radius: 12px; cursor: pointer;
+  background: color-mix(in srgb, #f5c451 20%, var(--bg-2)); color: #b3822a; font-size: 13px; font-weight: 800; }
+.vx2-ledger { display: inline-flex; align-items: center; gap: 6px; margin: 14px auto 0; padding: 8px 12px; border: none;
+  background: none; color: var(--faint); font-size: 12.5px; cursor: pointer; }
+.vx2-bottom-space { height: calc(172px + env(safe-area-inset-bottom)); }
+
+/* —— 吸底 CTA —— */
+.vx2-cta { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
+.vx2-cta::before { content: ''; position: absolute; left: 0; right: 0; top: -26px; height: 26px;
+  background: linear-gradient(180deg, transparent, var(--bg)); pointer-events: none; }
+.vx2:not(.immersive) .vx2-cta { position: sticky; }
+.vx2-agree { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--faint); cursor: pointer; padding: 0 2px; }
+.vx2-agree input { position: absolute; opacity: 0; width: 0; height: 0; }
+.vx2-check { flex: 0 0 auto; width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid var(--border-2);
+  display: grid; place-items: center; color: #fff; }
+.vx2-agree input:checked + .vx2-check { background: #e0a83a; border-color: #e0a83a; }
+.vx2-agree em { font-style: normal; color: var(--muted); }
+.vx2-go { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; border-radius: 18px;
+  border: none; cursor: pointer; font-size: 16px; font-weight: 800; color: #3a2606;
+  background: linear-gradient(120deg, #ffe296, #f5c451 44%, #e0973a);
+  box-shadow: 0 8px 26px rgba(224, 151, 58, 0.42), inset 0 1px 0 rgba(255,255,255,0.5);
+  transition: transform 0.16s var(--spring); }
+.vx2-go:active { transform: scale(0.98); }
+.vx2-go:disabled { opacity: 0.7; }
+.vx2-renew { margin: 0; text-align: center; font-size: 11px; color: var(--faint); }
