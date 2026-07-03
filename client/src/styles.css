@@ -6078,3 +6078,47 @@ html[data-app="1"] .pkg .pkg-pay { font-size: 14px; font-weight: 800; color: var
 .sq-card-tags span { padding: 2px 8px; border-radius: 6px; font-size: 10.5px; font-weight: 600; background: var(--bg-2); color: var(--muted); }
 .sq-card-skel { aspect-ratio: 3 / 4; border-radius: 16px; background: linear-gradient(90deg, var(--bg-2) 25%, color-mix(in srgb, var(--bg-2) 60%, var(--panel)) 50%, var(--bg-2) 75%); background-size: 200% 100%; animation: skel-shimmer 1.4s ease-in-out infinite; }
 .sq-empty { padding: 40px 20px; text-align: center; color: var(--faint); font-size: 13.5px; }
+
+/* ---- 对话：简介折叠面板 + 建议回复行 ---- */
+.chat-intro { position: relative; margin: 0 0 14px; padding: 11px 38px 11px 14px; border-radius: 14px; cursor: pointer;
+  background: var(--bg-2); border: 1px solid var(--border); }
+.chat-intro p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.chat-intro.open p { -webkit-line-clamp: unset; }
+.chat-intro p b { color: var(--text); font-weight: 700; }
+.chat-intro-chev { position: absolute; right: 12px; top: 12px; color: var(--faint); transition: transform 0.2s var(--spring); }
+.chat-intro.open .chat-intro-chev { transform: rotate(180deg); }
+/* 沉浸背景下：磨砂玻璃 */
+html[data-app="1"] .chat-main.has-bg .chat-intro { background: rgba(20,18,26,0.5); border-color: rgba(255,255,255,0.1);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-intro { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(20,18,26,0.82); }
+html[data-app="1"] .chat-main.has-bg .chat-intro p { color: rgba(255,255,255,0.82); }
+html[data-app="1"] .chat-main.has-bg .chat-intro p b { color: #fff; }
+html[data-app="1"] .chat-main.has-bg .chat-intro-chev { color: rgba(255,255,255,0.7); }
+
+.chat-suggests { display: flex; flex-direction: column; gap: 8px; padding: 4px 12px 10px; }
+.chat-suggest { display: flex; align-items: center; gap: 9px; padding: 11px 13px; border-radius: 13px; cursor: pointer; text-align: left;
+  background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 13.5px; transition: transform 0.14s var(--spring), border-color 0.15s; }
+.chat-suggest:active { transform: scale(0.98); border-color: var(--accent); }
+.chat-suggest svg { flex: 0 0 auto; color: var(--faint); }
+.chat-suggest span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-app="1"] .chat-main.has-bg .chat-suggest { background: rgba(24,22,30,0.5); border-color: rgba(255,255,255,0.1); color: #f0eef2;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-suggest { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(24,22,30,0.82); }
+html[data-app="1"] .chat-main.has-bg .chat-suggest svg { color: rgba(255,255,255,0.6); }
+
+/* ---- 「我的」资料 chip 行 + 内容子标签 ---- */
+.pf-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 2px 2px; }
+.pf-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--muted); cursor: default; }
+.pf-chip.gender { padding: 4px 9px; }
+.pf-chip.gender.f { color: #ff6fae; border-color: color-mix(in srgb, #ff6fae 40%, var(--border)); background: color-mix(in srgb, #ff6fae 12%, var(--bg-2)); }
+.pf-chip.gender.m { color: #5f9df5; border-color: color-mix(in srgb, #5f9df5 40%, var(--border)); background: color-mix(in srgb, #5f9df5 12%, var(--bg-2)); }
+.pf-chip.dashed { border-style: dashed; cursor: pointer; color: var(--muted); }
+.pf-chip.dashed:active { border-color: var(--accent); color: var(--accent); }
+.pf-chip.star { color: #cbb6ff; border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 16%, var(--bg-2)); }
+
+.pf-subtabs { display: flex; gap: 20px; overflow-x: auto; margin: 12px 2px; padding-bottom: 2px; scrollbar-width: none; }
+.pf-subtabs::-webkit-scrollbar { display: none; }
+.pf-subtabs button { flex: 0 0 auto; background: none; border: none; cursor: pointer; padding: 4px 0; font-size: 13.5px; font-weight: 600; color: var(--faint); white-space: nowrap; }
+.pf-subtabs button.on { color: var(--accent); font-weight: 700; }

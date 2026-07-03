@@ -7,7 +7,7 @@ import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { EmptyArt } from '../art.jsx';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark, ChevronDown } from 'lucide-react';
 
 // 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
 const COARSE = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
@@ -19,6 +19,13 @@ const BGM_KEY = 'huanyu_chat_bgm';
 const REACTIONS = ['❤️', '😂', '👍', '😮', '😢', '🔥'];
 const STARTERS = ['你好呀～', '很高兴认识你！', '*微笑着向你打招呼*', '今天过得怎么样？', '我们聊点什么好呢？'];
 const QUICK_ACTIONS = ['*微笑*', '*点头*', '*脸红*', '*轻笑*', '*歪头*', '*叹气*', '*眨眨眼*', '*沉默不语*', '*牵起你的手*', '*轻轻拥抱*', '😊', '😳', '🥰', '😢'];
+// 建议回复（点选后填入输入框，可再编辑发送）—— 通用扮演续写模板池。
+const REPLY_SUGGESTIONS = [
+  '*认真地看着你* 我在听，你慢慢说。',
+  '（沉默了一下）对不起，是我考虑得不够。',
+  '*轻轻握住你的手* 别急，我们一起想办法。',
+  '其实我也有话想对你说……'
+];
 
 // Relationship tiers driven by accumulated affinity (grows ~+3 per exchange).
 const AFFINITY_LEVELS = [
@@ -117,6 +124,7 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [introOpen, setIntroOpen] = useState(false); // 沉浸态顶部「简介」折叠面板
   const [streaming, setStreaming] = useState(false);
   const [listMini, setListMini] = useState(() => localStorage.getItem(LIST_KEY) === '1');
   const [atBottom, setAtBottom] = useState(true);
@@ -634,6 +642,13 @@ export default function Chat() {
                 );
               })()}
               <div className="chat-thread">
+              {character && (character.intro || character.tagline) && (
+                <div className={'chat-intro' + (introOpen ? ' open' : '')} role="button" tabIndex={0}
+                  onClick={() => setIntroOpen(o => !o)} onKeyDown={e => e.key === 'Enter' && setIntroOpen(o => !o)}>
+                  <p><b>简介：</b>{character.intro || character.tagline}</p>
+                  <span className="chat-intro-chev"><ChevronDown size={16} /></span>
+                </div>
+              )}
               {loadingConv && messages.length === 0 && (
                 <div className="chat-skel">
                   {[0, 1, 2].map(k => (
@@ -722,6 +737,16 @@ export default function Chat() {
               <div className="starter-chips">
                 <span className="muted">试试开口：</span>
                 {STARTERS.map(s => <button key={s} className="starter-chip" onClick={() => send(s)}>{s}</button>)}
+              </div>
+            )}
+            {/* 建议回复：对方发话后浮现几条续写建议，点选填入输入框（可再改再发）*/}
+            {messages.length > 1 && !streaming && !input.trim() && messages[messages.length - 1]?.role === 'assistant' && !actionsOpen && (
+              <div className="chat-suggests">
+                {REPLY_SUGGESTIONS.map((s, i) => (
+                  <button key={i} className="chat-suggest" onClick={() => { setInput(s); inputRef.current?.focus(); }}>
+                    <Pencil size={13} /><span>{s}</span>
+                  </button>
+                ))}
               </div>
             )}
             {/* 输入栏占位：移动端 fixed 输入栏遮挡下方消息，spacer 留出空白避免遮挡 */}

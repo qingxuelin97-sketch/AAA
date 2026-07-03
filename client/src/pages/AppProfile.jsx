@@ -100,7 +100,8 @@ export default function AppProfile() {
   const toast = useToast();
   const [stats, setStats] = useState(null);
   const [unread, setUnread] = useState(0);
-  const [tab, setTab] = useState('chars'); // chars | favs
+  const [main, setMain] = useState('attic'); // attic 阁楼 | moments 动态 | showcase 橱窗
+  const [sub, setSub] = useState('agents');  // 阁楼子标签
   const [chars, setChars] = useState(null);
   const [favs, setFavs] = useState(null);
   const [installReady, setInstallReady] = useState(() => !!window.__hyInstallEvt);
@@ -112,10 +113,10 @@ export default function AppProfile() {
     api('/characters/mine').then(d => setChars(d.characters || [])).catch(() => setChars([]));
   }, [user?.id]);
   useEffect(() => {
-    if (tab === 'favs' && favs === null) {
+    if (main === 'showcase' && favs === null) {
       api('/characters/favorites/list').then(d => setFavs(d.characters || [])).catch(() => setFavs([]));
     }
-  }, [tab, favs]);
+  }, [main, favs]);
   useEffect(() => {
     const h = () => setInstallReady(true);
     window.addEventListener('huanyu-install-ready', h);
@@ -138,7 +139,10 @@ export default function AppProfile() {
     { n: stats?.followers, label: '粉丝', to: '/profile' },
     { n: stats?.following, label: '关注', to: '/profile' }
   ];
-  const content = tab === 'chars' ? chars : favs;
+  // 阁楼>智能体 = 我的角色；橱窗 = 收藏；其余（动态/故事/时刻/群聊/记忆簿）暂为空态。
+  const showChars = main === 'attic' && sub === 'agents';
+  const content = showChars ? chars : main === 'showcase' ? favs : [];
+  const SUBS = [['agents', '智能体', chars?.length ?? 0], ['stories', '故事', 0], ['moments2', '时刻', 0], ['groups', '群聊', 0], ['memory', '记忆簿', 0]];
 
   return (
     <div className="pf">
@@ -162,7 +166,14 @@ export default function AppProfile() {
         </div>
         <button className="pf-edit" onClick={() => nav('/profile')} aria-label="编辑资料"><Pencil size={16} /></button>
       </div>
-      <div className="pf-bio" onClick={() => nav('/profile')}>{user?.bio || '点击填写你的简介吧'}</div>
+      <div className="pf-bio" onClick={() => nav('/profile')}>{user?.bio || '点击填写你的简介吧~'}</div>
+      {/* 资料 chip 行：性别 + 补充资料 + 会员社群徽章（按设计系统）*/}
+      <div className="pf-chips">
+        {user?.gender === 'f' ? <span className="pf-chip gender f">♀</span>
+          : user?.gender === 'm' ? <span className="pf-chip gender m">♂</span> : null}
+        <button className="pf-chip dashed" onClick={() => nav('/profile')}>+ 补充个人资料</button>
+        {(user?.vip || user?.svip) && <span className="pf-chip star"><Sparkles size={11} /> 星夜同行</span>}
+      </div>
       <IdentityBadges u={user} className="pf-badges" />
 
       {/* 统计 */}
@@ -199,20 +210,28 @@ export default function AppProfile() {
         ))}
       </div>
 
-      {/* 内容 Tab */}
+      {/* 内容区：阁楼 / 动态 / 橱窗 主标签 + 子标签（按设计系统）*/}
       <div className="pf-tabs">
-        <button className={tab === 'chars' ? 'on' : ''} onClick={() => setTab('chars')}>我的角色 {chars ? chars.length : ''}</button>
-        <button className={tab === 'favs' ? 'on' : ''} onClick={() => setTab('favs')}>收藏 {favs ? favs.length : ''}</button>
+        <button className={main === 'attic' ? 'on' : ''} onClick={() => setMain('attic')}>阁楼</button>
+        <button className={main === 'moments' ? 'on' : ''} onClick={() => setMain('moments')}>动态</button>
+        <button className={main === 'showcase' ? 'on' : ''} onClick={() => setMain('showcase')}>橱窗</button>
       </div>
+      {main === 'attic' && (
+        <div className="pf-subtabs">
+          {SUBS.map(([id, label, n]) => (
+            <button key={id} className={sub === id ? 'on' : ''} onClick={() => setSub(id)}>{label} {n}</button>
+          ))}
+        </div>
+      )}
       {content === null ? (
         <div className="pf-content-grid">{[0, 1, 2].map(i => <div key={i} className="pf-cc-skel" />)}</div>
       ) : content.length === 0 ? (
         <div className="pf-empty">
-          <EmptyArt kind={tab === 'chars' ? 'library' : 'chat'} size={104} />
+          <EmptyArt kind={showChars ? 'library' : 'chat'} size={104} />
           <b>没有可用的内容哦</b>
           <p>快去探索更多有趣的内容吧</p>
-          <button className="btn primary sm" onClick={() => nav(tab === 'chars' ? '/character/new' : '/')}>
-            {tab === 'chars' ? '去创建角色' : '去发现'}
+          <button className="btn primary sm" onClick={() => nav(showChars ? '/character/new' : '/')}>
+            {showChars ? '去创建角色' : '去发现'}
           </button>
         </div>
       ) : (
