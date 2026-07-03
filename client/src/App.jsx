@@ -51,6 +51,7 @@ const Atelier = lazy(() => import('./pages/Atelier.jsx'));
 const NovelWorkspace = lazy(() => import('./pages/NovelWorkspace.jsx'));
 const NovelReader = lazy(() => import('./pages/NovelReader.jsx'));
 const AppHome = lazy(() => import('./pages/AppHome.jsx'));
+const Square = lazy(() => import('./pages/Square.jsx'));
 const Messages = lazy(() => import('./pages/Messages.jsx'));
 const AppProfile = lazy(() => import('./pages/AppProfile.jsx'));
 const Vip = lazy(() => import('./pages/Vip.jsx'));
@@ -80,7 +81,8 @@ export default function App() {
             <Route path="/features" element={<Features />} />
             <Route path="/help" element={<Help />} />
             <Route path="/" element={P(isAppMode() ? <DiscoverFeed /> : <Home />)} />
-            <Route path="/today" element={P(<AppHome />)} />
+            <Route path="/today" element={P(isAppMode() ? <Square /> : <AppHome />)} />
+            <Route path="/home-classic" element={P(<AppHome />)} />
             <Route path="/scripts" element={P(<Scripts />)} />
             <Route path="/script/new" element={P(<ScriptEditor />)} />
             <Route path="/script/:id" element={P(<ScriptDetail />)} />
