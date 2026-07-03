@@ -5771,20 +5771,23 @@ html[data-app="1"] .page { padding: 14px 16px 84px; }
 .pf-stats b { font-size: 19px; font-weight: 800; }
 .pf-stats span { font-size: 12px; color: var(--faint); }
 
-/* 会员横幅 */
-.pf-vip { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 14px 16px; border: none;
-  border-radius: 18px; cursor: pointer; text-align: left; color: #fdf6e9;
-  background: radial-gradient(130% 150% at 90% -20%, rgba(245,196,81,0.4), transparent 52%), linear-gradient(135deg, #4a3a63, #2f2547 55%, #221b38);
-  box-shadow: 0 10px 26px rgba(38, 28, 60, 0.4); transition: transform 0.16s var(--spring); }
+/* 会员横幅（紫调促销卡）*/
+.pf-vip { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 15px 16px; border: none; border-radius: 18px; cursor: pointer; text-align: left; color: #fff;
+  background: linear-gradient(120deg, #5a46a6, #7b5ac6 52%, #48397f);
+  box-shadow: 0 12px 28px rgba(58, 42, 108, 0.42); transition: transform 0.16s var(--spring); }
 .pf-vip:active { transform: scale(0.99); }
-.pf-vip.on, .pf-vip.svip { color: #4a3410;
-  background: radial-gradient(130% 150% at 90% -20%, rgba(255,255,255,0.5), transparent 48%), linear-gradient(135deg, #ffdf8e, #f2bf4f 48%, #e0973a); }
-.pf-vip-l { min-width: 0; }
-.pf-vip-l b { display: block; font-size: 15px; font-weight: 800; }
-.pf-vip-l span { font-size: 11.5px; opacity: 0.82; }
-.pf-vip-go { flex: 0 0 auto; padding: 7px 15px; border-radius: 999px; font-size: 12.5px; font-weight: 800;
-  background: rgba(255,255,255,0.9); color: #4a3410; }
-.pf-vip:not(.on):not(.svip) .pf-vip-go { background: #fff; color: #3a2b52; }
+.pf-vip.on, .pf-vip.svip { background: linear-gradient(120deg, #6a52c2, #8d66da 52%, #52408f); }
+.pf-vip-glow { position: absolute; right: -30px; top: -46px; width: 150px; height: 150px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,0.28), transparent 66%); }
+.pf-vip-l { position: relative; z-index: 1; min-width: 0; }
+.pf-vip-l b { display: block; font-size: 16px; font-weight: 800; }
+.pf-vip-exp { font-size: 11.5px; opacity: 0.85; }
+.pf-vip-perks { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 5px; }
+.pf-vip-perks span { position: relative; font-size: 11.5px; opacity: 0.9; }
+.pf-vip-perks span + span::before { content: ''; position: absolute; left: -5px; top: 3px; bottom: 3px; width: 1px; background: rgba(255,255,255,0.35); }
+.pf-vip-go { position: relative; z-index: 1; flex: 0 0 auto; padding: 8px 16px; border-radius: 999px; font-size: 12.5px; font-weight: 800;
+  background: #fff; color: #5a46a6; box-shadow: 0 4px 12px rgba(0,0,0,0.18); }
 
 /* 资产卡 */
 .pf-assets { margin-top: 12px; padding: 14px 16px; border-radius: 18px; background: var(--panel); border: 1px solid var(--border); }
@@ -5840,3 +5843,68 @@ html[data-app="1"] .page { padding: 14px 16px 84px; }
 .pf-foot-btn { flex: 1 1 44%; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 12px; border-radius: 13px;
   border: 1px solid var(--border); background: var(--panel); color: var(--text); font-size: 13px; font-weight: 650; cursor: pointer; }
 .pf-foot-btn.danger { color: #e0788b; }
+
+/* ============================================================
+   沉浸对话「毛玻璃」统一（app 壳 + 角色背景图时）
+   —— backdrop-filter 磨砂是通用视觉手法；lite 档一律降级去 blur
+   ============================================================ */
+/* 头部：透明，元素以磨砂浮层悬在画面上 */
+html[data-app="1"] .chat-main.has-bg .chat-head { background: none; border-bottom: none; flex-wrap: nowrap; }
+/* 头像 + 名称合成一枚磨砂身份胶囊 */
+.ch-idpill { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto; }
+html[data-app="1"] .chat-main.has-bg .ch-idpill { flex: 0 1 auto; padding: 4px 15px 4px 4px; border-radius: 999px;
+  background: rgba(0,0,0,0.34); border: 1px solid rgba(255,255,255,0.12);
+  -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .ch-idpill { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(0,0,0,0.62); }
+html[data-app="1"] .chat-main.has-bg .ch-idpill .nm b { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.55); }
+html[data-app="1"] .chat-main.has-bg .ch-idpill .ch-status { color: rgba(255,255,255,0.85); text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+/* 返回键磨砂圆钮 */
+html[data-app="1"] .chat-main.has-bg .chat-back { flex: 0 0 auto; width: 34px; height: 34px; padding: 0; border-radius: 50%;
+  background: rgba(0,0,0,0.34); color: #fff; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+/* 好感度徽章磨砂化 */
+html[data-app="1"] .chat-main.has-bg .affinity-badge { background: rgba(0,0,0,0.34); border-color: rgba(255,255,255,0.12);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .affinity-badge { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(0,0,0,0.6); }
+html[data-app="1"] .chat-main.has-bg .affinity-badge .af-ic { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+html[data-app="1"] .chat-main.has-bg .affinity-badge .af-tx b { color: #fff; }
+html[data-app="1"] .chat-main.has-bg .affinity-badge .af-tx i { background: rgba(255,255,255,0.28); }
+/* 「内容由 AI 生成」水印 */
+.chat-ai-mark { display: none; }
+html[data-app="1"] .chat-main.has-bg .chat-ai-mark { display: block; position: absolute; left: 18px; z-index: 6;
+  top: calc(env(safe-area-inset-top) + 66px); font-size: 11px; letter-spacing: 0.5px; color: rgba(255,255,255,0.55);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6); pointer-events: none; }
+
+/* 助手气泡：深色磨砂 + 白字，动作/神态灰斜体（旁白感）*/
+html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble { background: rgba(22,20,26,0.5); color: #f2f1ee;
+  border: none; border-radius: 22px; box-shadow: 0 6px 22px rgba(0,0,0,0.3);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .msg.assistant .bubble { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(22,20,26,0.86); }
+html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act { color: rgba(255,255,255,0.56); font-style: italic; opacity: 1; }
+html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name { color: rgba(255,255,255,0.82); text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+html[data-app="1"] .chat-main.has-bg .msg-acts .speak { color: rgba(255,255,255,0.75); text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+/* 用户气泡：磨砂高亮，右侧对齐（与角色的深色气泡分层）*/
+html[data-app="1"] .chat-main.has-bg .msg.user .bubble { box-shadow: 0 6px 20px rgba(0,0,0,0.28); }
+
+/* 居中时间戳磨砂胶囊 */
+html[data-app="1"] .chat-main.has-bg .msg-name .msg-time { color: rgba(255,255,255,0.7); }
+
+/* 输入栏：磨砂胶囊 */
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { border-radius: 26px; padding: 6px 6px 6px 8px;
+  background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.18);
+  -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%); }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar .box { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(28,24,34,0.9); }
+html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea { color: #fff; }
+html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea::placeholder { color: rgba(255,255,255,0.5); }
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .act-btn { color: rgba(255,255,255,0.85); }
+
+/* 动作面板（快捷动作）磨砂化 */
+html[data-app="1"] .chat-main.has-bg .action-panel { background: none; box-shadow: none; }
+html[data-app="1"] .chat-main.has-bg .action-panel button { color: #fff; border-color: rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.12); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .action-panel button { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(40,36,46,0.9); }
+
+/* 开场白 starter chips 磨砂化 */
+html[data-app="1"] .chat-main.has-bg .starter-chips .muted { color: rgba(255,255,255,0.72); }
+html[data-app="1"] .chat-main.has-bg .starter-chip { color: #fff; border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(0,0,0,0.34); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .starter-chip { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(0,0,0,0.6); }

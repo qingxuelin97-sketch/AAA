@@ -143,11 +143,14 @@ export default function AppProfile() {
         ))}
       </div>
 
-      {/* 会员横幅 */}
+      {/* 会员横幅（紫调促销卡 + 权益词条）*/}
       <button className={'pf-vip' + (user?.svip ? ' svip' : user?.vip ? ' on' : '')} onClick={() => nav('/vip')}>
+        <span className="pf-vip-glow" aria-hidden="true" />
         <div className="pf-vip-l">
           <b>{user?.svip ? 'SVIP 尊享会员' : user?.vip ? 'VIP 会员' : '开通幻域会员'}</b>
-          <span>{user?.svip ? '平台 AI 5 折 · 至高权益' : user?.vip ? `有效期至 ${String(user?.vip_until || '').slice(0, 10)}` : '75 折 · 签到双倍 · 专属标识'}</span>
+          {user?.vip || user?.svip
+            ? <span className="pf-vip-exp">{user?.svip ? '平台 AI 5 折 · 至高权益' : `有效期至 ${String(user?.vip_until || '').slice(0, 10)}`}</span>
+            : <div className="pf-vip-perks"><span>无限沉浸</span><span>记忆增强</span><span>语音朗读</span><span>免打扰</span></div>}
         </div>
         <span className="pf-vip-go">{user?.vip || user?.svip ? '查看' : '立即开通'}</span>
       </button>
