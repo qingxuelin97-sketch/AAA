@@ -5,9 +5,10 @@ import {
   Rocket, Cpu, Volume2, Drama, Landmark, ShieldCheck, LifeBuoy,
   Search, ChevronDown, HelpCircle,
   BookOpen, Clapperboard, PenTool, Globe,
+  Smartphone, Sparkles,
 } from 'lucide-react';
 
-const ICONS = { Rocket, Cpu, Volume2, Coins: CoinIcon, Drama, Landmark, ShieldCheck, LifeBuoy, BookOpen, Clapperboard, PenTool, Globe };
+const ICONS = { Rocket, Cpu, Volume2, Coins: CoinIcon, Drama, Landmark, ShieldCheck, LifeBuoy, BookOpen, Clapperboard, PenTool, Globe, Smartphone, Sparkles };
 
 // Reusable Help Center body. Rendered standalone on the public /help page and
 // inline inside Settings → 帮助中心. Self-contained: search + collapsible Q&A.
