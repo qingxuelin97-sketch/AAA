@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
@@ -106,6 +106,7 @@ const BubbleContent = React.memo(function BubbleContent({ content, role, imageMa
 export default function Chat() {
   const { id } = useParams();
   const nav = useNavigate();
+  const loc = useLocation();
   const toast = useToast();
   const { refreshUser } = useAuth();
   const [convs, setConvs] = useState([]);
@@ -150,6 +151,13 @@ export default function Chat() {
   const streamRafRef = useRef(0);
   const autoReadRef = useRef(autoRead);
   useEffect(() => { autoReadRef.current = autoRead; }, [autoRead]);
+
+  // 发现流「自由输入」带过来的草稿：落地即预填在输入框，用户确认后再发送。
+  useEffect(() => {
+    const draft = loc.state?.draft;
+    if (draft) { setInput(draft); nav(loc.pathname, { replace: true, state: null }); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // 移动端软键盘适配：把 fixed 输入栏始终顶在键盘上方（稳健跨浏览器实现见 mobile.js）。
   useKeyboardInsetBar(inputBarRef, [conv]);

@@ -1,13 +1,14 @@
-// 沉浸式角色流 —— app 端「发现」tab 的抖音化形态。
-// 全屏竖向 snap 滚动，每屏一张角色卡：背景图铺满 + 底部信息 + 右侧操作栏。
-// 上下滑动切换角色，触底自动加载更多；双击卡面点赞（爱心迸发）；
-// 新角色卡发布时 SSE 秒级插入顶部。
+// 沉浸式角色流 —— app 端「发现」tab 的全屏竖滑形态（对标一线角色扮演 App 的信息层级）。
+// 每屏一张角色卡：全幅立绘打底，其上依次浮着 —— 介绍卡（可展开）、开场白气泡、
+// 角色名 + 作者行、横向互动条（赞/收藏/评论/分享）、以及一条「自由输入」胶囊：
+// 在流里直接开口说话，落地即进入对话并带着这句话。
 //
 // 结构要点（修复「模块塌掉」的老 bug）：
 //  - 外层 .feed-wrap 拿到确定高度（app 壳下按 --app-top/--app-bot 显式计算，
 //    不再依赖脆弱的 flex 百分比链），内层 .feed-root 才是滚动容器；
-//  - 分类条 / 加载提示 / 到底提示全部悬浮在 wrap 上，不进滚动流 ——
-//    此前它们放在滚动容器里：一划就被卷走，页脚还会让 mandatory snap 卡死。
+//  - 分类条 / 加载提示 / 到底提示全部悬浮在 wrap 上，不进滚动流。
+// 性能要点：前两屏图片 eager、其余 lazy；开场白/介绍均为纯文本层，无额外请求；
+//  IntersectionObserver 驱动当前卡索引（比 scroll 事件在 snap 下更稳、更省电）。
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
@@ -17,7 +18,13 @@ import { CategoryIcon, categoryName } from '../assets.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
 import { shareUrl } from '../util.js';
 import { tick } from '../appgestures.js';
-import { Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp } from 'lucide-react';
+import {
+  Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp,
+  ChevronRight, ScrollText, Maximize2, Phone, Plus, Send
+} from 'lucide-react';
+
+// 开场白预览：*动作* 星号只是排版标记，流里展示时去掉更干净。
+const cleanGreeting = (t) => (t || '').replace(/\*/g, '').replace(/\n{2,}/g, '\n').trim();
 
 export default function DiscoverFeed() {
   const nav = useNavigate();
@@ -33,7 +40,10 @@ export default function DiscoverFeed() {
     try { return new Set(JSON.parse(localStorage.getItem('feed_liked') || '[]')); } catch { return new Set(); }
   });
   const [activeIdx, setActiveIdx] = useState(0);
-  const [burst, setBurst] = useState(null); // 双击点赞爱心迸发 { id, x, y, k }
+  const [burst, setBurst] = useState(null);        // 双击点赞爱心迸发 { id, x, y, k }
+  const [expandedId, setExpandedId] = useState(null); // 介绍卡展开态（每次只展开一张）
+  const [say, setSay] = useState('');              // 自由输入内容（跟随当前卡）
+  const [entering, setEntering] = useState(false); // 正在建立对话
   const containerRef = useRef(null);
   const loadFlag = useRef(0);   // 防竞态
   const lastTap = useRef({ t: 0, id: null });
@@ -95,6 +105,9 @@ export default function DiscoverFeed() {
     return () => io.disconnect();
   }, [chars.length]);
 
+  // 换卡时收起展开的介绍、清空输入草稿（每张卡独立开口）。
+  useEffect(() => { setExpandedId(null); setSay(''); }, [activeIdx]);
+
   // 触底加载：当前卡接近末尾时拉下一页。
   useEffect(() => {
     if (loadingMore || !hasMore || chars.length === 0) return;
@@ -123,7 +136,7 @@ export default function DiscoverFeed() {
   const like = (c) => {
     setLikedSet(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); persistLiked(n); return n; });
   };
-  // 抖音式双击点赞：卡面快速连点两下 → 点亮爱心 + 迸发动画（再双击不取消）。
+  // 双击点赞：卡面快速连点两下 → 点亮爱心 + 迸发动画（再双击不取消）。
   const cardTap = (e, c) => {
     const now = Date.now();
     const prev = lastTap.current;
@@ -137,9 +150,15 @@ export default function DiscoverFeed() {
     setBurst({ id: c.id, x, y, k: now });
     setTimeout(() => setBurst(b => (b && b.k === now ? null : b)), 850);
   };
-  const chat = async (c) => {
-    try { const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } }); nav('/chats/' + d.conversation.id); }
-    catch { nav('/character/' + c.id); }
+  // 进入对话；draft 非空时随路由带过去，落地即预填在输入框里。
+  const chat = async (c, draft) => {
+    if (entering) return;
+    setEntering(true);
+    try {
+      const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } });
+      nav('/chats/' + d.conversation.id, draft ? { state: { draft } } : undefined);
+    } catch { nav('/character/' + c.id); }
+    finally { setEntering(false); }
   };
   const share = async (c) => {
     const url = shareUrl('/character/' + c.id);
@@ -173,12 +192,16 @@ export default function DiscoverFeed() {
         {chars.map((c, i) => {
           const liked = likedSet.has(c.id);
           const faved = favSet.has(c.id);
+          const expanded = expandedId === c.id;
+          const near = Math.abs(i - activeIdx) <= 1; // 只有相邻卡渲染重文本层，长列表滚动更轻
+          const greeting = near ? cleanGreeting(c.greeting) : '';
           return (
             <section key={c.id} className="feed-card" data-idx={i}>
               {c.avatar
                 ? <img className="feed-bg" src={c.avatar} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
                 : <div className="feed-bg cover-art-box"><CoverArt name={c.name} /></div>}
               <div className="feed-scrim" />
+              <span className="feed-ai-mark" aria-hidden="true">由 AI 生成</span>
               {/* 双击点赞层：盖住画面区域，按钮层在其上不受影响 */}
               <div className="feed-tap" onClick={e => cardTap(e, c)} />
               {burst && burst.id === c.id && (
@@ -186,46 +209,90 @@ export default function DiscoverFeed() {
                   <Heart size={84} fill="currentColor" />
                 </span>
               )}
-              <div className="feed-body">
-                <div className="feed-info">
-                  {c.category && <span className="feed-tag"><CategoryIcon slug={c.category} size={12} /> {categoryName(c.category)}</span>}
-                  <h2 className="feed-name">{c.name}</h2>
-                  <p className="feed-desc">{c.tagline || c.intro || '一个等待被开启的故事。'}</p>
-                  <div className="feed-author">
-                    <Avatar src={c.owner_avatar} name={c.owner_name} size={26} />
-                    <span>{c.owner_name}</span>
-                    <CreatorV tier={c.owner_tier} size={12} />
-                    <span className="feed-uses"><MessageCircle size={12} /> {c.uses || 0}</span>
+
+              <div className="fd2-stack">
+                {/* 介绍卡：深色玻璃面板，可展开；右下角放大镜进详情 */}
+                {(c.intro || c.tagline) && (
+                  <div className={'fd2-intro' + (expanded ? ' open' : '')}
+                    role="button" tabIndex={0}
+                    onClick={() => setExpandedId(expanded ? null : c.id)}
+                    onKeyDown={e => e.key === 'Enter' && setExpandedId(expanded ? null : c.id)}>
+                    <p><ScrollText size={13} className="fd2-intro-ic" /><b>介绍：</b>{c.intro || c.tagline}</p>
+                    <button className="fd2-zoom" aria-label="查看角色详情"
+                      onClick={e => { e.stopPropagation(); nav('/character/' + c.id); }}>
+                      <Maximize2 size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {/* 开场白气泡：角色先开口 —— 点它即刻入戏 */}
+                {greeting && (
+                  <button className="fd2-greet" onClick={() => chat(c)}>
+                    {greeting}
+                  </button>
+                )}
+
+                {/* 角色名 + 作者 行；右侧横向互动条 */}
+                <div className="fd2-meta">
+                  <div className="fd2-id" role="button" tabIndex={0}
+                    onClick={() => nav('/character/' + c.id)}
+                    onKeyDown={e => e.key === 'Enter' && nav('/character/' + c.id)}>
+                    <h2 className="fd2-name">{c.name} <ChevronRight size={17} /></h2>
+                    <div className="fd2-author">
+                      <Avatar src={c.owner_avatar} name={c.owner_name} size={20} />
+                      <span>@{c.owner_name}</span>
+                      <CreatorV tier={c.owner_tier} size={12} />
+                      {c.category && <em className="fd2-cat"><CategoryIcon slug={c.category} size={11} /> {categoryName(c.category)}</em>}
+                    </div>
+                  </div>
+                  <div className="fd2-acts">
+                    <button className={'fd2-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label="点赞">
+                      <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
+                      <span>{(c.likes || 0) + (liked ? 1 : 0)}</span>
+                    </button>
+                    <button className={'fd2-act' + (faved ? ' on gold' : '')} onClick={() => fav(c)} aria-label="收藏">
+                      <Star size={24} fill={faved ? 'currentColor' : 'none'} />
+                      <span>{faved ? '已藏' : '收藏'}</span>
+                    </button>
+                    <button className="fd2-act" onClick={() => nav('/character/' + c.id)} aria-label="评论">
+                      <MessageCircle size={24} />
+                      <span>{c.uses || 0}</span>
+                    </button>
+                    <button className="fd2-act" onClick={() => share(c)} aria-label="分享">
+                      <Share2 size={24} />
+                      <span>分享</span>
+                    </button>
                   </div>
                 </div>
-                <div className="feed-acts">
-                  <button className={'feed-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label="点赞">
-                    <Heart size={26} fill={liked ? 'currentColor' : 'none'} />
-                    <span>{(c.likes || 0) + (liked ? 1 : 0)}</span>
-                  </button>
-                  <button className={'feed-act' + (faved ? ' on' : '')} onClick={() => fav(c)} aria-label="收藏">
-                    <Star size={26} fill={faved ? 'currentColor' : 'none'} />
-                    <span>{faved ? '已藏' : '收藏'}</span>
-                  </button>
-                  <button className="feed-act" onClick={() => nav('/character/' + c.id)} aria-label="详情">
-                    <Drama size={26} />
-                    <span>详情</span>
-                  </button>
-                  <button className="feed-act" onClick={() => share(c)} aria-label="分享">
-                    <Share2 size={26} />
-                    <span>分享</span>
-                  </button>
-                </div>
+
+                {/* 自由输入胶囊：在流里直接开口，带着这句话进入对话 */}
+                {i === activeIdx ? (
+                  <div className="fd2-say">
+                    <button className="fd2-say-call" onClick={() => chat(c)} aria-label="开始对话" disabled={entering}>
+                      <Phone size={17} />
+                    </button>
+                    <input value={say} placeholder="自由输入…" enterKeyHint="send"
+                      autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                      onChange={e => setSay(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && say.trim()) chat(c, say.trim()); }} />
+                    {say.trim()
+                      ? <button className="fd2-say-go send" onClick={() => chat(c, say.trim())} aria-label="发送并进入对话" disabled={entering}><Send size={16} /></button>
+                      : <button className="fd2-say-go" onClick={() => chat(c)} aria-label="进入对话" disabled={entering}><Plus size={18} /></button>}
+                  </div>
+                ) : (
+                  <div className="fd2-say ghost" aria-hidden="true">
+                    <span className="fd2-say-call"><Phone size={17} /></span>
+                    <i>自由输入…</i>
+                    <span className="fd2-say-go"><Plus size={18} /></span>
+                  </div>
+                )}
               </div>
-              <button className="feed-chat" onClick={() => chat(c)}>
-                <MessageCircle size={18} /> 开始对话
-              </button>
             </section>
           );
         })}
       </div>
 
-      {/* 加载 / 到底提示 —— 悬浮胶囊，不参与 snap 流（旧版会让 snap 卡死在页脚） */}
+      {/* 加载 / 到底提示 —— 悬浮胶囊，不参与 snap 流 */}
       {loadingMore && <div className="feed-hint"><Sparkles size={14} /> 正在加载更多…</div>}
       {atEnd && !loadingMore && <div className="feed-hint"><ChevronUp size={15} /> 已经到底啦，上滑回顶</div>}
     </div>

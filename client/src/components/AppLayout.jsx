@@ -17,7 +17,7 @@ import WelcomePopup from './WelcomePopup.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
 import { fmtNum } from '../util.js';
 import {
-  Home, Compass, MessageCircle, Plus, LayoutGrid, X, Bell, Search,
+  Home, Compass, MessageCircle, Plus, X, Bell, Search,
   Sparkles, Feather, Wand2, Drama, Users, Megaphone, Trophy, Landmark,
   ScrollText, PartyPopper, Dices, Library, BookOpen, TrendingUp, Medal,
   Heart, Wallet, Settings, Shield, Crown, LogOut, Download, UserRound,
@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 // Top-level tabs that horizontal swipe cycles through.
-const SWIPE_TABS = ['/today', '/', '/chats'];
+const SWIPE_TABS = ['/today', '/', '/messages'];
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
@@ -35,8 +35,8 @@ const TABS_L = [
   { to: '/', ic: Compass, label: '发现', end: true }
 ];
 const TABS_R = [
-  { to: '/chats', ic: MessageCircle, label: '对话', badge: 'dm' },
-  { kind: 'grid', ic: LayoutGrid, label: '更多' }
+  { to: '/messages', ic: MessageCircle, label: '消息', badge: 'msg' },
+  { kind: 'grid', ic: UserRound, label: '我的' }
 ];
 
 // FAB create-sheet actions.
@@ -62,7 +62,7 @@ const GRID = [
     { to: '/tags', ic: TagsIcon, label: '标签' }
   ] },
   { title: '互动', items: [
-    { to: '/chats', ic: MessageCircle, label: '对话' },
+    { to: '/messages', ic: MessageCircle, label: '消息', badge: 'msg' },
     { to: '/atelier', ic: Feather, label: '小说' },
     { to: '/draw', ic: Wand2, label: 'AI 绘图' },
     { to: '/friends', ic: UserRound, label: '好友', badge: 'dm' },
@@ -70,6 +70,7 @@ const GRID = [
     { to: '/theater', ic: Drama, label: '剧场' }
   ] },
   { title: '我的', items: [
+    { to: '/vip', ic: Crown, label: '会员中心' },
     { to: '/library', ic: Library, label: '我的角色' },
     { to: '/worldbooks', ic: BookOpen, label: '世界书' },
     { to: '/studio', ic: TrendingUp, label: '创作中心' },
@@ -224,7 +225,8 @@ export default function AppLayout({ children }) {
         <span className="dock-ink" ref={inkRef} aria-hidden="true" />
         {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
         <button className={'app-fab' + (sheet === 'create' ? ' open' : '')} onClick={() => setSheet(s => s === 'create' ? null : 'create')} aria-label={sheet === 'create' ? '关闭' : '创建'}>
-          <Plus size={26} />
+          <Plus size={24} />
+          <i className="app-fab-ai" aria-hidden="true">AI</i>
         </button>
         {TABS_R.map(t => t.kind === 'grid'
           ? <button key="grid" className={'app-tab' + (sheet === 'grid' ? ' active' : '')} onClick={() => setSheet(s => s === 'grid' ? null : 'grid')}>
@@ -267,6 +269,7 @@ function Tab({ t, unread, dmUnread, curPath }) {
         <t.ic size={22} />
         {t.badge === 'noti' && unread > 0 && <i className="app-dot" />}
         {t.badge === 'dm' && dmUnread > 0 && <i className="app-dot" />}
+        {t.badge === 'msg' && unread + dmUnread > 0 && <i className="app-dot" />}
       </span>
       <span>{t.label}</span>
     </NavLink>
@@ -343,6 +346,7 @@ function LauncherGrid({ user, unread, dmUnread, onClose, installEvt, onInstall }
                     <n.ic size={22} />
                     {n.badge === 'noti' && unread > 0 && <i className="app-dot" />}
                     {n.badge === 'dm' && dmUnread > 0 && <i className="app-dot" />}
+                    {n.badge === 'msg' && unread + dmUnread > 0 && <i className="app-dot" />}
                   </span>
                   <span>{n.label}</span>
                 </button>
