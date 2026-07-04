@@ -22,14 +22,22 @@ export default function Library() {
     if (file.size > 8 * 1024 * 1024) { toast('文件过大（上限 8MB）', 'err'); return; }
     setImporting(true);
     try {
-      const { character, world, imageBlob } = await parseCharacterCard(file);
+      const { character, world, worldbook, notices, imageBlob } = await parseCharacterCard(file);
       // PNG 卡：图片本身即立绘，上传为托管头像（服务端 avatar 存 URL，不能塞 data-URL）。
       if (imageBlob && !character.avatar) {
         try { const up = await uploadFile(imageBlob); if (up?.url) character.avatar = up.url; }
         catch { /* 头像上传失败不阻断导入，仍建角色 */ }
       }
       const d = await api('/characters/import', { method: 'POST', body: { character, world: world || [] } });
+      // 富世界书（酒馆 character_book）→ 建为独立世界书并关联，保留优先级/触发等原生语义。
+      if (worldbook && worldbook.entries?.length) {
+        try {
+          const wb = await api('/worldbooks', { method: 'POST', body: worldbook });
+          await api(`/worldbooks/${wb.worldbook.id}/attach/${d.character.id}`, { method: 'POST' });
+        } catch { notices?.push('世界书关联失败，可稍后在角色编辑页手动导入世界书。'); }
+      }
       toast('导入成功，已创建为新角色（私有）');
+      (notices || []).forEach((n, i) => setTimeout(() => toast(n), 400 * (i + 1)));
       nav('/character/' + d.character.id + '/edit');
     } catch (err) {
       toast(err.message || '导入失败：不支持的文件格式', 'err');
