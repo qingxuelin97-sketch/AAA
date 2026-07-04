@@ -192,6 +192,7 @@ export default function CharacterEditor() {
         nsfw: character.nsfw ? 1 : prev.nsfw,
         avatar: avatar || prev.avatar,
         world: entries.length ? entries : prev.world,
+        front_regex: character.front_regex && character.front_regex.length ? character.front_regex : prev.front_regex,
       }));
       toast('已导入卡片内容，请检查后保存');
       (notices || []).forEach((n, i) => setTimeout(() => toast(n), 500 * (i + 1)));

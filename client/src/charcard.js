@@ -98,16 +98,7 @@ function buildWorldEntries(d, notices) {
     return { _order: order, keys: joinKeys(e.keys || e.key), content: e.content || '', enabled };
   }).sort((a, b) => a._order - b._order).map(({ _order, ...e }) => e);
 
-  // 酒馆正则脚本 → 禁用条目存档（不丢），并提示。
-  const regexScripts = (d.extensions && Array.isArray(d.extensions.regex_scripts)) ? d.extensions.regex_scripts : [];
-  const regexEntries = regexScripts.map(r => ({
-    keys: trimTo(r.scriptName || '正则脚本', 500),
-    content: `【酒馆正则 · 本平台暂不自动应用，仅存档】\n查找：${r.findRegex || ''}\n替换：${r.replaceString || ''}`,
-    enabled: false,
-  }));
-  if (regexScripts.length) notices.push(`含 ${regexScripts.length} 条酒馆正则脚本：本平台无输出正则替换引擎，已作为禁用条目存档。`);
-
-  let entries = [...mapped, ...regexEntries];
+  let entries = mapped;
   if (entries.length > WORLD_LIMIT) { notices.push(`世界书条目 ${entries.length} 条，已保留前 ${WORLD_LIMIT} 条。`); entries = entries.slice(0, WORLD_LIMIT); }
   const overlay = [d.system_prompt, d.post_history_instructions].filter(Boolean).join('\n\n');
   return { entries, overlay };
@@ -143,11 +134,12 @@ export function normalizeCard(json) {
   if (overlay) parts.push('【系统指令】\n' + overlay);  // system_prompt / 越狱后置指令 折入人设，避免丢失
   const character = {
     name: trimTo(d.name || json.name || '未命名角色', 60),
-    persona: trimTo(parts.join('\n\n'), 8000),
-    greeting: trimTo(d.first_mes || d.greeting || '', 4000),
+    // 上限放宽：酒馆开场白/人设常达数千~上万字（本卡开场白 5772），4000 会截断
+    persona: trimTo(parts.join('\n\n'), 24000),
+    greeting: trimTo(d.first_mes || d.greeting || '', 24000),
     tagline: trimTo(String(d.creator_notes || d.tagline || d.description || '').split('\n')[0], 200),
     // 公开简介：给其他玩家看的。酒馆卡常无 creator_notes，退回角色描述，避免上架后「没有简介」。
-    intro: trimTo(d.creator_notes || d.intro || d.description || '', 4000),
+    intro: trimTo(d.creator_notes || d.intro || d.description || '', 8000),
     tags: trimTo(Array.isArray(d.tags) ? d.tags.join(',') : (d.tags || ''), 200),
     avatar: (typeof d.avatar === 'string' && /^(https?:|data:)/.test(d.avatar)) ? d.avatar : '',
     nsfw: d.nsfw ? 1 : 0,
@@ -155,6 +147,21 @@ export function normalizeCard(json) {
   if (Array.isArray(d.alternate_greetings) && d.alternate_greetings.length) {
     notices.push(`含 ${d.alternate_greetings.length} 条备用开场白：幻域单开场白，已保留主开场白（其余可在编辑页手动取用）。`);
   }
+
+  // 酒馆前端显示正则（extensions.regex_scripts）→ 角色 front_regex：
+  // 对「显示」层做 find→replace（本卡即 lucklyjkop → 沉浸式 HTML 面板）。跳过 disabled 与 promptOnly（后者只改提示词）。
+  const scripts = (d.extensions && Array.isArray(d.extensions.regex_scripts)) ? d.extensions.regex_scripts : [];
+  const frontRegex = scripts.filter(r => r && r.findRegex != null && !r.disabled && !r.promptOnly).map(r => ({
+    name: String(r.scriptName || '').slice(0, 120),
+    find: String(r.findRegex),
+    replace: String(r.replaceString ?? ''),
+    trim: Array.isArray(r.trimStrings) ? r.trimStrings.map(String) : [],
+    placement: Array.isArray(r.placement) ? r.placement : [1, 2],   // 1=用户消息 2=AI消息
+    minDepth: Number.isFinite(r.minDepth) ? r.minDepth : null,
+    maxDepth: Number.isFinite(r.maxDepth) ? r.maxDepth : null,
+  }));
+  character.front_regex = frontRegex;
+  if (frontRegex.length) notices.push(`含 ${frontRegex.length} 条前端显示正则：已作为「专家前端」适配，回复中的对应标记将渲染为 HTML 面板。`);
 
   // 世界书条目落到「内嵌世界书」（编辑页可见、计数正确、单一注入源）。
   return { character, world: entries, notices };

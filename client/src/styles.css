@@ -6121,3 +6121,7 @@ html[data-app="1"] .btn { transition: transform 0.14s ease, background 0.2s ease
 
 /* 统一滚动条隐形、点选态更克制（已在别处隐藏，这里补充选中色） */
 html[data-app="1"] ::selection { background: var(--accent-soft); }
+
+/* 专家前端面板（角色卡 HTML 面板，沙箱 iframe 渲染） */
+.html-panel { width: 100%; max-width: 100%; border: 0; border-radius: 12px; display: block;
+  background: #0d0d12; box-shadow: var(--shadow-sm); margin: 2px 0; }
