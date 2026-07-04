@@ -21,13 +21,15 @@ const DEFAULTS = {
   system_prompt: '',
   voice: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'tts-1', voice_name: 'alloy' },
   image: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'gpt-image-1', size: '1024x1024', region: '', styles: '201', resolution: '768:768' },
+  // 语音识别（ASR / 语音转文字）—— 供「通话」把用户说的话转成文字。
+  asr: { provider: 'openai', protocol: 'openai', base_url: 'https://api.openai.com/v1', key: '', model: 'whisper-1', language: '' },
 };
 
 function read() {
   const row = db.prepare("SELECT value FROM app_config WHERE key='platform'").get();
   let cfg = {};
   if (row) { try { cfg = JSON.parse(row.value); } catch { cfg = {}; } }
-  return { ...DEFAULTS, ...cfg, voice: { ...DEFAULTS.voice, ...(cfg.voice || {}) }, image: { ...DEFAULTS.image, ...(cfg.image || {}) } };
+  return { ...DEFAULTS, ...cfg, voice: { ...DEFAULTS.voice, ...(cfg.voice || {}) }, image: { ...DEFAULTS.image, ...(cfg.image || {}) }, asr: { ...DEFAULTS.asr, ...(cfg.asr || {}) } };
 }
 function write(cfg) {
   db.prepare("INSERT INTO app_config (key, value) VALUES ('platform', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify(cfg));
@@ -35,6 +37,12 @@ function write(cfg) {
 
 export function getPlatform() { return read(); }
 export const voiceReady = () => { const c = read(); return !!(c.voice.key && c.voice.base_url); };
+// 语音识别可用性判定：OpenAI 兼容族需 key + base_url；deepgram/elevenlabs 有默认域名，只需 key。
+export const asrReady = () => {
+  const c = read(); const a = c.asr || {};
+  if (a.protocol === 'deepgram' || a.protocol === 'elevenlabs') return !!a.key;
+  return !!(a.key && a.base_url);
+};
 // 图像服务可用性判定：腾讯云原生只需 key（SecretId:SecretKey）；混元/其他需 key + base_url
 export const imageReady = () => {
   const c = read();
@@ -50,6 +58,7 @@ export function adminView() {
     key_set: !!p.key, key_masked: mask(p.key), fee: PLATFORM_FEE,
     voice: { provider: p.voice.provider, protocol: p.voice.protocol, base_url: p.voice.base_url, model: p.voice.model, voice_name: p.voice.voice_name, key_set: !!p.voice.key, key_masked: mask(p.voice.key), fee: VOICE_FEE },
     image: { provider: p.image.provider, protocol: p.image.protocol, base_url: p.image.base_url, model: p.image.model, size: p.image.size, region: p.image.region || '', styles: p.image.styles || '', resolution: p.image.resolution || '', key_set: !!p.image.key, key_masked: mask(p.image.key), fee: IMAGE_FEE },
+    asr: { provider: p.asr.provider, protocol: p.asr.protocol, base_url: p.asr.base_url, model: p.asr.model, language: p.asr.language || '', key_set: !!p.asr.key, key_masked: mask(p.asr.key), ready: asrReady() },
   };
 }
 export function updatePlatform(body = {}) {
@@ -66,6 +75,11 @@ export function updatePlatform(body = {}) {
   if (body.image && typeof body.image === 'object') {
     ['provider', 'protocol', 'base_url', 'model', 'size', 'region', 'styles', 'resolution'].forEach(k => { if (typeof body.image[k] === 'string') p.image[k] = body.image[k].trim(); });
     if (typeof body.image.key === 'string' && body.image.key.trim()) p.image.key = body.image.key.trim();
+  }
+  if (body.asr && typeof body.asr === 'object') {
+    if (!p.asr) p.asr = { ...DEFAULTS.asr };
+    ['provider', 'protocol', 'base_url', 'model', 'language'].forEach(k => { if (typeof body.asr[k] === 'string') p.asr[k] = body.asr[k].trim(); });
+    if (typeof body.asr.key === 'string' && body.asr.key.trim()) p.asr.key = body.asr.key.trim();
   }
   write(p);
   return adminView();

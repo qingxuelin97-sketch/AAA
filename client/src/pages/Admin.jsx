@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth, getToken } from '../api.jsx';
 import { useToast, Avatar, Modal, CouncilorBadge, CoinIcon, DiamondIcon } from '../ui.jsx';
-import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Zap, ImageIcon, Loader2 } from 'lucide-react';
+import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Zap, ImageIcon, Loader2, Mic } from 'lucide-react';
 import { BarChart, LineChart } from '../components/Charts.jsx';
 
 export default function Admin() {
@@ -355,6 +355,20 @@ const PF_VOICE_PRESETS = [
   ['deepgram', 'Deepgram Aura', 'https://api.deepgram.com', 'deepgram'],
   ['custom', '自定义（OpenAI /audio/speech 兼容）', '', 'openai'],
 ];
+// 语音识别（ASR）服务商预设。protocol 决定服务端走哪条识别链路：
+//   openai = OpenAI 兼容 /audio/transcriptions（覆盖 openai / groq / 硅基流动 /
+//   Azure / dashscope 兼容模式 / fireworks / 自建 whisper 等）；deepgram / elevenlabs 为原生。
+const PF_ASR_PRESETS = [
+  ['openai', 'OpenAI Whisper（whisper-1 / gpt-4o-transcribe）', 'https://api.openai.com/v1', 'openai'],
+  ['groq', 'Groq（whisper-large-v3-turbo，极快）', 'https://api.groq.com/openai/v1', 'openai'],
+  ['siliconflow', '硅基流动（SenseVoice / TeleSpeech）', 'https://api.siliconflow.cn/v1', 'openai'],
+  ['dashscope', '阿里云百炼 · 兼容模式（Paraformer/Qwen-Audio）', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'openai'],
+  ['fireworks', 'Fireworks AI（whisper-v3）', 'https://api.fireworks.ai/inference/v1', 'openai'],
+  ['azure', 'Azure OpenAI（Whisper 部署）', '', 'azure'],
+  ['deepgram', 'Deepgram（nova-3 / nova-2）', 'https://api.deepgram.com', 'deepgram'],
+  ['elevenlabs', 'ElevenLabs Scribe', 'https://api.elevenlabs.io/v1', 'elevenlabs'],
+  ['custom', '自定义（OpenAI /audio/transcriptions 兼容）', '', 'openai'],
+];
 const PF_IMAGE_PRESETS = [
   ['openai', 'OpenAI（gpt-image-1 / dall-e-3）', 'https://api.openai.com/v1'],
   ['siliconflow', '硅基流动（Kolors / SD）', 'https://api.siliconflow.cn/v1'],
@@ -405,6 +419,12 @@ function PlatformTab({ toast }) {
   const [voice, setVoice] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', voice_name: '', key: '' });
   // image
   const [image, setImage] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', size: '1024x1024', key: '', region: '', styles: '201', resolution: '768:768' });
+  // asr（语音识别 / 语音转文字）
+  const [asr, setAsr] = useState({ provider: 'openai', base_url: '', model: '', protocol: 'openai', language: '', key: '' });
+  const [asrModels, setAsrModels] = useState([]);
+  const [detAsr, setDetAsr] = useState(false);
+  const [asrTest, setAsrTest] = useState(null);   // { ok, message, latency_ms, sample? }
+  const [asrTesting, setAsrTesting] = useState(false);
   const [imgTest, setImgTest] = useState(null); // { ok, message, latency_ms, sample? }
   const [imgTesting, setImgTesting] = useState(false);
   const [llmModels, setLlmModels] = useState([]);
@@ -459,11 +479,33 @@ function PlatformTab({ toast }) {
     } catch (e) { toast(e.message, 'err'); } finally { setDetVoices(false); }
   };
 
+  // 语音识别模型检测——真实调用 /admin/platform/detect-asr-models（OpenAI 兼容族会真去 GET /models 过滤）。
+  const detectAsrModels = async () => {
+    setDetAsr(true);
+    try {
+      const d = await api('/admin/platform/detect-asr-models', { method: 'POST', body: { asr: { protocol: asr.protocol, base_url: asr.base_url, key: asr.key || undefined } } });
+      if (!d.models?.length) { toast('未返回任何模型（请先填入该服务的密钥再检测）', 'err'); return; }
+      setAsrModels(d.models);
+      toast(`检测到 ${d.models.length} 个可用识别模型${d.source === 'known' ? '（内置清单）' : ''}`);
+    } catch (e) { toast(e.message, 'err'); } finally { setDetAsr(false); }
+  };
+  // 语音识别在线检测——用一小段静音走一次真实识别请求，验证密钥/base 是否可用。
+  const testAsr = async () => {
+    setAsrTesting(true); setAsrTest(null);
+    try {
+      const body = { asr: { protocol: asr.protocol, base_url: asr.base_url, model: asr.model, language: asr.language } };
+      if (asr.key.trim()) body.asr.key = asr.key.trim();
+      const d = await api('/admin/platform/test-asr', { method: 'POST', body });
+      setAsrTest(d);
+    } catch (e) { setAsrTest({ ok: false, message: e.message }); } finally { setAsrTesting(false); }
+  };
+
   const load = () => api('/admin/platform').then(d => {
     const p = d.platform; setCfg(p);
     setLlm({ provider: 'custom', base_url: p.base_url || '', model: p.model || '', protocol: p.protocol || 'openai', system_prompt: p.system_prompt || '', key: '' });
     setVoice({ provider: p.voice?.provider || 'openai', base_url: p.voice?.base_url || '', model: p.voice?.model || '', protocol: p.voice?.protocol || 'openai', voice_name: p.voice?.voice_name || '', key: '' });
     setImage({ provider: p.image?.provider || 'openai', base_url: p.image?.base_url || '', model: p.image?.model || 'TextToImage', protocol: p.image?.protocol || 'openai', size: p.image?.size || '1024x1024', key: '', region: p.image?.region || '', styles: p.image?.styles || '201', resolution: p.image?.resolution || '768:768' });
+    setAsr({ provider: p.asr?.provider || 'openai', base_url: p.asr?.base_url || '', model: p.asr?.model || '', protocol: p.asr?.protocol || 'openai', language: p.asr?.language || '', key: '' });
   }).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
@@ -478,6 +520,7 @@ function PlatformTab({ toast }) {
         if (image.provider === 'tencent') { body.image.region = image.region; body.image.styles = image.styles; body.image.resolution = image.resolution; }
         if (image.key.trim()) body.image.key = image.key.trim();
       }
+      if (section === 'asr') { body = { asr: { provider: asr.provider, base_url: asr.base_url, model: asr.model, protocol: asr.protocol, language: asr.language } }; if (asr.key.trim()) body.asr.key = asr.key.trim(); }
       const d = await api('/admin/platform', { method: 'PUT', body });
       setCfg(d.platform); setLlm(l => ({ ...l, key: '' })); setVoice(v => ({ ...v, key: '' })); setImage(i => ({ ...i, key: '' }));
       toast('已保存，立即对全体生效');
@@ -584,6 +627,61 @@ function PlatformTab({ toast }) {
             <input className="input" type="password" value={voice.key} onChange={e => setVoice(s => ({ ...s, key: e.target.value }))} placeholder={cfg.voice?.key_set ? '••••••（留空则不修改）' : voice.protocol === 'baidu' ? 'API Key:Secret Key' : voice.protocol === 'volcano' ? 'AppID:AccessToken' : voice.protocol === 'minimax' ? 'APIKey（或 GroupId:APIKey）' : voice.protocol === 'tencent' ? 'SecretId:SecretKey' : '填写平台语音密钥'} /></div>
         </div>
         <p className="muted" style={{ fontSize: 12.5 }}>留空密钥则平台语音关闭，用户需自备语音 API 才能朗读（自备则免费）。</p>
+      </div>
+
+      {/* ---- 语音识别（ASR / 语音转文字）---- */}
+      <div className="card" style={{ marginBottom: 18 }}>
+        <div className="section-title"><h2 style={{ fontSize: 17 }}><Mic size={16} style={{ verticalAlign: -3, marginRight: 6 }} />平台语音识别服务</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn sm" disabled={asrTesting} onClick={testAsr} title="用一小段静音发起一次真实识别请求，验证密钥是否可用">
+              {asrTesting ? <><Loader2 size={14} className="spin" /> 检测中…</> : <><Zap size={14} /> 在线检测</>}
+            </button>
+            <button className="btn sm primary" disabled={busy} onClick={() => save('asr')}><Check size={14} /> 保存</button>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>
+          「通话」功能把用户说的话转成文字后再交给角色。<b>群体性配置，配置后全体用户通话即可语音输入</b>；留空则通话退回浏览器识别或文字输入。
+        </p>
+        <div className="row">
+          <div className="field"><label>服务商预设</label>
+            <select className="select" value={asr.provider} onChange={e => { const v = e.target.value; const pr = PF_ASR_PRESETS.find(x => x[0] === v); setAsr(s => ({ ...s, provider: v, ...(pr ? { base_url: pr[2] || s.base_url, protocol: pr[3] } : {}) })); }}>
+              {PF_ASR_PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select></div>
+          <div className="field"><label>协议</label>
+            <select className="select" value={asr.protocol} onChange={e => setAsr(s => ({ ...s, protocol: e.target.value }))}>
+              <option value="openai">OpenAI 兼容 /audio/transcriptions</option>
+              <option value="azure">Azure OpenAI（api-key 头）</option>
+              <option value="deepgram">Deepgram（原生 /v1/listen）</option>
+              <option value="elevenlabs">ElevenLabs Scribe</option>
+            </select></div>
+        </div>
+        <div className="field"><label>API Base URL</label><input className="input" value={asr.base_url} onChange={e => setAsr(s => ({ ...s, base_url: e.target.value }))} placeholder="https://api.openai.com/v1" />
+          {asr.protocol === 'deepgram' && <div className="hint">Deepgram 固定填 <code>https://api.deepgram.com</code>；API Key 处填 Deepgram 密钥，模型如 <code>nova-2</code> / <code>nova-3</code>。</div>}
+          {asr.protocol === 'elevenlabs' && <div className="hint">ElevenLabs 固定填 <code>https://api.elevenlabs.io/v1</code>，模型填 <code>scribe_v1</code>。</div>}
+          {asr.protocol === 'openai' && <div className="hint">OpenAI 兼容族（OpenAI / Groq / 硅基流动 / 阿里云百炼兼容模式 / 自建 whisper 等）：填该服务的 <code>/v1</code> 基址即可，走 <code>/audio/transcriptions</code>。</div>}
+        </div>
+        <div className="row">
+          <div className="field"><label>识别模型</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" style={{ flex: 1 }} value={asr.model} onChange={e => setAsr(s => ({ ...s, model: e.target.value }))} placeholder="whisper-1 / whisper-large-v3-turbo / nova-2" list="pf-asr-models" />
+              <button className="btn" type="button" onClick={detectAsrModels} disabled={detAsr} title="检测可用识别模型（真实调用服务商接口）"><RefreshCw size={15} className={detAsr ? 'spin' : ''} /> {detAsr ? '检测中' : '检测模型'}</button>
+            </div>
+            {asrModels.length > 0 && (<>
+              <datalist id="pf-asr-models">{asrModels.map(m => <option key={m} value={m} />)}</datalist>
+              <select className="select" style={{ marginTop: 8 }} value={asrModels.includes(asr.model) ? asr.model : ''} onChange={e => e.target.value && setAsr(s => ({ ...s, model: e.target.value }))}>
+                <option value="">— 从检测到的 {asrModels.length} 个模型中选择 —</option>
+                {asrModels.map(m => <option key={m} value={m}>{m}</option>)}
+              </select></>)}
+          </div>
+          <div className="field"><label>语言（可选，留空自动）</label>
+            <input className="input" value={asr.language} onChange={e => setAsr(s => ({ ...s, language: e.target.value }))} placeholder="zh / en / ja …" /></div>
+        </div>
+        <div className="field"><label>API Key {cfg.asr?.key_set && <span className="tag">已配置 · {cfg.asr.key_masked}</span>}</label>
+          <input className="input" type="password" value={asr.key} onChange={e => setAsr(s => ({ ...s, key: e.target.value }))} placeholder={cfg.asr?.key_set ? '••••••（留空则不修改）' : '填写识别服务密钥'} /></div>
+        {asrTest && <p className="muted" style={{ fontSize: 12.5, color: asrTest.ok ? 'var(--ok, #5c8a63)' : 'var(--danger, #bb4b35)' }}>
+          {asrTest.ok ? '✓ ' : '✕ '}{asrTest.message}{asrTest.latency_ms != null ? `（${asrTest.latency_ms}ms）` : ''}
+        </p>}
+        <p className="muted" style={{ fontSize: 12.5 }}>识别服务由平台承担，用户通话语音输入免费。当前状态：{cfg.asr?.ready ? <b style={{ color: 'var(--ok, #5c8a63)' }}>已就绪</b> : <span>未配置</span>}。</p>
       </div>
 
       {/* ---- AI 生图 ---- */}

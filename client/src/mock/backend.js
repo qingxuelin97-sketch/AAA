@@ -568,6 +568,12 @@ function dmThreadOf(meId, otherId) { return filter('dm_messages', d => (d.from_i
 
 /* ----------------------------- helpers ----------------------------- */
 const GOLD_PER_DIAMOND = 100, VIP_COST_GOLD = 30000, VIP_DAYS = 30;
+// VIP 档位（与服务端 economy.js 一致）：周卡 / 月卡 / 季卡；缺省 month。
+const VIP_PLANS = {
+  week:   { id: 'week',   label: '周卡', days: 7,  gold: 8000 },
+  month:  { id: 'month',  label: '月卡', days: 30, gold: 30000 },
+  season: { id: 'season', label: '季卡', days: 90, gold: 78000 }
+};
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
 function publicUser(u) {
   return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, official: !!u.official, creator_tier: creatorTier(u), created_at: u.created_at };
@@ -1674,10 +1680,10 @@ async function route(method, path, search, body, headers) {
   }
 
   // ---------- economy ----------
-  if (method === 'GET' && path === '/economy/wallet') { need(); return J({ wallet: publicUser(me), transactions: filter('transactions', t => t.user_id === me.id).sort((a, b) => b.id - a.id).slice(0, 50), packages: PACKAGES, rates: { gold_per_diamond: GOLD_PER_DIAMOND, vip_cost: VIP_COST_GOLD, vip_days: VIP_DAYS } }); }
+  if (method === 'GET' && path === '/economy/wallet') { need(); return J({ wallet: publicUser(me), transactions: filter('transactions', t => t.user_id === me.id).sort((a, b) => b.id - a.id).slice(0, 50), packages: PACKAGES, rates: { gold_per_diamond: GOLD_PER_DIAMOND, vip_cost: VIP_COST_GOLD, vip_days: VIP_DAYS, vip_plans: Object.values(VIP_PLANS) } }); }
   if (method === 'POST' && path === '/economy/recharge') { need(); const p = PACKAGES.find(x => x.id === body.package_id); if (!p) return E('套餐不存在'); const w = applyTx(me.id, { kind: 'recharge', diamond: p.diamond + p.bonus, memo: `充值 ¥${p.cny} 获得 ${p.diamond + p.bonus} 钻石` }); return J({ wallet: w }); }
   if (method === 'POST' && path === '/economy/exchange') { need(); const n = parseInt(body.diamond, 10); if (!n || n <= 0) return E('请输入有效的钻石数量'); try { return J({ wallet: applyTx(me.id, { kind: 'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo: `${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` }) }); } catch (e) { return E(e.message); } }
-  if (method === 'POST' && path === '/economy/vip') { need(); try { applyTx(me.id, { kind: 'vip', gold: -VIP_COST_GOLD, memo: `购买 ${VIP_DAYS} 天 VIP` }); } catch (e) { return E(e.message); } const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + VIP_DAYS * 86400000).toISOString(); save(); return J({ wallet: publicUser(me) }); }
+  if (method === 'POST' && path === '/economy/vip') { need(); const plan = VIP_PLANS[body.plan] || VIP_PLANS.month; try { applyTx(me.id, { kind: 'vip', gold: -plan.gold, memo: `购买 ${plan.days} 天 VIP（${plan.label}）` }); } catch (e) { return E(e.message); } const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + plan.days * 86400000).toISOString(); save(); return J({ wallet: publicUser(me) }); }
   if (method === 'POST' && path === '/economy/checkin') {
     need(); const today = todayStr(); if (me.last_checkin === today) return E('今天已经签到过啦');
     const y = new Date(Date.now() - 86400000 + 8 * 3600e3).toISOString().slice(0, 10); const streak = me.last_checkin === y ? (me.checkin_streak || 0) + 1 : 1;

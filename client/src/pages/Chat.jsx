@@ -59,13 +59,15 @@ function splitWbMarkers(text, imageMap) {
 // RP 对话的行文约定是「*叹了口气* 你来了。」，纯文本渲染时动作和台词糊成
 // 一团；这里把星号段落变成带色斜体，读起来像剧本舞台指示，沉浸感立增。
 function renderRp(text, keyBase = 0) {
-  if (!text || text.indexOf('*') === -1) return text;
+  if (!text || (text.indexOf('*') === -1 && text.indexOf('（') === -1)) return text;
   const out = [];
-  const re = /\*([^*\n]{1,120})\*/g;
+  // *动作* 去掉星号后斜体；（神态/动作）保留全角括号并斜体 —— 两种约定都呈现为
+  // 柔和的舞台指示，与台词在视觉上分层（沉浸对话里读起来像剧本旁白）。
+  const re = /\*([^*\n]{1,120})\*|（([^）\n]{1,120})）/g;
   let last = 0, m2, k = 0;
   while ((m2 = re.exec(text))) {
     if (m2.index > last) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last, m2.index)}</span>);
-    out.push(<em key={`${keyBase}-a${k++}`} className="rp-act">{m2[1]}</em>);
+    out.push(<em key={`${keyBase}-a${k++}`} className="rp-act">{m2[1] != null ? m2[1] : m2[0]}</em>);
     last = m2.index + m2[0].length;
   }
   if (last < text.length) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last)}</span>);
@@ -552,9 +554,12 @@ export default function Chat() {
             {!character?.background && <div className="chat-aura" aria-hidden="true"><span /><span /><span /></div>}
             {character?.bgm && <audio ref={bgmRef} src={character.bgm} loop preload="auto" />}
             <div className="chat-head">
-              <button className="btn ghost sm mobile-only" onClick={() => nav('/chats')}><ArrowLeft size={16} /></button>
-              <div className={'ch-av' + (streaming ? ' live' : '')}><Avatar src={character?.avatar} name={character?.name} size={44} /></div>
-              <div className="nm"><b>{character?.name}</b><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : (character?.tagline || '在线 · 沉浸扮演中')}</span></div>
+              <button className="btn ghost sm mobile-only chat-back" onClick={() => nav('/messages')}><ArrowLeft size={16} /></button>
+              {/* 头像+名称合成一枚「毛玻璃」身份胶囊（沉浸背景下悬浮在画面左上） */}
+              <div className="ch-idpill">
+                <div className={'ch-av' + (streaming ? ' live' : '')}><Avatar src={character?.avatar} name={character?.name} size={40} /></div>
+                <div className="nm"><b>{character?.name}</b><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : (character?.tagline || '在线 · 沉浸扮演中')}</span></div>
+              </div>
               {(() => { const af = affinityInfo(affinity); return (
                 <button className="affinity-badge" onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
                   <span className="af-ic">{af.icon}</span>
@@ -595,6 +600,7 @@ export default function Chat() {
                 </div>
               </div>
             </div>
+            {character?.background && <span className="chat-ai-mark" aria-hidden="true">内容由 AI 生成</span>}
             {searchOpen && (
               <div className="chat-search">
                 <Search size={15} className="muted" />

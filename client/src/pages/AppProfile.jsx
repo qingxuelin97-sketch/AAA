@@ -1,47 +1,63 @@
-// 「我的」—— app 壳第五个 tab 的原生个人页。
-// 取代旧的全屏 launcher 抽屉：个人卡（banner/头像/徽章/统计）→ 资产行 → 会员横幅
-// → 全功能宫格（探索/互动/创作，原 launcher 的全部入口一个不少）→ 通用行。
-// 数据：/users/:id（统计）+ useAuth（余额/身份）。
+// 「我的」—— app 壳第五个 tab 的个人主页。
+// 结构采用个人主页通用范式（资料头 → 统计 → 会员横幅 → 资产卡 → 快捷功能条 →
+// 内容 Tab → 全部功能），全部为幻域自有品牌/文案/lucide 图标的原创实现。
+// 「全部功能」宫格保底承接原 launcher 的每一个入口，确保功能不丢。
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { Avatar, CoinIcon, DiamondIcon, IdentityBadges } from '../ui.jsx';
+import { useToast, Avatar, CoinIcon, DiamondIcon, IdentityBadges } from '../ui.jsx';
 import { fmtNum } from '../util.js';
+import { CoverArt, EmptyArt } from '../art.jsx';
 import {
-  Bell, BookOpen, ChevronRight, Compass, Crown, Dices, Download, Drama, Feather,
-  Heart, Landmark, LifeBuoy, Library, LogOut, Medal, Megaphone, MessageCircle,
-  Orbit, PartyPopper, Pencil, ScrollText, Settings, Shield, Sparkles, Tags,
-  TrendingUp, Trophy, UserRound, Users, Wallet, Wand2
+  Bell, BookOpen, Copy, Crown, ChevronRight, Compass, Dices, Download, Drama,
+  Feather, Heart, Landmark, LifeBuoy, Library, LogOut, Medal, Megaphone,
+  MessageCircle, Orbit, PartyPopper, Pencil, ScrollText, Search, Settings,
+  Shield, Sparkles, Tags, TrendingUp, Trophy, UserRound, Users, Wallet, Wand2,
+  CalendarCheck, Gift
 } from 'lucide-react';
 
+const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
+
+// 快捷功能条（横向滚动，取最常用）。
+const QUICK = [
+  { to: '/wallet', ic: CalendarCheck, label: '每日签到', tag: '' },
+  { to: '/wallet', ic: Wallet, label: '钱包', tag: '' },
+  { to: '/achievements', ic: Medal, label: '成就', tag: '' },
+  { to: '/insights', ic: Orbit, label: '星轨', tag: 'New' },
+  { to: '/events', ic: PartyPopper, label: '活动', tag: '' },
+  { to: '/gacha', ic: Dices, label: '扭蛋机', tag: '' }
+];
+
+// 「全部功能」保底宫格 —— 原 launcher 的全部入口，一个不少。
 const GRID = [
   { title: '探索', items: [
     { to: '/', ic: Compass, label: '发现' },
-    { to: '/events', ic: PartyPopper, label: '活动' },
-    { to: '/gacha', ic: Dices, label: '扭蛋机' },
     { to: '/scripts', ic: ScrollText, label: '剧本' },
     { to: '/community', ic: Users, label: '社区' },
     { to: '/leaderboard', ic: Trophy, label: '排行榜' },
     { to: '/parliament', ic: Landmark, label: '议会' },
     { to: '/announcements', ic: Megaphone, label: '公告' },
-    { to: '/tags', ic: Tags, label: '标签' }
+    { to: '/tags', ic: Tags, label: '标签' },
+    { to: '/events', ic: PartyPopper, label: '活动' },
+    { to: '/gacha', ic: Dices, label: '扭蛋机' }
   ] },
-  { title: '互动', items: [
+  { title: '互动创作', items: [
     { to: '/messages', ic: MessageCircle, label: '消息' },
     { to: '/atelier', ic: Feather, label: '小说' },
     { to: '/draw', ic: Wand2, label: 'AI 绘图' },
+    { to: '/theater', ic: Drama, label: '剧场' },
     { to: '/friends', ic: UserRound, label: '好友' },
     { to: '/groups', ic: Users, label: '群聊' },
-    { to: '/theater', ic: Drama, label: '剧场' }
-  ] },
-  { title: '创作与收藏', items: [
     { to: '/library', ic: Library, label: '我的角色' },
     { to: '/worldbooks', ic: BookOpen, label: '世界书' },
-    { to: '/studio', ic: TrendingUp, label: '创作中心' },
+    { to: '/studio', ic: TrendingUp, label: '创作中心' }
+  ] },
+  { title: '我的', items: [
     { to: '/insights', ic: Orbit, label: '星轨' },
     { to: '/achievements', ic: Medal, label: '成就' },
     { to: '/favorites', ic: Heart, label: '收藏' },
     { to: '/wallet', ic: Wallet, label: '钱包' },
+    { to: '/vip', ic: Crown, label: '会员中心' },
     { to: '/notifications', ic: Bell, label: '通知', badge: 'noti' },
     { to: '/settings', ic: Settings, label: '设置' }
   ] }
@@ -50,15 +66,25 @@ const GRID = [
 export default function AppProfile() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const toast = useToast();
   const [stats, setStats] = useState(null);
   const [unread, setUnread] = useState(0);
+  const [tab, setTab] = useState('chars'); // chars | favs
+  const [chars, setChars] = useState(null);
+  const [favs, setFavs] = useState(null);
   const [installReady, setInstallReady] = useState(() => !!window.__hyInstallEvt);
 
   useEffect(() => {
     if (!user?.id) return;
     api('/users/' + user.id).then(d => setStats(d.stats || null)).catch(() => {});
     api('/social/notifications').then(d => setUnread(d.unread || 0)).catch(() => {});
+    api('/characters/mine').then(d => setChars(d.characters || [])).catch(() => setChars([]));
   }, [user?.id]);
+  useEffect(() => {
+    if (tab === 'favs' && favs === null) {
+      api('/characters/favorites/list').then(d => setFavs(d.characters || [])).catch(() => setFavs([]));
+    }
+  }, [tab, favs]);
   useEffect(() => {
     const h = () => setInstallReady(true);
     window.addEventListener('huanyu-install-ready', h);
@@ -71,6 +97,9 @@ export default function AppProfile() {
     evt.prompt();
     evt.userChoice?.finally(() => { window.__hyInstallEvt = null; setInstallReady(false); });
   };
+  const copyId = async () => {
+    try { await navigator.clipboard.writeText('U' + user.id); toast('已复制 UID'); } catch { toast('UID：U' + user.id); }
+  };
 
   const ST = [
     { n: stats?.characters, label: '角色', to: '/library' },
@@ -78,60 +107,113 @@ export default function AppProfile() {
     { n: stats?.followers, label: '粉丝', to: '/profile' },
     { n: stats?.following, label: '关注', to: '/profile' }
   ];
+  const content = tab === 'chars' ? chars : favs;
 
   return (
-    <div className="mep">
-      {/* —— 个人卡 —— */}
-      <header className="mep-hero">
-        {user?.banner
-          ? <img className="mep-banner" src={user.banner} alt="" decoding="async" />
-          : <div className="mep-banner mep-banner-ph" />}
-        <div className="mep-hero-scrim" />
-        <button className="mep-id" onClick={() => nav('/profile')}>
-          <Avatar src={user?.avatar} name={user?.display_name} size={64} eager />
-          <div className="mep-id-tx">
-            <b>{user?.display_name || user?.username}</b>
-            <span>@{user?.username}</span>
-          </div>
-          <span className="mep-edit"><Pencil size={13} /> 主页</span>
+    <div className="pf">
+      {/* 顶部图标行 */}
+      <div className="pf-top">
+        <button onClick={openCmdk} aria-label="搜索"><Search size={21} /></button>
+        <button className="pf-bell" onClick={() => nav('/notifications')} aria-label="通知">
+          <Bell size={21} />{unread > 0 && <i className="pf-dot" />}
         </button>
-        <IdentityBadges u={user} className="mep-badges" />
-        <div className="mep-stats">
-          {ST.map(s => (
-            <button key={s.label} onClick={() => nav(s.to)}>
-              <b>{s.n == null ? '—' : fmtNum(s.n)}</b><span>{s.label}</span>
+        <button onClick={() => nav('/settings')} aria-label="设置"><Settings size={21} /></button>
+      </div>
+
+      {/* 资料头 */}
+      <div className="pf-id">
+        <button className="pf-av" onClick={() => nav('/profile')}>
+          <Avatar src={user?.avatar} name={user?.display_name} size={68} eager />
+        </button>
+        <div className="pf-id-tx">
+          <b>{user?.display_name || user?.username}</b>
+          <button className="pf-uid" onClick={copyId}>UID: U{user?.id} <Copy size={12} /></button>
+        </div>
+        <button className="pf-edit" onClick={() => nav('/profile')} aria-label="编辑资料"><Pencil size={16} /></button>
+      </div>
+      <div className="pf-bio" onClick={() => nav('/profile')}>{user?.bio || '点击填写你的简介吧'}</div>
+      <IdentityBadges u={user} className="pf-badges" />
+
+      {/* 统计 */}
+      <div className="pf-stats">
+        {ST.map(s => (
+          <button key={s.label} onClick={() => nav(s.to)}>
+            <b>{s.n == null ? '—' : fmtNum(s.n)}</b><span>{s.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* 会员横幅（紫调促销卡 + 权益词条）*/}
+      <button className={'pf-vip' + (user?.svip ? ' svip' : user?.vip ? ' on' : '')} onClick={() => nav('/vip')}>
+        <span className="pf-vip-glow" aria-hidden="true" />
+        <div className="pf-vip-l">
+          <b>{user?.svip ? 'SVIP 尊享会员' : user?.vip ? 'VIP 会员' : '开通幻域会员'}</b>
+          {user?.vip || user?.svip
+            ? <span className="pf-vip-exp">{user?.svip ? '平台 AI 5 折 · 至高权益' : `有效期至 ${String(user?.vip_until || '').slice(0, 10)}`}</span>
+            : <div className="pf-vip-perks"><span>无限沉浸</span><span>记忆增强</span><span>语音朗读</span><span>免打扰</span></div>}
+        </div>
+        <span className="pf-vip-go">{user?.vip || user?.svip ? '查看' : '立即开通'}</span>
+      </button>
+
+      {/* 资产卡 */}
+      <div className="pf-assets">
+        <div className="pf-asset-head">
+          <span className="pf-asset-bal"><CoinIcon size={19} /> <b>{fmtNum(user?.gold)}</b> 金币</span>
+          <span className="pf-asset-bal"><DiamondIcon size={19} /> <b>{fmtNum(user?.diamond)}</b> 钻石</span>
+        </div>
+        <div className="pf-asset-acts">
+          <button onClick={() => nav('/wallet')}>充值 / 兑换 <ChevronRight size={14} /></button>
+          <button onClick={() => nav('/wallet')}><Gift size={14} /> 签到领币 <ChevronRight size={14} /></button>
+        </div>
+      </div>
+
+      {/* 快捷功能条 */}
+      <div className="pf-quick">
+        {QUICK.map(q => (
+          <button key={q.label + q.to} onClick={() => nav(q.to)}>
+            <span className="pf-quick-ic"><q.ic size={20} />{q.tag && <i className="pf-quick-tag">{q.tag}</i>}</span>
+            <span>{q.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* 内容 Tab */}
+      <div className="pf-tabs">
+        <button className={tab === 'chars' ? 'on' : ''} onClick={() => setTab('chars')}>我的角色 {chars ? chars.length : ''}</button>
+        <button className={tab === 'favs' ? 'on' : ''} onClick={() => setTab('favs')}>收藏 {favs ? favs.length : ''}</button>
+      </div>
+      {content === null ? (
+        <div className="pf-content-grid">{[0, 1, 2].map(i => <div key={i} className="pf-cc-skel" />)}</div>
+      ) : content.length === 0 ? (
+        <div className="pf-empty">
+          <EmptyArt kind={tab === 'chars' ? 'library' : 'chat'} size={104} />
+          <p>{tab === 'chars' ? '还没有创建角色' : '还没有收藏的角色'}</p>
+          <button className="btn primary sm" onClick={() => nav(tab === 'chars' ? '/character/new' : '/')}>
+            {tab === 'chars' ? '去创建' : '去发现'}
+          </button>
+        </div>
+      ) : (
+        <div className="pf-content-grid">
+          {content.map(c => (
+            <button key={c.id} className="pf-cc" onClick={() => nav('/character/' + c.id)}>
+              <div className="pf-cc-cover">
+                {c.avatar ? <img src={c.avatar} alt="" loading="lazy" decoding="async" /> : <div className="cover-art-box"><CoverArt name={c.name} /></div>}
+              </div>
+              <b>{c.name}</b>
+              <span>{c.tagline || '——'}</span>
             </button>
           ))}
         </div>
-      </header>
+      )}
 
-      {/* —— 资产行 —— */}
-      <div className="mep-wallet">
-        <button onClick={() => nav('/wallet')}><CoinIcon size={17} /> <b>{fmtNum(user?.gold)}</b> <span>金币</span></button>
-        <button onClick={() => nav('/wallet')}><DiamondIcon size={17} /> <b>{fmtNum(user?.diamond)}</b> <span>钻石</span></button>
-      </div>
-
-      {/* —— 会员横幅 —— */}
-      <button className={'mep-vip' + (user?.svip ? ' svip' : user?.vip ? ' on' : '')} onClick={() => nav('/vip')}>
-        <span className="mep-vip-ic"><Crown size={19} /></span>
-        <span className="mep-vip-tx">
-          <b>{user?.svip ? 'SVIP 尊享会员' : user?.vip ? 'VIP 会员生效中' : '开通会员'}</b>
-          <small>{user?.svip ? '平台 AI 全线 5 折 · 至高权益' : user?.vip ? `有效期至 ${String(user?.vip_until || '').slice(0, 10)}` : 'AI 对话 75 折 · 签到双倍 · 专属标识'}</small>
-        </span>
-        <ChevronRight size={17} className="mep-vip-chev" />
-      </button>
-
-      {/* —— 全功能宫格 —— */}
+      {/* 全部功能 —— 保底承接每一个入口 */}
       {GRID.map(g => (
-        <section key={g.title} className="mep-group">
+        <section key={g.title} className="pf-group">
           <h4>{g.title}</h4>
-          <div className="mep-grid">
+          <div className="pf-grid">
             {g.items.map((n, i) => (
-              <button key={n.to} className="mep-cell" style={{ '--i': i }} onClick={() => nav(n.to)}>
-                <span className="mep-cell-ic">
-                  <n.ic size={21} />
-                  {n.badge === 'noti' && unread > 0 && <i className="app-dot" />}
-                </span>
+              <button key={n.to + n.label} className="pf-cell" style={{ '--i': i }} onClick={() => nav(n.to)}>
+                <span className="pf-cell-ic"><n.ic size={20} />{n.badge === 'noti' && unread > 0 && <i className="pf-dot sm" />}</span>
                 <span>{n.label}</span>
               </button>
             ))}
@@ -139,17 +221,11 @@ export default function AppProfile() {
         </section>
       ))}
 
-      {/* —— 通用行 —— */}
-      <div className="mep-rows">
-        {user?.is_gm && (
-          <button className="mep-row" onClick={() => nav('/admin')}><Shield size={16} /> 管理后台 <ChevronRight size={15} /></button>
-        )}
-        <button className="mep-row" onClick={() => nav('/help')}><LifeBuoy size={16} /> 帮助中心 <ChevronRight size={15} /></button>
-        <button className="mep-row" onClick={() => nav('/features')}><Sparkles size={16} /> 产品功能 <ChevronRight size={15} /></button>
-        {installReady && (
-          <button className="mep-row" onClick={install}><Download size={16} /> 安装到桌面 <ChevronRight size={15} /></button>
-        )}
-        <button className="mep-row danger" onClick={logout}><LogOut size={16} /> 退出登录</button>
+      <div className="pf-foot">
+        {user?.is_gm && <button className="pf-foot-btn" onClick={() => nav('/admin')}><Shield size={15} /> 管理后台</button>}
+        <button className="pf-foot-btn" onClick={() => nav('/help')}><LifeBuoy size={15} /> 帮助中心</button>
+        {installReady && <button className="pf-foot-btn" onClick={install}><Download size={15} /> 安装到桌面</button>}
+        <button className="pf-foot-btn danger" onClick={logout}><LogOut size={15} /> 退出登录</button>
       </div>
     </div>
   );

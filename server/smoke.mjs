@@ -45,6 +45,7 @@ try {
     '/friends', '/friends/requests', '/friends/state/2', '/dm', '/users/search?q=a', '/users/2', '/ai/images',
     '/admin/check', '/admin/stats', '/admin/users', '/admin/characters', '/admin/scripts', '/admin/codes',
     '/admin/reports', '/admin/platform', '/admin/council', '/admin/councilors',
+    '/asr/status',
   ].filter(Boolean);
 
   for (const p of endpoints) {

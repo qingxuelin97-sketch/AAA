@@ -4,6 +4,7 @@ import { authRequired } from '../auth.js';
 import { applyTx, isVip, notify } from '../wallet.js';
 import { adminView, updatePlatform, getPlatform } from '../platform.js';
 import { synthesize } from './chat.js';
+import { detectAsrModels, transcribe } from '../asr.js';
 import { creatorTier } from '../creator.js';
 import { councilCfg, saveCouncil, councilSeats, councilSize, baseSeats, totalUsers, USERS_PER_SEAT, MIN_SEATS } from '../council.js';
 import { exportAll, importAll } from '../snapshot.js';
@@ -120,6 +121,45 @@ router.post('/platform/test-image', async (req, res) => {
   } catch (e) {
     return res.json({ ok: false, message: '连接失败：' + e.message });
   }
+});
+
+// GM 语音识别（ASR）模型检测——OpenAI 兼容族真实调用 {base}/models 过滤出识别模型；
+// deepgram / elevenlabs 返回已知清单。空 key 回退到已保存的平台 ASR key。
+router.post('/platform/detect-asr-models', async (req, res) => {
+  const b = req.body?.asr || req.body || {};
+  const saved = getPlatform().asr || {};
+  const r = await detectAsrModels({
+    proto: b.protocol || saved.protocol || 'openai',
+    base: b.base_url || saved.base_url,
+    key: (b.key && b.key.trim()) ? b.key.trim() : saved.key,
+  });
+  if (!r.ok) return res.status(r.status || 502).json({ error: r.error });
+  res.json({ models: r.models, source: r.source });
+});
+
+// GM 语音识别在线检测——用一小段静音 WAV 走一次真实识别请求，验证密钥/base 是否可用。
+router.post('/platform/test-asr', async (req, res) => {
+  const b = req.body?.asr || req.body || {};
+  const saved = getPlatform().asr || {};
+  // 生成 ~0.3s 16kHz 单声道静音 WAV（44 字节头 + 数据），足以让服务商回一个空转写而非报错。
+  const dataLen = 16000 * 2 * 0.3 | 0;
+  const buf = Buffer.alloc(44 + dataLen);
+  buf.write('RIFF', 0); buf.writeUInt32LE(36 + dataLen, 4); buf.write('WAVE', 8);
+  buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(16000, 24); buf.writeUInt32LE(32000, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+  buf.write('data', 36); buf.writeUInt32LE(dataLen, 40);
+  const t0 = Date.now();
+  const r = await transcribe({
+    proto: b.protocol || saved.protocol || 'openai',
+    base: b.base_url || saved.base_url,
+    key: (b.key && b.key.trim()) ? b.key.trim() : saved.key,
+    model: b.model || saved.model,
+    audio: buf, mime: 'audio/wav', filename: 'test.wav',
+    language: b.language || saved.language,
+  });
+  const latency_ms = Date.now() - t0;
+  if (!r.ok) return res.json({ ok: false, message: r.error, latency_ms });
+  res.json({ ok: true, message: '连接成功，密钥有效', latency_ms, sample: r.text });
 });
 
 // ---- broadcast ----

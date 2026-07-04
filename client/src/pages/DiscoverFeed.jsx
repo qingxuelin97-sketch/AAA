@@ -18,6 +18,7 @@ import { CategoryIcon, categoryName } from '../assets.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
 import { shareUrl } from '../util.js';
 import { tick } from '../appgestures.js';
+import CallScreen from '../components/CallScreen.jsx';
 import {
   Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp,
   ChevronRight, ScrollText, Maximize2, Phone, Plus, Send, Search, History, X
@@ -58,6 +59,7 @@ export default function DiscoverFeed() {
   const [say, setSay] = useState('');              // 自由输入内容（跟随当前卡）
   const [entering, setEntering] = useState(false); // 正在建立对话
   const [histOpen, setHistOpen] = useState(false); // 「历史」最近看过面板
+  const [callChar, setCallChar] = useState(null);  // 通话中的角色（电话键落点）
   const containerRef = useRef(null);
   const loadFlag = useRef(0);   // 防竞态
   const lastTap = useRef({ t: 0, id: null });
@@ -290,7 +292,7 @@ export default function DiscoverFeed() {
                 {/* 自由输入胶囊：在流里直接开口，带着这句话进入对话 */}
                 {i === activeIdx ? (
                   <div className="fd2-say">
-                    <button className="fd2-say-call" onClick={() => chat(c)} aria-label="开始对话" disabled={entering}>
+                    <button className="fd2-say-call" onClick={() => { pushRecent(c); tick(12); setCallChar(c); }} aria-label="给角色打电话" title="给 TA 打电话">
                       <Phone size={17} />
                     </button>
                     <input value={say} placeholder="自由输入…" enterKeyHint="send"
@@ -345,6 +347,9 @@ export default function DiscoverFeed() {
           </div>
         </div>
       )}
+
+      {/* 通话 —— 给角色打电话（沉浸式全屏） */}
+      {callChar && <CallScreen character={callChar} onClose={() => setCallChar(null)} />}
     </div>
   );
 }
