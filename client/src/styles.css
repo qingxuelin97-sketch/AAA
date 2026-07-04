@@ -6044,3 +6044,80 @@ html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .fd2-say {
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
 }
 .call-modeswitch:disabled { opacity: 0.45; }
+
+/* ============================================================
+   APP 端 · 「一线内容 App」风格精修（布局不变，仅视觉/配色/质感）
+   —— 中性深色底 + 单一高饱和品牌强调（黏土橙），干净利落的卡片、
+      更足留白、细发丝分隔、克制玻璃与微交互。仅作用于 APP 壳。
+   ============================================================ */
+html[data-app="1"][data-theme="dark"] {
+  --bg: #0c0c0e;          /* 近黑中性底，去紫调 */
+  --bg-2: #151519;
+  --panel: #17171c;        /* 卡片 */
+  --panel-2: #1f1f26;
+  --border: #26262e;       /* 细发丝 */
+  --border-2: #34343f;
+  --text: #f3f4f7;
+  --muted: #9a9aa7;
+  --faint: #6b6b78;
+  --accent: #ff9366;       /* 唯一高饱和强调 */
+  --accent-2: #f0713f;
+  --accent-soft: #241a15;
+  --accent-ring: rgba(255, 147, 102, 0.26);
+  --radius: 18px; --radius-sm: 12px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.32);
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.38);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,0.42), 0 24px 56px rgba(0,0,0,0.52);
+  --shadow-float: 0 2px 8px rgba(0,0,0,0.35), 0 18px 44px rgba(0,0,0,0.5);
+}
+
+/* 卡片：统一圆角、细边、更足内边距，去杂色更干净 */
+html[data-app="1"] .card,
+html[data-app="1"] .app-card {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+/* 底部 Dock：更中性、更薄的玻璃分隔，悬浮更轻 */
+html[data-app="1"] .app-tabbar {
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 12px 40px rgba(0,0,0,0.5);
+}
+/* 顶部条：细发丝分隔取代块面 */
+html[data-app="1"] .app-header { border-bottom: 1px solid var(--border); }
+
+/* 发现流分类 chip：更克制的胶囊，激活态才用强调色 */
+html[data-app="1"] .fd2-cat, html[data-app="1"] .feed-cat {
+  background: rgba(255,255,255,0.08); border: 1px solid transparent; font-weight: 500;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+html[data-app="1"] .fd2-cat.on, html[data-app="1"] .feed-cat.on {
+  background: var(--accent); color: #1a0f08; border-color: transparent; font-weight: 600;
+}
+/* 右侧互动条：更精细的图标与计数排布 */
+html[data-app="1"] .fd2-act span, html[data-app="1"] .feed-act span { font-weight: 600; letter-spacing: 0.01em; }
+
+/* 聊天气泡：助手气泡更干净的发丝边，用户气泡单一强调渐变，字距微调 */
+html[data-app="1"] .msg.assistant .bubble {
+  background: var(--panel); border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm); letter-spacing: 0.002em;
+}
+html[data-app="1"] .msg.user .bubble {
+  background: linear-gradient(155deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 18px rgba(240,113,63,0.28);
+}
+/* 输入区：更沉的底 + 细边 + 聚焦时强调环 */
+html[data-app="1"] .chat-composer, html[data-app="1"] .composer {
+  border-top: 1px solid var(--border);
+}
+
+/* 主按钮：单一强调、克制阴影、按压微缩（一线质感） */
+html[data-app="1"] .btn.primary {
+  background: linear-gradient(150deg, var(--accent), var(--accent-2));
+  color: #1a0f08; border: none; box-shadow: 0 6px 18px rgba(240,113,63,0.3);
+}
+html[data-app="1"] .btn.primary:active { transform: translateY(1px) scale(0.99); }
+html[data-app="1"] .btn { transition: transform 0.14s ease, background 0.2s ease, border-color 0.2s ease; }
+
+/* 统一滚动条隐形、点选态更克制（已在别处隐藏，这里补充选中色） */
+html[data-app="1"] ::selection { background: var(--accent-soft); }

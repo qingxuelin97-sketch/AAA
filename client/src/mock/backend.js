@@ -2654,7 +2654,7 @@ async function route(method, path, search, body, headers) {
     const ch = body.character || body;
     if (!ch || !ch.name || typeof ch.name !== 'string' || ch.name.length > 60) return E('角色卡格式无效：缺少 name 或长度超限');
     const world = Array.isArray(body.world) ? body.world.filter(w => w && typeof w === 'object') : [];
-    if (world.length > 200) return E('世界书条目过多（上限 200）');
+    if (world.length > 1000) return E('世界书条目过多（上限 1000）');
     const s = (v, max) => v == null ? '' : String(v).slice(0, max);
     const c = insert('characters', {
       owner_id: me.id, name: s(ch.name, 60), avatar: s(ch.avatar, 500) || null,

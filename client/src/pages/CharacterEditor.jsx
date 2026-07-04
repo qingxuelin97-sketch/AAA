@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, uploadFile, getToken } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
@@ -6,7 +6,8 @@ import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
 import { speakBrowser } from '../voice.js';
 import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
-import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Unlink, BookUp, Globe, Search, Sparkles } from 'lucide-react';
+import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Unlink, BookUp, Globe, Search, Sparkles, Upload } from 'lucide-react';
+import { parseCharacterCard } from '../charcard.js';
 
 // 关联世界书时展示的能力数（与「世界书」页一致，按字段派生）。
 const WB_CAP_KEYS = ['cap_image', 'cap_front', 'cap_overlay', 'cap_recursion', 'cap_variable', 'cap_branch', 'cap_vector'];
@@ -166,6 +167,38 @@ export default function CharacterEditor() {
   const restoreDraft = () => { const d = loadDraft('character', draftKey); if (d) { setC({ ...BLANK, ...d }); toast('已恢复草稿，记得保存'); } setDraftHint(null); };
   const discardDraft = () => { delDraft('character', draftKey); setDraftHint(null); toast('草稿已丢弃'); };
 
+  // 在创建/编辑页直接导入角色卡（幻域 JSON / 酒馆 JSON / 酒馆 PNG）——填入当前表单，检查后再保存。
+  const cardFileRef = useRef(null);
+  const [importingCard, setImportingCard] = useState(false);
+  const importToForm = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { toast('文件过大（上限 8MB）', 'err'); return; }
+    setImportingCard(true);
+    try {
+      const { character, world, notices, imageBlob } = await parseCharacterCard(file);
+      let avatar = character.avatar || '';
+      if (imageBlob && !avatar) { try { const up = await uploadFile(imageBlob); if (up?.url) avatar = up.url; } catch { /* 头像上传失败不阻断 */ } }
+      // 世界书条目填入可编辑的内嵌世界书。
+      const entries = (world || []).map(en => ({ keys: en.keys || '', content: en.content || '', enabled: en.enabled !== false }));
+      setC(prev => ({
+        ...prev,
+        name: character.name || prev.name,
+        tagline: character.tagline || prev.tagline,
+        greeting: character.greeting || prev.greeting,
+        persona: character.persona || prev.persona,
+        intro: character.intro || prev.intro,
+        tags: character.tags || prev.tags,
+        nsfw: character.nsfw ? 1 : prev.nsfw,
+        avatar: avatar || prev.avatar,
+        world: entries.length ? entries : prev.world,
+      }));
+      toast('已导入卡片内容，请检查后保存');
+      (notices || []).forEach((n, i) => setTimeout(() => toast(n), 500 * (i + 1)));
+    } catch (err) { toast(err.message || '导入失败：不支持的文件格式', 'err'); }
+    finally { setImportingCard(false); }
+  };
+
   const set = (k, v) => setC(prev => ({ ...prev, [k]: v }));
 
   const addWorld = () => set('world', [...c.world, { keys: '', content: '', enabled: true }]);
@@ -246,6 +279,9 @@ export default function CharacterEditor() {
           <div className="sub">{c.name || '为你的角色注入灵魂'}</div>
         </div>
         {loaded && <span className="draft-badge" title="内容会自动暂存到本机，断网不丢失"><RotateCcw size={12} /> 已自动暂存</span>}
+        <button className="btn sm" onClick={() => cardFileRef.current?.click()} disabled={importingCard}
+          title="导入角色卡（幻域 JSON / 酒馆 JSON / 酒馆 PNG），内容会填入下方表单"><Upload size={14} /> {importingCard ? '导入中…' : '导入卡片'}</button>
+        <input ref={cardFileRef} type="file" accept="application/json,.json,image/png,.png" style={{ display: 'none' }} onChange={importToForm} />
         <label className="switch">
           <input type="checkbox" checked={c.is_public} onChange={e => set('is_public', e.target.checked)} />
           <span className="track" /><span style={{ fontSize: 13 }}>公开到广场</span>

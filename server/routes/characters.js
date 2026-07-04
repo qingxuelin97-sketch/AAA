@@ -221,7 +221,7 @@ router.post('/import', authRequired, contentLimiter, (req, res) => {
     return res.status(400).json({ error: '角色卡格式无效：缺少 name 或长度超限' });
   }
   const world = Array.isArray(body.world) ? body.world.filter(w => w && typeof w === 'object') : [];
-  if (world.length > 200) return res.status(400).json({ error: '世界书条目过多（上限 200）' });
+  if (world.length > 1000) return res.status(400).json({ error: '世界书条目过多（上限 1000）' });
   const str = (v, max) => v == null ? '' : String(v).slice(0, max);
   const info = db.prepare(`INSERT INTO characters
     (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw)
