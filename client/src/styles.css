@@ -6643,3 +6643,766 @@ html[data-app="1"] .msgs-skel-row {
     var(--bg-2) 75%);
   background-size: 220% 100%;
 }
+
+/* ============================================================================
+   APP · Liquid Glass 系统 · Elevated v2
+   目标：把毛玻璃做到「像玻璃、而不是像色块」——
+   1) 双层玻璃：底层 backdrop-filter 折射 + 顶层高光条 + 边缘描边光
+   2) 噪点纹理（内联 SVG turbulence）打破塑料感、贴合真玻璃颗粒
+   3) 分层深浅：--glass-1（薄纱）/ --glass-2（磨砂）/ --glass-3（厚玻璃）
+   4) 强调色光晕：卡片背后一枚色环，玻璃层折射出主色，观感像真的加载了色
+   5) [data-perf="lite"] 与 prefers-reduced-motion 全面降级到无 blur 版本
+   仅在 html[data-app="1"] 生效，Web/mobile-web 视觉不受影响。
+   ========================================================================== */
+
+html[data-app="1"] {
+  /* —— 三档磨砂 —— */
+  --gl-1-bg: color-mix(in srgb, var(--panel) 62%, transparent);
+  --gl-2-bg: color-mix(in srgb, var(--panel) 74%, transparent);
+  --gl-3-bg: color-mix(in srgb, var(--panel) 84%, transparent);
+  --gl-1-blur: blur(18px) saturate(180%);
+  --gl-2-blur: blur(26px) saturate(180%);
+  --gl-3-blur: blur(38px) saturate(200%);
+  --gl-border: color-mix(in srgb, #fff 14%, transparent);
+  --gl-border-in: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+  --gl-shadow: 0 12px 34px rgba(0,0,0,0.28);
+  /* —— 高光条：玻璃边缘反射 —— */
+  --gl-sheen: linear-gradient(115deg,
+    color-mix(in srgb, #fff 22%, transparent) 0%,
+    color-mix(in srgb, #fff 0%, transparent) 40%);
+  /* —— 强调色光晕（背后隐约透出） —— */
+  --gl-halo-a: radial-gradient(80% 60% at 25% 20%, color-mix(in srgb, var(--accent) 32%, transparent), transparent 62%);
+  --gl-halo-b: radial-gradient(80% 60% at 82% 88%, color-mix(in srgb, var(--dusk, #7d4468) 30%, transparent), transparent 60%);
+}
+html[data-app="1"][data-theme="light"] {
+  --gl-1-bg: color-mix(in srgb, #fff 62%, transparent);
+  --gl-2-bg: color-mix(in srgb, #fff 74%, transparent);
+  --gl-3-bg: color-mix(in srgb, #fff 84%, transparent);
+  --gl-border: color-mix(in srgb, #000 8%, transparent);
+  --gl-border-in: inset 0 1px 0 color-mix(in srgb, #fff 90%, transparent);
+  --gl-shadow: 0 12px 34px rgba(40,33,22,0.14);
+}
+
+/* —— 玻璃通用类（同时给关键既有类补上真玻璃观感） —— */
+html[data-app="1"] .glass,
+html[data-app="1"] .glass-1 {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  box-shadow: var(--gl-border-in), var(--gl-shadow);
+}
+html[data-app="1"] .glass-2 {
+  background: var(--gl-2-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-2-blur);
+  -webkit-backdrop-filter: var(--gl-2-blur);
+  box-shadow: var(--gl-border-in), var(--gl-shadow);
+}
+html[data-app="1"] .glass-3 {
+  background: var(--gl-3-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-3-blur);
+  -webkit-backdrop-filter: var(--gl-3-blur);
+  box-shadow: var(--gl-border-in), var(--gl-shadow);
+}
+
+/* —— 玻璃高光条：任意 .glass* 元素加 .sheen 即触发（伪元素浮层） —— */
+html[data-app="1"] .glass, html[data-app="1"] .glass-1,
+html[data-app="1"] .glass-2, html[data-app="1"] .glass-3 { position: relative; }
+html[data-app="1"] .glass::after, html[data-app="1"] .glass-1::after,
+html[data-app="1"] .glass-2::after, html[data-app="1"] .glass-3::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: var(--gl-sheen);
+  opacity: 0.55; border-radius: inherit; mix-blend-mode: soft-light;
+}
+
+/* —— 玻璃噪点纹理（内联 SVG turbulence，非常轻量）—— */
+html[data-app="1"] .glass-noise::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+  background-size: 120px 120px; opacity: 0.08; mix-blend-mode: overlay;
+}
+html[data-app="1"][data-theme="light"] .glass-noise::before { opacity: 0.05; }
+
+/* ============================================================================
+   把「毛玻璃」真正铺进 APP 壳的关键面：
+   Dock / 顶部头行 / 发现分类条 / 底部 Sheet / 通话入口卡 / 播放器等
+   ========================================================================== */
+
+/* —— Dock：真·双层玻璃 —— */
+html[data-app="1"] .app-tabbar {
+  background: var(--gl-2-bg);
+  border-top: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-2-blur);
+  -webkit-backdrop-filter: var(--gl-2-blur);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+    0 -8px 30px rgba(0,0,0,0.28);
+  overflow: hidden;
+}
+html[data-app="1"] .app-tabbar::before {
+  /* 顶部反射高光条（一线 iOS 的经典细节） */
+  content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, #fff 55%, transparent), transparent);
+  opacity: 0.85; pointer-events: none;
+}
+html[data-app="1"] .app-tabbar::after {
+  /* 玻璃噪点微粒 */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.28 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 96px 96px; opacity: 0.06; mix-blend-mode: overlay;
+}
+html[data-app="1"][data-perf="lite"] .app-tabbar {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--bg);
+}
+html[data-app="1"][data-perf="lite"] .app-tabbar::before,
+html[data-app="1"][data-perf="lite"] .app-tabbar::after { display: none; }
+
+/* —— +AI FAB：透明玻璃钮，按压时液态涟漪扩散 —— */
+html[data-app="1"] .app-fab {
+  background: color-mix(in srgb, var(--panel) 34%, transparent);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border-color: color-mix(in srgb, var(--text) 65%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent),
+    0 6px 20px rgba(0,0,0,0.28);
+  overflow: hidden;
+}
+html[data-app="1"] .app-fab::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(135deg, color-mix(in srgb, #fff 22%, transparent), transparent 55%);
+  pointer-events: none;
+}
+html[data-app="1"] .app-fab.open {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent),
+    0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* —— 今日页头行：磨砂胶囊 hover 沁光 —— */
+html[data-app="1"] .aht-acts button {
+  background: color-mix(in srgb, var(--panel) 26%, transparent);
+  border: 1px solid transparent;
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  transition: background 0.2s, border-color 0.2s, transform 0.15s var(--hy-spring);
+}
+html[data-app="1"] .aht-acts button:hover {
+  background: color-mix(in srgb, var(--panel) 44%, transparent);
+  border-color: var(--gl-border);
+}
+html[data-app="1"][data-perf="lite"] .aht-acts button {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--bg-2);
+}
+
+/* —— 今日页问候卡：叠玻璃 hero，光晕透出主色 —— */
+html[data-app="1"] .ah-hero { overflow: hidden; }
+html[data-app="1"] .ah-hero > * { position: relative; z-index: 2; }
+html[data-app="1"] .ah-hero::after {
+  /* 覆盖既有的圆光晕，改为漂移沁光 */
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(50% 40% at 20% 20%, rgba(255,255,255,0.28), transparent 60%),
+    radial-gradient(60% 45% at 85% 80%, rgba(255,255,255,0.12), transparent 62%);
+  animation: heroDrift 12s ease-in-out infinite alternate;
+  border-radius: inherit;
+  filter: blur(1px);
+}
+@keyframes heroDrift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-8px, 6px, 0) scale(1.06); }
+}
+html[data-app="1"][data-perf="lite"] .ah-hero::after { animation: none; }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] .ah-hero::after { animation: none; } }
+/* hero 内的胶囊按钮真玻璃 */
+html[data-app="1"] .ah-hero .ah-coin {
+  background: color-mix(in srgb, #fff 18%, transparent);
+  border-color: color-mix(in srgb, #fff 32%, transparent);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .ah-hero .ah-coin::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(120deg, color-mix(in srgb, #fff 34%, transparent), transparent 55%);
+  opacity: 0.7;
+}
+html[data-app="1"][data-perf="lite"] .ah-hero .ah-coin {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: color-mix(in srgb, #fff 26%, transparent);
+}
+
+/* —— 快捷入口磁贴：玻璃底 + 高光反射 —— */
+html[data-app="1"] .ah-sc-ic {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  box-shadow: var(--gl-border-in), 0 4px 14px rgba(0,0,0,0.10);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .ah-sc-ic::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(140deg, color-mix(in srgb, #fff 24%, transparent), transparent 50%);
+  opacity: 0.7;
+}
+html[data-app="1"][data-perf="lite"] .ah-sc-ic {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
+/* —— 快捷入口色调轮换：底色改为强调色 mix，玻璃透出更纯 —— */
+html[data-app="1"] .ah-sc:nth-child(4n+1) .ah-sc-ic { background: color-mix(in srgb, var(--accent) 14%, var(--gl-1-bg)); color: var(--accent); }
+html[data-app="1"] .ah-sc:nth-child(4n+2) .ah-sc-ic { background: color-mix(in srgb, var(--diamond) 14%, var(--gl-1-bg)); color: var(--diamond); }
+html[data-app="1"] .ah-sc:nth-child(4n+3) .ah-sc-ic { background: color-mix(in srgb, var(--gold) 14%, var(--gl-1-bg)); color: var(--gold); }
+html[data-app="1"] .ah-sc:nth-child(4n) .ah-sc-ic { background: color-mix(in srgb, var(--dusk) 14%, var(--gl-1-bg)); color: var(--dusk); }
+
+/* —— 精选卡：内嵌玻璃标签「今日精选」+ CTA 玻璃钮 —— */
+html[data-app="1"] .ah-hc-tag {
+  background: color-mix(in srgb, #fff 22%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 30%, transparent);
+  backdrop-filter: blur(10px) saturate(170%);
+  -webkit-backdrop-filter: blur(10px) saturate(170%);
+  color: #fff;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
+}
+html[data-app="1"] .ah-hc-cta {
+  background: color-mix(in srgb, #fff 88%, transparent);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.32), inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+}
+
+/* —— 任务卡：玻璃层 —— */
+html[data-app="1"] .ah-task {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  box-shadow: var(--gl-border-in), 0 4px 14px rgba(0,0,0,0.08);
+}
+html[data-app="1"][data-perf="lite"] .ah-task {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+
+/* —— 「为你挑选」两列卡：玻璃盒 —— */
+html[data-app="1"] .ah-pick {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+}
+html[data-app="1"][data-perf="lite"] .ah-pick {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+
+/* —— 「继续故事」rail 与「空态」CTA 玻璃化 —— */
+html[data-app="1"] .ah-empty {
+  background: var(--gl-1-bg);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--gl-border));
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+}
+
+/* ============================================================================
+   发现流：全屏玻璃层（一线抖音/B 站的沉浸式质感）
+   ========================================================================== */
+/* —— 分类胶囊：真玻璃 —— */
+html[data-app="1"] .feed-cat {
+  background: color-mix(in srgb, #000 32%, transparent);
+  border-color: color-mix(in srgb, #fff 18%, transparent);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+}
+html[data-app="1"] .feed-cat.on {
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent),
+    0 6px 20px color-mix(in srgb, var(--accent) 52%, transparent);
+}
+/* —— 搜索圆钮 —— */
+html[data-app="1"] .feed-search {
+  background: color-mix(in srgb, #000 32%, transparent);
+  border-color: color-mix(in srgb, #fff 18%, transparent);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
+}
+/* —— 沉浸卡介绍面板：厚玻璃 —— */
+html[data-app="1"] .fd2-intro {
+  background: color-mix(in srgb, #0a0812 55%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent), 0 8px 28px rgba(0,0,0,0.28);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .fd2-intro::before {
+  /* 边缘反射高光条 */
+  content: ''; position: absolute; left: 8%; right: 8%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  pointer-events: none;
+}
+html[data-app="1"][data-perf="lite"] .fd2-intro {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: rgba(10, 8, 18, 0.86);
+}
+/* —— 开场白气泡：更精致的珍珠白玻璃 —— */
+html[data-app="1"] .fd2-greet {
+  background: color-mix(in srgb, #fff8ef 88%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 8px 28px rgba(0,0,0,0.32);
+}
+html[data-app="1"][data-perf="lite"] .fd2-greet {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: rgba(255, 253, 249, 0.96);
+}
+/* —— 自由输入胶囊：厚玻璃 + 顶部反射条 —— */
+html[data-app="1"] .fd2-say {
+  background: color-mix(in srgb, #0f0c18 55%, transparent);
+  border-color: color-mix(in srgb, #fff 14%, transparent);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent),
+    0 8px 26px rgba(0,0,0,0.34);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .fd2-say::before {
+  content: ''; position: absolute; left: 20%; right: 20%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  pointer-events: none;
+}
+html[data-app="1"][data-perf="lite"] .fd2-say {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: rgba(18, 15, 24, 0.9);
+}
+/* —— 通话钮 / 发送钮：内层玻璃 —— */
+html[data-app="1"] .fd2-say-call, html[data-app="1"] .fd2-say-go {
+  background: color-mix(in srgb, #fff 16%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+}
+
+/* ============================================================================
+   底部 Sheet：真·苹果风磨砂
+   ========================================================================== */
+html[data-app="1"] .app-sheet-mask {
+  background: rgba(0,0,0,0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+html[data-app="1"] .app-sheet {
+  background: var(--gl-3-bg);
+  border-top: 1px solid var(--gl-border);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent), 0 -18px 44px rgba(0,0,0,0.32);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .app-sheet::before {
+  /* 顶部反射高光条 */
+  content: ''; position: absolute; left: 20%; right: 20%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, #fff 45%, transparent), transparent);
+  pointer-events: none;
+}
+html[data-app="1"][data-perf="lite"] .app-sheet {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+/* 创建面板行图标磁贴：玻璃胶囊 */
+html[data-app="1"] .ac-ic {
+  background: color-mix(in srgb, var(--accent) 12%, var(--gl-1-bg));
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  border: 1px solid var(--gl-border);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+}
+html[data-app="1"][data-perf="lite"] .ac-ic {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
+/* ============================================================================
+   消息中心 · 我的 · 会员：玻璃层加深，层次更清晰
+   ========================================================================== */
+/* 头部（分段控件）玻璃底 */
+html[data-app="1"] .msgs-head {
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--gl-border);
+  background: var(--gl-1-bg);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  margin: 0 -16px 8px;
+  border-radius: 0;
+}
+html[data-app="1"][data-perf="lite"] .msgs-head {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--bg);
+}
+/* 消息入口卡 + 会话行：玻璃底 */
+html[data-app="1"] .msgs-entry,
+html[data-app="1"] .msgs-conv {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  transition: background 0.2s, transform 0.15s var(--hy-spring), box-shadow 0.2s;
+  box-shadow: var(--gl-border-in);
+}
+html[data-app="1"] .msgs-entry:hover,
+html[data-app="1"] .msgs-conv:hover {
+  background: var(--gl-2-bg);
+  box-shadow: var(--gl-border-in), 0 6px 20px rgba(0,0,0,0.14);
+}
+html[data-app="1"][data-perf="lite"] .msgs-entry,
+html[data-app="1"][data-perf="lite"] .msgs-conv {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+html[data-app="1"] .msgs-badge {
+  box-shadow: 0 4px 12px rgba(221,71,50,0.45), inset 0 1px 0 rgba(255,255,255,0.28);
+}
+
+/* 我的页 · 资料卡 & VIP 横幅 & 资产卡：玻璃 */
+html[data-app="1"] .pf-assets {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  box-shadow: var(--gl-border-in);
+}
+html[data-app="1"][data-perf="lite"] .pf-assets {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+html[data-app="1"] .pf-quick-ic,
+html[data-app="1"] .pf-cell,
+html[data-app="1"] .pf-cell-ic {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+html[data-app="1"] .pf-cell {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  box-shadow: var(--gl-border-in);
+}
+html[data-app="1"][data-perf="lite"] .pf-cell,
+html[data-app="1"][data-perf="lite"] .pf-cell-ic,
+html[data-app="1"][data-perf="lite"] .pf-quick-ic {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+/* VIP 横幅内嵌玻璃 CTA */
+html[data-app="1"] .pf-vip-go {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
+}
+/* 底部功能按钮玻璃化 */
+html[data-app="1"] .pf-foot-btn {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+}
+html[data-app="1"][data-perf="lite"] .pf-foot-btn {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+
+/* ============================================================================
+   会员中心 (vm)：金色玻璃卡（真金色玻璃观感）
+   ========================================================================== */
+.vm-card {
+  position: relative; overflow: hidden;
+}
+.vm-card::before {
+  /* 底层折射光晕 */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 20% 20%, rgba(255,255,255,0.4), transparent 60%),
+    radial-gradient(60% 50% at 82% 92%, rgba(255,220,128,0.3), transparent 60%);
+  border-radius: inherit;
+}
+.vm-card::after {
+  /* 边缘反射条 */
+  content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.75), transparent);
+  pointer-events: none;
+}
+.vm-plan {
+  position: relative; overflow: hidden;
+}
+.vm-plan::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(140deg, rgba(255,255,255,0.5), transparent 40%);
+  opacity: 0.5; border-radius: inherit;
+}
+.vm-plan.on::before { opacity: 0.7; }
+.vm-perk {
+  position: relative; overflow: hidden;
+  background: color-mix(in srgb, #fff 62%, transparent);
+  backdrop-filter: blur(12px) saturate(170%);
+  -webkit-backdrop-filter: blur(12px) saturate(170%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 4px 14px rgba(224,151,58,0.14);
+}
+[data-perf="lite"] .vm-perk {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.vm-perk::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.4), transparent 50%);
+  opacity: 0.6; border-radius: inherit;
+}
+.vm-go {
+  position: relative; overflow: hidden;
+}
+.vm-go::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.4) 46%, transparent 62%);
+  background-size: 240% 100%;
+  animation: vmGoShine 3.6s ease-in-out infinite;
+}
+@keyframes vmGoShine { 0%, 100% { background-position: 120% 0; } 50% { background-position: -40% 0; } }
+[data-perf="lite"] .vm-go::before { animation: none; }
+@media (prefers-reduced-motion: reduce) { .vm-go::before { animation: none; } }
+
+/* ============================================================================
+   沉浸对话（chat）：气泡玻璃化 + 输入胶囊真磨砂
+   注：既有规则里已有 .has-bg 场景的玻璃，这里再补齐无背景的常态。
+   ========================================================================== */
+html[data-app="1"] .chat-main .chat-head {
+  background: var(--gl-1-bg);
+  border-bottom: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+}
+html[data-app="1"][data-perf="lite"] .chat-main .chat-head {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+html[data-app="1"] .chat-main .chat-input-bar .box {
+  background: var(--gl-2-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-2-blur);
+  -webkit-backdrop-filter: var(--gl-2-blur);
+  box-shadow: var(--gl-border-in), 0 8px 22px rgba(0,0,0,0.18);
+}
+html[data-app="1"][data-perf="lite"] .chat-main .chat-input-bar .box {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+html[data-app="1"] .msg.assistant .bubble {
+  background: var(--gl-2-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  box-shadow: var(--gl-border-in), 0 4px 14px rgba(0,0,0,0.14);
+}
+html[data-app="1"][data-perf="lite"] .msg.assistant .bubble {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+html[data-app="1"] .msg.user .bubble {
+  /* 用户气泡保留渐变主色（识别度），但加一层高光 */
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .msg.user .bubble::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.24), transparent 50%);
+  opacity: 0.6; border-radius: inherit;
+}
+
+/* ============================================================================
+   通话（CallScreen）：全屏玻璃控制条 + 头像光环下沁玻璃
+   ========================================================================== */
+html[data-app="1"] .call-tools,
+html[data-app="1"] .call-toolbar,
+html[data-app="1"] .call-actions {
+  background: var(--gl-2-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-2-blur);
+  -webkit-backdrop-filter: var(--gl-2-blur);
+  box-shadow: var(--gl-border-in);
+}
+
+/* ============================================================================
+   Toast 与 CommandPalette：玻璃升级
+   ========================================================================== */
+html[data-app="1"] .toast {
+  background: color-mix(in srgb, #14110d 78%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent), 0 10px 40px rgba(0,0,0,0.4);
+}
+html[data-app="1"] .cmdk,
+html[data-app="1"] .cmdk-panel {
+  background: var(--gl-3-bg);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+}
+html[data-app="1"][data-perf="lite"] .toast,
+html[data-app="1"][data-perf="lite"] .cmdk,
+html[data-app="1"][data-perf="lite"] .cmdk-panel {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
+/* ============================================================================
+   顶栏（沉浸次级页 .topbar）：真玻璃化
+   ========================================================================== */
+html[data-app="1"] .topbar {
+  background: var(--gl-2-bg);
+  border-bottom: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-2-blur);
+  -webkit-backdrop-filter: var(--gl-2-blur);
+  box-shadow: 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
+}
+html[data-app="1"][data-perf="lite"] .topbar {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--bg);
+}
+
+/* ============================================================================
+   角色详情沉浸页 cvx：吸底 CTA 玻璃条 + 顶部返回胶囊玻璃升级
+   ========================================================================== */
+html[data-app="1"] .cvx-cta {
+  background: linear-gradient(180deg, transparent 0%, rgba(13,11,18,0.72) 42%, rgba(13,11,18,0.94) 100%);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-top: 1px solid color-mix(in srgb, #fff 8%, transparent);
+}
+html[data-app="1"] .cvx-orb {
+  background: color-mix(in srgb, #000 45%, transparent);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+}
+html[data-app="1"][data-perf="lite"] .cvx-cta,
+html[data-app="1"][data-perf="lite"] .cvx-orb {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+html[data-app="1"] .cvx-tile {
+  background: color-mix(in srgb, #fff 6%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 8%, transparent);
+  backdrop-filter: blur(12px) saturate(170%);
+  -webkit-backdrop-filter: blur(12px) saturate(170%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent);
+}
+html[data-app="1"][data-perf="lite"] .cvx-tile {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
+/* ============================================================================
+   Focus 光环玻璃感
+   ========================================================================== */
+html[data-app="1"] :focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* ============================================================================
+   全局 Glass 助手工具类（谁想额外挂玻璃就加 class）
+   ========================================================================== */
+html[data-app="1"] .g-halo {
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .g-halo::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 20% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+    radial-gradient(60% 50% at 80% 90%, color-mix(in srgb, var(--dusk) 20%, transparent), transparent 62%);
+}
+
+/* ============================================================================
+   触觉波纹：点击时圆点液态扩散（玻璃感的关键收尾）
+   仅对 .app-tab、.app-fab、.ah-sc、.pf-cell、.msgs-entry 触发
+   ========================================================================== */
+html[data-app="1"] .app-tab,
+html[data-app="1"] .ah-sc,
+html[data-app="1"] .msgs-entry,
+html[data-app="1"] .pf-cell,
+html[data-app="1"] .app-create-row { position: relative; overflow: hidden; }
+html[data-app="1"] .app-tab::after,
+html[data-app="1"] .ah-sc::after,
+html[data-app="1"] .msgs-entry::after,
+html[data-app="1"] .pf-cell::after,
+html[data-app="1"] .app-create-row::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%),
+    color-mix(in srgb, var(--accent) 28%, transparent) 0%,
+    transparent 45%);
+  opacity: 0; transition: opacity 0.4s ease;
+}
+html[data-app="1"] .app-tab:active::after,
+html[data-app="1"] .ah-sc:active::after,
+html[data-app="1"] .msgs-entry:active::after,
+html[data-app="1"] .pf-cell:active::after,
+html[data-app="1"] .app-create-row:active::after {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .app-tab::after,
+  html[data-app="1"] .ah-sc::after,
+  html[data-app="1"] .msgs-entry::after,
+  html[data-app="1"] .pf-cell::after,
+  html[data-app="1"] .app-create-row::after { display: none; }
+}
+
+/* ============================================================================
+   深色主题下卡片阴影更深（玻璃的层次感靠阴影支撑）
+   ========================================================================== */
+html[data-app="1"][data-theme="dark"] .msgs-entry,
+html[data-app="1"][data-theme="dark"] .msgs-conv,
+html[data-app="1"][data-theme="dark"] .ah-task,
+html[data-app="1"][data-theme="dark"] .ah-pick,
+html[data-app="1"][data-theme="dark"] .pf-cell,
+html[data-app="1"][data-theme="dark"] .pf-assets,
+html[data-app="1"][data-theme="dark"] .pf-foot-btn {
+  box-shadow: var(--gl-border-in), 0 6px 20px rgba(0,0,0,0.32);
+}
+
+/* ============================================================================
+   移动 web 端底导航同样玻璃化（非 app 壳也美化，因为响应式 web 常在手机上打开）
+   ========================================================================== */
+@media (max-width: 760px) {
+  .bottom-nav {
+    background: color-mix(in srgb, var(--bg) 68%, transparent) !important;
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent), 0 -8px 28px rgba(0,0,0,0.18);
+  }
+  [data-perf="lite"] .bottom-nav {
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    background: var(--bg) !important;
+  }
+}
+
+/* ============================================================================
+   FIX: 避免 backdrop-filter 与 overflow:hidden 的 iOS Safari 组合导致模糊失效
+   办法：单独把玻璃层的容器 will-change，触发合成层
+   ========================================================================== */
+html[data-app="1"] .app-tabbar,
+html[data-app="1"] .app-sheet,
+html[data-app="1"] .fd2-intro,
+html[data-app="1"] .fd2-say,
+html[data-app="1"] .msgs-head,
+html[data-app="1"] .topbar,
+html[data-app="1"] .cvx-cta {
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+}
+
