@@ -7406,3 +7406,68 @@ html[data-app="1"] .cvx-cta {
   transform: translateZ(0);
 }
 
+/* ============================================================================
+   底部栏：白 + 青 磨砂玻璃（仅 APP）
+   —— 深色壳里那条近黑的 Dock 太压抑；这里把它单独换成清透的白+青毛玻璃。
+   毛玻璃「不改变」：即便 perf=lite 也为这一条固定栏保留 backdrop blur（开销可忽略）。
+   仅 html[data-app="1"] 生效 → Web（data-app="0"）完全不受影响。
+   三个语境全覆盖（base / lite / glass-on），并列以「等特异性后写者胜」压过上面各条。
+   ========================================================================== */
+html[data-app="1"] .app-tabbar,
+html[data-app="1"][data-perf="lite"] .app-tabbar,
+html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .app-tabbar {
+  background: linear-gradient(180deg, rgba(240,253,255,0.82), rgba(214,245,251,0.90));
+  border-top: 1px solid rgba(34,211,238,0.42);
+  backdrop-filter: saturate(1.7) blur(24px);
+  -webkit-backdrop-filter: saturate(1.7) blur(24px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    0 -8px 30px rgba(8,145,178,0.16);
+}
+/* 反射高光：浅底上改为极淡青白，噪点降到几不可见 */
+html[data-app="1"] .app-tabbar::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+  opacity: 0.9;
+}
+html[data-app="1"] .app-tabbar::after { opacity: 0.03; }
+/* lite 档也保留高光/噪点（上文 6760 会 display:none，这里恢复以维持毛玻璃质感） */
+html[data-app="1"][data-perf="lite"] .app-tabbar::before { display: block; }
+html[data-app="1"][data-perf="lite"] .app-tabbar::after { display: block; opacity: 0.03; }
+
+/* 关键布局修复：上面的 iOS 模糊兼容段（.app-tabbar { transform: translateZ(0) }）
+   会覆盖底栏居中用的 transform: translateX(-50%)，导致 Dock 被推到视口右半、
+   "+"钮被右缘裁掉、消息/我的溢出到屏外（即截图现象）。这里把两者合并写回，
+   等特异性后写者胜，既保留合成层提示又恢复居中。 */
+html[data-app="1"] .app-tabbar { transform: translateX(-50%) translateZ(0); }
+
+/* 浅底上的文字/图标对比（原来近白，会看不见）→ 青灰 / teal */
+html[data-app="1"] .app-tab { color: color-mix(in srgb, #0e7490 42%, #64748b); }
+html[data-app="1"] .app-tab.active { color: #0e7490; }
+html[data-app="1"] .dock-ink { background: color-mix(in srgb, #22d3ee 26%, transparent); }
+
+/* 中央 +AI 钮：清透白玻璃 + teal 描边字，与白+青底一致 */
+html[data-app="1"] .app-fab {
+  background: rgba(255,255,255,0.42);
+  border-color: #0e7490;
+  color: #0e7490;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 6px 18px rgba(8,145,178,0.20);
+}
+html[data-app="1"] .app-fab::before {
+  background: linear-gradient(135deg, rgba(255,255,255,0.6), transparent 55%);
+}
+html[data-app="1"] .app-fab:active,
+html[data-app="1"] .app-fab.open {
+  background: color-mix(in srgb, #22d3ee 20%, rgba(255,255,255,0.5));
+  border-color: #0e7490;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 8px 22px rgba(8,145,178,0.30);
+}
+/* 未读红点：浅底上用玫红 + 白环，依旧醒目 */
+html[data-app="1"] .app-dot {
+  background: #f43f5e;
+  box-shadow: 0 0 0 2px rgba(240,253,255,0.95);
+}
+
