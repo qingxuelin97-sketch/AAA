@@ -84,26 +84,39 @@ function buildWorldbook(d, charName, notices) {
         : Array.isArray(book) ? book : [])
     : [];
 
-  const mapped = rawEntries.filter(e => e && (e.content || (e.keys && e.keys.length))).map((e, i) => {
+  // 参照 SillyTavern：酒馆条目有两种字段命名 ——
+  //   · V2 character_book 规范：keys / secondary_keys / insertion_order / enabled / position(字符串 'before_char'|'after_char')
+  //   · 内部 world_info 导出：key / keysecondary / order / disable / position(数字 0-4) / extensions
+  // 两套都要认。position 数字：0 before_char / 1 after_char / 2 before_AN / 3 after_AN / 4 at_depth。
+  const mapped = rawEntries.filter(e => {
+    const k = e.keys || e.key; const hasKey = Array.isArray(k) ? k.length : !!k;
+    return e && (e.content || hasKey);
+  }).map((e, i) => {
     const ext = e.extensions || {};
-    const stPos = e.position ?? ext.position;           // 0 before_char / 1 after_char / 4 at_depth
-    const order = Number.isFinite(e.insertion_order) ? e.insertion_order : (Number.isFinite(ext.insertion_order) ? ext.insertion_order : i);
+    const specPos = e.position;                          // 规范：字符串；内部：数字
+    const numPos = Number.isFinite(specPos) ? specPos : (Number.isFinite(ext.position) ? ext.position : null);
+    const before = specPos === 'before_char' || numPos === 0 || numPos === 2;
+    const atDepth = numPos === 4;
+    const order = [e.insertion_order, e.order, ext.insertion_order].find(Number.isFinite) ?? i;
+    const enabled = e.enabled !== false && e.disable !== true;
+    const constant = !!(e.constant ?? ext.constant);
+    const useRegex = !!(e.use_regex ?? ext.use_regex ?? e.useRegex);
     return {
       _order: order,
       keys: joinKeys(e.keys || e.key),
       content: e.content || '',
-      enabled: e.enabled !== false,
+      enabled,
       comment: trimTo(e.comment || e.name || '', 500),
-      case_sensitive: !!(e.case_sensitive ?? ext.case_sensitive),
-      mode: e.constant ? 'always' : ((e.use_regex ?? ext.use_regex) ? 'regex' : 'keyword'),
-      inject_pos: (stPos === 0) ? 'before' : 'after',
-      depth: (stPos === 4) ? (ext.depth ?? 4) : (ext.depth ?? 0),
-      probability: (ext.useProbability === false) ? 100 : (ext.probability ?? e.probability ?? 100),
+      case_sensitive: !!(e.case_sensitive ?? e.caseSensitive ?? ext.case_sensitive),
+      mode: constant ? 'always' : (useRegex ? 'regex' : 'keyword'),
+      inject_pos: before ? 'before' : 'after',
+      depth: atDepth ? (e.depth ?? ext.depth ?? 4) : (ext.depth ?? 0),
+      probability: (ext.useProbability === false || e.useProbability === false) ? 100 : (ext.probability ?? e.probability ?? 100),
       priority: clamp(e.priority ?? ext.priority ?? order, 0, 100),
-      // 酒馆 selective + secondary_keys 语义 = 必须同时命中 → 幻域 required_keys(AND)
-      required_keys: (e.selective && Array.isArray(e.secondary_keys)) ? joinKeys(e.secondary_keys) : '',
+      // selective + secondary/keysecondary = 必须同时命中 → 幻域 required_keys(AND)
+      required_keys: (e.selective !== false && (e.secondary_keys || e.keysecondary)) ? joinKeys(e.secondary_keys || e.keysecondary) : '',
     };
-  }).sort((a, b) => a._order - b._order).map(({ _order, ...e }) => e); // 按 insertion_order 定序，保持原生顺序
+  }).sort((a, b) => a._order - b._order).map(({ _order, ...e }) => e); // 按 order 定序，保持原生顺序/优先级
 
   // 酒馆正则脚本 → 禁用的 regex 条目（保留不丢），并提示。
   const regexScripts = (d.extensions && Array.isArray(d.extensions.regex_scripts)) ? d.extensions.regex_scripts : [];
@@ -180,7 +193,9 @@ export async function parseCharacterCard(file) {
   if (isPng) {
     const buf = await file.arrayBuffer();
     const texts = await readPngTextChunks(buf);
-    const b64 = texts.ccv3 || texts.chara;
+    // 关键字大小写不敏感（对齐 SillyTavern）：ccv3(v3) 优先，chara(v1/v2) 兜底。
+    const lower = {}; for (const k in texts) lower[k.toLowerCase()] = texts[k];
+    const b64 = lower.ccv3 || lower.chara;
     if (!b64) throw new Error('这张 PNG 未内嵌角色卡数据（不是酒馆角色卡）');
     return { ...normalizeCard(b64ToJson(b64)), imageBlob: file };
   }
