@@ -73,74 +73,44 @@ function b64ToJson(b64) {
   return JSON.parse(new TextDecoder('utf-8').decode(arr));
 }
 
-// 酒馆 character_book / 正则 → 幻域富世界书 { name, ...opts, entries } + notices。
-function buildWorldbook(d, charName, notices) {
+// 酒馆 character_book / 正则 → 幻域「内嵌世界书」条目（简易 {keys,content,enabled}）+ 系统指令。
+// 说明：聊天注入会同时读取「角色内嵌 world_entries」与「关联独立世界书」——为避免重复注入，
+// 且让编辑页「世界书(N)」直接可见、计数正确（不再出现「只有壳」），一律落到内嵌世界书。
+// 顺序按 insertion_order/order 保留；正则脚本转为禁用条目存档；上限 1000（大 lorebook 不再被 200 卡死）。
+const WORLD_LIMIT = 1000;
+function buildWorldEntries(d, notices) {
   const book = d.character_book || d.world_info || d.world_book || d.lorebook || null;
-  // 酒馆/世界书导出里 entries 可能是数组，也常常是「对象字典」{"0":{...},"1":{...}}（旧 world_info 格式）。
-  // 只认数组会导致这类卡片世界书整段读不到 —— 两种都取。
   const rawEntries = book
     ? (Array.isArray(book.entries) ? book.entries
       : (book.entries && typeof book.entries === 'object') ? Object.values(book.entries)
         : Array.isArray(book) ? book : [])
     : [];
-
-  // 参照 SillyTavern：酒馆条目有两种字段命名 ——
-  //   · V2 character_book 规范：keys / secondary_keys / insertion_order / enabled / position(字符串 'before_char'|'after_char')
-  //   · 内部 world_info 导出：key / keysecondary / order / disable / position(数字 0-4) / extensions
-  // 两套都要认。position 数字：0 before_char / 1 after_char / 2 before_AN / 3 after_AN / 4 at_depth。
+  // 参照 SillyTavern：V2 规范(keys/secondary_keys/insertion_order/enabled/position字符串) 与
+  // 内部导出(key/keysecondary/order/disable/position数字/extensions) 两套命名都认。
   const mapped = rawEntries.filter(e => {
+    if (!e) return false;
     const k = e.keys || e.key; const hasKey = Array.isArray(k) ? k.length : !!k;
-    return e && (e.content || hasKey);
+    return e.content || hasKey;
   }).map((e, i) => {
     const ext = e.extensions || {};
-    const specPos = e.position;                          // 规范：字符串；内部：数字
-    const numPos = Number.isFinite(specPos) ? specPos : (Number.isFinite(ext.position) ? ext.position : null);
-    const before = specPos === 'before_char' || numPos === 0 || numPos === 2;
-    const atDepth = numPos === 4;
     const order = [e.insertion_order, e.order, ext.insertion_order].find(Number.isFinite) ?? i;
     const enabled = e.enabled !== false && e.disable !== true;
-    const constant = !!(e.constant ?? ext.constant);
-    const useRegex = !!(e.use_regex ?? ext.use_regex ?? e.useRegex);
-    return {
-      _order: order,
-      keys: joinKeys(e.keys || e.key),
-      content: e.content || '',
-      enabled,
-      comment: trimTo(e.comment || e.name || '', 500),
-      case_sensitive: !!(e.case_sensitive ?? e.caseSensitive ?? ext.case_sensitive),
-      mode: constant ? 'always' : (useRegex ? 'regex' : 'keyword'),
-      inject_pos: before ? 'before' : 'after',
-      depth: atDepth ? (e.depth ?? ext.depth ?? 4) : (ext.depth ?? 0),
-      probability: (ext.useProbability === false || e.useProbability === false) ? 100 : (ext.probability ?? e.probability ?? 100),
-      priority: clamp(e.priority ?? ext.priority ?? order, 0, 100),
-      // selective + secondary/keysecondary = 必须同时命中 → 幻域 required_keys(AND)
-      required_keys: (e.selective !== false && (e.secondary_keys || e.keysecondary)) ? joinKeys(e.secondary_keys || e.keysecondary) : '',
-    };
-  }).sort((a, b) => a._order - b._order).map(({ _order, ...e }) => e); // 按 order 定序，保持原生顺序/优先级
+    return { _order: order, keys: joinKeys(e.keys || e.key), content: e.content || '', enabled };
+  }).sort((a, b) => a._order - b._order).map(({ _order, ...e }) => e);
 
-  // 酒馆正则脚本 → 禁用的 regex 条目（保留不丢），并提示。
+  // 酒馆正则脚本 → 禁用条目存档（不丢），并提示。
   const regexScripts = (d.extensions && Array.isArray(d.extensions.regex_scripts)) ? d.extensions.regex_scripts : [];
   const regexEntries = regexScripts.map(r => ({
     keys: trimTo(r.scriptName || '正则脚本', 500),
     content: `【酒馆正则 · 本平台暂不自动应用，仅存档】\n查找：${r.findRegex || ''}\n替换：${r.replaceString || ''}`,
-    enabled: false, mode: 'regex', comment: '从酒馆导入的正则脚本',
+    enabled: false,
   }));
-  if (regexScripts.length) notices.push(`含 ${regexScripts.length} 条酒馆正则脚本：本平台无输出正则替换引擎，已作为禁用条目存档，可在世界书中手动迁移。`);
+  if (regexScripts.length) notices.push(`含 ${regexScripts.length} 条酒馆正则脚本：本平台无输出正则替换引擎，已作为禁用条目存档。`);
 
-  const entries = [...mapped, ...regexEntries];
-  if (!entries.length) return null;
-
+  let entries = [...mapped, ...regexEntries];
+  if (entries.length > WORLD_LIMIT) { notices.push(`世界书条目 ${entries.length} 条，已保留前 ${WORLD_LIMIT} 条。`); entries = entries.slice(0, WORLD_LIMIT); }
   const overlay = [d.system_prompt, d.post_history_instructions].filter(Boolean).join('\n\n');
-  const frontend = (d.extensions && (d.extensions.frontend || d.extensions.html)) || '';
-  return {
-    name: trimTo((charName || '角色') + ' 的世界书', 60),
-    scan_depth: book && book.scan_depth ? clamp(book.scan_depth, 1, 50) : 4,
-    token_budget: book && book.token_budget ? clamp(book.token_budget, 0, 8000) : 0,
-    recursion: book && book.recursive_scanning ? 1 : 0,
-    prompt_overlay: trimTo(overlay, 2000),
-    front_schema: trimTo(frontend, 8000),
-    entries,
-  };
+  return { entries, overlay };
 }
 
 // 任意卡片 JSON → { character, world, worldbook, notices }
@@ -161,12 +131,16 @@ export function normalizeCard(json) {
     return { character: d, world: Array.isArray(json.world) ? json.world : [], worldbook: null, notices };
   }
 
-  // 酒馆 → 幻域：描述/性格/场景/示例 拼成人设
+  // 世界书条目（内嵌，可见/可用）+ 系统指令。
+  const { entries, overlay } = buildWorldEntries(d, notices);
+
+  // 酒馆 → 幻域：描述/性格/场景/示例（+系统指令）拼成人设
   const parts = [];
   if (d.description) parts.push(String(d.description));
   if (d.personality) parts.push('性格：' + d.personality);
   if (d.scenario) parts.push('场景：' + d.scenario);
   if (d.mes_example) parts.push('对话示例：\n' + d.mes_example);
+  if (overlay) parts.push('【系统指令】\n' + overlay);  // system_prompt / 越狱后置指令 折入人设，避免丢失
   const character = {
     name: trimTo(d.name || json.name || '未命名角色', 60),
     persona: trimTo(parts.join('\n\n'), 8000),
@@ -182,9 +156,8 @@ export function normalizeCard(json) {
     notices.push(`含 ${d.alternate_greetings.length} 条备用开场白：幻域单开场白，已保留主开场白（其余可在编辑页手动取用）。`);
   }
 
-  const worldbook = buildWorldbook(d, character.name, notices);
-  // 有富世界书就走世界书（避免与 world_entries 重复注入）；否则简易 world 兜底（一般为空）。
-  return { character, world: worldbook ? [] : [], worldbook, notices };
+  // 世界书条目落到「内嵌世界书」（编辑页可见、计数正确、单一注入源）。
+  return { character, world: entries, notices };
 }
 
 // 入口：File → { character, world, worldbook, notices, imageBlob? }

@@ -176,11 +176,11 @@ export default function CharacterEditor() {
     if (file.size > 8 * 1024 * 1024) { toast('文件过大（上限 8MB）', 'err'); return; }
     setImportingCard(true);
     try {
-      const { character, world, worldbook, notices, imageBlob } = await parseCharacterCard(file);
+      const { character, world, notices, imageBlob } = await parseCharacterCard(file);
       let avatar = character.avatar || '';
       if (imageBlob && !avatar) { try { const up = await uploadFile(imageBlob); if (up?.url) avatar = up.url; } catch { /* 头像上传失败不阻断 */ } }
-      // 世界书条目填入可编辑的内嵌世界书（优先富世界书条目，退回简易 world）。
-      const entries = (worldbook?.entries || world || []).map(en => ({ keys: en.keys || '', content: en.content || '', enabled: en.enabled !== false }));
+      // 世界书条目填入可编辑的内嵌世界书。
+      const entries = (world || []).map(en => ({ keys: en.keys || '', content: en.content || '', enabled: en.enabled !== false }));
       setC(prev => ({
         ...prev,
         name: character.name || prev.name,
