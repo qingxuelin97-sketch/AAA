@@ -6071,6 +6071,42 @@ html[data-app="1"][data-theme="dark"] {
   --shadow-float: 0 2px 8px rgba(0,0,0,0.35), 0 18px 44px rgba(0,0,0,0.5);
 }
 
+/* ============================================================
+   APP 端 · 「白 + 青」清透浅色主题（默认）
+   —— 用户要求整个 APP 转白+青、保留毛玻璃。App 系统模式恒解析为 light，
+      故这一整块即 APP 的主色板：纯白卡片 + 极浅青底 + 青强调；
+      所有 var(--bg/--panel/--text/--border/--accent...) 驱动的界面随之翻浅。
+      深色专属规则（[data-theme="dark"] ...）在 APP 下自动关闭。
+   仅 html[data-app="1"] 生效，Web 浅色（暖白 ivory）不受影响。
+   ============================================================ */
+html[data-app="1"][data-theme="light"] {
+  --bg: #eefbfd;          /* 白+青 极浅底 */
+  --bg-2: #e0f5f9;        /* 凹陷面（输入等） */
+  --panel: #ffffff;       /* 卡片纯白 */
+  --panel-2: #eaf8fb;     /* 次级面，淡青 */
+  --border: #cbe8ef;      /* 青灰发丝 */
+  --border-2: #aedde6;    /* 稍重边 */
+  --text: #0f2e35;        /* 深青墨 */
+  --muted: #4b6b72;       /* 次级文字 */
+  --faint: #7ba0a8;       /* 三级文字 */
+  --accent: #0e9cb8;      /* 青强调（白+青的青） */
+  --accent-2: #0a7f97;    /* 深一档（hover/渐变尾） */
+  --accent-soft: #d7f2f8; /* 强调浅底 */
+  --accent-ring: rgba(14, 156, 184, 0.24);
+  --radius: 18px; --radius-sm: 12px;
+  --shadow-sm: 0 1px 2px rgba(13, 74, 88, 0.08);
+  --shadow: 0 1px 2px rgba(13, 74, 88, 0.06), 0 8px 24px rgba(13, 74, 88, 0.10);
+  --shadow-lg: 0 2px 8px rgba(13, 74, 88, 0.10), 0 24px 56px rgba(13, 74, 88, 0.16);
+  --shadow-float: 0 2px 8px rgba(13, 74, 88, 0.09), 0 18px 44px rgba(13, 74, 88, 0.15);
+}
+/* App 浅色底纹：极淡青光晕，替代深色壳的暗底（body 背景由 :root 暖白改为白青） */
+html[data-app="1"][data-theme="light"] body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(900px 520px at 88% -8%, rgba(14, 156, 184, 0.10), transparent 60%),
+    radial-gradient(760px 480px at -6% 108%, rgba(34, 211, 238, 0.09), transparent 55%);
+}
+
 /* 卡片：统一圆角、细边、更足内边距，去杂色更干净 */
 html[data-app="1"] .card,
 html[data-app="1"] .app-card {
@@ -6675,12 +6711,15 @@ html[data-app="1"] {
   --gl-halo-b: radial-gradient(80% 60% at 82% 88%, color-mix(in srgb, var(--dusk, #7d4468) 30%, transparent), transparent 60%);
 }
 html[data-app="1"][data-theme="light"] {
-  --gl-1-bg: color-mix(in srgb, #fff 62%, transparent);
-  --gl-2-bg: color-mix(in srgb, #fff 74%, transparent);
-  --gl-3-bg: color-mix(in srgb, #fff 84%, transparent);
-  --gl-border: color-mix(in srgb, #000 8%, transparent);
+  /* 白+青 磨砂：白玻璃透出淡青，边缘用青灰描边（在浅底上可见） */
+  --gl-1-bg: color-mix(in srgb, #f2fdff 62%, transparent);
+  --gl-2-bg: color-mix(in srgb, #f2fdff 76%, transparent);
+  --gl-3-bg: color-mix(in srgb, #f6feff 86%, transparent);
+  --gl-border: color-mix(in srgb, #22d3ee 30%, transparent);
   --gl-border-in: inset 0 1px 0 color-mix(in srgb, #fff 90%, transparent);
-  --gl-shadow: 0 12px 34px rgba(40,33,22,0.14);
+  --gl-shadow: 0 12px 34px rgba(8, 90, 108, 0.14);
+  --gl-halo-a: radial-gradient(80% 60% at 25% 20%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 62%);
+  --gl-halo-b: radial-gradient(80% 60% at 82% 88%, color-mix(in srgb, #22d3ee 24%, transparent), transparent 60%);
 }
 
 /* —— 玻璃通用类（同时给关键既有类补上真玻璃观感） —— */
