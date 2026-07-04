@@ -74,6 +74,19 @@ export function initFx() {
     if (!reduce) spawnRipple(t, e.clientX, e.clientY);
   }, { passive: true });
 
+  // APP 壳专属：给 tab/宫格/入口卡等玻璃面在按压时设置 --rx/--ry，
+  // 让 CSS 里的液态涟漪从真实触点扩散（否则一律从中心射出，很塑料感）。
+  document.addEventListener('pointerdown', (e) => {
+    if (document.documentElement.dataset.app !== '1') return;
+    const t = e.target.closest('.app-tab, .ah-sc, .msgs-entry, .pf-cell, .app-create-row, .fd2-act, .feed-cat');
+    if (!t) return;
+    const r = t.getBoundingClientRect();
+    const rx = ((e.clientX - r.left) / r.width) * 100;
+    const ry = ((e.clientY - r.top) / r.height) * 100;
+    t.style.setProperty('--rx', rx + '%');
+    t.style.setProperty('--ry', ry + '%');
+  }, { passive: true });
+
   // like / favorite particle burst — opt in via [data-burst] or .like-burst
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-burst], .moment .acts button, .char-detail-fav');
