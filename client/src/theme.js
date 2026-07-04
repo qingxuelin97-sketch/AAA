@@ -8,8 +8,8 @@ const mq = () => window.matchMedia('(prefers-color-scheme: dark)');
 export function getThemeMode() { return localStorage.getItem(KEY) || 'system'; }
 export function resolveTheme(mode = getThemeMode()) {
   if (mode === 'system') {
-    // App 壳的原生观感默认深色（对标沉浸式内容 App）；用户在设置里显式选浅色仍然生效。
-    if (isAppMode()) return 'dark';
+    // App 壳默认「白+青」清透浅色（毛玻璃观感）；用户在设置里显式选深色仍然生效。
+    if (isAppMode()) return 'light';
     return mq().matches ? 'dark' : 'light';
   }
   return mode;
@@ -19,7 +19,8 @@ export function applyTheme(mode = getThemeMode()) {
   document.documentElement.dataset.theme = resolved;
   // keep the mobile status-bar / PWA theme color in sync
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#15120e' : '#f4f2ec');
+  // App 浅色用「白+青」底色同步状态栏；Web 浅色仍用暖白。
+  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#15120e' : (isAppMode() ? '#eefbfd' : '#f4f2ec'));
   try { window.dispatchEvent(new Event('huanyu-theme')); } catch { /* */ }
 }
 export function setThemeMode(mode) { localStorage.setItem(KEY, mode); applyTheme(mode); }

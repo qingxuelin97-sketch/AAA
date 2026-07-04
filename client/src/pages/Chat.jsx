@@ -116,7 +116,9 @@ const BubbleContent = React.memo(function BubbleContent({ content, role, imageMa
   if (!content) return null;
   // 先应用前端显示正则（酒馆 regex_scripts）：可把标记替换成 HTML 面板等（仅显示层）。
   const text = (frontRegex && frontRegex.length) ? applyFrontRegex(content, frontRegex, role) : content;
-  if (role === 'assistant' && (/```html/i.test(text) || looksLikeHtml(text))) return renderWithPanels(text);
+  // 助手消息可含面板；用户消息仅当角色带前端正则时才放行（酒馆 placement=1，如表情包/私聊/地图），
+  // 避免普通聊天里用户偶然输入的 HTML 被当成面板渲染。
+  if ((role === 'assistant' || (frontRegex && frontRegex.length)) && (/```html/i.test(text) || looksLikeHtml(text))) return renderWithPanels(text);
   if (role !== 'assistant' || !imageMap || !WBIMG_RE.test(text)) {
     WBIMG_RE.lastIndex = 0;
     return renderRp(text);
