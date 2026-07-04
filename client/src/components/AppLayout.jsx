@@ -208,8 +208,15 @@ export default function AppLayout({ children }) {
 
 function Tab({ t, unread, dmUnread, curPath }) {
   // Tapping the already-active tab scrolls the page back to the top (native pattern).
+  // 也覆盖内部滚动容器（发现流 .feed-root、聊天列表等），否则再点无反应。
   const onClick = (e) => {
-    if (curPath === t.to) { e.preventDefault(); tick(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    if (curPath !== t.to) return;
+    e.preventDefault(); tick();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      const inner = document.querySelector('.feed-root, .msgs, .apphome, .pf, .cvx-scroll, .vm-scroll');
+      inner?.scrollTo?.({ top: 0, behavior: 'smooth' });
+    } catch { /* */ }
   };
   return (
     <NavLink to={t.to} end={t.end} viewTransition onClick={onClick} className={({ isActive }) => 'app-tab' + (isActive ? ' active' : '')}>

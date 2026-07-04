@@ -58,8 +58,8 @@ export default function Messages() {
       <div className="msgs-head">
         <span className="msgs-logo" aria-hidden="true"><Logo size={30} /></span>
         <div className="msgs-tabs" role="tablist">
-          <button role="tab" aria-selected={tab === 'liked'} className={tab === 'liked' ? 'on' : ''} onClick={() => setTab('liked')}>赞过</button>
           <button role="tab" aria-selected={tab === 'chatted'} className={tab === 'chatted' ? 'on' : ''} onClick={() => setTab('chatted')}>聊过</button>
+          <button role="tab" aria-selected={tab === 'liked'} className={tab === 'liked' ? 'on' : ''} onClick={() => setTab('liked')}>赞过</button>
         </div>
         <button className="msgs-search" onClick={openCmdk} aria-label="搜索"><Search size={20} /></button>
       </div>
