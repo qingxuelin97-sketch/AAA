@@ -9,17 +9,6 @@ on:
         description: "服务器地址（数据共通）。例：https://你的域名 或 http://你的IP:4000。留空=离线演示版"
         required: false
         default: ""
-  # 临时：push 到 main 触发（构建后移除）
-  push:
-    branches: ["main"]
-    paths:
-      - "client/.trigger-apk"
-      - "client/**"
-      - "server/**"
-      - "package.json"
-      - "package-lock.json"
-      - "capacitor.config.json"
-      - "resources/**"
 
 permissions:
   contents: read
