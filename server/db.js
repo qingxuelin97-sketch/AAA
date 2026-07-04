@@ -365,6 +365,8 @@ for (const sql of [
   "ALTER TABLE characters ADD COLUMN bgm TEXT DEFAULT ''",
   'ALTER TABLE characters ADD COLUMN voice_speed REAL DEFAULT 1',
   'ALTER TABLE characters ADD COLUMN voice_pitch REAL DEFAULT 1',
+  // 前端显示正则（酒馆 regex_scripts）：find/replace 于消息「显示」层，支持注入 HTML 面板等专家前端
+  "ALTER TABLE characters ADD COLUMN front_regex TEXT DEFAULT '[]'",
   // 安全相关：token 版本号（改密后旧 token 失效）
   'ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0',
   // 安全相关：账号锁定（登录失败计数 + 锁定截止时间）

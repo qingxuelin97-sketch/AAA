@@ -2659,9 +2659,10 @@ async function route(method, path, search, body, headers) {
     const c = insert('characters', {
       owner_id: me.id, name: s(ch.name, 60), avatar: s(ch.avatar, 500) || null,
       background: s(ch.background, 500) || null, background_type: ['image', 'color', 'video'].includes(ch.background_type) ? ch.background_type : 'image',
-      bgm: s(ch.bgm, 500), tagline: s(ch.tagline, 200), intro: s(ch.intro, 4000), greeting: s(ch.greeting, 4000),
-      persona: s(ch.persona, 8000), voice_name: s(ch.voice_name, 60), voice_speed: 1, voice_pitch: 1,
+      bgm: s(ch.bgm, 500), tagline: s(ch.tagline, 200), intro: s(ch.intro, 8000), greeting: s(ch.greeting, 24000),
+      persona: s(ch.persona, 24000), voice_name: s(ch.voice_name, 60), voice_speed: 1, voice_pitch: 1,
       category: s(ch.category, 40), tags: s(ch.tags, 200), is_public: 0, nsfw: ch.nsfw ? 1 : 0, uses: 0, likes: 0,
+      front_regex: (() => { try { const v = typeof ch.front_regex === 'string' ? JSON.parse(ch.front_regex) : ch.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : '[]'; } catch { return '[]'; } })(),
     });
     saveWorld(c.id, world); save();
     return J({ character: charView(c) });

@@ -152,9 +152,10 @@ router.put('/:id', authRequired, (req, res) => {
   db.prepare(`UPDATE characters SET
     name=@name, avatar=@avatar, background=@background, background_type=@background_type, bgm=@bgm,
     tagline=@tagline, intro=@intro, greeting=@greeting, persona=@persona,
-    voice_name=@voice_name, voice_speed=@voice_speed, voice_pitch=@voice_pitch, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw WHERE id=@id`)
+    voice_name=@voice_name, voice_speed=@voice_speed, voice_pitch=@voice_pitch, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw, front_regex=@front_regex WHERE id=@id`)
     .run({
       id: c.id,
+      front_regex: (() => { if (b.front_regex == null) return c.front_regex || '[]'; try { const v = typeof b.front_regex === 'string' ? JSON.parse(b.front_regex) : b.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : (c.front_regex || '[]'); } catch { return c.front_regex || '[]'; } })(),
       name: b.name ?? c.name, avatar: b.avatar ?? c.avatar,
       background: b.background ?? c.background, background_type: b.background_type ?? c.background_type,
       bgm: b.bgm ?? c.bgm,
@@ -223,19 +224,24 @@ router.post('/import', authRequired, contentLimiter, (req, res) => {
   const world = Array.isArray(body.world) ? body.world.filter(w => w && typeof w === 'object') : [];
   if (world.length > 1000) return res.status(400).json({ error: '世界书条目过多（上限 1000）' });
   const str = (v, max) => v == null ? '' : String(v).slice(0, max);
+  // front_regex：接受数组或已序列化字符串，落库为 JSON 文本（上限约 60KB，容纳大 HTML 面板）。
+  const frontRegex = (() => {
+    try { const v = typeof ch.front_regex === 'string' ? JSON.parse(ch.front_regex) : ch.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : '[]'; }
+    catch { return '[]'; }
+  })();
   const info = db.prepare(`INSERT INTO characters
-    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw)
-    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw)`)
+    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, front_regex)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@front_regex)`)
     .run({
       owner_id: req.user.id,
       name: str(ch.name, 60),
       avatar: str(ch.avatar, 500),
       background: str(ch.background, 500), background_type: ['image', 'color', 'video'].includes(ch.background_type) ? ch.background_type : 'image', bgm: str(ch.bgm, 500),
-      tagline: str(ch.tagline, 200), intro: str(ch.intro, 4000), greeting: str(ch.greeting, 4000),
-      persona: str(ch.persona, 8000), voice_name: str(ch.voice_name, 60),
+      tagline: str(ch.tagline, 200), intro: str(ch.intro, 8000), greeting: str(ch.greeting, 24000),
+      persona: str(ch.persona, 24000), voice_name: str(ch.voice_name, 60),
       voice_speed: clampSpeed(ch.voice_speed), voice_pitch: clampPitch(ch.voice_pitch),
       category: str(ch.category, 40), tags: str(ch.tags, 200),
-      is_public: 0, nsfw: ch.nsfw ? 1 : 0
+      is_public: 0, nsfw: ch.nsfw ? 1 : 0, front_regex: frontRegex
     });
   saveWorld(info.lastInsertRowid, world);
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);

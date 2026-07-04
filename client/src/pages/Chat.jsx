@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
@@ -7,6 +7,7 @@ import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { EmptyArt } from '../art.jsx';
+import { applyFrontRegex, looksLikeHtml } from '../frontregex.js';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark } from 'lucide-react';
 
 // 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
@@ -79,14 +80,49 @@ function renderRp(text, keyBase = 0) {
 // React.memo 是这里的性能关键：流式生成期间线程每帧 setMessages 一次，除最后一条外
 // 其余消息的 content 引用都没变，memo 让老消息跳过整段正则解析与片段重建 ——
 // 否则解析成本随对话长度线性增长，长对话时打字都会掉帧。
-const BubbleContent = React.memo(function BubbleContent({ content, role, imageMap, onPreview }) {
+// 专家前端面板：把角色卡里的 HTML 面板渲染进沙箱 iframe（allow-scripts 无同源，隔离父页），
+// 用 blob 文档避免继承父页 CSP，从而允许面板自带的外链样式加载；注入高度上报脚本做自适应高度。
+function HtmlPanel({ html }) {
+  const [h, setH] = useState(300);
+  const src = useMemo(() => {
+    const reporter = '<scr' + 'ipt>(function(){function p(){try{parent.postMessage({__hyH:document.documentElement.scrollHeight},"*")}catch(e){}}try{new ResizeObserver(p).observe(document.documentElement)}catch(e){}window.addEventListener("load",p);setTimeout(p,300);setTimeout(p,1500)})();</scr' + 'ipt>';
+    const doc = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, reporter + '</body>') : html + reporter;
+    return URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
+  }, [html]);
+  useEffect(() => () => { try { URL.revokeObjectURL(src); } catch { /* */ } }, [src]);
+  useEffect(() => {
+    const onMsg = e => { const v = e.data && e.data.__hyH; if (typeof v === 'number') setH(Math.min(2600, Math.max(120, v + 8))); };
+    window.addEventListener('message', onMsg); return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return <iframe className="html-panel" src={src} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" style={{ height: h }} title="角色前端面板" />;
+}
+
+// 把含 ```html 面板 / 整段 HTML 的文本拆开：面板走 iframe，其余走 RP 排版。
+function renderWithPanels(text) {
+  const parts = []; const re = /```html\s*\n?([\s\S]*?)```/gi; let last = 0, m, k = 0;
+  while ((m = re.exec(text))) {
+    const seg = text.slice(last, m.index);
+    if (seg.trim()) parts.push(<span key={'t' + (k++)}>{renderRp(seg, k)}</span>);
+    parts.push(<HtmlPanel key={'h' + (k++)} html={m[1]} />);
+    last = m.index + m[0].length;
+  }
+  const tail = text.slice(last);
+  if (last === 0 && looksLikeHtml(tail)) return [<HtmlPanel key="h0" html={tail} />];
+  if (tail.trim()) parts.push(looksLikeHtml(tail) ? <HtmlPanel key={'h' + k} html={tail} /> : <span key={'t' + k}>{renderRp(tail, k)}</span>);
+  return parts;
+}
+
+const BubbleContent = React.memo(function BubbleContent({ content, role, imageMap, onPreview, frontRegex }) {
   if (!content) return null;
-  if (role !== 'assistant' || !imageMap || !WBIMG_RE.test(content)) {
+  // 先应用前端显示正则（酒馆 regex_scripts）：可把标记替换成 HTML 面板等（仅显示层）。
+  const text = (frontRegex && frontRegex.length) ? applyFrontRegex(content, frontRegex, role) : content;
+  if (role === 'assistant' && (/```html/i.test(text) || looksLikeHtml(text))) return renderWithPanels(text);
+  if (role !== 'assistant' || !imageMap || !WBIMG_RE.test(text)) {
     WBIMG_RE.lastIndex = 0;
-    return renderRp(content);
+    return renderRp(text);
   }
   WBIMG_RE.lastIndex = 0;
-  const parts = splitWbMarkers(content, imageMap);
+  const parts = splitWbMarkers(text, imageMap);
   return parts.map((seg, i) => {
     if (!seg.marker) return <span key={i}>{renderRp(seg.text, i)}</span>;
     const meta = seg.meta;
@@ -114,6 +150,8 @@ export default function Chat() {
   const [convs, setConvs] = useState([]);
   const [conv, setConv] = useState(null);
   const [character, setCharacter] = useState(null);
+  // 角色前端显示正则（酒馆 regex_scripts）—— 解析一次，供气泡渲染 HTML 面板等。
+  const frontRegex = useMemo(() => { try { return JSON.parse(character?.front_regex || '[]'); } catch { return []; } }, [character?.front_regex]);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -675,7 +713,7 @@ export default function Chat() {
                         title={m.content ? '长按或右键复制' : undefined}>
                         {m._streaming && !m.content
                           ? <span className="typing"><span></span><span></span><span></span></span>
-                          : <BubbleContent content={m.content} role={m.role} imageMap={imageMap} onPreview={setPreviewImg} />}
+                          : <BubbleContent content={m.content} role={m.role} imageMap={imageMap} onPreview={setPreviewImg} frontRegex={frontRegex} />}
                         {m.reaction && <span className="msg-reaction" title="我的反应">{m.reaction}</span>}
                       </div>
                     )}
