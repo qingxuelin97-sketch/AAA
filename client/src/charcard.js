@@ -20,25 +20,47 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, parseInt(v, 10) || 0));
 const trimTo = (v, n) => (v == null ? '' : String(v).slice(0, n));
 const joinKeys = (k) => Array.isArray(k) ? k.filter(Boolean).join(',') : (k || '');
 
-// —— 读取 PNG 的 tEXt 文本块（关键字 → 原始字符串）——
-function readPngTextChunks(arrayBuffer) {
+// zlib(deflate) 解压 —— 用于 zTXt / 压缩 iTXt 块（浏览器原生 DecompressionStream）。
+async function inflate(bytes) {
+  const ds = new DecompressionStream('deflate');
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+const latin1 = (bytes) => { let s = ''; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return s; };
+
+// —— 读取 PNG 的文本块（tEXt / zTXt / iTXt，关键字 → UTF-8 字符串）——
+// 酒馆角色卡多用 tEXt，但也有导出为压缩的 zTXt / iTXt，一并支持，避免「读不到」。
+async function readPngTextChunks(arrayBuffer) {
   const bytes = new Uint8Array(arrayBuffer);
   if (bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47) throw new Error('不是有效的 PNG 文件');
   const dv = new DataView(arrayBuffer);
   const out = {};
+  const utf8 = (b) => new TextDecoder('utf-8').decode(b);
   let pos = 8;
   while (pos + 8 <= bytes.length) {
     const len = dv.getUint32(pos); pos += 4;
     const type = String.fromCharCode(bytes[pos], bytes[pos + 1], bytes[pos + 2], bytes[pos + 3]); pos += 4;
-    const dataStart = pos;
-    if (type === 'tEXt') {
-      let i = dataStart; let kw = '';
-      while (i < dataStart + len && bytes[i] !== 0) { kw += String.fromCharCode(bytes[i]); i++; }
-      let s = '';
-      for (let j = i + 1; j < dataStart + len; j++) s += String.fromCharCode(bytes[j]);
-      out[kw] = s;
-    }
-    pos = dataStart + len + 4;
+    const data = bytes.subarray(pos, pos + len);
+    try {
+      if (type === 'tEXt') {
+        let i = 0; while (i < len && data[i] !== 0) i++;
+        out[latin1(data.subarray(0, i))] = latin1(data.subarray(i + 1));
+      } else if (type === 'zTXt') {
+        let i = 0; while (i < len && data[i] !== 0) i++;
+        const kw = latin1(data.subarray(0, i));   // data[i]=0 分隔，data[i+1]=压缩方法(0)
+        out[kw] = utf8(await inflate(data.subarray(i + 2)));
+      } else if (type === 'iTXt') {
+        let i = 0; while (i < len && data[i] !== 0) i++;
+        const kw = latin1(data.subarray(0, i));
+        const compFlag = data[i + 1];              // 压缩标志；随后 1B 压缩方法
+        let j = i + 3;                             // 跳过 language_tag \0
+        while (j < len && data[j] !== 0) j++; j++;
+        while (j < len && data[j] !== 0) j++; j++; // 跳过 translated_keyword \0
+        const textBytes = data.subarray(j);
+        out[kw] = compFlag === 1 ? utf8(await inflate(textBytes)) : utf8(textBytes);
+      }
+    } catch { /* 单个块解析失败不影响其它 */ }
+    pos += len + 4;
     if (type === 'IEND') break;
   }
   return out;
@@ -53,8 +75,14 @@ function b64ToJson(b64) {
 
 // 酒馆 character_book / 正则 → 幻域富世界书 { name, ...opts, entries } + notices。
 function buildWorldbook(d, charName, notices) {
-  const book = d.character_book || d.world_info || null;
-  const rawEntries = book && Array.isArray(book.entries) ? book.entries : [];
+  const book = d.character_book || d.world_info || d.world_book || d.lorebook || null;
+  // 酒馆/世界书导出里 entries 可能是数组，也常常是「对象字典」{"0":{...},"1":{...}}（旧 world_info 格式）。
+  // 只认数组会导致这类卡片世界书整段读不到 —— 两种都取。
+  const rawEntries = book
+    ? (Array.isArray(book.entries) ? book.entries
+      : (book.entries && typeof book.entries === 'object') ? Object.values(book.entries)
+        : Array.isArray(book) ? book : [])
+    : [];
 
   const mapped = rawEntries.filter(e => e && (e.content || (e.keys && e.keys.length))).map((e, i) => {
     const ext = e.extensions || {};
@@ -130,8 +158,9 @@ export function normalizeCard(json) {
     name: trimTo(d.name || json.name || '未命名角色', 60),
     persona: trimTo(parts.join('\n\n'), 8000),
     greeting: trimTo(d.first_mes || d.greeting || '', 4000),
-    tagline: trimTo(String(d.creator_notes || d.tagline || '').split('\n')[0], 200),
-    intro: trimTo(d.creator_notes || d.intro || '', 4000),
+    tagline: trimTo(String(d.creator_notes || d.tagline || d.description || '').split('\n')[0], 200),
+    // 公开简介：给其他玩家看的。酒馆卡常无 creator_notes，退回角色描述，避免上架后「没有简介」。
+    intro: trimTo(d.creator_notes || d.intro || d.description || '', 4000),
     tags: trimTo(Array.isArray(d.tags) ? d.tags.join(',') : (d.tags || ''), 200),
     avatar: (typeof d.avatar === 'string' && /^(https?:|data:)/.test(d.avatar)) ? d.avatar : '',
     nsfw: d.nsfw ? 1 : 0,
@@ -150,7 +179,7 @@ export async function parseCharacterCard(file) {
   const isPng = file.type === 'image/png' || /\.png$/i.test(file.name);
   if (isPng) {
     const buf = await file.arrayBuffer();
-    const texts = readPngTextChunks(buf);
+    const texts = await readPngTextChunks(buf);
     const b64 = texts.ccv3 || texts.chara;
     if (!b64) throw new Error('这张 PNG 未内嵌角色卡数据（不是酒馆角色卡）');
     return { ...normalizeCard(b64ToJson(b64)), imageBlob: file };

@@ -555,10 +555,10 @@ export default function Chat() {
             {character?.bgm && <audio ref={bgmRef} src={character.bgm} loop preload="auto" />}
             <div className="chat-head">
               <button className="btn ghost sm mobile-only chat-back" onClick={() => nav('/messages')}><ArrowLeft size={16} /></button>
-              {/* 头像+名称合成一枚「毛玻璃」身份胶囊（沉浸背景下悬浮在画面左上） */}
+              {/* 身份胶囊：左上空间有限，不再写角色名（每条消息上方已有名字）；只留头像 + 状态 */}
               <div className="ch-idpill">
                 <div className={'ch-av' + (streaming ? ' live' : '')}><Avatar src={character?.avatar} name={character?.name} size={40} /></div>
-                <div className="nm"><b>{character?.name}</b><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : (character?.tagline || '在线 · 沉浸扮演中')}</span></div>
+                <div className="nm"><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : '在线 · 沉浸扮演中'}</span></div>
               </div>
               {(() => { const af = affinityInfo(affinity); return (
                 <button className="affinity-badge" onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
