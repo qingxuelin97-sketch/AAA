@@ -7720,3 +7720,117 @@ html[data-app="1"] .page > *:nth-child(5) { animation-delay: 0.12s; }
   html[data-app="1"] .page > * { animation: none !important; }
 }
 html[data-app="1"][data-perf="lite"] .page > * { animation: none !important; }
+
+/* ============================================================================
+   APP 端「去毛坯」精装修层 v2 —— 逐页细化（白+青体系）
+   针对复用 Web 页的实际类名做移动端质感校准；全部 scoped 于 html[data-app="1"]。
+   ========================================================================== */
+
+/* ---- 角色卡网格页（角色库 / 收藏 / 搜索 / 剧本 / 世界书列表）---- */
+html[data-app="1"] .grid { gap: 12px; }
+html[data-app="1"] .char-card .cover { border-radius: 0; }
+html[data-app="1"] .char-card .meta { padding: 11px 13px 13px; }
+html[data-app="1"] .char-card .meta b { font-size: 14.5px; }
+html[data-app="1"] .char-card .foot { padding: 0 13px 12px; }
+
+/* ---- 通知中心 ---- */
+html[data-app="1"] .noti-list { display: flex; flex-direction: column; gap: 10px; }
+html[data-app="1"] .noti-item { padding: 13px 15px; }
+html[data-app="1"] .noti-ic { border-radius: 14px; }
+html[data-app="1"] .noti-time { font-size: 11.5px; color: var(--faint); }
+html[data-app="1"] .noti-allread { border-radius: 999px; }
+
+/* ---- 成就殿堂 ---- */
+html[data-app="1"] .ach-hall { border-radius: 24px; }
+html[data-app="1"] .ach-grid { gap: 12px; }
+html[data-app="1"] .ach-body { border-radius: 18px; }
+html[data-app="1"] .ach-go { border-radius: 999px; }
+
+/* ---- 活动 / 任务 ---- */
+html[data-app="1"] .ev-ic { border-radius: 14px; }
+html[data-app="1"] .ev-reward { font-weight: 700; }
+html[data-app="1"] .ev-done { color: #0a8f6c; }
+
+/* ---- 扭蛋机 ---- */
+html[data-app="1"] .gx-cover { border-radius: 22px; box-shadow: 0 14px 36px rgba(13,74,88,0.14); }
+html[data-app="1"] .gx-actions .btn { border-radius: 999px; }
+html[data-app="1"] .gx-pity { border-radius: 999px; }
+
+/* ---- 排行榜 ---- */
+html[data-app="1"] .lb-list { display: flex; flex-direction: column; gap: 9px; }
+html[data-app="1"] .lb-row { padding: 11px 14px; }
+html[data-app="1"] .lb-num { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--accent); }
+html[data-app="1"] .lb-crown { filter: drop-shadow(0 2px 6px rgba(178,134,26,0.35)); }
+
+/* ---- 好友 / 私信 ---- */
+html[data-app="1"] .fr-add { border-radius: 18px; }
+html[data-app="1"] .fr-add-row { border-radius: 14px; }
+html[data-app="1"] .dm-bubble { border-radius: 16px; box-shadow: 0 1px 2px rgba(13,74,88,0.05); }
+html[data-app="1"] .dm-time { font-size: 11px; }
+
+/* ---- 群聊房间列表 ---- */
+html[data-app="1"] .room-row { padding: 13px 15px; margin-bottom: 10px; }
+
+/* ---- 社区动态 ---- */
+html[data-app="1"] .comment { border-radius: 14px; }
+
+/* ---- 公告 ---- */
+html[data-app="1"] .ann-banner { border-radius: 20px; }
+html[data-app="1"] .ann-item { padding: 14px 16px; margin-bottom: 10px; }
+html[data-app="1"] .ann-ic { border-radius: 14px; }
+
+/* ---- 标签广场 ---- */
+html[data-app="1"] .tag-cloud { gap: 9px; }
+html[data-app="1"] .tag-cloud-item { border-radius: 999px; border: 1px solid var(--border); background: var(--panel);
+  padding: 8px 15px; transition: transform 0.13s, border-color 0.15s; }
+html[data-app="1"] .tag-cloud-item:active { transform: scale(0.94); }
+html[data-app="1"] .tag-cloud-count { color: var(--accent); font-weight: 700; }
+
+/* ---- 创作中心 / 星轨（数据卡）---- */
+html[data-app="1"] .chart-grid { gap: 12px; }
+html[data-app="1"] .gold-num { font-variant-numeric: tabular-nums; }
+html[data-app="1"] .ins-card { border-radius: 20px; }
+html[data-app="1"] .ins-chart { border-radius: 16px; }
+
+/* ---- 剧本分类条 ---- */
+html[data-app="1"] .cat-bar { position: sticky; top: env(safe-area-inset-top); z-index: 20; padding: 8px 0;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+html[data-app="1"][data-perf="lite"] .cat-bar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
+
+/* ---- 无背景（白+青语境）的沉浸对话精修：气泡 / 输入 / 开场 chips ---- */
+html[data-app="1"] .chat-main:not(.has-bg) .msg.assistant .bubble {
+  border-radius: 18px 18px 18px 7px;
+  box-shadow: 0 1px 2px rgba(13,74,88,0.05), 0 8px 22px rgba(13,74,88,0.06);
+}
+html[data-app="1"] .chat-main:not(.has-bg) .msg.user .bubble {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff;
+  border-radius: 18px 18px 7px 18px; border: none;
+  box-shadow: 0 6px 16px rgba(14,156,184,0.24);
+}
+html[data-app="1"] .chat-main:not(.has-bg) .starter-chip { background: var(--panel); }
+html[data-app="1"] .chat-input-bar .send-btn { border-radius: 50%; }
+html[data-app="1"] .chat-input-bar .send-btn:not(.stop) {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 5px 14px rgba(14,156,184,0.30);
+}
+
+/* ---- 顶栏返回按钮 / 空态插画呼吸 ---- */
+html[data-app="1"] .topbar .btn.ghost { border: none; background: var(--panel-2); }
+html[data-app="1"] .empty .big { opacity: 0.85; }
+html[data-app="1"] .empty { padding: 44px 18px; }
+
+/* ---- 深色主题（APP 手动切深色时）为 v1/v2 层补充对应变量语境 ---- */
+html[data-app="1"][data-theme="dark"] .card,
+html[data-app="1"][data-theme="dark"] .lb-row,
+html[data-app="1"][data-theme="dark"] .ann-item,
+html[data-app="1"][data-theme="dark"] .noti-item,
+html[data-app="1"][data-theme="dark"] .room-row { box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 30px rgba(0,0,0,0.28); }
+html[data-app="1"][data-theme="dark"] .wallet-hero {
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(255,147,102,0.08), transparent 55%),
+    radial-gradient(110% 80% at 100% 100%, rgba(255,147,102,0.06), transparent 60%),
+    var(--panel);
+}
+html[data-app="1"][data-theme="dark"] .wallet-ach { background: linear-gradient(135deg, #2e2616, #241d12); border-color: #4a3c22; }
+html[data-app="1"][data-theme="dark"] .wallet-ach p { color: #c9a44d; }
