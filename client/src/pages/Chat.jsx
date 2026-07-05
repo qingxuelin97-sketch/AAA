@@ -9,7 +9,7 @@ import IllustrateModal from '../components/IllustrateModal.jsx';
 import { EmptyArt } from '../art.jsx';
 import { applyFrontRegex, looksLikeHtml } from '../frontregex.js';
 import { buildPanelDoc, installTavernHost } from '../tavernbridge.js';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark, FileJson, RefreshCcw } from 'lucide-react';
 
 // 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
 const COARSE = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
@@ -221,6 +221,7 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [plusOpen, setPlusOpen] = useState(false);   // 输入栏「+」对话功能面板
   const [streaming, setStreaming] = useState(false);
   const [listMini, setListMini] = useState(() => localStorage.getItem(LIST_KEY) === '1');
   const [atBottom, setAtBottom] = useState(true);
@@ -318,9 +319,9 @@ export default function Chat() {
   // 浮层（抽屉/菜单/搜索/反应面板/编辑）拦截浏览器后退键：打开时压栈，后退先关浮层而非跳路由。
   const closeAllOverlays = () => {
     setDrawerOpen(false); setMenuOpen(false); setSearchOpen(false); setSearchQ('');
-    setActionsOpen(false); setReactFor(null); setEditingId(null);
+    setActionsOpen(false); setReactFor(null); setEditingId(null); setPlusOpen(false);
   };
-  const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null;
+  const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null || plusOpen;
   useEffect(() => {
     if (!anyOverlayOpen) return;
     history.pushState({ overlay: true }, '');
@@ -720,7 +721,9 @@ export default function Chat() {
               {/* 身份胶囊：左上空间有限，不再写角色名（每条消息上方已有名字）；只留头像 + 状态 */}
               <div className="ch-idpill">
                 <div className={'ch-av' + (streaming ? ' live' : '')}><Avatar src={character?.avatar} name={character?.name} size={40} /></div>
-                <div className="nm"><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : '在线 · 沉浸扮演中'}</span></div>
+                {/* 状态文案只留「在线」：长文案在窄屏与好感徽章互相挤压遮挡（实机反馈），
+                    沉浸感由头像光环/打字动画传达，不靠字数 */}
+                <div className="nm"><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : '在线'}</span></div>
               </div>
               {(() => { const af = affinityInfo(affinity); return (
                 <button className={'affinity-badge' + (afPulse ? ' pulse' : '')} onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
@@ -910,15 +913,45 @@ export default function Chat() {
                 </div>
               )}
               <div className="box">
-                <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => setActionsOpen(o => !o)} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
+                <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => { setActionsOpen(o => !o); setPlusOpen(false); }} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
                 <textarea ref={inputRef} rows={1} value={input}
                   placeholder={`对 ${character?.name} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
                   enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
+                {/* 「+」对话功能面板：把散落在头部菜单里的对话内能力聚合到拇指热区 */}
+                <button className={'act-btn plus-btn' + (plusOpen ? ' on' : '')} onClick={() => { setPlusOpen(o => !o); setActionsOpen(false); }} title="对话功能"><Plus size={20} /></button>
                 {streaming
                   ? <button className="send-btn stop" onClick={stop} title="停止生成"><Square size={15} fill="currentColor" /></button>
                   : <button className="send-btn" onClick={() => send()} disabled={!input.trim()}><Send size={17} /></button>}
               </div>
+              {plusOpen && (
+                <div className="chat-plus-sheet">
+                  {[
+                    { ic: Wand2, label: '生成插图', on: () => { setIllusOpen(true); setPlusOpen(false); } },
+                    { ic: Search, label: '搜索对话', on: () => { setSearchOpen(true); setSearchQ(''); setPlusOpen(false); } },
+                    { ic: Bookmark, label: '消息书签', badge: marks.size || 0, on: () => { setMarksOpen(true); setPlusOpen(false); } },
+                    { ic: Heart, label: '角色档案', on: () => { setDrawerOpen(true); setPlusOpen(false); } },
+                    { ic: RefreshCcw, label: '切换开场白', dis: altGreetings.length === 0, on: () => {
+                        const gi = (greetIdx + 1) % (altGreetings.length + 1);
+                        if (messages.length > 1 && !confirm('切换开场白会清空当前对话，继续？')) return;
+                        switchGreeting(gi); setPlusOpen(false);
+                      } },
+                    { ic: RotateCcw, label: '重新生成', dis: streaming || messages.length < 2, on: () => { regenerate(); setPlusOpen(false); } },
+                    { ic: bgmOn && character?.bgm ? Music : VolumeX, label: bgmOn ? '背景音乐 开' : '背景音乐 关', dis: !character?.bgm, on: toggleBgm },
+                    { ic: Volume2, label: autoRead ? '自动朗读 开' : '自动朗读 关', on: toggleAutoRead },
+                    { ic: Type, label: `字号 · ${fontSize === 'sm' ? '小' : fontSize === 'md' ? '中' : '大'}`, on: () => setFont(fontSize === 'sm' ? 'md' : fontSize === 'md' ? 'lg' : 'sm') },
+                    { ic: Download, label: '导出 MD', on: () => { exportConv('md'); setPlusOpen(false); } },
+                    { ic: FileJson, label: '导出 JSON', on: () => { exportConv('json'); setPlusOpen(false); } },
+                    { ic: Eraser, label: '清空对话', danger: true, on: () => { setPlusOpen(false); clearConv(); } },
+                  ].map((it, i) => (
+                    <button key={it.label} className={'cps-item' + (it.danger ? ' danger' : '')} style={{ '--i': i }}
+                      disabled={it.dis} onClick={it.on}>
+                      <span className="cps-ic"><it.ic size={19} />{it.badge ? <i className="cps-badge">{it.badge}</i> : null}</span>
+                      <span>{it.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
           {drawerOpen && (() => { const af = affinityInfo(affinity); return (
