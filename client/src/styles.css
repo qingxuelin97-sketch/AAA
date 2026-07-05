@@ -6274,12 +6274,7 @@ html[data-app="1"] .aht-brand {
   display: inline-flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800;
   padding: 4px 0; letter-spacing: 1.4px;
 }
-html[data-app="1"] .aht-brand::before {
-  content: ''; width: 22px; height: 22px; border-radius: 7px;
-  background: linear-gradient(140deg, var(--accent), var(--accent-2));
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 0 rgba(255,255,255,0.24);
-  position: relative;
-}
+/* 品牌字左侧的装饰方块已按用户反馈移除（渐变字本身即品牌视觉） */
 html[data-app="1"] .aht-acts button {
   color: color-mix(in srgb, var(--text) 65%, transparent);
 }
@@ -8562,8 +8557,8 @@ html[data-app="1"][data-theme="light"] body {
 /* 角色名 → 深玻璃小胶囊，吊在内容卡上沿（参考图的「沈清秋」标签） */
 html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 12px; margin: 0 0 -8px 2px; position: relative; z-index: 2;
-  border-radius: 12px 12px 12px 3px;
+  padding: 5px 12px; margin: 0 0 6px 2px; position: relative; z-index: 2;
+  border-radius: 999px;
   background: var(--gls-dark-bg);
   -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
   border: 1px solid rgba(255,255,255,0.14);
@@ -9257,3 +9252,23 @@ html[data-app="1"][data-perf="lite"] .adm-row, html[data-app="1"][data-perf="lit
 html[data-app="1"][data-perf="lite"] .topbar .btn.sm, html[data-app="1"][data-perf="lite"] .char-card .foot .btn {
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
+
+/* ============================================================
+   气泡透明度三档（用户可调：实底/半透/极透）+ 细节修正包
+   ============================================================ */
+html[data-app="1"] .chat-main.has-bg.ba-solid .msg.assistant .bubble { background: rgba(255, 253, 248, 0.94); }
+html[data-app="1"] .chat-main.has-bg.ba-mid .msg.assistant .bubble   { background: rgba(255, 253, 248, 0.78); }
+html[data-app="1"] .chat-main.has-bg.ba-clear .msg.assistant .bubble {
+  background: rgba(255, 253, 248, 0.55);
+  -webkit-backdrop-filter: blur(30px) saturate(175%); backdrop-filter: blur(30px) saturate(175%);
+}
+html[data-app="1"] .chat-main.has-bg.ba-clear .msg.user .bubble {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.62), rgba(10, 127, 151, 0.68));
+}
+/* 「内容由 AI 生成」合规标：弱化为极淡小字，不与头部元素抢视线 */
+html[data-app="1"] .chat-main.has-bg .chat-ai-mark {
+  font-size: 10px; opacity: 0.5; letter-spacing: 0.4px;
+  color: rgba(255,255,255,0.8); text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+/* 名牌与卡的间隙在极透档稍收紧（视觉重心一致） */
+html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name .msg-time { font-size: 11px; }
