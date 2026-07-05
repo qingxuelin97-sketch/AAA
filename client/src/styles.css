@@ -9184,3 +9184,76 @@ html[data-app="1"][data-perf="lite"] .chat-main:not(.has-bg) .react-pop {
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] .app-root::before, html[data-app="1"] .app-root::after { animation: none; }
 }
+
+/* ============================================================
+   9. Glass 3.0 · 终段 —— 细节收尾与一致性巡检
+   ============================================================ */
+/* ---- 发现流：开场白亮玻璃卡（对标参考图的米白信息卡）+ 历史面板 ---- */
+html[data-app="1"] .fd2-greet {
+  background: rgba(255, 253, 248, 0.82);
+  -webkit-backdrop-filter: blur(22px) saturate(165%); backdrop-filter: blur(22px) saturate(165%);
+  border: 1px solid rgba(255,255,255,0.6);
+  color: #2b2420;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 10px 30px rgba(0,0,0,0.25);
+}
+html[data-app="1"] .fd2-hist-panel, html[data-app="1"] .fd2-hist {
+  background: rgba(22, 18, 28, 0.82);
+  -webkit-backdrop-filter: blur(26px) saturate(155%); backdrop-filter: blur(26px) saturate(155%);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+/* ---- 消息中心顶部双分段（聊过/赞过）玻璃胶囊 ---- */
+html[data-app="1"] .msgs-tabs, html[data-app="1"] .msgs-top {
+  -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
+}
+/* ---- 管理后台（APP 内运营位）行卡玻璃 ---- */
+html[data-app="1"] .adm-row {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-radius: 16px;
+}
+/* ---- 我的页页脚操作钮玻璃胶囊 ---- */
+html[data-app="1"] .pf-foot-btn {
+  background: color-mix(in srgb, var(--panel) 66%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 999px;
+  transition: transform 0.14s;
+}
+html[data-app="1"] .pf-foot-btn:active { transform: scale(0.95); }
+/* ---- 全局文字选区与聚焦可见性（青色系统一）---- */
+html[data-app="1"] ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+html[data-app="1"] :focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }
+/* ---- 档案抽屉 section 分隔发丝线 ---- */
+html[data-app="1"] .chat-drawer .cd-body section + section {
+  border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 16px;
+}
+/* ---- 剧本详情/发布页 pill 与封面圆角统一 ---- */
+html[data-app="1"] .ph { border-radius: 18px; }
+/* ---- 顶栏行动钮（导入/新建等）玻璃胶囊统一 ---- */
+html[data-app="1"] .topbar .btn.sm {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 74%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+html[data-app="1"] .topbar .btn.sm.primary, html[data-app="1"] .topbar .btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+/* ---- 收藏/发布网格页 foot 操作条玻璃 ---- */
+html[data-app="1"] .char-card .foot .btn {
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+/* ---- 深色主题终段变体 ---- */
+html[data-app="1"][data-theme="dark"] .fd2-greet {
+  background: rgba(30, 26, 36, 0.86); color: #f0ede9; border-color: rgba(255,255,255,0.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 30px rgba(0,0,0,0.4);
+}
+html[data-app="1"][data-theme="dark"] .pf-foot-btn { border-color: rgba(255,255,255,0.10); }
+html[data-app="1"][data-theme="dark"] .adm-row { border-color: rgba(255,255,255,0.08); }
+/* ---- lite 终段降级 ---- */
+html[data-app="1"][data-perf="lite"] .fd2-greet { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255,253,248,0.95); }
+html[data-app="1"][data-perf="lite"] .fd2-hist-panel, html[data-app="1"][data-perf="lite"] .fd2-hist,
+html[data-app="1"][data-perf="lite"] .msgs-tabs, html[data-app="1"][data-perf="lite"] .msgs-top,
+html[data-app="1"][data-perf="lite"] .adm-row, html[data-app="1"][data-perf="lite"] .pf-foot-btn,
+html[data-app="1"][data-perf="lite"] .topbar .btn.sm, html[data-app="1"][data-perf="lite"] .char-card .foot .btn {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
