@@ -9013,3 +9013,174 @@ html[data-app="1"][data-perf="lite"] .ah-sc-ic {
 [data-perf="lite"] .toast-stack > * { -webkit-backdrop-filter: none; backdrop-filter: none; }
 /* 角色名胶囊必须收缩成小标签（参考图），不能通栏 */
 html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name { width: fit-content; max-width: 78%; }
+
+/* ============================================================
+   8. Glass 3.0 · 三段 —— 编辑器/工作台/登录/议会/活动/星轨 全量收口
+   ============================================================ */
+/* ---- 动态氛围层：两枚青色光斑极缓漂移（transform-only，GPU 廉价）---- */
+html[data-app="1"][data-theme="light"] .app-root::before,
+html[data-app="1"][data-theme="light"] .app-root::after {
+  content: ''; position: fixed; z-index: 0; pointer-events: none;
+  width: 60vmax; height: 60vmax; border-radius: 50%;
+  will-change: transform;
+}
+html[data-app="1"][data-theme="light"] .app-root::before {
+  left: -22vmax; top: -18vmax;
+  background: radial-gradient(circle, rgba(34,211,238,0.13) 0%, rgba(34,211,238,0.05) 45%, transparent 70%);
+  animation: glsOrbA 36s ease-in-out infinite alternate;
+}
+html[data-app="1"][data-theme="light"] .app-root::after {
+  right: -26vmax; bottom: -20vmax;
+  background: radial-gradient(circle, rgba(14,156,184,0.11) 0%, rgba(14,156,184,0.04) 45%, transparent 70%);
+  animation: glsOrbB 44s ease-in-out infinite alternate;
+}
+@keyframes glsOrbA { from { transform: translate(0, 0) scale(1); } to { transform: translate(7vmax, 5vmax) scale(1.12); } }
+@keyframes glsOrbB { from { transform: translate(0, 0) scale(1.08); } to { transform: translate(-6vmax, -6vmax) scale(0.96); } }
+/* 内容层必须浮在光斑之上 */
+html[data-app="1"] .app-main, html[data-app="1"] .app-tabbar { position: relative; z-index: 1; }
+html[data-app="1"] .app-tabbar { position: fixed; }
+
+/* ---- 编辑器与工作台（角色/世界书/发布/创作中心）---- */
+html[data-app="1"] .editor-grid .card {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: var(--gls-panel-blur); backdrop-filter: var(--gls-panel-blur);
+}
+html[data-app="1"] .bg-preset-grid button { border-radius: 14px; overflow: hidden; }
+html[data-app="1"] .bgm-row {
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 14px;
+}
+html[data-app="1"] .draft-badge {
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 999px;
+}
+html[data-app="1"] .draft-restore {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border-radius: 16px;
+}
+html[data-app="1"] .attach { border-radius: 18px; }
+html[data-app="1"] .world-entry .field textarea { background: color-mix(in srgb, var(--panel) 60%, transparent); }
+html[data-app="1"] .chart-grid .card { border-radius: 18px; }
+html[data-app="1"] .inc-breakdown {
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 14px;
+}
+html[data-app="1"] .pill-pub {
+  background: rgba(20, 17, 26, 0.5); color: #fff;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 999px;
+}
+
+/* ---- 登录页：功能卡玻璃 + 主卡辉光 ---- */
+.auth-feat-card {
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(155%); backdrop-filter: blur(16px) saturate(155%);
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 8px 26px rgba(13,74,88,0.08);
+}
+.afc-ic { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.auth-explore-btn {
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+
+/* ---- 议会大厅：氛围列玻璃 + 提案卡 ---- */
+html[data-app="1"] .pl-atmos-col { opacity: 0.85; }
+html[data-app="1"] .pl-immersive .card, html[data-app="1"] .pl-immersive .filter {
+  background: rgba(24, 20, 30, 0.62);
+  -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+  border-color: rgba(255,255,255,0.10);
+}
+
+/* ---- 活动页：事件卡玻璃 + 奖励高亮 ---- */
+html[data-app="1"] .event-card {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 10px 30px rgba(13,74,88,0.08);
+}
+html[data-app="1"] .ev-tag {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border-radius: 999px;
+}
+html[data-app="1"] .ev-top { border-radius: 20px 20px 0 0; }
+
+/* ---- 星轨：hero 数据卡星空玻璃 ---- */
+html[data-app="1"] .ins-hero {
+  background:
+    radial-gradient(140% 120% at 85% -10%, rgba(34,211,238,0.18), transparent 55%),
+    linear-gradient(150deg, #1d2947, #131a30);
+  border-radius: 24px; color: #eaf6ff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 14px 40px rgba(19,26,48,0.35);
+}
+html[data-app="1"] .ins-kpi {
+  background: rgba(255,255,255,0.07);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+}
+html[data-app="1"] .ins-comp-row {
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+  border-radius: 12px;
+}
+
+/* ---- 扭蛋机：出货面玻璃与彩带层级 ---- */
+html[data-app="1"] .gx-face {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+  border-radius: 22px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 16px 44px rgba(13,74,88,0.16);
+}
+html[data-app="1"] .gx-hint {
+  background: color-mix(in srgb, var(--panel) 65%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 999px;
+}
+
+/* ---- 剧场房间（复用 chat 骨架的沉浸页）：舞台层深玻璃菜单继承 ----
+   TheaterRoom/GroupRoom 复用 .chat-* 类，Glass 3.0 的沉浸段自动生效；
+   这里只补舞台专属的非 has-bg 场景卡面。 ---- */
+html[data-app="1"] .chat-main:not(.has-bg) .chat-menu {
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(165%); backdrop-filter: blur(24px) saturate(165%);
+}
+html[data-app="1"] .chat-main:not(.has-bg) .react-pop {
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+}
+
+/* ---- 深色主题（三段新增项）---- */
+html[data-app="1"][data-theme="dark"] .auth-feat-card,
+html[data-app="1"][data-theme="dark"] .event-card,
+html[data-app="1"][data-theme="dark"] .gx-face {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 12px 34px rgba(0,0,0,0.35);
+}
+html[data-app="1"][data-theme="dark"] .app-root::before {
+  background: radial-gradient(circle, rgba(255,147,102,0.08) 0%, rgba(255,147,102,0.03) 45%, transparent 70%);
+}
+html[data-app="1"][data-theme="dark"] .app-root::after {
+  background: radial-gradient(circle, rgba(255,147,102,0.06) 0%, transparent 60%);
+}
+
+/* ---- lite 降级（三段新增项：关 blur 与光斑动画）---- */
+html[data-app="1"][data-perf="lite"] .app-root::before,
+html[data-app="1"][data-perf="lite"] .app-root::after { animation: none; display: none; }
+html[data-app="1"][data-perf="lite"] .editor-grid .card, html[data-app="1"][data-perf="lite"] .bgm-row,
+html[data-app="1"][data-perf="lite"] .draft-badge, html[data-app="1"][data-perf="lite"] .draft-restore,
+html[data-app="1"][data-perf="lite"] .inc-breakdown, html[data-app="1"][data-perf="lite"] .pill-pub,
+[data-perf="lite"] .auth-feat-card, [data-perf="lite"] .afc-ic, [data-perf="lite"] .auth-explore-btn,
+html[data-app="1"][data-perf="lite"] .pl-immersive .card, html[data-app="1"][data-perf="lite"] .pl-immersive .filter,
+html[data-app="1"][data-perf="lite"] .event-card, html[data-app="1"][data-perf="lite"] .ev-tag,
+html[data-app="1"][data-perf="lite"] .ins-kpi, html[data-app="1"][data-perf="lite"] .gx-face,
+html[data-app="1"][data-perf="lite"] .gx-hint,
+html[data-app="1"][data-perf="lite"] .chat-main:not(.has-bg) .chat-menu,
+html[data-app="1"][data-perf="lite"] .chat-main:not(.has-bg) .react-pop {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .app-root::before, html[data-app="1"] .app-root::after { animation: none; }
+}
