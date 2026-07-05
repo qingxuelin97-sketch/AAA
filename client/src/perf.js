@@ -37,7 +37,11 @@ function deviceIsWeak() {
 export function resolvePerf(pref = getPerfPref()) {
   if (pref === 'high') return 'high';
   if (pref === 'lite') return 'lite';
-  return deviceIsWeak() ? 'lite' : 'high';
+  // auto = 最高画质。旧启发式把「触屏+小屏」一律判为低端机 → 几乎所有手机
+  // 都被降到 lite（毛玻璃/动效全关，观感大打折扣）。产品决策改为：默认满血，
+  // 需要省电的用户在设置里手动切「省电模式」。deviceIsWeak 仅保留给显式
+  // 数据节省（saveData）场景兜底。
+  return navigator.connection?.saveData ? 'lite' : 'high';
 }
 
 export function applyPerf(pref = getPerfPref()) {
