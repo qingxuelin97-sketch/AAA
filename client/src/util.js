@@ -30,6 +30,16 @@ export function cnToday(d = new Date()) {
   return new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
 }
 
+// msgPreview —— 会话列表的最后消息摘要：酒馆卡的 HTML 面板消息显示「🎴 交互面板」
+// 占位标签而非一屏源码；普通文本压平空白后截断。
+export function msgPreview(raw, max = 34) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (/^```html|^<!doctype html|^<html[\s>]/i.test(s) || /```html/i.test(s.slice(0, 200))) return '🎴 交互面板';
+  const flat = s.replace(/\s+/g, ' ');
+  return flat.length > max ? flat.slice(0, max) + '…' : flat;
+}
+
 export function useAutoGrow(ref, value, max = 150) {
   useEffect(() => {
     const el = ref.current;

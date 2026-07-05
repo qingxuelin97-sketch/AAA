@@ -4,7 +4,7 @@ import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { useKeyboardInsetBar } from '../mobile.js';
-import { useAutoGrow } from '../util.js';
+import { useAutoGrow, msgPreview } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { EmptyArt } from '../art.jsx';
 import { applyFrontRegex, looksLikeHtml } from '../frontregex.js';
@@ -430,10 +430,13 @@ export default function Chat() {
   };
   // celebrate when the relationship tier rises (ties into 成就 / affinity milestones)
   const prevAffLevel = useRef(null);
+  const [afPulse, setAfPulse] = useState(false);   // 好感升级时徽章脉冲动画
   useEffect(() => {
     const info = affinityInfo(affinity); const lvl = info.level;
     if (prevAffLevel.current !== null && lvl > prevAffLevel.current) {
       toast(`${info.icon} 羁绊加深！与${character?.name || 'TA'}的关系进入「${info.name}」`);
+      setAfPulse(true);
+      setTimeout(() => setAfPulse(false), 1600);
     }
     prevAffLevel.current = lvl;
     /* eslint-disable-next-line */
@@ -454,10 +457,22 @@ export default function Chat() {
   // Only auto-stick to the bottom when the user is already near it (don't yank them
   // away while they scroll back to read history).
   useEffect(() => { if (atBottom) scrollToBottom(); }, [messages, streaming]);
+  // 背景视差：滚动聊天时立绘以 6% 速率轻微反向漂移，画面即刻「活」起来。
+  // rAF 节流 + 直接写 CSS 变量（不触发 React 渲染），lite 档/减弱动效自动无感（CSS 侧不消费）。
+  const bgParaRef = useRef(0);
   const onScroll = () => {
     const el = scrollRef.current; if (!el) return;
     setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+    if (!bgParaRef.current) {
+      bgParaRef.current = requestAnimationFrame(() => {
+        bgParaRef.current = 0;
+        const sc = scrollRef.current; if (!sc) return;
+        const main = sc.closest('.chat-main');
+        if (main) main.style.setProperty('--chat-para', Math.min(60, sc.scrollTop * 0.06).toFixed(1) + 'px');
+      });
+    }
   };
+  useEffect(() => () => { if (bgParaRef.current) cancelAnimationFrame(bgParaRef.current); }, []);
 
   // Stream a reply from the given endpoint into the trailing assistant bubble.
   const streamInto = async (endpoint, payload) => {
@@ -676,8 +691,8 @@ export default function Chat() {
           {convs.map(cv => (
             <div key={cv.id} className={'conv-item' + (String(cv.id) === String(id) ? ' active' : '')} onClick={() => nav('/chats/' + cv.id)} title={listMini ? cv.character_name : undefined}>
               <Avatar src={cv.character_avatar} name={cv.character_name} size={40} />
-              {/* 副标题：默认标题与角色同名时显示引导语，避免上下两行重复同一个名字 */}
-              <div className="tx"><b>{cv.character_name}</b><span>{cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话'}</span></div>
+              {/* 副标题：优先最近消息摘要（面板消息显示占位标签）；退回标题/引导语 */}
+              <div className="tx"><b>{cv.character_name}</b><span>{msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话')}</span></div>
               <button className="speak" onClick={e => delConv(e, cv)}><X size={14} /></button>
             </div>
           ))}
@@ -708,7 +723,7 @@ export default function Chat() {
                 <div className="nm"><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : '在线 · 沉浸扮演中'}</span></div>
               </div>
               {(() => { const af = affinityInfo(affinity); return (
-                <button className="affinity-badge" onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
+                <button className={'affinity-badge' + (afPulse ? ' pulse' : '')} onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
                   <span className="af-ic">{af.icon}</span>
                   <span className="af-tx"><b>{af.name}</b><i><em style={{ width: af.pct + '%' }} /></i></span>
                 </button>
@@ -719,7 +734,8 @@ export default function Chat() {
                     {bgmOn ? <Music size={17} /> : <VolumeX size={17} />}
                   </button>
                 )}
-                <button className="speak chat-tool" onClick={() => setIllusOpen(true)} title="为当前剧情生成插图"><Wand2 size={17} /></button>
+                {/* 「生成插图」收进更多菜单 —— 头部一行曾塞下 7 个控件，412px 宽必然
+                    互相挤压（用户实机上身份胶囊的状态文字被压到只剩一个字符）。 */}
                 <button className={'speak chat-tool' + (searchOpen ? ' on' : '')} onClick={() => { setSearchOpen(o => !o); setSearchQ(''); }} title="对话内搜索"><Search size={17} /></button>
                 <div className="chat-menu-wrap">
                   <button className={'speak chat-tool' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
@@ -727,6 +743,7 @@ export default function Chat() {
                     <>
                       <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />
                       <div className="chat-menu">
+                        <button onClick={() => { setIllusOpen(true); setMenuOpen(false); }}><Wand2 size={15} /> 为当前剧情生成插图</button>
                         <button onClick={renameConv}><Edit3 size={15} /> 重命名对话</button>
                         <button onClick={() => exportConv('md')}><Download size={15} /> 导出为 Markdown</button>
                         <button onClick={() => exportConv('json')}><Download size={15} /> 导出为 JSON</button>

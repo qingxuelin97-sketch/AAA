@@ -543,7 +543,8 @@ function buildSystemPrompt(character, recentText, history) {
 // ---- Conversations ----
 router.get('/conversations', authRequired, (req, res) => {
   const rows = db.prepare(`
-    SELECT cv.*, c.name AS character_name, c.avatar AS character_avatar
+    SELECT cv.*, c.name AS character_name, c.avatar AS character_avatar,
+      (SELECT content FROM messages WHERE conversation_id = cv.id ORDER BY id DESC LIMIT 1) AS last_message
     FROM conversations cv JOIN characters c ON c.id = cv.character_id
     WHERE cv.user_id = ? ORDER BY cv.updated_at DESC`).all(req.user.id);
   res.json({ conversations: rows });

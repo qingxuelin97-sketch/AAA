@@ -1489,7 +1489,7 @@ async function route(method, path, search, body, headers) {
   }
 
   // ---------- chat ----------
-  if (method === 'GET' && path === '/chat/conversations') { need(); const rows = filter('conversations', c => c.user_id === me.id).map(c => { const ch = find('characters', x => x.id === c.character_id); return { ...c, character_name: ch?.name, character_avatar: ch?.avatar }; }).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')); return J({ conversations: rows }); }
+  if (method === 'GET' && path === '/chat/conversations') { need(); const rows = filter('conversations', c => c.user_id === me.id).map(c => { const ch = find('characters', x => x.id === c.character_id); const msgs = filter('messages', x => x.conversation_id === c.id); return { ...c, character_name: ch?.name, character_avatar: ch?.avatar, last_message: msgs.length ? msgs[msgs.length - 1].content : '' }; }).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')); return J({ conversations: rows }); }
   if (method === 'POST' && path === '/chat/conversations') {
     need(); const ch = find('characters', x => x.id === body.character_id); if (!ch) return E('角色不存在', 404);
     const conv = insert('conversations', { user_id: me.id, character_id: ch.id, title: ch.name, updated_at: now() }); ch.uses++;
