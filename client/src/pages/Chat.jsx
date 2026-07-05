@@ -91,20 +91,54 @@ function renderRp(text, keyBase = 0) {
 // PANEL_CTX 由 Chat 组件维护（角色名/会话 id），供 shim 里 getContext() 使用。
 let PANEL_CTX = { characterName: '', conversationId: 0 };
 function HtmlPanel({ html }) {
-  const [h, setH] = useState(300);
+  // 完整 HTML 文档（游戏面板/说明书页）多为 position:fixed 的整页布局：
+  //   · scrollHeight 可能「自指」（=iframe 高度）→ 自适应变矮条
+  //   · 也可能被隐藏的大尺寸区块（地图画布等）撑到数千 px → iframe 拉超高后，
+  //     fixed 居中的开始界面落在 iframe 视口中央 = 屏幕外，肉眼只见黑底
+  // 所以整页面板的高度按「一屏游戏视口」处理：下限 72vh、上限 ~86vh，内部自滚动；
+  // 片段面板才走高度上报完全自适应。
+  const fullDoc = /<!doctype html|<html[\s>]/i.test(String(html || '').slice(0, 400));
+  const vh = window.innerHeight || 800;
+  const baseH = fullDoc ? Math.max(480, Math.round(vh * 0.72)) : 360;
+  const maxH = fullDoc ? Math.max(560, Math.round(vh * 0.86)) : 4000;
+  const [h, setH] = useState(baseH);
+  const [loaded, setLoaded] = useState(false);
+  const frameRef = useRef(null);
   const src = useMemo(() => {
     const doc = buildPanelDoc(html, PANEL_CTX);
     return URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
   }, [html]);
   useEffect(() => () => { try { URL.revokeObjectURL(src); } catch { /* */ } }, [src]);
   useEffect(() => {
-    const onMsg = e => { const v = e.data && e.data.__hyH; if (typeof v === 'number') setH(Math.min(3200, Math.max(120, v + 8))); };
-    window.addEventListener('message', onMsg); return () => window.removeEventListener('message', onMsg);
+    // 撤加载蒙层的时机不能依赖 iframe load 事件：卡片外链 CDN（Google Fonts 等）
+    // 在弱网/受限网络下会长时间挂起、load 迟迟不触发，而面板 DOM 其实早已渲染。
+    // shim 的高度上报（ResizeObserver 立即触发）就是「已渲染」的可靠信号；再兜一个超时。
+    const onMsg = e => {
+      const v = e.data && e.data.__hyH;
+      if (typeof v !== 'number') return;
+      if (frameRef.current && e.source === frameRef.current.contentWindow) setLoaded(true);
+      // 整页面板钳制在一屏内（不缩回矮条、也不被撑出屏）；片段面板完全自适应
+      setH(prev => Math.min(maxH, Math.max(fullDoc ? Math.max(baseH, prev) : 160, v + 8)));
+    };
+    window.addEventListener('message', onMsg);
+    const t = setTimeout(() => setLoaded(true), 3500);
+    return () => { window.removeEventListener('message', onMsg); clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return <iframe className="html-panel" src={src}
-    sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-downloads"
-    allow="clipboard-write; clipboard-read; fullscreen"
-    style={{ height: h }} title="角色前端面板" />;
+  return (
+    <div className={'html-panel-wrap' + (loaded ? ' ready' : '')}>
+      {/* 加载占位：卡片外链 CDN（字体/库/视频）就绪前面板常呈黑屏，给出可感知的加载态 */}
+      {!loaded && (
+        <div className="html-panel-loading" aria-hidden="true">
+          <span className="hp-spin" /><b>角色前端加载中…</b><i>大型面板首次加载可能需要几秒</i>
+        </div>
+      )}
+      <iframe className="html-panel" ref={frameRef} src={src} onLoad={() => setLoaded(true)}
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-downloads"
+        allow="clipboard-write; clipboard-read; fullscreen"
+        style={{ height: h }} title="角色前端面板" />
+    </div>
+  );
 }
 
 // 把含 ```html 面板 / 整段 HTML 的文本拆开：面板走 iframe，其余走 RP 排版。

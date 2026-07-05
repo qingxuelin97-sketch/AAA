@@ -73,14 +73,86 @@ const PANEL_SHIM = `(function(){
   window.addEventListener('load', report); setTimeout(report, 300); setTimeout(report, 1500);
 })();`;
 
+// ---------- 抗弱网改造 ----------
+// 酒馆卡的 HTML 前端普遍在 <head> 引用境外 CDN（unpkg/jsdelivr/cdnjs/Google Fonts）。
+// 在受限网络（大陆常态）下这些请求会「挂起」而非快速失败：
+//   · 挂起的 <script src> 阻塞 HTML 解析 → body 永远不构建
+//   · 挂起的 <link rel=stylesheet> / @import 阻塞该文档绘制 → 面板长期黑/白屏
+// （这正是实机上「面板黑屏」的根因 —— DOM/逻辑可能都好着，就是画不出来。）
+// 改造策略（保持执行语义）：
+//   1) 所有 <script>（外链+内联）按原顺序摘出 → 文档解析零阻塞；
+//      由队列在 DOM 就绪后依序执行：外链用动态 <script> 注入（无 CORS 限制）
+//      + 12s 超时跳过；内联用全局 eval。全部跑完后补发 DOMContentLoaded/load
+//      （卡片的初始化几乎都挂在这两个事件上）。
+//   2) 外链样式表 + @import 转「print→all」非阻塞加载，字体/图标晚到不挡首帧。
+const RUNNER = `(function(){
+  if (window.__hyPanelBooted) return; window.__hyPanelBooted = true;
+  var jobs = window.__hyPanelJobs || [];
+  var i = 0;
+  function redispatch(){
+    try { document.dispatchEvent(new Event('DOMContentLoaded', { bubbles: true })); } catch (e) {}
+    try { window.dispatchEvent(new Event('load')); } catch (e) {}
+  }
+  function next(){
+    if (i >= jobs.length) { redispatch(); return; }
+    var j = jobs[i++];
+    if (j.src) {
+      var s = document.createElement('script');
+      if (j.type) s.type = j.type;
+      var done = false;
+      var go = function(){ if (!done) { done = true; clearTimeout(t); next(); } };
+      var t = setTimeout(function(){ console.warn('[tavern-shim] 外部脚本加载超时，跳过继续:', j.src); go(); }, 12000);
+      s.onload = go;
+      s.onerror = function(){ console.warn('[tavern-shim] 外部脚本加载失败，跳过:', j.src); go(); };
+      s.src = j.src; document.head.appendChild(s);
+    } else {
+      try {
+        if (j.type === 'module') { var m = document.createElement('script'); m.type = 'module'; m.textContent = j.code; document.head.appendChild(m); }
+        else (0, eval)(j.code);
+      } catch (e) { console.error('[tavern-shim] 内联脚本执行错误（继续后续脚本）:', e); }
+      next();
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', next);
+  else next();
+})();`;
+
+function makeResilient(html) {
+  let s = String(html || '');
+  const jobs = [];
+  // 摘出全部 script（保持顺序）。非 JS 的 <script type="text/x-...> 模板原样保留。
+  s = s.replace(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi, (m, attrs, code) => {
+    const typeM = /type\s*=\s*["']?([^"'\s>]+)/i.exec(attrs);
+    const type = typeM ? typeM[1].toLowerCase() : '';
+    if (type && type !== 'module' && !/javascript|ecmascript/.test(type)) return m;
+    const srcM = /src\s*=\s*["']([^"']+)["']/i.exec(attrs);
+    if (srcM) jobs.push(type === 'module' ? { src: srcM[1], type: 'module' } : { src: srcM[1] });
+    else if (code.trim()) jobs.push(type === 'module' ? { code, type: 'module' } : { code });
+    return '';
+  });
+  // 外链样式非阻塞化（已带 media 的不动）
+  s = s.replace(/<link\b([^>]*rel\s*=\s*["']stylesheet["'][^>]*)>/gi, (m, attrs) =>
+    /media\s*=/i.test(attrs) ? m : `<link ${attrs} media="print" onload="this.media='all'">`);
+  // <style> 里的 @import 摘出转异步 link（挂起的 @import 同样阻塞绘制）
+  const imports = [];
+  s = s.replace(/@import\s+url\(\s*['"]?([^'")]+)['"]?\s*\)[^;]*;?/gi, (m, url) => { imports.push(url); return ''; });
+  const importLinks = imports.map(u => `<link rel="stylesheet" href="${u.replace(/"/g, '&quot;')}" media="print" onload="this.media='all'">`).join('');
+  // 任务队列 + 执行器挂到文档末尾（此时 DOM 已构建完）
+  const bootJobs = `<script>window.__hyPanelJobs=${JSON.stringify(jobs).replace(/</g, '\\u003c')};</scr` + `ipt><script>${RUNNER}</scr` + `ipt>`;
+  if (/<\/body>/i.test(s)) s = s.replace(/<\/body>/i, bootJobs + '</body>');
+  else s += bootJobs;
+  return { html: s, importLinks };
+}
+
 // 把 shim + 运行时上下文注入面板 HTML。shim 必须先于卡片自身脚本执行，
 // 所以插到 <head> 起始（无 head 则文档最前）。
 export function buildPanelDoc(html, ctx) {
+  const { html: resilient, importLinks } = makeResilient(html);
   const boot = `<script>window.__hyCtx=${JSON.stringify({
     characterName: ctx?.characterName || '',
     conversationId: ctx?.conversationId || 0
-  })};</scr` + `ipt><script>${PANEL_SHIM}</scr` + `ipt>`;
-  const s = String(html || '');
+  })};</scr` + `ipt><script>${PANEL_SHIM}</scr` + `ipt>` + importLinks;
+  const s = resilient;
   if (/<head[^>]*>/i.test(s)) return s.replace(/<head[^>]*>/i, (m) => m + boot);
   if (/<html[^>]*>/i.test(s)) return s.replace(/<html[^>]*>/i, (m) => m + boot);
   return boot + s;

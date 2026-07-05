@@ -6175,6 +6175,22 @@ html[data-app="1"] ::selection { background: var(--accent-soft); }
 /* 专家前端面板（角色卡 HTML 面板，沙箱 iframe 渲染） */
 .html-panel { width: 100%; max-width: 100%; border: 0; border-radius: 12px; display: block;
   background: #0d0d12; box-shadow: var(--shadow-sm); margin: 2px 0; }
+/* —— 面板消息「满宽化」：酒馆卡的 HTML 前端是页面级 UI（开始界面/状态面板/地图），
+   塞在 max-width 86% 的窄气泡里（移动端仅 ~260px 可用）必然挤碎 —— 对齐酒馆：
+   含面板的消息整行满宽、气泡外壳透明化、头像让位。 */
+.msg:has(.html-panel-wrap) { max-width: 100%; width: 100%; }
+.msg:has(.html-panel-wrap) .msg-col { width: 100%; min-width: 0; flex: 1; }
+.msg:has(.html-panel-wrap) .bubble { padding: 0; background: transparent; border: none; box-shadow: none; width: 100%; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.msg:has(.html-panel-wrap) > .avatar { display: none !important; } /* Avatar 无图占位是内联 display:grid，需 important */
+.html-panel-wrap { position: relative; width: 100%; }
+/* 加载占位：外链 CDN 就绪前面板常为黑屏，给出可感知的加载态（iframe onload 后淡出） */
+.html-panel-loading { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; gap: 8px;
+  align-items: center; justify-content: center; border-radius: 12px;
+  background: linear-gradient(135deg, #14141c, #1b1b26); color: rgba(255,255,255,0.85); }
+.html-panel-loading b { font-size: 14px; font-weight: 600; }
+.html-panel-loading i { font-size: 12px; font-style: normal; color: rgba(255,255,255,0.45); }
+.hp-spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.18); border-top-color: var(--accent); animation: spin360 0.8s linear infinite; }
+.html-panel-wrap.ready .html-panel-loading { display: none; }
 
 /* ============================================================================
    APP 端「一线内容 App」终极精修 · Elevated v1
