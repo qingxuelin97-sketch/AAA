@@ -41,6 +41,19 @@ export default function Notifications() {
   const unreadCount = useMemo(() => items.filter(n => !n.read).length, [items]);
   const shown = useMemo(() => tab === 'unread' ? items.filter(n => !n.read) : items, [items, tab]);
   const fmtDate = (s) => (s ? String(s).replace('T', ' ').slice(0, 16) : '');
+  // 按「今天 / 本周 / 更早」分组（一线消息中心范式）：时间语义一眼可辨。
+  const groups = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const week = new Date(today.getTime() - 6 * 86400e3);
+    const g = { today: [], week: [], earlier: [] };
+    for (const n of shown) {
+      const t = n.created_at ? new Date(String(n.created_at).replace(' ', 'T')) : null;
+      if (t && t >= today) g.today.push(n);
+      else if (t && t >= week) g.week.push(n);
+      else g.earlier.push(n);
+    }
+    return [['今天', g.today], ['本周', g.week], ['更早', g.earlier]].filter(([, arr]) => arr.length);
+  }, [shown]);
 
   return (
     <>
@@ -64,20 +77,25 @@ export default function Notifications() {
           <div className="empty"><EmptyArt kind="notifications" />{tab === 'unread' ? '没有未读通知' : '暂时没有新通知'}</div>
         ) : (
           <div className="noti-list">
-            {shown.map(n => {
-              const [kind, Ic] = iconFor(n.text);
-              return (
-                <div key={n.id} className={'noti-item ' + kind + (n.read ? '' : ' unread')}
-                  onClick={() => n.link && nav(n.link)} style={{ cursor: n.link ? 'pointer' : 'default' }}>
-                  <span className="noti-ic"><Ic size={17} /></span>
-                  <div className="noti-tx">
-                    <div className="noti-body">{n.text}</div>
-                    <div className="noti-time">{fmtDate(n.created_at)}</div>
-                  </div>
-                  {!n.read && <span className="noti-dot" />}
-                </div>
-              );
-            })}
+            {groups.map(([label, arr]) => (
+              <React.Fragment key={label}>
+                <div className="noti-group">{label}</div>
+                {arr.map(n => {
+                  const [kind, Ic] = iconFor(n.text);
+                  return (
+                    <div key={n.id} className={'noti-item ' + kind + (n.read ? '' : ' unread')}
+                      onClick={() => n.link && nav(n.link)} style={{ cursor: n.link ? 'pointer' : 'default' }}>
+                      <span className="noti-ic"><Ic size={17} /></span>
+                      <div className="noti-tx">
+                        <div className="noti-body">{n.text}</div>
+                        <div className="noti-time">{fmtDate(n.created_at)}</div>
+                      </div>
+                      {!n.read && <span className="noti-dot" />}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
           </div>
         )}
       </div>

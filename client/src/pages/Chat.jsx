@@ -6,10 +6,26 @@ import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoice
 import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow, msgPreview } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
+import CallScreen from '../components/CallScreen.jsx';
 import { EmptyArt } from '../art.jsx';
 import { applyFrontRegex, looksLikeHtml } from '../frontregex.js';
 import { buildPanelDoc, installTavernHost } from '../tavernbridge.js';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark, FileJson, RefreshCcw } from 'lucide-react';
+import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap } from 'lucide-react';
+
+// —— 「+」面板 · 互动添趣素材 ——
+// 送礼物：礼物名 + emoji，选中后以 RP 动作发给角色（角色会在剧情里回应）。
+const GIFTS = [
+  { e: '🌹', n: '一枝红玫瑰' }, { e: '🍰', n: '一块草莓蛋糕' }, { e: '☕', n: '一杯热咖啡' },
+  { e: '🧸', n: '一只小熊玩偶' }, { e: '💌', n: '一封手写信' }, { e: '🎁', n: '一份神秘礼物' },
+  { e: '🌙', n: '一枚月亮吊坠' }, { e: '🍬', n: '一把水果糖' },
+];
+// 随机事件：注入一个剧情转折，让 AI 顺着演（互动添趣的核心玩法）。
+const RANDOM_EVENTS = [
+  '窗外突然下起了倾盆大雨', '远处传来一阵急促的敲门声', '灯光忽然闪烁了几下熄灭了',
+  '一只猫不知从哪里跳了进来', '收音机里传来一则奇怪的新闻', '天边划过一道流星',
+  '空气中飘来一阵熟悉的香味', '地面轻轻震动了一下', '门缝下被塞进来一张纸条',
+  '时钟的指针突然开始倒转',
+];
 
 // 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
 const COARSE = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
@@ -222,6 +238,10 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [actionsOpen, setActionsOpen] = useState(false);
   const [plusOpen, setPlusOpen] = useState(false);   // 输入栏「+」对话功能面板
+  const [plusPage, setPlusPage] = useState(0);       // 面板分页指示（0=互动 1=工具）
+  const [giftOpen, setGiftOpen] = useState(false);   // 送礼物选择条
+  const [callOpen, setCallOpen] = useState(false);   // 语音/视频通话
+  const plusPagerRef = useRef(null);
   const [streaming, setStreaming] = useState(false);
   const [listMini, setListMini] = useState(() => localStorage.getItem(LIST_KEY) === '1');
   const [atBottom, setAtBottom] = useState(true);
@@ -319,7 +339,7 @@ export default function Chat() {
   // 浮层（抽屉/菜单/搜索/反应面板/编辑）拦截浏览器后退键：打开时压栈，后退先关浮层而非跳路由。
   const closeAllOverlays = () => {
     setDrawerOpen(false); setMenuOpen(false); setSearchOpen(false); setSearchQ('');
-    setActionsOpen(false); setReactFor(null); setEditingId(null); setPlusOpen(false);
+    setActionsOpen(false); setReactFor(null); setEditingId(null); setPlusOpen(false); setGiftOpen(false);
   };
   const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null || plusOpen;
   useEffect(() => {
@@ -924,34 +944,74 @@ export default function Chat() {
                   ? <button className="send-btn stop" onClick={stop} title="停止生成"><Square size={15} fill="currentColor" /></button>
                   : <button className="send-btn" onClick={() => send()} disabled={!input.trim()}><Send size={17} /></button>}
               </div>
-              {plusOpen && (
-                <div className="chat-plus-sheet">
-                  {[
-                    { ic: Wand2, label: '生成插图', on: () => { setIllusOpen(true); setPlusOpen(false); } },
-                    { ic: Search, label: '搜索对话', on: () => { setSearchOpen(true); setSearchQ(''); setPlusOpen(false); } },
-                    { ic: Bookmark, label: '消息书签', badge: marks.size || 0, on: () => { setMarksOpen(true); setPlusOpen(false); } },
-                    { ic: Heart, label: '角色档案', on: () => { setDrawerOpen(true); setPlusOpen(false); } },
-                    { ic: RefreshCcw, label: '切换开场白', dis: altGreetings.length === 0, on: () => {
-                        const gi = (greetIdx + 1) % (altGreetings.length + 1);
-                        if (messages.length > 1 && !confirm('切换开场白会清空当前对话，继续？')) return;
-                        switchGreeting(gi); setPlusOpen(false);
-                      } },
-                    { ic: RotateCcw, label: '重新生成', dis: streaming || messages.length < 2, on: () => { regenerate(); setPlusOpen(false); } },
-                    { ic: bgmOn && character?.bgm ? Music : VolumeX, label: bgmOn ? '背景音乐 开' : '背景音乐 关', dis: !character?.bgm, on: toggleBgm },
-                    { ic: Volume2, label: autoRead ? '自动朗读 开' : '自动朗读 关', on: toggleAutoRead },
-                    { ic: Type, label: `字号 · ${fontSize === 'sm' ? '小' : fontSize === 'md' ? '中' : '大'}`, on: () => setFont(fontSize === 'sm' ? 'md' : fontSize === 'md' ? 'lg' : 'sm') },
-                    { ic: Download, label: '导出 MD', on: () => { exportConv('md'); setPlusOpen(false); } },
-                    { ic: FileJson, label: '导出 JSON', on: () => { exportConv('json'); setPlusOpen(false); } },
-                    { ic: Eraser, label: '清空对话', danger: true, on: () => { setPlusOpen(false); clearConv(); } },
-                  ].map((it, i) => (
-                    <button key={it.label} className={'cps-item' + (it.danger ? ' danger' : '')} style={{ '--i': i }}
-                      disabled={it.dis} onClick={it.on}>
-                      <span className="cps-ic"><it.ic size={19} />{it.badge ? <i className="cps-badge">{it.badge}</i> : null}</span>
-                      <span>{it.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              {plusOpen && (() => {
+                // 两页 × 6 项（对标一线聊天功能面板）：P1 互动添趣 / P2 实用工具。
+                // 导出/清空/搜索/书签等低频项收在右上 ⋮ 菜单，不占面板。
+                const P1 = [
+                  { ic: Phone, hue: 'call', label: '语音通话', on: () => { setPlusOpen(false); setCallOpen(true); } },
+                  { ic: Wand2, hue: 'illus', label: '生成插图', on: () => { setIllusOpen(true); setPlusOpen(false); } },
+                  { ic: Dices, hue: 'dice', label: '掷骰子', dis: streaming, on: () => {
+                      setPlusOpen(false);
+                      send(`*掷出一枚命运骰子……${1 + Math.floor(Math.random() * 20)} 点（1-20）！*`);
+                    } },
+                  { ic: Gift, hue: 'gift', label: '送礼物', dis: streaming, on: () => setGiftOpen(o => !o) },
+                  { ic: Drama, hue: 'narr', label: '旁白推进', dis: streaming, on: () => {
+                      setPlusOpen(false);
+                      const t = input.trim();
+                      if (t) { setInput(''); send(`（旁白：${t}）`); }
+                      else send('（旁白：请以第三人称旁白视角推进当前剧情，带来一个自然的转折。）');
+                    } },
+                  { ic: Zap, hue: 'event', label: '随机事件', dis: streaming, on: () => {
+                      setPlusOpen(false);
+                      send(`*【突发】${RANDOM_EVENTS[Math.floor(Math.random() * RANDOM_EVENTS.length)]}*`);
+                    } },
+                ];
+                const P2 = [
+                  { ic: Heart, hue: 'profile', label: '角色档案', on: () => { setDrawerOpen(true); setPlusOpen(false); } },
+                  { ic: RefreshCcw, hue: 'greet', label: '切换开场白', dis: altGreetings.length === 0, on: () => {
+                      const gi = (greetIdx + 1) % (altGreetings.length + 1);
+                      if (messages.length > 1 && !confirm('切换开场白会清空当前对话，继续？')) return;
+                      switchGreeting(gi); setPlusOpen(false);
+                    } },
+                  { ic: RotateCcw, hue: 'regen', label: '重新生成', dis: streaming || messages.length < 2, on: () => { regenerate(); setPlusOpen(false); } },
+                  { ic: Volume2, hue: 'read', label: autoRead ? '自动朗读 开' : '自动朗读 关', on: toggleAutoRead },
+                  { ic: bgmOn && character?.bgm ? Music : VolumeX, hue: 'bgm', label: bgmOn ? '背景音乐 开' : '背景音乐 关', dis: !character?.bgm, on: toggleBgm },
+                  { ic: Type, hue: 'font', label: `字号 · ${fontSize === 'sm' ? '小' : fontSize === 'md' ? '中' : '大'}`, on: () => setFont(fontSize === 'sm' ? 'md' : fontSize === 'md' ? 'lg' : 'sm') },
+                ];
+                const renderPage = (items, base) => (
+                  <div className="cps-page">
+                    {items.map((it, i) => (
+                      <button key={it.label} className={'cps-item hue-' + it.hue} style={{ '--i': base + i }}
+                        disabled={it.dis} onClick={it.on}>
+                        <span className="cps-ic"><it.ic size={20} />{it.badge ? <i className="cps-badge">{it.badge}</i> : null}</span>
+                        <span>{it.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+                return (
+                  <div className="chat-plus-sheet paged">
+                    {giftOpen && (
+                      <div className="cps-gifts">
+                        {GIFTS.map(g => (
+                          <button key={g.e} onClick={() => {
+                            setGiftOpen(false); setPlusOpen(false);
+                            send(`*送给${character?.name || '你'}${g.n} ${g.e}*`);
+                          }}><b>{g.e}</b><span>{g.n.replace(/^一[枝块杯只封份枚把]/, '')}</span></button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="cps-pager" ref={plusPagerRef}
+                      onScroll={e => setPlusPage(e.target.scrollLeft > e.target.clientWidth / 2 ? 1 : 0)}>
+                      {renderPage(P1, 0)}
+                      {renderPage(P2, 0)}
+                    </div>
+                    <div className="cps-dots" aria-hidden="true">
+                      <i className={plusPage === 0 ? 'on' : ''} /><i className={plusPage === 1 ? 'on' : ''} />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
           {drawerOpen && (() => { const af = affinityInfo(affinity); return (
@@ -1014,6 +1074,7 @@ export default function Chat() {
         </Modal>
       )}
       {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
+      {callOpen && character && <CallScreen character={character} onClose={() => setCallOpen(false)} />}
       {previewImg && (
         <div className="img-lightbox" onClick={() => setPreviewImg(null)}>
           <img src={previewImg} alt="预览" />
