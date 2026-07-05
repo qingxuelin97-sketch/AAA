@@ -8519,3 +8519,741 @@ html[data-app="1"] .conv-item:active { transform: scale(0.98); }
 .noti-group { margin: 18px 4px 8px; font-size: 12.5px; font-weight: 700; color: var(--faint);
   letter-spacing: 0.06em; text-transform: uppercase; }
 .noti-group:first-child { margin-top: 2px; }
+
+/* ============================================================================
+   Glass 3.0 —— APP 全域玻璃化设计体系（对标一线：猫箱 / 星野 / Talkie）
+   ----------------------------------------------------------------------------
+   设计语言（参考实机图）：
+   · 立绘/氛围永远打底，UI 全部是「悬浮的磨砂玻璃层」
+   · 深色语境（有立绘）：内容卡 = 亮玻璃 + 深色文字（可读性王道）；
+     控件/标签 = 深玻璃胶囊 + 白字
+   · 浅色语境（白+青）：卡面 = 半透明白玻璃 + 青光晕透底
+   · 均受 data-perf=lite 降级（去 blur 保半透明），reduced-motion 关动画
+   ========================================================================== */
+
+/* ---- 0. 玻璃令牌 ---- */
+html[data-app="1"] {
+  --gls-lite-bg: rgba(255, 253, 248, 0.78);        /* 亮玻璃（立绘上的内容卡） */
+  --gls-lite-blur: blur(26px) saturate(170%);
+  --gls-lite-text: #2b2420;
+  --gls-lite-muted: rgba(58, 48, 42, 0.66);
+  --gls-dark-bg: rgba(22, 18, 28, 0.55);           /* 深玻璃（控件/标签胶囊） */
+  --gls-dark-blur: blur(18px) saturate(160%);
+  --gls-panel-bg: color-mix(in srgb, var(--panel) 76%, transparent);   /* 浅色语境卡 */
+  --gls-panel-blur: blur(22px) saturate(165%);
+  --gls-hairline: rgba(255, 255, 255, 0.55);
+}
+html[data-app="1"][data-theme="dark"] {
+  --gls-panel-bg: color-mix(in srgb, var(--panel) 72%, transparent);
+  --gls-hairline: rgba(255, 255, 255, 0.10);
+}
+/* 浅色语境氛围强化：卡面半透明后，底下要有「东西」可透 —— 三层青光晕 + 顶部辉光 */
+html[data-app="1"][data-theme="light"] body {
+  background-image:
+    radial-gradient(1000px 560px at 88% -6%, rgba(34, 211, 238, 0.16), transparent 58%),
+    radial-gradient(820px 540px at -12% 24%, rgba(14, 156, 184, 0.12), transparent 55%),
+    radial-gradient(900px 640px at 50% 112%, rgba(125, 226, 245, 0.14), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* ============================================================
+   1. 沉浸对话 —— 参考图重构：亮玻璃内容卡 + 深玻璃控件
+   ============================================================ */
+/* 角色名 → 深玻璃小胶囊，吊在内容卡上沿（参考图的「沈清秋」标签） */
+html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; margin: 0 0 -8px 2px; position: relative; z-index: 2;
+  border-radius: 12px 12px 12px 3px;
+  background: var(--gls-dark-bg);
+  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #fff; font-size: 12.5px; text-shadow: none;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name .msg-time { color: rgba(255,255,255,0.55); }
+/* 内容卡：亮玻璃 + 深色文字（可读性远超深卡白字，正是参考 App 的做法） */
+html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble {
+  background: var(--gls-lite-bg);
+  -webkit-backdrop-filter: var(--gls-lite-blur); backdrop-filter: var(--gls-lite-blur);
+  border: 1px solid var(--gls-hairline);
+  color: var(--gls-lite-text);
+  border-radius: 22px; border-top-left-radius: 8px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255,255,255,0.65);
+  text-shadow: none;
+}
+html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act {
+  color: var(--gls-lite-muted); font-style: italic;
+}
+/* 用户气泡：青渐变玻璃（自己的话保持品牌色，与亮卡形成主客区分） */
+html[data-app="1"] .chat-main.has-bg .msg.user .bubble {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.82), rgba(10, 127, 151, 0.86));
+  -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.30);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 24px rgba(14,156,184,0.30);
+}
+/* 流式光标适配亮卡 */
+html[data-app="1"] .chat-main.has-bg .msg.assistant.streaming .bubble::after { background: #0e9cb8; }
+/* 好感徽章 / 身份胶囊 / 返回键：统一深玻璃语言（微调密度） */
+html[data-app="1"] .chat-main.has-bg .ch-idpill,
+html[data-app="1"] .chat-main.has-bg .affinity-badge {
+  background: var(--gls-dark-bg);
+  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
+  border: 1px solid rgba(255,255,255,0.13);
+}
+html[data-app="1"] .chat-main.has-bg .chat-tool,
+html[data-app="1"] .chat-main.has-bg .chat-back {
+  background: var(--gls-dark-bg);
+  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+/* 开场/试试开口 chips：更轻的深玻璃（参考图底部功能 chips 的密度） */
+html[data-app="1"] .chat-main.has-bg .starter-chips .muted { color: rgba(255,255,255,0.85); text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+html[data-app="1"] .chat-main.has-bg .starter-chip {
+  background: rgba(20, 17, 26, 0.44);
+  -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%);
+}
+/* 消息内嵌图片 / 面板圆角与卡面一致 */
+html[data-app="1"] .chat-main.has-bg .wb-inline-img { border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+/* 档案抽屉：整面深玻璃 */
+html[data-app="1"] .chat-drawer {
+  background: rgba(20, 17, 26, 0.86);
+  -webkit-backdrop-filter: blur(30px) saturate(160%); backdrop-filter: blur(30px) saturate(160%);
+  border-left: 1px solid rgba(255,255,255,0.10); color: #f0edea;
+}
+html[data-app="1"] .chat-drawer .cd-head { border-bottom-color: rgba(255,255,255,0.10); }
+html[data-app="1"] .chat-drawer h4 { color: rgba(255,255,255,0.9); }
+html[data-app="1"] .chat-drawer .muted { color: rgba(255,255,255,0.55); }
+html[data-app="1"] .chat-drawer .wb-item { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; }
+html[data-app="1"] .chat-drawer .wb-keys span { background: rgba(34,211,238,0.16); color: #9ceaf7; }
+html[data-app="1"] .chat-drawer .mem-item { background: rgba(255,255,255,0.06); border-radius: 12px; }
+html[data-app="1"] .chat-drawer .af-bar { background: rgba(255,255,255,0.12); }
+html[data-app="1"] .chat-drawer .input { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); color: #fff; }
+/* 更多菜单 / 反应面板 / 搜索条：深玻璃 */
+html[data-app="1"] .chat-main.has-bg .chat-menu {
+  background: rgba(24, 20, 30, 0.92);
+  -webkit-backdrop-filter: blur(26px) saturate(160%); backdrop-filter: blur(26px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+html[data-app="1"] .chat-main.has-bg .chat-menu button { color: rgba(255,255,255,0.88); }
+html[data-app="1"] .chat-main.has-bg .chat-menu button:active { background: rgba(255,255,255,0.08); }
+html[data-app="1"] .chat-main.has-bg .chat-menu-row { color: rgba(255,255,255,0.85); }
+html[data-app="1"] .chat-main.has-bg .chat-menu-sep { background: rgba(255,255,255,0.10); }
+html[data-app="1"] .chat-main.has-bg .react-pop {
+  background: rgba(24, 20, 30, 0.92);
+  -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+html[data-app="1"] .chat-main.has-bg .chat-search {
+  background: rgba(20, 17, 26, 0.72);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+html[data-app="1"] .chat-main.has-bg .chat-search input { color: #fff; }
+/* 动作/表情面板：深玻璃胶囊组 */
+html[data-app="1"] .chat-main.has-bg .action-panel button {
+  background: rgba(20, 17, 26, 0.6);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-color: rgba(255,255,255,0.14);
+}
+/* 「回到底部」深玻璃圆钮 */
+html[data-app="1"] .chat-main.has-bg .scroll-bottom-btn {
+  background: var(--gls-dark-bg); color: #fff;
+  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
+  border: 1px solid rgba(255,255,255,0.16);
+}
+
+/* ---- 无背景（白+青）聊天：卡面玻璃化，光晕透底 ---- */
+html[data-app="1"] .chat-main:not(.has-bg) .msg.assistant .bubble {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: var(--gls-panel-blur); backdrop-filter: var(--gls-panel-blur);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+html[data-app="1"] .chat-main:not(.has-bg) .chat-input-bar .box {
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* ============================================================
+   2. 全局 chrome 玻璃化 —— 顶栏 / 分段 / 弹层 / 菜单 / 输入
+   ============================================================ */
+html[data-app="1"] .topbar {
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  -webkit-backdrop-filter: saturate(170%) blur(22px); backdrop-filter: saturate(170%) blur(22px);
+}
+html[data-app="1"] .tabs-bar {
+  background: color-mix(in srgb, var(--panel) 66%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+}
+html[data-app="1"] .seg {
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+html[data-app="1"] .modal {
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  -webkit-backdrop-filter: blur(30px) saturate(170%); backdrop-filter: blur(30px) saturate(170%);
+}
+html[data-app="1"] .modal-mask, html[data-app="1"] .chat-drawer-mask,
+html[data-app="1"] .app-sheet-mask, html[data-app="1"] .chat-menu-mask {
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+html[data-app="1"] .app-sheet {
+  background: color-mix(in srgb, var(--panel) 84%, transparent);
+  -webkit-backdrop-filter: blur(30px) saturate(170%); backdrop-filter: blur(30px) saturate(170%);
+}
+html[data-app="1"] .cmdk {
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(170%); backdrop-filter: blur(28px) saturate(170%);
+}
+html[data-app="1"] .input, html[data-app="1"] textarea.input, html[data-app="1"] select.input {
+  background: color-mix(in srgb, var(--panel) 74%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+html[data-app="1"] .btn:not(.primary) {
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+html[data-app="1"] .btn.ghost { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ============================================================
+   3. 内容表面玻璃化 —— 卡片 / 列表行 / 宫格（浅色语境青光透底）
+   ============================================================ */
+html[data-app="1"] .card,
+html[data-app="1"] .noti-item, html[data-app="1"] .lb-row,
+html[data-app="1"] .ann-item, html[data-app="1"] .room-row,
+html[data-app="1"] .fr-add, html[data-app="1"] .fr-add-row,
+html[data-app="1"] .wallet-ach, html[data-app="1"] .vip-entry,
+html[data-app="1"] .msgs-conv, html[data-app="1"] .msgs-entry {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: var(--gls-panel-blur); backdrop-filter: var(--gls-panel-blur);
+}
+html[data-app="1"] .wallet-hero {
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(14,156,184,0.12), transparent 55%),
+    radial-gradient(110% 80% at 100% 100%, rgba(34,211,238,0.12), transparent 60%),
+    color-mix(in srgb, var(--panel) 74%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(165%); backdrop-filter: blur(24px) saturate(165%);
+}
+html[data-app="1"] .wallet-hero .col { background: color-mix(in srgb, var(--panel-2) 55%, transparent); }
+html[data-app="1"] .pf-assets, html[data-app="1"] .pf-vip {
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+}
+html[data-app="1"] .pf-assets { background: color-mix(in srgb, var(--panel) 72%, transparent); }
+html[data-app="1"] .pf-quick-ic, html[data-app="1"] .pf-cell-ic, html[data-app="1"] .ah-sc-ic {
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+html[data-app="1"] .pf-cc, html[data-app="1"] .char-card {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: var(--gls-panel-blur); backdrop-filter: var(--gls-panel-blur);
+}
+html[data-app="1"] .ah-hero {
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+html[data-app="1"] .ah-resume, html[data-app="1"] .ah-task, html[data-app="1"] .ah-pick,
+html[data-app="1"] .ah-empty, html[data-app="1"] .ah-sc {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(155%); backdrop-filter: blur(16px) saturate(155%);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 18px;
+}
+html[data-app="1"] .ah-sc { border-radius: 16px; }
+html[data-app="1"] .ah-hero-card { border-radius: 22px; overflow: hidden; }
+/* 成就 / 活动 / 扭蛋 / 星轨 / 排行榜内容卡 */
+html[data-app="1"] .ach-body, html[data-app="1"] .ins-card, html[data-app="1"] .gx-meta,
+html[data-app="1"] .ev-actions, html[data-app="1"] .lb-pod-base {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(155%); backdrop-filter: blur(16px) saturate(155%);
+}
+/* 剧本 / 世界书 / 社区卡片 */
+html[data-app="1"] .wb-item { border-radius: 14px; }
+html[data-app="1"] .comment {
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+
+/* ============================================================
+   4. 逐页专项补充
+   ============================================================ */
+/* 今日页问候卡：叠一层玻璃辉光边 */
+html[data-app="1"] .ah-hero { border: 1px solid rgba(255,255,255,0.35); border-radius: 24px; }
+/* 消息中心入口卡图标底 */
+html[data-app="1"] .msgs-entry { border-radius: 20px; }
+/* 通知未读行：左缘青光提示线 */
+html[data-app="1"] .noti-item.unread { border-left: 3px solid var(--accent); }
+/* 设置分组卡与危险区 */
+html[data-app="1"] .priv-data-row { background: color-mix(in srgb, var(--panel-2) 60%, transparent); }
+/* 好友私信输入胶囊 */
+html[data-app="1"] .fr-dm-input {
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+/* 群聊房间行头像组玻璃圈 */
+html[data-app="1"] .room-row { border-radius: 18px; }
+/* 角色详情作者卡 / CTA 玻璃 */
+html[data-app="1"] .cvx-author {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+}
+/* 扭蛋台座光效 */
+html[data-app="1"] .gx-stage { position: relative; }
+html[data-app="1"] .gx-stage::after {
+  content: ''; position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+  width: 62%; height: 16px; border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(14,156,184,0.28), transparent 70%);
+  filter: blur(4px); pointer-events: none;
+}
+/* 会员中心权益宫格玻璃 */
+html[data-app="1"] .vm-perk {
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+
+/* ============================================================
+   5. 深色主题（手动深色 APP）玻璃变体
+   ============================================================ */
+html[data-app="1"][data-theme="dark"] body {
+  background-image:
+    radial-gradient(1000px 560px at 88% -6%, rgba(255, 147, 102, 0.10), transparent 58%),
+    radial-gradient(820px 540px at -12% 24%, rgba(255, 147, 102, 0.06), transparent 55%);
+  background-attachment: fixed;
+}
+html[data-app="1"][data-theme="dark"] .topbar { background: color-mix(in srgb, var(--bg) 58%, transparent); }
+html[data-app="1"][data-theme="dark"] .card,
+html[data-app="1"][data-theme="dark"] .noti-item,
+html[data-app="1"][data-theme="dark"] .lb-row,
+html[data-app="1"][data-theme="dark"] .ann-item,
+html[data-app="1"][data-theme="dark"] .room-row,
+html[data-app="1"][data-theme="dark"] .msgs-conv,
+html[data-app="1"][data-theme="dark"] .msgs-entry,
+html[data-app="1"][data-theme="dark"] .pf-cc,
+html[data-app="1"][data-theme="dark"] .char-card { border-color: rgba(255,255,255,0.08); }
+
+/* ============================================================
+   6. lite 降级：保留半透明层次，关掉所有 blur（GPU 友好）
+   ============================================================ */
+html[data-app="1"][data-perf="lite"] .topbar, html[data-app="1"][data-perf="lite"] .tabs-bar,
+html[data-app="1"][data-perf="lite"] .seg, html[data-app="1"][data-perf="lite"] .modal,
+html[data-app="1"][data-perf="lite"] .app-sheet, html[data-app="1"][data-perf="lite"] .cmdk,
+html[data-app="1"][data-perf="lite"] .input, html[data-app="1"][data-perf="lite"] .btn:not(.primary),
+html[data-app="1"][data-perf="lite"] .card, html[data-app="1"][data-perf="lite"] .noti-item,
+html[data-app="1"][data-perf="lite"] .lb-row, html[data-app="1"][data-perf="lite"] .ann-item,
+html[data-app="1"][data-perf="lite"] .room-row, html[data-app="1"][data-perf="lite"] .fr-add,
+html[data-app="1"][data-perf="lite"] .fr-add-row, html[data-app="1"][data-perf="lite"] .wallet-ach,
+html[data-app="1"][data-perf="lite"] .vip-entry, html[data-app="1"][data-perf="lite"] .msgs-conv,
+html[data-app="1"][data-perf="lite"] .msgs-entry, html[data-app="1"][data-perf="lite"] .wallet-hero,
+html[data-app="1"][data-perf="lite"] .pf-assets, html[data-app="1"][data-perf="lite"] .pf-vip,
+html[data-app="1"][data-perf="lite"] .pf-cc, html[data-app="1"][data-perf="lite"] .char-card,
+html[data-app="1"][data-perf="lite"] .ah-resume, html[data-app="1"][data-perf="lite"] .ah-task,
+html[data-app="1"][data-perf="lite"] .ah-pick, html[data-app="1"][data-perf="lite"] .ah-empty,
+html[data-app="1"][data-perf="lite"] .ah-sc, html[data-app="1"][data-perf="lite"] .ach-body,
+html[data-app="1"][data-perf="lite"] .ins-card, html[data-app="1"][data-perf="lite"] .comment,
+html[data-app="1"][data-perf="lite"] .cvx-author, html[data-app="1"][data-perf="lite"] .fr-dm-input,
+html[data-app="1"][data-perf="lite"] .vm-perk, html[data-app="1"][data-perf="lite"] .modal-mask,
+html[data-app="1"][data-perf="lite"] .chat-drawer-mask, html[data-app="1"][data-perf="lite"] .app-sheet-mask,
+html[data-app="1"][data-perf="lite"] .chat-menu-mask {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .msg.assistant .bubble {
+  -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255, 253, 248, 0.94);
+}
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .msg.assistant .msg-name,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .ch-idpill,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .affinity-badge,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-tool,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-back,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .scroll-bottom-btn {
+  -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(16, 13, 20, 0.78);
+}
+html[data-app="1"][data-perf="lite"] .chat-drawer { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(18, 15, 23, 0.97); }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-menu,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .react-pop { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(22, 18, 28, 0.97); }
+
+/* ============================================================
+   7. Glass 3.0 · 二段 —— 剩余页面专项 + 玻璃高光细节体系
+   ============================================================ */
+/* ---- 玻璃高光通用细节：内容卡统一「顶部内高光 + 发丝描边」质感 ---- */
+html[data-app="1"] .card, html[data-app="1"] .msgs-conv, html[data-app="1"] .msgs-entry,
+html[data-app="1"] .noti-item, html[data-app="1"] .lb-row, html[data-app="1"] .ann-item,
+html[data-app="1"] .room-row, html[data-app="1"] .ah-resume, html[data-app="1"] .ah-pick,
+html[data-app="1"] .pf-cc, html[data-app="1"] .char-card, html[data-app="1"] .wallet-hero,
+html[data-app="1"] .pf-assets {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 1px 2px rgba(13,74,88,0.05), 0 10px 30px rgba(13,74,88,0.08);
+}
+html[data-app="1"][data-theme="dark"] .card, html[data-app="1"][data-theme="dark"] .msgs-conv,
+html[data-app="1"][data-theme="dark"] .msgs-entry, html[data-app="1"][data-theme="dark"] .noti-item,
+html[data-app="1"][data-theme="dark"] .lb-row, html[data-app="1"][data-theme="dark"] .ann-item,
+html[data-app="1"][data-theme="dark"] .room-row, html[data-app="1"][data-theme="dark"] .ah-resume,
+html[data-app="1"][data-theme="dark"] .ah-pick, html[data-app="1"][data-theme="dark"] .pf-cc,
+html[data-app="1"][data-theme="dark"] .char-card, html[data-app="1"][data-theme="dark"] .wallet-hero,
+html[data-app="1"][data-theme="dark"] .pf-assets {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.3), 0 12px 34px rgba(0,0,0,0.32);
+}
+
+/* ---- 角色库 / 收藏 / 搜索：网格卡玻璃 meta 区 + 悬浮徽标 ---- */
+html[data-app="1"] .char-card .meta {
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+html[data-app="1"] .char-card .free-tag {
+  background: rgba(20, 17, 26, 0.55); color: #fff;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 999px; border: 1px solid rgba(255,255,255,0.18);
+}
+
+/* ---- 剧本 / 剧场 / 社区列表 ---- */
+html[data-app="1"] .cat-bar .tab, html[data-app="1"] .cat-bar button {
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-radius: 999px;
+}
+html[data-app="1"] .c-body {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(155%); backdrop-filter: blur(16px) saturate(155%);
+  border-radius: 18px;
+}
+
+/* ---- 标签广场 / 活动 / 事件卡 ---- */
+html[data-app="1"] .tag-cloud-item {
+  background: color-mix(in srgb, var(--panel) 68%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+html[data-app="1"] .ev-ic {
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+
+/* ---- 世界书列表 / 编辑器卡片 ---- */
+html[data-app="1"] .world-entry {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-radius: 16px;
+}
+
+/* ---- 排行榜领奖台玻璃臺座 ---- */
+html[data-app="1"] .lb-pod-av .avatar { box-shadow: 0 0 0 3px rgba(255,255,255,0.65), 0 8px 22px rgba(13,74,88,0.18); }
+
+/* ---- 议会 / 公告横幅 ---- */
+html[data-app="1"] .ann-banner {
+  background:
+    radial-gradient(120% 100% at 10% 0%, rgba(34,211,238,0.14), transparent 55%),
+    color-mix(in srgb, var(--panel) 72%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* ---- 底部 Dock 玻璃升级：更深邃的多层光效 ---- */
+html[data-app="1"] .app-tabbar {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 -8px 30px rgba(13,74,88,0.08);
+}
+html[data-app="1"][data-theme="dark"] .app-tabbar {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 -8px 30px rgba(0,0,0,0.35);
+}
+
+/* ---- Toast 玻璃 ---- */
+.toast-stack > * {
+  background: color-mix(in srgb, var(--panel) 82%, transparent) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 12px 34px rgba(13,74,88,0.16);
+}
+
+/* ---- 通话界面控件玻璃（复用 CallScreen）---- */
+html[data-app="1"] .call-ctrl {
+  background: rgba(22, 18, 28, 0.5);
+  -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.14);
+}
+html[data-app="1"] .call-pip { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+
+/* ---- 骨架屏玻璃化（加载中也保持体系一致）---- */
+html[data-app="1"] .skel {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--panel) 55%, transparent) 25%,
+    color-mix(in srgb, var(--panel) 78%, transparent) 50%,
+    color-mix(in srgb, var(--panel) 55%, transparent) 75%);
+  background-size: 200% 100%;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+html[data-app="1"] .pf-cc-skel, html[data-app="1"] .ah-hero-skel, html[data-app="1"] .ah-rail-skel {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 20px;
+}
+
+/* ---- 空态卡玻璃 ---- */
+html[data-app="1"] .empty {
+  background: color-mix(in srgb, var(--panel) 40%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px dashed color-mix(in srgb, var(--border-2) 70%, transparent);
+}
+
+/* ---- 页面标题排版精修（大标题化，接近原生导航密度）---- */
+html[data-app="1"] .topbar h1 { font-size: 21px; font-weight: 750; letter-spacing: 0.2px; }
+html[data-app="1"] .section-title h2 { font-weight: 700; }
+html[data-app="1"] .page > .section-title:first-child { margin-top: 4px; }
+
+/* ---- 图标底统一渐变高光（宫格/快捷/入口图标的一致光泽）---- */
+html[data-app="1"] .pf-quick-ic::after, html[data-app="1"] .pf-cell-ic::after,
+html[data-app="1"] .ah-sc-ic::after, html[data-app="1"] .noti-ic::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(160deg, rgba(255,255,255,0.35), transparent 55%);
+}
+html[data-app="1"] .pf-quick-ic, html[data-app="1"] .pf-cell-ic,
+html[data-app="1"] .ah-sc-ic, html[data-app="1"] .noti-ic { position: relative; }
+
+/* ---- lite 降级（二段新增项）---- */
+html[data-app="1"][data-perf="lite"] .char-card .meta, html[data-app="1"][data-perf="lite"] .char-card .free-tag,
+html[data-app="1"][data-perf="lite"] .cat-bar .tab, html[data-app="1"][data-perf="lite"] .cat-bar button,
+html[data-app="1"][data-perf="lite"] .c-body, html[data-app="1"][data-perf="lite"] .tag-cloud-item,
+html[data-app="1"][data-perf="lite"] .ev-ic, html[data-app="1"][data-perf="lite"] .world-entry,
+html[data-app="1"][data-perf="lite"] .ann-banner, html[data-app="1"][data-perf="lite"] .call-ctrl,
+html[data-app="1"][data-perf="lite"] .call-pip, html[data-app="1"][data-perf="lite"] .skel,
+html[data-app="1"][data-perf="lite"] .pf-cc-skel, html[data-app="1"][data-perf="lite"] .ah-hero-skel,
+html[data-app="1"][data-perf="lite"] .ah-rail-skel, html[data-app="1"][data-perf="lite"] .empty,
+html[data-app="1"][data-perf="lite"] .pf-quick-ic, html[data-app="1"][data-perf="lite"] .pf-cell-ic,
+html[data-app="1"][data-perf="lite"] .ah-sc-ic {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+[data-perf="lite"] .toast-stack > * { -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* 角色名胶囊必须收缩成小标签（参考图），不能通栏 */
+html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name { width: fit-content; max-width: 78%; }
+
+/* ============================================================
+   8. Glass 3.0 · 三段 —— 编辑器/工作台/登录/议会/活动/星轨 全量收口
+   ============================================================ */
+/* ---- 动态氛围层：两枚青色光斑极缓漂移（transform-only，GPU 廉价）---- */
+html[data-app="1"][data-theme="light"] .app-root::before,
+html[data-app="1"][data-theme="light"] .app-root::after {
+  content: ''; position: fixed; z-index: 0; pointer-events: none;
+  width: 60vmax; height: 60vmax; border-radius: 50%;
+  will-change: transform;
+}
+html[data-app="1"][data-theme="light"] .app-root::before {
+  left: -22vmax; top: -18vmax;
+  background: radial-gradient(circle, rgba(34,211,238,0.13) 0%, rgba(34,211,238,0.05) 45%, transparent 70%);
+  animation: glsOrbA 36s ease-in-out infinite alternate;
+}
+html[data-app="1"][data-theme="light"] .app-root::after {
+  right: -26vmax; bottom: -20vmax;
+  background: radial-gradient(circle, rgba(14,156,184,0.11) 0%, rgba(14,156,184,0.04) 45%, transparent 70%);
+  animation: glsOrbB 44s ease-in-out infinite alternate;
+}
+@keyframes glsOrbA { from { transform: translate(0, 0) scale(1); } to { transform: translate(7vmax, 5vmax) scale(1.12); } }
+@keyframes glsOrbB { from { transform: translate(0, 0) scale(1.08); } to { transform: translate(-6vmax, -6vmax) scale(0.96); } }
+/* 内容层必须浮在光斑之上 */
+html[data-app="1"] .app-main, html[data-app="1"] .app-tabbar { position: relative; z-index: 1; }
+html[data-app="1"] .app-tabbar { position: fixed; }
+
+/* ---- 编辑器与工作台（角色/世界书/发布/创作中心）---- */
+html[data-app="1"] .editor-grid .card {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: var(--gls-panel-blur); backdrop-filter: var(--gls-panel-blur);
+}
+html[data-app="1"] .bg-preset-grid button { border-radius: 14px; overflow: hidden; }
+html[data-app="1"] .bgm-row {
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 14px;
+}
+html[data-app="1"] .draft-badge {
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 999px;
+}
+html[data-app="1"] .draft-restore {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border-radius: 16px;
+}
+html[data-app="1"] .attach { border-radius: 18px; }
+html[data-app="1"] .world-entry .field textarea { background: color-mix(in srgb, var(--panel) 60%, transparent); }
+html[data-app="1"] .chart-grid .card { border-radius: 18px; }
+html[data-app="1"] .inc-breakdown {
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 14px;
+}
+html[data-app="1"] .pill-pub {
+  background: rgba(20, 17, 26, 0.5); color: #fff;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 999px;
+}
+
+/* ---- 登录页：功能卡玻璃 + 主卡辉光 ---- */
+.auth-feat-card {
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(155%); backdrop-filter: blur(16px) saturate(155%);
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 8px 26px rgba(13,74,88,0.08);
+}
+.afc-ic { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.auth-explore-btn {
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+
+/* ---- 议会大厅：氛围列玻璃 + 提案卡 ---- */
+html[data-app="1"] .pl-atmos-col { opacity: 0.85; }
+html[data-app="1"] .pl-immersive .card, html[data-app="1"] .pl-immersive .filter {
+  background: rgba(24, 20, 30, 0.62);
+  -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+  border-color: rgba(255,255,255,0.10);
+}
+
+/* ---- 活动页：事件卡玻璃 + 奖励高亮 ---- */
+html[data-app="1"] .event-card {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 10px 30px rgba(13,74,88,0.08);
+}
+html[data-app="1"] .ev-tag {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border-radius: 999px;
+}
+html[data-app="1"] .ev-top { border-radius: 20px 20px 0 0; }
+
+/* ---- 星轨：hero 数据卡星空玻璃 ---- */
+html[data-app="1"] .ins-hero {
+  background:
+    radial-gradient(140% 120% at 85% -10%, rgba(34,211,238,0.18), transparent 55%),
+    linear-gradient(150deg, #1d2947, #131a30);
+  border-radius: 24px; color: #eaf6ff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 14px 40px rgba(19,26,48,0.35);
+}
+html[data-app="1"] .ins-kpi {
+  background: rgba(255,255,255,0.07);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+}
+html[data-app="1"] .ins-comp-row {
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+  border-radius: 12px;
+}
+
+/* ---- 扭蛋机：出货面玻璃与彩带层级 ---- */
+html[data-app="1"] .gx-face {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+  border-radius: 22px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 16px 44px rgba(13,74,88,0.16);
+}
+html[data-app="1"] .gx-hint {
+  background: color-mix(in srgb, var(--panel) 65%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-radius: 999px;
+}
+
+/* ---- 剧场房间（复用 chat 骨架的沉浸页）：舞台层深玻璃菜单继承 ----
+   TheaterRoom/GroupRoom 复用 .chat-* 类，Glass 3.0 的沉浸段自动生效；
+   这里只补舞台专属的非 has-bg 场景卡面。 ---- */
+html[data-app="1"] .chat-main:not(.has-bg) .chat-menu {
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(165%); backdrop-filter: blur(24px) saturate(165%);
+}
+html[data-app="1"] .chat-main:not(.has-bg) .react-pop {
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+}
+
+/* ---- 深色主题（三段新增项）---- */
+html[data-app="1"][data-theme="dark"] .auth-feat-card,
+html[data-app="1"][data-theme="dark"] .event-card,
+html[data-app="1"][data-theme="dark"] .gx-face {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 12px 34px rgba(0,0,0,0.35);
+}
+html[data-app="1"][data-theme="dark"] .app-root::before {
+  background: radial-gradient(circle, rgba(255,147,102,0.08) 0%, rgba(255,147,102,0.03) 45%, transparent 70%);
+}
+html[data-app="1"][data-theme="dark"] .app-root::after {
+  background: radial-gradient(circle, rgba(255,147,102,0.06) 0%, transparent 60%);
+}
+
+/* ---- lite 降级（三段新增项：关 blur 与光斑动画）---- */
+html[data-app="1"][data-perf="lite"] .app-root::before,
+html[data-app="1"][data-perf="lite"] .app-root::after { animation: none; display: none; }
+html[data-app="1"][data-perf="lite"] .editor-grid .card, html[data-app="1"][data-perf="lite"] .bgm-row,
+html[data-app="1"][data-perf="lite"] .draft-badge, html[data-app="1"][data-perf="lite"] .draft-restore,
+html[data-app="1"][data-perf="lite"] .inc-breakdown, html[data-app="1"][data-perf="lite"] .pill-pub,
+[data-perf="lite"] .auth-feat-card, [data-perf="lite"] .afc-ic, [data-perf="lite"] .auth-explore-btn,
+html[data-app="1"][data-perf="lite"] .pl-immersive .card, html[data-app="1"][data-perf="lite"] .pl-immersive .filter,
+html[data-app="1"][data-perf="lite"] .event-card, html[data-app="1"][data-perf="lite"] .ev-tag,
+html[data-app="1"][data-perf="lite"] .ins-kpi, html[data-app="1"][data-perf="lite"] .gx-face,
+html[data-app="1"][data-perf="lite"] .gx-hint,
+html[data-app="1"][data-perf="lite"] .chat-main:not(.has-bg) .chat-menu,
+html[data-app="1"][data-perf="lite"] .chat-main:not(.has-bg) .react-pop {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .app-root::before, html[data-app="1"] .app-root::after { animation: none; }
+}
+
+/* ============================================================
+   9. Glass 3.0 · 终段 —— 细节收尾与一致性巡检
+   ============================================================ */
+/* ---- 发现流：开场白亮玻璃卡（对标参考图的米白信息卡）+ 历史面板 ---- */
+html[data-app="1"] .fd2-greet {
+  background: rgba(255, 253, 248, 0.82);
+  -webkit-backdrop-filter: blur(22px) saturate(165%); backdrop-filter: blur(22px) saturate(165%);
+  border: 1px solid rgba(255,255,255,0.6);
+  color: #2b2420;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 10px 30px rgba(0,0,0,0.25);
+}
+html[data-app="1"] .fd2-hist-panel, html[data-app="1"] .fd2-hist {
+  background: rgba(22, 18, 28, 0.82);
+  -webkit-backdrop-filter: blur(26px) saturate(155%); backdrop-filter: blur(26px) saturate(155%);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+/* ---- 消息中心顶部双分段（聊过/赞过）玻璃胶囊 ---- */
+html[data-app="1"] .msgs-tabs, html[data-app="1"] .msgs-top {
+  -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
+}
+/* ---- 管理后台（APP 内运营位）行卡玻璃 ---- */
+html[data-app="1"] .adm-row {
+  background: var(--gls-panel-bg);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-radius: 16px;
+}
+/* ---- 我的页页脚操作钮玻璃胶囊 ---- */
+html[data-app="1"] .pf-foot-btn {
+  background: color-mix(in srgb, var(--panel) 66%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 999px;
+  transition: transform 0.14s;
+}
+html[data-app="1"] .pf-foot-btn:active { transform: scale(0.95); }
+/* ---- 全局文字选区与聚焦可见性（青色系统一）---- */
+html[data-app="1"] ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+html[data-app="1"] :focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }
+/* ---- 档案抽屉 section 分隔发丝线 ---- */
+html[data-app="1"] .chat-drawer .cd-body section + section {
+  border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 16px;
+}
+/* ---- 剧本详情/发布页 pill 与封面圆角统一 ---- */
+html[data-app="1"] .ph { border-radius: 18px; }
+/* ---- 顶栏行动钮（导入/新建等）玻璃胶囊统一 ---- */
+html[data-app="1"] .topbar .btn.sm {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 74%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+html[data-app="1"] .topbar .btn.sm.primary, html[data-app="1"] .topbar .btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+/* ---- 收藏/发布网格页 foot 操作条玻璃 ---- */
+html[data-app="1"] .char-card .foot .btn {
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+/* ---- 深色主题终段变体 ---- */
+html[data-app="1"][data-theme="dark"] .fd2-greet {
+  background: rgba(30, 26, 36, 0.86); color: #f0ede9; border-color: rgba(255,255,255,0.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 30px rgba(0,0,0,0.4);
+}
+html[data-app="1"][data-theme="dark"] .pf-foot-btn { border-color: rgba(255,255,255,0.10); }
+html[data-app="1"][data-theme="dark"] .adm-row { border-color: rgba(255,255,255,0.08); }
+/* ---- lite 终段降级 ---- */
+html[data-app="1"][data-perf="lite"] .fd2-greet { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255,253,248,0.95); }
+html[data-app="1"][data-perf="lite"] .fd2-hist-panel, html[data-app="1"][data-perf="lite"] .fd2-hist,
+html[data-app="1"][data-perf="lite"] .msgs-tabs, html[data-app="1"][data-perf="lite"] .msgs-top,
+html[data-app="1"][data-perf="lite"] .adm-row, html[data-app="1"][data-perf="lite"] .pf-foot-btn,
+html[data-app="1"][data-perf="lite"] .topbar .btn.sm, html[data-app="1"][data-perf="lite"] .char-card .foot .btn {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
