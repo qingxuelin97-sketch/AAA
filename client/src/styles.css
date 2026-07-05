@@ -7524,3 +7524,190 @@ html[data-app="1"] .app-dot {
   box-shadow: 0 0 0 2px rgba(240,253,255,0.95);
 }
 
+
+/* ============================================================================
+   APP 端「去毛坯」精装修层 v1 —— 白+青设计体系全量落地
+   ----------------------------------------------------------------------------
+   背景：APP 壳复用了大量 Web 页面（钱包/设置/角色库/通知/成就/活动/排行榜/
+   好友/群聊/世界书/剧本/社区/搜索…），它们只靠变量翻色，桌面向的 chrome
+  （.topbar / .page / .tabs-bar / .card / 列表行）在手机上观感毛坯。
+   本层在 html[data-app="1"] 作用域内把这些通用类整体升级为移动端质感：
+   大标题玻璃顶栏、圆角卡片、胶囊分段、触感按压反馈、入场动效、统一节奏。
+   只影响 APP，Web 端零变化。
+   ========================================================================== */
+
+/* ---- 1. 页面骨架：顶栏 + 内容带 ---- */
+html[data-app="1"] .topbar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  margin: 0 0 4px;
+  background: color-mix(in srgb, var(--bg) 76%, transparent);
+  backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+html[data-app="1"][data-perf="lite"] .topbar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
+html[data-app="1"] .topbar h1 { font-size: 20px; letter-spacing: 0.2px; margin: 0; }
+html[data-app="1"] .topbar .sub { font-size: 12px; color: var(--faint); margin-top: 1px; }
+html[data-app="1"] .page { padding: 14px 14px calc(26px + var(--app-bot, 60px)); }
+/* 顶栏内按钮触感 */
+html[data-app="1"] .topbar .btn { border-radius: 999px; }
+html[data-app="1"] .topbar .btn:active { transform: scale(0.94); }
+
+/* ---- 2. 卡片语言：纯白圆角 + 青发丝 + 悬浮阴影 ---- */
+html[data-app="1"] .card {
+  border-radius: 20px; border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgba(13,74,88,0.05), 0 10px 30px rgba(13,74,88,0.07);
+}
+html[data-app="1"] .card + .card { margin-top: 12px; }
+html[data-app="1"] .section-title { margin: 26px 2px 12px; }
+html[data-app="1"] .section-title h2 { font-size: 17px; }
+
+/* ---- 3. 控件：按钮 / 输入 / 分段 / 开关 ---- */
+html[data-app="1"] .btn { border-radius: 14px; transition: transform 0.12s, box-shadow 0.15s, background 0.15s; }
+html[data-app="1"] .btn:active { transform: scale(0.96); }
+html[data-app="1"] .btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 16px rgba(14,156,184,0.28); border: none;
+}
+html[data-app="1"] .btn.primary:active { box-shadow: 0 3px 8px rgba(14,156,184,0.22); }
+html[data-app="1"] .input, html[data-app="1"] select.input, html[data-app="1"] textarea.input {
+  border-radius: 14px; background: var(--panel);
+  border: 1px solid var(--border); min-height: 42px;
+}
+html[data-app="1"] .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+html[data-app="1"] .tabs-bar {
+  position: sticky; top: calc(52px + env(safe-area-inset-top)); z-index: 25;
+  display: flex; gap: 6px; padding: 5px; margin-bottom: 14px;
+  border-radius: 999px; border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  overflow-x: auto; scrollbar-width: none;
+}
+html[data-app="1"][data-perf="lite"] .tabs-bar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--panel); }
+html[data-app="1"] .tabs-bar button, html[data-app="1"] .tabs-bar .tab {
+  flex: 1 0 auto; padding: 8px 15px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+  color: var(--muted); border: none; background: transparent; white-space: nowrap;
+  transition: background 0.16s, color 0.16s, transform 0.12s;
+}
+html[data-app="1"] .tabs-bar button:active { transform: scale(0.95); }
+html[data-app="1"] .tabs-bar button.active, html[data-app="1"] .tabs-bar .tab.active {
+  color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 4px 12px rgba(14,156,184,0.30);
+}
+html[data-app="1"] .seg { border-radius: 999px; }
+html[data-app="1"] .switch .track { border-radius: 999px; }
+
+/* ---- 4. 列表行通用（排行榜 / 公告 / 通知 / 好友 / 群聊 / 交易流水…）---- */
+html[data-app="1"] .lb-row, html[data-app="1"] .ann-item, html[data-app="1"] .noti-item,
+html[data-app="1"] .friend-row, html[data-app="1"] .room-row, html[data-app="1"] .adm-row {
+  border-radius: 18px; border: 1px solid var(--border); background: var(--panel);
+  box-shadow: 0 1px 2px rgba(13,74,88,0.04);
+  transition: transform 0.13s, box-shadow 0.15s;
+}
+html[data-app="1"] .lb-row:active, html[data-app="1"] .ann-item:active, html[data-app="1"] .noti-item:active,
+html[data-app="1"] .friend-row:active, html[data-app="1"] .room-row:active { transform: scale(0.985); }
+html[data-app="1"] .tx-row { padding: 13px 0; }
+html[data-app="1"] .tx-row .amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+html[data-app="1"] .tx-row .amt.pos { color: #0a8f6c; }
+html[data-app="1"] .tx-row .amt.neg { color: #c2503d; }
+
+/* ---- 5. 角色卡网格（角色库 / 收藏 / 搜索结果）---- */
+html[data-app="1"] .char-card {
+  border-radius: 20px; overflow: hidden; border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(13,74,88,0.05), 0 8px 22px rgba(13,74,88,0.06);
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+html[data-app="1"] .char-card:active { transform: scale(0.97); }
+
+/* ---- 6. 钱包页专属精装修（对齐会员中心 .vm 的质感）---- */
+html[data-app="1"] .wallet-hero {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  padding: 18px 16px 16px; border-radius: 24px; border: 1px solid var(--border);
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(14,156,184,0.10), transparent 55%),
+    radial-gradient(110% 80% at 100% 100%, rgba(34,211,238,0.10), transparent 60%),
+    var(--panel);
+  box-shadow: 0 2px 4px rgba(13,74,88,0.05), 0 16px 40px rgba(13,74,88,0.10);
+}
+html[data-app="1"] .wallet-hero .col {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px; border-radius: 18px;
+  background: color-mix(in srgb, var(--panel-2) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+html[data-app="1"] .wallet-hero .col.member { grid-column: 1 / -1; }
+html[data-app="1"] .wallet-hero .bal-num { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+html[data-app="1"] .wallet-hero .bal-lbl { font-size: 12px; color: var(--faint); }
+html[data-app="1"] .wallet-hero .checkin-btn {
+  grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px; border-radius: 999px; border: none; font-size: 15px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 20px rgba(14,156,184,0.30);
+  transition: transform 0.13s, box-shadow 0.16s, opacity 0.2s;
+}
+html[data-app="1"] .wallet-hero .checkin-btn:active { transform: scale(0.97); }
+html[data-app="1"] .wallet-hero .checkin-btn:disabled {
+  background: var(--panel-2); color: var(--faint); box-shadow: none;
+}
+html[data-app="1"] .wallet-hero .checkin-btn span { font-size: 12px; font-weight: 500; opacity: 0.85; }
+html[data-app="1"] .recharge-wrap { border-radius: 20px; overflow: hidden; }
+html[data-app="1"] .pkg { border-radius: 16px; }
+html[data-app="1"] .wallet-ach {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 14px;
+  border-radius: 18px; border: 1px solid #f2dfae; cursor: pointer;
+  background: linear-gradient(135deg, #fdf6e3, #faedc8);
+  box-shadow: 0 6px 18px rgba(178,134,26,0.12);
+}
+html[data-app="1"] .wallet-ach:active { transform: scale(0.985); }
+html[data-app="1"] .wallet-ach b { font-size: 14px; }
+html[data-app="1"] .wallet-ach p { margin: 2px 0 0; font-size: 12px; color: #8a6a1f; }
+
+/* ---- 7. 设置页：分组卡 + 行内控件呼吸感 ---- */
+html[data-app="1"] .settings-page .card, html[data-app="1"] .set-card { border-radius: 20px; }
+html[data-app="1"] .set-row { padding: 13px 0; }
+html[data-app="1"] .field label { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+/* ---- 8. 空态 / 骨架 / 弹层 ---- */
+html[data-app="1"] .empty { border-radius: 20px; color: var(--faint); }
+html[data-app="1"] .skel { border-radius: 14px; }
+html[data-app="1"] .modal {
+  border-radius: 24px 24px 0 0; border: 1px solid var(--border);
+  box-shadow: 0 -12px 48px rgba(13,74,88,0.18);
+}
+@media (max-width: 500px) {
+  /* 手机上的 Modal 走底部抽屉范式（原生 sheet 手感） */
+  html[data-app="1"] .modal-mask { align-items: flex-end; padding: 0; }
+  html[data-app="1"] .modal { width: 100%; max-width: none; margin: 0;
+    border-radius: 24px 24px 0 0; padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    animation: appSheetUp 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+}
+@keyframes appSheetUp { from { transform: translateY(40px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+
+/* ---- 9. 会员/开场白等杂项打磨 ---- */
+html[data-app="1"] .vip-entry { border-radius: 20px; }
+html[data-app="1"] .greet-switch .starter-chip.on { box-shadow: 0 3px 10px rgba(14,156,184,0.20); }
+html[data-app="1"] .html-panel {
+  border-radius: 16px; border: 1px solid var(--border);
+  box-shadow: 0 2px 6px rgba(13,74,88,0.06), 0 14px 34px rgba(13,74,88,0.10);
+  background: #0d0f14; /* 深底打底：面板多为深色游戏 UI，加载间隙不闪白 */
+}
+
+/* ---- 10. 页面入场节奏：内容区块渐次浮现（尊重减弱动效 / lite 档）---- */
+html[data-app="1"] .page > .card,
+html[data-app="1"] .page > .section-title,
+html[data-app="1"] .page > .wallet-hero,
+html[data-app="1"] .page > .editor-grid,
+html[data-app="1"] .page > .recharge-wrap {
+  animation: appBlockIn 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+html[data-app="1"] .page > *:nth-child(2) { animation-delay: 0.03s; }
+html[data-app="1"] .page > *:nth-child(3) { animation-delay: 0.06s; }
+html[data-app="1"] .page > *:nth-child(4) { animation-delay: 0.09s; }
+html[data-app="1"] .page > *:nth-child(5) { animation-delay: 0.12s; }
+@keyframes appBlockIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .page > * { animation: none !important; }
+}
+html[data-app="1"][data-perf="lite"] .page > * { animation: none !important; }
