@@ -9,40 +9,37 @@ import { useToast, Avatar, CoinIcon, DiamondIcon, IdentityBadges } from '../ui.j
 import { fmtNum } from '../util.js';
 import { CoverArt, EmptyArt } from '../art.jsx';
 import {
-  Bell, BookOpen, Copy, Crown, ChevronRight, Compass, Dices, Download, Drama,
+  Bell, BookOpen, Copy, ChevronRight, Dices, Download, Drama,
   Feather, Heart, Landmark, LifeBuoy, Library, LogOut, Medal, Megaphone,
-  MessageCircle, Orbit, PartyPopper, Pencil, ScrollText, Search, Settings,
-  Shield, Sparkles, Tags, TrendingUp, Trophy, UserRound, Users, Wallet, Wand2,
-  CalendarCheck, Gift
+  Orbit, PartyPopper, Pencil, ScrollText, Search, Settings,
+  Shield, Tags, TrendingUp, Trophy, UserRound, Users, Wand2, Gift
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
 // 快捷功能条（横向滚动，取最常用）。
+// 去重原则：签到/钱包入口由上方资产卡承担；会员由 VIP 横幅承担 —— 快捷条只放
+// 资产卡覆盖不到的高频功能，不再与同屏区块重复。
 const QUICK = [
-  { to: '/wallet', ic: CalendarCheck, label: '每日签到', tag: '' },
-  { to: '/wallet', ic: Wallet, label: '钱包', tag: '' },
   { to: '/achievements', ic: Medal, label: '成就', tag: '' },
   { to: '/insights', ic: Orbit, label: '星轨', tag: 'New' },
   { to: '/events', ic: PartyPopper, label: '活动', tag: '' },
-  { to: '/gacha', ic: Dices, label: '扭蛋机', tag: '' }
+  { to: '/gacha', ic: Dices, label: '扭蛋机', tag: '' },
+  { to: '/favorites', ic: Heart, label: '收藏', tag: '' }
 ];
 
-// 「全部功能」保底宫格 —— 原 launcher 的全部入口，一个不少。
+// 「全部功能」宫格 —— 只收录页面其他区块（底部 Tab / VIP 横幅 / 资产卡 / 快捷条）
+// 没有覆盖的入口；每个功能全页仅出现一次，告别四重重复。
 const GRID = [
   { title: '探索', items: [
-    { to: '/', ic: Compass, label: '发现' },
     { to: '/scripts', ic: ScrollText, label: '剧本' },
     { to: '/community', ic: Users, label: '社区' },
     { to: '/leaderboard', ic: Trophy, label: '排行榜' },
     { to: '/parliament', ic: Landmark, label: '议会' },
     { to: '/announcements', ic: Megaphone, label: '公告' },
-    { to: '/tags', ic: Tags, label: '标签' },
-    { to: '/events', ic: PartyPopper, label: '活动' },
-    { to: '/gacha', ic: Dices, label: '扭蛋机' }
+    { to: '/tags', ic: Tags, label: '标签' }
   ] },
   { title: '互动创作', items: [
-    { to: '/messages', ic: MessageCircle, label: '消息' },
     { to: '/atelier', ic: Feather, label: '小说' },
     { to: '/draw', ic: Wand2, label: 'AI 绘图' },
     { to: '/theater', ic: Drama, label: '剧场' },
@@ -53,11 +50,6 @@ const GRID = [
     { to: '/studio', ic: TrendingUp, label: '创作中心' }
   ] },
   { title: '我的', items: [
-    { to: '/insights', ic: Orbit, label: '星轨' },
-    { to: '/achievements', ic: Medal, label: '成就' },
-    { to: '/favorites', ic: Heart, label: '收藏' },
-    { to: '/wallet', ic: Wallet, label: '钱包' },
-    { to: '/vip', ic: Crown, label: '会员中心' },
     { to: '/notifications', ic: Bell, label: '通知', badge: 'noti' },
     { to: '/settings', ic: Settings, label: '设置' }
   ] }
@@ -162,8 +154,8 @@ export default function AppProfile() {
           <span className="pf-asset-bal"><DiamondIcon size={19} /> <b>{fmtNum(user?.diamond)}</b> 钻石</span>
         </div>
         <div className="pf-asset-acts">
-          <button onClick={() => nav('/wallet')}>充值 / 兑换 <ChevronRight size={14} /></button>
-          <button onClick={() => nav('/wallet')}><Gift size={14} /> 签到领币 <ChevronRight size={14} /></button>
+          {/* 两个按钮此前都跳 /wallet（重复）；合并为一个明确的钱包入口 */}
+          <button onClick={() => nav('/wallet')}><Gift size={14} /> 钱包 · 签到 / 兑换 / 流水 <ChevronRight size={14} /></button>
         </div>
       </div>
 

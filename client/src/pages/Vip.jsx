@@ -35,10 +35,8 @@ export default function Vip() {
   const { refreshUser } = useAuth();
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState('');
-  const [code, setCode] = useState('');
   const [agree, setAgree] = useState(true);
   const [plan, setPlan] = useState('month');
-  const [showRedeem, setShowRedeem] = useState(false);
 
   const load = () => api('/economy/wallet').then(setData).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -49,15 +47,6 @@ export default function Vip() {
     if (!agree) { toast('请先阅读并同意《会员服务协议》', 'err'); return; }
     setBusy('vip');
     try { await api('/economy/vip', { method: 'POST', body: { plan } }); toast('🎉 会员已开通，尊享权益即刻生效'); await after(); }
-    catch (e) { toast(e.message, 'err'); }
-    finally { setBusy(''); }
-  };
-  const redeem = async () => {
-    if (busy) return;
-    const v = code.trim();
-    if (!v) { toast('请输入兑换码', 'err'); return; }
-    setBusy('redeem');
-    try { await api('/economy/redeem', { method: 'POST', body: { code: v } }); toast('兑换成功'); setCode(''); await after(); }
     catch (e) { toast(e.message, 'err'); }
     finally { setBusy(''); }
   };
@@ -110,7 +99,8 @@ export default function Vip() {
         <div className="vm-sheet">
           <div className="vm-sheet-head">
             <span className="vm-tag">特惠推荐</span>
-            <button className="vm-redeem-link" onClick={() => setShowRedeem(s => !s)}>
+            {/* 兑换码入口统一收口到钱包页（此前两页各带一套兑换 UI，重复） */}
+            <button className="vm-redeem-link" onClick={() => nav('/wallet')}>
               <Ticket size={13} /> 兑换码
             </button>
           </div>
@@ -130,16 +120,6 @@ export default function Vip() {
               );
             })}
           </div>
-
-          {showRedeem && (
-            <div className="vm-redeem">
-              <Ticket size={16} className="vm-redeem-ic" />
-              <input value={code} placeholder="输入兑换码 · 可得会员天数 / 礼包" enterKeyHint="done"
-                autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                onChange={e => setCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && redeem()} />
-              <button onClick={redeem} disabled={busy === 'redeem'}>兑换</button>
-            </div>
-          )}
 
           <p className="vm-renew">金币开通 · 到期不自动扣费 · 随时安心</p>
 

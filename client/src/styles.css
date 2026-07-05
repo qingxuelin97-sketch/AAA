@@ -1063,6 +1063,13 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .exch-out { font-family: var(--serif); font-size: 20px; font-weight: 560; }
 .exch-out .muted { font-family: var(--sans); font-size: 13px; }
 
+/* 钱包页 → 会员中心 的唯一入口卡（替代旧的内嵌 VIP 购买卡，消除双渠道） */
+.vip-entry { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; cursor: pointer;
+  padding: 18px 20px; border-radius: 18px; border: 1px solid #e3cfa6;
+  background: linear-gradient(140deg, #f3e7d3, #ecd9bd); transition: transform 0.15s, box-shadow 0.15s; }
+.vip-entry:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.vip-entry:active { transform: scale(0.985); }
+[data-theme="dark"] .vip-entry { background: linear-gradient(140deg, #2e2616, #241d12); border-color: #4a3c22; }
 .vip-card .perks { margin: 16px 0; display: flex; flex-direction: column; gap: 9px; }
 .vip-card .perk { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; }
 .vip-card .perk svg { color: #9a7320; }
@@ -2170,6 +2177,9 @@ body { -webkit-touch-callout: none; }
 .starter-chip { padding: 7px 13px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--panel);
   color: var(--text); font-size: 13px; cursor: pointer; transition: transform 0.2s var(--spring), border-color 0.2s, background 0.2s, box-shadow 0.2s; }
 .starter-chip:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--shadow-sm); }
+/* 开场白切换（酒馆 alternate_greetings）：选中态高亮；与试试开口 chips 同排 */
+.greet-switch { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-right: 4px; }
+.starter-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 650; }
 .action-panel { position: relative; z-index: 2; display: flex; flex-wrap: wrap; gap: 7px;
   padding: 12px clamp(16px, 6%, 80px); animation: riseIn 0.3s var(--spring-soft) both; }
 .action-panel button { padding: 7px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-2);
@@ -4461,12 +4471,14 @@ html[data-page-hidden] *, html[data-page-hidden] *::before, html[data-page-hidde
    ========================================================================== */
 html[data-app="1"], html[data-app="1"] body { background: var(--bg-2); }
 /* App 壳：隐藏经典滚动条 —— 全局把 ::-webkit-scrollbar 设成 11px 实体条，会在
-   WebView 右侧占掉一条竖向留白，破坏原生沉浸感。这里在 app 模式下彻底隐藏
-   （内容仍可滚，只是不显示轨道/滑块）。 */
-html[data-app="1"], html[data-app="1"] body { scrollbar-width: none; -ms-overflow-style: none; }
+   WebView 右侧占掉一条竖向留白，破坏原生沉浸感。这里在 app 模式下对**所有**
+   滚动容器彻底隐藏（内容仍可滚，只是不显示轨道/滑块）。
+   注意必须用通配：聊天 .chat-scroll、消息 .msgs、发现流 .feed-root 等每个页面
+   都有自己的内滚容器，逐个列举总会漏（图二的滚动条正是漏网之鱼）。 */
+html[data-app="1"], html[data-app="1"] *, html[data-app="1"] body { scrollbar-width: none; -ms-overflow-style: none; scrollbar-color: transparent transparent; }
 html[data-app="1"]::-webkit-scrollbar,
 html[data-app="1"] body::-webkit-scrollbar,
-html[data-app="1"] .app-main::-webkit-scrollbar { width: 0; height: 0; display: none; }
+html[data-app="1"] *::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; background: transparent; }
 /* Chrome heights (header / tab bar incl. safe areas) — single source of truth so
    page-fit overrides below stay in sync with the actual fixed chrome. */
 /* 壳层无持久顶栏：--app-top 只剩状态栏安全区；--app-bot = 扁平底栏整体占位 */
@@ -5383,6 +5395,8 @@ html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-top) - var(--app
 
 /* ============ 沉浸对话打磨（app 壳 + 背景图时的玻璃层） ============ */
 /* 顶栏：完全透明悬浮，信息直接压在立绘上 */
+/* 深色沉浸底打底：背景图加载中/透明边缘时不闪白，且与状态栏语境色 #12101a 衔接 */
+html[data-app="1"] .chat-main.has-bg { background: #12101a; }
 html[data-app="1"] .chat-main.has-bg .chat-head { background: linear-gradient(180deg, rgba(10,8,14,0.55), rgba(10,8,14,0)); border-bottom: none; }
 html[data-app="1"] .chat-main.has-bg .chat-head .nm b,
 html[data-app="1"] .chat-main.has-bg .chat-head .ch-status { color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }

@@ -8,6 +8,7 @@ import { useAutoGrow } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { EmptyArt } from '../art.jsx';
 import { applyFrontRegex, looksLikeHtml } from '../frontregex.js';
+import { buildPanelDoc, installTavernHost } from '../tavernbridge.js';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark } from 'lucide-react';
 
 // 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
@@ -80,21 +81,30 @@ function renderRp(text, keyBase = 0) {
 // React.memo 是这里的性能关键：流式生成期间线程每帧 setMessages 一次，除最后一条外
 // 其余消息的 content 引用都没变，memo 让老消息跳过整段正则解析与片段重建 ——
 // 否则解析成本随对话长度线性增长，长对话时打字都会掉帧。
-// 专家前端面板：把角色卡里的 HTML 面板渲染进沙箱 iframe（allow-scripts 无同源，隔离父页），
-// 用 blob 文档避免继承父页 CSP，从而允许面板自带的外链样式加载；注入高度上报脚本做自适应高度。
+// 专家前端面板：把角色卡里的 HTML 面板渲染进 iframe（blob: 文档，CSP 已在 index.html 放行）。
+// 酒馆兼容关键点：
+//   · sandbox 含 allow-same-origin —— 卡片前端普遍依赖 localStorage/IndexedDB 存档，
+//     且通过 window.parent.TavernHelper.generate(...) 直接调宿主 AI（凡人修仙传等标准用法）。
+//     这意味着面板脚本与宿主同权（与酒馆助手的安全模型一致：卡片前端本就是「可信扩展」）。
+//   · buildPanelDoc 注入 shim：eventOn/eventEmit、tavern_events、TavernHelper 本地代理、
+//     SillyTavern.getContext 最小面 + 高度自适应上报（先于卡片脚本执行）。
+// PANEL_CTX 由 Chat 组件维护（角色名/会话 id），供 shim 里 getContext() 使用。
+let PANEL_CTX = { characterName: '', conversationId: 0 };
 function HtmlPanel({ html }) {
   const [h, setH] = useState(300);
   const src = useMemo(() => {
-    const reporter = '<scr' + 'ipt>(function(){function p(){try{parent.postMessage({__hyH:document.documentElement.scrollHeight},"*")}catch(e){}}try{new ResizeObserver(p).observe(document.documentElement)}catch(e){}window.addEventListener("load",p);setTimeout(p,300);setTimeout(p,1500)})();</scr' + 'ipt>';
-    const doc = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, reporter + '</body>') : html + reporter;
+    const doc = buildPanelDoc(html, PANEL_CTX);
     return URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
   }, [html]);
   useEffect(() => () => { try { URL.revokeObjectURL(src); } catch { /* */ } }, [src]);
   useEffect(() => {
-    const onMsg = e => { const v = e.data && e.data.__hyH; if (typeof v === 'number') setH(Math.min(2600, Math.max(120, v + 8))); };
+    const onMsg = e => { const v = e.data && e.data.__hyH; if (typeof v === 'number') setH(Math.min(3200, Math.max(120, v + 8))); };
     window.addEventListener('message', onMsg); return () => window.removeEventListener('message', onMsg);
   }, []);
-  return <iframe className="html-panel" src={src} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" style={{ height: h }} title="角色前端面板" />;
+  return <iframe className="html-panel" src={src}
+    sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-downloads"
+    allow="clipboard-write; clipboard-read; fullscreen"
+    style={{ height: h }} title="角色前端面板" />;
 }
 
 // 把含 ```html 面板 / 整段 HTML 的文本拆开：面板走 iframe，其余走 RP 排版。
@@ -154,6 +164,9 @@ export default function Chat() {
   const [character, setCharacter] = useState(null);
   // 角色前端显示正则（酒馆 regex_scripts）—— 解析一次，供气泡渲染 HTML 面板等。
   const frontRegex = useMemo(() => { try { return JSON.parse(character?.front_regex || '[]'); } catch { return []; } }, [character?.front_regex]);
+  // 备用开场白（酒馆 alternate_greetings）：对话未开始时可切换开场。
+  const altGreetings = useMemo(() => { try { const v = JSON.parse(character?.alt_greetings || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } }, [character?.alt_greetings]);
+  const [greetIdx, setGreetIdx] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -203,6 +216,39 @@ export default function Chat() {
 
   // 移动端软键盘适配：把 fixed 输入栏始终顶在键盘上方（稳健跨浏览器实现见 mobile.js）。
   useKeyboardInsetBar(inputBarRef, [conv]);
+
+  // —— 酒馆助手宿主桥：面板 iframe 通过 window.parent.TavernHelper.generate 静默生成。
+  // convRef 跟随路由；消息引用给 getChatMessages 用（酒馆格式：{message, role, ...}）。
+  const convIdRef = useRef(null);
+  useEffect(() => { convIdRef.current = id; }, [id]);
+  const messagesRef = useRef(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => {
+    PANEL_CTX = { characterName: character?.name || '', conversationId: Number(id) || 0 };
+    const uninstall = installTavernHost(convIdRef, {
+      onToast: (m) => toast(m),
+      onFee: (fee) => { toast(`平台 AI · 本次消耗 ${fee} 金币`); refreshUser?.(); },
+      getLastMessageId: () => Math.max(0, messagesRef.current.length - 1),
+      getChatMessages: () => messagesRef.current.map((m, i) => ({
+        message_id: i, role: m.role, name: m.role === 'user' ? '我' : (character?.name || ''), message: m.content || ''
+      }))
+    });
+    return uninstall;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, character?.name]);
+
+  // 原生状态栏语境：进入带背景图的沉浸对话时把状态栏刷成深色底
+  //（否则 App 浅色主题下状态栏是一条奶白实心条，压在深色聊天页顶端 = 「顶部白屏」）。
+  // 离开对话/卸载时撤销，恢复主题默认。
+  useEffect(() => {
+    const dark = !!(conv && character?.background);
+    try {
+      window.dispatchEvent(new CustomEvent('huanyu-statusbar', {
+        detail: dark ? { color: '#12101a', dark: true } : null
+      }));
+    } catch { /* */ }
+    return () => { try { window.dispatchEvent(new CustomEvent('huanyu-statusbar', { detail: null })); } catch { /* */ } };
+  }, [conv, character?.background]);
   // 输入框随内容自动增高（发送清空后回落单行），多行长文不再挤在一行内滚动。
   useAutoGrow(inputRef, input);
 
@@ -456,6 +502,16 @@ export default function Chat() {
     await streamInto(`/api/chat/conversations/${id}/complete`, { content: text });
   };
   const insertAction = (a) => { setInput(v => (v ? v.replace(/\s*$/, '') + ' ' : '') + a + ' '); setActionsOpen(false); };
+
+  // 切换开场白（仅对话未开始时提供入口；服务端按 greeting_index 重置为对应开场）。
+  const switchGreeting = async (gi) => {
+    if (streaming || gi === greetIdx) return;
+    try {
+      const d = await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { clear: true, greeting_index: gi } });
+      setMessages(d.messages); setAffinity(0); setGreetIdx(gi);
+    } catch (e) { toast(e.message, 'err'); }
+  };
+  useEffect(() => { setGreetIdx(0); }, [id]);
 
   const regenerate = async () => {
     if (streaming) return;
@@ -760,6 +816,16 @@ export default function Chat() {
             )}
             {messages.length <= 1 && !streaming && (
               <div className="starter-chips">
+                {altGreetings.length > 0 && (
+                  <span className="greet-switch">
+                    <span className="muted">开场：</span>
+                    {[0, ...altGreetings.map((_, i) => i + 1)].map(gi => (
+                      <button key={gi} className={'starter-chip' + (greetIdx === gi ? ' on' : '')} disabled={streaming}
+                        title={gi === 0 ? '主开场白' : `备用开场白 ${gi}（酒馆卡常把「游戏开始」放在这里）`}
+                        onClick={() => switchGreeting(gi)}>{gi === 0 ? '主开场' : `开场 ${gi + 1}`}</button>
+                    ))}
+                  </span>
+                )}
                 <span className="muted">试试开口：</span>
                 {STARTERS.map(s => <button key={s} className="starter-chip" onClick={() => send(s)}>{s}</button>)}
               </div>

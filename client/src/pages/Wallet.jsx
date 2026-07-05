@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday } from '../util.js';
-import { Crown, CalendarCheck, Gift, ArrowRight, Check, Sparkles, Wallet as WalletIcon, Trophy } from 'lucide-react';
+import { Crown, CalendarCheck, Gift, ArrowRight, Sparkles, Wallet as WalletIcon, Trophy } from 'lucide-react';
 
 export default function Wallet() {
   const [data, setData] = useState(null);
@@ -25,7 +25,6 @@ export default function Wallet() {
   const run = (key, fn) => async () => { setBusy(key); try { await fn(); } catch (e) { toast(e.message, 'err'); } finally { setBusy(''); } };
   const checkin = run('checkin', async () => { const d = await api('/economy/checkin', { method: 'POST' }); toast(`签到成功，+${d.reward} 金币 · 连续 ${d.streak} 天`); await after(); });
   const exchange = run('exchange', async () => { const n = parseInt(exDiamond, 10); if (!n || n <= 0) throw new Error('请输入要兑换的钻石数量'); await api('/economy/exchange', { method: 'POST', body: { diamond: n } }); toast('兑换成功'); setExDiamond(''); await after(); });
-  const openVip = run('vip', async () => { await api('/economy/vip', { method: 'POST' }); toast('VIP 已开通'); await after(); });
   const redeem = run('redeem', async () => { if (!code.trim()) throw new Error('请输入兑换码'); await api('/economy/redeem', { method: 'POST', body: { code: code.trim() } }); toast('兑换成功'); setCode(''); await after(); });
 
   const Head = () => (
@@ -117,17 +116,18 @@ export default function Wallet() {
             <button className="btn primary block" style={{ marginTop: 16 }} disabled={busy === 'exchange'} onClick={exchange}>确认兑换</button>
           </div>
 
-          <div className="vip-card">
-            <h2 style={{ margin: '0 0 6px', fontSize: 19 }}>开通 VIP 会员</h2>
-            <div style={{ fontSize: 13, opacity: 0.8 }}>{fmt(vipCost)} 金币 / {vipDays} 天</div>
-            <div className="perks">
-              <div className="perk"><Check size={15} /> 平台 AI 对话 75 折（SVIP 5 折）</div>
-              <div className="perk"><Check size={15} /> 每日签到金币双倍</div>
-              <div className="perk"><Check size={15} /> 主页专属 VIP 标识</div>
-              <div className="perk"><Check size={15} /> 剧场与群聊无限畅玩</div>
+          {/* 会员开通/续费统一收口到「会员中心」（/vip）——此前钱包页内嵌一套
+              独立的 VIP 购买卡，与会员中心页重复（两处渠道、两份权益文案），故删。 */}
+          <button className="vip-entry" onClick={() => nav('/vip')}>
+            <span className="icon-chip vip"><Crown size={20} /></span>
+            <div style={{ flex: 1, textAlign: 'left' }}>
+              <b style={{ fontSize: 15 }}>{wallet.svip ? 'SVIP 尊享会员' : wallet.vip ? 'VIP 会员' : '开通幻域会员'}</b>
+              <div className="muted" style={{ fontSize: 12.5 }}>
+                {wallet.svip ? '平台 AI 5 折 · 至高权益' : wallet.vip ? `有效期至 ${String(wallet.vip_until || '').slice(0, 10)} · 前往续费` : `低至 ${fmt(Math.round(vipCost / vipDays))} 金币/天 · 查看全部权益`}
+              </div>
             </div>
-            <button className="btn primary block" disabled={busy === 'vip'} onClick={openVip}>{wallet.vip ? '续费 VIP' : '立即开通'}</button>
-          </div>
+            <ArrowRight size={17} className="muted" />
+          </button>
         </div>
 
         {/* redeem */}

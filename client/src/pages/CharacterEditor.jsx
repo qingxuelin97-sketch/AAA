@@ -53,7 +53,7 @@ async function lockImage(url) {
 const BLANK = {
   name: '', avatar: '', background: '', background_type: 'image', bgm: '',
   tagline: '', intro: '', greeting: '', persona: '', voice_name: '', voice_speed: 1, voice_pitch: 1, category: '', tags: '',
-  is_public: false, nsfw: false, world: []
+  is_public: false, nsfw: false, world: [], alt_greetings: []
 };
 
 // Probe an audio File's duration (seconds) without uploading it.
@@ -179,8 +179,8 @@ export default function CharacterEditor() {
       const { character, world, notices, imageBlob } = await parseCharacterCard(file);
       let avatar = character.avatar || '';
       if (imageBlob && !avatar) { try { const up = await uploadFile(imageBlob); if (up?.url) avatar = up.url; } catch { /* 头像上传失败不阻断 */ } }
-      // 世界书条目填入可编辑的内嵌世界书。
-      const entries = (world || []).map(en => ({ keys: en.keys || '', content: en.content || '', enabled: en.enabled !== false }));
+      // 世界书条目填入可编辑的内嵌世界书（constant=酒馆常驻标记，保真透传）。
+      const entries = (world || []).map(en => ({ keys: en.keys || '', content: en.content || '', enabled: en.enabled !== false, constant: !!en.constant }));
       setC(prev => ({
         ...prev,
         name: character.name || prev.name,
@@ -193,6 +193,7 @@ export default function CharacterEditor() {
         avatar: avatar || prev.avatar,
         world: entries.length ? entries : prev.world,
         front_regex: character.front_regex && character.front_regex.length ? character.front_regex : prev.front_regex,
+        alt_greetings: (character.alt_greetings && character.alt_greetings.length) ? character.alt_greetings : prev.alt_greetings,
       }));
       toast('已导入卡片内容，请检查后保存');
       (notices || []).forEach((n, i) => setTimeout(() => toast(n), 500 * (i + 1)));

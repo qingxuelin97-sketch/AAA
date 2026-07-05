@@ -305,8 +305,8 @@ function buildSystemPrompt(character, recentText, history) {
   if (character.persona) personaParts.push(character.persona.trim());
   if (character.intro) personaParts.push(`【角色简介】\n${character.intro.trim()}`);
 
-  // 角色内嵌世界书（常规模式，只有 keys/content，按 keyword 触发）
-  const own = db.prepare('SELECT keys, content FROM world_entries WHERE character_id = ? AND enabled = 1 ORDER BY position, id').all(character.id);
+  // 角色内嵌世界书：keyword 触发；constant=1（酒馆常驻条目）无视关键词恒注入
+  const own = db.prepare('SELECT keys, content, constant FROM world_entries WHERE character_id = ? AND enabled = 1 ORDER BY position, id').all(character.id);
   // 关联独立世界书条目 + 世界书级设定（scan_depth/token_budget/recursion/max_active/variable_schema/system_pos/recursion_depth/prompt_overlay）
   const linked = db.prepare(`SELECT we.id, we.keys, we.content, we.mode, we.inject_pos, we.priority, we.case_sensitive, we.group_name,
     we.image_urls, we.image_keys, we.front_slot, we.probability, we.min_turns, we.exclude_keys, we.worldbook_id,
@@ -399,7 +399,7 @@ function buildSystemPrompt(character, recentText, history) {
   };
 
   // 触发 + required_keys + 排除 + 轮数 + 最多轮数 + 冷却 + 概率 + 互斥分组（同 group_name 只保留最高优先级的一条）
-  let triggered = [...own.map(o => ({ ...o, mode: 'keyword', inject_pos: 'after', priority: 50, group_name: '', probability: 100, min_turns: 0, max_turns: 0, cooldown: 0, required_keys: '', exclude_keys: '', recursion: 0, sticky: 0, depth: 0, variable_write: '', branch: '', vectorize: 0, tone: '', front_slot: '', image_urls: '', image_keys: '' })), ...linked]
+  let triggered = [...own.map(o => ({ ...o, mode: o.constant ? 'always' : 'keyword', inject_pos: 'after', priority: 50, group_name: '', probability: 100, min_turns: 0, max_turns: 0, cooldown: 0, required_keys: '', exclude_keys: '', recursion: 0, sticky: 0, depth: 0, variable_write: '', branch: '', vectorize: 0, tone: '', front_slot: '', image_urls: '', image_keys: '' })), ...linked]
     .filter(evalEntry)
     .filter(evalRequired)
     .filter(w => !evalExclude(w))
@@ -603,9 +603,15 @@ router.patch('/conversations/:id', authRequired, (req, res) => {
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
   if (typeof req.body?.title === 'string' && req.body.title.trim()) db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(req.body.title.trim().slice(0, 60), conv.id);
   if (req.body?.clear) {
-    const ch = db.prepare('SELECT greeting FROM characters WHERE id = ?').get(conv.character_id);
+    const ch = db.prepare('SELECT greeting, alt_greetings FROM characters WHERE id = ?').get(conv.character_id);
     db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(conv.id);
-    if (ch?.greeting) db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', ch.greeting);
+    // greeting_index：0 = 主开场白；1..N = 备用开场白（酒馆 alternate_greetings，聊天页可切换开场）
+    let greeting = ch?.greeting || '';
+    const gi = parseInt(req.body.greeting_index, 10);
+    if (Number.isFinite(gi) && gi > 0) {
+      try { const alts = JSON.parse(ch?.alt_greetings || '[]'); if (alts[gi - 1]) greeting = alts[gi - 1]; } catch { /* */ }
+    }
+    if (greeting) db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', greeting);
     db.prepare('UPDATE conversations SET affinity = 0 WHERE id = ?').run(conv.id);
   }
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
@@ -689,6 +695,101 @@ router.post('/conversations/:id/regenerate', authRequired, aiLimiter, async (req
   await streamReply(res, conv, character, settings, '');
 });
 
+// 共用：把上游 OpenAI 兼容流转发为本平台 SSE（data:{delta}）。
+// 返回累计全文；上游状态码异常时已写错误并返回 null（调用方直接 end）。
+async function pumpModelStream(res, eff, payloadMessages) {
+  let full = '';
+  try {
+    const upstream = await fetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
+      body: JSON.stringify({
+        model: eff.model, messages: payloadMessages,
+        temperature: eff.temperature, max_tokens: eff.max_tokens, stream: true
+      })
+    });
+    if (!upstream.ok || !upstream.body) {
+      const text = await upstream.text().catch(() => '');
+      // 仅在服务端日志记录上游详情，对客户端只返回通用提示，避免泄露内部信息
+      console.error('[chat] 上游模型服务错误', upstream.status, text.slice(0, 300));
+      res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`);
+      return null;
+    }
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const data = trimmed.slice(5).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const json = JSON.parse(data);
+          const delta = json.choices?.[0]?.delta?.content || '';
+          if (delta) { full += delta; res.write(`data: ${JSON.stringify({ delta })}\n\n`); }
+        } catch { /* partial chunk */ }
+      }
+    }
+  } catch (err) {
+    console.error('[chat] 连接模型服务失败', err.message);
+    res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`);
+  }
+  return full;
+}
+
+// —— 酒馆助手兼容：静默生成（面板 TavernHelper.generate 专用）——
+// 卡片 HTML 前端自带完整游戏上下文（状态表/存档/指令），经 user_input 直接送入模型；
+// 不写 messages 表、不加好感度 —— 对话流保持干净，面板用 IndexedDB 自管存档。
+// 世界书照常触发：常驻条目 + 按 user_input 命中的关键词条目注入 system（凡人修仙传
+// 这类卡的游戏规则全在常驻世界书里，靠这里注入才能驱动游戏引擎）。
+router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, res) => {
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
+  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
+  const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
+  const settings = getSettings(req.user.id);
+  const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
+  const eff = effectiveLLM(settings);
+  if (eff && !eff.platform) assertPublicUrl(eff.base_url);
+
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+  const sse = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
+
+  if (!eff) { sse({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' }); sse('[DONE]'); return res.end(); }
+  const userInput = String(req.body?.user_input || '').slice(0, 400000);
+  if (!userInput.trim()) { sse({ error: 'user_input 不能为空' }); sse('[DONE]'); return res.end(); }
+
+  const history = req.body?.include_history
+    ? db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id)
+    : [];
+  let feeDue = 0;
+  if (eff.platform) {
+    feeDue = platformFee(me, history.length);
+    if (me.gold < feeDue) { sse({ error: `金币不足，本次平台 AI 服务需 ${feeDue} 金币（当前 ${me.gold}）。` }); sse('[DONE]'); return res.end(); }
+  }
+  const system = buildSystemPrompt(character, userInput, history);
+  const payloadMessages = [
+    { role: 'system', content: system },
+    ...history.map(m => ({ role: m.role, content: m.content })),
+    { role: 'user', content: userInput }
+  ];
+  const full = await pumpModelStream(res, eff, payloadMessages);
+  if (full == null) return res.end();
+  if (full.trim() && feeDue) {
+    try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 面板生成《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ }
+  }
+  res.write('data: [DONE]\n\n');
+  res.end();
+});
+
 // Shared SSE streaming of a model reply; persists the assistant message.
 async function streamReply(res, conv, character, settings, userContent) {
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
@@ -717,48 +818,8 @@ async function streamReply(res, conv, character, settings, userContent) {
   if (eff.platform && eff.system_prompt.trim()) system = eff.system_prompt.trim() + '\n\n' + system;
   const payloadMessages = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
-  let full = '';
-  try {
-    const upstream = await fetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
-      body: JSON.stringify({
-        model: eff.model, messages: payloadMessages,
-        temperature: eff.temperature, max_tokens: eff.max_tokens, stream: true
-      })
-    });
-    if (!upstream.ok || !upstream.body) {
-      const text = await upstream.text().catch(() => '');
-      // 仅在服务端日志记录上游详情，对客户端只返回通用提示，避免泄露内部信息
-      console.error('[chat] 上游模型服务错误', upstream.status, text.slice(0, 300));
-      res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`);
-      return res.end();
-    }
-    const reader = upstream.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data:')) continue;
-        const data = trimmed.slice(5).trim();
-        if (data === '[DONE]') continue;
-        try {
-          const json = JSON.parse(data);
-          const delta = json.choices?.[0]?.delta?.content || '';
-          if (delta) { full += delta; res.write(`data: ${JSON.stringify({ delta })}\n\n`); }
-        } catch { /* partial chunk */ }
-      }
-    }
-  } catch (err) {
-    console.error('[chat] 连接模型服务失败', err.message);
-    res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`);
-  }
+  const full = await pumpModelStream(res, eff, payloadMessages);
+  if (full == null) return res.end();
   if (full.trim()) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
