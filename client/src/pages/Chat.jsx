@@ -258,6 +258,13 @@ export default function Chat() {
   const [marksOpen, setMarksOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [fontSize, setFontSize] = useState(() => localStorage.getItem(FONT_KEY) || 'md');
+  // 气泡透明度三档（实/半透/极透）：不同立绘明暗差异大，交给用户调 —— 玻璃化的自由度
+  const [bubbleAlpha, setBubbleAlpha] = useState(() => localStorage.getItem('huanyu_bubble_alpha') || 'mid');
+  const cycleBubbleAlpha = () => setBubbleAlpha(v => {
+    const n = v === 'solid' ? 'mid' : v === 'mid' ? 'clear' : 'solid';
+    localStorage.setItem('huanyu_bubble_alpha', n);
+    return n;
+  });
   const [autoRead, setAutoRead] = useState(() => localStorage.getItem(AUTOREAD_KEY) === '1');
   const [reactFor, setReactFor] = useState(null);
   const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
@@ -720,7 +727,7 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className={'chat-main' + (character?.background ? ' has-bg' : '')}>
+      <div className={'chat-main' + (character?.background ? ' has-bg' : '') + ' ba-' + bubbleAlpha}>
         {!conv ? (
           <div className="empty" style={{ margin: 'auto' }}>
             <EmptyArt kind="chat" />选择左侧对话，或从角色库开启新对话
@@ -859,7 +866,8 @@ export default function Chat() {
                       </div>
                     ) : (
                       <div className="bubble" onContextMenu={m.content ? (e) => { e.preventDefault(); copyMsg(m.content); } : undefined}
-                        title={m.content ? '长按或右键复制' : undefined}>
+                        onDoubleClick={m.role === 'assistant' && m.id ? () => react(m, '❤️') : undefined}
+                        title={m.content ? '长按复制 · 双击喜欢' : undefined}>
                         {m._streaming && !m.content
                           ? <span className="typing"><span></span><span></span><span></span></span>
                           : <BubbleContent content={m.content} role={m.role} imageMap={imageMap} onPreview={setPreviewImg} frontRegex={frontRegex} />}
@@ -935,7 +943,7 @@ export default function Chat() {
               <div className="box">
                 <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => { setActionsOpen(o => !o); setPlusOpen(false); }} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
                 <textarea ref={inputRef} rows={1} value={input}
-                  placeholder={`对 ${character?.name} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
+                  placeholder={`对 ${(character?.name || '').length > 7 ? (character.name.slice(0, 7) + '…') : (character?.name || 'TA')} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
                   enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
                 {/* 「+」对话功能面板：把散落在头部菜单里的对话内能力聚合到拇指热区 */}
@@ -973,7 +981,8 @@ export default function Chat() {
                       if (messages.length > 1 && !confirm('切换开场白会清空当前对话，继续？')) return;
                       switchGreeting(gi); setPlusOpen(false);
                     } },
-                  { ic: RotateCcw, hue: 'regen', label: '重新生成', dis: streaming || messages.length < 2, on: () => { regenerate(); setPlusOpen(false); } },
+                  // 「重新生成」在消息操作行已有，这里换成玻璃化专属的透明度调节
+                  { ic: Sparkles, hue: 'regen', label: `气泡 · ${bubbleAlpha === 'solid' ? '实底' : bubbleAlpha === 'mid' ? '半透' : '极透'}`, on: cycleBubbleAlpha },
                   { ic: Volume2, hue: 'read', label: autoRead ? '自动朗读 开' : '自动朗读 关', on: toggleAutoRead },
                   { ic: bgmOn && character?.bgm ? Music : VolumeX, hue: 'bgm', label: bgmOn ? '背景音乐 开' : '背景音乐 关', dis: !character?.bgm, on: toggleBgm },
                   { ic: Type, hue: 'font', label: `字号 · ${fontSize === 'sm' ? '小' : fontSize === 'md' ? '中' : '大'}`, on: () => setFont(fontSize === 'sm' ? 'md' : fontSize === 'md' ? 'lg' : 'sm') },
