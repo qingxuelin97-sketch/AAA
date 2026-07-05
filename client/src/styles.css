@@ -2187,7 +2187,12 @@ body { -webkit-touch-callout: none; }
 .action-panel button:hover { transform: translateY(-2px); background: var(--accent-soft); border-color: var(--accent); color: var(--accent-2); }
 .act-btn { flex-shrink: 0; background: none; border: none; color: var(--faint); padding: 6px; margin-left: 2px; border-radius: 9px;
   cursor: pointer; display: grid; place-items: center; transition: color 0.18s, background 0.18s, transform 0.2s var(--spring); }
-.act-btn:hover, .act-btn.on { color: var(--accent); background: var(--accent-soft); }
+/* hover 必须限定在真 hover 设备：触屏上 :hover 点击后「粘滞」到下次触摸别处，
+   表情/+ 按钮收起后会残留一大块亮底（实机截图反馈）。 */
+@media (hover: hover) {
+  .act-btn:hover { color: var(--accent); background: var(--accent-soft); }
+}
+.act-btn.on { color: var(--accent); background: var(--accent-soft); }
 .act-btn.on { transform: rotate(8deg); }
 
 /* ============================================================
@@ -5814,7 +5819,8 @@ html[data-app="1"] .page { padding: 14px 16px 84px; }
 .pf-asset-acts button:active { border-color: var(--accent); }
 
 /* 快捷功能条 */
-.pf-quick { display: flex; gap: 6px; overflow-x: auto; margin-top: 16px; padding-bottom: 4px; scrollbar-width: none; }
+/* padding-top 给 New 角标留出溢出空间：横滚容器会裁掉 top:-5px 的角标（实机图四） */
+.pf-quick { display: flex; gap: 6px; overflow-x: auto; margin-top: 10px; padding: 8px 0 4px; scrollbar-width: none; }
 .pf-quick::-webkit-scrollbar { display: none; }
 .pf-quick button { flex: 0 0 auto; width: 68px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: none;
   border: none; cursor: pointer; color: var(--muted); font-size: 11.5px; font-weight: 600; }
@@ -5823,7 +5829,7 @@ html[data-app="1"] .page { padding: 14px 16px 84px; }
 .pf-quick button:nth-child(3n+2) .pf-quick-ic { color: var(--diamond); background: color-mix(in srgb, var(--diamond) 12%, var(--panel)); }
 .pf-quick button:nth-child(3n) .pf-quick-ic { color: var(--gold); background: color-mix(in srgb, var(--gold) 12%, var(--panel)); }
 .pf-quick button:active .pf-quick-ic { transform: scale(0.92); }
-.pf-quick-tag { position: absolute; top: -5px; right: -6px; padding: 1px 5px; border-radius: 7px; font-style: normal; font-size: 8.5px;
+.pf-quick-tag { position: absolute; top: -6px; right: -4px; z-index: 2; box-shadow: 0 1px 4px rgba(13,74,88,0.25); padding: 1px 5px; border-radius: 7px; font-style: normal; font-size: 8.5px;
   font-weight: 800; background: var(--accent); color: #fff; }
 
 /* 内容 Tab */
@@ -6010,9 +6016,11 @@ html[data-app="1"][data-perf="lite"] .chat-main.has-bg .starter-chip { backdrop-
    —— 仅作用于原生 App 壳（data-app=1）且开启玻璃、非低端降级（data-perf!=lite）。
       Web 桌面端不铺满，保持既有观感。
    ============================================================ */
+/* 注意：.feed-cats / .fd2-acts 永远叠在深色立绘上，铺白玻璃会成一条白带/白块
+  （实机图三）；.chat-head 沉浸态另有专属处理 —— 三者从名单剔除。 */
 html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) :where(
-  .app-tabbar, .app-sheet, .app-header, .feed-cats, .fd2-say, .fd2-acts,
-  .fd2-intro, .card, .app-card, .chat-head, .chat-composer, .sheet, .modal-card
+  .app-tabbar, .app-sheet, .app-header, .fd2-say,
+  .fd2-intro, .card, .app-card, .chat-composer, .sheet, .modal-card
 ) {
   -webkit-backdrop-filter: saturate(1.5) blur(22px);
   backdrop-filter: saturate(1.5) blur(22px);
@@ -8337,3 +8345,177 @@ html[data-app="1"] .chat-main.has-bg .starter-chip.on {
 /* lite 档降级：渐晕保留（纯渐变无成本），玻璃模糊已由既有规则关闭 */
 /* 危险项图标同为白色（红底上深红图标对比度不足） */
 .cps-item.danger .cps-ic { color: #fff; }
+
+/* ============================================================================
+   触屏 hover 粘滞治理 —— 触摸设备上 :hover 在点击后保持到下一次触摸，
+   造成「按钮收起后残留亮块」（实机图一/图二）。真 hover 能力设备不受影响。
+   ========================================================================== */
+@media (hover: none) {
+  .act-btn:hover:not(.on) { background: transparent; color: var(--muted); }
+  .msg .speak:hover { color: inherit; background: transparent; }
+  .conv-item .speak:hover { color: inherit; background: transparent; }
+  .starter-chip:hover { transform: none; border-color: var(--border-2); box-shadow: none; }
+  .btn:hover { background: var(--panel); }
+  .btn.ghost:hover { background: transparent; }
+  .btn.primary:hover { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  .chat-tool:hover { background: inherit; }
+  html[data-app="1"] .chat-main.has-bg .msg-acts .speak:hover { background: rgba(0,0,0,0.32); color: rgba(255,255,255,0.85); }
+  html[data-app="1"] .chat-main.has-bg .starter-chip:hover {
+    background: linear-gradient(160deg, rgba(40,35,50,0.55), rgba(20,17,27,0.65));
+    border-color: rgba(255,255,255,0.14);
+  }
+}
+
+/* ============================================================================
+   「+」面板 v2 —— 两页横滑（P1 互动添趣 / P2 实用工具）+ 语义色相图标
+   ========================================================================== */
+.chat-plus-sheet.paged { display: block; padding: 20px 6px 10px; }
+.cps-pager {
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.cps-pager::-webkit-scrollbar { display: none; }
+.cps-page {
+  flex: 0 0 100%; scroll-snap-align: start;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 4px; padding: 0 8px;
+}
+.cps-dots { display: flex; justify-content: center; gap: 6px; padding: 10px 0 2px; }
+.cps-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.22); transition: width 0.24s, background 0.24s; }
+.cps-dots i.on { width: 18px; border-radius: 999px; background: rgba(255,255,255,0.75); }
+.chat-main:not(.has-bg) .cps-dots i { background: var(--border-2); }
+.chat-main:not(.has-bg) .cps-dots i.on { background: var(--accent); }
+
+/* 语义色相（分页后 nth-child 不再可靠，改语义类；后定义覆盖旧序数染色） */
+.cps-item.hue-call .cps-ic    { background: linear-gradient(140deg, #34d399, #047857); }
+.cps-item.hue-illus .cps-ic   { background: linear-gradient(140deg, #a78bfa, #7c3aed); }
+.cps-item.hue-dice .cps-ic    { background: linear-gradient(140deg, #fbbf24, #d97706); }
+.cps-item.hue-gift .cps-ic    { background: linear-gradient(140deg, #fb7185, #e11d48); }
+.cps-item.hue-narr .cps-ic    { background: linear-gradient(140deg, #f472b6, #a21caf); }
+.cps-item.hue-event .cps-ic   { background: linear-gradient(140deg, #f59e0b, #ea580c); }
+.cps-item.hue-profile .cps-ic { background: linear-gradient(140deg, #fb7185, #be123c); }
+.cps-item.hue-greet .cps-ic   { background: linear-gradient(140deg, #34d399, #059669); }
+.cps-item.hue-regen .cps-ic   { background: linear-gradient(140deg, #22d3ee, #0e7490); }
+.cps-item.hue-read .cps-ic    { background: linear-gradient(140deg, #fb923c, #c2410c); }
+.cps-item.hue-bgm .cps-ic     { background: linear-gradient(140deg, #f472b6, #be185d); }
+.cps-item.hue-font .cps-ic    { background: linear-gradient(140deg, #94a3b8, #475569); }
+.cps-item:disabled .cps-ic    { background: rgba(255,255,255,0.10); }
+.chat-main:not(.has-bg) .cps-item:disabled .cps-ic { background: var(--bg-2); color: var(--faint); }
+
+/* 送礼物选择条：横滑一排礼物（面板顶部滑出） */
+.cps-gifts {
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  padding: 4px 10px 12px; margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  animation: panelPop 0.22s cubic-bezier(0.22, 0.9, 0.32, 1.1) both;
+}
+.cps-gifts::-webkit-scrollbar { display: none; }
+.cps-gifts button {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 9px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06); cursor: pointer;
+  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
+}
+.cps-gifts button:active { transform: scale(0.88); }
+.cps-gifts button b { font-size: 22px; line-height: 1; }
+.cps-gifts button span { font-size: 10.5px; color: rgba(255,255,255,0.72); }
+.chat-main:not(.has-bg) .cps-gifts { border-bottom-color: var(--border); }
+.chat-main:not(.has-bg) .cps-gifts button { background: var(--panel-2); border-color: var(--border); }
+.chat-main:not(.has-bg) .cps-gifts button span { color: var(--muted); }
+
+/* ============================================================================
+   APP 端 Elevated v2 —— 全局第四轮精修（对标一线内容 App 的细节密度）
+   覆盖：设置 / 角色详情 / 通知 / 好友私信 / 群聊 / 创建面板 / 今日问候卡 /
+   深色主题补全 / 触控反馈全域化。全部 scoped，Web 端零影响。
+   ========================================================================== */
+
+/* ---- 设置页：分组卡 iOS 化 ---- */
+html[data-app="1"] .priv-data-row { border-radius: 16px; }
+html[data-app="1"] .priv-ic { border-radius: 13px; }
+html[data-app="1"] .accent-row { gap: 10px; }
+html[data-app="1"] .accent-row button { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); }
+html[data-app="1"] .accent-row button:active { transform: scale(0.86); }
+html[data-app="1"] .platform-note { border-radius: 18px; }
+html[data-app="1"] .pn-ic { border-radius: 14px; }
+html[data-app="1"] .field { margin-bottom: 14px; }
+html[data-app="1"] .hint { font-size: 12px; line-height: 1.6; }
+
+/* ---- 角色详情：hero 沉浸 + CTA 悬浮化 ---- */
+html[data-app="1"] .cvx-cta {
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(14,156,184,0.35), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+html[data-app="1"] .cvx-cta:active { transform: scale(0.97); }
+html[data-app="1"] .cvx-follow { border-radius: 999px; }
+html[data-app="1"] .cvx-author { border-radius: 18px; }
+html[data-app="1"] .cvx-body .card { border-radius: 20px; }
+
+/* ---- 通知中心：图标色相分组 + 未读点脉冲 ---- */
+html[data-app="1"] .noti-ic { width: 44px; height: 44px; border-radius: 15px; }
+html[data-app="1"] .noti-item { gap: 12px; }
+html[data-app="1"] .noti-dot { animation: notiPulse 2s ease-in-out infinite; }
+@keyframes notiPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.4); } 50% { box-shadow: 0 0 0 5px rgba(244,63,94,0); } }
+html[data-app="1"] .noti-allread { position: sticky; bottom: calc(var(--app-bot) + 10px); z-index: 5;
+  box-shadow: 0 8px 24px rgba(14,156,184,0.30); }
+
+/* ---- 好友 / 私信：对话气泡精修 ---- */
+html[data-app="1"] .fr-ava .avatar { box-shadow: 0 0 0 2px var(--panel), 0 3px 10px rgba(13,74,88,0.14); }
+html[data-app="1"] .fr-dm-input { border-radius: 999px; }
+html[data-app="1"] .fr-dm-scroll { scrollbar-width: none; }
+html[data-app="1"] .fr-add { border-radius: 20px; }
+html[data-app="1"] .fr-add-row { transition: transform 0.14s; }
+html[data-app="1"] .fr-add-row:active { transform: scale(0.98); }
+
+/* ---- 群聊房间：行卡片头像组 ---- */
+html[data-app="1"] .room-row .ava .avatar { box-shadow: 0 0 0 2px var(--panel); }
+html[data-app="1"] .room-row .tag { border-radius: 999px; }
+
+/* ---- 创建面板（FAB sheet）：行卡渐变图标 + 逐行浮入已有，补触感 ---- */
+html[data-app="1"] .app-create-row { border-radius: 18px; transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s; }
+html[data-app="1"] .app-create-row:active { transform: scale(0.97); background: var(--bg-2); }
+html[data-app="1"] .ac-ic { border-radius: 15px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 5px 14px rgba(13,74,88,0.12); }
+html[data-app="1"] .app-create-row:nth-child(2) .ac-ic { background: linear-gradient(140deg, #a78bfa, #7c3aed); color: #fff; }
+html[data-app="1"] .app-create-row:nth-child(3) .ac-ic { background: linear-gradient(140deg, #38bdf8, #0369a1); color: #fff; }
+html[data-app="1"] .app-create-row:nth-child(4) .ac-ic { background: linear-gradient(140deg, #fbbf24, #d97706); color: #fff; }
+html[data-app="1"] .app-create-row:nth-child(5) .ac-ic { background: linear-gradient(140deg, #fb7185, #e11d48); color: #fff; }
+html[data-app="1"] .app-create-row:nth-child(6) .ac-ic { background: linear-gradient(140deg, #34d399, #059669); color: #fff; }
+
+/* ---- 今日页：问候卡资产行玻璃胶囊 + 签到连击徽章 ---- */
+html[data-app="1"] .ah-coin { border-radius: 999px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.14s; }
+html[data-app="1"] .ah-coin:active { transform: scale(0.92); }
+html[data-app="1"] .ah-checkin { box-shadow: 0 6px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.25); }
+html[data-app="1"] .ah-checkin:not(.done) { animation: checkinGlow 3s ease-in-out infinite; }
+html[data-app="1"] .ah-sc-ic { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 12px rgba(13,74,88,0.10); }
+
+/* ---- 消息中心：入口卡渐变图标统一挂投影 ---- */
+html[data-app="1"] .msgs-entry .msgs-entry-ic, html[data-app="1"] .msgs-entry svg { filter: drop-shadow(0 2px 4px rgba(13,74,88,0.10)); }
+
+/* ---- 深色主题（用户手动深色 APP）补全新组件 ---- */
+html[data-app="1"][data-theme="dark"] .chat-plus-sheet {
+  background: linear-gradient(168deg, rgba(34,30,42,0.94), rgba(15,13,20,0.97));
+  border-color: rgba(255,255,255,0.10);
+}
+html[data-app="1"][data-theme="dark"] .cps-gifts button { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.10); }
+html[data-app="1"][data-theme="dark"] .vip-entry { background: linear-gradient(140deg, #2e2616, #241d12); border-color: #4a3c22; }
+html[data-app="1"][data-theme="dark"] .wallet-hero .col { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
+
+/* ---- 触控反馈全域化：所有可点卡片/行都有按压回弹 ---- */
+html[data-app="1"] .card[role="button"], html[data-app="1"] .conv-item,
+html[data-app="1"] .wb-item, html[data-app="1"] .mem-item { transition: transform 0.14s; }
+html[data-app="1"] .conv-item:active { transform: scale(0.98); }
+
+/* ---- 触屏 hover 粘滞治理 v2：全局兜底（发现流/列表/宫格）---- */
+@media (hover: none) {
+  html[data-app="1"] .feed-search:hover { background: rgba(0,0,0,0.4); }
+  .conv-item:hover { background: transparent; }
+  .conv-item.active:hover { background: var(--accent-soft); }
+  .nav-item:hover { background: transparent; }
+  .char-card:hover { transform: none; }
+  .pkg:hover, .vip-entry:hover { transform: none; box-shadow: none; }
+  .tag-cloud-item:hover { transform: none; }
+}
+
+/* 通知中心时间分组标签 */
+.noti-group { margin: 18px 4px 8px; font-size: 12.5px; font-weight: 700; color: var(--faint);
+  letter-spacing: 0.06em; text-transform: uppercase; }
+.noti-group:first-child { margin-top: 2px; }
