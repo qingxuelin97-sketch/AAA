@@ -8206,7 +8206,7 @@ html[data-app="1"] .chat-main.has-bg .chat-plus-sheet {
 }
 html[data-app="1"] .chat-main.has-bg .cps-item { color: rgba(255,255,255,0.82); }
 html[data-app="1"] .chat-main.has-bg .cps-item:active { background: rgba(255,255,255,0.08); }
-html[data-app="1"] .chat-main.has-bg .cps-ic { background: rgba(255,255,255,0.10); color: #fff; }
+/* （彩色渐变图标已成为主视觉，不再用白底覆盖） */
 [data-perf="lite"] .chat-plus-sheet { backdrop-filter: none; -webkit-backdrop-filter: none; }
 [data-perf="lite"] .chat-plus-sheet, [data-perf="lite"] .cps-item { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .chat-plus-sheet, .cps-item { animation: none !important; } }
@@ -8214,3 +8214,126 @@ html[data-app="1"] .chat-main.has-bg .cps-ic { background: rgba(255,255,255,0.10
 /* 「+」按钮激活态：仅旋转变色，不要 act-btn.on 的大亮底块（深色输入栏上突兀） */
 .chat-input-bar .plus-btn.on { background: transparent; color: var(--accent); }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .plus-btn.on { color: #7fe3f7; background: rgba(255,255,255,0.10); }
+
+/* ============================================================================
+   沉浸对话 Premium Skin —— 重度美化层
+   ----------------------------------------------------------------------------
+   · 「+」功能面板：多彩渐变图标宫格 + 高级深玻璃卡（告别灰黑豆腐块）
+   · 输入栏：流光胶囊 + 渐变发送钮
+   · 气泡：渐变玻璃 + 细腻描边阴影；操作行胶囊化
+   · 背景：电影级上下渐晕（顶部状态区/底部输入区可读性 + 纵深感）
+   ========================================================================== */
+
+/* ---- 背景渐晕：立绘上下压暗，画面立刻有电影感 ---- */
+html[data-app="1"] .chat-main.has-bg .chat-bg::after {
+  content: ''; display: block; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(8,6,12,0.52) 0%, rgba(8,6,12,0.10) 16%, transparent 30%,
+      transparent 62%, rgba(8,6,12,0.18) 78%, rgba(8,6,12,0.62) 100%);
+}
+
+/* ---- 「+」功能面板：高级深玻璃 + 把手 + 多彩渐变图标 ---- */
+.chat-plus-sheet {
+  position: relative;
+  grid-template-columns: repeat(3, 1fr); gap: 6px 4px;
+  padding: 20px 12px 14px; border-radius: 26px;
+  background: linear-gradient(168deg, rgba(38,33,48,0.90), rgba(17,15,24,0.96));
+  border: 1px solid rgba(255,255,255,0.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    0 -6px 18px rgba(0,0,0,0.18), 0 22px 60px rgba(0,0,0,0.45);
+}
+.chat-plus-sheet::before {
+  content: ''; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+  width: 40px; height: 4px; border-radius: 999px; background: rgba(255,255,255,0.22);
+}
+.cps-item { color: rgba(255,255,255,0.78); font-size: 11.5px; gap: 8px; padding: 12px 2px 10px; }
+.cps-item:active { background: rgba(255,255,255,0.07); }
+.cps-ic {
+  width: 50px; height: 50px; border-radius: 17px; color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 6px 16px rgba(0,0,0,0.35);
+}
+.cps-ic svg { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+/* 每个功能一个专属渐变色相 —— 图标即导航 */
+.cps-item:nth-child(1)  .cps-ic { background: linear-gradient(140deg, #a78bfa, #7c3aed); } /* 插图·紫 */
+.cps-item:nth-child(2)  .cps-ic { background: linear-gradient(140deg, #38bdf8, #0369a1); } /* 搜索·蓝 */
+.cps-item:nth-child(3)  .cps-ic { background: linear-gradient(140deg, #fbbf24, #d97706); } /* 书签·金 */
+.cps-item:nth-child(4)  .cps-ic { background: linear-gradient(140deg, #fb7185, #e11d48); } /* 档案·玫 */
+.cps-item:nth-child(5)  .cps-ic { background: linear-gradient(140deg, #34d399, #059669); } /* 开场·翠 */
+.cps-item:nth-child(6)  .cps-ic { background: linear-gradient(140deg, #22d3ee, #0e7490); } /* 重生成·青 */
+.cps-item:nth-child(7)  .cps-ic { background: linear-gradient(140deg, #f472b6, #be185d); } /* 音乐·粉 */
+.cps-item:nth-child(8)  .cps-ic { background: linear-gradient(140deg, #fb923c, #c2410c); } /* 朗读·橙 */
+.cps-item:nth-child(9)  .cps-ic { background: linear-gradient(140deg, #94a3b8, #475569); } /* 字号·灰蓝 */
+.cps-item:nth-child(10) .cps-ic { background: linear-gradient(140deg, #4ade80, #15803d); } /* MD·绿 */
+.cps-item:nth-child(11) .cps-ic { background: linear-gradient(140deg, #818cf8, #4338ca); } /* JSON·靛 */
+.cps-item:nth-child(12) .cps-ic { background: linear-gradient(140deg, #f87171, #b91c1c); } /* 清空·红 */
+.cps-item:disabled .cps-ic { background: rgba(255,255,255,0.10); box-shadow: none; }
+.cps-badge { background: #f43f5e; box-shadow: 0 0 0 2px rgba(17,15,24,0.9); }
+/* 浅色（无立绘）语境：面板换白玻璃，图标渐变保持 —— 彩色仍是主角 */
+.chat-main:not(.has-bg) .chat-plus-sheet {
+  background: linear-gradient(168deg, rgba(255,255,255,0.94), rgba(240,250,252,0.96));
+  border-color: var(--border);
+  box-shadow: inset 0 1px 0 #fff, 0 -6px 18px rgba(13,74,88,0.05), 0 22px 60px rgba(13,74,88,0.16);
+}
+.chat-main:not(.has-bg) .chat-plus-sheet::before { background: var(--border-2); }
+.chat-main:not(.has-bg) .cps-item { color: var(--muted); }
+.chat-main:not(.has-bg) .cps-item:active { background: var(--bg-2); }
+
+/* ---- 输入栏：流光胶囊 ---- */
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
+  background: linear-gradient(160deg, rgba(36,31,44,0.72), rgba(18,16,24,0.82));
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 34px rgba(0,0,0,0.38);
+}
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box:focus-within {
+  border-color: rgba(84,214,240,0.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 3px rgba(34,211,238,0.18), 0 10px 34px rgba(0,0,0,0.4);
+}
+html[data-app="1"] .chat-main.has-bg .send-btn:not(.stop) {
+  background: linear-gradient(135deg, #22d3ee, #0e9cb8 55%, #0a7f97);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 18px rgba(14,156,184,0.45);
+  color: #fff;
+}
+html[data-app="1"] .chat-main.has-bg .act-btn { color: rgba(255,255,255,0.85); }
+
+/* ---- 气泡：渐变玻璃 + 细腻描边 ---- */
+html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble {
+  background: linear-gradient(160deg, rgba(40,35,50,0.62), rgba(20,17,27,0.72));
+  border: 1px solid rgba(255,255,255,0.11);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 10px 32px rgba(0,0,0,0.35);
+  border-radius: 20px 20px 20px 7px;
+}
+html[data-app="1"] .chat-main.has-bg .msg.user .bubble {
+  background: linear-gradient(135deg, rgba(34,211,238,0.88), rgba(10,127,151,0.92));
+  border: 1px solid rgba(255,255,255,0.22);
+  color: #fff; border-radius: 20px 20px 7px 20px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.30), 0 8px 26px rgba(14,156,184,0.35);
+}
+/* 消息操作行 → 迷你胶囊组（不再是裸文字漂浮） */
+html[data-app="1"] .chat-main.has-bg .msg-acts { gap: 6px; }
+html[data-app="1"] .chat-main.has-bg .msg-acts .speak {
+  padding: 5px 11px; border-radius: 999px;
+  background: rgba(0,0,0,0.32); border: 1px solid rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.85); text-shadow: none; font-size: 12px;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  transition: transform 0.13s, background 0.15s;
+}
+html[data-app="1"] .chat-main.has-bg .msg-acts .speak:active { transform: scale(0.92); background: rgba(255,255,255,0.14); }
+html[data-app="1"] .chat-main.has-bg .msg-acts .speak.on { background: rgba(34,211,238,0.30); border-color: rgba(34,211,238,0.4); }
+/* 角色名行：小号大写间距，精致排版 */
+html[data-app="1"] .chat-main.has-bg .msg-name { font-size: 12.5px; letter-spacing: 0.4px; font-weight: 650; }
+
+/* ---- 开场/试试开口 chips：玻璃渐变描边 ---- */
+html[data-app="1"] .chat-main.has-bg .starter-chip {
+  background: linear-gradient(160deg, rgba(40,35,50,0.55), rgba(20,17,27,0.65));
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 18px rgba(0,0,0,0.25);
+}
+html[data-app="1"] .chat-main.has-bg .starter-chip.on {
+  background: linear-gradient(135deg, rgba(34,211,238,0.35), rgba(10,127,151,0.45));
+  border-color: rgba(34,211,238,0.5); color: #aef2ff;
+}
+
+/* lite 档降级：渐晕保留（纯渐变无成本），玻璃模糊已由既有规则关闭 */
+/* 危险项图标同为白色（红底上深红图标对比度不足） */
+.cps-item.danger .cps-ic { color: #fff; }
