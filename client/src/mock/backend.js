@@ -681,7 +681,8 @@ function buildSystemPrompt(character, recentText) {
   const hay = (recentText || '').toLowerCase(); const triggered = [];
   for (const w of world) {
     const keys = (w.keys || '').split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
-    if (keys.length === 0 || keys.some(k => hay.includes(k))) triggered.push(w.content);
+    // constant（酒馆常驻条目）无视关键词恒注入；空 keys 亦视为常驻
+    if (w.constant || keys.length === 0 || keys.some(k => hay.includes(k))) triggered.push(w.content);
   }
   if (triggered.length) parts.push('【世界书 / 设定】\n' + triggered.join('\n---\n'));
   parts.push(`你正在扮演「${character.name}」。请始终保持角色设定，使用沉浸式的第一人称叙述，不要跳出角色，不要提及你是 AI。`);
@@ -749,6 +750,67 @@ async function streamCompletion(conv, character, settings, userContent, me) {
         if (userContent) conv.affinity = (conv.affinity || 0) + 3; // 好感度随有效互动增长
         // Only now deduct the platform fee — successful reply.
         if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); send({ fee: feeDue }); } catch { /* */ } }
+        save();
+      }
+      controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close();
+    }
+  });
+  return new Response(stream, { headers: { 'content-type': 'text/event-stream' } });
+}
+
+// 静默生成（酒馆助手 TavernHelper.generate）：与 streamCompletion 同构，但
+// 不落任何消息、不加好感度 —— 卡片 HTML 面板自带完整游戏上下文（user_input），
+// 世界书按 user_input 触发（常驻条目恒注入）后送模型，SSE 转发增量。
+async function streamSilentGenerate(conv, character, settings, userInput, me, includeHistory) {
+  const eff = effectiveLLM(settings);
+  let feeDue = 0;
+  if (eff.platform && me) {
+    const count = filter('messages', m => m.conversation_id === conv.id).length;
+    feeDue = platformFee(me, count);
+    if (me.gold < feeDue) {
+      const enc = new TextEncoder();
+      const msg = `金币不足，本次平台 AI 服务需 ${feeDue} 金币（当前 ${me.gold}）。`;
+      return new Response(new ReadableStream({ start(c) { c.enqueue(enc.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)); c.enqueue(enc.encode('data: [DONE]\n\n')); c.close(); } }), { headers: { 'content-type': 'text/event-stream' } });
+    }
+  }
+  const history = includeHistory ? filter('messages', m => m.conversation_id === conv.id) : [];
+  let system = buildSystemPrompt(character, userInput);
+  if (eff.platform) { const gp = (platformCfg().system_prompt || '').trim(); if (gp) system = gp + '\n\n' + system; }
+  const payloadHistory = [...history, { role: 'user', content: userInput }];
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (o) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(o)}\n\n`));
+      if (!eff.api_key) {
+        send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key。' });
+        controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close(); return;
+      }
+      let full = '';
+      try {
+        const req = llmRequest(eff, system, payloadHistory);
+        let up = await realFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify(req.body) });
+        if (!up.ok && eff.protocol === 'openai') {
+          const t1 = await up.text().catch(() => '');
+          const up2 = await realFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify({ ...req.body, stream: false }) }).catch(() => null);
+          if (up2 && up2.ok) { const d = await up2.json().catch(() => ({})); const txt = d.choices?.[0]?.message?.content || ''; if (txt) { full = txt; send({ delta: txt }); } up = { ok: true, body: null, _handled: true }; }
+          else { send({ error: `模型服务返回 ${up.status}：${t1.slice(0, 300)}` }); up = { ok: false }; }
+        }
+        if (up.ok && up.body) {
+          const reader = up.body.getReader(); const dec = new TextDecoder(); let buf = '';
+          while (true) {
+            const { done, value } = await reader.read(); if (done) break;
+            buf += dec.decode(value, { stream: true }); const lines = buf.split(/\r?\n/); buf = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim(); if (!t.startsWith('data:')) continue;
+              const d = t.slice(5).trim(); if (d === '[DONE]') continue;
+              const delta = parseDelta(d, eff.protocol); if (delta) { full += delta; send({ delta }); }
+            }
+          }
+        } else if (!up.ok && !up._handled) { const t = await (up.text ? up.text().catch(() => '') : Promise.resolve('')); if (t || !full) send({ error: `模型服务返回 ${up.status || ''}：${(t || '').slice(0, 300)}` }); }
+      } catch (err) { send({ error: '连接模型服务失败：' + err.message }); }
+      if (full.trim() && feeDue && me) {
+        try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 面板生成《${character?.name || ''}》`, ref_owner: character?.owner_id }); send({ fee: feeDue }); } catch { /* */ }
         save();
       }
       controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close();
@@ -1087,8 +1149,24 @@ function proposalView(p, meId) {
 }
 function saveWorld(cid, world) {
   db.world_entries = filter('world_entries', w => w.character_id !== cid);
-  if (Array.isArray(world)) world.forEach((w, i) => { if (w && (w.content || w.keys)) insert('world_entries', { character_id: cid, keys: w.keys || '', content: w.content || '', enabled: w.enabled === false ? 0 : 1, position: i }); });
+  if (Array.isArray(world)) world.forEach((w, i) => { if (w && (w.content || w.keys)) insert('world_entries', { character_id: cid, keys: w.keys || '', content: w.content || '', enabled: w.enabled === false ? 0 : 1, position: i, constant: w.constant ? 1 : 0 }); });
   save();
+}
+
+// 酒馆兼容字段规范化（与服务端 characters.js 同构）：
+// front_regex / alt_greetings 统一落库为 JSON 字符串，坏输入回退旧值。
+function normFrontRegex(v, fallback = '[]') {
+  if (v == null) return fallback || '[]';
+  try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? JSON.stringify(a).slice(0, 4000000) : (fallback || '[]'); }
+  catch { return fallback || '[]'; }
+}
+function normAltGreetings(v, fallback = '[]') {
+  if (v == null) return fallback || '[]';
+  try {
+    const a = typeof v === 'string' ? JSON.parse(v) : v;
+    if (!Array.isArray(a)) return fallback || '[]';
+    return JSON.stringify(a.filter(g => typeof g === 'string' && g.trim()).slice(0, 10).map(g => g.slice(0, 24000)));
+  } catch { return fallback || '[]'; }
 }
 
 async function route(method, path, search, body, headers) {
@@ -1395,17 +1473,23 @@ async function route(method, path, search, body, headers) {
       const faved = me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false;
       return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(owner), fav_count, author_char_count, faved }, related });
     }
-    if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'bgm', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'voice_speed', 'voice_pitch', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0; if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
+    if (method === 'PUT') { need(); if (!c || c.owner_id !== me.id) return E('无权编辑', 403); ['name', 'avatar', 'background', 'background_type', 'bgm', 'tagline', 'intro', 'greeting', 'persona', 'voice_name', 'voice_speed', 'voice_pitch', 'category', 'tags'].forEach(k => { if (body[k] !== undefined) c[k] = body[k]; }); c.is_public = body.is_public ? 1 : 0; c.nsfw = body.nsfw ? 1 : 0;
+      // 酒馆兼容字段：前端显示正则 / 备用开场白（此前 PUT 白名单漏掉 front_regex，
+      // APK（mock 后端）里经编辑器保存的酒馆卡会静默丢失正则 → HTML 面板失效）
+      if (body.front_regex !== undefined) c.front_regex = normFrontRegex(body.front_regex, c.front_regex);
+      if (body.alt_greetings !== undefined) c.alt_greetings = normAltGreetings(body.alt_greetings, c.alt_greetings);
+      if (body.world) saveWorld(c.id, body.world); save(); return J({ character: charView(c) }); }
     if (method === 'DELETE') { need(); if (!c || c.owner_id !== me.id) return E('无权删除', 403); db.characters = filter('characters', x => x.id !== cid); save(); return J({ ok: true }); }
   }
   if (method === 'POST' && path === '/characters') {
     need(); if (!body.name) return E('角色名必填');
-    const c = insert('characters', { owner_id: me.id, name: body.name, avatar: body.avatar || null, background: body.background || null, background_type: body.background_type || 'image', bgm: body.bgm || '', tagline: body.tagline || '', intro: body.intro || '', greeting: body.greeting || '', persona: body.persona || '', voice_name: body.voice_name || '', voice_speed: body.voice_speed || 1, voice_pitch: body.voice_pitch || 1, category: body.category || '', tags: body.tags || '', is_public: body.is_public ? 1 : 0, nsfw: body.nsfw ? 1 : 0, likes: 0, uses: 0 });
+    const c = insert('characters', { owner_id: me.id, name: body.name, avatar: body.avatar || null, background: body.background || null, background_type: body.background_type || 'image', bgm: body.bgm || '', tagline: body.tagline || '', intro: body.intro || '', greeting: body.greeting || '', persona: body.persona || '', voice_name: body.voice_name || '', voice_speed: body.voice_speed || 1, voice_pitch: body.voice_pitch || 1, category: body.category || '', tags: body.tags || '', is_public: body.is_public ? 1 : 0, nsfw: body.nsfw ? 1 : 0, likes: 0, uses: 0,
+      front_regex: normFrontRegex(body.front_regex, '[]'), alt_greetings: normAltGreetings(body.alt_greetings, '[]') });
     saveWorld(c.id, body.world); return J({ character: charView(c) });
   }
 
   // ---------- chat ----------
-  if (method === 'GET' && path === '/chat/conversations') { need(); const rows = filter('conversations', c => c.user_id === me.id).map(c => { const ch = find('characters', x => x.id === c.character_id); return { ...c, character_name: ch?.name, character_avatar: ch?.avatar }; }).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')); return J({ conversations: rows }); }
+  if (method === 'GET' && path === '/chat/conversations') { need(); const rows = filter('conversations', c => c.user_id === me.id).map(c => { const ch = find('characters', x => x.id === c.character_id); const msgs = filter('messages', x => x.conversation_id === c.id); return { ...c, character_name: ch?.name, character_avatar: ch?.avatar, last_message: msgs.length ? msgs[msgs.length - 1].content : '' }; }).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')); return J({ conversations: rows }); }
   if (method === 'POST' && path === '/chat/conversations') {
     need(); const ch = find('characters', x => x.id === body.character_id); if (!ch) return E('角色不存在', 404);
     const conv = insert('conversations', { user_id: me.id, character_id: ch.id, title: ch.name, updated_at: now() }); ch.uses++;
@@ -1422,7 +1506,13 @@ async function route(method, path, search, body, headers) {
         // wipe the transcript but keep the character greeting as a fresh start
         const ch = find('characters', x => x.id === conv.character_id);
         db.messages = filter('messages', x => x.conversation_id !== conv.id);
-        if (ch?.greeting) insert('messages', { conversation_id: conv.id, role: 'assistant', content: ch.greeting });
+        // greeting_index：0=主开场白；1..N=备用开场白（酒馆 alternate_greetings 切换开场）
+        let greeting = ch?.greeting || '';
+        const gi = parseInt(body.greeting_index, 10);
+        if (Number.isFinite(gi) && gi > 0) {
+          try { const alts = JSON.parse(ch?.alt_greetings || '[]'); if (alts[gi - 1]) greeting = alts[gi - 1]; } catch { /* */ }
+        }
+        if (greeting) insert('messages', { conversation_id: conv.id, role: 'assistant', content: greeting });
         conv.affinity = 0;
       }
       conv.updated_at = now(); save();
@@ -1441,6 +1531,15 @@ async function route(method, path, search, body, headers) {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
     const ch = find('characters', x => x.id === conv.character_id); const s = find('settings', x => x.user_id === me.id);
     return streamCompletion(conv, ch, s, (body.content || '').trim(), me);
+  }
+  // —— 酒馆助手兼容：静默生成（TavernHelper.generate）——
+  // 不写消息、不动好感度；世界书（含常驻条目）照常注入 system。
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/generate$/)) && method === 'POST') {
+    need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
+    const ch = find('characters', x => x.id === conv.character_id); const s = find('settings', x => x.user_id === me.id);
+    const userInput = String(body.user_input || '').slice(0, 400000);
+    if (!userInput.trim()) return E('user_input 不能为空');
+    return streamSilentGenerate(conv, ch, s, userInput, me, body.include_history === true);
   }
   if ((m = P(/^\/chat\/conversations\/(\d+)\/regenerate$/)) && method === 'POST') {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
@@ -2662,7 +2761,8 @@ async function route(method, path, search, body, headers) {
       bgm: s(ch.bgm, 500), tagline: s(ch.tagline, 200), intro: s(ch.intro, 8000), greeting: s(ch.greeting, 24000),
       persona: s(ch.persona, 24000), voice_name: s(ch.voice_name, 60), voice_speed: 1, voice_pitch: 1,
       category: s(ch.category, 40), tags: s(ch.tags, 200), is_public: 0, nsfw: ch.nsfw ? 1 : 0, uses: 0, likes: 0,
-      front_regex: (() => { try { const v = typeof ch.front_regex === 'string' ? JSON.parse(ch.front_regex) : ch.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : '[]'; } catch { return '[]'; } })(),
+      front_regex: normFrontRegex(ch.front_regex, '[]'),
+      alt_greetings: normAltGreetings(ch.alt_greetings, '[]'),
     });
     saveWorld(c.id, world); save();
     return J({ character: charView(c) });

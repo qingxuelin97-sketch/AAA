@@ -4,10 +4,11 @@ import { api, getToken, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { useKeyboardInsetBar } from '../mobile.js';
-import { useAutoGrow } from '../util.js';
+import { useAutoGrow, msgPreview } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import { EmptyArt } from '../art.jsx';
 import { applyFrontRegex, looksLikeHtml } from '../frontregex.js';
+import { buildPanelDoc, installTavernHost } from '../tavernbridge.js';
 import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark } from 'lucide-react';
 
 // 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
@@ -80,34 +81,94 @@ function renderRp(text, keyBase = 0) {
 // React.memo 是这里的性能关键：流式生成期间线程每帧 setMessages 一次，除最后一条外
 // 其余消息的 content 引用都没变，memo 让老消息跳过整段正则解析与片段重建 ——
 // 否则解析成本随对话长度线性增长，长对话时打字都会掉帧。
-// 专家前端面板：把角色卡里的 HTML 面板渲染进沙箱 iframe（allow-scripts 无同源，隔离父页），
-// 用 blob 文档避免继承父页 CSP，从而允许面板自带的外链样式加载；注入高度上报脚本做自适应高度。
+// 专家前端面板：把角色卡里的 HTML 面板渲染进 iframe（blob: 文档，CSP 已在 index.html 放行）。
+// 酒馆兼容关键点：
+//   · sandbox 含 allow-same-origin —— 卡片前端普遍依赖 localStorage/IndexedDB 存档，
+//     且通过 window.parent.TavernHelper.generate(...) 直接调宿主 AI（凡人修仙传等标准用法）。
+//     这意味着面板脚本与宿主同权（与酒馆助手的安全模型一致：卡片前端本就是「可信扩展」）。
+//   · buildPanelDoc 注入 shim：eventOn/eventEmit、tavern_events、TavernHelper 本地代理、
+//     SillyTavern.getContext 最小面 + 高度自适应上报（先于卡片脚本执行）。
+// PANEL_CTX 由 Chat 组件维护（角色名/会话 id），供 shim 里 getContext() 使用。
+let PANEL_CTX = { characterName: '', conversationId: 0 };
 function HtmlPanel({ html }) {
-  const [h, setH] = useState(300);
+  // 完整 HTML 文档（游戏面板/说明书页）多为 position:fixed 的整页布局：
+  //   · scrollHeight 可能「自指」（=iframe 高度）→ 自适应变矮条
+  //   · 也可能被隐藏的大尺寸区块（地图画布等）撑到数千 px → iframe 拉超高后，
+  //     fixed 居中的开始界面落在 iframe 视口中央 = 屏幕外，肉眼只见黑底
+  // 所以整页面板的高度按「一屏游戏视口」处理：下限 72vh、上限 ~86vh，内部自滚动；
+  // 片段面板才走高度上报完全自适应。
+  const fullDoc = /<!doctype html|<html[\s>]/i.test(String(html || '').slice(0, 400));
+  const vh = window.innerHeight || 800;
+  const baseH = fullDoc ? Math.max(480, Math.round(vh * 0.72)) : 360;
+  const maxH = fullDoc ? Math.max(560, Math.round(vh * 0.86)) : 4000;
+  const [h, setH] = useState(baseH);
+  const [loaded, setLoaded] = useState(false);
+  const frameRef = useRef(null);
   const src = useMemo(() => {
-    const reporter = '<scr' + 'ipt>(function(){function p(){try{parent.postMessage({__hyH:document.documentElement.scrollHeight},"*")}catch(e){}}try{new ResizeObserver(p).observe(document.documentElement)}catch(e){}window.addEventListener("load",p);setTimeout(p,300);setTimeout(p,1500)})();</scr' + 'ipt>';
-    const doc = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, reporter + '</body>') : html + reporter;
+    const doc = buildPanelDoc(html, PANEL_CTX);
     return URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
   }, [html]);
   useEffect(() => () => { try { URL.revokeObjectURL(src); } catch { /* */ } }, [src]);
   useEffect(() => {
-    const onMsg = e => { const v = e.data && e.data.__hyH; if (typeof v === 'number') setH(Math.min(2600, Math.max(120, v + 8))); };
-    window.addEventListener('message', onMsg); return () => window.removeEventListener('message', onMsg);
+    // 撤加载蒙层的时机不能依赖 iframe load 事件：卡片外链 CDN（Google Fonts 等）
+    // 在弱网/受限网络下会长时间挂起、load 迟迟不触发，而面板 DOM 其实早已渲染。
+    // shim 的高度上报（ResizeObserver 立即触发）就是「已渲染」的可靠信号；再兜一个超时。
+    const onMsg = e => {
+      const v = e.data && e.data.__hyH;
+      if (typeof v !== 'number') return;
+      if (frameRef.current && e.source === frameRef.current.contentWindow) setLoaded(true);
+      // 整页面板钳制在一屏内（不缩回矮条、也不被撑出屏）；片段面板完全自适应
+      setH(prev => Math.min(maxH, Math.max(fullDoc ? Math.max(baseH, prev) : 160, v + 8)));
+    };
+    window.addEventListener('message', onMsg);
+    const t = setTimeout(() => setLoaded(true), 3500);
+    return () => { window.removeEventListener('message', onMsg); clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return <iframe className="html-panel" src={src} sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" style={{ height: h }} title="角色前端面板" />;
+  return (
+    <div className={'html-panel-wrap' + (loaded ? ' ready' : '')}>
+      {/* 加载占位：卡片外链 CDN（字体/库/视频）就绪前面板常呈黑屏，给出可感知的加载态 */}
+      {!loaded && (
+        <div className="html-panel-loading" aria-hidden="true">
+          <span className="hp-spin" /><b>角色前端加载中…</b><i>大型面板首次加载可能需要几秒</i>
+        </div>
+      )}
+      <iframe className="html-panel" ref={frameRef} src={src} onLoad={() => setLoaded(true)}
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-downloads"
+        allow="clipboard-write; clipboard-read; fullscreen"
+        style={{ height: h }} title="角色前端面板" />
+    </div>
+  );
 }
 
 // 把含 ```html 面板 / 整段 HTML 的文本拆开：面板走 iframe，其余走 RP 排版。
-function renderWithPanels(text) {
-  const parts = []; const re = /```html\s*\n?([\s\S]*?)```/gi; let last = 0, m, k = 0;
-  while ((m = re.exec(text))) {
-    const seg = text.slice(last, m.index);
-    if (seg.trim()) parts.push(<span key={'t' + (k++)}>{renderRp(seg, k)}</span>);
-    parts.push(<HtmlPanel key={'h' + (k++)} html={m[1]} />);
-    last = m.index + m[0].length;
+// 围栏收尾不能用非贪婪 ```：酒馆卡的面板动辄数十万字符，正文里（JS 模板串、
+// 说明文档）常夹杂反引号序列，非贪婪会提前收口、把面板后半段当纯文本渲染。
+// 策略：内容若是完整 HTML 文档（含 </html>），收尾围栏取 </html> 之后最近的 ```；
+// 否则退回最近 ```；找不到则吃到文本结尾。
+function splitHtmlFences(text) {
+  const out = []; const open = /```html\s*\n?/gi; let m, last = 0;
+  while ((m = open.exec(text))) {
+    const start = m.index, cs = open.lastIndex;
+    let close = -1;
+    const endHtml = text.toLowerCase().indexOf('</html>', cs);
+    if (endHtml >= 0) close = text.indexOf('```', endHtml);
+    if (close < 0) close = text.indexOf('```', cs);
+    const html = close < 0 ? text.slice(cs) : text.slice(cs, close);
+    const end = close < 0 ? text.length : close + 3;
+    out.push({ pre: text.slice(last, start), html });
+    last = end; open.lastIndex = end;
   }
-  const tail = text.slice(last);
-  if (last === 0 && looksLikeHtml(tail)) return [<HtmlPanel key="h0" html={tail} />];
+  return { blocks: out, tail: text.slice(last) };
+}
+function renderWithPanels(text) {
+  const parts = []; let k = 0;
+  const { blocks, tail } = splitHtmlFences(text);
+  for (const b of blocks) {
+    if (b.pre.trim()) parts.push(<span key={'t' + (k++)}>{renderRp(b.pre, k)}</span>);
+    parts.push(<HtmlPanel key={'h' + (k++)} html={b.html} />);
+  }
+  if (blocks.length === 0 && looksLikeHtml(tail)) return [<HtmlPanel key="h0" html={tail} />];
   if (tail.trim()) parts.push(looksLikeHtml(tail) ? <HtmlPanel key={'h' + k} html={tail} /> : <span key={'t' + k}>{renderRp(tail, k)}</span>);
   return parts;
 }
@@ -154,6 +215,9 @@ export default function Chat() {
   const [character, setCharacter] = useState(null);
   // 角色前端显示正则（酒馆 regex_scripts）—— 解析一次，供气泡渲染 HTML 面板等。
   const frontRegex = useMemo(() => { try { return JSON.parse(character?.front_regex || '[]'); } catch { return []; } }, [character?.front_regex]);
+  // 备用开场白（酒馆 alternate_greetings）：对话未开始时可切换开场。
+  const altGreetings = useMemo(() => { try { const v = JSON.parse(character?.alt_greetings || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } }, [character?.alt_greetings]);
+  const [greetIdx, setGreetIdx] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -203,6 +267,39 @@ export default function Chat() {
 
   // 移动端软键盘适配：把 fixed 输入栏始终顶在键盘上方（稳健跨浏览器实现见 mobile.js）。
   useKeyboardInsetBar(inputBarRef, [conv]);
+
+  // —— 酒馆助手宿主桥：面板 iframe 通过 window.parent.TavernHelper.generate 静默生成。
+  // convRef 跟随路由；消息引用给 getChatMessages 用（酒馆格式：{message, role, ...}）。
+  const convIdRef = useRef(null);
+  useEffect(() => { convIdRef.current = id; }, [id]);
+  const messagesRef = useRef(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => {
+    PANEL_CTX = { characterName: character?.name || '', conversationId: Number(id) || 0 };
+    const uninstall = installTavernHost(convIdRef, {
+      onToast: (m) => toast(m),
+      onFee: (fee) => { toast(`平台 AI · 本次消耗 ${fee} 金币`); refreshUser?.(); },
+      getLastMessageId: () => Math.max(0, messagesRef.current.length - 1),
+      getChatMessages: () => messagesRef.current.map((m, i) => ({
+        message_id: i, role: m.role, name: m.role === 'user' ? '我' : (character?.name || ''), message: m.content || ''
+      }))
+    });
+    return uninstall;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, character?.name]);
+
+  // 原生状态栏语境：进入带背景图的沉浸对话时把状态栏刷成深色底
+  //（否则 App 浅色主题下状态栏是一条奶白实心条，压在深色聊天页顶端 = 「顶部白屏」）。
+  // 离开对话/卸载时撤销，恢复主题默认。
+  useEffect(() => {
+    const dark = !!(conv && character?.background);
+    try {
+      window.dispatchEvent(new CustomEvent('huanyu-statusbar', {
+        detail: dark ? { color: '#12101a', dark: true } : null
+      }));
+    } catch { /* */ }
+    return () => { try { window.dispatchEvent(new CustomEvent('huanyu-statusbar', { detail: null })); } catch { /* */ } };
+  }, [conv, character?.background]);
   // 输入框随内容自动增高（发送清空后回落单行），多行长文不再挤在一行内滚动。
   useAutoGrow(inputRef, input);
 
@@ -333,10 +430,13 @@ export default function Chat() {
   };
   // celebrate when the relationship tier rises (ties into 成就 / affinity milestones)
   const prevAffLevel = useRef(null);
+  const [afPulse, setAfPulse] = useState(false);   // 好感升级时徽章脉冲动画
   useEffect(() => {
     const info = affinityInfo(affinity); const lvl = info.level;
     if (prevAffLevel.current !== null && lvl > prevAffLevel.current) {
       toast(`${info.icon} 羁绊加深！与${character?.name || 'TA'}的关系进入「${info.name}」`);
+      setAfPulse(true);
+      setTimeout(() => setAfPulse(false), 1600);
     }
     prevAffLevel.current = lvl;
     /* eslint-disable-next-line */
@@ -357,10 +457,22 @@ export default function Chat() {
   // Only auto-stick to the bottom when the user is already near it (don't yank them
   // away while they scroll back to read history).
   useEffect(() => { if (atBottom) scrollToBottom(); }, [messages, streaming]);
+  // 背景视差：滚动聊天时立绘以 6% 速率轻微反向漂移，画面即刻「活」起来。
+  // rAF 节流 + 直接写 CSS 变量（不触发 React 渲染），lite 档/减弱动效自动无感（CSS 侧不消费）。
+  const bgParaRef = useRef(0);
   const onScroll = () => {
     const el = scrollRef.current; if (!el) return;
     setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+    if (!bgParaRef.current) {
+      bgParaRef.current = requestAnimationFrame(() => {
+        bgParaRef.current = 0;
+        const sc = scrollRef.current; if (!sc) return;
+        const main = sc.closest('.chat-main');
+        if (main) main.style.setProperty('--chat-para', Math.min(60, sc.scrollTop * 0.06).toFixed(1) + 'px');
+      });
+    }
   };
+  useEffect(() => () => { if (bgParaRef.current) cancelAnimationFrame(bgParaRef.current); }, []);
 
   // Stream a reply from the given endpoint into the trailing assistant bubble.
   const streamInto = async (endpoint, payload) => {
@@ -456,6 +568,16 @@ export default function Chat() {
     await streamInto(`/api/chat/conversations/${id}/complete`, { content: text });
   };
   const insertAction = (a) => { setInput(v => (v ? v.replace(/\s*$/, '') + ' ' : '') + a + ' '); setActionsOpen(false); };
+
+  // 切换开场白（仅对话未开始时提供入口；服务端按 greeting_index 重置为对应开场）。
+  const switchGreeting = async (gi) => {
+    if (streaming || gi === greetIdx) return;
+    try {
+      const d = await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { clear: true, greeting_index: gi } });
+      setMessages(d.messages); setAffinity(0); setGreetIdx(gi);
+    } catch (e) { toast(e.message, 'err'); }
+  };
+  useEffect(() => { setGreetIdx(0); }, [id]);
 
   const regenerate = async () => {
     if (streaming) return;
@@ -569,8 +691,8 @@ export default function Chat() {
           {convs.map(cv => (
             <div key={cv.id} className={'conv-item' + (String(cv.id) === String(id) ? ' active' : '')} onClick={() => nav('/chats/' + cv.id)} title={listMini ? cv.character_name : undefined}>
               <Avatar src={cv.character_avatar} name={cv.character_name} size={40} />
-              {/* 副标题：默认标题与角色同名时显示引导语，避免上下两行重复同一个名字 */}
-              <div className="tx"><b>{cv.character_name}</b><span>{cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话'}</span></div>
+              {/* 副标题：优先最近消息摘要（面板消息显示占位标签）；退回标题/引导语 */}
+              <div className="tx"><b>{cv.character_name}</b><span>{msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话')}</span></div>
               <button className="speak" onClick={e => delConv(e, cv)}><X size={14} /></button>
             </div>
           ))}
@@ -601,7 +723,7 @@ export default function Chat() {
                 <div className="nm"><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : '在线 · 沉浸扮演中'}</span></div>
               </div>
               {(() => { const af = affinityInfo(affinity); return (
-                <button className="affinity-badge" onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
+                <button className={'affinity-badge' + (afPulse ? ' pulse' : '')} onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
                   <span className="af-ic">{af.icon}</span>
                   <span className="af-tx"><b>{af.name}</b><i><em style={{ width: af.pct + '%' }} /></i></span>
                 </button>
@@ -612,7 +734,8 @@ export default function Chat() {
                     {bgmOn ? <Music size={17} /> : <VolumeX size={17} />}
                   </button>
                 )}
-                <button className="speak chat-tool" onClick={() => setIllusOpen(true)} title="为当前剧情生成插图"><Wand2 size={17} /></button>
+                {/* 「生成插图」收进更多菜单 —— 头部一行曾塞下 7 个控件，412px 宽必然
+                    互相挤压（用户实机上身份胶囊的状态文字被压到只剩一个字符）。 */}
                 <button className={'speak chat-tool' + (searchOpen ? ' on' : '')} onClick={() => { setSearchOpen(o => !o); setSearchQ(''); }} title="对话内搜索"><Search size={17} /></button>
                 <div className="chat-menu-wrap">
                   <button className={'speak chat-tool' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
@@ -620,6 +743,7 @@ export default function Chat() {
                     <>
                       <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />
                       <div className="chat-menu">
+                        <button onClick={() => { setIllusOpen(true); setMenuOpen(false); }}><Wand2 size={15} /> 为当前剧情生成插图</button>
                         <button onClick={renameConv}><Edit3 size={15} /> 重命名对话</button>
                         <button onClick={() => exportConv('md')}><Download size={15} /> 导出为 Markdown</button>
                         <button onClick={() => exportConv('json')}><Download size={15} /> 导出为 JSON</button>
@@ -760,6 +884,16 @@ export default function Chat() {
             )}
             {messages.length <= 1 && !streaming && (
               <div className="starter-chips">
+                {altGreetings.length > 0 && (
+                  <span className="greet-switch">
+                    <span className="muted">开场：</span>
+                    {[0, ...altGreetings.map((_, i) => i + 1)].map(gi => (
+                      <button key={gi} className={'starter-chip' + (greetIdx === gi ? ' on' : '')} disabled={streaming}
+                        title={gi === 0 ? '主开场白' : `备用开场白 ${gi}（酒馆卡常把「游戏开始」放在这里）`}
+                        onClick={() => switchGreeting(gi)}>{gi === 0 ? '主开场' : `开场 ${gi + 1}`}</button>
+                    ))}
+                  </span>
+                )}
                 <span className="muted">试试开口：</span>
                 {STARTERS.map(s => <button key={s} className="starter-chip" onClick={() => send(s)}>{s}</button>)}
               </div>

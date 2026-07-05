@@ -125,8 +125,8 @@ router.post('/', authRequired, (req, res) => {
   const b = req.body || {};
   if (!b.name) return res.status(400).json({ error: '角色名必填' });
   const info = db.prepare(`INSERT INTO characters
-    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw)
-    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw)`)
+    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, alt_greetings)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@alt_greetings)`)
     .run({
       owner_id: req.user.id,
       name: b.name, avatar: b.avatar || null,
@@ -134,7 +134,8 @@ router.post('/', authRequired, (req, res) => {
       tagline: b.tagline || '', intro: b.intro || '', greeting: b.greeting || '',
       persona: b.persona || '', voice_name: b.voice_name || '', voice_speed: clampSpeed(b.voice_speed), voice_pitch: clampPitch(b.voice_pitch),
       category: b.category || '', tags: b.tags || '',
-      is_public: b.is_public ? 1 : 0, nsfw: b.nsfw ? 1 : 0
+      is_public: b.is_public ? 1 : 0, nsfw: b.nsfw ? 1 : 0,
+      alt_greetings: normAltGreetings(b.alt_greetings)
     });
   saveWorld(info.lastInsertRowid, b.world);
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);
@@ -152,9 +153,10 @@ router.put('/:id', authRequired, (req, res) => {
   db.prepare(`UPDATE characters SET
     name=@name, avatar=@avatar, background=@background, background_type=@background_type, bgm=@bgm,
     tagline=@tagline, intro=@intro, greeting=@greeting, persona=@persona,
-    voice_name=@voice_name, voice_speed=@voice_speed, voice_pitch=@voice_pitch, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw, front_regex=@front_regex WHERE id=@id`)
+    voice_name=@voice_name, voice_speed=@voice_speed, voice_pitch=@voice_pitch, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw, front_regex=@front_regex, alt_greetings=@alt_greetings WHERE id=@id`)
     .run({
       id: c.id,
+      alt_greetings: normAltGreetings(b.alt_greetings, c.alt_greetings || '[]'),
       front_regex: (() => { if (b.front_regex == null) return c.front_regex || '[]'; try { const v = typeof b.front_regex === 'string' ? JSON.parse(b.front_regex) : b.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : (c.front_regex || '[]'); } catch { return c.front_regex || '[]'; } })(),
       name: b.name ?? c.name, avatar: b.avatar ?? c.avatar,
       background: b.background ?? c.background, background_type: b.background_type ?? c.background_type,
@@ -181,11 +183,22 @@ router.delete('/:id', authRequired, (req, res) => {
 function saveWorld(characterId, world) {
   db.prepare('DELETE FROM world_entries WHERE character_id = ?').run(characterId);
   if (!Array.isArray(world)) return;
-  const stmt = db.prepare('INSERT INTO world_entries (character_id, keys, content, enabled, position) VALUES (?,?,?,?,?)');
+  const stmt = db.prepare('INSERT INTO world_entries (character_id, keys, content, enabled, position, constant) VALUES (?,?,?,?,?,?)');
   world.forEach((w, i) => {
     if (!w || (!w.content && !w.keys)) return;
-    stmt.run(characterId, w.keys || '', w.content || '', w.enabled === false ? 0 : 1, i);
+    // constant（酒馆常驻条目）：无视关键词恒注入 —— 驱动酒馆卡游戏引擎的规则条目多依赖此标记
+    stmt.run(characterId, w.keys || '', w.content || '', w.enabled === false ? 0 : 1, i, w.constant ? 1 : 0);
   });
+}
+
+// alt_greetings（备用开场白）：接受数组或已序列化字符串，落库为 JSON 文本。
+function normAltGreetings(v, fallback = '[]') {
+  if (v == null) return fallback;
+  try {
+    const arr = typeof v === 'string' ? JSON.parse(v) : v;
+    if (!Array.isArray(arr)) return fallback;
+    return JSON.stringify(arr.filter(g => typeof g === 'string' && g.trim()).slice(0, 10).map(g => g.slice(0, 24000)));
+  } catch { return fallback; }
 }
 
 // ── 角色卡 JSON 导出 ──────────────────────────────────────────────
@@ -195,7 +208,7 @@ router.get('/:id/export', authOptional, (req, res) => {
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).json({ error: '角色不存在' });
   if (!c.is_public && (!req.user || req.user.id !== c.owner_id)) return res.status(403).json({ error: '无权导出' });
-  const world = loadWorld(c.id).map(w => ({ keys: w.keys, content: w.content, enabled: !!w.enabled, position: w.position }));
+  const world = loadWorld(c.id).map(w => ({ keys: w.keys, content: w.content, enabled: !!w.enabled, position: w.position, constant: !!w.constant }));
   const card = {
     platform: 'huanyu',
     spec: 1,
@@ -204,7 +217,8 @@ router.get('/:id/export', authOptional, (req, res) => {
       name: c.name, avatar: c.avatar, background: c.background, background_type: c.background_type, bgm: c.bgm,
       tagline: c.tagline, intro: c.intro, greeting: c.greeting, persona: c.persona,
       voice_name: c.voice_name, voice_speed: c.voice_speed, voice_pitch: c.voice_pitch,
-      category: c.category, tags: c.tags, nsfw: !!c.nsfw
+      category: c.category, tags: c.tags, nsfw: !!c.nsfw,
+      front_regex: c.front_regex || '[]', alt_greetings: c.alt_greetings || '[]'
     },
     world
   };
@@ -230,8 +244,8 @@ router.post('/import', authRequired, contentLimiter, (req, res) => {
     catch { return '[]'; }
   })();
   const info = db.prepare(`INSERT INTO characters
-    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, front_regex)
-    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@front_regex)`)
+    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, front_regex, alt_greetings)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@front_regex,@alt_greetings)`)
     .run({
       owner_id: req.user.id,
       name: str(ch.name, 60),
@@ -241,7 +255,8 @@ router.post('/import', authRequired, contentLimiter, (req, res) => {
       persona: str(ch.persona, 24000), voice_name: str(ch.voice_name, 60),
       voice_speed: clampSpeed(ch.voice_speed), voice_pitch: clampPitch(ch.voice_pitch),
       category: str(ch.category, 40), tags: str(ch.tags, 200),
-      is_public: 0, nsfw: ch.nsfw ? 1 : 0, front_regex: frontRegex
+      is_public: 0, nsfw: ch.nsfw ? 1 : 0, front_regex: frontRegex,
+      alt_greetings: normAltGreetings(ch.alt_greetings)
     });
   saveWorld(info.lastInsertRowid, world);
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);

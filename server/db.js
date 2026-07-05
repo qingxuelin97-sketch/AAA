@@ -367,6 +367,12 @@ for (const sql of [
   'ALTER TABLE characters ADD COLUMN voice_pitch REAL DEFAULT 1',
   // 前端显示正则（酒馆 regex_scripts）：find/replace 于消息「显示」层，支持注入 HTML 面板等专家前端
   "ALTER TABLE characters ADD COLUMN front_regex TEXT DEFAULT '[]'",
+  // 备用开场白（酒馆 alternate_greetings）：JSON 数组，聊天页可切换开场
+  "ALTER TABLE characters ADD COLUMN alt_greetings TEXT DEFAULT '[]'",
+  // 内嵌世界书常驻标记（酒馆 constant）：1 = 无视关键词恒注入。
+  // 修复：酒馆卡大量「constant=true 且带关键词」的规则条目此前被降级为关键词触发，
+  // 导致驱动卡片游戏引擎的常驻规则永不注入。
+  'ALTER TABLE world_entries ADD COLUMN constant INTEGER DEFAULT 0',
   // 安全相关：token 版本号（改密后旧 token 失效）
   'ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0',
   // 安全相关：账号锁定（登录失败计数 + 锁定截止时间）

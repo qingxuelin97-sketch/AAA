@@ -95,7 +95,10 @@ function buildWorldEntries(d, notices) {
     const ext = e.extensions || {};
     const order = [e.insertion_order, e.order, ext.insertion_order].find(Number.isFinite) ?? i;
     const enabled = e.enabled !== false && e.disable !== true;
-    return { _order: order, keys: joinKeys(e.keys || e.key), content: e.content || '', enabled };
+    // constant（常驻）必须保真：酒馆卡的游戏规则/系统指令多为「constant=true 且带关键词」，
+    // 若丢掉该标记会被降级成关键词触发 → 规则永不注入、卡片引擎失效。
+    const constant = e.constant === true || ext.constant === true;
+    return { _order: order, keys: joinKeys(e.keys || e.key), content: e.content || '', enabled, constant };
   }).sort((a, b) => a._order - b._order).map(({ _order, ...e }) => e);
 
   let entries = mapped;
@@ -144,8 +147,11 @@ export function normalizeCard(json) {
     avatar: (typeof d.avatar === 'string' && /^(https?:|data:)/.test(d.avatar)) ? d.avatar : '',
     nsfw: d.nsfw ? 1 : 0,
   };
+  // 备用开场白完整导入（酒馆 alternate_greetings）：聊天页可随时切换开场。
+  // 凡人修仙传这类卡的「游戏开始」入口就在备用开场白里（主开场白只是说明书），丢弃会导致玩不了。
   if (Array.isArray(d.alternate_greetings) && d.alternate_greetings.length) {
-    notices.push(`含 ${d.alternate_greetings.length} 条备用开场白：幻域单开场白，已保留主开场白（其余可在编辑页手动取用）。`);
+    character.alt_greetings = d.alternate_greetings.filter(g => typeof g === 'string' && g.trim()).slice(0, 10).map(g => trimTo(g, 24000));
+    notices.push(`含 ${character.alt_greetings.length} 条备用开场白：已完整导入，聊天页可切换开场。`);
   }
 
   // 酒馆前端显示正则（extensions.regex_scripts）→ 角色 front_regex：

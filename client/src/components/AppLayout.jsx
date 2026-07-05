@@ -4,7 +4,7 @@
 //   · 无持久顶栏 —— 每个一级页自带头部（今日=问候区 / 发现=分类浮层 /
 //     消息=双 tab / 我的=个人卡），内容直通状态栏下沿
 //   · 扁平全宽底栏：今日 / 发现 / [+AI] / 消息 / 我的，中央为描边「+AI」创建钮
-//   · 深色优先（theme.js 在 app 壳把 system 解析为 dark）
+//   · 白+青清透浅色优先（theme.js 在 app 壳把 system 解析为 light）
 //   · safe-area aware, phone-framed on wide screens for preview
 // Content pages are reused as-is; only the chrome differs.
 import React, { useEffect, useRef, useState } from 'react';

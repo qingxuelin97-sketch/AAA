@@ -10,6 +10,7 @@ import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
+import { msgPreview } from '../util.js';
 import { Logo } from '../assets.jsx';
 import {
   Bell, ChevronRight, Heart, MessageCircle, Search, UserRound, Users, X, Flame
@@ -113,7 +114,8 @@ export default function Messages() {
               <Avatar src={cv.character_avatar} name={cv.character_name} size={50} />
               <div className="msgs-conv-tx">
                 <b>{cv.character_name}</b>
-                <span>{cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话'}</span>
+                {/* 副标题优先展示最近一条消息摘要（面板消息显示「🎴 交互面板」占位），一眼续上剧情 */}
+                <span>{msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话')}</span>
               </div>
               {cv.affinity ? <span className="msgs-aff"><Flame size={11} /> {cv.affinity}</span> : null}
               <button className="msgs-del" onClick={e => delConv(e, cv)} aria-label="删除对话"><X size={15} /></button>

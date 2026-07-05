@@ -11,8 +11,9 @@ import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday, fmtNum } from '../util.js';
 import { CoverArt } from '../art.jsx';
 import {
-  Check, Flame, MessagesSquare, ChevronRight, Sparkles, Wand2, Feather,
-  Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell
+  Check, Flame, MessagesSquare, ChevronRight, Sparkles,
+  Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell,
+  ScrollText, Users, Trophy
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -36,13 +37,15 @@ function skyClass() {
   return 'sky-dusk';
 }
 
+// 快捷入口 —— 去重：创建类（建角色/写小说/AI绘图/开剧场）已由底栏中央 +AI 按钮
+// 全量承载，这里不再重复；改放启动页顺手要去、且别处没有一键入口的目的地。
 const CREATE_SHORTCUTS = [
-  { to: '/character/new', ic: Sparkles, label: '建角色' },
-  { to: '/atelier', ic: Feather, label: '写小说' },
-  { to: '/draw', ic: Wand2, label: 'AI 绘图' },
-  { to: '/theater', ic: Drama, label: '开剧场' },
   { to: '/gacha', ic: Dices, label: '扭蛋' },
-  { to: '/events', ic: PartyPopper, label: '活动' }
+  { to: '/events', ic: PartyPopper, label: '活动' },
+  { to: '/scripts', ic: ScrollText, label: '剧本' },
+  { to: '/theater', ic: Drama, label: '剧场' },
+  { to: '/community', ic: Users, label: '社区' },
+  { to: '/leaderboard', ic: Trophy, label: '排行榜' }
 ];
 
 export default function AppHome() {

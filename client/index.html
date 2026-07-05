@@ -11,7 +11,13 @@
     <!-- 内容安全策略：默认同源，限制脚本/样式来源，降低 XSS 与供应链风险 -->
     <!-- frame-ancestors 在 <meta> 里按规范会被忽略且每页刷 console 报错，故不写；
          防嵌套由服务端 helmet 的 X-Frame-Options 承担。 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'" />
+    <!-- 为完整兼容酒馆(SillyTavern)角色卡自带的 HTML 前端（面板经 blob: iframe 渲染，
+         blob 文档【继承】本页 CSP），必须放行：
+           · frame-src blob:/data: —— 否则面板 iframe 直接 net::ERR_BLOCKED_BY_CSP
+           · script-src 'unsafe-inline' 'unsafe-eval' https: blob: —— 面板内联脚本 + CDN 库（dexie/leancloud/fontawesome 等）
+           · style-src/font-src https: —— Google Fonts 等外链字体样式
+         取舍与 SillyTavern 一致（酒馆本身不设 CSP）；面板仍受 iframe sandbox 约束。 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https: http:; media-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; connect-src 'self' https: wss: blob: data:; frame-src 'self' blob: data:; child-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'" />
 
     <!-- PWA / installable app -->
     <link rel="manifest" href="manifest.webmanifest" />
