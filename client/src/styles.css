@@ -4559,7 +4559,7 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
   border-radius: 14px; position: relative; z-index: 1; transition: color 0.18s, transform 0.24s var(--spring); }
 .app-tab.active { color: var(--text); font-weight: 700; }
 /* 底栏「墨迹」滑块：JS 量位，弹性滑到活跃 tab 之下（替代生硬的背景切换） */
-.dock-ink { position: absolute; top: 6px; height: 52px; left: 0; width: 0; border-radius: 14px;
+.dock-ink { position: absolute; top: 4px; height: 52px; left: 0; width: 0; border-radius: 14px; /* top/height 运行时由 JS 按活跃 tab 实测覆盖 */
   background: color-mix(in srgb, var(--text) 5%, transparent); opacity: 0;
   transition: transform 0.42s var(--spring), width 0.42s var(--spring), opacity 0.2s; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .dock-ink { transition: none; } }
@@ -9272,3 +9272,18 @@ html[data-app="1"] .chat-main.has-bg .chat-ai-mark {
 }
 /* 名牌与卡的间隙在极透档稍收紧（视觉重心一致） */
 html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name .msg-time { font-size: 11px; }
+
+/* ============================================================
+   对齐审计修复包 —— 输入栏按钮垂直基线统一
+   textarea 单行时三钮同轴；多行增高时统一沉底（一线聊天输入栏范式），
+   不再出现「发送贴底、表情悬浮中间」的错位（实机图二左右下角）。
+   ============================================================ */
+.chat-input-bar .box { align-items: flex-end; }
+.chat-input-bar .act-btn, .chat-input-bar .plus-btn {
+  align-self: flex-end;
+  width: 40px; height: 40px; padding: 0;
+  display: grid; place-items: center; line-height: 0;
+}
+.chat-input-bar .send-btn { align-self: flex-end; }
+/* textarea 与按钮的底缘对齐（自身 padding 保持视觉行高） */
+.chat-input-bar .box textarea { align-self: stretch; }

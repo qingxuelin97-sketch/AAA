@@ -943,7 +943,7 @@ export default function Chat() {
               <div className="box">
                 <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => { setActionsOpen(o => !o); setPlusOpen(false); }} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
                 <textarea ref={inputRef} rows={1} value={input}
-                  placeholder={`对 ${(character?.name || '').length > 7 ? (character.name.slice(0, 7) + '…') : (character?.name || 'TA')} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
+                  placeholder={`对 ${(character?.name || '').length > 5 ? (character.name.slice(0, 5) + '…') : (character?.name || 'TA')} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
                   enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
                 {/* 「+」对话功能面板：把散落在头部菜单里的对话内能力聚合到拇指热区 */}
