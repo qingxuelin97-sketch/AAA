@@ -80,6 +80,10 @@ export default function AppLayout({ children }) {
       ink.style.opacity = '1';
       ink.style.transform = `translateX(${act.offsetLeft}px)`;
       ink.style.width = act.offsetWidth + 'px';
+      // 垂直也按活跃 tab 实测定位：CSS 写死 top 会随 tabbar padding 变化而偏移
+      //（实机反馈光罩偏下 —— tabbar padding-top 4px 而旧 CSS top:6px）
+      ink.style.top = act.offsetTop + 'px';
+      ink.style.height = act.offsetHeight + 'px';
     };
     place();
     window.addEventListener('resize', place);
