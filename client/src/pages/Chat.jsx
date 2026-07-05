@@ -108,16 +108,33 @@ function HtmlPanel({ html }) {
 }
 
 // 把含 ```html 面板 / 整段 HTML 的文本拆开：面板走 iframe，其余走 RP 排版。
-function renderWithPanels(text) {
-  const parts = []; const re = /```html\s*\n?([\s\S]*?)```/gi; let last = 0, m, k = 0;
-  while ((m = re.exec(text))) {
-    const seg = text.slice(last, m.index);
-    if (seg.trim()) parts.push(<span key={'t' + (k++)}>{renderRp(seg, k)}</span>);
-    parts.push(<HtmlPanel key={'h' + (k++)} html={m[1]} />);
-    last = m.index + m[0].length;
+// 围栏收尾不能用非贪婪 ```：酒馆卡的面板动辄数十万字符，正文里（JS 模板串、
+// 说明文档）常夹杂反引号序列，非贪婪会提前收口、把面板后半段当纯文本渲染。
+// 策略：内容若是完整 HTML 文档（含 </html>），收尾围栏取 </html> 之后最近的 ```；
+// 否则退回最近 ```；找不到则吃到文本结尾。
+function splitHtmlFences(text) {
+  const out = []; const open = /```html\s*\n?/gi; let m, last = 0;
+  while ((m = open.exec(text))) {
+    const start = m.index, cs = open.lastIndex;
+    let close = -1;
+    const endHtml = text.toLowerCase().indexOf('</html>', cs);
+    if (endHtml >= 0) close = text.indexOf('```', endHtml);
+    if (close < 0) close = text.indexOf('```', cs);
+    const html = close < 0 ? text.slice(cs) : text.slice(cs, close);
+    const end = close < 0 ? text.length : close + 3;
+    out.push({ pre: text.slice(last, start), html });
+    last = end; open.lastIndex = end;
   }
-  const tail = text.slice(last);
-  if (last === 0 && looksLikeHtml(tail)) return [<HtmlPanel key="h0" html={tail} />];
+  return { blocks: out, tail: text.slice(last) };
+}
+function renderWithPanels(text) {
+  const parts = []; let k = 0;
+  const { blocks, tail } = splitHtmlFences(text);
+  for (const b of blocks) {
+    if (b.pre.trim()) parts.push(<span key={'t' + (k++)}>{renderRp(b.pre, k)}</span>);
+    parts.push(<HtmlPanel key={'h' + (k++)} html={b.html} />);
+  }
+  if (blocks.length === 0 && looksLikeHtml(tail)) return [<HtmlPanel key="h0" html={tail} />];
   if (tail.trim()) parts.push(looksLikeHtml(tail) ? <HtmlPanel key={'h' + k} html={tail} /> : <span key={'t' + k}>{renderRp(tail, k)}</span>);
   return parts;
 }

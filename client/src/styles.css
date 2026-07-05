@@ -7245,6 +7245,15 @@ html[data-app="1"][data-perf="lite"] .chat-main .chat-head {
   backdrop-filter: none; -webkit-backdrop-filter: none;
   background: var(--panel);
 }
+/* 有背景图的沉浸对话：头部必须保持透明深色渐变 —— 上两条常态玻璃规则与
+   前文 has-bg 透明规则同特异性且更靠后，lite 档会把头部刷成纯白，
+   压在深色立绘上就是「顶部白屏」（用户实机截图的根因）。这里以更高特异性收口。 */
+html[data-app="1"] .chat-main.has-bg .chat-head,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-head {
+  background: linear-gradient(180deg, rgba(10,8,14,0.55), rgba(10,8,14,0));
+  border-bottom: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
 html[data-app="1"] .chat-main .chat-input-bar .box {
   background: var(--gl-2-bg);
   border: 1px solid var(--gl-border);
