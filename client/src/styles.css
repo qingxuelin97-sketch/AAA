@@ -4635,7 +4635,7 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 .ah-checkin { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 9px 16px; border-radius: 999px; border: none;
   background: #fff; color: var(--accent-2); font-weight: 700; font-size: 13.5px; cursor: pointer;
   box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
-.ah-checkin.done { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.75); box-shadow: none; border: 1px solid rgba(255,255,255,0.22); }
+.ah-checkin.done { background: rgba(255,255,255,0.16); color: #fff; box-shadow: none; border: 1px solid rgba(255,255,255,0.4); text-shadow: 0 1px 6px rgba(0,0,0,0.3); }
 .ah-checkin:disabled { opacity: 0.7; }
 
 .ah-shortcuts { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
@@ -4822,12 +4822,16 @@ html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-top) - var(--app
   display: grid; place-items: center; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.85); cursor: pointer; }
 .fd2-zoom:active { background: rgba(255,255,255,0.22); }
 
-/* 开场白气泡：浅色玻璃，角色先开口；整体可点，一触入戏 */
+/* 开场白气泡：浅色玻璃，角色先开口；整体可点，一触入戏。
+   不再 line-clamp 硬截断（长开场白被拦腰砍掉，实机图三）——
+   改成限高 + 气泡内滚动，首条对话完整可读，滚到底也不打断竖滑 snap。 */
 .fd2-greet { text-align: left; border: none; cursor: pointer; border-radius: 18px; border-top-left-radius: 6px;
   padding: 12px 15px; font-size: 14px; line-height: 1.7; color: #241d18; white-space: pre-wrap;
   background: rgba(255, 252, 246, 0.9); box-shadow: 0 6px 22px rgba(0,0,0,0.28);
-  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+  max-height: min(38vh, 340px); overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
   transition: transform 0.16s var(--spring); }
+.fd2-greet::-webkit-scrollbar { display: none; }
 .fd2-greet:active { transform: scale(0.985); }
 
 /* 名字 + 作者（左） × 横向互动条（右） */
@@ -6312,6 +6316,18 @@ html[data-app="1"] .ah-checkin {
   background: linear-gradient(140deg, #ffffff, #f6ede0);
   box-shadow: 0 6px 20px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,1);
 }
+/* 已签到态：上面的白渐变底优先级更高，会把基础 .done 的玻璃底盖掉，
+   结果白底配 75% 白字直接看不见。这里按 .ah-coin 的配方重新落一遍：
+   半透白玻璃 + 纯白字 + 细描边，天色渐变上怎么摆都读得清。 */
+html[data-app="1"] .ah-checkin.done {
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.42);
+  box-shadow: none;
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.3);
+}
 html[data-app="1"] .ah-checkin:not(.done):hover { transform: translateY(-1px); }
 
 /* —— 今日页快捷入口：磁贴更精致 —— */
@@ -6697,8 +6713,7 @@ html[data-app="1"] .aht-nb { top: 2px; right: 2px; }
 /* —— Log · Fix: DiscoverFeed feed-top 曾无左内边距，右滑边缘裁切 —— */
 html[data-app="1"] .feed-top { padding-left: 12px; }
 
-/* —— Log · Fix: 沉浸卡开场白气泡过长时截断多余留白 —— */
-html[data-app="1"] .fd2-greet { -webkit-line-clamp: 5; }
+/* —— Log · Fix: 开场白截断策略已废除（改为限高内滚，见基础 .fd2-greet）—— */
 
 /* —— 加载态更精致的骨架 —— */
 html[data-app="1"] .ah-hero-skel,
@@ -8257,19 +8272,7 @@ html[data-app="1"] .chat-main.has-bg .chat-bg::after {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 6px 16px rgba(0,0,0,0.35);
 }
 .cps-ic svg { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
-/* 每个功能一个专属渐变色相 —— 图标即导航 */
-.cps-item:nth-child(1)  .cps-ic { background: linear-gradient(140deg, #a78bfa, #7c3aed); } /* 插图·紫 */
-.cps-item:nth-child(2)  .cps-ic { background: linear-gradient(140deg, #38bdf8, #0369a1); } /* 搜索·蓝 */
-.cps-item:nth-child(3)  .cps-ic { background: linear-gradient(140deg, #fbbf24, #d97706); } /* 书签·金 */
-.cps-item:nth-child(4)  .cps-ic { background: linear-gradient(140deg, #fb7185, #e11d48); } /* 档案·玫 */
-.cps-item:nth-child(5)  .cps-ic { background: linear-gradient(140deg, #34d399, #059669); } /* 开场·翠 */
-.cps-item:nth-child(6)  .cps-ic { background: linear-gradient(140deg, #22d3ee, #0e7490); } /* 重生成·青 */
-.cps-item:nth-child(7)  .cps-ic { background: linear-gradient(140deg, #f472b6, #be185d); } /* 音乐·粉 */
-.cps-item:nth-child(8)  .cps-ic { background: linear-gradient(140deg, #fb923c, #c2410c); } /* 朗读·橙 */
-.cps-item:nth-child(9)  .cps-ic { background: linear-gradient(140deg, #94a3b8, #475569); } /* 字号·灰蓝 */
-.cps-item:nth-child(10) .cps-ic { background: linear-gradient(140deg, #4ade80, #15803d); } /* MD·绿 */
-.cps-item:nth-child(11) .cps-ic { background: linear-gradient(140deg, #818cf8, #4338ca); } /* JSON·靛 */
-.cps-item:nth-child(12) .cps-ic { background: linear-gradient(140deg, #f87171, #b91c1c); } /* 清空·红 */
+/* 序数染色已废除：面板改分页后 nth-child 会错位，统一走下面的语义色相变量 */
 .cps-item:disabled .cps-ic { background: rgba(255,255,255,0.10); box-shadow: none; }
 .cps-badge { background: #f43f5e; box-shadow: 0 0 0 2px rgba(17,15,24,0.9); }
 /* 浅色（无立绘）语境：面板换白玻璃，图标渐变保持 —— 彩色仍是主角 */
@@ -8380,21 +8383,48 @@ html[data-app="1"] .chat-main.has-bg .starter-chip.on {
 .chat-main:not(.has-bg) .cps-dots i { background: var(--border-2); }
 .chat-main:not(.has-bg) .cps-dots i.on { background: var(--accent); }
 
-/* 语义色相（分页后 nth-child 不再可靠，改语义类；后定义覆盖旧序数染色） */
-.cps-item.hue-call .cps-ic    { background: linear-gradient(140deg, #34d399, #047857); }
-.cps-item.hue-illus .cps-ic   { background: linear-gradient(140deg, #a78bfa, #7c3aed); }
-.cps-item.hue-dice .cps-ic    { background: linear-gradient(140deg, #fbbf24, #d97706); }
-.cps-item.hue-gift .cps-ic    { background: linear-gradient(140deg, #fb7185, #e11d48); }
-.cps-item.hue-narr .cps-ic    { background: linear-gradient(140deg, #f472b6, #a21caf); }
-.cps-item.hue-event .cps-ic   { background: linear-gradient(140deg, #f59e0b, #ea580c); }
-.cps-item.hue-profile .cps-ic { background: linear-gradient(140deg, #fb7185, #be123c); }
-.cps-item.hue-greet .cps-ic   { background: linear-gradient(140deg, #34d399, #059669); }
-.cps-item.hue-regen .cps-ic   { background: linear-gradient(140deg, #22d3ee, #0e7490); }
-.cps-item.hue-read .cps-ic    { background: linear-gradient(140deg, #fb923c, #c2410c); }
-.cps-item.hue-bgm .cps-ic     { background: linear-gradient(140deg, #f472b6, #be185d); }
-.cps-item.hue-font .cps-ic    { background: linear-gradient(140deg, #94a3b8, #475569); }
-.cps-item:disabled .cps-ic    { background: rgba(255,255,255,0.10); }
-.chat-main:not(.has-bg) .cps-item:disabled .cps-ic { background: var(--bg-2); color: var(--faint); }
+/* 语义色相（分页后 nth-child 不再可靠，改语义类）。
+   每个功能只声明一对色相端点，观感统一交给下面的玻璃磁贴配方 ——
+   之前的不透明实色方块和整张面板的磨砂质感完全脱节（实机图四）。 */
+.cps-item.hue-call    { --cps-a: #34d399; --cps-b: #047857; }
+.cps-item.hue-illus   { --cps-a: #a78bfa; --cps-b: #7c3aed; }
+.cps-item.hue-dice    { --cps-a: #fbbf24; --cps-b: #d97706; }
+.cps-item.hue-gift    { --cps-a: #fb7185; --cps-b: #e11d48; }
+.cps-item.hue-narr    { --cps-a: #f472b6; --cps-b: #a21caf; }
+.cps-item.hue-event   { --cps-a: #f59e0b; --cps-b: #ea580c; }
+.cps-item.hue-profile { --cps-a: #fb7185; --cps-b: #be123c; }
+.cps-item.hue-greet   { --cps-a: #34d399; --cps-b: #059669; }
+.cps-item.hue-regen   { --cps-a: #22d3ee; --cps-b: #0e7490; }
+.cps-item.hue-read    { --cps-a: #fb923c; --cps-b: #c2410c; }
+.cps-item.hue-bgm     { --cps-a: #f472b6; --cps-b: #be185d; }
+.cps-item.hue-font    { --cps-a: #94a3b8; --cps-b: #475569; }
+/* 玻璃磁贴：色相是「染」在玻璃上的，透出面板底色；描边同色系提亮、
+   顶部一线反光、投影带同色余晖。面板自身已做 backdrop 模糊，磁贴用
+   半透明叠色即可获得通透感 —— 不再嵌套一层 backdrop-filter，省下
+   十二块模糊面的 GPU 开销，中端机也稳 60fps。图标仍是 lucide 矢量。 */
+.cps-item .cps-ic {
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--cps-a, var(--accent)) 32%, transparent),
+    color-mix(in srgb, var(--cps-b, var(--accent-2)) 16%, transparent));
+  border: 1px solid color-mix(in srgb, var(--cps-a, #fff) 40%, rgba(255,255,255,0.16));
+  color: color-mix(in srgb, var(--cps-a, #fff) 82%, #fff);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.3),
+    0 6px 18px color-mix(in srgb, var(--cps-b, #000) 26%, transparent);
+}
+.cps-item .cps-ic svg { filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--cps-b, #000) 50%, transparent)); }
+/* 浅色（无立绘）语境：玻璃变亮、图标取深色端，白底上依然有足够对比 */
+.chat-main:not(.has-bg) .cps-item .cps-ic {
+  color: var(--cps-b, var(--accent));
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--cps-a, var(--accent)) 24%, rgba(255,255,255,0.85)),
+    color-mix(in srgb, var(--cps-b, var(--accent-2)) 12%, rgba(255,255,255,0.65)));
+  border-color: color-mix(in srgb, var(--cps-b, var(--accent)) 26%, rgba(255,255,255,0.8));
+  box-shadow: inset 0 1px 0 #fff, 0 4px 12px color-mix(in srgb, var(--cps-b, #000) 12%, transparent);
+}
+.cps-item:disabled .cps-ic    { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.45); box-shadow: none; }
+.cps-item:disabled .cps-ic svg { filter: none; }
+.chat-main:not(.has-bg) .cps-item:disabled .cps-ic { background: var(--bg-2); border-color: var(--border); color: var(--faint); }
 
 /* 送礼物选择条：横滑一排礼物（面板顶部滑出） */
 .cps-gifts {
@@ -8940,12 +8970,14 @@ html[data-app="1"][data-theme="dark"] .app-tabbar {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 -8px 30px rgba(0,0,0,0.35);
 }
 
-/* ---- Toast 玻璃 ---- */
+/* ---- Toast 玻璃 ----
+   曾把底色 !important 成浅色 var(--panel)，但文字还是米白 #f7f4ec，
+   浅色主题下「领取成功」直接糊成一片（实机图二）。toast 会浮在任意
+   画面上，只有深玻璃 + 白字是全场景可读的，底色交还给基础规则，
+   这里只负责加厚模糊质感。 */
 .toast-stack > * {
-  background: color-mix(in srgb, var(--panel) 82%, transparent) !important;
   -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 12px 34px rgba(13,74,88,0.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 34px rgba(0,0,0,0.3);
 }
 
 /* ---- 通话界面控件玻璃（复用 CallScreen）---- */
@@ -9287,3 +9319,13 @@ html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name .msg-time { font-s
 .chat-input-bar .send-btn { align-self: flex-end; }
 /* textarea 与按钮的底缘对齐（自身 padding 保持视觉行高） */
 .chat-input-bar .box textarea { align-self: stretch; }
+
+/* ============================================================
+   渲染围栏 —— 长列表离屏部分整段跳过排版与绘制。
+   对画面零影响（滚到哪儿哪儿才真正渲染），换来的是低端机上
+   成就殿堂这类几十张卡的页面进场/滚动不再整页重排。
+   contain-intrinsic-size 给离屏卡占位高度，滚动条不会跳。
+   ============================================================ */
+.ach-card { content-visibility: auto; contain-intrinsic-size: auto 112px; }
+/* 沉浸流每屏一卡：把布局/绘制影响锁在卡内，滑动时相邻卡互不牵连 */
+.feed-card { contain: layout paint style; }

@@ -215,11 +215,18 @@ export default function DiscoverFeed() {
           const expanded = expandedId === c.id;
           const near = Math.abs(i - activeIdx) <= 1; // 只有相邻卡渲染重文本层，长列表滚动更轻
           const greeting = near ? cleanGreeting(c.greeting) : '';
+          // 角色带视频壁纸时，流里直接放动态背景 —— 和进对话后看到的是同一张
+          // 「活的」壁纸，不再降级成静态头像。只给相邻卡挂 <video>（滑远即卸载，
+          // 解码器和内存不随列表膨胀），远处的卡仍用静态图兜底。
+          const liveBg = near && c.background && c.background_type === 'video';
           return (
             <section key={c.id} className="feed-card" data-idx={i}>
-              {c.avatar
-                ? <img className="feed-bg" src={assetUrl(c.avatar)} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
-                : <div className="feed-bg cover-art-box"><CoverArt name={c.name} /></div>}
+              {liveBg
+                ? <video className="feed-bg" src={assetUrl(c.background)} poster={c.avatar ? assetUrl(c.avatar) : undefined}
+                    muted loop autoPlay playsInline preload="metadata" />
+                : c.avatar
+                  ? <img className="feed-bg" src={assetUrl(c.avatar)} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
+                  : <div className="feed-bg cover-art-box"><CoverArt name={c.name} /></div>}
               <div className="feed-scrim" />
               <span className="feed-ai-mark" aria-hidden="true">由 AI 生成</span>
               {/* 双击点赞层：盖住画面区域，按钮层在其上不受影响 */}
@@ -245,11 +252,15 @@ export default function DiscoverFeed() {
                   </div>
                 )}
 
-                {/* 开场白气泡：角色先开口 —— 点它即刻入戏 */}
+                {/* 开场白气泡：角色先开口 —— 点它即刻入戏。
+                    用 div 而不是 button：气泡限高后内部要能滚，部分 WebView
+                    不把 button 当滚动容器。 */}
                 {greeting && (
-                  <button className="fd2-greet" onClick={() => chat(c)}>
+                  <div className="fd2-greet" role="button" tabIndex={0}
+                    onClick={() => chat(c)}
+                    onKeyDown={e => e.key === 'Enter' && chat(c)}>
                     {greeting}
-                  </button>
+                  </div>
                 )}
 
                 {/* 角色名 + 作者 行；右侧横向互动条 */}
