@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { useKeyboardInsetBar } from '../mobile.js';
 import { speakBrowser, stopSpeaking, onVoiceStateChange, currentVoiceId } from '../voice.js';
@@ -364,7 +364,7 @@ export default function TheaterRoom() {
       <div className="chat-main">
         <div className="chat-bg inovel-bg" aria-hidden="true">
           {stageBg.url
-            ? <img key={stageBg.url} src={stageBg.url} alt="" className="inovel-bg-img" />
+            ? <img key={stageBg.url} src={assetUrl(stageBg.url)} alt="" className="inovel-bg-img" />
             : <div className="inovel-bg-fallback" />}
         </div>
         {stageBg.label && stageBg.kind !== 'cover' && (
@@ -543,7 +543,7 @@ export default function TheaterRoom() {
           <button className="inovel-jump" onClick={() => { stick(); scrollToBottom(); }} title="回到最新" aria-label="回到最新"><ArrowDown size={18} /></button>
         )}
 
-        {theater.bgm && <audio ref={bgmRef} src={theater.bgm} loop preload="none" />}
+        {theater.bgm && <audio ref={bgmRef} src={assetUrl(theater.bgm)} loop preload="none" />}
 
         {!finished && (
           <div className="chat-input-bar inovel-bar" ref={barRef}>

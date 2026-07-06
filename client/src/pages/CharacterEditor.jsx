@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, uploadFile, getToken } from '../api.jsx';
+import { api, uploadFile, getToken, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
@@ -104,7 +104,7 @@ export default function CharacterEditor() {
     if (voiceCfg?.proto === 'browser') { speakBrowser(VOICE_SAMPLE, c.voice_name || voiceCfg.name, c.voice_speed, c.voice_pitch); return; }
     setPreviewing(true);
     try {
-      const res = await fetch('/api/chat/tts', {
+      const res = await fetch(getApiBase() + '/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ text: VOICE_SAMPLE, voice: c.voice_name || undefined, speed: c.voice_speed || undefined, pitch: c.voice_pitch || undefined })
       });
@@ -493,7 +493,7 @@ export default function CharacterEditor() {
                 {BG_PRESETS.map(b => (
                   <button key={b.name} type="button" className={'bg-preset' + (c.background === b.url ? ' on' : '')}
                     onClick={() => setC(prev => ({ ...prev, background: b.url, background_type: 'image' }))} title={b.name}>
-                    <img src={b.url} alt={b.name} />
+                    <img src={assetUrl(b.url)} alt={b.name} />
                     <span>{b.name}</span>
                   </button>
                 ))}
@@ -503,7 +503,7 @@ export default function CharacterEditor() {
                 {ONLINE_BG.map(b => (
                   <button key={b.name} type="button" className={'bg-preset' + (locking === b.name ? ' loading' : '')}
                     disabled={!!locking} onClick={() => pickOnline(b)} title={b.name}>
-                    <img src={b.url} alt={b.name} loading="lazy" referrerPolicy="no-referrer" onError={onImgErr} />
+                    <img src={assetUrl(b.url)} alt={b.name} loading="lazy" referrerPolicy="no-referrer" onError={onImgErr} />
                     <span>{locking === b.name ? '锁定中…' : b.name}</span>
                   </button>
                 ))}
@@ -516,8 +516,8 @@ export default function CharacterEditor() {
               <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>预览</label>
               <div style={{ height: 220, borderRadius: 12, overflow: 'hidden', marginTop: 8, position: 'relative', background: 'var(--bg-2)' }}>
                 {c.background ? (c.background_type === 'video'
-                  ? <video src={c.background} muted loop autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <img src={c.background} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                  ? <video src={assetUrl(c.background)} muted loop autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <img src={assetUrl(c.background)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
                 ) : <div className="empty" style={{ padding: 70 }}>未设置背景</div>}
               </div>
 
@@ -525,7 +525,7 @@ export default function CharacterEditor() {
               <input id="bgm-file" type="file" accept="audio/*" hidden onChange={pickBgm} />
               {c.bgm ? (
                 <div className="bgm-row">
-                  <audio src={c.bgm} controls loop preload="metadata" style={{ width: '100%' }} />
+                  <audio src={assetUrl(c.bgm)} controls loop preload="metadata" style={{ width: '100%' }} />
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button type="button" className="btn sm ghost" onClick={() => document.getElementById('bgm-file').click()} disabled={bgmBusy}>{bgmBusy ? '上传中…' : '更换'}</button>
                     <button type="button" className="btn sm danger" onClick={() => set('bgm', '')}><X size={14} /> 移除</button>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api, useAuth, getToken } from '../api.jsx';
+import { api, useAuth, getToken, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal, CouncilorBadge, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Zap, ImageIcon, Loader2, Mic } from 'lucide-react';
 import { BarChart, LineChart } from '../components/Charts.jsx';
@@ -441,7 +441,7 @@ function PlatformTab({ toast }) {
     if (!voice.base_url) { toast('请先填写语音服务的 Base URL', 'err'); return; }
     setVprev(true);
     try {
-      const res = await fetch('/api/admin/platform/test-voice', {
+      const res = await fetch(getApiBase() + '/api/admin/platform/test-voice', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ voice: { protocol: voice.protocol, base_url: voice.base_url, model: voice.model, voice_name: voice.voice_name, key: voice.key } })
       });
@@ -776,7 +776,7 @@ function PlatformTab({ toast }) {
             {imgTest.sample && (
               <div className="itr-sample">
                 <ImageIcon size={14} className="muted" />
-                <img src={imgTest.sample} alt="检测样图" onError={e => { e.target.style.display = 'none'; }} />
+                <img src={assetUrl(imgTest.sample)} alt="检测样图" onError={e => { e.target.style.display = 'none'; }} />
               </div>
             )}
           </div>

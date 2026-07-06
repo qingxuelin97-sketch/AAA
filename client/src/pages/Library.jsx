@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, uploadFile } from '../api.jsx';
+import { api, uploadFile, assetUrl } from '../api.jsx';
 import { parseCharacterCard } from '../charcard.js';
 import { useToast, GridSkeleton } from '../ui.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
@@ -83,7 +83,7 @@ export default function Library() {
               {chars.map(c => (
                 <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id + '/edit')}>
                   <div className="cover">
-                    {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
+                    {c.avatar ? <img src={assetUrl(c.avatar)} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
                     {c.is_public ? <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Globe size={12} /> 已公开</div> : null}
                   </div>
                   <div className="meta">

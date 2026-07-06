@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, assetUrl } from '../api.jsx';
 import { useToast, Modal, CountUp } from '../ui.jsx';
 import {
   PenTool, Plus, Sparkles, BookText, Library, Layers, Feather,
@@ -59,7 +59,7 @@ export default function Atelier() {
               <div key={n.id} className="atl-card" onClick={() => nav(`/atelier/read/${n.id}`)}>
                 <div className="atl-card-spine" />
                 <div className="atl-card-cover">
-                  {n.cover ? <img src={n.cover} alt="" /> : <div className="atl-card-ph"><ScrollText size={26} /></div>}
+                  {n.cover ? <img src={assetUrl(n.cover)} alt="" /> : <div className="atl-card-ph"><ScrollText size={26} /></div>}
                   {n.genre && <span className="atl-card-genre">{n.genre}</span>}
                 </div>
                 <div className="atl-card-body">
@@ -90,7 +90,7 @@ export default function Atelier() {
             <div key={n.id} className="atl-card" onClick={() => nav(`/atelier/${n.id}`)}>
               <div className="atl-card-spine" />
               <div className="atl-card-cover">
-                {n.cover ? <img src={n.cover} alt="" /> : <div className="atl-card-ph"><ScrollText size={26} /></div>}
+                {n.cover ? <img src={assetUrl(n.cover)} alt="" /> : <div className="atl-card-ph"><ScrollText size={26} /></div>}
                 {n.genre && <span className="atl-card-genre">{n.genre}</span>}
               </div>
               <div className="atl-card-body">

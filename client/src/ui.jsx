@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { uploadFile } from './api.jsx';
+import { uploadFile, assetUrl } from './api.jsx';
 import { UploadCloud, UserRound, CheckCircle2, AlertTriangle, Info, Scale, BadgeCheck, ShieldCheck, Crown } from 'lucide-react';
 import { FACE_PRESETS, ANIME_PRESETS, ONLINE_AV } from './faces.js';
 
@@ -66,8 +66,8 @@ export function Uploader({ value, type = 'image', onChange, variant = 'box', dyn
       <input ref={ref} type="file" accept={dynamic ? DYNAMIC : STATIC_IMG} hidden onChange={pick} />
       {busy ? <div className="muted">上传中…</div> : value ? (
         isVideo
-          ? <video className="preview" src={value} muted loop autoPlay playsInline />
-          : <img className="preview" src={value} alt="" />
+          ? <video className="preview" src={assetUrl(value)} muted loop autoPlay playsInline />
+          : <img className="preview" src={assetUrl(value)} alt="" />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
           <UploadCloud size={22} /><span style={{ fontSize: 13 }}>{label}</span>
@@ -129,7 +129,7 @@ export function IdentityBadges({ u, className = '' }) {
 
 export function Avatar({ src, name = '', size = 40, eager }) {
   const initial = (name || '?').trim().charAt(0).toUpperCase();
-  if (src) return <img className="avatar" src={src} style={{ width: size, height: size }} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" />;
+  if (src) return <img className="avatar" src={assetUrl(src)} style={{ width: size, height: size }} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" />;
   return (
     <div className="avatar" style={{
       width: size, height: size, display: 'grid', placeItems: 'center',
@@ -189,7 +189,7 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
     <>
       <div style={{ display: 'grid', placeItems: 'center', gap: 8 }}>
         <div className="avatar-pick" style={{ width: size, height: size }} onClick={() => setOpen(true)} title="选择或上传头像">
-          {value ? <img src={value} alt="" /> : <UserRound size={size * 0.4} />}
+          {value ? <img src={assetUrl(value)} alt="" /> : <UserRound size={size * 0.4} />}
           <span className="avatar-pick-edit">更换</span>
         </div>
       </div>

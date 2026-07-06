@@ -17,7 +17,7 @@
            · script-src 'unsafe-inline' 'unsafe-eval' https: blob: —— 面板内联脚本 + CDN 库（dexie/leancloud/fontawesome 等）
            · style-src/font-src https: —— Google Fonts 等外链字体样式
          取舍与 SillyTavern 一致（酒馆本身不设 CSP）；面板仍受 iframe sandbox 约束。 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https: http:; media-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; connect-src 'self' https: wss: blob: data:; frame-src 'self' blob: data:; child-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https: http:; media-src 'self' data: blob: https: http:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; connect-src 'self' https: http: wss: ws: blob: data:; frame-src 'self' blob: data:; child-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'" />
 
     <!-- PWA / installable app -->
     <link rel="manifest" href="manifest.webmanifest" />

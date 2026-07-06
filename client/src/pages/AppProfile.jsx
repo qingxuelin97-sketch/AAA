@@ -4,7 +4,7 @@
 // 「全部功能」宫格保底承接原 launcher 的每一个入口，确保功能不丢。
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon, IdentityBadges } from '../ui.jsx';
 import { fmtNum } from '../util.js';
 import { CoverArt, EmptyArt } from '../art.jsx';
@@ -189,7 +189,7 @@ export default function AppProfile() {
           {content.map(c => (
             <button key={c.id} className="pf-cc" onClick={() => nav('/character/' + c.id)}>
               <div className="pf-cc-cover">
-                {c.avatar ? <img src={c.avatar} alt="" loading="lazy" decoding="async" /> : <div className="cover-art-box"><CoverArt name={c.name} /></div>}
+                {c.avatar ? <img src={assetUrl(c.avatar)} alt="" loading="lazy" decoding="async" /> : <div className="cover-art-box"><CoverArt name={c.name} /></div>}
               </div>
               <b>{c.name}</b>
               <span>{c.tagline || '——'}</span>

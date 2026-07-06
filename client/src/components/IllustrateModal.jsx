@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Modal, CoinIcon } from '../ui.jsx';
 import { STYLE_PRESETS, SIZE_OPTS, composePrompt, generateImage, downloadImage } from '../imagegen.js';
 import { Sparkles, Download, X, Wand2, Crown } from 'lucide-react';
@@ -58,7 +58,7 @@ export default function IllustrateModal({ initialPrompt = '', onClose }) {
       {busy && <div className="draw-stage-empty" style={{ minHeight: 140 }}><div className="draw-loader"><Wand2 size={26} /></div><p>绘制中…</p></div>}
       {img && !busy && (
         <div className="draw-result" style={{ marginBottom: 12 }}>
-          <div className="draw-result-img"><img src={img} alt={prompt} /></div>
+          <div className="draw-result-img"><img src={assetUrl(img)} alt={prompt} /></div>
           <div className="draw-result-bar"><button className="btn sm" onClick={() => downloadImage(img)}><Download size={14} /> 下载</button></div>
         </div>
       )}

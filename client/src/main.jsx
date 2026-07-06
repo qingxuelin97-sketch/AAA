@@ -56,7 +56,12 @@ function render() {
   );
 }
 
-if (STATIC) {
+// 单包双模式（接通真实服务器的地基）：
+//   · 未配置服务器地址 → 安装内置 mock 后端（纯离线演示，现状不变）
+//   · 在「设置 → 服务器连接」配置了地址 → 跳过 mock，所有 /api 走真实后端
+//     （api.jsx 的 getApiBase() 会为每个请求补全服务器域名）
+const RUNTIME_SERVER = (() => { try { return (localStorage.getItem('huanyu_server') || '').trim(); } catch { return ''; } })();
+if (STATIC && !RUNTIME_SERVER) {
   import('./mock/backend.js').then(({ installMockBackend }) => { installMockBackend(); render(); });
 } else {
   render();

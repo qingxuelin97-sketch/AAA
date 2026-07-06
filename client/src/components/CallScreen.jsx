@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { getToken } from '../api.jsx';
+import { getToken, getApiBase, assetUrl } from '../api.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, detectEmotion } from '../voice.js';
 import { Avatar } from '../ui.jsx';
 import { PhoneOff, Mic, Square, Keyboard, Send, Loader2, Video, Volume2 } from 'lucide-react';
@@ -43,14 +43,14 @@ export default function CallScreen({ character, onClose }) {
     (async () => {
       const H = { Authorization: `Bearer ${getToken()}` };
       try {
-        const r = await fetch('/api/chat/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json', ...H }, body: JSON.stringify({ character_id: character.id }) });
+        const r = await fetch(getApiBase() + '/api/chat/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json', ...H }, body: JSON.stringify({ character_id: character.id }) });
         const d = await r.json(); if (alive) setConvId(d.conversation?.id || null);
       } catch { /* 建会话失败仍展示界面 */ }
-      try { const s = await (await fetch('/api/settings', { headers: H })).json(); if (alive) setVoiceCfg({ voice_protocol: s.settings?.voice_protocol, voice_name: s.settings?.voice_name }); } catch { /* */ }
-      try { const a = await (await fetch('/api/asr/status', { headers: H })).json(); if (alive) setAsrReady(!!a.ready); } catch { if (alive) setAsrReady(false); }
+      try { const s = await (await fetch(getApiBase() + '/api/settings', { headers: H })).json(); if (alive) setVoiceCfg({ voice_protocol: s.settings?.voice_protocol, voice_name: s.settings?.voice_name }); } catch { /* */ }
+      try { const a = await (await fetch(getApiBase() + '/api/asr/status', { headers: H })).json(); if (alive) setAsrReady(!!a.ready); } catch { if (alive) setAsrReady(false); }
       // 拉完整角色（含背景），据此决定是否进入视频形态。
       try {
-        const cd = await (await fetch('/api/characters/' + character.id, { headers: H })).json();
+        const cd = await (await fetch(getApiBase() + '/api/characters/' + character.id, { headers: H })).json();
         if (alive && cd.character) {
           setChar(prev => ({ ...prev, ...cd.character }));
           if (!touchedMode.current) setMode(cd.character.background ? 'video' : 'voice');
@@ -72,7 +72,7 @@ export default function CallScreen({ character, onClose }) {
     if (!clean) return;
     const emotion = detectEmotion(text);
     if (voiceCfg?.voice_protocol === 'browser' || !voiceCfg) { speakBrowser(clean, voiceCfg?.voice_name, character?.voice_speed, character?.voice_pitch, true, emotion); return; }
-    fetch('/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    fetch(getApiBase() + '/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
       body: JSON.stringify({ text: clean, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, pitch: character?.voice_pitch || undefined, emotion, character_id: character?.id }) })
       .then(res => res.ok ? res.blob() : null).then(blob => { if (blob) playAudioUrl(URL.createObjectURL(blob), true); })
       .catch(() => { /* 语音失败不阻断（仍有字幕） */ });
@@ -92,7 +92,7 @@ export default function CallScreen({ character, onClose }) {
     if (!content || !convId || thinking) return;
     stopSpeaking(); setThinking(true); setSubtitle(''); bufRef.current = '';
     try {
-      const res = await fetch(`/api/chat/conversations/${convId}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ content }) });
+      const res = await fetch(getApiBase() + `/api/chat/conversations/${convId}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ content }) });
       if (!res.ok) throw new Error('busy');
       const reader = res.body.getReader(); const dec = new TextDecoder(); let carry = '';
       while (true) {
@@ -128,7 +128,7 @@ export default function CallScreen({ character, onClose }) {
         setTranscribing(true);
         try {
           const fd = new FormData(); fd.append('audio', blob, 'call.webm');
-          const r = await fetch('/api/asr/transcribe', { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd });
+          const r = await fetch(getApiBase() + '/api/asr/transcribe', { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd });
           const d = await r.json().catch(() => ({}));
           if (r.ok && d.text) { setDraft(''); say(d.text); }
           else setSubtitle('（没太听清，再说一遍试试…）');
@@ -182,8 +182,8 @@ export default function CallScreen({ character, onClose }) {
       {videoOn
         ? <div className="call-video">
             {char.background_type === 'video'
-              ? <video src={bg} muted loop autoPlay playsInline />
-              : <img src={bg} alt="" />}
+              ? <video src={assetUrl(bg)} muted loop autoPlay playsInline />
+              : <img src={assetUrl(bg)} alt="" />}
           </div>
         : <div className="call-bg" />}
       <div className="call-scrim" />

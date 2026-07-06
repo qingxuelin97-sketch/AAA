@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, getApiBase, getServerPref, setServerPref, setToken } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker, CoinIcon } from '../ui.jsx';
 import { getThemeMode, setThemeMode, getGlass, setGlass } from '../theme.js';
 import { ACCENTS, getAccent, setAccent } from '../accent.js';
@@ -67,6 +67,80 @@ const VOICE_PROVIDER_OPTS = [
 ];
 const VOICE_BY_VALUE = Object.fromEntries(VOICE_PROVIDER_OPTS.map(([v, , b, p]) => [v, { base: b, proto: p }]));
 
+// 「服务器连接」仅在离线包形态（APK / 静态站）展示：Web 同源部署本就连着后端，无需配置。
+const OFFLINE_SHELL = import.meta.env.VITE_STATIC === '1' || !!window.Capacitor?.isNativePlatform?.();
+
+// 服务器连接卡（接通真实服务器的地基）——
+// 留空 = 离线演示模式（内置本机数据）；填写后整个 App 的 /api 与 /uploads 都指向该后端。
+// 保存需整页重载：mock 拦截器的装载与 API_BASE 快照都发生在启动时。
+function ServerCard({ toast }) {
+  const [url, setUrl] = useState(getServerPref());
+  const [testing, setTesting] = useState(false);
+  const [tested, setTested] = useState(null); // null | 'ok' | 'fail'
+  const active = getServerPref();
+  const norm = String(url || '').trim().replace(/\/+$/, '');
+  const valid = norm === '' || /^https?:\/\/[^\s/]+/i.test(norm);
+
+  const test = async () => {
+    if (!norm) { toast('请先填写服务器地址', 'err'); return; }
+    if (!valid) { toast('地址需以 http:// 或 https:// 开头', 'err'); return; }
+    setTesting(true); setTested(null);
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 8000);
+      const res = await fetch(norm + '/api/health', { signal: ctl.signal });
+      clearTimeout(timer);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.ok) throw new Error('HTTP ' + res.status);
+      setTested('ok');
+      toast('连接成功 · 服务器工作正常');
+    } catch (e) {
+      setTested('fail');
+      toast('连接失败：' + (e.name === 'AbortError' ? '超时（8 秒无响应）' : (e.message || '网络错误')) + '。请确认地址可从本设备访问，且服务端已配置 CORS 允许来源。', 'err');
+    } finally { setTesting(false); }
+  };
+  const save = () => {
+    if (norm && !valid) { toast('地址需以 http:// 或 https:// 开头', 'err'); return; }
+    if (norm && norm.startsWith('http://') && !/^http:\/\/(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(norm)
+      && !confirm('该地址使用明文 HTTP，登录凭证可能被网络中间人窃取。仅建议在局域网调试时使用。仍要保存吗？')) return;
+    setServerPref(norm);
+    toast(norm ? '已保存，正在重新连接…' : '已切回离线演示模式…');
+    setTimeout(() => location.reload(), 600);
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: 20 }}>
+      <div className="section-title"><h2><Globe size={17} style={{ verticalAlign: -3, marginRight: 6 }} />服务器连接</h2>
+        <span className="tag" style={active ? { color: 'var(--accent-2)' } : undefined}>{active ? '已连接自有服务器' : '离线演示模式'}</span>
+      </div>
+      <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>
+        留空时 App 以<b>离线演示模式</b>运行：数据仅存于本设备，无需网络。填入你部署的幻域后端地址后，
+        账号、角色与对话都将保存在服务器上，可跨设备同步。修改后 App 会自动重载生效。
+      </p>
+      <div className="field"><label>服务器地址</label>
+        <input className="input" value={url} onChange={e => { setUrl(e.target.value); setTested(null); }}
+          placeholder="https://your-server.example.com" inputMode="url"
+          autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
+        <div className="hint">
+          填写部署好的幻域服务端根地址（不含 /api）。推荐使用 HTTPS；
+          服务端需在环境变量 <code>CORS_ORIGINS</code> 中允许 App 来源（如 <code>https://localhost</code>）。
+          {tested === 'ok' && <b style={{ color: 'var(--ok, #16a34a)' }}> ✓ 测试通过</b>}
+          {tested === 'fail' && <b style={{ color: 'var(--danger, #dc2626)' }}> ✕ 测试未通过</b>}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className="btn sm" onClick={test} disabled={testing || !norm}>
+          <Activity size={14} className={testing ? 'spin' : ''} /> {testing ? '测试中…' : '测试连接'}
+        </button>
+        <button className="btn sm primary" onClick={save} disabled={norm === active || (!!norm && !valid)}>
+          <Check size={14} /> 保存并重新连接
+        </button>
+        {active && <button className="btn sm" onClick={() => { setUrl(''); setServerPref(''); toast('已切回离线演示模式…'); setTimeout(() => location.reload(), 600); }}>切回离线模式</button>}
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   const toast = useToast();
   const nav = useNavigate();
@@ -131,7 +205,7 @@ export default function Settings() {
     setTesting(true);
     try {
       await api('/settings', { method: 'PUT', body: s });
-      const res = await fetch('/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('huanyu_token') || '') }, body: JSON.stringify({ text: '你好，这是语音试听。' }) });
+      const res = await fetch(getApiBase() + '/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('huanyu_token') || '') }, body: JSON.stringify({ text: '你好，这是语音试听。' }) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || ('HTTP ' + res.status)); }
       const blob = await res.blob(); new Audio(URL.createObjectURL(blob)).play(); toast('语音试听已播放');
     } catch (e) { toast('语音失败：' + e.message, 'err'); } finally { setTesting(false); }
@@ -150,8 +224,12 @@ export default function Settings() {
     catch (e) { toast(e.message, 'err'); }
   };
   const changePwd = async () => {
-    try { await api('/auth/password', { method: 'PUT', body: pwd }); setPwd({ old_password: '', new_password: '' }); toast('密码已修改'); }
-    catch (e) { toast(e.message, 'err'); }
+    try {
+      const d = await api('/auth/password', { method: 'PUT', body: pwd });
+      // 改密会使旧 token 全部失效；服务端为当前会话回发新 token，本机免重登。
+      if (d.token) setToken(d.token);
+      setPwd({ old_password: '', new_password: '' }); toast('密码已修改');
+    } catch (e) { toast(e.message, 'err'); }
   };
 
   const clearConvs = async () => {
@@ -429,6 +507,8 @@ export default function Settings() {
         )}
 
         {tab === 'pref' && (
+          <>
+          {OFFLINE_SHELL && <ServerCard toast={toast} />}
           <div className="card">
             <div className="section-title"><h2>偏好设置</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
             <div className="field">
@@ -483,6 +563,7 @@ export default function Settings() {
               <span><input type="checkbox" checked={!!s.notify_email} onChange={e => set('notify_email', e.target.checked ? 1 : 0)} /><span className="track" /></span>
             </label>
           </div>
+          </>
         )}
 
         {tab === 'help' && (
