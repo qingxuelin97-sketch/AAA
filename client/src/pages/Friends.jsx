@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
+import { tick } from '../appgestures.js';
 import { useToast, Avatar, CreatorV, CouncilorBadge } from '../ui.jsx';
 import { EmptyArt } from '../art.jsx';
 import { useAutoGrow } from '../util.js';
@@ -89,14 +90,21 @@ export default function Friends() {
     try { await api('/friends/' + id, { method: 'DELETE' }); toast('已解除好友'); setSel(null); setMenu(false); loadFriends(); }
     catch (e) { toast(e.message, 'err'); }
   };
+  // 乐观发送：消息立即上屏（pending 半透明），服务器确认后替换为真实消息，
+  // 失败则撤回并还原输入 —— 弱网下的「秒级」体感关键。
   const send = async () => {
     const t = text.trim(); if (!t || !sel) return;
-    setText('');
+    setText(''); tick(6);
+    const tempId = 'tmp-' + Date.now();
+    setDm(p => p ? { ...p, messages: [...p.messages, { id: tempId, text: t, mine: true, pending: true, created_at: new Date().toISOString() }] } : p);
     try {
       const d = await api('/dm/' + sel, { method: 'POST', body: { text: t } });
-      setDm(p => p ? { ...p, messages: [...p.messages, d.message] } : p);
+      setDm(p => p ? { ...p, messages: p.messages.map(m => m.id === tempId ? d.message : m) } : p);
       loadFriends();
-    } catch (e) { toast(e.message, 'err'); setText(t); }
+    } catch (e) {
+      toast(e.message, 'err'); setText(t);
+      setDm(p => p ? { ...p, messages: p.messages.filter(m => m.id !== tempId) } : p);
+    }
   };
 
   return (
@@ -181,9 +189,9 @@ export default function Friends() {
             <div className="fr-dm-scroll" ref={scrollRef}>
               {dm.messages.length === 0 && <div className="fr-dm-tip">还没有聊天记录，发条消息打个招呼吧～</div>}
               {dm.messages.map(mm => (
-                <div key={mm.id} className={'dm-msg ' + (mm.mine ? 'mine' : 'theirs')}>
+                <div key={mm.id} className={'dm-msg ' + (mm.mine ? 'mine' : 'theirs') + (mm.pending ? ' pending' : '')}>
                   {!mm.mine && <Avatar src={dm.peer.avatar} name={dm.peer.display_name} size={30} />}
-                  <div className="dm-bubble">{mm.text}<span className="dm-time">{(mm.created_at || '').slice(11, 16)}</span></div>
+                  <div className="dm-bubble">{mm.text}<span className="dm-time">{mm.pending ? '发送中…' : (mm.created_at || '').slice(11, 16)}</span></div>
                 </div>
               ))}
             </div>

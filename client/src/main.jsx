@@ -61,7 +61,8 @@ function render() {
 //   · 在「设置 → 服务器连接」配置了地址 → 跳过 mock，所有 /api 走真实后端
 //     （api.jsx 的 getApiBase() 会为每个请求补全服务器域名）
 const RUNTIME_SERVER = (() => { try { return (localStorage.getItem('huanyu_server') || '').trim(); } catch { return ''; } })();
-if (STATIC && !RUNTIME_SERVER) {
+// 构建期注入了固定服务器（VITE_API_BASE，CI 打包连服务器的 APK）时同样跳过 mock。
+if (STATIC && !RUNTIME_SERVER && !import.meta.env.VITE_API_BASE) {
   import('./mock/backend.js').then(({ installMockBackend }) => { installMockBackend(); render(); });
 } else {
   render();

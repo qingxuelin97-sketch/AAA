@@ -4,6 +4,8 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow } from '../util.js';
+import { useRealtime, useRealtimeEvent } from '../realtime.jsx';
+import { tick } from '../appgestures.js';
 import { Send, ArrowLeft, Users, LogOut, MessageCircle } from 'lucide-react';
 
 export default function GroupRoom() {
@@ -39,15 +41,31 @@ export default function GroupRoom() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
 
+  // 按 id 去重追加：SSE 与轮询可能同时送达同一条消息。
+  const appendNew = (rows) => {
+    const fresh = (Array.isArray(rows) ? rows : [rows]).filter(m => m && m.id > lastId.current);
+    if (!fresh.length) return;
+    lastId.current = fresh[fresh.length - 1].id;
+    setMessages(m => [...m, ...fresh]);
+  };
+
+  // 秒级实时：SSE 直推本群新消息（连接真实服务器时生效）。
+  const rt = useRealtime();
+  const sseOpen = rt?.status === 'open';
+  useRealtimeEvent('group_message', (data) => {
+    if (data?.message && +data.group_id === +id) { appendNew(data.message); tick(4); }
+  });
+
+  // 轮询兜底：SSE 已连通时放宽到 20s（仅防漏），未连通（离线演示/旧服务端）保持 4s。
   useEffect(() => {
     const t = setInterval(async () => {
       try {
         const d = await api('/groups/' + id + '/messages?after=' + lastId.current);
-        if (d.messages.length) { setMessages(m => [...m, ...d.messages]); lastId.current = d.messages[d.messages.length - 1].id; }
+        appendNew(d.messages);
       } catch { /* */ }
-    }, 4000);
+    }, sseOpen ? 20000 : 4000);
     return () => clearInterval(t);
-  }, [id]);
+  }, [id, sseOpen]);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [messages]);
 
@@ -55,9 +73,10 @@ export default function GroupRoom() {
     const content = input.trim();
     if (!content) return;
     setInput('');
+    tick(6);
     try { const d = await api('/groups/' + id + '/messages', { method: 'POST', body: { content } });
-      setMessages(m => [...m, d.message]); lastId.current = Math.max(lastId.current, d.message.id); }
-    catch (e) { toast(e.message, 'err'); }
+      appendNew(d.message); }
+    catch (e) { toast(e.message, 'err'); setInput(content); }
   };
 
   if (!group) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
@@ -76,7 +95,10 @@ export default function GroupRoom() {
           <div className="group-members">
             {members.map((mb, i) => (
               <div key={i} className="gm-row">
-                <Avatar src={mb.avatar} name={mb.display_name} size={30} />
+                <span className="gm-ava">
+                  <Avatar src={mb.avatar} name={mb.display_name} size={30} />
+                  {mb.online && <i className="gm-online" title="在线" />}
+                </span>
                 <span>{mb.display_name || '匿名'}</span>
                 {mb.role === 'owner' && <span className="gm-owner">群主</span>}
               </div>

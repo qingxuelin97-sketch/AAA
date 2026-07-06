@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       server_url:
-        description: "服务器地址（数据共通）。例：https://你的域名 或 http://你的IP:4000。留空=离线演示版"
+        description: "服务器地址（数据共通）。例：http://120.27.249.73:4000（公网）或 http://172.22.139.18:4000（内网）。留空=单包双模式（App 内设置里可随时连服务器）"
         required: false
         default: ""
 
@@ -58,6 +58,16 @@ jobs:
 
       - name: Generate Android project
         run: npx cap add android
+
+      # 允许明文 HTTP：App 内「设置 → 服务器连接」可指向 http://IP:端口 的自建服务器
+      # （内网 172.22.139.18 / 公网 120.27.249.73 等无 TLS 证书的裸 IP 部署）。
+      # capacitor.config.json 已设 cleartext + allowMixedContent，这里再补 manifest
+      # 的 usesCleartextTraffic，三者齐备才能保证各 Android 版本的 WebView 都放行。
+      - name: Allow cleartext HTTP in Android manifest
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q 'usesCleartextTraffic' "$M" || sed -i 's/<application /<application android:usesCleartextTraffic="true" /' "$M"
+          grep -o '<application[^>]*' "$M" | head -1
 
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true

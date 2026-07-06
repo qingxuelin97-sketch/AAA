@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
+import { push, isUserOnline } from '../realtime.js';
 
 const router = Router();
 
@@ -43,7 +44,8 @@ router.get('/:id', authRequired, (req, res) => {
   // 私有群仅 owner 与成员可见，防 IDOR 读取他人私有群详情。
   if (!g.is_public && g.owner_id !== req.user.id && !memberOf(g.id, req.user.id)) return res.status(403).json({ error: '无权访问该群' });
   const members = db.prepare(`SELECT gm.role, u.id, u.display_name, u.avatar FROM group_members gm
-    JOIN users u ON u.id = gm.user_id WHERE gm.group_id = ?`).all(g.id);
+    JOIN users u ON u.id = gm.user_id WHERE gm.group_id = ?`).all(g.id)
+    .map(mb => ({ ...mb, online: isUserOnline(mb.id) })); // 成员在线状态（以 SSE 连接为准，真实联机可见）
   const messages = db.prepare(`SELECT m.*, u.display_name, u.avatar FROM group_messages m
     JOIN users u ON u.id = m.user_id WHERE m.group_id = ? ORDER BY m.id DESC LIMIT 80`).all(g.id).reverse();
   res.json({ group: g, members, messages, joined: memberOf(g.id, req.user.id) });
@@ -58,6 +60,11 @@ router.post('/:id/messages', authRequired, (req, res) => {
   if (!content) return res.status(400).json({ error: '消息不能为空' });
   const info = db.prepare('INSERT INTO group_messages (group_id, user_id, content) VALUES (?,?,?)').run(g.id, req.user.id, String(content).slice(0, 2000));
   const msg = db.prepare(`SELECT m.*, u.display_name, u.avatar FROM group_messages m JOIN users u ON u.id = m.user_id WHERE m.id = ?`).get(info.lastInsertRowid);
+  // 秒级推送给所有在线群成员（发送者除外）：SSE 直达，轮询仅作兜底。
+  const memberIds = db.prepare('SELECT user_id FROM group_members WHERE group_id = ?').all(g.id);
+  for (const { user_id } of memberIds) {
+    if (user_id !== req.user.id) push(user_id, 'group_message', { group_id: g.id, message: msg });
+  }
   res.json({ message: msg });
 });
 

@@ -20,12 +20,34 @@ const clampPitch = (v) => { const n = Number(v); return n >= 0.5 && n <= 1.5 ? M
 function ownerView(c) {
   if (!c) return c;
   c.world = loadWorld(c.id);
-  // 附加角色关联的独立世界书（供前端展示/管理）
+  // 附加角色关联的独立世界书（供前端展示/管理）。
+  // front_schema / prompt_overlay 一并下发 —— 专家世界书的自构前端与提示词叠加
+  // 在角色详情/编辑器里可见可管理（与 APP 端 mock charView 同构）。
   c.linked_worldbooks = db.prepare(`SELECT w.id, w.name, w.is_public, w.owner_id,
+    w.front_schema, w.prompt_overlay,
     (SELECT COUNT(*) FROM worldbook_entries WHERE worldbook_id = w.id) AS entry_count
     FROM character_worldbooks cw JOIN worldbooks w ON w.id = cw.worldbook_id
     WHERE cw.character_id = ? ORDER BY w.id`).all(c.id);
+  // 图片触发映射：专家世界书条目的预注入图片（id → urls/position/slot），
+  // 聊天页与角色详情按此直接渲染创作者预设插图（与 mock 后端 wb_image_map 同构）。
+  c.wb_image_map = {};
+  const imgRows = db.prepare(`SELECT we.id, we.image_urls, we.image_position, we.front_slot, we.worldbook_id
+    FROM worldbook_entries we JOIN character_worldbooks cw ON cw.worldbook_id = we.worldbook_id
+    WHERE cw.character_id = ? AND we.enabled = 1 AND we.image_urls != '' AND we.image_keys != ''`).all(c.id);
+  for (const r of imgRows) {
+    const urls = String(r.image_urls).split(',').map(u => u.trim()).filter(Boolean);
+    if (urls.length) c.wb_image_map[r.id] = { urls, position: r.image_position || 'inline', slot: r.front_slot || '', worldbook_id: r.worldbook_id };
+  }
   return c;
+}
+
+// front_regex（酒馆 regex_scripts）：接受数组或已序列化字符串，落库为 JSON 文本；坏输入回退。
+function normFrontRegex(v, fallback = '[]') {
+  if (v == null) return fallback || '[]';
+  try {
+    const a = typeof v === 'string' ? JSON.parse(v) : v;
+    return Array.isArray(a) ? JSON.stringify(a).slice(0, 4000000) : (fallback || '[]');
+  } catch { return fallback || '[]'; }
 }
 
 // 角色卡「秒级广播」用的精简预览：只携带前端弹提示/插到列表头部所需的最小字段，
@@ -125,8 +147,8 @@ router.post('/', authRequired, (req, res) => {
   const b = req.body || {};
   if (!b.name) return res.status(400).json({ error: '角色名必填' });
   const info = db.prepare(`INSERT INTO characters
-    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, alt_greetings)
-    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@alt_greetings)`)
+    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, front_regex, alt_greetings)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@front_regex,@alt_greetings)`)
     .run({
       owner_id: req.user.id,
       name: b.name, avatar: b.avatar || null,
@@ -135,6 +157,8 @@ router.post('/', authRequired, (req, res) => {
       persona: b.persona || '', voice_name: b.voice_name || '', voice_speed: clampSpeed(b.voice_speed), voice_pitch: clampPitch(b.voice_pitch),
       category: b.category || '', tags: b.tags || '',
       is_public: b.is_public ? 1 : 0, nsfw: b.nsfw ? 1 : 0,
+      // 创建即支持前端显示正则（此前仅 PUT/导入支持，带正则的酒馆卡首存会丢字段）
+      front_regex: normFrontRegex(b.front_regex),
       alt_greetings: normAltGreetings(b.alt_greetings)
     });
   saveWorld(info.lastInsertRowid, b.world);
@@ -157,7 +181,7 @@ router.put('/:id', authRequired, (req, res) => {
     .run({
       id: c.id,
       alt_greetings: normAltGreetings(b.alt_greetings, c.alt_greetings || '[]'),
-      front_regex: (() => { if (b.front_regex == null) return c.front_regex || '[]'; try { const v = typeof b.front_regex === 'string' ? JSON.parse(b.front_regex) : b.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : (c.front_regex || '[]'); } catch { return c.front_regex || '[]'; } })(),
+      front_regex: normFrontRegex(b.front_regex, c.front_regex || '[]'),
       name: b.name ?? c.name, avatar: b.avatar ?? c.avatar,
       background: b.background ?? c.background, background_type: b.background_type ?? c.background_type,
       bgm: b.bgm ?? c.bgm,
@@ -238,11 +262,7 @@ router.post('/import', authRequired, contentLimiter, (req, res) => {
   const world = Array.isArray(body.world) ? body.world.filter(w => w && typeof w === 'object') : [];
   if (world.length > 1000) return res.status(400).json({ error: '世界书条目过多（上限 1000）' });
   const str = (v, max) => v == null ? '' : String(v).slice(0, max);
-  // front_regex：接受数组或已序列化字符串，落库为 JSON 文本（上限约 60KB，容纳大 HTML 面板）。
-  const frontRegex = (() => {
-    try { const v = typeof ch.front_regex === 'string' ? JSON.parse(ch.front_regex) : ch.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : '[]'; }
-    catch { return '[]'; }
-  })();
+  const frontRegex = normFrontRegex(ch.front_regex);
   const info = db.prepare(`INSERT INTO characters
     (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, front_regex, alt_greetings)
     VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@front_regex,@alt_greetings)`)

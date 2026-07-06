@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, useAuth, getApiBase, getServerPref, setServerPref, setToken } from '../api.jsx';
+import { api, useAuth, getApiBase, getServerPref, setServerPref, setToken, SERVER_PRESETS, pingServer } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker, CoinIcon } from '../ui.jsx';
 import { getThemeMode, setThemeMode, getGlass, setGlass } from '../theme.js';
 import { ACCENTS, getAccent, setAccent } from '../accent.js';
@@ -77,31 +77,31 @@ function ServerCard({ toast }) {
   const [url, setUrl] = useState(getServerPref());
   const [testing, setTesting] = useState(false);
   const [tested, setTested] = useState(null); // null | 'ok' | 'fail'
+  const [latency, setLatency] = useState(null); // 实测往返延迟（ms）
   const active = getServerPref();
   const norm = String(url || '').trim().replace(/\/+$/, '');
   const valid = norm === '' || /^https?:\/\/[^\s/]+/i.test(norm);
+  const isPreset = (u) => SERVER_PRESETS.some(p => p.url === u);
 
-  const test = async () => {
-    if (!norm) { toast('请先填写服务器地址', 'err'); return; }
-    if (!valid) { toast('地址需以 http:// 或 https:// 开头', 'err'); return; }
-    setTesting(true); setTested(null);
-    try {
-      const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), 8000);
-      const res = await fetch(norm + '/api/health', { signal: ctl.signal });
-      clearTimeout(timer);
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok || !d.ok) throw new Error('HTTP ' + res.status);
+  const test = async (target = norm) => {
+    if (!target) { toast('请先填写服务器地址', 'err'); return; }
+    setTesting(true); setTested(null); setLatency(null);
+    const r = await pingServer(target);
+    setTesting(false); setLatency(r.ms);
+    if (r.ok) {
       setTested('ok');
-      toast('连接成功 · 服务器工作正常');
-    } catch (e) {
+      toast(`连接成功 · 往返延迟 ${r.ms}ms${r.ms <= 1000 ? '（达标 <1s）' : '（偏高，建议检查网络）'}`);
+    } else {
       setTested('fail');
-      toast('连接失败：' + (e.name === 'AbortError' ? '超时（8 秒无响应）' : (e.message || '网络错误')) + '。请确认地址可从本设备访问，且服务端已配置 CORS 允许来源。', 'err');
-    } finally { setTesting(false); }
+      toast('连接失败：' + r.error + '。请确认地址可从本设备访问，且服务端已配置 CORS 允许来源。', 'err');
+    }
   };
+  const pickPreset = (p) => { setUrl(p.url); setTested(null); setLatency(null); test(p.url); };
   const save = () => {
     if (norm && !valid) { toast('地址需以 http:// 或 https:// 开头', 'err'); return; }
-    if (norm && norm.startsWith('http://') && !/^http:\/\/(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(norm)
+    // 官方预设地址（内网/公网）用户已知悉部署形态，不再弹明文警告；其余公网 HTTP 地址仍提示风险。
+    if (norm && norm.startsWith('http://') && !isPreset(norm)
+      && !/^http:\/\/(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(norm)
       && !confirm('该地址使用明文 HTTP，登录凭证可能被网络中间人窃取。仅建议在局域网调试时使用。仍要保存吗？')) return;
     setServerPref(norm);
     toast(norm ? '已保存，正在重新连接…' : '已切回离线演示模式…');
@@ -117,19 +117,28 @@ function ServerCard({ toast }) {
         留空时 App 以<b>离线演示模式</b>运行：数据仅存于本设备，无需网络。填入你部署的幻域后端地址后，
         账号、角色与对话都将保存在服务器上，可跨设备同步。修改后 App 会自动重载生效。
       </p>
+      {/* 官方服务器一键选择：点击即填入并自动测速 */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        {SERVER_PRESETS.map(p => (
+          <button key={p.id} className={'btn sm' + (norm === p.url ? ' primary' : '')} onClick={() => pickPreset(p)} disabled={testing}>
+            {p.label}
+            <span className="muted" style={{ fontSize: 11, marginLeft: 4 }}>{p.hint}</span>
+          </button>
+        ))}
+      </div>
       <div className="field"><label>服务器地址</label>
-        <input className="input" value={url} onChange={e => { setUrl(e.target.value); setTested(null); }}
+        <input className="input" value={url} onChange={e => { setUrl(e.target.value); setTested(null); setLatency(null); }}
           placeholder="https://your-server.example.com" inputMode="url"
           autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
         <div className="hint">
           填写部署好的幻域服务端根地址（不含 /api）。推荐使用 HTTPS；
           服务端需在环境变量 <code>CORS_ORIGINS</code> 中允许 App 来源（如 <code>https://localhost</code>）。
-          {tested === 'ok' && <b style={{ color: 'var(--ok, #16a34a)' }}> ✓ 测试通过</b>}
-          {tested === 'fail' && <b style={{ color: 'var(--danger, #dc2626)' }}> ✕ 测试未通过</b>}
+          {tested === 'ok' && <b style={{ color: 'var(--ok, #16a34a)' }}> ✓ 测试通过{latency != null && ` · ${latency}ms`}</b>}
+          {tested === 'fail' && <b style={{ color: 'var(--danger, #dc2626)' }}> ✕ 测试未通过{latency != null && `（${latency}ms 后失败）`}</b>}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button className="btn sm" onClick={test} disabled={testing || !norm}>
+        <button className="btn sm" onClick={() => test()} disabled={testing || !norm}>
           <Activity size={14} className={testing ? 'spin' : ''} /> {testing ? '测试中…' : '测试连接'}
         </button>
         <button className="btn sm primary" onClick={save} disabled={norm === active || (!!norm && !valid)}>

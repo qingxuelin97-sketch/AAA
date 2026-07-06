@@ -9,8 +9,8 @@
 // Content pages are reused as-is; only the chrome differs.
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { api } from '../api.jsx';
-import { useRealtimeEvent } from '../realtime.jsx';
+import { api, getApiBase } from '../api.jsx';
+import { useRealtime, useRealtimeEvent } from '../realtime.jsx';
 import { Logo } from '../assets.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
@@ -51,6 +51,11 @@ export default function AppLayout({ children }) {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // bump → remount route → refetch
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
+  // 实时通道状态（仅连接真实服务器时有意义）：断开时给出可感知、不打扰的提示，
+  // CSS 侧延迟 2s 淡入 —— 正常的瞬时重连不闪条。
+  const rt = useRealtime();
+  const serverMode = !!getApiBase() || import.meta.env.VITE_STATIC !== '1';
+  const rtDegraded = serverMode && !offline && (rt?.status === 'closed' || rt?.status === 'connecting');
   const mainRef = useRef(null);
   const tabbarRef = useRef(null);
   const inkRef = useRef(null);
@@ -174,6 +179,7 @@ export default function AppLayout({ children }) {
   return (
     <div className="app-root">
       {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
+      {rtDegraded && <div className="app-rt-degraded" role="status"><span className="app-rt-dot" /> 实时通道重连中 · 消息暂走轮询</div>}
       <div className={'app-ptr' + (refreshing ? ' spin' : '')} style={{ height: ptr, opacity: ptr ? 1 : 0 }} aria-hidden="true">
         <RefreshCw size={20} style={{ transform: refreshing ? 'none' : `rotate(${ptr * 3}deg)` }} />
       </div>

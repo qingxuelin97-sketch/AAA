@@ -67,9 +67,33 @@ cp client/.env.example client/.env
 ```
 
 要求：
-- **必须 `https://`**：Android 9+ 默认禁止明文 HTTP 请求，iOS 同理。
+- **优先 `https://`**；使用 `http://`（裸 IP / 无证书部署，如内网 `http://172.22.139.18:4000`、
+  公网 `http://120.27.249.73:4000`）时需允许明文流量，见下方「明文 HTTP（裸 IP 服务器）」。
 - 前后端同域（由 Nginx 反代分流 `/api`）就填主域名；后端独立子域就填子域。
 - REST 请求和 SSE 长连接都会自动用这个地址（见 `client/src/api.jsx` 的 `API_BASE`）。
+
+> 也可以**不在构建期写死地址**：直接打「离线版」APK，装好后在 App 内
+> 「设置 → 服务器连接」点官方预设（内网 / 公网服务器）或手填地址并测速，保存后
+> 全部数据（账号 / 角色 / 私信 / 群聊，含 SSE 秒级推送）即切到该服务器。
+
+### 明文 HTTP（裸 IP 服务器）
+
+仓库已默认打开的开关 + 需要工程侧补齐的一处，缺一不可：
+
+1. `capacitor.config.json` → `server.cleartext: true`（已默认开启）；
+2. `capacitor.config.json` → `android.allowMixedContent: true`（已默认开启。webview 来源是
+   `https://localhost`，向 `http://` 后端发请求属于混合内容，需显式放行）；
+3. Android 清单 `android/app/src/main/AndroidManifest.xml` 的 `<application>` 需加
+   `android:usesCleartextTraffic="true"`。云端打包（GitHub Actions）已自动补丁；
+   本地 `npx cap add android` 生成工程后请手动加上，或执行：
+   ```bash
+   sed -i 's/<application /<application android:usesCleartextTraffic="true" /' android/app/src/main/AndroidManifest.xml
+   ```
+4. iOS 如需 http，向 `ios/App/App/Info.plist` 加 ATS 例外：
+   ```xml
+   <key>NSAppTransportSecurity</key>
+   <dict><key>NSAllowsArbitraryLoads</key><true/></dict>
+   ```
 
 ### 二、后端 CORS 放行 App 来源
 

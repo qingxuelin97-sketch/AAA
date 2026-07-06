@@ -288,7 +288,9 @@ router.post('/assist/extract', authRequired, aiLimiter, async (req, res) => {
 router.post('/from-character/:characterId', authRequired, contentLimiter, (req, res) => {
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(req.params.characterId);
   if (!c || c.owner_id !== req.user.id) return res.status(403).json({ error: '无权操作该角色' });
-  const entries = db.prepare('SELECT keys, content, enabled, position FROM world_entries WHERE character_id = ?').all(c.id);
+  // constant（酒馆常驻条目）→ 独立世界书的 mode:'always'，转换后仍无视关键词恒注入。
+  const entries = db.prepare('SELECT keys, content, enabled, position, constant FROM world_entries WHERE character_id = ?').all(c.id)
+    .map(e => ({ ...e, mode: e.constant ? 'always' : 'keyword' }));
   const b = req.body || {};
   const info = db.prepare('INSERT INTO worldbooks (owner_id, name, description, tags, tier, is_public) VALUES (?,?,?,?,?,?)')
     .run(req.user.id, str(b.name || (c.name + ' 的世界书'), 60), str(b.description, 500), str(b.tags, 200), 'normal', 0);
