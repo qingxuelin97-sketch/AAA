@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, assetUrl } from '../api.jsx';
 import { useToast, GridSkeleton, CoinIcon } from '../ui.jsx';
 import { ScrollText, Play, Plus, Inbox } from 'lucide-react';
 import { CategoryIcon } from '../assets.jsx';
@@ -9,7 +9,7 @@ function ScriptCard({ s, nav, extra }) {
   return (
     <div className="char-card" onClick={() => nav('/script/' + s.id)}>
       <div className="cover">
-        {s.cover ? <img src={s.cover} alt="" loading="lazy" /> : <div className="ph"><ScrollText size={46} /></div>}
+        {s.cover ? <img src={assetUrl(s.cover)} alt="" loading="lazy" /> : <div className="ph"><ScrollText size={46} /></div>}
       </div>
       <div className="meta">
         <h3>{s.title}</h3>

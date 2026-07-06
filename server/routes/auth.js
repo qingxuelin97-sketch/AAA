@@ -15,6 +15,13 @@ const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: 10, standardHeaders:
 const NAME_RE = /^[\w\u4e00-\u9fa5]{2,20}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// bcrypt \u6210\u672c\u56e0\u5b50\uff1a12\uff08\u6bd4 10 \u63d0\u9ad8 4 \u500d\u79bb\u7ebf\u7206\u7834\u6210\u672c\uff0c\u767b\u5f55/\u6ce8\u518c\u9891\u7387\u4e0b\u7684
+// \u5355\u6b21\u54c8\u5e0c\u8017\u65f6\u4ecd\u5728\u767e\u6beb\u79d2\u7ea7\uff0c\u53ef\u63a5\u53d7\uff09\u3002\u5df2\u6709\u8d26\u53f7\u7684\u65e7 10 \u8f6e\u54c8\u5e0c\u7ee7\u7eed\u53ef\u9a8c\u8bc1\u3002
+const BCRYPT_ROUNDS = 12;
+// \u8d26\u53f7\u4e0d\u5b58\u5728\u65f6\u7528\u4e8e\u65f6\u5e8f\u5bf9\u9f50\u7684\u771f\u5b9e\u54c8\u5e0c\uff08\u542f\u52a8\u65f6\u751f\u6210\u4e00\u6b21\uff09\u3002\u4e4b\u524d\u7528\u7578\u5f62\u4e32
+// '$2a$10$xxx\u2026' \u515c\u5e95\uff0cbcryptjs \u5bf9\u65e0\u6548\u76d0\u4f1a\u63d0\u524d\u8fd4\u56de\uff0c\u65f6\u5e8f\u4e0a\u4ecd\u53ef\u679a\u4e3e\u7528\u6237\u540d\u3002
+const DUMMY_HASH = bcrypt.hashSync('timing-equalizer-' + Math.random(), BCRYPT_ROUNDS);
+
 // 密码强度：至少 8 位，且包含至少两类字符（字母/数字/符号）
 function validPassword(pw) {
   if (typeof pw !== 'string' || pw.length < 8 || pw.length > 72) return false;
@@ -35,6 +42,9 @@ router.post('/register', authLimiter, async (req, res) => {
   if (!validPassword(password)) return res.status(400).json({ error:'密码至少 8 位，且需包含字母、数字、符号中的至少两类' });
   if (email && !EMAIL_RE.test(String(email))) return res.status(400).json({ error:'邮箱格式不正确' });
 
+  // 先查用户名再扣邀请码：否则「用户名已被注册」的失败请求也会白白烧掉一次邀请额度。
+  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) return res.status(409).json({ error:'该用户名已被注册' });
+
   // 用条件 UPDATE 原子扣减邀请码用量，杜绝并发超额注册。
   const code = String(invite).trim();
   const key = db.prepare('SELECT * FROM invite_keys WHERE code = ?').get(code);
@@ -42,11 +52,17 @@ router.post('/register', authLimiter, async (req, res) => {
   const used = db.prepare('UPDATE invite_keys SET used = used + 1 WHERE code = ? AND used < max_uses').run(code);
   if (used.changes === 0) return res.status(400).json({ error:'该邀请密钥已被使用完' });
 
-  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) return res.status(409).json({ error:'该用户名已被注册' });
-
-  const hash = await bcrypt.hash(String(password), 10);
-  const info = db.prepare('INSERT INTO users (username, email, password_hash, display_name, gold) VALUES (?, ?, ?, ?, ?)')
-    .run(username, email ||'', hash, (display_name || username).slice(0, 30), 300);
+  const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
+  let info;
+  try {
+    info = db.prepare('INSERT INTO users (username, email, password_hash, display_name, gold) VALUES (?, ?, ?, ?, ?)')
+      .run(username, email ||'', hash, (display_name || username).slice(0, 30), 300);
+  } catch (e) {
+    // 并发撞名等插入失败：退还刚扣掉的邀请额度，再报错。
+    db.prepare('UPDATE invite_keys SET used = used - 1 WHERE code = ? AND used > 0').run(code);
+    if (/UNIQUE/i.test(e.message || '')) return res.status(409).json({ error:'该用户名已被注册' });
+    throw e;
+  }
   const id = info.lastInsertRowid;
   db.prepare('INSERT INTO settings (user_id) VALUES (?)').run(id);
 
@@ -73,7 +89,7 @@ router.post('/login', authLimiter, async (req, res) => {
     return res.status(429).json({ error: `账号已被锁定，请 ${mins} 分钟后再试` });
   }
   // 即使账号不存在也执行一次比较，避免通过响应时序枚举用户名。
-  const ok = row ? await bcrypt.compare(String(password || ''), row.password_hash) : await bcrypt.compare(String(password || ''), '$2a$10$'.padEnd(60, 'x'));
+  const ok = await bcrypt.compare(String(password || ''), row ? row.password_hash : DUMMY_HASH);
   if (!row || !ok) {
     // 密码错误：累加失败次数，达到 5 次锁定 15 分钟。
     if (row) {
@@ -112,10 +128,12 @@ router.put('/password', authRequired, async (req, res) => {
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   if (!await bcrypt.compare(String(old_password || ''), row.password_hash)) return res.status(400).json({ error:'原密码错误' });
   if (!validPassword(new_password)) return res.status(400).json({ error:'新密码至少 8 位，且需包含字母、数字、符号中的至少两类' });
-  const hash = await bcrypt.hash(String(new_password), 10);
+  const hash = await bcrypt.hash(String(new_password), BCRYPT_ROUNDS);
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.user.id);
   bumpTokenVersion(req.user.id); // 改密后使所有旧 token 失效
-  res.json({ ok: true });
+  // 给当前会话签发新版本 token，改密者本人无需重新登录（其他设备照常踢下线）。
+  const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  res.json({ ok: true, token: sign(fresh) });
 });
 
 export default router;

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Uploader, Modal, Avatar } from '../ui.jsx';
 import StageEditor from '../components/StageEditor.jsx';
 import NovelWorldEditor from '../components/NovelWorldEditor.jsx';
@@ -83,7 +83,7 @@ export default function Theater() {
               <div key={t.id} className="inovel-book-card" onClick={() => nav('/theater/' + t.id)}>
                 <div className="inovel-spine" />
                 <div className="inovel-bc-cover">
-                  {t.cover ? <img src={t.cover} alt="" /> : <div className="inovel-bc-ph"><BookOpen size={26} /></div>}
+                  {t.cover ? <img src={assetUrl(t.cover)} alt="" /> : <div className="inovel-bc-ph"><BookOpen size={26} /></div>}
                   <div className="inovel-bc-kicker"><Feather size={11} /> 互动小说</div>
                   {t.status === 'finished'
                     ? <div className="inovel-bc-status fin"><Flag size={10} /> 完结</div>

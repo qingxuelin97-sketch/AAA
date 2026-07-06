@@ -37,6 +37,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// 反向代理（Nginx / 云负载均衡）之后运行时，信任第一跳代理设置的 X-Forwarded-For，
+// 否则限流与登录锁定看到的全是代理 IP，一人触发限流会波及全站。
+// 直接暴露公网（无代理）时设 TRUST_PROXY=0 关闭，防止客户端伪造 XFF 绕过按 IP 限流。
+app.set('trust proxy', process.env.TRUST_PROXY === '0' ? false : 1);
+
 // CORS：来自环境变量 CORS_ORIGINS（逗号分隔）的白名单；未配置则允许所有来源，
 // 保证同源部署（前后端在同一阿里云实例）和静态托管+独立后端的场景都能开箱可用。
 const ALLOWED_ORIGINS = new Set(
@@ -59,10 +64,14 @@ app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // 上传资源可被前端同源/跨域加载
+  referrerPolicy: { policy: 'no-referrer' },             // API 响应不外泄来源路径
+  // HSTS 仅在确认全站 HTTPS 后由环境变量显式开启（HSTS=1），避免误伤 HTTP 调试部署。
+  hsts: process.env.HSTS === '1' ? { maxAge: 15552000, includeSubDomains: true } : false,
 }));
 
-// 全局速率限制：每分钟 240 次/IP，防基础滥用。
-app.use(rateLimit({ windowMs: 60_000, max: 240, standardHeaders: true, legacyHeaders: false }));
+// API 速率限制：每分钟 240 次/IP，防基础滥用。只挂在 /api 上——
+// 静态资源与 /uploads 图片不计数，否则头像密集的列表页会替用户吃光配额。
+app.use('/api', rateLimit({ windowMs: 60_000, max: 240, standardHeaders: true, legacyHeaders: false }));
 
 app.use(express.json({ limit: '10mb' }));
 

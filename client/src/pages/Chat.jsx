@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { api, getToken, useAuth } from '../api.jsx';
+import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { useKeyboardInsetBar } from '../mobile.js';
@@ -212,7 +212,7 @@ const BubbleContent = React.memo(function BubbleContent({ content, role, imageMa
     return (
       <span key={i} className="wb-inline-imgs">
         {meta.urls.map((u, j) => (
-          <img key={j} className="wb-inline-img" src={u} alt={`场景插图 ${j + 1}（点击放大）`} loading="lazy"
+          <img key={j} className="wb-inline-img" src={assetUrl(u)} alt={`场景插图 ${j + 1}（点击放大）`} loading="lazy"
             onClick={() => onPreview(u)} />
         ))}
       </span>
@@ -671,7 +671,7 @@ export default function Chat() {
     const cached = mid != null && voiceCacheRef.current.get(mid);
     if (cached) { playAudioUrl(cached, mid); return; }
     try {
-      const res = await fetch('/api/chat/tts', {
+      const res = await fetch(getApiBase() + '/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ text, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, pitch: character?.voice_pitch || undefined, emotion, character_id: character?.id })
       });
@@ -737,12 +737,12 @@ export default function Chat() {
             {character?.background && (
               <div className="chat-bg">
                 {character.background_type === 'video'
-                  ? <video src={character.background} muted loop autoPlay playsInline />
-                  : <img src={character.background} alt="" />}
+                  ? <video src={assetUrl(character.background)} muted loop autoPlay playsInline />
+                  : <img src={assetUrl(character.background)} alt="" />}
               </div>
             )}
             {!character?.background && <div className="chat-aura" aria-hidden="true"><span /><span /><span /></div>}
-            {character?.bgm && <audio ref={bgmRef} src={character.bgm} loop preload="auto" />}
+            {character?.bgm && <audio ref={bgmRef} src={assetUrl(character.bgm)} loop preload="auto" />}
             <div className="chat-head">
               <button className="btn ghost sm mobile-only chat-back" onClick={() => nav('/messages')}><ArrowLeft size={16} /></button>
               {/* 身份胶囊：左上空间有限，不再写角色名（每条消息上方已有名字）；只留头像 + 状态 */}
@@ -821,7 +821,7 @@ export default function Chat() {
                 return (
                   <div className="wb-front-banner" style={schema.accent ? { ['--wb-accent']: schema.accent } : null}>
                     {banner.src
-                      ? <img src={banner.src} alt="场景横幅" />
+                      ? <img src={assetUrl(banner.src)} alt="场景横幅" />
                       : <div className="wb-front-banner-ph"><Sparkles size={14} /> 专家档自构前端 · {schema.layout} 布局</div>}
                     <div className="wb-front-banner-cap">{banner.id} slot</div>
                   </div>
@@ -1086,7 +1086,7 @@ export default function Chat() {
       {callOpen && character && <CallScreen character={character} onClose={() => setCallOpen(false)} />}
       {previewImg && (
         <div className="img-lightbox" onClick={() => setPreviewImg(null)}>
-          <img src={previewImg} alt="预览" />
+          <img src={assetUrl(previewImg)} alt="预览" />
           <button className="img-lightbox-close" onClick={(e) => { e.stopPropagation(); setPreviewImg(null); }} title="关闭"><X size={22} /></button>
         </div>
       )}

@@ -5,7 +5,7 @@
 // you reach for when you open the app, not a browse-everything grid.
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday, fmtNum } from '../util.js';
@@ -156,7 +156,7 @@ export default function AppHome() {
       {hero === null && <div className="ah-hero-skel" />}
       {hero && (
         <button className="ah-hero-card" onClick={() => openChat(hero)}>
-          {hero.avatar ? <img className="ah-hc-bg" src={hero.avatar} alt="" /> : <div className="ah-hc-bg cover-art-box"><CoverArt name={hero.name} /></div>}
+          {hero.avatar ? <img className="ah-hc-bg" src={assetUrl(hero.avatar)} alt="" /> : <div className="ah-hc-bg cover-art-box"><CoverArt name={hero.name} /></div>}
           <div className="ah-hc-scrim" />
           <div className="ah-hc-body">
             <span className="ah-hc-tag"><Star size={11} fill="currentColor" /> 今日精选</span>
@@ -225,7 +225,7 @@ export default function AppHome() {
             {pick.map(c => (
               <button key={c.id} className="ah-pick" onClick={() => openChat(c)}>
                 <div className="ah-pick-av">
-                  {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ah-pick-ph cover-art-box"><CoverArt name={c.name} /></div>}
+                  {c.avatar ? <img src={assetUrl(c.avatar)} alt="" loading="lazy" /> : <div className="ah-pick-ph cover-art-box"><CoverArt name={c.name} /></div>}
                 </div>
                 <div className="ah-pick-tx">
                   <b>{c.name}</b>

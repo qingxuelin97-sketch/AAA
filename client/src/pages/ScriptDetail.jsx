@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import Reviews from '../components/Reviews.jsx';
@@ -90,7 +90,7 @@ export default function ScriptDetail() {
       <div className="page" style={{ maxWidth: 820 }}>
         <div className="card">
           {script.cover && <div style={{ height: 280, borderRadius: 12, overflow: 'hidden', marginBottom: 18 }}>
-            <img src={script.cover} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /></div>}
+            <img src={assetUrl(script.cover)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /></div>}
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14 }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer' }} onClick={() => nav('/user/' + script.author_id)}>

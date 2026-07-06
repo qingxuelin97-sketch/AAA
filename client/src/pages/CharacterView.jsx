@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import { isAppMode } from '../appmode.js';
@@ -116,8 +116,8 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
         <div className="cvx-hero">
           {heroSrc
             ? (isVideo && c.background
-              ? <video className="cvx-hero-media" src={c.background} muted loop autoPlay playsInline />
-              : <img className="cvx-hero-media" src={heroSrc} alt="" decoding="async" />)
+              ? <video className="cvx-hero-media" src={assetUrl(c.background)} muted loop autoPlay playsInline />
+              : <img className="cvx-hero-media" src={assetUrl(heroSrc)} alt="" decoding="async" />)
             : <div className="cvx-hero-media cover-art-box"><CoverArt name={c.name} /></div>}
           <div className="cvx-hero-scrim" />
           <h1 className="cvx-name"><i>✦</i>{c.name}<i>✦</i></h1>
@@ -247,7 +247,7 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
               <div className="cvx-rail">
                 {related.map(rc => (
                   <button key={rc.id} className="cvx-rel" onClick={() => nav('/character/' + rc.id)}>
-                    <div className="cvx-rel-cv">{rc.avatar ? <img src={rc.avatar} alt="" loading="lazy" decoding="async" /> : <div className="cover-art-box"><CoverArt name={rc.name} /></div>}</div>
+                    <div className="cvx-rel-cv">{rc.avatar ? <img src={assetUrl(rc.avatar)} alt="" loading="lazy" decoding="async" /> : <div className="cover-art-box"><CoverArt name={rc.name} /></div>}</div>
                     <b>{rc.name}</b>
                     <span>{rc.tagline || '——'}</span>
                   </button>
@@ -297,8 +297,8 @@ function WebView({ c, user, nav, faved, busy, wbOpen, setWbOpen, related, startC
         <div className="char-hero">
           <div className="char-hero-bg">
             {c.background ? (isVideo
-              ? <video src={c.background} muted loop autoPlay playsInline />
-              : <img src={c.background} alt="" />) : null}
+              ? <video src={assetUrl(c.background)} muted loop autoPlay playsInline />
+              : <img src={assetUrl(c.background)} alt="" />) : null}
           </div>
           <div className="char-hero-fg">
             <Avatar src={c.avatar} name={c.name} size={92} />
@@ -368,7 +368,7 @@ function WebView({ c, user, nav, faved, busy, wbOpen, setWbOpen, related, startC
             <div className="grid">
               {related.map(rc => (
                 <div key={rc.id} className="char-card" onClick={() => nav('/character/' + rc.id)}>
-                  <div className="cover">{rc.avatar ? <img src={rc.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={rc.name} /></div>}</div>
+                  <div className="cover">{rc.avatar ? <img src={assetUrl(rc.avatar)} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={rc.name} /></div>}</div>
                   <div className="meta"><h3>{rc.name}</h3><p>{rc.tagline || '——'}</p>
                     <div className="foot"><span className="muted" style={{ fontSize: 12 }}><MessageCircle size={11} /> {rc.uses}</span></div></div>
                 </div>

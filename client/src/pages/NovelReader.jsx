@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, assetUrl } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { ArrowLeft, Minus, Plus, Type, ScrollText, Pencil } from 'lucide-react';
 
@@ -35,7 +35,7 @@ export default function NovelReader() {
       </div>
       <div className="atl-read-scroll">
         <article className="atl-reader-page" style={{ fontSize: size }}>
-          {novel.cover && <img className="atl-read-cover" src={novel.cover} alt="" />}
+          {novel.cover && <img className="atl-read-cover" src={assetUrl(novel.cover)} alt="" />}
           <div className="atl-kicker" style={{ justifyContent: 'center', display: 'flex' }}><ScrollText size={13} /> {novel.genre || '小说'}{run ? ' · ' + run.name : ''}</div>
           <h1>{novel.title}</h1>
           {novel.logline && <p className="atl-reader-logline">{novel.logline}</p>}
@@ -47,7 +47,7 @@ export default function NovelReader() {
           <div className="inovel-rule" style={{ margin: '24px 0' }}><span>正文</span></div>
           {(beats || []).filter(b => b.content).map(b => (
             <React.Fragment key={b.id}>
-              {b.image && <img className="atl-reader-img" src={b.image} alt="" />}
+              {b.image && <img className="atl-reader-img" src={assetUrl(b.image)} alt="" />}
               <p className="atl-reader-para">{b.content}</p>
             </React.Fragment>
           ))}

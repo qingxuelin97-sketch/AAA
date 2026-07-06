@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Modal, CoinIcon } from '../ui.jsx';
 import { STYLE_PRESETS, SIZE_OPTS, composePrompt, generateImage, downloadImage } from '../imagegen.js';
 import { Sparkles, Wand2, Download, Trash2, Copy, ImageIcon, Crown, Info, X } from 'lucide-react';
@@ -113,7 +113,7 @@ export default function Draw() {
             ) : result ? (
               <div className="draw-result">
                 <div className="draw-result-img" onClick={() => setViewing({ url: result.image, prompt: result.prompt, size: result.size, id: result.id })}>
-                  <img src={result.image} alt={result.prompt} />
+                  <img src={assetUrl(result.image)} alt={result.prompt} />
                 </div>
                 <div className="draw-result-bar">
                   <button className="btn sm" onClick={() => downloadImage(result.image)}><Download size={14} /> 下载</button>
@@ -134,7 +134,7 @@ export default function Draw() {
           <div className="draw-gallery">
             {history.map(h => (
               <figure key={h.id} className="draw-tile" onClick={() => setViewing(h)}>
-                <img src={h.url} alt={h.prompt} loading="lazy" />
+                <img src={assetUrl(h.url)} alt={h.prompt} loading="lazy" />
                 <figcaption>{h.prompt}</figcaption>
                 <div className="draw-tile-acts" onClick={e => e.stopPropagation()}>
                   <button title="下载" onClick={() => downloadImage(h.url)}><Download size={14} /></button>
@@ -150,7 +150,7 @@ export default function Draw() {
       {viewing && (
         <Modal onClose={() => setViewing(null)}>
           <button className="modal-x" onClick={() => setViewing(null)} aria-label="关闭"><X size={18} /></button>
-          <img src={viewing.url} alt={viewing.prompt} style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+          <img src={assetUrl(viewing.url)} alt={viewing.prompt} style={{ width: '100%', borderRadius: 12, display: 'block' }} />
           <p className="muted" style={{ fontSize: 13, marginTop: 12, lineHeight: 1.6 }}>{viewing.prompt}</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
             <button className="btn sm" onClick={() => downloadImage(viewing.url)}><Download size={14} /> 下载</button>

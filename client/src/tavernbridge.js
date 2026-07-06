@@ -15,7 +15,7 @@
 //   js_stream_token_received_incrementally    —— 每次新 token 的【增量】文本（卡片用 += 拼接）
 //   js_stream_token_received_fully            —— 每次事件给出【累计】全文
 //   js_generation_ended                       —— 生成结束，参数为最终全文
-import { getToken } from './api.jsx';
+import { getToken, getApiBase } from './api.jsx';
 
 // ---------- 面板侧 shim（序列化注入 iframe，勿引用外部作用域） ----------
 const PANEL_SHIM = `(function(){
@@ -185,7 +185,7 @@ export function installTavernHost(convRef, opts = {}) {
     const userInput = String(params.user_input ?? params.injects?.map?.(j => j.content).join('\n') ?? '');
     aborter = new AbortController();
     broadcastTavernEvent('js_generation_started');
-    const res = await fetch(`/api/chat/conversations/${convId}/generate`, {
+    const res = await fetch(getApiBase() + `/api/chat/conversations/${convId}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
       body: JSON.stringify({

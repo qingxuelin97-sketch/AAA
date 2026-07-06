@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { Heart, Play, Flame, ScrollText, Trophy, Crown } from 'lucide-react';
 
@@ -47,7 +47,7 @@ export default function Leaderboard() {
 
   const Thumb = ({ row, size }) => row.cover !== undefined
     ? (row.cover
-        ? <img src={row.cover} alt="" style={{ width: size, height: size, borderRadius: size * 0.23, objectFit: 'cover', flexShrink: 0 }} />
+        ? <img src={assetUrl(row.cover)} alt="" style={{ width: size, height: size, borderRadius: size * 0.23, objectFit: 'cover', flexShrink: 0 }} />
         : <div style={{ width: size, height: size, borderRadius: size * 0.23, display: 'grid', placeItems: 'center', background: 'var(--bg-2)', flexShrink: 0 }}>{row.fallback}</div>)
     : <Avatar src={row.avatar} name={row.name} size={size} />;
 

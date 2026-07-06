@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, assetUrl } from '../api.jsx';
 import { useToast } from '../ui.jsx';
 import { randomAnimeAvatar, randomBg } from '../faces.js';
 import { Dices, Sparkles, MessageCircle, Save } from 'lucide-react';
@@ -110,8 +110,8 @@ export default function Gacha() {
               <div className={'gx-card ' + tier.cls}>
                 <span className="gx-rarity">{tier.label}</span>
                 <div className="gx-cover">
-                  <img src={result.background} alt="" />
-                  <img className="gx-face" src={result.avatar} alt={result.name} />
+                  <img src={assetUrl(result.background)} alt="" />
+                  <img className="gx-face" src={assetUrl(result.avatar)} alt={result.name} />
                 </div>
                 <div className="gx-meta">
                   <b>{result.name}</b>

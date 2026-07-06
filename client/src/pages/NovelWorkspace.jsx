@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api, getToken, useAuth } from '../api.jsx';
+import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Modal, Uploader } from '../ui.jsx';
 import { generateImage } from '../imagegen.js';
 import { stripParensForSpeech, speakBrowser, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
@@ -235,7 +235,7 @@ export default function NovelWorkspace() {
     // 从原文（含 *动作* 与标点）推断语气，让平台语音按语义调试语速/音调/情绪。
     const emotion = detectEmotion(raw);
     try {
-      const res = await fetch('/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ text, emotion }) });
+      const res = await fetch(getApiBase() + '/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ text, emotion }) });
       if (!res.ok) throw new Error('platform-tts-unavailable');
       const charged = res.headers.get('X-Gold-Fee');
       const url = URL.createObjectURL(await res.blob());
@@ -412,7 +412,7 @@ function Beat({ beat, index, streaming, playing, onRewrite, onDelete, onEdit, on
 
       {beat.image && (
         <div className="atl-beat-img">
-          <img src={beat.image} alt="" loading="lazy" />
+          <img src={assetUrl(beat.image)} alt="" loading="lazy" />
           {!beat._streaming && <button className="atl-img-x" title="移除配图" onClick={() => onRemoveImage(beat)}><X size={13} /></button>}
         </div>
       )}
@@ -769,7 +769,7 @@ function InfoPanel({ novel, run, onSaveNovel, refreshRuns, toast }) {
       <p className="atl-panel-hint"><Info size={13} /> 作品的封面与基础信息。封面可上传或让 AI 生成。</p>
       <div className="atl-cover-row">
         <div className="atl-cover-box">
-          {form.cover ? <img src={form.cover} alt="" /> : <div className="atl-cover-ph"><ScrollText size={22} /></div>}
+          {form.cover ? <img src={assetUrl(form.cover)} alt="" /> : <div className="atl-cover-ph"><ScrollText size={22} /></div>}
         </div>
         <div className="atl-cover-act">
           <button className="btn sm" onClick={aiCover} disabled={genCover}>{genCover ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />} AI 生成封面</button>
@@ -883,7 +883,7 @@ function ReaderOverlay({ novel, run, beats, onClose }) {
           {novel.logline && <p className="atl-reader-logline">{novel.logline}</p>}
           {beats.filter(b => b.content).map(b => (
             <React.Fragment key={b.id}>
-              {b.image && <img className="atl-reader-img" src={b.image} alt="" />}
+              {b.image && <img className="atl-reader-img" src={assetUrl(b.image)} alt="" />}
               <p className="atl-reader-para">{b.content}</p>
             </React.Fragment>
           ))}

@@ -11,7 +11,7 @@
 //  IntersectionObserver 驱动当前卡索引（比 scroll 事件在 snap 下更稳、更省电）。
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { CategoryIcon, categoryName } from '../assets.jsx';
@@ -218,7 +218,7 @@ export default function DiscoverFeed() {
           return (
             <section key={c.id} className="feed-card" data-idx={i}>
               {c.avatar
-                ? <img className="feed-bg" src={c.avatar} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
+                ? <img className="feed-bg" src={assetUrl(c.avatar)} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
                 : <div className="feed-bg cover-art-box"><CoverArt name={c.name} /></div>}
               <div className="feed-scrim" />
               <span className="feed-ai-mark" aria-hidden="true">由 AI 生成</span>

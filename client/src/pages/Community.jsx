@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Uploader } from '../ui.jsx';
 import ReportButton from '../components/ReportButton.jsx';
 import { Heart, MessageCircle, Send, Trash2, Inbox, UserPlus, Check, Sparkles } from 'lucide-react';
@@ -189,7 +189,7 @@ export default function Community() {
                   )}
                 </div>
                 {m.text && <div className="text" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>}
-                {m.image && <img className="pic" src={m.image} alt="" loading="lazy" decoding="async" />}
+                {m.image && <img className="pic" src={assetUrl(m.image)} alt="" loading="lazy" decoding="async" />}
                 <div className="acts">
                   <button className={m.liked ? 'on' : ''} onClick={() => like(m)}
                     style={m.liked ? { color: 'var(--accent)' } : undefined}>

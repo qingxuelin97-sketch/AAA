@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CountUp, CoinIcon } from '../ui.jsx';
 import { BarChart, LineChart } from '../components/Charts.jsx';
 import { Eye, Heart, Star, Play, Users, Drama, ScrollText, TrendingUp, Sparkles, BarChart3, LineChart as LineIcon, Gift, Crown, Check, ChevronRight, Coins, TrendingDown, Calendar } from 'lucide-react';
@@ -213,7 +213,7 @@ export default function Studio() {
             <div className="studio-list">
               {data.scripts.map(s => (
                 <div key={s.id} className="studio-row" onClick={() => nav('/script/' + s.id)}>
-                  <div className="sr-cover">{s.cover ? <img src={s.cover} alt="" loading="lazy" /> : <ScrollText size={20} />}</div>
+                  <div className="sr-cover">{s.cover ? <img src={assetUrl(s.cover)} alt="" loading="lazy" /> : <ScrollText size={20} />}</div>
                   <div className="sr-name"><b>{s.title}</b><span className="tag">{s.price_gold > 0 ? `${s.price_gold} 金币` : '免费'}</span></div>
                   <div className="sr-stats">
                     <span title="游玩"><Play size={13} /> {fmt(s.plays)}</span>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, GridSkeleton, CreatorV, CoinIcon } from '../ui.jsx';
 import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Drama, Play, Megaphone, X, Star, Clock, ChevronLeft, ChevronRight, MessagesSquare, ListChecks, Check, Shuffle } from 'lucide-react';
@@ -26,7 +26,7 @@ function Spotlight({ items, onView, onChat }) {
       <div className="sp-stage">
         {list.map((it, n) => (
           <div key={it.id} className={'sp-slide' + (n === i ? ' on' : '')} aria-hidden={n !== i}>
-            {it.avatar ? <img src={it.avatar} alt="" loading="lazy" decoding="async" /> : <div className="sp-ph"><Drama size={64} /></div>}
+            {it.avatar ? <img src={assetUrl(it.avatar)} alt="" loading="lazy" decoding="async" /> : <div className="sp-ph"><Drama size={64} /></div>}
           </div>
         ))}
         <div className="sp-scrim" />
@@ -61,7 +61,7 @@ function Spotlight({ items, onView, onChat }) {
 function Poster({ c, onView, onFav, onChat }) {
   return (
     <article className="poster" onClick={() => onView(c)}>
-      {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
+      {c.avatar ? <img src={assetUrl(c.avatar)} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
       {c.featured ? <span className="p-feat"><Star size={11} fill="currentColor" /> 推荐</span>
         : c.category ? <span className="p-cat"><CategoryIcon slug={c.category} size={12} /> {categoryName(c.category)}</span> : null}
       <button className={'p-fav' + (c.faved ? ' on' : '')} onClick={e => onFav(e, c)} title="收藏"><Heart size={15} fill={c.faved ? 'currentColor' : 'none'} /></button>
@@ -262,7 +262,7 @@ export default function Home() {
             <div className="grid">
               {scripts.map(s => (
                 <div key={s.id} className="char-card" onClick={() => nav('/script/' + s.id)}>
-                  <div className="cover">{s.cover ? <img src={s.cover} alt="" loading="lazy" /> : <div className="ph"><ScrollText size={34} /></div>}
+                  <div className="cover">{s.cover ? <img src={assetUrl(s.cover)} alt="" loading="lazy" /> : <div className="ph"><ScrollText size={34} /></div>}
                     <div className="pill-pub">{s.price_gold > 0 ? <><CoinIcon size={12} /> {s.price_gold}</> : '免费'}</div></div>
                   <div className="meta"><h3>{s.title}</h3><p>{s.summary}</p>
                     <div className="foot"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Play size={11} /> {s.plays}</span><span style={{ marginLeft: 'auto' }} className="muted">{s.author_name}</span></div></div>

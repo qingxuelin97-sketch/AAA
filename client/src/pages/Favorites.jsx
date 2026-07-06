@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, assetUrl } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
 import { Heart } from 'lucide-react';
@@ -54,7 +54,7 @@ export default function Favorites() {
             {chars.map(c => (
               <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
                 <div className="cover">
-                  {c.avatar ? <img src={c.avatar} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
+                  {c.avatar ? <img src={assetUrl(c.avatar)} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
                   <button
                     className="btn sm danger"
                     style={{ position: 'absolute', top: 8, right: 8 }}
