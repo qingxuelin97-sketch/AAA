@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <!-- 幻域品牌矢量标（新月 + 星芒）：与 index.html 内联 favicon 同源的正式矢量文件。
+       真矢量，任意分辨率渲染不糊；供 PWA 清单 / 浏览器标签 / 分享卡使用。 -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#dd8662"/>
+      <stop offset="1" stop-color="#b3522f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.32" cy="0.28" r="0.9">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="40" height="40" rx="9" fill="url(#g)"/>
+  <rect width="40" height="40" rx="9" fill="url(#glow)"/>
+  <circle cx="19" cy="20" r="9.5" fill="#fff"/>
+  <circle cx="23.5" cy="17.5" r="8.2" fill="url(#g)"/>
+  <path d="M27.4 23.2l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" fill="#fff"/>
+  <circle cx="12.2" cy="12.6" r="0.9" fill="#fff" opacity="0.85"/>
+  <circle cx="30.6" cy="29.4" r="0.7" fill="#fff" opacity="0.7"/>
+</svg>

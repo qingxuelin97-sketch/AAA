@@ -10,7 +10,7 @@ import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
-import { msgPreview } from '../util.js';
+import { msgPreview, timeAgo } from '../util.js';
 import { Logo } from '../assets.jsx';
 import {
   Bell, ChevronRight, Heart, MessageCircle, Search, UserRound, Users, X, Flame
@@ -26,12 +26,14 @@ export default function Messages() {
   const [favs, setFavs] = useState(null);
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
+  const [threads, setThreads] = useState([]); // 私信会话（内嵌直列，IM 首页形态）
 
   const loadConvs = () => api('/chat/conversations').then(d => setConvs(d.conversations || [])).catch(() => setConvs([]));
+  const loadDm = () => api('/dm').then(d => { setDmUnread(d.unread_total || 0); setThreads(d.threads || []); }).catch(() => {});
   useEffect(() => {
     loadConvs();
     api('/social/notifications').then(d => setUnread(d.unread || 0)).catch(() => {});
-    api('/dm').then(d => setDmUnread(d.unread_total || 0)).catch(() => {});
+    loadDm();
   }, []);
   useEffect(() => {
     if (tab === 'liked' && favs === null) {
@@ -40,7 +42,10 @@ export default function Messages() {
   }, [tab, favs]);
 
   useRealtimeEvent('notification', () => setUnread(u => u + 1));
-  useRealtimeEvent('dm', () => { api('/dm').then(d => setDmUnread(d.unread_total || 0)).catch(() => {}); });
+  // 私信秒级刷新：SSE 到达即重拉会话列表（未读数、最后一条、排序同时更新）。
+  useRealtimeEvent('dm', loadDm);
+  // 好友通过申请等事件也可能新增会话入口。
+  useRealtimeEvent('friend', loadDm);
 
   const delConv = async (e, cv) => {
     e.stopPropagation();
@@ -95,6 +100,34 @@ export default function Messages() {
             <ChevronRight size={18} className="msgs-entry-chev" />
           </button>
 
+          {/* 私信会话直列（IM 首页形态）：在线点 / 未读角标 / 最后一条 / 相对时间，SSE 秒级刷新 */}
+          {threads.length > 0 && (
+            <>
+              <div className="msgs-sep"><span>私信</span></div>
+              {threads.slice(0, 6).map((t, i) => (
+                <div key={t.id} className="msgs-conv msgs-dm" style={{ '--i': i }} role="button" tabIndex={0}
+                  onClick={() => nav('/friends?dm=' + t.id)}
+                  onKeyDown={e => e.key === 'Enter' && nav('/friends?dm=' + t.id)}>
+                  <span className="msgs-ava">
+                    <Avatar src={t.avatar} name={t.display_name} size={50} />
+                    {t.online && <i className="msgs-online" title="在线" />}
+                  </span>
+                  <div className="msgs-conv-tx">
+                    <b>{t.display_name}</b>
+                    <span>{t.last_message ? (t.last_message.mine ? '我：' : '') + t.last_message.text : '开始聊天'}</span>
+                  </div>
+                  <div className="msgs-meta">
+                    <time>{timeAgo(t.last_message?.at)}</time>
+                    {t.unread > 0 && <i className="msgs-badge">{t.unread > 99 ? '99+' : t.unread}</i>}
+                  </div>
+                </div>
+              ))}
+              {threads.length > 6 && (
+                <button className="msgs-more" onClick={() => nav('/friends')}>查看全部 {threads.length} 个会话 <ChevronRight size={14} /></button>
+              )}
+            </>
+          )}
+
           <div className="msgs-sep"><span>与角色的对话</span></div>
 
           {convs === null && (
@@ -107,8 +140,8 @@ export default function Messages() {
               <button className="btn primary sm" onClick={() => nav('/')}>去发现</button>
             </div>
           )}
-          {convs && convs.map(cv => (
-            <div key={cv.id} className="msgs-conv" role="button" tabIndex={0}
+          {convs && convs.map((cv, i) => (
+            <div key={cv.id} className="msgs-conv" style={{ '--i': i }} role="button" tabIndex={0}
               onClick={() => nav('/chats/' + cv.id)}
               onKeyDown={e => e.key === 'Enter' && nav('/chats/' + cv.id)}>
               <Avatar src={cv.character_avatar} name={cv.character_name} size={50} />
@@ -134,8 +167,8 @@ export default function Messages() {
               <button className="btn primary sm" onClick={() => nav('/')}>去逛逛</button>
             </div>
           )}
-          {favs && favs.map(c => (
-            <div key={c.id} className="msgs-conv" role="button" tabIndex={0}
+          {favs && favs.map((c, i) => (
+            <div key={c.id} className="msgs-conv" style={{ '--i': i }} role="button" tabIndex={0}
               onClick={() => nav('/character/' + c.id)}
               onKeyDown={e => e.key === 'Enter' && nav('/character/' + c.id)}>
               {c.avatar

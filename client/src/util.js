@@ -30,6 +30,20 @@ export function cnToday(d = new Date()) {
   return new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
 }
 
+// 相对时间：「刚刚 / N 分钟前 / N 小时前 / N 天前 / 日期」。
+// SQLite 的 datetime('now') 为 UTC 且不带时区标记，这里统一按 UTC 解析。
+export function timeAgo(s) {
+  if (!s) return '';
+  const t = new Date(String(s).replace(' ', 'T') + (String(s).includes('Z') || String(s).includes('+') ? '' : 'Z')).getTime();
+  if (!t) return '';
+  const d = Date.now() - t;
+  if (d < 60_000) return '刚刚';
+  if (d < 3_600_000) return Math.floor(d / 60_000) + ' 分钟前';
+  if (d < 86_400_000) return Math.floor(d / 3_600_000) + ' 小时前';
+  if (d < 30 * 86_400_000) return Math.floor(d / 86_400_000) + ' 天前';
+  return new Date(t).toLocaleDateString();
+}
+
 // msgPreview —— 会话列表的最后消息摘要：酒馆卡的 HTML 面板消息显示「🎴 交互面板」
 // 占位标签而非一屏源码；普通文本压平空白后截断。
 export function msgPreview(raw, max = 34) {

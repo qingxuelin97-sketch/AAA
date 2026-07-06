@@ -6,21 +6,9 @@ import StageEditor from '../components/StageEditor.jsx';
 import NovelWorldEditor from '../components/NovelWorldEditor.jsx';
 import { BookOpen, Users, Plus, Check, Feather, Sparkles, ChevronRight, ChevronDown, ChevronUp,
   Image as ImageIcon, Search, Flag, Clock3, AlignLeft } from 'lucide-react';
+import { timeAgo } from '../util.js';
 
 const STYLE_PRESETS = ['古典雅致', '轻快幽默', '悬疑紧张', '热血激昂', '温柔治愈', '黑暗残酷', '武侠古风', '赛博科幻'];
-
-// 相对时间：书架上的「x 前更新」。服务端给的是 UTC 的 'YYYY-MM-DD HH:MM:SS'。
-function timeAgo(s) {
-  if (!s) return '';
-  const t = new Date(String(s).replace(' ', 'T') + (String(s).includes('Z') || String(s).includes('T') ? '' : 'Z')).getTime();
-  if (!t) return '';
-  const d = Date.now() - t;
-  if (d < 60_000) return '刚刚';
-  if (d < 3_600_000) return Math.floor(d / 60_000) + ' 分钟前';
-  if (d < 86_400_000) return Math.floor(d / 3_600_000) + ' 小时前';
-  if (d < 30 * 86_400_000) return Math.floor(d / 86_400_000) + ' 天前';
-  return new Date(t).toLocaleDateString();
-}
 
 // 互动小说（原「剧场」）：以你为主角的即兴叙事。挑选登场角色、写下序章，
 // 进入后写行动 / 台词，旁白续写后果，角色随时接话 —— 一部由你共同写就的小说。

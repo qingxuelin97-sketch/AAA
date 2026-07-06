@@ -1,9 +1,9 @@
 /* 幻域 PWA service worker — offline app shell.
    Strategy: network-first for navigations (always try fresh index.html, fall back
    to cache when offline), cache-first for hashed build assets (immutable). */
-const CACHE = 'huanyu-v2';
+const CACHE = 'huanyu-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
@@ -26,7 +26,7 @@ self.addEventListener('fetch', (e) => {
   }
   // hashed assets — cache first, then fill cache
   e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((r) => {
-    if (r.ok && (url.pathname.includes('/assets/') || url.pathname.endsWith('.png') || url.pathname.endsWith('.webmanifest'))) {
+    if (r.ok && (url.pathname.includes('/assets/') || url.pathname.endsWith('.png') || url.pathname.endsWith('.svg') || url.pathname.endsWith('.webmanifest'))) {
       const copy = r.clone(); caches.open(CACHE).then((c) => c.put(req, copy));
     }
     return r;

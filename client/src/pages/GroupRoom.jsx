@@ -84,10 +84,18 @@ export default function GroupRoom() {
   return (
     <div className="chat-layout immersive">
       <div className="chat-main">
-        <div className="chat-head">
+        <div className="chat-head gr-head">
           <button className="btn ghost sm" onClick={() => nav('/groups')}><ArrowLeft size={16} /></button>
           <Avatar src={group.avatar} name={group.name} size={40} />
-          <div className="nm"><b>{group.name}</b><br /><span>{group.owner_name} 创建 · {group.description || '同好交流'}</span></div>
+          <div className="nm gr-nm">
+            <b>{group.name}</b>
+            <span>
+              {members.length} 位成员
+              {members.some(m => m.online)
+                ? <> · <em className="gr-live"><i />{members.filter(m => m.online).length} 在线</em></>
+                : <> · {group.description || group.owner_name + ' 创建'}</>}
+            </span>
+          </div>
           <button className="btn ghost sm" onClick={() => setShowMembers(v => !v)} title="成员列表"><Users size={15} /> {members.length}</button>
           <button className="btn ghost sm" onClick={leave} title="退出群聊"><LogOut size={15} /></button>
         </div>
