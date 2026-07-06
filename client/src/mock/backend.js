@@ -106,7 +106,20 @@ function bgArt(seed, c1, c2, c3, kind) {
 const bannerArt = (s, c1, c2) => dataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="1200" height="320" fill="url(#g)"/><circle cx="980" cy="60" r="180" fill="#fff" opacity="0.07"/><circle cx="200" cy="300" r="160" fill="#000" opacity="0.1"/></svg>`);
 
 /* ----------------------------- persistence ----------------------------- */
-function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* quota */ } }
+// 写盘是这套离线后端最贵的一步：整库 JSON.stringify + localStorage 同步写，
+// 库里还躺着一堆 data-url 立绘。业务代码里 100+ 处 save() 原来每次都真写，
+// 「一键领取十几条成就」这类连环变更等于在主线程上连做十几次全量序列化，
+// 动画直接冻住。改成合并落盘：变更先记账，稍后一拍写一次；页面隐藏/关闭
+// 前强制冲刷，最坏丢失窗口只有几百毫秒的演示数据。
+let saveTimer = 0;
+function flushSave() {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* quota */ }
+}
+function save() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => { saveTimer = 0; flushSave(); }, 350);
+}
 function load() {
   const raw = localStorage.getItem(KEY);
   if (raw) { try { db = JSON.parse(raw); } catch { db = seed(); } }
@@ -3030,6 +3043,9 @@ function pubSettings(s, me) {
 /* ----------------------------- install ----------------------------- */
 export function installMockBackend() {
   load();
+  // 合并落盘的兜底：切后台 / 关页面时把还没写出去的变更冲刷掉。
+  window.addEventListener('pagehide', flushSave);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flushSave(); });
   window.fetch = async (input, init = {}) => {
     let url;
     try { url = new URL(typeof input === 'string' ? input : input.url, location.href); } catch { return realFetch(input, init); }

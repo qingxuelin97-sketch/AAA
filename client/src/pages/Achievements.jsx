@@ -49,8 +49,12 @@ export default function Achievements() {
     const claimables = list.filter(a => a.claimable);
     if (!claimables.length) return;
     setBusy('all');
-    let total = 0;
-    for (const a of claimables) { try { const d = await api(`/achievements/${a.id}/claim`, { method: 'POST' }); total += d.reward; } catch { /* skip */ } }
+    // 并行结算：十几条逐条 await 时，每条都要吃一次完整往返，
+    // 按钮能转上好几秒；一起发出去然后收账，失败的单条跳过即可。
+    const results = await Promise.allSettled(
+      claimables.map(a => api(`/achievements/${a.id}/claim`, { method: 'POST' }))
+    );
+    const total = results.reduce((s, r) => s + (r.status === 'fulfilled' ? (r.value.reward || 0) : 0), 0);
     toast(`一键领取完成，共 +${total} 金币`); refreshUser?.(); await load(); setBusy('');
   };
 
