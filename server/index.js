@@ -32,6 +32,7 @@ import worldbookRoutes from './routes/worldbooks.js';
 import novelRoutes from './routes/novels.js';
 import realtimeRoutes from './routes/realtime.js';
 import asrRoutes from './routes/asr.js';
+import { log, purgeOldLogs, genRequestId } from './logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -75,6 +76,45 @@ app.use('/api', rateLimit({ windowMs: 60_000, max: 240, standardHeaders: true, l
 
 app.use(express.json({ limit: '10mb' }));
 
+// —— 链路追踪 + 访问日志中间件 ——
+// 每个请求注入 request_id（响应头回传 X-Request-Id，便于前端排查），
+// 请求结束时按状态码分级落库（2xx=info / 4xx=warn / 5xx=error），慢请求额外标注。
+// /realtime/stream 与 /health 不记录（前者长连接会刷爆，后者健康检查无意义）。
+const SLOW_THRESHOLD_MS = 1500; // 慢请求阈值：超过 1.5s 标注
+app.use('/api', (req, res, next) => {
+  const start = Date.now();
+  // 优先复用客户端传来的 request_id（前端 fetch 拦截器可生成），否则服务端生成。
+  req.requestId = req.header('X-Request-Id') || genRequestId();
+  res.setHeader('X-Request-Id', req.requestId);
+  // 暴露给跨域前端（Capacitor 壳指向独立后端时必须显式暴露，否则拿不到 null）。
+  res.setHeader('Access-Control-Expose-Headers', 'X-Request-Id');
+  const skip = req.path === '/realtime/stream' || req.path === '/health';
+  if (skip) return next();
+  res.on('finish', () => {
+    const dur = Date.now() - start;
+    const status = res.statusCode;
+    const path = req.path || '';
+    const method = req.method || '';
+    const ip = req.ip || '';
+    const ua = req.header('user-agent') || '';
+    const uid = req.user?.id || null;
+    // 级别自动：5xx=error / 4xx=warn / 慢请求=warn / 其余=info
+    let level = 'info';
+    if (status >= 500) level = 'error';
+    else if (status >= 400) level = 'warn';
+    else if (dur > SLOW_THRESHOLD_MS) level = 'warn';
+    // 静态资源（/uploads）已在上方独立挂载，不会走这里；这里只记 /api 下的业务请求。
+    log({
+      level, source: 'server', category: 'api', event: 'request',
+      message: `${method} ${path} → ${status} ${dur}ms`,
+      user_id: uid, ip, ua, endpoint: path, method, status, duration_ms: dur,
+      extra: { slow: dur > SLOW_THRESHOLD_MS },
+      request_id: req.requestId,
+    });
+  });
+  next();
+});
+
 const uploadsDir = path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
 // 上传资源以附件形式下发并禁 MIME 嗅探，杜绝存储型 XSS（如 .html/.svg 内嵌脚本）。
@@ -114,6 +154,29 @@ app.use('/api/realtime', realtimeRoutes);
 app.use('/api/asr', asrRoutes);
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+// —— 客户端日志上报端点 ——
+// 三端（桌面网页 / 移动网页 / APP）统一上报：JS 异常、Promise 拒绝、React 崩溃、
+// 业务自定义事件。无需鉴权（崩溃发生在登录前也要能上报），但按 IP 限流防刷。
+// source 自动识别：UA 含 huanyu/capacitor 或带 X-Huanyu-App 头 → 'app'，否则 'client'。
+const clientLogLimiter = rateLimit({
+  windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: (req) => req.ip,
+  message: { error: '日志上报过于频繁' },
+});
+app.post('/api/logs/client', clientLogLimiter, (req, res) => {
+  const { level = 'info', event = 'client_log', message = '', extra = null, session_id = '', request_id = '' } = req.body || {};
+  const ua = req.header('user-agent') || '';
+  const isApp = /huanyu|capacitor/i.test(ua) || !!req.header('X-Huanyu-App');
+  const source = isApp ? 'app' : 'client';
+  log({
+    level, source, category: isApp ? 'app' : 'client', event,
+    message, ip: req.ip || '', ua, extra,
+    session_id, request_id: request_id || req.header('X-Request-Id') || '',
+    endpoint: req.header('referer') || '',
+  });
+  res.json({ ok: true });
+});
+
 // Serve built client (production) with SPA fallback.
 const clientDist = path.join(__dirname, '../client/dist');
 if (fs.existsSync(clientDist)) {
@@ -132,7 +195,33 @@ app.use((err, req, res, next) => {
   console.error(err);
   const status = err.status || 500;
   const message = err.expose ? err.message : (status < 500 ? err.message : '服务器内部错误');
-  res.status(status).json({ error: message });
+  // 5xx 错误落库（带堆栈），便于 GM 后台排查；4xx 是客户端错误，访问日志已记录，不重复。
+  if (status >= 500) {
+    log({
+      level: 'error', source: 'server', category: 'api', event: 'server_error',
+      message: `${req.method} ${req.path} → ${status}: ${err.message}`,
+      user_id: req.user?.id || null, ip: req.ip || '', ua: req.header('user-agent') || '',
+      endpoint: req.path || '', method: req.method || '', status,
+      extra: { stack: err.stack || '', name: err.name || '' },
+      request_id: req.requestId || '',
+    });
+  }
+  res.status(status).json({ error: message, request_id: req.requestId || undefined });
+});
+
+// —— 进程级异常捕获 ——
+// 未处理的 Promise 拒绝与同步异常：落库为 fatal，避免进程静默崩溃无迹可寻。
+// uncaughtException 仍退出进程（Node 建议），但先记日志；unhandledRejection 不退出（可恢复）。
+process.on('unhandledRejection', (reason) => {
+  const msg = reason instanceof Error ? `${reason.message}\n${reason.stack || ''}` : String(reason);
+  console.error('[unhandledRejection]', msg);
+  try { log({ level: 'fatal', source: 'server', category: 'system', event: 'unhandled_rejection', message: String(reason?.message || reason || ''), extra: { stack: reason?.stack || '', name: reason?.name || '' } }); } catch { /* */ }
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+  try { log({ level: 'fatal', source: 'server', category: 'system', event: 'uncaught_exception', message: err.message || '', extra: { stack: err.stack || '', name: err.name || '' } }); } catch { /* */ }
+  // 给日志一点落库时间再退出（better-sqlite3 同步写，无需等）。
+  process.exit(1);
 });
 
 // Start serving immediately (so platform health checks pass even if the DB is slow),
@@ -143,3 +232,13 @@ import('./persist.js').then(async ({ restoreOnBoot, startRolling }) => {
   await restoreOnBoot();
   startRolling();
 }).catch(e => console.error('[persist] 初始化失败：', e.message));
+
+// —— 日志保留清理任务 ——
+// 启动时清理一次（清理上次运行遗留的过期日志），之后每 24h 一次。
+try {
+  const removed = purgeOldLogs();
+  if (removed > 0) console.log(`[logger] 启动清理过期日志 ${removed} 条`);
+} catch (e) { console.error('[logger] 启动清理失败:', e.message); }
+setInterval(() => {
+  try { purgeOldLogs(); } catch (e) { console.error('[logger] 定时清理失败:', e.message); }
+}, 24 * 60 * 60 * 1000).unref();

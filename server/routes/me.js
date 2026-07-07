@@ -3,6 +3,7 @@ import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx, notify } from '../wallet.js';
 import { creatorWorks } from '../creator.js';
+import { log } from '../logger.js';
 
 const router = Router();
 
@@ -84,6 +85,13 @@ router.post('/revenue-plan/claim', authRequired, (req, res) => {
   db.prepare('UPDATE users SET rev_claimed_total = COALESCE(rev_claimed_total,0) + ? WHERE id = ?').run(amount, u.id);
   const w = applyTx(u.id, { kind: 'revenue_share', gold: amount, memo: `创作者分成（${plan.tier_name} · ${Math.round(plan.rate * 100)}%）` });
   notify(u.id, `💰 创作者收益分成 ${amount} 金币已到账（${plan.tier_name}）`, '/studio');
+  log({
+    level: 'info', category: 'economy', event: 'revenue_claim',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { amount, tier: plan.tier, tier_name: plan.tier_name, rate: plan.rate, pool_total: plan.pool_total },
+    message: `用户 ${req.user.id} 领取创作者分成 ${amount} 金币（${plan.tier_name}）`,
+  });
   res.json({ ok: true, reward: amount, wallet: w, plan: revenuePlan(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
 });
 

@@ -6,6 +6,7 @@ import { notify } from '../wallet.js';
 import { creatorTier } from '../creator.js';
 import { areFriends, isOnline, dmAllowed, dmThread } from '../relations.js';
 import { push } from '../realtime.js';
+import { log } from '../logger.js';
 
 const router = Router();
 const U = (id) => db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -44,6 +45,13 @@ router.post('/:id', authRequired, contentLimiter, (req, res) => {
   // 秒级推送到收件人：在线且正打开该会话则直接追加气泡，否则只更新未读数。
   push(tid, 'dm', { message: msg, from: { id: me.id, display_name: me.display_name, avatar: me.avatar } });
   notify(tid, `${me.display_name} 发来私信：${slice.slice(0, 24)}`, '/friends');
+  log({
+    level: 'info', category: 'dm', event: 'dm_send',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { target_user_id: tid, message_id: Number(info.lastInsertRowid), text_length: slice.length },
+    message: `用户 ${me.id} 向用户 ${tid} 发送私信`,
+  });
   res.json({ message: { ...msg, mine: true } });
 });
 

@@ -8,6 +8,8 @@ import { initAccent } from './accent.js';
 import { initPerf } from './perf.js';
 import { initFx } from './fx.js';
 import { initAppMode } from './appmode.js';
+import { installGlobalErrorCapture } from './logger.js';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/fraunces';
 import './styles.css';
@@ -17,6 +19,7 @@ initTheme();   // apply saved theme before first paint (no flash; app shell defa
 initAccent();  // apply saved accent palette before first paint
 initPerf();    // resolve device perf tier → data-perf, gating heavy GPU effects
 initFx();      // global click ripples + tap bursts
+installGlobalErrorCapture(); // 三端统一：捕获 window.onerror / unhandledrejection 并上报
 
 // Register the PWA service worker (web only; Capacitor serves from a native scheme).
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
@@ -47,11 +50,13 @@ const Router = STATIC ? HashRouter : BrowserRouter;
 function render() {
   createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-      <Router>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </Router>
+      <ErrorBoundary>
+        <Router>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </Router>
+      </ErrorBoundary>
     </React.StrictMode>
   );
 }

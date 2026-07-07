@@ -6,6 +6,7 @@ import { sign, authRequired, bumpTokenVersion } from'../auth.js';
 import { publicUser, applyTx, notify } from'../wallet.js';
 import { sendVerifyCode, getMail } from'../mail.js';
 import { isWhitelisted, normalizeEmail, whitelistEnabled } from'../whitelist.js';
+import { log } from '../logger.js';
 
 const router = Router();
 
@@ -145,6 +146,11 @@ router.post('/register', authLimiter, async (req, res) => {
   }
   notify(id,'欢迎来到幻域！已为你发放新手金币，快去发现广场逛逛吧','/');
 
+  log({ level: 'info', source: 'server', category: 'auth', event: 'register',
+    message: `新用户注册 ${username} (${e})`, user_id: id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: '/auth/register', method: 'POST', status: 200, request_id: req.requestId || '',
+    extra: { username, email: e, invited: !!key } });
+
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   res.json({ token: sign(user), user: publicUser(user) });
 });
@@ -165,13 +171,29 @@ router.post('/login', authLimiter, async (req, res) => {
       const fl = (row.failed_logins || 0) + 1;
       const lock = fl >= 5 ? Date.now() + 15 * 60_000 : 0;
       db.prepare('UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?').run(fl, lock, row.id);
+      log({ level: 'warn', source: 'server', category: 'auth', event: 'login_failed',
+        message: `登录失败 ${username} (${lock ? '已锁定' : '第' + fl + '次'})`, user_id: row.id, ip: req.ip, ua: req.header('user-agent') || '',
+        endpoint: '/auth/login', method: 'POST', status: 401, request_id: req.requestId || '',
+        extra: { failed_attempts: fl, locked: !!lock } });
       return res.status(401).json({ error: lock ? '密码错误次数过多，账号已锁定 15 分钟' : '用户名或密码错误' });
     }
+    log({ level: 'warn', source: 'server', category: 'auth', event: 'login_failed',
+      message: `登录失败（账号不存在）${username}`, ip: req.ip, ua: req.header('user-agent') || '',
+      endpoint: '/auth/login', method: 'POST', status: 401, request_id: req.requestId || '',
+      extra: { username } });
     return res.status(401).json({ error:'用户名或密码错误' });
   }
-  if (row.is_banned) return res.status(403).json({ error: '账号已被封禁' + (row.ban_reason ? '：' + row.ban_reason : '') });
+  if (row.is_banned) {
+    log({ level: 'warn', source: 'server', category: 'auth', event: 'login_banned',
+      message: `封禁用户尝试登录 ${username}`, user_id: row.id, ip: req.ip, ua: req.header('user-agent') || '',
+      endpoint: '/auth/login', method: 'POST', status: 403, request_id: req.requestId || '' });
+    return res.status(403).json({ error: '账号已被封禁' + (row.ban_reason ? '：' + row.ban_reason : '') });
+  }
   // 登录成功：清零失败计数与锁定状态。
   db.prepare('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?').run(row.id);
+  log({ level: 'info', source: 'server', category: 'auth', event: 'login',
+    message: `用户登录 ${username}`, user_id: row.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: '/auth/login', method: 'POST', status: 200, request_id: req.requestId || '' });
   res.json({ token: sign(row), user: publicUser(row) });
 });
 
@@ -200,6 +222,9 @@ router.put('/password', authRequired, async (req, res) => {
   const hash = await bcrypt.hash(String(new_password), BCRYPT_ROUNDS);
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.user.id);
   bumpTokenVersion(req.user.id); // 改密后使所有旧 token 失效
+  log({ level: 'warn', source: 'server', category: 'auth', event: 'password_change',
+    message: `用户修改密码`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: '/auth/password', method: 'PUT', status: 200, request_id: req.requestId || '' });
   // 给当前会话签发新版本 token，改密者本人无需重新登录（其他设备照常踢下线）。
   const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   res.json({ ok: true, token: sign(fresh) });

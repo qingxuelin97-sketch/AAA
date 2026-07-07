@@ -12,6 +12,7 @@ import { flush } from '../persist.js';
 import { cnToday } from '../daily.js';
 import { getMail, updateMail, testMailConn } from '../mail.js';
 import { listWhitelist, addWhitelist, importWhitelist, removeWhitelist, clearWhitelist, whitelistEnabled } from '../whitelist.js';
+import { auditLog, queryLogs, getLogStats, getLogTimeseries, getLogTop, getErrorFingerprints, log } from '../logger.js';
 
 const router = Router();
 const isGm = (uid) => !!db.prepare('SELECT is_gm FROM users WHERE id = ?').get(uid)?.is_gm;
@@ -258,14 +259,24 @@ router.get('/users', (req, res) => {
 });
 router.post('/users/:id/ban', (req, res) => {
   db.prepare('UPDATE users SET is_banned = 1, ban_reason = ? WHERE id = ?').run(req.body?.reason || '', req.params.id);
+  auditLog({ event: 'ban', message: `GM 封禁用户 U${req.params.id}${req.body?.reason ? '：' + req.body.reason : ''}`,
+    user_id: req.params.id, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    extra: { reason: req.body?.reason || '' }, request_id: req.requestId || '' });
   res.json({ ok: true });
 });
 router.post('/users/:id/unban', (req, res) => {
   db.prepare('UPDATE users SET is_banned = 0, ban_reason = ? WHERE id = ?').run('', req.params.id);
+  auditLog({ event: 'unban', message: `GM 解封用户 U${req.params.id}`,
+    user_id: req.params.id, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    request_id: req.requestId || '' });
   res.json({ ok: true });
 });
 router.post('/users/:id/gm', (req, res) => {
-  db.prepare('UPDATE users SET is_gm = ? WHERE id = ?').run(req.body?.value ? 1 : 0, req.params.id);
+  const value = req.body?.value ? 1 : 0;
+  db.prepare('UPDATE users SET is_gm = ? WHERE id = ?').run(value, req.params.id);
+  auditLog({ event: value ? 'grant_gm' : 'revoke_gm', message: `GM ${value ? '授予' : '撤销'} U${req.params.id} 的 GM 权限`,
+    user_id: req.params.id, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    request_id: req.requestId || '' });
   res.json({ ok: true });
 });
 router.post('/gift', (req, res) => {
@@ -279,6 +290,9 @@ router.post('/gift', (req, res) => {
     db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(new Date(base + vip_days * 86400000).toISOString(), target.id);
   }
   notify(target.id, `管理员赠送了你 ${gold ? gold + ' 金币 ' : ''}${diamond ? diamond + ' 钻石 ' : ''}${+vip_days > 0 ? vip_days + ' 天 VIP' : ''}`.trim());
+  auditLog({ event: 'gift', message: `GM 赠送 U${target.id} ${gold ? gold + '金 ' : ''}${diamond ? diamond + '钻 ' : ''}${+vip_days > 0 ? vip_days + '天VIP' : ''}`.trim(),
+    user_id: target.id, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    extra: { gold: +gold || 0, diamond: +diamond || 0, vip_days: +vip_days || 0, memo: memo || '' }, request_id: req.requestId || '' });
   res.json({ ok: true, user_id: target.id });
 });
 
@@ -357,6 +371,60 @@ router.put('/mail', (req, res) => res.json({ ok: true, mail: updateMail(req.body
 router.post('/mail/test', async (req, res) => {
   const r = await testMailConn(req.body || {});
   res.json(r);
+});
+
+// —— 日志系统 ——
+// GM 后台「日志」标签页的后端：多维查询 / 统计 / 时序图 / TOP 榜 / 错误指纹 / 导出。
+// 全部需 GM 权限（router.use(authRequired, gm) 已在最外层拦截）。
+
+// 多维过滤分页查询。level=error 时自动包含 fatal（>= 过滤）。
+router.get('/logs', (req, res) => {
+  const { level, source, category, event, user_id, q, since, until, limit, offset, sort } = req.query;
+  const r = queryLogs({ level, source, category, event, user_id, q, since, until, limit, offset, sort });
+  res.json(r);
+});
+
+// 日志统计概览：总数 / 24h 错误 / 按级别·来源·类别分布。
+router.get('/logs/stats', (req, res) => {
+  res.json({ stats: getLogStats() });
+});
+
+// 时间序列：按小时（最近24h）或按天（最近30天）聚合，用于趋势图。
+router.get('/logs/timeseries', (req, res) => {
+  const window = req.query.window === 'day' ? 'day' : 'hour';
+  const level = req.query.level || '';
+  res.json({ series: getLogTimeseries(window, level) });
+});
+
+// TOP 榜：高频事件 / 热点接口 / 活跃用户 / 高频 IP。
+router.get('/logs/top', (req, res) => {
+  const dim = ['event', 'endpoint', 'user', 'ip'].includes(req.query.dim) ? req.query.dim : 'event';
+  const level = req.query.level || '';
+  const limit = req.query.limit || 10;
+  res.json({ top: getLogTop(dim, level, limit) });
+});
+
+// 错误指纹聚合：找出高频错误（按指纹分组，count 求和），用于「错误热点」面板。
+router.get('/logs/fingerprints', (req, res) => {
+  const limit = req.query.limit || 10;
+  res.json({ fingerprints: getErrorFingerprints(limit) });
+});
+
+// 导出日志为 JSON 文件（最多 1000 条，避免响应过大）。
+// GM 排查问题时可导出当前过滤结果离线分析。
+router.get('/logs/export', (req, res) => {
+  const { level, source, category, event, user_id, q, since, until, sort } = req.query;
+  const r = queryLogs({ level, source, category, event, user_id, q, since, until, limit: 1000, offset: 0, sort });
+  res.setHeader('Content-Disposition', `attachment; filename="logs-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.json({ exported_at: new Date().toISOString(), total: r.total, rows: r.rows });
+});
+
+// 手动触发日志清理（GM 在后台「日志」页点击「立即清理」按钮调用）。
+router.post('/logs/purge', async (req, res) => {
+  const { purgeOldLogs } = await import('../logger.js');
+  const removed = purgeOldLogs();
+  auditLog({ event: 'purge_logs', message: `GM 手动清理日志 ${removed} 条`, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', extra: { removed } });
+  res.json({ ok: true, removed });
 });
 
 export default router;

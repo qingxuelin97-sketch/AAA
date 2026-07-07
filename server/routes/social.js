@@ -3,6 +3,7 @@ import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter } from '../limiters.js';
 import { notify } from '../wallet.js';
+import { log } from '../logger.js';
 
 const router = Router();
 
@@ -36,6 +37,13 @@ router.post('/moments', authRequired, contentLimiter, (req, res) => {
   const { text, image } = req.body || {};
   if (!text && !image) return res.status(400).json({ error: '说点什么或配张图吧' });
   const info = db.prepare('INSERT INTO moments (user_id, text, image) VALUES (?,?,?)').run(req.user.id, text || '', image || null);
+  log({
+    level: 'info', category: 'social', event: 'moment_post',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { moment_id: Number(info.lastInsertRowid), has_image: !!image, text_length: (text || '').length },
+    message: `用户 ${req.user.id} 发布动态 ${info.lastInsertRowid}`,
+  });
   res.json({ moment: db.prepare('SELECT * FROM moments WHERE id = ?').get(info.lastInsertRowid) });
 });
 
@@ -53,11 +61,25 @@ router.post('/moments/:id/like', authRequired, (req, res) => {
   if (has) {
     db.prepare('DELETE FROM moment_likes WHERE moment_id = ? AND user_id = ?').run(m.id, req.user.id);
     db.prepare('UPDATE moments SET likes = MAX(0, likes - 1) WHERE id = ?').run(m.id);
+    log({
+      level: 'info', category: 'social', event: 'moment_like',
+      user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+      endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+      extra: { moment_id: m.id, author_id: m.user_id, liked: false },
+      message: `用户 ${req.user.id} 取消点赞动态 ${m.id}`,
+    });
     return res.json({ liked: false, likes: m.likes - 1 });
   }
   db.prepare('INSERT INTO moment_likes (moment_id, user_id) VALUES (?,?)').run(m.id, req.user.id);
   db.prepare('UPDATE moments SET likes = likes + 1 WHERE id = ?').run(m.id);
   if (m.user_id !== req.user.id) notify(m.user_id, `${req.user.display_name || req.user.username} 赞了你的动态`, '/community');
+  log({
+    level: 'info', category: 'social', event: 'moment_like',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { moment_id: m.id, author_id: m.user_id, liked: true },
+    message: `用户 ${req.user.id} 点赞动态 ${m.id}`,
+  });
   res.json({ liked: true, likes: m.likes + 1 });
 });
 
@@ -96,9 +118,26 @@ router.post('/follow/:id', authRequired, (req, res) => {
   const target = parseInt(req.params.id, 10);
   if (target === req.user.id) return res.status(400).json({ error: '不能关注自己' });
   const has = db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?').get(req.user.id, target);
-  if (has) { db.prepare('DELETE FROM follows WHERE follower_id = ? AND following_id = ?').run(req.user.id, target); return res.json({ following: false }); }
+  if (has) {
+    db.prepare('DELETE FROM follows WHERE follower_id = ? AND following_id = ?').run(req.user.id, target);
+    log({
+      level: 'info', category: 'social', event: 'follow',
+      user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+      endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+      extra: { target_user_id: target, following: false },
+      message: `用户 ${req.user.id} 取消关注用户 ${target}`,
+    });
+    return res.json({ following: false });
+  }
   db.prepare('INSERT INTO follows (follower_id, following_id) VALUES (?,?)').run(req.user.id, target);
   notify(target, `${req.user.display_name || req.user.username} 关注了你`, '/user/' + req.user.id);
+  log({
+    level: 'info', category: 'social', event: 'follow',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { target_user_id: target, following: true },
+    message: `用户 ${req.user.id} 关注用户 ${target}`,
+  });
   res.json({ following: true });
 });
 

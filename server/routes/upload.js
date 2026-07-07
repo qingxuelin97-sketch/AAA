@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { authRequired } from '../auth.js';
 import { uploadLimiter } from '../limiters.js';
+import { log } from '../logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = Router();
@@ -40,6 +41,13 @@ const upload = multer({
 router.post('/', authRequired, uploadLimiter, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: '未收到文件' });
   const kind = req.file.mimetype.startsWith('video') ? 'video' : req.file.mimetype.startsWith('audio') ? 'audio' : 'image';
+  log({
+    level: 'info', category: 'upload', event: 'upload',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { filename: req.file.filename, mimetype: req.file.mimetype, size: req.file.size, kind },
+    message: `用户 ${req.user.id} 上传文件 ${req.file.filename}（${req.file.mimetype}, ${req.file.size} 字节）`,
+  });
   res.json({ url: '/uploads/' + req.file.filename, type: kind });
 });
 

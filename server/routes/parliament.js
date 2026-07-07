@@ -4,6 +4,7 @@ import { authRequired } from '../auth.js';
 import { notify } from '../wallet.js';
 import { creatorTier } from '../creator.js';
 import { councilCfg, councilSeats, councilSize, parliamentLocked } from '../council.js';
+import { log } from '../logger.js';
 
 const router = Router();
 const meRow = (id) => db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -56,6 +57,13 @@ router.post('/proposals', authRequired, (req, res) => {
   if (!text) return res.status(400).json({ error: '请填写提案内容' });
   const info = db.prepare('INSERT INTO proposals (author_id, title, body, status) VALUES (?,?,?,?)').run(me.id, title.slice(0, 80), text.slice(0, 2000), 'pending');
   db.prepare('SELECT id FROM users WHERE is_gm = 1').all().forEach(g => notify(g.id, `议员「${me.display_name}」提交了新提案，待采纳：${title.slice(0, 20)}`, '/parliament'));
+  log({
+    level: 'info', category: 'parliament', event: 'proposal_submit',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { proposal_id: Number(info.lastInsertRowid), author_id: me.id, title: title.slice(0, 80) },
+    message: `议员 ${me.id} 提交提案 ${info.lastInsertRowid}：${title.slice(0, 20)}`,
+  });
   res.json({ proposal: proposalView(db.prepare('SELECT * FROM proposals WHERE id = ?').get(info.lastInsertRowid), me.id) });
 });
 
@@ -120,6 +128,13 @@ router.post('/proposals/:id/adopt', authRequired, ensureUnlocked, (req, res) => 
   db.prepare("UPDATE proposals SET status='voting', adopted_at=datetime('now') WHERE id=?").run(p.id);
   notify(p.author_id, `你的提案「${p.title.slice(0, 20)}」已被采纳，进入议会表决阶段。`, '/parliament');
   db.prepare('SELECT id FROM users WHERE is_councilor = 1').all().forEach(c => notify(c.id, `新提案进入表决：「${p.title.slice(0, 20)}」，请前往议会投票。`, '/parliament'));
+  log({
+    level: 'info', category: 'parliament', event: 'proposal_adopt',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { proposal_id: p.id, author_id: p.author_id, title: p.title.slice(0, 80) },
+    message: `GM ${req.user.id} 采纳提案 ${p.id} 进入表决`,
+  });
   res.json({ proposal: proposalView(db.prepare('SELECT * FROM proposals WHERE id=?').get(p.id), req.user.id) });
 });
 
@@ -130,6 +145,13 @@ router.post('/proposals/:id/reject', authRequired, ensureUnlocked, (req, res) =>
   if (p.status !== 'pending' && p.status !== 'voting') return res.status(400).json({ error: '该提案无法驳回' });
   db.prepare("UPDATE proposals SET status='rejected', decided_at=datetime('now') WHERE id=?").run(p.id);
   notify(p.author_id, `你的提案「${p.title.slice(0, 20)}」未获采纳。`, '/parliament');
+  log({
+    level: 'info', category: 'parliament', event: 'proposal_reject',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { proposal_id: p.id, author_id: p.author_id, title: p.title.slice(0, 80) },
+    message: `GM ${req.user.id} 驳回提案 ${p.id}`,
+  });
   res.json({ proposal: proposalView(db.prepare('SELECT * FROM proposals WHERE id=?').get(p.id), req.user.id) });
 });
 
@@ -147,6 +169,13 @@ router.post('/proposals/:id/close', authRequired, ensureUnlocked, (req, res) => 
   db.prepare("UPDATE proposals SET status=?, tally=?, decided_at=datetime('now') WHERE id=?").run(status, JSON.stringify({ ...tally, total, ratio }), p.id);
   const label = status === 'passed_special' ? '特别决议通过' : status === 'passed_general' ? '一般决议通过' : '未获通过';
   notify(p.author_id, `提案「${p.title.slice(0, 20)}」表决结束：${label}（赞成率 ${Math.round(ratio * 100)}%）。`, '/parliament');
+  log({
+    level: 'info', category: 'parliament', event: 'proposal_close',
+    user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { proposal_id: p.id, author_id: p.author_id, status, tally: { ...tally, total, ratio }, title: p.title.slice(0, 80) },
+    message: `GM ${req.user.id} 计票结束提案 ${p.id}：${label}（赞成率 ${Math.round(ratio * 100)}%）`,
+  });
   res.json({ proposal: proposalView(db.prepare('SELECT * FROM proposals WHERE id=?').get(p.id), req.user.id) });
 });
 

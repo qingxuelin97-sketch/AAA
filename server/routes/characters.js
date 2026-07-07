@@ -5,6 +5,7 @@ import { bumpDaily } from '../daily.js';
 import { creatorTier } from '../creator.js';
 import { contentLimiter } from '../limiters.js';
 import { broadcast } from '../realtime.js';
+import { log } from '../logger.js';
 
 const router = Router();
 
@@ -100,10 +101,13 @@ router.get('/favorites/list', authRequired, (req, res) => {
 router.post('/:id/favorite', authRequired, (req, res) => {
   const has = db.prepare('SELECT 1 FROM favorites WHERE user_id = ? AND character_id = ?').get(req.user.id, req.params.id);
   if (has) { db.prepare('DELETE FROM favorites WHERE user_id = ? AND character_id = ?').run(req.user.id, req.params.id);
-    db.prepare('UPDATE characters SET likes = MAX(0, likes - 1) WHERE id = ?').run(req.params.id); return res.json({ faved: false }); }
+    db.prepare('UPDATE characters SET likes = MAX(0, likes - 1) WHERE id = ?').run(req.params.id);
+    log({ category: 'character', level: 'info', event: 'favorite', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: Number(req.params.id), faved: false }, message: '取消收藏角色' });
+    return res.json({ faved: false }); }
   db.prepare('INSERT INTO favorites (user_id, character_id) VALUES (?,?)').run(req.user.id, req.params.id);
   db.prepare('UPDATE characters SET likes = likes + 1 WHERE id = ?').run(req.params.id);
   bumpDaily(req.user.id, 'fav');
+  log({ category: 'character', level: 'info', event: 'favorite', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: Number(req.params.id), faved: true }, message: '收藏角色' });
   res.json({ faved: true });
 });
 
@@ -143,6 +147,7 @@ router.post('/', authRequired, (req, res) => {
   if (b.is_public) {
     broadcast('character_new', { character: cardPreview(c, req.user.display_name, req.user.avatar, creatorTier(req.user.id)) }, req.user.id);
   }
+  log({ category: 'character', level: 'info', event: 'character_create', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: c.id, name: c.name, is_public: !!c.is_public }, message: '创建角色' });
   res.json({ character: ownerView(c) });
 });
 
@@ -170,6 +175,7 @@ router.put('/:id', authRequired, (req, res) => {
     });
   if (b.world) saveWorld(c.id, b.world);
   const updated = db.prepare('SELECT * FROM characters WHERE id = ?').get(c.id);
+  log({ category: 'character', level: 'info', event: 'character_update', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: updated.id, name: updated.name, is_public: !!updated.is_public }, message: '更新角色' });
   res.json({ character: ownerView(updated) });
 });
 
@@ -177,6 +183,7 @@ router.delete('/:id', authRequired, (req, res) => {
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(req.params.id);
   if (!c || c.owner_id !== req.user.id) return res.status(403).json({ error: '无权删除' });
   db.prepare('DELETE FROM characters WHERE id = ?').run(c.id);
+  log({ category: 'character', level: 'info', event: 'character_delete', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: c.id, name: c.name, is_public: !!c.is_public }, message: '删除角色' });
   res.json({ ok: true });
 });
 
@@ -260,6 +267,7 @@ router.post('/import', authRequired, contentLimiter, (req, res) => {
     });
   saveWorld(info.lastInsertRowid, world);
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);
+  log({ category: 'character', level: 'info', event: 'import', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: c.id, name: c.name, is_public: !!c.is_public }, message: '导入角色卡' });
   res.json({ character: ownerView(c) });
 });
 

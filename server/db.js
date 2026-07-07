@@ -608,6 +608,44 @@ CREATE TABLE IF NOT EXISTS novel_beats (
 );
 CREATE INDEX IF NOT EXISTS idx_novel_runs_novel ON novel_runs (novel_id);
 CREATE INDEX IF NOT EXISTS idx_novel_beats_run ON novel_beats (run_id, seq);
+
+-- —— 统一日志系统 ——
+-- 三端（服务端 / 桌面网页 / 移动网页 / APP）所有日志都落这一张表。
+-- 设计要点：
+--  1) level + source + category + event 四维分类，覆盖访问日志 / 业务审计 / 客户端崩溃 / 系统异常。
+--  2) fingerprint：事件指纹（source+category+event+message 哈希），用于聚合相同错误、按指纹去重计数。
+--  3) request_id：链路追踪 ID，一次 HTTP 请求内产生的所有日志共享同一个 id，便于复盘。
+--  4) extra：JSON 扩展字段（堆栈 / 组件树 / 上下文），避免主表列膨胀。
+--  5) 级别分级保留：debug 3d / info 7d / warn 30d / error+fatal 90d，由 logger.purgeOldLogs 定时清理。
+CREATE TABLE IF NOT EXISTS logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts TEXT DEFAULT (datetime('now')),
+  level TEXT NOT NULL,                        -- debug|info|warn|error|fatal
+  source TEXT NOT NULL,                       -- server | client | app
+  category TEXT NOT NULL,                     -- auth|api|admin|economy|chat|character|social|dm|parliament|upload|system|client|app
+  event TEXT NOT NULL,                        -- login|register|ban|crash|request|ai_call|...
+  message TEXT DEFAULT '',
+  user_id INTEGER,
+  ip TEXT DEFAULT '',
+  ua TEXT DEFAULT '',
+  endpoint TEXT DEFAULT '',
+  method TEXT DEFAULT '',
+  status INTEGER DEFAULT 0,
+  duration_ms INTEGER DEFAULT 0,
+  extra TEXT DEFAULT '',                      -- JSON 扩展字段
+  session_id TEXT DEFAULT '',                 -- 客户端会话 ID（跨页面/跨刷新保持）
+  request_id TEXT DEFAULT '',                 -- 链路追踪 ID（单次 HTTP 请求内共享）
+  fingerprint TEXT DEFAULT '',                -- 事件指纹（聚合去重用）
+  count INTEGER DEFAULT 1                     -- 相同指纹聚合计数（同一指纹短期内合并）
+);
+CREATE INDEX IF NOT EXISTS idx_logs_ts ON logs (ts);
+CREATE INDEX IF NOT EXISTS idx_logs_level ON logs (level, id);
+CREATE INDEX IF NOT EXISTS idx_logs_category ON logs (category, id);
+CREATE INDEX IF NOT EXISTS idx_logs_source ON logs (source, id);
+CREATE INDEX IF NOT EXISTS idx_logs_user ON logs (user_id, id);
+CREATE INDEX IF NOT EXISTS idx_logs_fingerprint ON logs (fingerprint, id);
+CREATE INDEX IF NOT EXISTS idx_logs_event ON logs (event, id);
+CREATE INDEX IF NOT EXISTS idx_logs_request ON logs (request_id);
 `);
 // 迁移：为已有数据库补齐新列（忽略已存在）。
 for (const sql of [

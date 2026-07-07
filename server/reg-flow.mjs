@@ -143,6 +143,66 @@ try {
   const wl2 = await (await fetch(BASE + '/admin/whitelist', { headers: H })).json();
   ok(wl2.enabled === false, '清空后白名单未启用');
 
+  // —— 日志系统 ——
+  // 18a. 客户端日志上报（无需鉴权）
+  r = await fetch(BASE + '/logs/client', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ level: 'error', event: 'test_crash', message: 'reg-flow 测试客户端崩溃', extra: { stack: 'Error: test' } }) });
+  ok(r.ok, '客户端日志上报 → 200');
+
+  // 18b. GM 查询日志（含过滤：level=error, category=client）
+  r = await fetch(BASE + '/admin/logs?level=error&category=client&limit=10', { headers: H });
+  ok(r.ok, 'GM 查询日志 → 200');
+  const logsData = await r.json();
+  ok(Array.isArray(logsData.rows) && logsData.total >= 1, '日志列表返回 ≥1 条');
+  const found = logsData.rows.some(x => x.event === 'test_crash');
+  ok(found, '查询到刚上报的客户端日志');
+
+  // 18c. GM 日志统计
+  r = await fetch(BASE + '/admin/logs/stats', { headers: H });
+  ok(r.ok, 'GM 日志统计 → 200');
+  const logStats = (await r.json()).stats;
+  ok(logStats.total >= 1 && Array.isArray(logStats.by_level), '日志统计结构正确');
+
+  // 18d. 服务端访问日志已落库（之前的请求都会被中间件记录）
+  r = await fetch(BASE + '/admin/logs?source=server&category=api&limit=5', { headers: H });
+  const apiLogs = (await r.json()).rows;
+  ok(apiLogs.length >= 1 && apiLogs.some(x => x.event === 'request'), '服务端访问日志已记录');
+
+  // 18e. 业务审计日志：register 事件应记录到日志表（测试流程中 newuser 注册过）
+  const auditLogs = await (await fetch(BASE + '/admin/logs?category=auth&event=register&limit=5', { headers: H })).json();
+  ok(auditLogs.total >= 1, 'register 业务日志已记录');
+
+  // 18f. 日志时序统计
+  r = await fetch(BASE + '/admin/logs/timeseries?window=hour', { headers: H });
+  ok(r.ok, '日志时序统计 → 200');
+  const tsData = (await r.json()).series;
+  ok(Array.isArray(tsData), '日志时序统计返回数组');
+
+  // 18g. 日志 TOP 统计
+  r = await fetch(BASE + '/admin/logs/top?dim=event&limit=5', { headers: H });
+  ok(r.ok, '日志 TOP 统计 → 200');
+  const topData = (await r.json()).top;
+  ok(Array.isArray(topData) && topData.length >= 1, '日志 TOP 统计返回非空数组');
+
+  // 18h. 错误指纹聚合
+  r = await fetch(BASE + '/admin/logs/fingerprints?limit=5', { headers: H });
+  ok(r.ok, '错误指纹聚合 → 200');
+  const fpData = (await r.json()).fingerprints;
+  ok(Array.isArray(fpData), '错误指纹聚合返回数组');
+
+  // 18i. 日志导出
+  r = await fetch(BASE + '/admin/logs/export?limit=10', { headers: H });
+  ok(r.ok, '日志导出 → 200');
+  const exportData = await r.json();
+  ok(Array.isArray(exportData.rows) && exportData.total >= 1, '日志导出返回数据');
+
+  // 18j. 链路追踪：检查日志记录的 request_id 字段存在
+  const reqLog = apiLogs.find(x => x.request_id);
+  ok(!!reqLog, '访问日志包含 request_id 字段');
+
+  // 18k. 指纹去重：检查 count 字段存在
+  const anyLog = logsData.rows[0];
+  ok(anyLog && typeof anyLog.count === 'number', '日志记录包含 count 字段');
+
   console.log(`\n注册流程 smoke: ${pass} passed, ${fail} failed`);
 } catch (e) {
   console.error('测试异常：', e);

@@ -4,6 +4,7 @@ import db from'../db.js';
 import { authRequired } from'../auth.js';
 import { applyTx, isVip, publicUser, GOLD_PER_DIAMOND, VIP_COST_GOLD, VIP_DAYS, notify } from'../wallet.js';
 import { bumpDaily, cnToday } from '../daily.js';
+import { log } from '../logger.js';
 
 const router = Router();
 
@@ -50,6 +51,10 @@ router.post('/recharge', authRequired, (req, res) => {
   }
   const total = pkg.diamond + pkg.bonus;
   const w = applyTx(req.user.id, { kind:'recharge', diamond: total, memo:`充值 ¥${pkg.cny} 获得 ${total} 钻石` });
+  log({ level: 'info', category: 'economy', event: 'recharge',
+    message: `用户充值 ${total} 钻石`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { package_id: pkg.id, cny: pkg.cny, diamond: pkg.diamond, bonus: pkg.bonus, total } });
   res.json({ wallet: w });
 });
 
@@ -60,6 +65,10 @@ router.post('/exchange', authRequired, (req, res) => {
   if (n > 1_000_000) return res.status(400).json({ error:'单次兑换上限 100 万钻石' });
   try {
     const w = applyTx(req.user.id, { kind:'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo:`${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` });
+    log({ level: 'info', category: 'economy', event: 'exchange',
+      message: `用户兑换 ${n} 钻石为 ${n * GOLD_PER_DIAMOND} 金币`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+      endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+      extra: { diamond: n, gold: n * GOLD_PER_DIAMOND } });
     res.json({ wallet: w });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -75,6 +84,10 @@ router.post('/vip', authRequired, (req, res) => {
   const until = new Date(base + plan.days * 86400000).toISOString();
   db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(until, req.user.id);
   notify(req.user.id,`VIP 已开通，有效期至 ${until.slice(0, 10)}`);
+  log({ level: 'info', category: 'economy', event: 'vip',
+    message: `用户购买 VIP ${plan.label}（${plan.days} 天）`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { plan: plan.id, gold: plan.gold, vip_days: plan.days, vip_until: until } });
   res.json({ wallet: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });
 });
 
@@ -93,6 +106,10 @@ router.post('/checkin', authRequired, (req, res) => {
   if (upd.changes === 0) return res.status(400).json({ error:'今天已经签到过啦' });
   const w = applyTx(req.user.id, { kind:'checkin', gold: reward, memo:`第 ${streak} 天签到` });
   bumpDaily(req.user.id, 'checkin');
+  log({ level: 'info', category: 'economy', event: 'checkin',
+    message: `用户签到 第 ${streak} 天 奖励 ${reward} 金币`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { gold: reward, streak, vip: isVip(u) } });
   res.json({ wallet: w, reward, streak });
 });
 
@@ -115,6 +132,10 @@ router.post('/redeem', authRequired, redeemLimiter, (req, res) => {
     const base = isVip(u) ? new Date(u.vip_until).getTime() : Date.now();
     db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(new Date(base + key.grant_vip_days * 86400000).toISOString(), req.user.id);
   }
+  log({ level: 'warn', category: 'economy', event: 'redeem',
+    message: `用户兑换码 ${code}`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { code, grant_gold: key.grant_gold, grant_diamond: key.grant_diamond, grant_vip_days: key.grant_vip_days } });
   res.json({ wallet: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });
 });
 

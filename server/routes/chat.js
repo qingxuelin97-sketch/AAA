@@ -7,6 +7,7 @@ import { getPlatform, voiceReady, featureFee, platformFee, VOICE_FEE } from '../
 import { bumpDaily } from '../daily.js';
 import { assertPublicUrl } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
+import { log } from '../logger.js';
 
 const router = Router();
 
@@ -564,6 +565,10 @@ router.post('/conversations', authRequired, (req, res) => {
   }
   bumpDaily(req.user.id, 'chat');
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(info.lastInsertRowid);
+  log({ level: 'info', source: 'server', category: 'chat', event: 'conversation_start',
+    message: `新建对话《${c.name}》`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { conversation_id: info.lastInsertRowid, character_id } });
   res.json({ conversation: conv });
 });
 
@@ -682,7 +687,7 @@ router.post('/conversations/:id/complete', authRequired, aiLimiter, async (req, 
   if (userContent) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'user', userContent);
   }
-  await streamReply(res, conv, character, settings, userContent);
+  await streamReply(res, req, conv, character, settings, userContent, 'ai_reply');
 });
 
 // Regenerate: drop the trailing assistant message, then produce a fresh reply.
@@ -693,7 +698,7 @@ router.post('/conversations/:id/regenerate', authRequired, aiLimiter, async (req
   const settings = getSettings(req.user.id);
   const last = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 1').get(conv.id);
   if (last && last.role === 'assistant') db.prepare('DELETE FROM messages WHERE id = ?').run(last.id);
-  await streamReply(res, conv, character, settings, '');
+  await streamReply(res, req, conv, character, settings, '', 'regenerate');
 });
 
 // 共用：把上游 OpenAI 兼容流转发为本平台 SSE（data:{delta}）。
@@ -783,16 +788,26 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
     { role: 'user', content: userInput }
   ];
   const full = await pumpModelStream(res, eff, payloadMessages);
-  if (full == null) return res.end();
+  if (full == null) {
+    log({ level: 'warn', source: 'server', category: 'chat', event: 'generate',
+      message: `面板生成失败《${character?.name || ''}》（上游错误）`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+      endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+      extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: 0 } });
+    return res.end();
+  }
   if (full.trim() && feeDue) {
     try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 面板生成《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ }
   }
+  log({ level: 'info', source: 'server', category: 'chat', event: 'generate',
+    message: `面板生成《${character?.name || ''}》`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: feeDue || 0, chars: full.length, platform: !!eff?.platform } });
   res.write('data: [DONE]\n\n');
   res.end();
 });
 
 // Shared SSE streaming of a model reply; persists the assistant message.
-async function streamReply(res, conv, character, settings, userContent) {
+async function streamReply(res, req, conv, character, settings, userContent, event) {
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
   const eff = effectiveLLM(settings);
   // SSRF 防护：仅校验用户自带的 base_url。平台 base_url 由管理员配置，
@@ -820,7 +835,15 @@ async function streamReply(res, conv, character, settings, userContent) {
   const payloadMessages = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
   const full = await pumpModelStream(res, eff, payloadMessages);
-  if (full == null) return res.end();
+  // AI 上游返回 null：流已写入错误事件，记录 warn 后结束（不向客户端再写 [DONE]）。
+  if (full == null) {
+    log({ level: 'warn', source: 'server', category: 'chat', event,
+      message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}失败《${character?.name || ''}》（上游错误）`,
+      user_id: conv.user_id, ip: req.ip, ua: req.header('user-agent') || '',
+      endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+      extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: 0 } });
+    return res.end();
+  }
   if (full.trim()) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
@@ -828,6 +851,11 @@ async function streamReply(res, conv, character, settings, userContent) {
     // Deduct the platform fee only after a successful reply (no charge on failure).
     if (feeDue) { try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ } }
   }
+  log({ level: 'info', source: 'server', category: 'chat', event,
+    message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}《${character?.name || ''}》`,
+    user_id: conv.user_id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: feeDue || 0, chars: full.length, platform: !!eff?.platform } });
   res.write('data: [DONE]\n\n');
   res.end();
 }
@@ -862,6 +890,10 @@ router.post('/tts', authRequired, aiLimiter, async (req, res) => {
     try { const w = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}`, ref_owner: ttsRefOwner }); res.setHeader('X-Gold-Fee', String(fee)); res.setHeader('X-Gold-Balance', String(w.gold)); }
     catch (e) { return res.status(402).json({ error: e.message }); }
   }
+  log({ level: 'info', source: 'server', category: 'chat', event: 'tts',
+    message: `语音合成（${proto}）`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { character_id, proto, model: model || '', voice: voice || '', gold_fee: fee || 0, chars: text.length, bytes: out.buffer?.length || 0 } });
   res.setHeader('Content-Type', out.contentType);
   res.send(out.buffer);
 });
