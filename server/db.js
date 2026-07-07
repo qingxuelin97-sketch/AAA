@@ -402,6 +402,30 @@ db.exec(`CREATE TABLE IF NOT EXISTS script_likes (
 // 安全相关：event_claims 加 (user_id, event_id) 唯一索引，原子防并发重复领取。
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }
 
+// 注册白名单 + 邮箱验证码：
+//   email_whitelist —— 仅白名单内的邮箱允许注册（白名单政策）。
+//     kind: 'exact' 精确邮箱 / 'domain' 整域放行（如 @example.com）。
+//   email_codes    —— 注册时下发的验证码，过期/已用即作废。
+db.exec(`
+CREATE TABLE IF NOT EXISTS email_whitelist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,        -- 精确邮箱或 @domain（小写）
+  kind TEXT DEFAULT 'exact',         -- exact | domain
+  note TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS email_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  code TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,       -- 毫秒时间戳
+  consumed INTEGER DEFAULT 0,
+  attempts INTEGER DEFAULT 0,        -- 校验尝试次数（防爆破）
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes (email);
+`);
+
 // 独立世界书：可脱离角色单独编辑，并跨角色复用（多对多关联）。
 // 三类能力（通常/高级/专家）可在同一本世界书里共存，不再单选档位：
 //   通常能力：关键词触发（keys/content/enabled）

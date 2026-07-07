@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, useAuth, getToken, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal, CouncilorBadge, CoinIcon, DiamondIcon } from '../ui.jsx';
-import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Zap, ImageIcon, Loader2, Mic } from 'lucide-react';
+import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Zap, ImageIcon, Loader2, Mic, Mail, ShieldCheck, KeyRound, AtSign } from 'lucide-react';
 import { BarChart, LineChart } from '../components/Charts.jsx';
 
 export default function Admin() {
@@ -29,7 +29,7 @@ export default function Admin() {
         ) : (
           <>
             <div className="tabs-bar adm-tabs" style={{ marginBottom: 18 }}>
-              {[['overview', '总览', TrendingUp], ['users', '用户', Users], ['content', '内容', ScrollText], ['council', '议会', Landmark], ['codes', '兑换码', Tag], ['reports', '举报', AlertTriangle], ['platform', '平台AI', Cpu]].map(([k, l, Ic]) => (
+              {[['overview', '总览', TrendingUp], ['users', '用户', Users], ['content', '内容', ScrollText], ['council', '议会', Landmark], ['codes', '兑换码', Tag], ['whitelist', '白名单', ShieldCheck], ['mail', '邮件', Mail], ['reports', '举报', AlertTriangle], ['platform', '平台AI', Cpu]].map(([k, l, Ic]) => (
                 <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}><Ic size={14} style={{ verticalAlign: -2, marginRight: 5 }} />{l}</button>
               ))}
             </div>
@@ -38,6 +38,8 @@ export default function Admin() {
             {tab === 'content' && <ContentTab toast={toast} />}
             {tab === 'council' && <CouncilTab toast={toast} />}
             {tab === 'codes' && <CodesTab toast={toast} />}
+            {tab === 'whitelist' && <WhitelistTab toast={toast} />}
+            {tab === 'mail' && <MailTab toast={toast} />}
             {tab === 'reports' && <ReportsTab toast={toast} />}
             {tab === 'platform' && <PlatformTab toast={toast} />}
           </>
@@ -924,4 +926,231 @@ function ReportsTab({ toast }) {
       )}
     </div>
   ));
+}
+
+// 注册邮箱白名单管理 —— 白名单非空时，仅白名单内邮箱可注册本平台。
+function WhitelistTab({ toast }) {
+  const [list, setList] = useState([]);
+  const [enabled, setEnabled] = useState(false);
+  const [email, setEmail] = useState('');
+  const [kind, setKind] = useState('exact');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+
+  const load = () => api('/admin/whitelist').then(d => { setList(d.whitelist || []); setEnabled(!!d.enabled); }).catch(e => toast(e.message, 'err'));
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+
+  const add = async () => {
+    if (!email.trim()) { toast('请输入邮箱或域名', 'err'); return; }
+    setBusy(true);
+    try {
+      const d = await api('/admin/whitelist', { method: 'POST', body: { email: email.trim(), kind, note: note.trim() } });
+      setList(d.whitelist || []); setEnabled(!!d.enabled);
+      toast(kind === 'domain' ? `已放行整域 ${email.trim()}` : `已加入白名单 ${email.trim()}`);
+      setEmail(''); setNote('');
+    } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+  };
+
+  const importBulk = async () => {
+    if (!bulkText.trim()) { toast('请粘贴邮箱列表', 'err'); return; }
+    setBusy(true);
+    try {
+      const d = await api('/admin/whitelist/import', { method: 'POST', body: { text: bulkText } });
+      setList(d.whitelist || []); setEnabled(!!d.enabled);
+      toast(`已导入 ${d.added} 条，跳过 ${d.skipped} 条`);
+      setBulkText(''); setBulkOpen(false);
+    } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+  };
+
+  const del = async (id, em) => {
+    if (!confirm(`从白名单移除 ${em}？`)) return;
+    try { const d = await api('/admin/whitelist/' + id, { method: 'DELETE' }); setList(d.whitelist || []); setEnabled(!!d.enabled); toast('已移除'); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  const clearAll = async () => {
+    if (!confirm('清空整个白名单？清空后任何邮箱均可注册（白名单政策关闭）。')) return;
+    try { await api('/admin/whitelist', { method: 'DELETE' }); setList([]); setEnabled(false); toast('已清空白名单'); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+
+  return (
+    <>
+      <div className="card" style={{ marginBottom: 18 }}>
+        <div className="section-title">
+          <h2 style={{ fontSize: 17, margin: 0 }}><ShieldCheck size={16} style={{ verticalAlign: -3, marginRight: 6 }} />注册白名单政策</h2>
+          <span className={'tag' + (enabled ? '' : ' muted')} style={{ background: enabled ? 'var(--accent-soft)' : 'var(--bg-2)', color: enabled ? 'var(--accent-2)' : 'var(--muted)' }}>
+            {enabled ? '已启用 · 仅白名单邮箱可注册' : '未启用 · 任意邮箱可注册'}
+          </span>
+        </div>
+        <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
+          白名单内有任意条目时即生效：仅白名单内邮箱可注册本平台，不在白名单的邮箱在「获取验证码」一步即被拒绝。
+          支持精确邮箱（如 <code>user@example.com</code>）与整域放行（如 <code>@example.com</code>，对该域名下所有邮箱生效）。
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18 }}>
+        <h2 style={{ margin: '0 0 14px', fontSize: 17 }}><Plus size={16} style={{ verticalAlign: -3, marginRight: 6 }} />添加白名单条目</h2>
+        <div className="row">
+          <div className="field" style={{ flex: 2 }}>
+            <label>邮箱 / 域名</label>
+            <input className="input" value={email} onChange={e => setEmail(e.target.value)} placeholder={kind === 'domain' ? '@example.com' : 'user@example.com'} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>类型</label>
+            <select className="select" value={kind} onChange={e => setKind(e.target.value)}>
+              <option value="exact">精确邮箱</option>
+              <option value="domain">整域放行（@domain）</option>
+            </select>
+          </div>
+        </div>
+        <div className="field"><label>备注 <span className="muted">(可选)</span></label><input className="input" value={note} onChange={e => setNote(e.target.value)} placeholder="如：内测用户 / 合作方" /></div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button className="btn primary" disabled={busy} onClick={add}><Plus size={15} /> 添加</button>
+          <button className="btn" onClick={() => setBulkOpen(v => !v)}><Upload size={15} /> {bulkOpen ? '收起批量导入' : '批量导入'}</button>
+          {list.length > 0 && <button className="btn danger" onClick={clearAll}><Trash2 size={15} /> 清空全部</button>}
+        </div>
+        {bulkOpen && (
+          <div className="field" style={{ marginTop: 12 }}>
+            <label>批量导入（每行一个邮箱；以 @ 开头视为整域放行）</label>
+            <textarea className="textarea" rows={5} value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={'user1@example.com\nuser2@example.com\n@example.com'} style={{ resize: 'vertical' }} />
+            <button className="btn primary" style={{ marginTop: 8 }} disabled={busy} onClick={importBulk}><Upload size={15} /> 导入</button>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h2 style={{ margin: '0 0 14px', fontSize: 17 }}>白名单条目 <span className="muted" style={{ fontSize: 13 }}>（共 {list.length} 条）</span></h2>
+        {list.length === 0 ? <div className="empty" style={{ padding: 20 }}>白名单为空，当前任意邮箱均可注册。添加至少一条记录即可启用白名单政策。</div> : list.map(w => (
+          <div key={w.id} className="adm-row">
+            <span className="code-chip" style={w.kind === 'domain' ? { background: 'var(--accent-soft)', color: 'var(--accent-2)' } : {}}>
+              {w.kind === 'domain' ? <AtSign size={13} style={{ verticalAlign: -2, marginRight: 3 }} /> : <Mail size={13} style={{ verticalAlign: -2, marginRight: 3 }} />}
+              {w.email}
+            </span>
+            <div className="grow">
+              <div className="sub2">{w.kind === 'domain' ? '整域放行' : '精确邮箱'}{w.note ? ' · ' + w.note : ''}</div>
+            </div>
+            <div className="adm-actions">
+              <button className="btn sm danger" onClick={() => del(w.id, w.email)}><Trash2 size={13} /> 移除</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// 邮件服务（SMTP）配置 —— 注册验证码通过此服务发送。
+function MailTab({ toast }) {
+  const [cfg, setCfg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [test, setTest] = useState(null);
+  const [form, setForm] = useState({ host: '', port: 465, secure: true, user: '', pass: '', from: '', site_name: '幻域 HUANYU', code_ttl_min: 10 });
+
+  const load = () => api('/admin/mail').then(d => {
+    const m = d.mail || {};
+    setCfg(m);
+    setForm({
+      host: m.host || '', port: m.port || 465, secure: m.secure !== false,
+      user: m.user || '', pass: '', from: m.from || '',
+      site_name: m.site_name || '幻域 HUANYU', code_ttl_min: m.code_ttl_min || 10,
+    });
+  }).catch(e => toast(e.message, 'err'));
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const body = { ...form };
+      if (!body.pass.trim()) delete body.pass; // 留空不修改
+      const d = await api('/admin/mail', { method: 'PUT', body });
+      setCfg(d.mail);
+      toast('邮件配置已保存');
+    } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+  };
+
+  const testConn = async () => {
+    setTesting(true); setTest(null);
+    try {
+      const body = { host: form.host, port: Number(form.port), secure: form.secure, user: form.user };
+      if (form.pass.trim()) body.pass = form.pass.trim();
+      const d = await api('/admin/mail/test', { method: 'POST', body });
+      setTest(d);
+    } catch (e) { setTest({ ok: false, message: e.message }); }
+    finally { setTesting(false); }
+  };
+
+  if (!cfg) return <div className="empty">载入中…</div>;
+  const fromEnv = cfg.from_env;
+  return (
+    <div className="card">
+      <div className="section-title">
+        <h2 style={{ fontSize: 17, margin: 0 }}><Mail size={16} style={{ verticalAlign: -3, marginRight: 6 }} />邮件服务（SMTP）</h2>
+        <span className="tag" style={{ background: cfg.ready ? 'var(--accent-soft)' : 'var(--bg-2)', color: cfg.ready ? 'var(--accent-2)' : 'var(--muted)' }}>
+          {cfg.ready ? '已就绪' : '未配置'}
+        </span>
+      </div>
+      <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
+        注册验证码通过此 SMTP 服务发送。推荐使用 QQ 邮箱（<code>smtp.qq.com:465</code>，需开启 SMTP 并获取授权码）、网易邮箱（<code>smtp.163.com:465</code>）、阿里云邮件推送等。
+        {fromEnv && <b> · 当前由环境变量提供配置，下方字段不可修改。</b>}
+      </p>
+
+      <div className="row">
+        <div className="field" style={{ flex: 2 }}>
+          <label>SMTP 主机</label>
+          <input className="input" value={form.host} disabled={fromEnv} onChange={e => setForm(f => ({ ...f, host: e.target.value }))} placeholder="smtp.qq.com" />
+        </div>
+        <div className="field" style={{ flex: 1 }}>
+          <label>端口</label>
+          <input className="input" type="number" value={form.port} disabled={fromEnv} onChange={e => setForm(f => ({ ...f, port: Number(e.target.value) || 465 }))} placeholder="465 / 587" />
+        </div>
+        <div className="field" style={{ flex: 1 }}>
+          <label>加密</label>
+          <select className="select" value={form.secure ? '1' : '0'} disabled={fromEnv} onChange={e => setForm(f => ({ ...f, secure: e.target.value === '1' }))}>
+            <option value="1">SSL/TLS（465）</option>
+            <option value="0">STARTTLS / 明文（587/25）</option>
+          </select>
+        </div>
+      </div>
+      <div className="row">
+        <div className="field" style={{ flex: 1 }}>
+          <label>账号</label>
+          <input className="input" value={form.user} disabled={fromEnv} onChange={e => setForm(f => ({ ...f, user: e.target.value }))} placeholder="sender@example.com" />
+        </div>
+        <div className="field" style={{ flex: 1 }}>
+          <label>密码 / 授权码 {cfg.pass_set && <span className="tag">已配置 · {cfg.pass_masked}</span>}</label>
+          <input className="input" type="password" value={form.pass} disabled={fromEnv} onChange={e => setForm(f => ({ ...f, pass: e.target.value }))} placeholder={cfg.pass_set ? '••••••（留空则不修改）' : '邮箱密码或 SMTP 授权码'} />
+        </div>
+      </div>
+      <div className="field">
+        <label>发件人地址</label>
+        <input className="input" value={form.from} disabled={fromEnv} onChange={e => setForm(f => ({ ...f, from: e.target.value }))} placeholder='"幻域" <sender@example.com>' />
+        <div className="hint">格式 <code>"站点名" &lt;addr@example.com&gt;</code>，留空则使用账号地址作为发件人。</div>
+      </div>
+      <div className="row">
+        <div className="field" style={{ flex: 1 }}>
+          <label>站点名（邮件抬头）</label>
+          <input className="input" value={form.site_name} disabled={fromEnv} onChange={e => setForm(f => ({ ...f, site_name: e.target.value }))} placeholder="幻域 HUANYU" />
+        </div>
+        <div className="field" style={{ flex: 1 }}>
+          <label>验证码有效期（分钟）</label>
+          <input className="input" type="number" min="1" max="60" value={form.code_ttl_min} disabled={fromEnv} onChange={e => setForm(f => ({ ...f, code_ttl_min: Number(e.target.value) || 10 }))} />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+        <button className="btn primary" disabled={busy || fromEnv} onClick={save}><Check size={15} /> 保存配置</button>
+        <button className="btn" disabled={testing} onClick={testConn} title="用当前表单值发起一次 SMTP 连接验证">
+          {testing ? <><Loader2 size={15} className="spin" /> 检测中…</> : <><Zap size={15} /> 测试连接</>}
+        </button>
+      </div>
+      {test && (
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 12, color: test.ok ? 'var(--ok, #5c8a63)' : 'var(--danger, #bb4b35)' }}>
+          {test.ok ? '✓ ' : '✕ '}{test.message}{test.latency_ms != null ? `（${test.latency_ms}ms）` : ''}
+        </p>
+      )}
+    </div>
+  );
 }

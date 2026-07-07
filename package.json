@@ -16,6 +16,7 @@
     "start": "node server/index.js",
     "seed": "node server/seed.js",
     "smoke": "node server/smoke.mjs",
+    "reg-flow": "node server/reg-flow.mjs",
     "test:novels": "node server/novel-test.mjs",
     "test:novels:mock": "node server/novel-mock-test.mjs",
     "app:build": "npm run build:static && npx cap sync",
@@ -50,6 +51,7 @@
     "lucide-react": "^1.18.0",
     "multer": "^2.2.0",
     "mysql2": "^3.11.5",
+    "nodemailer": "^6.9.16",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.17.0"

@@ -4,7 +4,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
-import { Drama, Plug, Volume2, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare, LayoutGrid, LifeBuoy } from 'lucide-react';
+import { Drama, Plug, Volume2, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare, LayoutGrid, LifeBuoy, Mail, ShieldCheck, KeyRound } from 'lucide-react';
 
 const TAGLINES = [
   ['与你创造的', '角色一同呼吸'],
@@ -53,13 +53,16 @@ export default function Auth() {
   const toast = useToast();
   const nav = useNavigate();
   const [mode, setMode] = useState('login');
-  const [form, setForm] = useState({ username: '', password: '', display_name: '', email: '', invite: '' });
+  const [form, setForm] = useState({ username: '', password: '', display_name: '', email: '', code: '', invite: '' });
   const [busy, setBusy] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [tl, setTl] = useState(0);
   const [agree, setAgree] = useState(false);
   const [legal, setLegal] = useState(null); // null | 'terms' | 'privacy' | 'copyright' | 'disclaimer'
   const [ring, setRing] = useState([]);
+  // 邮箱验证码：倒计时（秒）、发送中
+  const [codeCountdown, setCodeCountdown] = useState(0);
+  const [sendingCode, setSendingCode] = useState(false);
 
   useEffect(() => { const t = setInterval(() => setTl(i => (i + 1) % TAGLINES.length), 3600); return () => clearInterval(t); }, []);
   useEffect(() => {
@@ -67,7 +70,26 @@ export default function Auth() {
       .then(d => setRing((d.characters || []).filter(c => c.avatar).slice(0, 16)))
       .catch(() => {});
   }, []);
+  // 验证码倒计时驱动
+  useEffect(() => {
+    if (codeCountdown <= 0) return;
+    const t = setInterval(() => setCodeCountdown(s => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [codeCountdown]);
   const upd = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const sendCode = async () => {
+    if (!form.email.trim()) { toast('请先填写邮箱', 'err'); return; }
+    if (sendingCode || codeCountdown > 0) return;
+    setSendingCode(true);
+    try {
+      const d = await api('/auth/send-code', { method: 'POST', body: { email: form.email.trim() } });
+      toast(`验证码已发送至 ${form.email.trim()}（${d.ttl_min || 10} 分钟内有效）`);
+      setCodeCountdown(60);
+    } catch (err) {
+      toast(err.message, 'err');
+    } finally { setSendingCode(false); }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -123,7 +145,7 @@ export default function Auth() {
         <div className="card auth-card">
           <div className="auth-card-badge"><Sparkles size={13} /> AI 角色扮演平台</div>
           <h2>{mode === 'login' ? '登录账号' : '创建账号'}</h2>
-          <p className="muted" style={{ fontSize: 13, margin: 0 }}>{mode === 'login' ? '欢迎回来，继续你的故事' : '无需验证码，立即开始'}</p>
+          <p className="muted" style={{ fontSize: 13, margin: 0 }}>{mode === 'login' ? '欢迎回来，继续你的故事' : '邮箱验证码注册 · 仅白名单邮箱可注册'}</p>
           <div className="auth-tabs">
             <button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>登录</button>
             <button className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>注册</button>
@@ -143,18 +165,33 @@ export default function Auth() {
             <div className="field">
               <label>密码</label>
               <div className="input-affix">
-                <input className="input" type={showPwd ? 'text' : 'password'} value={form.password} onChange={upd('password')} placeholder="至少 4 位" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+                <input className="input" type={showPwd ? 'text' : 'password'} value={form.password} onChange={upd('password')} placeholder="至少 8 位，含字母/数字/符号两类" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
                 <button type="button" className="affix-btn" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? '隐藏密码' : '显示密码'} tabIndex={-1}>
                   {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
             {mode === 'register' && (
-              <div className="field">
-                <label>邀请密钥</label>
-                <input className="input" value={form.invite} onChange={upd('invite')} placeholder="输入邀请密钥以注册" />
-                <div className="hint">注册需要有效邀请密钥，请联系管理员获取。</div>
-              </div>
+              <>
+                <div className="field">
+                  <label><Mail size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邮箱</label>
+                  <input className="input" type="email" value={form.email} onChange={upd('email')} placeholder="white@example.com" autoComplete="email" />
+                  <div className="hint">仅白名单内邮箱可注册。注册后该邮箱将作为账号凭证，请确保可正常收信。</div>
+                </div>
+                <div className="field">
+                  <label><KeyRound size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邮箱验证码</label>
+                  <div className="input-affix" style={{ display: 'flex', gap: 8 }}>
+                    <input className="input" style={{ flex: 1 }} value={form.code} onChange={upd('code')} placeholder="6 位验证码" inputMode="numeric" autoComplete="one-time-code" />
+                    <button type="button" className="btn sm" onClick={sendCode} disabled={sendingCode || codeCountdown > 0 || !form.email.trim()} style={{ whiteSpace: 'nowrap' }}>
+                      {sendingCode ? '发送中…' : codeCountdown > 0 ? `${codeCountdown}s 后重发` : '获取验证码'}
+                    </button>
+                  </div>
+                </div>
+                <div className="field">
+                  <label><ShieldCheck size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邀请密钥 <span className="muted">(可选)</span></label>
+                  <input className="input" value={form.invite} onChange={upd('invite')} placeholder="若有邀请密钥可填，可领取邀请奖励" />
+                </div>
+              </>
             )}
             {mode === 'register' && (
               <label className="auth-agree">

@@ -10,6 +10,8 @@ import { councilCfg, saveCouncil, councilSeats, councilSize, baseSeats, totalUse
 import { exportAll, importAll } from '../snapshot.js';
 import { flush } from '../persist.js';
 import { cnToday } from '../daily.js';
+import { getMail, updateMail, testMailConn } from '../mail.js';
+import { listWhitelist, addWhitelist, importWhitelist, removeWhitelist, clearWhitelist, whitelistEnabled } from '../whitelist.js';
 
 const router = Router();
 const isGm = (uid) => !!db.prepare('SELECT is_gm FROM users WHERE id = ?').get(uid)?.is_gm;
@@ -322,5 +324,39 @@ router.get('/reports', (req, res) => {
   res.json({ reports: rows });
 });
 router.post('/reports/:id/resolve', (req, res) => { db.prepare("UPDATE reports SET status='resolved' WHERE id = ?").run(req.params.id); res.json({ ok: true }); });
+
+// ---- 注册白名单（邮箱白名单政策）----
+// 白名单非空时，仅白名单内邮箱可注册本平台。
+router.get('/whitelist', (req, res) => {
+  const q = String(req.query.q || '');
+  const rows = listWhitelist(q);
+  res.json({ whitelist: rows, enabled: whitelistEnabled(), count: rows.length });
+});
+router.post('/whitelist', (req, res) => {
+  const { email, kind, note } = req.body || {};
+  const r = addWhitelist(email, kind, note);
+  if (!r.ok) return res.status(400).json({ error: r.error });
+  res.json({ ok: true, whitelist: listWhitelist(), enabled: whitelistEnabled() });
+});
+router.post('/whitelist/import', (req, res) => {
+  const r = importWhitelist(req.body?.text);
+  res.json({ ok: true, ...r, whitelist: listWhitelist(), enabled: whitelistEnabled() });
+});
+router.delete('/whitelist/:id', (req, res) => {
+  removeWhitelist(req.params.id);
+  res.json({ ok: true, whitelist: listWhitelist(), enabled: whitelistEnabled() });
+});
+router.delete('/whitelist', (req, res) => {
+  clearWhitelist();
+  res.json({ ok: true, whitelist: [], enabled: false });
+});
+
+// ---- 邮件服务（SMTP）配置 ----
+router.get('/mail', (req, res) => res.json({ mail: getMail() }));
+router.put('/mail', (req, res) => res.json({ ok: true, mail: updateMail(req.body || {}) }));
+router.post('/mail/test', async (req, res) => {
+  const r = await testMailConn(req.body || {});
+  res.json(r);
+});
 
 export default router;
