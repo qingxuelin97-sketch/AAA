@@ -56,12 +56,17 @@ function render() {
   );
 }
 
-// 单包双模式（接通真实服务器的地基）：
-//   · 未配置服务器地址 → 安装内置 mock 后端（纯离线演示，现状不变）
-//   · 在「设置 → 服务器连接」配置了地址 → 跳过 mock，所有 /api 走真实后端
-//     （api.jsx 的 getApiBase() 会为每个请求补全服务器域名）
+// 启动形态分流（强制联网的地基）：
+//   · 原生 App（APK）→ 服务器地址已在底层焊死（见 api.jsx getApiBase），永远直连
+//     真实后端，绝不装 mock、绝不离线。用户无需、也无从配置。
+//   · 网页 / 静态站演示 → 无真实后端时装内置 mock 跑离线演示（本仓库预览与试玩用）。
+//   · 同源部署（服务器自己托管前端）→ 直接 render，/api 走同源。
 const RUNTIME_SERVER = (() => { try { return (localStorage.getItem('huanyu_server') || '').trim(); } catch { return ''; } })();
-if (STATIC && !RUNTIME_SERVER) {
+const NATIVE = !!window.Capacitor?.isNativePlatform?.();
+
+if (NATIVE) {
+  render();
+} else if (STATIC && !RUNTIME_SERVER) {
   import('./mock/backend.js').then(({ installMockBackend }) => { installMockBackend(); render(); });
 } else {
   render();

@@ -1,12 +1,13 @@
 name: Build Android APK
 
-# 纯云端打包：无需本地安装 Node / Android Studio。
-# 在 GitHub 网页 Actions 标签页手动运行，填上你的服务器地址即可。
+# 纯云端打包：无需本地安装 Node / Android Studio。在 GitHub 网页 Actions 标签页手动运行。
+# App 已在底层焊死正式服务器地址（client/src/api.jsx 的 BAKED_SERVER），装机即强制联网、
+# 直连后端，无需在此填任何东西。下面的输入框仅供临时改连别的服务器（留空即用焊死地址）。
 on:
   workflow_dispatch:
     inputs:
       server_url:
-        description: "服务器地址（数据共通）。例：https://你的域名 或 http://你的IP:4000。留空=离线演示版"
+        description: "可选：临时改连的服务器地址（例 http://你的IP:4000）。留空=用 App 内焊死的正式服务器"
         required: false
         default: ""
 
