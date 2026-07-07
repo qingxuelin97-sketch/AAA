@@ -3722,8 +3722,11 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   border-color: color-mix(in srgb, var(--border) 55%, transparent);
 }
 /* Floating menus must stay highly opaque — at 60% the messages behind showed through
-   and the text became unreadable (the reported 角色对话 bug). */
-[data-glass="on"] .chat-menu {
+   and the text became unreadable (the reported 角色对话 bug).
+   限定为非 app 壳：这条 !important 若漏进 app，会把带立绘对话里那套「深底白字」
+   菜单的深色底强制换成浅底，而白字规则还在 → 白字浅底彻底看不清（实机反馈）。
+   App 壳的 .chat-menu 由自己的成对规则（深底配白字 / 浅底配深字）全权接管。 */
+html:not([data-app="1"])[data-glass="on"] .chat-menu {
   background: color-mix(in srgb, var(--panel) 92%, transparent) !important;
   backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%);
   border-color: color-mix(in srgb, var(--border) 70%, transparent);
@@ -3884,7 +3887,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 [data-perf="lite"][data-glass="on"] .ach-card,
 [data-perf="lite"][data-glass="on"] .draw-panel,
 [data-perf="lite"][data-glass="on"] .draw-stage,
-[data-perf="lite"][data-glass="on"] .chat-menu,
+html:not([data-app="1"])[data-perf="lite"][data-glass="on"] .chat-menu,
 [data-perf="lite"][data-glass="on"] .sidebar,
 [data-perf="lite"][data-glass="on"] .modal {
   background: var(--panel) !important;
@@ -5424,10 +5427,15 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea { color: #fff; }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea::placeholder { color: rgba(255,255,255,0.45); }
 /* app 壳对话顶栏：名字紧贴头像成第一行（截断不换行），好感度与工具收进第二行 */
 html[data-app="1"] .chat-main .chat-head { row-gap: 6px; }
-html[data-app="1"] .chat-main .chat-head .nm { flex: 1 1 140px; min-width: 0; }
+/* nm 在 app 壳只放「在线」状态（角色名已从身份胶囊移除，见 Chat.jsx），
+   却沿用了 web 版角色名的 140px 弹性基线 → 白白撑宽身份胶囊，把好感徽章 +
+   工具组一起挤出屏幕，右上角 ⋮ 被裁掉半个（实机反馈）。改为按内容自适应。 */
+html[data-app="1"] .chat-main .chat-head .nm { flex: 0 1 auto; min-width: 0; }
 html[data-app="1"] .chat-main .chat-head .nm b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html[data-app="1"] .chat-main .chat-head .ch-status { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-html[data-app="1"] .chat-main .chat-head .chat-tools { margin-left: auto; }
+/* 工具组（搜索 / 更多）绝不参与收缩：宁可让身份胶囊与好感徽章先让位，
+   也要保证 ⋮ 完整落在屏内、可点。 */
+html[data-app="1"] .chat-main .chat-head .chat-tools { margin-left: auto; flex-shrink: 0; }
 
 /* ============================================================
    App 壳 v3 · 原生形态（无持久顶栏 / 深色优先 / 扁平底栏）
@@ -9329,3 +9337,4 @@ html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name .msg-time { font-s
 .ach-card { content-visibility: auto; contain-intrinsic-size: auto 112px; }
 /* 沉浸流每屏一卡：把布局/绘制影响锁在卡内，滑动时相邻卡互不牵连 */
 .feed-card { contain: layout paint style; }
+

@@ -3,11 +3,14 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const TOKEN_KEY = 'huanyu_token';
 const SERVER_KEY = 'huanyu_server';
 
-// API 基址三级解析（接通真实服务器的地基）：
-//   1) 用户在「设置 → 服务器连接」里配置的地址（localStorage，APK 单包双模式：
-//      留空=离线演示（mock），填写=连接真实后端）
-//   2) 构建期 VITE_API_BASE（CI 打包时注入固定服务器）
-//   3) 空 = Web 同源部署（相对 /api）
+// 幻域正式服务器 —— 底层焊死的后端地址。
+// 强制联网：原生 App（APK）不给用户任何「离线/换服务器」的口子，装机即连这台。
+// 想换服务器只需改这一行（或打包时用 VITE_API_BASE 覆盖）后重新出包。
+// 注：走明文 HTTP + 自定义端口，配套 capacitor.config 的 androidScheme:'http'
+// 与 cleartext:true —— WebView 以 http://localhost 为源，同为 http 故无混合内容拦截。
+const BAKED_SERVER = 'http://120.27.249.73:4000';
+
+// 兼容保留：Web 同源部署时的本地覆盖入口（设置页已不再暴露，值恒为空 → 同源相对 /api）。
 export function getServerPref() {
   try { return (localStorage.getItem(SERVER_KEY) || '').trim(); } catch { return ''; }
 }
@@ -16,8 +19,15 @@ export function setServerPref(url) {
   try { v ? localStorage.setItem(SERVER_KEY, v) : localStorage.removeItem(SERVER_KEY); } catch { /* */ }
   return v;
 }
+// API 基址解析：
+//   · 打包期显式注入的 VITE_API_BASE 最优先（换服务器不改码）
+//   · 原生 App → 焊死的正式服务器（强制联网）
+//   · 网页 → 本地覆盖（恒空）→ 同源相对 /api
 export function getApiBase() {
-  return getServerPref() || import.meta.env.VITE_API_BASE || '';
+  const env = import.meta.env.VITE_API_BASE;
+  if (env) return String(env).replace(/\/+$/, '');
+  if (window.Capacitor?.isNativePlatform?.()) return BAKED_SERVER;
+  return getServerPref();
 }
 // 兼容既有引用（模块加载时解析一次；运行中修改服务器地址后需整页重载生效）
 export const API_BASE = getApiBase();
