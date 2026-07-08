@@ -51,6 +51,7 @@ export default function Draw() {
 
   return (
     <>
+      <div className="draw-screen">
       <div className="topbar">
         <div style={{ flex: 1 }}>
           <h1><Wand2 size={20} style={{ verticalAlign: -3, marginRight: 7, color: 'var(--accent)' }} />AI 绘图</h1>
@@ -145,6 +146,7 @@ export default function Draw() {
             ))}
           </div>
         )}
+      </div>
       </div>
 
       {viewing && (

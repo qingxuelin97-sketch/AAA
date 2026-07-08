@@ -9601,12 +9601,76 @@ html[data-app="1"] .msg.user .bubble { background: linear-gradient(135deg, #2BD0
 html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act { color: #8FD8CE; }
 
 /* ============================================================================
-   幻域重设计 · AI 绘图（Draw）
-   —— .draw-panel / .draw-stage 走共享 .card 白名单已成玻璃；此处仅点缀 chip。
+   幻域重设计 · AI 绘图（Draw）—— 唯一深青玻璃场景（设计稿「深色玻璃」）
+   仅作用于 .draw-screen（app 态）；Web 端不受影响。
    ========================================================================== */
-html[data-app="1"] .draw-chip.on {
-  background: var(--grad); color: #fff; border-color: transparent; box-shadow: var(--hyd-badge-sh);
+html[data-app="1"] .draw-screen {
+  position: relative;
+  min-height: calc(100dvh - var(--app-bot));
+  background: linear-gradient(180deg, #0E2A2E, #0A1F24);
+  color: #EAF6F4;
 }
+/* 顶部青色辉光 */
+html[data-app="1"] .draw-screen::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 260px; pointer-events: none;
+  background: radial-gradient(120% 100% at 70% -10%, rgba(43,208,191,0.3), transparent 62%);
+}
+html[data-app="1"] .draw-screen > * { position: relative; z-index: 1; }
+/* 顶栏与标题转浅色 */
+html[data-app="1"] .draw-screen .topbar { background: transparent; border: none; }
+html[data-app="1"] .draw-screen h1,
+html[data-app="1"] .draw-screen h2,
+html[data-app="1"] .draw-screen .section-title h2 { color: #fff; }
+html[data-app="1"] .draw-screen .sub,
+html[data-app="1"] .draw-screen .field label,
+html[data-app="1"] .draw-screen .hint,
+html[data-app="1"] .draw-screen .draw-balance { color: rgba(234,246,244,0.72); }
+html[data-app="1"] .draw-screen h1 svg { color: #7EF0E2 !important; }
+/* 面板 / 结果台：深青玻璃（覆盖共享 .card 白玻璃） */
+html[data-app="1"] .draw-screen .draw-panel,
+html[data-app="1"] .draw-screen .draw-stage,
+html[data-app="1"] .draw-screen .ann-banner {
+  background: rgba(255,255,255,0.06);
+  -webkit-backdrop-filter: blur(20px) saturate(150%); backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 12px 30px rgba(0,0,0,0.25);
+  color: #EAF6F4;
+}
+/* 输入框：深玻璃 + 浅字 */
+html[data-app="1"] .draw-screen :where(.textarea, .input, .select) {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+  color: #EAF6F4; box-shadow: none;
+}
+html[data-app="1"] .draw-screen :where(.textarea, .input, .select)::placeholder { color: rgba(234,246,244,0.4); }
+html[data-app="1"] .draw-screen :where(.textarea, .input, .select):focus {
+  border-color: #2BD0BF; box-shadow: 0 0 0 3px rgba(43,208,191,0.25);
+}
+/* 风格芯片：深玻璃，选中 teal */
+html[data-app="1"] .draw-screen .draw-chip {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); color: rgba(234,246,244,0.85);
+}
+html[data-app="1"] .draw-screen .draw-chip.on {
+  background: linear-gradient(135deg, #2BD0BF, #0A8C93); color: #fff; border-color: transparent;
+  box-shadow: 0 4px 12px rgba(15,181,166,0.4);
+}
+/* 画幅分段：深玻璃 */
+html[data-app="1"] .draw-screen .seg { background: rgba(255,255,255,0.08); }
+html[data-app="1"] .draw-screen .seg button { color: rgba(234,246,244,0.7); }
+html[data-app="1"] .draw-screen .seg button.active { background: linear-gradient(135deg, #2BD0BF, #0A8C93); color: #fff; box-shadow: 0 3px 10px rgba(15,181,166,0.4); }
+/* 费用/余额标 + 生成按钮 */
+html[data-app="1"] .draw-screen .draw-cost-badge { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); color: #EAF6F4; }
+html[data-app="1"] .draw-screen .draw-balance b { color: #fff; }
+html[data-app="1"] .draw-screen .draw-go { background: linear-gradient(135deg, #2BD0BF, #0A8C93); box-shadow: 0 10px 28px rgba(15,181,166,0.5); }
+/* 绘廊瓦片：深玻璃描边（覆盖白名单） */
+html[data-app="1"] .draw-screen .draw-tile {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+}
+html[data-app="1"] .draw-screen .draw-tile figcaption { color: rgba(234,246,244,0.75); }
+html[data-app="1"] .draw-screen .empty { color: rgba(234,246,244,0.7); }
+/* 空态占位/加载图标 */
+html[data-app="1"] .draw-screen .draw-ph,
+html[data-app="1"] .draw-screen .draw-loader { color: #7EF0E2; }
+html[data-app="1"] .draw-screen .draw-stage-empty p { color: rgba(234,246,244,0.7); }
 
 /* ============================================================================
    幻域重设计 · 登录（Auth）：重度磨砂卡 + 柔光晕浮动 + CTA 扫光
