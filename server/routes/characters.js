@@ -56,6 +56,11 @@ router.get('/public', authOptional, (req, res) => {
   const args = [];
   if (category && category !== 'all') { sql += ' AND c.category = ?'; args.push(category); }
   if (q) { sql += ' AND (c.name LIKE ? OR c.tags LIKE ? OR c.tagline LIKE ?)'; const k = `%${q}%`; args.push(k, k, k); }
+  // 「关注」流：只看已关注创作者的公开角色（发现页方案B 顶部分段）。
+  if (req.query.scope === 'following' && req.user) {
+    sql += ' AND c.owner_id IN (SELECT following_id FROM follows WHERE follower_id = ?)';
+    args.push(req.user.id);
+  }
   sql += sort === 'new' ? ' ORDER BY c.created_at DESC' : ' ORDER BY c.uses DESC, c.likes DESC';
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 80, 1), 100);
   const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);

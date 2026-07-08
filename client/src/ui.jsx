@@ -127,14 +127,28 @@ export function IdentityBadges({ u, className = '' }) {
   return <div className={'idb-row ' + className}>{chips}</div>;
 }
 
+// 无图头像回退：有光泽的单字头像位（「白+青」重设计打磨）。
+// 渐变底（每角色按名字取一组同色系）+ 内高光/底压暗 + 居中衬线单字，替代扁平色块。
+const AV_GRADS = [
+  ['#43DBC9', '#0A8C93'], // teal
+  ['#F2BAD1', '#8A5A9E'], // rose→purple
+  ['#F7D9A2', '#C98A3F'], // gold
+  ['#B3C8F5', '#4A5F9E'], // blue
+  ['#A6EDE2', '#3C8F6B'], // green
+  ['#D7C3F5', '#6A4A9E'], // violet
+  ['#FBC7A4', '#C56A3C'], // amber
+];
 export function Avatar({ src, name = '', size = 40, eager }) {
   const initial = (name || '?').trim().charAt(0).toUpperCase();
   if (src) return <img className="avatar" src={assetUrl(src)} style={{ width: size, height: size }} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" />;
+  const [a, b] = AV_GRADS[(name || '?').charCodeAt(0) % AV_GRADS.length];
   return (
-    <div className="avatar" style={{
+    <div className="avatar avatar-mono" style={{
       width: size, height: size, display: 'grid', placeItems: 'center',
-      fontSize: size * 0.42, fontWeight: 700, color: '#fff',
-      background: 'linear-gradient(135deg, var(--accent), var(--accent-2))'
+      fontSize: size * 0.44, fontWeight: 600, color: 'rgba(255,255,255,0.95)',
+      fontFamily: "'Noto Serif SC', var(--serif)", textShadow: '0 1px 3px rgba(0,0,0,0.22)',
+      background: `linear-gradient(140deg, ${a}, ${b})`,
+      boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.5), inset 0 -7px 13px rgba(0,0,0,0.17)'
     }}>{initial}</div>
   );
 }
@@ -249,89 +263,65 @@ export function Modal({ children, onClose }) {
   );
 }
 
-// 自定义金币图标：硬币齿纹 + 双层高光 + 精致 ¥ + 金色径向渐变。
-// 替代 lucide 朴素的 Coins，让货币一眼有质感。接口与 lucide 图标一致（size/className/style）。
+// 金币：浮雕星纹玻璃币（「白+青」重设计货币纹样）。
+// viewBox 40×40，外层 drop-shadow 增浮雕感；星芸暗刻仅 ≥20px 显示（小尺寸省略更干净）。
+// 接口与 lucide 图标一致（size/className/style），全站货币点复用。
 export function CoinIcon({ size = 16, className, style, ...p }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style} aria-hidden="true" {...p}>
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" className={className}
+      style={{ filter: 'drop-shadow(0 2px 3px rgba(110,72,10,.42))', ...style }} aria-hidden="true" {...p}>
       <defs>
-        <radialGradient id="hyCoinG" cx="34%" cy="26%" r="82%">
-          <stop offset="0%" stopColor="#fff6cc" />
-          <stop offset="38%" stopColor="#f3c958" />
-          <stop offset="74%" stopColor="#c98f25" />
-          <stop offset="100%" stopColor="#8a5912" />
+        <radialGradient id="hyCoinFace" cx="38%" cy="32%" r="72%">
+          <stop offset="0%" stopColor="#FFF7D6" />
+          <stop offset="46%" stopColor="#F4CE71" />
+          <stop offset="100%" stopColor="#CE9636" />
         </radialGradient>
-        <radialGradient id="hyCoinRim" cx="50%" cy="50%" r="50%">
-          <stop offset="86%" stopColor="#a9791f" stopOpacity="0" />
-          <stop offset="100%" stopColor="#5b3d0a" stopOpacity="0.9" />
-        </radialGradient>
+        <linearGradient id="hyCoinRim" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#F9E4A0" />
+          <stop offset="52%" stopColor="#E0AC4C" />
+          <stop offset="100%" stopColor="#B57F28" />
+        </linearGradient>
       </defs>
-      {/* 硬币主体 */}
-      <circle cx="12" cy="12" r="9.3" fill="url(#hyCoinG)" />
-      <circle cx="12" cy="12" r="9.3" fill="url(#hyCoinRim)" />
-      <circle cx="12" cy="12" r="9.3" fill="none" stroke="#5b3d0a" strokeWidth="1" />
-      {/* 边缘齿纹（硬币纹路质感） */}
-      <circle cx="12" cy="12" r="8.5" fill="none" stroke="#6e4a0e" strokeWidth="1.3" strokeDasharray="0.55 0.85" opacity="0.55" />
-      {/* 内圈装饰 */}
-      <circle cx="12" cy="12" r="6.5" fill="none" stroke="#6e4a0e" strokeWidth="0.6" opacity="0.4" />
-      {/* ¥ 符号 */}
-      <path d="M8.4 7.4 L12 11.5 L15.6 7.4" stroke="#4f3408" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 11.5 V16.8" stroke="#4f3408" strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M9 12.8 H15" stroke="#4f3408" strokeWidth="1.3" strokeLinecap="round" />
-      <path d="M9.5 14.6 H14.5" stroke="#4f3408" strokeWidth="1.3" strokeLinecap="round" />
-      {/* 左上主高光 */}
-      <path d="M6.4 6.2 a6 6 0 0 1 3.2-1.7" stroke="#fffbe6" strokeWidth="1.3" strokeLinecap="round" opacity="0.85" />
-      {/* 顶部光点 */}
-      <circle cx="9.2" cy="6.4" r="0.9" fill="#fffbe6" opacity="0.8" />
-      {/* 右下反射 */}
-      <path d="M16.5 17.2 a6 6 0 0 1-3 1.6" stroke="#fff1c0" strokeWidth="0.9" strokeLinecap="round" opacity="0.4" />
+      {/* 外圈 + 币面 */}
+      <circle cx="20" cy="20" r="19" fill="url(#hyCoinRim)" />
+      <circle cx="20" cy="20" r="14.4" fill="url(#hyCoinFace)" stroke="#B8842A" strokeWidth="0.7" />
+      {/* 星芸暗刻（仅较大尺寸） */}
+      {size >= 20 && (
+        <path d="M20 11.6l2.5 5.2 5.7.5-4.3 3.8 1.3 5.6L20 23.8l-5.2 2.9 1.3-5.6-4.3-3.8 5.7-.5z"
+          fill="#C0871F" opacity="0.5" />
+      )}
+      {/* 高光弧 */}
+      <ellipse cx="14.6" cy="13.4" rx="4.4" ry="2.5" fill="#FFF8DC" opacity="0.72" transform="rotate(-30 14.6 13.4)" />
     </svg>
   );
 }
 
-// 自定义钻石图标：明亮式切割 + 多切面折射明暗 + 腰围 + 桌面高光 + 星芒闪烁。
-// 替代 lucide 的 Gem，呈现真实宝石立体感。星芒 .dia-sparkle 由 CSS 驱动闪烁。
+// 钻石：切面宝石（「白+青」重设计货币纹样）。
+// viewBox 40×40，冠/亭多切面 + 桌面高光；外层 drop-shadow 增折射立体感。替代 lucide 的 Gem。
 export function DiamondIcon({ size = 16, className, style, ...p }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style} aria-hidden="true" {...p}>
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" className={className}
+      style={{ filter: 'drop-shadow(0 2px 3px rgba(18,104,124,.4))', ...style }} aria-hidden="true" {...p}>
       <defs>
-        <linearGradient id="hyDiaCrown" x1="0" y1="0" x2="0.2" y2="1">
-          <stop offset="0%" stopColor="#eafaff" />
-          <stop offset="100%" stopColor="#9fdcec" />
+        <linearGradient id="hyGemTop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ECFCFF" />
+          <stop offset="100%" stopColor="#A2E6F3" />
         </linearGradient>
-        <linearGradient id="hyDiaCrownR" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#bfe6f2" />
-          <stop offset="100%" stopColor="#6cc0d8" />
-        </linearGradient>
-        <linearGradient id="hyDiaPav" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#7fcfe2" />
-          <stop offset="100%" stopColor="#2c6f81" />
-        </linearGradient>
-        <linearGradient id="hyDiaPavR" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#5fb6cf" />
-          <stop offset="100%" stopColor="#1d5566" />
+        <linearGradient id="hyGemBtm" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#69CDE3" />
+          <stop offset="100%" stopColor="#268BAD" />
         </linearGradient>
       </defs>
-      {/* 冠部（上）左半 —— 亮 */}
-      <path d="M8.6 4 L12 4 L12 9 L4.5 9 Z" fill="url(#hyDiaCrown)" />
-      {/* 冠部右半 —— 稍暗，体现折光 */}
-      <path d="M12 4 L15.4 4 L19.5 9 L12 9 Z" fill="url(#hyDiaCrownR)" />
-      {/* 亭部（下）左半 */}
-      <path d="M4.5 9 L12 9 L12 20 Z" fill="url(#hyDiaPav)" />
-      {/* 亭部右半 —— 更深 */}
-      <path d="M12 9 L19.5 9 L12 20 Z" fill="url(#hyDiaPavR)" />
-      {/* 外轮廓 */}
-      <path d="M8.6 4 H15.4 L19.5 9 L12 20 L4.5 9 Z" fill="none" stroke="#0f3d4d" strokeWidth="0.95" strokeLinejoin="round" />
-      {/* 腰围线（最宽处，略粗） */}
-      <path d="M4.5 9 H19.5" stroke="#0f3d4d" strokeWidth="1.1" strokeLinecap="round" />
-      {/* 切面线 */}
-      <path d="M8.6 4 L4.5 9 M15.4 4 L19.5 9 M4.5 9 L12 20 M19.5 9 L12 20 M12 4 V20" stroke="#0f3d4d" strokeWidth="0.5" opacity="0.45" />
-      {/* 桌面高光（顶部白条） */}
-      <path d="M9.1 4.6 H14.9" stroke="#ffffff" strokeWidth="1" strokeLinecap="round" opacity="0.85" />
-      {/* 左上切面高光 */}
-      <path d="M8.6 4 L7 6.4" stroke="#ffffff" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
-      {/* 星芒（闪烁，由 .dia-sparkle CSS 驱动） */}
-      <path className="dia-sparkle" d="M10.4 6.2 L10.7 7 L11.5 7.3 L10.7 7.6 L10.4 8.4 L10.1 7.6 L9.3 7.3 L10.1 7 Z" fill="#ffffff" opacity="0.9" />
+      {/* 冠部 */}
+      <polygon points="7,15 33,15 20,6" fill="#CFF6FF" />
+      <polygon points="7,15 20,6 20,15" fill="#AFE8FA" />
+      {/* 桌面 + 亭部多切面 */}
+      <polygon points="7,15 33,15 27,21 13,21" fill="url(#hyGemTop)" />
+      <polygon points="7,15 13,21 20,35" fill="url(#hyGemBtm)" />
+      <polygon points="33,15 27,21 20,35" fill="#3AA0BE" />
+      <polygon points="13,21 27,21 20,35" fill="#54B8D4" />
+      {/* 桌面高光 */}
+      <polygon points="9,15 14,15 12,18.5" fill="#fff" opacity="0.7" />
     </svg>
   );
 }

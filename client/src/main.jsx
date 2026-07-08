@@ -44,6 +44,7 @@ const STATIC = import.meta.env.VITE_STATIC === '1';
 if (!STATIC) {
   import('@fontsource/noto-serif-sc/500.css').catch(() => {});
   import('@fontsource/noto-serif-sc/600.css').catch(() => {});
+  import('@fontsource/noto-serif-sc/700.css').catch(() => {});
 }
 const Router = STATIC ? HashRouter : BrowserRouter;
 
