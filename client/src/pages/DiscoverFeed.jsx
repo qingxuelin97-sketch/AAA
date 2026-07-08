@@ -237,6 +237,30 @@ export default function DiscoverFeed() {
                 </span>
               )}
 
+              {/* 方案B：右侧竖排互动条（玻璃圆钮），浮于画面右缘，脱离底部信息栈 */}
+              <div className="fd2-acts">
+                <button className={'fd2-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label="点赞">
+                  <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
+                  <span>{fmtW((c.likes || 0) + (liked ? 1 : 0))}</span>
+                </button>
+                <button className={'fd2-act' + (faved ? ' on gold' : '')} onClick={() => fav(c)} aria-label="收藏">
+                  <Star size={24} fill={faved ? 'currentColor' : 'none'} />
+                  <span>{faved ? '已藏' : '收藏'}</span>
+                </button>
+                <button className="fd2-act" onClick={() => nav('/character/' + c.id)} aria-label="评论">
+                  <MessageCircle size={24} />
+                  <span>{fmtW(c.uses)}</span>
+                </button>
+                <button className="fd2-act" onClick={() => share(c)} aria-label="分享">
+                  <Share2 size={24} />
+                  <span>分享</span>
+                </button>
+                <button className="fd2-act" onClick={() => setHistOpen(true)} aria-label="历史">
+                  <History size={24} />
+                  <span>历史</span>
+                </button>
+              </div>
+
               <div className="fd2-stack">
                 {/* 介绍卡：深色玻璃面板，可展开；右下角放大镜进详情 */}
                 {(c.intro || c.tagline) && (
@@ -263,7 +287,7 @@ export default function DiscoverFeed() {
                   </div>
                 )}
 
-                {/* 角色名 + 作者 行；右侧横向互动条 */}
+                {/* 角色名 + 作者 行（方案B：互动条移至右侧竖排，见 .fd2-acts） */}
                 <div className="fd2-meta">
                   <div className="fd2-id" role="button" tabIndex={0}
                     onClick={() => nav('/character/' + c.id)}
@@ -275,28 +299,6 @@ export default function DiscoverFeed() {
                       <CreatorV tier={c.owner_tier} size={12} />
                       {c.category && <em className="fd2-cat"><CategoryIcon slug={c.category} size={11} /> {categoryName(c.category)}</em>}
                     </div>
-                  </div>
-                  <div className="fd2-acts">
-                    <button className={'fd2-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label="点赞">
-                      <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
-                      <span>{fmtW((c.likes || 0) + (liked ? 1 : 0))}</span>
-                    </button>
-                    <button className={'fd2-act' + (faved ? ' on gold' : '')} onClick={() => fav(c)} aria-label="收藏">
-                      <Star size={24} fill={faved ? 'currentColor' : 'none'} />
-                      <span>{faved ? '已藏' : '收藏'}</span>
-                    </button>
-                    <button className="fd2-act" onClick={() => nav('/character/' + c.id)} aria-label="评论">
-                      <MessageCircle size={24} />
-                      <span>{fmtW(c.uses)}</span>
-                    </button>
-                    <button className="fd2-act" onClick={() => share(c)} aria-label="分享">
-                      <Share2 size={24} />
-                      <span>分享</span>
-                    </button>
-                    <button className="fd2-act" onClick={() => setHistOpen(true)} aria-label="历史">
-                      <History size={24} />
-                      <span>历史</span>
-                    </button>
                   </div>
                 </div>
 
