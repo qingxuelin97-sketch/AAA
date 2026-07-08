@@ -9642,3 +9642,46 @@ html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .chat-input-bar:focu
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 22px 50px rgba(16,64,60,0.18);
 }
 
+/* ============================================================================
+   幻域重设计 · 其余页面补全（角色详情 / 创建·编辑 / 设置 / 钱包）
+   ========================================================================== */
+
+/* —— 钱包：青绿松石余额卡（设计「青色余额卡」，覆盖白玻璃）—— */
+html[data-app="1"] .wallet-hero {
+  background: linear-gradient(135deg, #22C7B8, #0A8C93 60%, #0B5A62) !important;
+  border: none !important;
+  box-shadow: 0 14px 34px rgba(11,90,98,0.35) !important;
+  color: #fff;
+}
+html[data-app="1"] .wallet-hero .bal-num { color: #fff; }
+html[data-app="1"] .wallet-hero .bal-lbl { color: rgba(255,255,255,0.82); }
+html[data-app="1"] .wallet-hero .col::before { background: rgba(255,255,255,0.28) !important; }
+html[data-app="1"] .wallet-hero .checkin-btn { background: rgba(255,255,255,0.92); color: #0A8C82; box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+html[data-app="1"] .wallet-hero .checkin-btn:disabled { background: rgba(255,255,255,0.4); color: rgba(255,255,255,0.75); }
+html[data-app="1"] .wallet-hero .icon-chip.svip,
+html[data-app="1"] .wallet-hero .icon-chip.vip { background: rgba(255,255,255,0.92); color: #0A8C82; }
+/* 充值档位「热门」青色描边 + 珊瑚角标已由 accent/coral 承接；确保选中态青色 */
+html[data-app="1"] .pkg.on, html[data-app="1"] .pkg.hot { border-color: #0FB5A6; }
+
+/* —— 创建 / 编辑：青雾玻璃输入框（设计「玻璃表单」）—— */
+html[data-app="1"] :where(.input, .textarea, .select) {
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(15,181,166,0.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+html[data-app="1"][data-glass="off"] :where(.input, .textarea, .select),
+html[data-app="1"][data-perf="lite"] :where(.input, .textarea, .select) {
+  background: #fff; border: 1px solid var(--border); box-shadow: none;
+}
+html[data-app="1"] :where(.input, .textarea, .select):focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* —— 设置：青色胶囊玻璃开关（分组卡已由 .card 白名单成玻璃）—— */
+html[data-app="1"] .switch input:checked + .track {
+  background: var(--grad); box-shadow: 0 3px 8px rgba(15,181,166,0.34);
+}
+
+/* —— 角色详情（cvx 沉浸态）：图标/收藏统一青色，去除杂色 —— */
+html[data-app="1"] .cvx-tile svg { color: var(--accent); }
+
