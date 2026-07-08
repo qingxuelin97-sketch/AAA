@@ -9532,13 +9532,33 @@ html[data-app="1"] .pf-vip .pf-vip-go { background: linear-gradient(135deg, var(
 /* ============================================================================
    幻域重设计 · 发现（方案 B：右侧竖排互动 · 更通透）
    ========================================================================== */
+/* 顶部：关注 / 推荐 / 新作 分段（居中文字 tab + 青色下划线），替代分类条 */
+html[data-app="1"] .feed-modes {
+  flex: 1; display: flex; justify-content: center; align-items: center; gap: 22px;
+}
+html[data-app="1"] .feed-mode {
+  position: relative; background: none; border: none; cursor: pointer; padding: 4px 2px;
+  font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.62);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.35); transition: color 0.2s var(--hy-ease);
+}
+html[data-app="1"] .feed-mode.on { color: #fff; font-weight: 800; }
+html[data-app="1"] .feed-mode.on::after {
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%); bottom: -7px;
+  width: 20px; height: 3px; border-radius: 3px;
+  background: linear-gradient(90deg, #2BD0BF, #7EF0E2); box-shadow: 0 0 8px rgba(43,208,191,0.8);
+}
+/* 空 / 加载态：常驻顶栏下方居中（关注流为空时仍可切回推荐） */
+html[data-app="1"] .feed-state {
+  height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 0 32px; text-align: center; color: rgba(255,255,255,0.9); font-size: 14px;
+}
 /* 互动条移到右缘竖排（JSX 已提出至 .feed-card 层级） */
 html[data-app="1"] .fd2-acts {
-  position: absolute; right: 12px; bottom: 196px; z-index: 4;
+  position: absolute; right: 12px; bottom: 200px; z-index: 4;
   flex-direction: column; align-items: center; gap: 18px;
 }
-/* 上部信息（介绍/开场白/名字）让位给右侧竖排，避免压到互动条 */
-html[data-app="1"] :where(.fd2-intro, .fd2-greet, .fd2-meta) { max-width: calc(100% - 62px); }
+/* 上部信息（介绍/开场白）让位给右侧竖排，避免压到互动条 */
+html[data-app="1"] :where(.fd2-intro, .fd2-greet) { max-width: calc(100% - 62px); }
 /* 介绍卡：压暗玻璃（更通透），保证立绘上可读 */
 html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .fd2-intro {
   background: linear-gradient(180deg, rgba(16,38,42,0.42), rgba(10,28,32,0.56));
@@ -9548,19 +9568,28 @@ html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .fd2-intro {
 html[data-app="1"][data-glass="off"] .fd2-intro { background: rgba(12,10,16,0.8); }
 /* 开场白气泡：亮面玻璃 */
 html[data-app="1"] .fd2-greet { background: rgba(255,255,255,0.86); color: #123834; }
-/* 自由输入胶囊：白玻璃通透（对标「进入对话」清爽感） */
-html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .fd2-say {
-  background: rgba(255,255,255,0.62);
-  border: 1px solid rgba(255,255,255,0.7);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 10px 26px rgba(12,46,44,0.2);
+/* 底部 CTA：进入对话（醒目青色）+ 语音电话（白玻璃圆钮），点击即聊 */
+html[data-app="1"] .fd2-cta { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+html[data-app="1"] .fd2-enter {
+  flex: 1; height: 50px; border: none; border-radius: 999px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 16px; font-weight: 800; color: #fff; background: var(--grad);
+  box-shadow: 0 10px 26px rgba(15,181,166,0.45);
+  transition: transform 0.16s var(--hy-spring);
 }
-html[data-app="1"][data-glass="off"] .fd2-say { background: #fff; border: 1px solid var(--border); }
-html[data-app="1"] .fd2-say input { color: #123834; }
-html[data-app="1"] .fd2-say input::placeholder,
-html[data-app="1"] .fd2-say i { color: #5A7A76; }
-html[data-app="1"] .fd2-say-call,
-html[data-app="1"] .fd2-say-go:not(.send) { background: var(--hyd-mist); color: var(--accent); }
-html[data-app="1"] .fd2-say-go.send { background: var(--grad); box-shadow: var(--hyd-badge-sh); }
+html[data-app="1"] .fd2-enter:active { transform: scale(0.96); }
+html[data-app="1"] .fd2-enter:disabled { opacity: 0.7; }
+html[data-app="1"] .fd2-call {
+  flex: 0 0 auto; width: 50px; height: 50px; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; color: var(--accent);
+  background: rgba(255,255,255,0.62); border: 1px solid rgba(255,255,255,0.75);
+  -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 8px 20px rgba(12,46,44,0.2);
+  transition: transform 0.16s var(--hy-spring);
+}
+html[data-app="1"] .fd2-call:active { transform: scale(0.9); }
+html[data-app="1"][data-glass="off"] .fd2-call,
+html[data-app="1"][data-perf="lite"] .fd2-call { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 /* ============================================================================
    幻域重设计 · 沉浸聊天（方案 A：全屏沉浸）

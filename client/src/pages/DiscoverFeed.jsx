@@ -21,7 +21,7 @@ import { tick } from '../appgestures.js';
 import CallScreen from '../components/CallScreen.jsx';
 import {
   Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp,
-  ChevronRight, ScrollText, Maximize2, Phone, Plus, Send, Search, History, X
+  ChevronRight, ScrollText, Maximize2, Phone, Search, History, X
 } from 'lucide-react';
 
 // 开场白预览：*动作* 星号只是排版标记，流里展示时去掉更干净。
@@ -44,8 +44,7 @@ export default function DiscoverFeed() {
   const nav = useNavigate();
   const toast = useToast();
   const [chars, setChars] = useState([]);
-  const [cats, setCats] = useState([]);
-  const [cat, setCat] = useState('all');
+  const [mode, setMode] = useState('recommend'); // 发现流分段：recommend 推荐 / new 新作 / follow 关注
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -56,7 +55,6 @@ export default function DiscoverFeed() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [burst, setBurst] = useState(null);        // 双击点赞爱心迸发 { id, x, y, k }
   const [expandedId, setExpandedId] = useState(null); // 介绍卡展开态（每次只展开一张）
-  const [say, setSay] = useState('');              // 自由输入内容（跟随当前卡）
   const [entering, setEntering] = useState(false); // 正在建立对话
   const [histOpen, setHistOpen] = useState(false); // 「历史」最近看过面板
   const [callChar, setCallChar] = useState(null);  // 通话中的角色（电话键落点）
@@ -66,14 +64,14 @@ export default function DiscoverFeed() {
 
   const persistLiked = (s) => { try { localStorage.setItem('feed_liked', JSON.stringify([...s].slice(-200))); } catch { /* */ } };
 
-  useEffect(() => { api('/meta/categories').then(d => setCats(d.categories || [])).catch(() => {}); }, []);
+  // 分段 → 查询参数：推荐=热度、新作=最新、关注=已关注创作者。
+  const modeQuery = (m) => (m === 'new' ? 'sort=new' : m === 'follow' ? 'sort=hot&scope=following' : 'sort=hot');
 
-  const load = useCallback((category, reset = true) => {
+  const load = useCallback((m, reset = true) => {
     const flag = ++loadFlag.current;
     if (reset) { setLoading(true); setHasMore(true); }
     setLoadingMore(true);
-    const q = category && category !== 'all' ? `&category=${category}` : '';
-    api(`/characters/public?sort=hot${q}&limit=20`)
+    api(`/characters/public?${modeQuery(m)}&limit=20`)
       .then(d => {
         if (flag !== loadFlag.current) return;
         const list = d.characters || [];
@@ -91,7 +89,7 @@ export default function DiscoverFeed() {
       .finally(() => { if (flag === loadFlag.current) { setLoading(false); setLoadingMore(false); } });
   }, []);
 
-  useEffect(() => { load(cat); }, [cat, load]);
+  useEffect(() => { load(mode); }, [mode, load]);
 
   // 收藏状态初始拉取（轻量：只取 id 集合）
   useEffect(() => {
@@ -121,8 +119,8 @@ export default function DiscoverFeed() {
     return () => io.disconnect();
   }, [chars.length]);
 
-  // 换卡时收起展开的介绍、清空输入草稿（每张卡独立开口）。
-  useEffect(() => { setExpandedId(null); setSay(''); }, [activeIdx]);
+  // 换卡时收起展开的介绍。
+  useEffect(() => { setExpandedId(null); }, [activeIdx]);
 
   // 触底加载：当前卡接近末尾时拉下一页。
   useEffect(() => {
@@ -130,8 +128,7 @@ export default function DiscoverFeed() {
     if (activeIdx >= chars.length - 3) {
       setLoadingMore(true);
       const flag = ++loadFlag.current;
-      const q = cat && cat !== 'all' ? `&category=${cat}` : '';
-      api(`/characters/public?sort=hot${q}&limit=20&offset=${chars.length}`)
+      api(`/characters/public?${modeQuery(mode)}&limit=20&offset=${chars.length}`)
         .then(d => {
           if (flag !== loadFlag.current) return;
           const list = d.characters || [];
@@ -141,7 +138,7 @@ export default function DiscoverFeed() {
         .catch(() => {})
         .finally(() => { if (flag === loadFlag.current) setLoadingMore(false); });
     }
-  }, [activeIdx, chars.length, hasMore, loadingMore, cat]);
+  }, [activeIdx, chars.length, hasMore, loadingMore, mode]);
 
   const fav = async (c) => {
     try {
@@ -184,29 +181,36 @@ export default function DiscoverFeed() {
     catch { toast('分享：' + c.name); }
   };
 
+  const atEnd = !hasMore && activeIdx >= chars.length - 1;
+
+  // 顶部：分段（关注 / 推荐 / 新作，居中）+ 右侧搜索浮钮 —— 始终常驻（含空/加载态可切换）。
+  const topBar = (
+    <div className="feed-top">
+      <div className="feed-modes">
+        <button className={'feed-mode' + (mode === 'follow' ? ' on' : '')} onClick={() => setMode('follow')}>关注</button>
+        <button className={'feed-mode' + (mode === 'recommend' ? ' on' : '')} onClick={() => setMode('recommend')}>推荐</button>
+        <button className={'feed-mode' + (mode === 'new' ? ' on' : '')} onClick={() => setMode('new')}>新作</button>
+      </div>
+      <button className="feed-search" onClick={openCmdk} aria-label="搜索"><Search size={18} /></button>
+    </div>
+  );
+
   if (loading && chars.length === 0) {
-    return <div className="feed-wrap feed-loading"><Drama size={40} className="feed-spin" /><span>正在挑选精彩角色…</span></div>;
+    return <div className="feed-wrap">{topBar}<div className="feed-state"><Drama size={40} className="feed-spin" /><span>正在挑选精彩角色…</span></div></div>;
   }
   if (chars.length === 0) {
-    return <div className="feed-wrap feed-empty"><EmptyArt kind="library" />暂无角色，快来发布第一个</div>;
+    return (
+      <div className="feed-wrap">{topBar}
+        <div className="feed-state"><EmptyArt kind="library" />
+          {mode === 'follow' ? '还没有关注的创作者 —— 去「推荐」发现更多吧' : '暂无角色，快来发布第一个'}
+        </div>
+      </div>
+    );
   }
-
-  const atEnd = !hasMore && activeIdx >= chars.length - 1;
 
   return (
     <div className="feed-wrap">
-      {/* 顶部：分类条（悬浮于滚动流之上）+ 右侧搜索浮钮 */}
-      <div className="feed-top">
-        <div className="feed-cats">
-          <button className={'feed-cat' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>全部</button>
-          {cats.map(c => (
-            <button key={c.slug} className={'feed-cat' + (cat === c.slug ? ' on' : '')} onClick={() => setCat(c.slug)}>
-              <CategoryIcon slug={c.slug} size={13} /> {c.name}
-            </button>
-          ))}
-        </div>
-        <button className="feed-search" onClick={openCmdk} aria-label="搜索"><Search size={18} /></button>
-      </div>
+      {topBar}
 
       <div className="feed-root" ref={containerRef}>
         {chars.map((c, i) => {
@@ -302,27 +306,15 @@ export default function DiscoverFeed() {
                   </div>
                 </div>
 
-                {/* 自由输入胶囊：在流里直接开口，带着这句话进入对话 */}
-                {i === activeIdx ? (
-                  <div className="fd2-say">
-                    <button className="fd2-say-call" onClick={() => { pushRecent(c); tick(12); setCallChar(c); }} aria-label="给角色打电话" title="给 TA 打电话">
-                      <Phone size={17} />
-                    </button>
-                    <input value={say} placeholder="自由输入…" enterKeyHint="send"
-                      autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                      onChange={e => setSay(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter' && say.trim()) chat(c, say.trim()); }} />
-                    {say.trim()
-                      ? <button className="fd2-say-go send" onClick={() => chat(c, say.trim())} aria-label="发送并进入对话" disabled={entering}><Send size={16} /></button>
-                      : <button className="fd2-say-go" onClick={() => chat(c)} aria-label="进入对话" disabled={entering}><Plus size={18} /></button>}
-                  </div>
-                ) : (
-                  <div className="fd2-say ghost" aria-hidden="true">
-                    <span className="fd2-say-call"><Phone size={17} /></span>
-                    <i>自由输入…</i>
-                    <span className="fd2-say-go"><Plus size={18} /></span>
-                  </div>
-                )}
+                {/* 方案B：点击即聊 —— 「进入对话」大按钮 + 语音电话按钮（替代自由输入） */}
+                <div className="fd2-cta">
+                  <button className="fd2-enter" onClick={() => chat(c)} disabled={entering} aria-label="进入对话">
+                    <MessageCircle size={19} /> 进入对话
+                  </button>
+                  <button className="fd2-call" onClick={() => { pushRecent(c); tick(12); setCallChar(c); }} aria-label="语音通话" title="给 TA 打电话">
+                    <Phone size={20} />
+                  </button>
+                </div>
               </div>
             </section>
           );
