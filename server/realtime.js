@@ -16,24 +16,42 @@ import db from './db.js';
 const clients = new Map();
 const touchStmt = db.prepare('UPDATE users SET last_active = ? WHERE id = ?');
 
+// last_active 写入节流：同一用户 90s 内只写一次，抑制「每连接每 25s 一写」的写放大
+// （多标签页 × 心跳会让 WAL 快速膨胀）。在线状态精度 90s 足够。
+const lastTouch = new Map();
+function touch(userId) {
+  const now = Date.now();
+  if (now - (lastTouch.get(userId) || 0) < 90000) return;
+  lastTouch.set(userId, now);
+  try { touchStmt.run(now, userId); } catch { /* */ }
+}
+// 写 socket 失败即视为死连接，主动从路由表剔除（不再只依赖 close 事件），
+// 防半开连接堆积 + 心跳空转。
+function evict(userId, set, res) {
+  set.delete(res);
+  try { res.end(); } catch { /* */ }
+  if (!set.size) { clients.delete(userId); lastTouch.delete(userId); }
+}
+
 // 注入一条 SSE 连接，返回 detach 函数（连接关闭时调用以清理）。
 export function attach(userId, res) {
   if (!clients.has(userId)) clients.set(userId, new Set());
   const set = clients.get(userId);
   set.add(res);
-  // 心跳：每 25s 写一条 SSE 注释行，防代理/浏览器闲置断连；
-  // 同时刷新 last_active，让好友看到的在线状态与 SSE 连接同寿命。
-  const hb = setInterval(() => {
-    try { res.write(': hb\n\n'); } catch { /* socket gone */ }
-    try { touchStmt.run(Date.now(), userId); } catch { /* */ }
-  }, 25000);
-  return () => {
-    clearInterval(hb);
+  let hb;
+  const detach = () => {
+    if (hb) { clearInterval(hb); hb = null; }
     const s = clients.get(userId);
     if (!s) return;
     s.delete(res);
-    if (!s.size) clients.delete(userId);
+    if (!s.size) { clients.delete(userId); lastTouch.delete(userId); }
   };
+  // 心跳：每 25s 写一条 SSE 注释行防闲置断连；写失败即自我清理（清定时器 + 剔除）。
+  hb = setInterval(() => {
+    try { res.write(': hb\n\n'); } catch { detach(); return; }
+    touch(userId);
+  }, 25000);
+  return detach;
 }
 
 // 给单个用户推送事件。返回是否触达（在线即 true）。
@@ -41,8 +59,8 @@ export function push(userId, event, data) {
   const set = clients.get(userId);
   if (!set || !set.size) return false;
   const payload = `event: ${event}\ndata: ${JSON.stringify(data ?? null)}\n\n`;
-  for (const res of set) {
-    try { res.write(payload); } catch { /* drop stale */ }
+  for (const res of [...set]) {
+    try { res.write(payload); } catch { evict(userId, set, res); }
   }
   return true;
 }
@@ -52,10 +70,10 @@ export function broadcast(event, data, exceptUserId = null) {
   if (!clients.size) return 0;
   const payload = `event: ${event}\ndata: ${JSON.stringify(data ?? null)}\n\n`;
   let n = 0;
-  for (const [uid, set] of clients) {
+  for (const [uid, set] of [...clients]) {
     if (exceptUserId != null && uid === exceptUserId) continue;
-    for (const res of set) {
-      try { res.write(payload); n++; } catch { /* drop stale */ }
+    for (const res of [...set]) {
+      try { res.write(payload); n++; } catch { evict(uid, set, res); }
     }
   }
   return n;
