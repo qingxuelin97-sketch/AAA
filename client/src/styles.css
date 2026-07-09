@@ -6525,7 +6525,7 @@ html[data-app="1"] .msgs-sep { margin: 14px 12px 6px; }
 html[data-app="1"] .msgs-sep span { font-size: 11.5px; letter-spacing: 1.2px; }
 
 /* —— 我的页 · 资料头 / 会员横幅 更立体 —— */
-html[data-app="1"] .pf { padding-top: calc(env(safe-area-inset-top) + 6px); }
+html[data-app="1"] .pf { padding-top: 6px; } /* .app-main 已含 safe-area 顶部内边距，勿重复叠加（否则刘海机顶部空一大条） */
 html[data-app="1"] .pf-top { gap: 6px; padding-right: 2px; }
 html[data-app="1"] .pf-top button { transition: transform 0.16s var(--hy-spring), background 0.2s; }
 html[data-app="1"] .pf-top button:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
@@ -9502,8 +9502,8 @@ html[data-app="1"] .msgs-tabs > .on,
 html[data-app="1"] .msgs-tabs button.on {
   background: var(--grad); color: #fff; border-color: transparent; box-shadow: var(--hyd-badge-sh);
 }
-/* 顶栏搜索圆钮：白玻璃 */
-html[data-app="1"] .msgs-search, html[data-app="1"] .msgs-logo + button, html[data-app="1"] .msgs-head button {
+/* 顶栏搜索圆钮：白玻璃（只作用于搜索钮本身，不波及分段 tab） */
+html[data-app="1"] .msgs-search {
   background: rgba(255,255,255,0.7); border: 1px solid rgba(15,181,166,0.2); color: var(--accent);
 }
 
@@ -9748,4 +9748,36 @@ html[data-app="1"] .switch input:checked + .track {
 
 /* —— 角色详情（cvx 沉浸态）：图标/收藏统一青色，去除杂色 —— */
 html[data-app="1"] .cvx-tile svg { color: var(--accent); }
+
+/* ============================================================================
+   幻域重设计 · 真机反馈修正
+   ========================================================================== */
+/* ① 发现页「进入对话」呼吸辉光 */
+@keyframes hy-cta-breathe {
+  0%, 100% { box-shadow: 0 8px 22px rgba(15,181,166,0.4); }
+  50% { box-shadow: 0 13px 34px rgba(15,181,166,0.72); }
+}
+html[data-app="1"]:not([data-perf="lite"]) .fd2-enter { animation: hy-cta-breathe 2.2s ease-in-out infinite; }
+
+/* ② 发现页顶部「关注/推荐/新作」真正屏幕居中（搜索钮脱离布局流，绝对定位右上） */
+html[data-app="1"] .feed-modes { flex: 1; gap: 26px; }
+html[data-app="1"] .feed-top .feed-search {
+  position: absolute; right: 14px; top: calc(env(safe-area-inset-top) + 8px);
+}
+html[data-app="1"] .feed-modes .feed-mode { padding: 6px 4px; font-size: 15.5px; }
+
+/* ③ 消息「聊过/赞过」→ 圆润加长的胶囊分段（此前误被搜索钮样式套成方框） */
+html[data-app="1"] .msgs-tabs { gap: 12px; }
+html[data-app="1"] .msgs-tabs button {
+  border-radius: 999px; padding: 9px 26px; font-size: 15px; font-weight: 700;
+  background: rgba(255,255,255,0.62); border: 1px solid rgba(15,181,166,0.16); color: #5A7A76;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+  transition: transform 0.16s var(--hy-spring), background 0.2s, color 0.2s;
+}
+html[data-app="1"] .msgs-tabs button.on {
+  background: var(--grad); color: #fff; border-color: transparent; font-size: 15px; font-weight: 800;
+  box-shadow: var(--hyd-badge-sh);
+}
+html[data-app="1"] .msgs-tabs button.on::after { display: none; } /* 胶囊态不要下划线 */
+html[data-app="1"] .msgs-tabs button:active { transform: scale(0.95); }
 
