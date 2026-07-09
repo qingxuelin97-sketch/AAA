@@ -3,7 +3,7 @@ import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx } from '../wallet.js';
 import { getPlatform, imageReady, featureFee, IMAGE_FEE } from '../platform.js';
-import { assertPublicUrl } from '../safeUrl.js';
+import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { generateTencentImage } from '../tencentImage.js';
 
@@ -31,7 +31,7 @@ router.post('/image', authRequired, aiLimiter, async (req, res) => {
       // 腾讯混元 TokenHub：OpenAI 兼容 /images/generations，size 需转成冒号格式
       assertPublicUrl(cfg.base_url);
       const hySize = String(size).replace('x', ':'); // 1024x1024 -> 1024:1024
-      const up = await fetch(cfg.base_url.replace(/\/$/, '') + '/images/generations', {
+      const up = await safeFetch(cfg.base_url.replace(/\/$/, '') + '/images/generations', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
         body: JSON.stringify({ model: cfg.model || 'hy-image-v3.0', prompt, size: hySize, n: 1 }),
       });
@@ -46,7 +46,7 @@ router.post('/image', authRequired, aiLimiter, async (req, res) => {
     } else {
       // OpenAI 兼容协议：base_url + Bearer key 调 /images/generations
       assertPublicUrl(cfg.base_url);
-      const up = await fetch(cfg.base_url.replace(/\/$/, '') + '/images/generations', {
+      const up = await safeFetch(cfg.base_url.replace(/\/$/, '') + '/images/generations', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
         body: JSON.stringify({ model: cfg.model, prompt, size, n: 1 }),
       });

@@ -8,7 +8,7 @@
 //   · Deepgram —— POST {base}/v1/listen（原始音频体）
 //   · ElevenLabs Scribe —— POST {base}/v1/speech-to-text（multipart，xi-api-key）
 // 其余走 OpenAI 兼容分支兜底（越来越多国内外服务商都提供该端点）。
-import { assertPublicUrl } from './safeUrl.js';
+import { assertPublicUrl, safeFetch } from './safeUrl.js';
 
 // 服务商 → 默认识别模型（管理后台「检测模型」失败时的兜底候选）。
 export const ASR_PROTOCOLS = ['openai', 'deepgram', 'elevenlabs'];
@@ -57,7 +57,7 @@ export async function transcribe({ proto = 'openai', base, key, model, audio, mi
       const host = b || 'https://api.deepgram.com';
       const qs = new URLSearchParams({ model: model || 'nova-2', smart_format: 'true' });
       if (language) qs.set('language', language);
-      const r = await fetch(`${host}/v1/listen?${qs}`, {
+      const r = await safeFetch(`${host}/v1/listen?${qs}`, {
         method: 'POST',
         headers: { Authorization: `Token ${key}`, 'Content-Type': mime || 'audio/webm' },
         body: audio,
@@ -75,7 +75,7 @@ export async function transcribe({ proto = 'openai', base, key, model, audio, mi
       fd.append('file', new Blob([audio], { type: mime || 'audio/webm' }), filename || 'audio.webm');
       fd.append('model_id', model || 'scribe_v1');
       if (language) fd.append('language_code', language);
-      const r = await fetch(`${host}/speech-to-text`, { method: 'POST', headers: { 'xi-api-key': key }, body: fd });
+      const r = await safeFetch(`${host}/speech-to-text`, { method: 'POST', headers: { 'xi-api-key': key }, body: fd });
       const d = await r.json().catch(() => null);
       if (!r.ok) return { ok: false, status: 502, error: `ElevenLabs HTTP ${r.status}` };
       return { ok: true, text: d?.text || '' };
@@ -87,7 +87,7 @@ export async function transcribe({ proto = 'openai', base, key, model, audio, mi
     const headers = proto === 'azure' ? { 'api-key': key } : { Authorization: `Bearer ${key}` };
     const url = `${host}/audio/transcriptions`;
     const fd = audioForm({ audio, mime, filename, model: model || ASR_DEFAULT_MODELS[proto] || 'whisper-1', language });
-    const r = await fetch(url, { method: 'POST', headers, body: fd });
+    const r = await safeFetch(url, { method: 'POST', headers, body: fd });
     const d = await r.json().catch(() => null);
     if (!r.ok) return { ok: false, status: 502, error: `识别服务 HTTP ${r.status}：${(d && (d.error?.message || d.message)) || ''}`.trim() };
     // OpenAI 兼容返回 { text }；部分服务商包一层。
@@ -110,7 +110,7 @@ export async function detectAsrModels({ proto = 'openai', base, key }) {
   try { assertPublicUrl(b); } catch (e) { return { ok: false, status: 400, error: e.message }; }
   try {
     const headers = proto === 'azure' ? { 'api-key': key } : { Authorization: `Bearer ${key}` };
-    const r = await fetch(`${b}/models`, { headers });
+    const r = await safeFetch(`${b}/models`, { headers });
     if (!r.ok) return { ok: false, status: 502, error: `获取模型列表失败 (HTTP ${r.status})，请检查 Base URL 与 Key` };
     const d = await r.json().catch(() => null);
     const ids = (d?.data || d?.models || []).map(m => (typeof m === 'string' ? m : (m.id || m.name))).filter(Boolean);

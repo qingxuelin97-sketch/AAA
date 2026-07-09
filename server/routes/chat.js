@@ -5,7 +5,7 @@ import { authRequired } from '../auth.js';
 import { applyTx } from '../wallet.js';
 import { getPlatform, voiceReady, featureFee, platformFee, VOICE_FEE } from '../platform.js';
 import { bumpDaily } from '../daily.js';
-import { assertPublicUrl } from '../safeUrl.js';
+import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { log } from '../logger.js';
 
@@ -706,7 +706,10 @@ router.post('/conversations/:id/regenerate', authRequired, aiLimiter, async (req
 async function pumpModelStream(res, eff, payloadMessages) {
   let full = '';
   try {
-    const upstream = await fetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
+    // 平台模型(admin 配置)允许指向本机/局域网(本地 Ollama/LM Studio)，走原生 fetch；
+    // 用户自填 base_url 不可信 → safeFetch 做 DNS 复检 + 逐跳重定向 + 请求头超时(60s，容忍首字节慢)。
+    const doFetch = eff.platform ? fetch : (u, o) => safeFetch(u, o, { timeoutMs: 60000 });
+    const upstream = await doFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
       body: JSON.stringify({

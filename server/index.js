@@ -38,10 +38,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// 反向代理（Nginx / 云负载均衡）之后运行时，信任第一跳代理设置的 X-Forwarded-For，
-// 否则限流与登录锁定看到的全是代理 IP，一人触发限流会波及全站。
-// 直接暴露公网（无代理）时设 TRUST_PROXY=0 关闭，防止客户端伪造 XFF 绕过按 IP 限流。
-app.set('trust proxy', process.env.TRUST_PROXY === '0' ? false : 1);
+// 信任代理策略（决定 req.ip = 真实客户端 IP，供限流/登录锁定按 IP 计）：
+//  · 默认 'loopback'：只信任同机回环代理（如本机 Nginx 反代）设置的 XFF；
+//    直连公网(如 APK 直连 :4000)时，公网客户端伪造的 XFF 一律不采信 → 无法绕过按 IP 限流。
+//  · TRUST_PROXY=0 强制关闭；TRUST_PROXY=N 信任前 N 跳（多层代理/云 LB）。
+const _tp = process.env.TRUST_PROXY;
+app.set('trust proxy', (_tp == null || _tp === '') ? 'loopback' : (_tp === '0' ? false : (Number(_tp) || _tp)));
 
 // CORS：来自环境变量 CORS_ORIGINS（逗号分隔）的白名单；未配置则允许所有来源，
 // 保证同源部署（前后端在同一阿里云实例）和静态托管+独立后端的场景都能开箱可用。
