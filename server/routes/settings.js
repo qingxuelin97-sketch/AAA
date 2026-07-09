@@ -3,7 +3,7 @@ import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { isVip } from '../wallet.js';
 import { getPlatform, voiceReady, imageReady, featureFee, platformFee, memberDiscount, VOICE_FEE, IMAGE_FEE, PLATFORM_FEE } from '../platform.js';
-import { assertPublicUrl } from '../safeUrl.js';
+import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 
 const router = Router();
 
@@ -104,7 +104,7 @@ router.post('/models', authRequired, async (req, res) => {
     : proto === 'anthropic' ? { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
       : { Authorization: `Bearer ${key}` };
   try {
-    const r = await fetch(url, { headers });
+    const r = await safeFetch(url, { headers });
     if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[settings] /models 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: '获取模型列表失败，请检查 API Base URL 与 Key 是否正确' }); }
     const d = await r.json();
     const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : (Array.isArray(d) ? d : []));
@@ -129,7 +129,7 @@ router.post('/voices', authRequired, async (req, res) => {
   if (!mmKey) return res.status(400).json({ error: '请先填写 API Key（MiniMax 接口密钥）' });
   try {
     assertPublicUrl(mmBase);
-    const r = await fetch(`${mmBase}/get_voice`, {
+    const r = await safeFetch(`${mmBase}/get_voice`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mmKey}` },
       body: JSON.stringify({ voice_type: 'all' }),
     });
@@ -156,11 +156,11 @@ router.post('/test-llm', authRequired, async (req, res) => {
   try {
     let reply = '';
     if (proto === 'anthropic') {
-      const r = await fetch(base.replace(/\/v1$/, '') + '/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }) });
+      const r = await safeFetch(base.replace(/\/v1$/, '') + '/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }) });
       if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[settings] /test-llm 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: '连接测试失败：请检查 API Key 与 Base URL 是否正确' }); }
       const d = await r.json(); reply = d?.content?.[0]?.text || 'OK';
     } else {
-      const r = await fetch(base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }) });
+      const r = await safeFetch(base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }) });
       if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[settings] /test-llm 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: '连接测试失败：请检查 API Key 与 Base URL 是否正确' }); }
       const d = await r.json(); reply = d?.choices?.[0]?.message?.content || 'OK';
     }

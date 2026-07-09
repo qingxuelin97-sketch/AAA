@@ -204,12 +204,25 @@ router.get('/me', authRequired, (req, res) => {
 
 router.put('/me', authRequired, (req, res) => {
   const { display_name, bio, avatar, banner, email } = req.body || {};
-  if (email && !EMAIL_RE.test(String(email))) return res.status(400).json({ error:'邮箱格式不正确' });
+  let emailVal = null;
+  if (email) {
+    const e = String(email).trim();
+    if (!EMAIL_RE.test(e)) return res.status(400).json({ error: '邮箱格式不正确' });
+    // 唯一性：不能占用他人已注册邮箱（避免撞 UNIQUE 约束 500，并防邮箱抢注）。
+    const taken = db.prepare('SELECT id FROM users WHERE email = ? AND id <> ?').get(e, req.user.id);
+    if (taken) return res.status(409).json({ error: '该邮箱已被其他账号使用' });
+    emailVal = e;
+  }
+  // 头像/横幅 URL 只允许 http(s)/站内相对路径/data:image，拒绝 javascript: 等危险 scheme。
+  const safeUrlField = (v) => {
+    if (!v) return null; // 空/未传 → COALESCE 保持原值
+    const s = String(v).slice(0, 500).trim();
+    return (/^(https?:\/\/|\/)/i.test(s) || /^data:image\//i.test(s)) ? s : null;
+  };
   db.prepare(`UPDATE users SET display_name = COALESCE(?, display_name), bio = COALESCE(?, bio),
     avatar = COALESCE(?, avatar), banner = COALESCE(?, banner), email = COALESCE(?, email) WHERE id = ?`)
     .run(display_name ? String(display_name).slice(0, 30) : null, bio ? String(bio).slice(0, 500) : null,
-      avatar ? String(avatar).slice(0, 500) : null, banner ? String(banner).slice(0, 500) : null,
-      email ?? null, req.user.id);
+      safeUrlField(avatar), safeUrlField(banner), emailVal, req.user.id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   res.json({ user: publicUser(user) });
 });

@@ -63,9 +63,9 @@ router.post('/platform/detect-voices', async (req, res) => {
   if (!mmBase) return res.status(400).json({ error: '请先填写 API Base URL' });
   if (!mmKey) return res.status(400).json({ error: '请先填写 API Key（MiniMax 接口密钥）' });
   try {
-    const { assertPublicUrl } = await import('../safeUrl.js');
+    const { assertPublicUrl, safeFetch } = await import('../safeUrl.js');
     assertPublicUrl(mmBase);
-    const r = await fetch(`${mmBase}/get_voice`, {
+    const r = await safeFetch(`${mmBase}/get_voice`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mmKey}` },
       body: JSON.stringify({ voice_type: 'all' }),
     });
@@ -102,13 +102,13 @@ router.post('/platform/test-image', async (req, res) => {
   // 混元 TokenHub / OpenAI 兼容：用 base_url + Bearer key 调一次 /images/generations
   if (!cfg.key || !cfg.base_url) return res.json({ ok: false, message: '密钥与 Base URL 未配置' });
   try {
-    const { assertPublicUrl } = await import('../safeUrl.js');
+    const { assertPublicUrl, safeFetch } = await import('../safeUrl.js');
     assertPublicUrl(cfg.base_url);
     const isHunyuan = cfg.provider === 'hunyuan';
     const testSize = isHunyuan ? '1024:1024' : (cfg.size || '1024x1024');
     const model = isHunyuan ? (cfg.model || 'hy-image-v3.0') : (cfg.model || 'dall-e-3');
     const t0 = Date.now();
-    const up = await fetch(cfg.base_url.replace(/\/$/, '') + '/images/generations', {
+    const up = await safeFetch(cfg.base_url.replace(/\/$/, '') + '/images/generations', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
       body: JSON.stringify({ model, prompt: '一只可爱的橘猫，柔光摄影', size: testSize, n: 1 }),
     });
