@@ -78,13 +78,20 @@ router.get('/revenue-plan', authRequired, (req, res) => {
   res.json({ plan: revenuePlan(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });
 });
 router.post('/revenue-plan/claim', authRequired, (req, res) => {
-  const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-  const plan = revenuePlan(u);
-  if (!plan.claimable) return res.status(400).json({ error: '暂无可领取的分成；当用户在你的作品上消费金币后即可分成' });
-  const amount = plan.claimable_amount;
-  db.prepare('UPDATE users SET rev_claimed_total = COALESCE(rev_claimed_total,0) + ? WHERE id = ?').run(amount, u.id);
-  const w = applyTx(u.id, { kind: 'revenue_share', gold: amount, memo: `创作者分成（${plan.tier_name} · ${Math.round(plan.rate * 100)}%）` });
-  notify(u.id, `💰 创作者收益分成 ${amount} 金币已到账（${plan.tier_name}）`, '/studio');
+  let amount, plan, w;
+  try {
+    // IMMEDIATE 事务内重读并重算分成：并发/多进程下第二次领取读到更新后的 rev_claimed_total
+    // → claimable 为假而拒绝，杜绝重复领取；累计与发奖一并原子提交。
+    db.transaction(() => {
+      const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+      plan = revenuePlan(u);
+      if (!plan.claimable) throw Object.assign(new Error('暂无可领取的分成；当用户在你的作品上消费金币后即可分成'), { status: 400, expose: true });
+      amount = plan.claimable_amount;
+      db.prepare('UPDATE users SET rev_claimed_total = COALESCE(rev_claimed_total,0) + ? WHERE id = ?').run(amount, u.id);
+      w = applyTx(u.id, { kind: 'revenue_share', gold: amount, memo: `创作者分成（${plan.tier_name} · ${Math.round(plan.rate * 100)}%）` });
+    }).immediate();
+  } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+  notify(req.user.id, `💰 创作者收益分成 ${amount} 金币已到账（${plan.tier_name}）`, '/studio');
   log({
     level: 'info', category: 'economy', event: 'revenue_claim',
     user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
@@ -92,7 +99,7 @@ router.post('/revenue-plan/claim', authRequired, (req, res) => {
     extra: { amount, tier: plan.tier, tier_name: plan.tier_name, rate: plan.rate, pool_total: plan.pool_total },
     message: `用户 ${req.user.id} 领取创作者分成 ${amount} 金币（${plan.tier_name}）`,
   });
-  res.json({ ok: true, reward: amount, wallet: w, plan: revenuePlan(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
+  res.json({ ok: true, reward: amount, wallet: w, plan: revenuePlan(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });
 });
 
 // 星轨 · 个人旅程数据（/insights 页）——聊天足迹、羁绊角色、创作与经济全景。

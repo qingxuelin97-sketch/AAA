@@ -76,13 +76,17 @@ router.post('/exchange', authRequired, (req, res) => {
 // Buy VIP with gold. 可选 plan（week/month/season）；缺省 month（向后兼容）。
 router.post('/vip', authRequired, (req, res) => {
   const plan = VIP_PLANS[(req.body || {}).plan] || VIP_PLANS.month;
-  const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  let until;
   try {
-    applyTx(req.user.id, { kind:'vip', gold: -plan.gold, memo:`购买 ${plan.days} 天 VIP（${plan.label}）` });
+    // 扣金币 + 续期一并原子提交：崩溃或并发不再出现「扣了币没开通 / 付两次只续一次」。
+    db.transaction(() => {
+      const u = db.prepare('SELECT vip_until FROM users WHERE id = ?').get(req.user.id);
+      applyTx(req.user.id, { kind: 'vip', gold: -plan.gold, memo: `购买 ${plan.days} 天 VIP（${plan.label}）` });
+      const base = isVip(u) ? new Date(u.vip_until).getTime() : Date.now();
+      until = new Date(base + plan.days * 86400000).toISOString();
+      db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(until, req.user.id);
+    }).immediate();
   } catch (e) { return res.status(400).json({ error: e.message }); }
-  const base = isVip(u) ? new Date(u.vip_until).getTime() : Date.now();
-  const until = new Date(base + plan.days * 86400000).toISOString();
-  db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(until, req.user.id);
   notify(req.user.id,`VIP 已开通，有效期至 ${until.slice(0, 10)}`);
   log({ level: 'info', category: 'economy', event: 'vip',
     message: `用户购买 VIP ${plan.label}（${plan.days} 天）`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
@@ -101,11 +105,16 @@ router.post('/checkin', authRequired, (req, res) => {
   // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
   const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200;
   if (isVip(u)) reward *= 2;
-  // 仅当今天尚未签到时才更新；并发请求只有一个能成功。
-  const upd = db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ? AND last_checkin != ?').run(today, streak, req.user.id, today);
-  if (upd.changes === 0) return res.status(400).json({ error:'今天已经签到过啦' });
-  const w = applyTx(req.user.id, { kind:'checkin', gold: reward, memo:`第 ${streak} 天签到` });
-  bumpDaily(req.user.id, 'checkin');
+  // 条件 UPDATE 防并发重复签到 + 发奖 + 每日任务一并原子提交（崩溃不再「标记已签到却没发币」）。
+  let w;
+  try {
+    db.transaction(() => {
+      const upd = db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ? AND last_checkin != ?').run(today, streak, req.user.id, today);
+      if (upd.changes === 0) throw Object.assign(new Error('今天已经签到过啦'), { status: 400, expose: true });
+      w = applyTx(req.user.id, { kind: 'checkin', gold: reward, memo: `第 ${streak} 天签到` });
+      bumpDaily(req.user.id, 'checkin');
+    }).immediate();
+  } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
   log({ level: 'info', category: 'economy', event: 'checkin',
     message: `用户签到 第 ${streak} 天 奖励 ${reward} 金币`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
     endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
@@ -123,15 +132,20 @@ router.post('/redeem', authRequired, redeemLimiter, (req, res) => {
   const code = String((req.body || {}).code ||'').trim();
   const key = db.prepare('SELECT * FROM invite_keys WHERE code = ?').get(code);
   if (!key) return res.status(400).json({ error:'密钥无效' });
-  const upd = db.prepare('UPDATE invite_keys SET used = used + 1 WHERE code = ? AND used < max_uses').run(code);
-  if (upd.changes === 0) return res.status(400).json({ error:'该密钥已用完' });
-  if (key.grant_gold || key.grant_diamond)
-    applyTx(req.user.id, { kind:'reward', gold: key.grant_gold, diamond: key.grant_diamond, memo:`兑换码 ${code}` });
-  if (key.grant_vip_days) {
-    const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-    const base = isVip(u) ? new Date(u.vip_until).getTime() : Date.now();
-    db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(new Date(base + key.grant_vip_days * 86400000).toISOString(), req.user.id);
-  }
+  try {
+    // 核销 + 发奖 + 续期一并原子提交：applyTx 抛错则整体回滚，兑换码不被白白消耗。
+    db.transaction(() => {
+      const upd = db.prepare('UPDATE invite_keys SET used = used + 1 WHERE code = ? AND used < max_uses').run(code);
+      if (upd.changes === 0) throw Object.assign(new Error('该密钥已用完'), { status: 400, expose: true });
+      if (key.grant_gold || key.grant_diamond)
+        applyTx(req.user.id, { kind: 'reward', gold: key.grant_gold, diamond: key.grant_diamond, memo: `兑换码 ${code}` });
+      if (key.grant_vip_days) {
+        const u = db.prepare('SELECT vip_until FROM users WHERE id = ?').get(req.user.id);
+        const base = isVip(u) ? new Date(u.vip_until).getTime() : Date.now();
+        db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(new Date(base + key.grant_vip_days * 86400000).toISOString(), req.user.id);
+      }
+    }).immediate();
+  } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
   log({ level: 'warn', category: 'economy', event: 'redeem',
     message: `用户兑换码 ${code}`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
     endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',

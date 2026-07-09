@@ -8,6 +8,9 @@ const dbFile = process.env.DB_PATH || path.join(__dirname, 'data.sqlite');
 const db = new Database(dbFile);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
+// 并发写等待：第二个连接（CLI 脚本 / 迁移 / 未来多进程）遇写锁时最多等 5s 再报
+// SQLITE_BUSY，而非立即 500。单连接同步访问下无副作用。
+db.pragma('busy_timeout = 5000');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -654,5 +657,36 @@ for (const sql of [
   "ALTER TABLE novel_beats ADD COLUMN image TEXT DEFAULT ''",
   "ALTER TABLE novel_beats ADD COLUMN history TEXT DEFAULT '[]'",
 ]) { try { db.exec(sql); } catch { /* column exists */ } }
+
+// —— 性能索引：热点外键/查找列（缺失会随数据量退化为全表扫描）。逐条 try：
+//    个别表/列在旧库可能尚不存在，跳过而非中断启动。——
+for (const sql of [
+  'CREATE INDEX IF NOT EXISTS idx_characters_owner ON characters (owner_id)',
+  'CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages (conversation_id, id)',
+  'CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations (user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_conversations_char ON conversations (character_id)',
+  'CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions (user_id, id)',
+  'CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications (user_id, id)',
+  'CREATE INDEX IF NOT EXISTS idx_favorites_char ON favorites (character_id)',
+  'CREATE INDEX IF NOT EXISTS idx_follows_following ON follows (following_id)',
+  'CREATE INDEX IF NOT EXISTS idx_dm_from ON dm_messages (from_id, id)',
+  'CREATE INDEX IF NOT EXISTS idx_dm_to ON dm_messages (to_id, id)',
+  'CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members (user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_post_likes_post ON post_likes (post_id)',
+  'CREATE INDEX IF NOT EXISTS idx_comments_moment ON comments (moment_id, id)',
+  'CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews (target_type, target_id)',
+  'CREATE INDEX IF NOT EXISTS idx_script_purchases_user ON script_purchases (user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_script_purchases_script ON script_purchases (script_id)',
+]) { try { db.exec(sql); } catch { /* 表/列可能尚不存在，忽略 */ } }
+
+// —— post_likes 去重 + 唯一约束（与 moment_likes/favorites/script_likes 对齐，
+//    DB 级防重复点赞与计数漂移）。先删历史重复行，再建唯一索引。——
+try {
+  db.exec('DELETE FROM post_likes WHERE id NOT IN (SELECT MIN(id) FROM post_likes GROUP BY post_id, user_id)');
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_post_likes_uniq ON post_likes (post_id, user_id)');
+} catch { /* */ }
+
+// 进程退出时把 WAL 落盘并截断，抑制 WAL 文件长期膨胀（同步操作，安全）。
+process.on('exit', () => { try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* */ } });
 
 export default db;

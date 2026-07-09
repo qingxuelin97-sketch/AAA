@@ -96,14 +96,21 @@ router.get('/', authRequired, (req, res) => {
 router.post('/:id/claim', authRequired, (req, res) => {
   const a = ACHIEVEMENTS.find(x => x.id === req.params.id);
   if (!a) return res.status(404).json({ error: '成就不存在' });
-  const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-  const claimed = claimedOf(u);
-  if (claimed.includes(a.id)) return res.status(400).json({ error: '该成就奖励已领取' });
-  if (metric(u, a.metric) < a.goal) return res.status(400).json({ error: '成就尚未达成' });
-  claimed.push(a.id);
-  db.prepare('UPDATE users SET ach_claimed = ? WHERE id = ?').run(JSON.stringify(claimed), u.id);
-  const w = applyTx(u.id, { kind: 'achievement', gold: a.reward, memo: `成就奖励 · ${a.name}` });
-  notify(u.id, `🏆 达成成就「${a.name}」，奖励 ${a.reward} 金币已入账！`, '/achievements');
+  let w;
+  try {
+    // IMMEDIATE 事务内重读 ach_claimed 再判定：并发/多进程下第二次领取会读到已含该成就的
+    // 快照而拒绝，杜绝重复发奖；发奖与写回一并原子提交。
+    db.transaction(() => {
+      const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+      const claimed = claimedOf(u);
+      if (claimed.includes(a.id)) throw Object.assign(new Error('该成就奖励已领取'), { status: 400, expose: true });
+      if (metric(u, a.metric) < a.goal) throw Object.assign(new Error('成就尚未达成'), { status: 400, expose: true });
+      claimed.push(a.id);
+      db.prepare('UPDATE users SET ach_claimed = ? WHERE id = ?').run(JSON.stringify(claimed), u.id);
+      w = applyTx(u.id, { kind: 'achievement', gold: a.reward, memo: `成就奖励 · ${a.name}` });
+    }).immediate();
+  } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+  notify(req.user.id, `🏆 达成成就「${a.name}」，奖励 ${a.reward} 金币已入账！`, '/achievements');
   res.json({ ok: true, reward: a.reward, gold: w.gold });
 });
 

@@ -141,16 +141,20 @@ router.get('/leaderboard', authOptional, (req, res) => {
 // ---- gacha (spend diamonds to draw a public character into favorites) ----
 const GACHA_COST = 50;
 router.post('/gacha', authRequired, (req, res) => {
-  const pool = db.prepare('SELECT * FROM characters WHERE is_public = 1').all();
-  if (!pool.length) return res.status(400).json({ error: '暂无可抽取的角色' });
-  try { applyTx(req.user.id, { kind: 'reward', diamond: -GACHA_COST, memo: '抽卡' }); }
-  catch (e) { return res.status(400).json({ error: e.message }); }
-  const pick = pool[Math.floor(Math.random() * pool.length)];
-  const already = db.prepare('SELECT 1 FROM favorites WHERE user_id=? AND character_id=?').get(req.user.id, pick.id);
-  if (!already) { db.prepare('INSERT INTO favorites (user_id, character_id) VALUES (?,?)').run(req.user.id, pick.id); db.prepare('UPDATE characters SET likes=likes+1 WHERE id=?').run(pick.id); }
-  // small gold consolation
-  const w = applyTx(req.user.id, { kind: 'reward', gold: 10, memo: '抽卡返利' });
-  try { db.prepare('UPDATE users SET gacha_pulls = COALESCE(gacha_pulls,0) + 1 WHERE id = ?').run(req.user.id); } catch { /* */ }
+  // 只随机取一行的必要列，避免把全部公开角色（含 persona 大字段）物化到内存。
+  const pick = db.prepare('SELECT id, name, avatar, tagline FROM characters WHERE is_public = 1 ORDER BY RANDOM() LIMIT 1').get();
+  if (!pick) return res.status(400).json({ error: '暂无可抽取的角色' });
+  let already, w;
+  try {
+    // 扣钻 + 入藏 + 返利 + 抽卡计数一并原子提交，崩溃不再「扣了钻没入账」。
+    db.transaction(() => {
+      applyTx(req.user.id, { kind: 'reward', diamond: -GACHA_COST, memo: '抽卡' });
+      already = db.prepare('SELECT 1 FROM favorites WHERE user_id=? AND character_id=?').get(req.user.id, pick.id);
+      if (!already) { db.prepare('INSERT INTO favorites (user_id, character_id) VALUES (?,?)').run(req.user.id, pick.id); db.prepare('UPDATE characters SET likes=likes+1 WHERE id=?').run(pick.id); }
+      w = applyTx(req.user.id, { kind: 'reward', gold: 10, memo: '抽卡返利' }); // small gold consolation
+      db.prepare('UPDATE users SET gacha_pulls = COALESCE(gacha_pulls,0) + 1 WHERE id = ?').run(req.user.id);
+    }).immediate();
+  } catch (e) { return res.status(400).json({ error: e.message }); }
   bumpDaily(req.user.id, 'gacha');
   res.json({ character: { id: pick.id, name: pick.name, avatar: pick.avatar, tagline: pick.tagline }, already: !!already, cost: GACHA_COST, wallet: w });
 });

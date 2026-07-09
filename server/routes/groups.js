@@ -18,10 +18,14 @@ router.get('/', authRequired, (req, res) => {
 router.post('/', authRequired, (req, res) => {
   const { name, description, avatar, is_public } = req.body || {};
   if (!name) return res.status(400).json({ error: '群名称必填' });
-  const info = db.prepare('INSERT INTO groups (name, owner_id, avatar, description, is_public) VALUES (?,?,?,?,?)')
-    .run(name, req.user.id, avatar || null, description || '', is_public === false ? 0 : 1);
-  db.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?,?,?)').run(info.lastInsertRowid, req.user.id, 'owner');
-  res.json({ group: db.prepare('SELECT * FROM groups WHERE id = ?').get(info.lastInsertRowid) });
+  // 建群 + 建 owner 成员一并原子提交，杜绝崩溃留下「无主群」。
+  const gid = db.transaction(() => {
+    const info = db.prepare('INSERT INTO groups (name, owner_id, avatar, description, is_public) VALUES (?,?,?,?,?)')
+      .run(name, req.user.id, avatar || null, description || '', is_public === false ? 0 : 1);
+    db.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?,?,?)').run(info.lastInsertRowid, req.user.id, 'owner');
+    return info.lastInsertRowid;
+  }).immediate();
+  res.json({ group: db.prepare('SELECT * FROM groups WHERE id = ?').get(gid) });
 });
 
 router.post('/:id/join', authRequired, (req, res) => {
