@@ -3,10 +3,9 @@ import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter, aiLimiter } from '../limiters.js';
 import { assertPublicUrl } from '../safeUrl.js';
+import { str, csv } from '../validate.js';
 
 const router = Router();
-
-const str = (v, max) => v == null ? '' : String(v).slice(0, max);
 
 // tier 不再作单选档位（简单/标准/专家能力可在同一本世界书共存）。
 // 此处保留 TIERS 仅用于公开广场的展示分类（按世界书实际启用的能力派生），不再用于字段开关。
@@ -117,22 +116,22 @@ router.post('/:id/test-trigger', authRequired, (req, res) => {
   const groupHits = new Map();
   const runOne = (text) => entries.map(e => {
     const mode = e.mode || 'keyword';
-    const keysRaw = (e.keys || '').split(',').map(k => k.trim()).filter(Boolean);
+    const keysRaw = csv(e.keys);
     let triggered;
     if (mode === 'always' || keysRaw.length === 0) triggered = true;
     else if (mode === 'regex') triggered = keysRaw.some(k => { try { return new RegExp(k, e.case_sensitive ? '' : 'i').test(text); } catch { return false; } });
     else triggered = keysRaw.some(k => { const hay = e.case_sensitive ? text : text.toLowerCase(); return hay.includes(e.case_sensitive ? k : k.toLowerCase()); });
     // required_keys：AND 逻辑，全部命中才触发
-    const reqRaw = (e.required_keys || '').split(',').map(k => k.trim()).filter(Boolean);
+    const reqRaw = csv(e.required_keys);
     if (triggered && reqRaw.length) triggered = reqRaw.every(k => { const hay = e.case_sensitive ? text : text.toLowerCase(); return hay.includes(e.case_sensitive ? k : k.toLowerCase()); });
     // 排除关键词命中则不触发（黑名单优先）
-    const exRaw = (e.exclude_keys || '').split(',').map(k => k.trim()).filter(Boolean);
+    const exRaw = csv(e.exclude_keys);
     if (triggered && exRaw.length) triggered = !exRaw.some(k => text.toLowerCase().includes(k.toLowerCase()));
     // 图片触发关键词独立判定（命中后展示创建者预注入的图片）
     let imgTriggered = false;
-    const urls = e.image_urls ? e.image_urls.split(',').map(u => u.trim()).filter(Boolean) : [];
+    const urls = csv(e.image_urls);
     if (urls.length && e.image_keys) {
-      const ik = e.image_keys.split(',').map(k => k.trim()).filter(Boolean);
+      const ik = csv(e.image_keys);
       imgTriggered = ik.length === 0 || ik.some(k => text.toLowerCase().includes(k.toLowerCase()));
     }
     if (triggered && e.group_name) {

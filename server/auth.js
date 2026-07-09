@@ -42,7 +42,7 @@ export function authRequired(req, res, next) {
   if (!token) return res.status(401).json({ error: '未登录' });
   try {
     const payload = jwt.verify(token, SECRET, { algorithms: ['HS256'] });
-    const user = db.prepare('SELECT id, username, email, display_name, avatar, bio, is_banned, ban_reason, token_version FROM users WHERE id = ?').get(payload.id);
+    const user = db.prepare('SELECT id, username, email, display_name, avatar, bio, is_banned, ban_reason, token_version, is_gm FROM users WHERE id = ?').get(payload.id);
     if (!user) return res.status(401).json({ error: '账号不存在' });
     if (user.is_banned) return res.status(403).json({ error: '账号已被封禁' + (user.ban_reason ? '：' + user.ban_reason : '') });
     // 校验 token 版本：改密后旧 token 失效
@@ -54,6 +54,13 @@ export function authRequired(req, res, next) {
   }
 }
 
+// 统一 GM 守卫：接在 authRequired 之后。authRequired 已带 is_gm，直接读 req.user，
+// 无需各路由再各自查库（此前 admin/announcements/parliament 各有一份重复的 isGm 查询）。
+export function requireGm(req, res, next) {
+  if (!req.user?.is_gm) return res.status(403).json({ error: '需要管理员权限' });
+  next();
+}
+
 // Soft auth: attaches req.user if a valid token is present, but never blocks.
 export function authOptional(req, res, next) {
   const header = req.headers.authorization || '';
@@ -61,7 +68,7 @@ export function authOptional(req, res, next) {
   if (token) {
     try {
       const payload = jwt.verify(token, SECRET, { algorithms: ['HS256'] });
-      const user = db.prepare('SELECT id, username, display_name, avatar, is_banned, token_version FROM users WHERE id = ?').get(payload.id);
+      const user = db.prepare('SELECT id, username, display_name, avatar, is_banned, token_version, is_gm FROM users WHERE id = ?').get(payload.id);
       // 即便软鉴权也校验封禁与 token 版本，避免被封号/改密用户继续以登录态浏览
       if (user && !user.is_banned && (payload.tv ?? 0) === (user.token_version ?? 0)) req.user = user;
     } catch { /* ignore */ }
