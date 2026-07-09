@@ -6,6 +6,7 @@ import { creatorTier } from '../creator.js';
 import { contentLimiter } from '../limiters.js';
 import { broadcast } from '../realtime.js';
 import { log } from '../logger.js';
+import { str } from '../validate.js';
 
 const router = Router();
 
@@ -249,7 +250,6 @@ router.post('/import', authRequired, contentLimiter, (req, res) => {
   }
   const world = Array.isArray(body.world) ? body.world.filter(w => w && typeof w === 'object') : [];
   if (world.length > 1000) return res.status(400).json({ error: '世界书条目过多（上限 1000）' });
-  const str = (v, max) => v == null ? '' : String(v).slice(0, max);
   // front_regex：接受数组或已序列化字符串，落库为 JSON 文本（上限约 60KB，容纳大 HTML 面板）。
   const frontRegex = (() => {
     try { const v = typeof ch.front_regex === 'string' ? JSON.parse(ch.front_regex) : ch.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : '[]'; }

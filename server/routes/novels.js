@@ -6,6 +6,7 @@ import { getPlatform, platformFee } from '../platform.js';
 import { assertPublicUrl } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { bumpDaily } from '../daily.js';
+import { str as clampStr } from '../validate.js';
 
 const router = Router();
 
@@ -61,7 +62,6 @@ function extractJSON(text) {
 const TRIGGERS = new Set(['always', 'keyword', 'scene']);
 const CATEGORIES = new Set(['world', 'character', 'relationship', 'faction', 'location', 'item', 'lore', 'rule', 'timeline', 'plot', 'other']);
 const SOURCES = new Set(['meta', 'manual', 'auto']);
-const clampStr = (v, n) => String(v == null ? '' : v).slice(0, n);
 
 let _eid = Date.now();
 const newId = () => 'e' + (++_eid).toString(36) + Math.random().toString(36).slice(2, 6);

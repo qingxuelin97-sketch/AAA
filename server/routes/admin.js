@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { authRequired } from '../auth.js';
+import { authRequired, requireGm } from '../auth.js';
 import { applyTx, isVip, notify } from '../wallet.js';
 import { adminView, updatePlatform, getPlatform } from '../platform.js';
 import { synthesize } from './chat.js';
@@ -15,12 +15,8 @@ import { listWhitelist, addWhitelist, importWhitelist, removeWhitelist, clearWhi
 import { auditLog, queryLogs, getLogStats, getLogTimeseries, getLogTop, getErrorFingerprints, log } from '../logger.js';
 
 const router = Router();
-const isGm = (uid) => !!db.prepare('SELECT is_gm FROM users WHERE id = ?').get(uid)?.is_gm;
-function gm(req, res, next) {
-  if (!isGm(req.user.id)) return res.status(403).json({ error: '需要 GM 权限' });
-  next();
-}
-router.use(authRequired, gm);
+// authRequired 已带 is_gm，requireGm 直接读 req.user，无需再查库。
+router.use(authRequired, requireGm);
 const rnd = (n = 6) => Array.from({ length: n }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
 
 router.get('/check', (req, res) => res.json({ is_gm: true }));

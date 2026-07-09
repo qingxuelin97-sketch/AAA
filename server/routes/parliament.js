@@ -8,7 +8,6 @@ import { log } from '../logger.js';
 
 const router = Router();
 const meRow = (id) => db.prepare('SELECT * FROM users WHERE id = ?').get(id);
-const isGm = (id) => !!meRow(id)?.is_gm;
 
 function proposalView(p, meId) {
   const votes = db.prepare('SELECT user_id, choice FROM proposal_votes WHERE proposal_id = ?').all(p.id);
@@ -89,7 +88,7 @@ router.post('/proposals/:id/comments', authRequired, (req, res) => {
 router.delete('/proposals/:id/comments/:cid', authRequired, (req, res) => {
   const c = db.prepare('SELECT * FROM proposal_comments WHERE id = ?').get(req.params.cid);
   if (!c) return res.status(404).json({ error: '议论不存在' });
-  if (c.user_id !== req.user.id && !isGm(req.user.id)) return res.status(403).json({ error: '无权删除' });
+  if (c.user_id !== req.user.id && !req.user.is_gm) return res.status(403).json({ error: '无权删除' });
   db.prepare('DELETE FROM proposal_comments WHERE id = ?').run(c.id);
   res.json({ ok: true });
 });
@@ -121,7 +120,7 @@ router.post('/proposals/:id/vote', authRequired, ensureUnlocked, (req, res) => {
 });
 
 router.post('/proposals/:id/adopt', authRequired, ensureUnlocked, (req, res) => {
-  if (!isGm(req.user.id)) return res.status(403).json({ error: '需要 GM 权限' });
+  if (!req.user.is_gm) return res.status(403).json({ error: '需要 GM 权限' });
   const p = db.prepare('SELECT * FROM proposals WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: '提案不存在' });
   if (p.status !== 'pending') return res.status(400).json({ error: '只有「待采纳」状态的提案可被采纳' });
@@ -139,7 +138,7 @@ router.post('/proposals/:id/adopt', authRequired, ensureUnlocked, (req, res) => 
 });
 
 router.post('/proposals/:id/reject', authRequired, ensureUnlocked, (req, res) => {
-  if (!isGm(req.user.id)) return res.status(403).json({ error: '需要 GM 权限' });
+  if (!req.user.is_gm) return res.status(403).json({ error: '需要 GM 权限' });
   const p = db.prepare('SELECT * FROM proposals WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: '提案不存在' });
   if (p.status !== 'pending' && p.status !== 'voting') return res.status(400).json({ error: '该提案无法驳回' });
@@ -156,7 +155,7 @@ router.post('/proposals/:id/reject', authRequired, ensureUnlocked, (req, res) =>
 });
 
 router.post('/proposals/:id/close', authRequired, ensureUnlocked, (req, res) => {
-  if (!isGm(req.user.id)) return res.status(403).json({ error: '需要 GM 权限' });
+  if (!req.user.is_gm) return res.status(403).json({ error: '需要 GM 权限' });
   const p = db.prepare('SELECT * FROM proposals WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: '提案不存在' });
   if (p.status !== 'voting') return res.status(400).json({ error: '只有表决中的提案可以计票结束' });
@@ -182,7 +181,7 @@ router.post('/proposals/:id/close', authRequired, ensureUnlocked, (req, res) => 
 router.delete('/proposals/:id', authRequired, (req, res) => {
   const p = db.prepare('SELECT * FROM proposals WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: '提案不存在' });
-  if (!isGm(req.user.id) && !(p.author_id === req.user.id && p.status === 'pending')) return res.status(403).json({ error: '无权删除该提案' });
+  if (!req.user.is_gm && !(p.author_id === req.user.id && p.status === 'pending')) return res.status(403).json({ error: '无权删除该提案' });
   db.prepare('DELETE FROM proposals WHERE id = ?').run(p.id);
   db.prepare('DELETE FROM proposal_votes WHERE proposal_id = ?').run(p.id);
   db.prepare('DELETE FROM proposal_endorse WHERE proposal_id = ?').run(p.id);
