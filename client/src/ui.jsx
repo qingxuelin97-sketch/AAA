@@ -284,7 +284,14 @@ export function CoinIcon({ size = 16, className, style, ...p }) {
       </defs>
       {/* 外圈 + 币面 */}
       <circle cx="20" cy="20" r="19" fill="url(#hyCoinRim)" />
+      {size >= 20 && (
+        /* 边缘齿纹（reeding）：外圈虚线描边一圈，钱币质感 */
+        <circle cx="20" cy="20" r="17" fill="none" stroke="#9E6E1E" strokeWidth="1.6"
+          strokeDasharray="0.6 1.5" opacity="0.55" />
+      )}
       <circle cx="20" cy="20" r="14.4" fill="url(#hyCoinFace)" stroke="#B8842A" strokeWidth="0.7" />
+      {/* 内圈台阶 */}
+      <circle cx="20" cy="20" r="12.3" fill="none" stroke="#E5B458" strokeWidth="0.6" opacity="0.6" />
       {/* 星芸暗刻（仅较大尺寸） */}
       {size >= 20 && (
         <path d="M20 11.6l2.5 5.2 5.7.5-4.3 3.8 1.3 5.6L20 23.8l-5.2 2.9 1.3-5.6-4.3-3.8 5.7-.5z"
@@ -296,32 +303,48 @@ export function CoinIcon({ size = 16, className, style, ...p }) {
   );
 }
 
-// 钻石：切面宝石（「白+青」重设计货币纹样）。
-// viewBox 40×40，冠/亭多切面 + 桌面高光；外层 drop-shadow 增折射立体感。替代 lucide 的 Gem。
+// 钻石：明亮式切工宝石（brilliant-cut）。冠部台面+斜面，腰线，亭部主刻面明暗交替
+// 汇聚底尖(culet)出折射闪感；台面高光 + 闪芒。viewBox 40×40，外层 drop-shadow 增立体。
+// 尺寸自适应：size<18 省略最细的棱线/闪芒，保证小尺寸不糊。替代 lucide 的 Gem。
 export function DiamondIcon({ size = 16, className, style, ...p }) {
+  const detail = size >= 18;
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" fill="none" className={className}
       style={{ filter: 'drop-shadow(0 2px 3px rgba(18,104,124,.4))', ...style }} aria-hidden="true" {...p}>
       <defs>
-        <linearGradient id="hyGemTop" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ECFCFF" />
-          <stop offset="100%" stopColor="#A2E6F3" />
+        <linearGradient id="hyGemTable" x1="0" y1="0" x2="0.3" y2="1">
+          <stop offset="0%" stopColor="#F4FEFF" />
+          <stop offset="100%" stopColor="#BFEEF8" />
         </linearGradient>
-        <linearGradient id="hyGemBtm" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#69CDE3" />
-          <stop offset="100%" stopColor="#268BAD" />
+        <linearGradient id="hyGemPav" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#8AD7E9" />
+          <stop offset="100%" stopColor="#1E86A8" />
         </linearGradient>
       </defs>
-      {/* 冠部 */}
-      <polygon points="7,15 33,15 20,6" fill="#CFF6FF" />
-      <polygon points="7,15 20,6 20,15" fill="#AFE8FA" />
-      {/* 桌面 + 亭部多切面 */}
-      <polygon points="7,15 33,15 27,21 13,21" fill="url(#hyGemTop)" />
-      <polygon points="7,15 13,21 20,35" fill="url(#hyGemBtm)" />
-      <polygon points="33,15 27,21 20,35" fill="#3AA0BE" />
-      <polygon points="13,21 27,21 20,35" fill="#54B8D4" />
-      {/* 桌面高光 */}
-      <polygon points="9,15 14,15 12,18.5" fill="#fff" opacity="0.7" />
+      {/* 冠部：台面（亮）+ 左右斜面（bezel） */}
+      <polygon points="14,7 26,7 24.5,17 15.5,17" fill="url(#hyGemTable)" />
+      <polygon points="14,7 15.5,17 5,17" fill="#D2F4FB" />
+      <polygon points="26,7 35,17 24.5,17" fill="#A6E3F1" />
+      {/* 亭部主刻面：明暗交替，向底尖汇聚 */}
+      <polygon points="5,17 13.75,17 20,36" fill="#2B7C97" />
+      <polygon points="13.75,17 20,17 20,36" fill="url(#hyGemPav)" />
+      <polygon points="20,17 26.25,17 20,36" fill="#4FB3CE" />
+      <polygon points="26.25,17 35,17 20,36" fill="#20809E" />
+      {/* 腰线 */}
+      <path d="M5 17 H35" stroke="#175E76" strokeWidth="0.7" opacity="0.5" />
+      {detail && (
+        <>
+          {/* 刻面棱线（提升切工清晰度） */}
+          <path d="M14 7 L15.5 17 M26 7 L24.5 17 M13.75 17 L20 36 M26.25 17 L20 36 M20 17 L20 36"
+            stroke="#175E76" strokeWidth="0.5" opacity="0.38" />
+          {/* 台面高光 */}
+          <polygon points="16,8.4 21.4,8.4 19,11.4" fill="#fff" opacity="0.75" />
+          {/* 闪芒 glint */}
+          <path d="M30.4 8.6 l0.7 1.8 1.8 0.7 -1.8 0.7 -0.7 1.8 -0.7 -1.8 -1.8 -0.7 1.8 -0.7 z" fill="#fff" opacity="0.85" />
+        </>
+      )}
+      {/* 外轮廓 */}
+      <polygon points="14,7 26,7 35,17 20,36 5,17" fill="none" stroke="#144F66" strokeWidth="0.8" strokeLinejoin="round" opacity="0.55" />
     </svg>
   );
 }
