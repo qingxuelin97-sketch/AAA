@@ -58,8 +58,9 @@ app.use(cors({
   credentials: false,
   // 平台语音按句计费金额通过响应头返回（routes/chat.js /chat/tts）。跨域部署
   //（Capacitor 壳指向独立后端）时必须显式暴露，否则前端 res.headers.get 拿到 null，
-  // 扣费提示与余额刷新静默失效。
-  exposedHeaders: ['X-Gold-Fee', 'X-Gold-Balance'],
+  // 扣费提示与余额刷新静默失效。X-Request-Id 供前端排查链路（这里统一声明，
+  // 下方链路追踪中间件不得再 setHeader 覆盖本列表）。
+  exposedHeaders: ['X-Gold-Fee', 'X-Gold-Balance', 'X-Request-Id'],
 }));
 
 // 安全头（CSP 由前端 index.html meta 单独配置，这里不覆盖以避免冲突）。
@@ -88,8 +89,9 @@ app.use('/api', (req, res, next) => {
   // 优先复用客户端传来的 request_id（前端 fetch 拦截器可生成），否则服务端生成。
   req.requestId = req.header('X-Request-Id') || genRequestId();
   res.setHeader('X-Request-Id', req.requestId);
-  // 暴露给跨域前端（Capacitor 壳指向独立后端时必须显式暴露，否则拿不到 null）。
-  res.setHeader('Access-Control-Expose-Headers', 'X-Request-Id');
+  // 跨域暴露统一在上方 cors 的 exposedHeaders 声明（含 X-Request-Id / X-Gold-*）。
+  // 此处不可再 setHeader('Access-Control-Expose-Headers')——那会整体覆盖 cors 写入的
+  // 列表，导致 Capacitor 壳读不到 /chat/tts 的计费头（历史 bug）。
   const skip = req.path === '/realtime/stream' || req.path === '/health';
   if (skip) return next();
   res.on('finish', () => {

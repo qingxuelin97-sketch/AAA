@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter } from '../limiters.js';
+import { str, clampInt } from '../validate.js';
 import { bumpDaily } from '../daily.js';
 import { broadcast } from '../realtime.js';
 import { creatorTier } from '../creator.js';
@@ -97,17 +98,22 @@ router.post('/posts/:id/import', authRequired, (req, res) => {
   const p = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: '内容不存在' });
   let data = {};
-  try { data = JSON.parse(p.payload || '{}'); } catch { /* */ }
-  if (!data.name) data.name = p.title;
+  try { data = JSON.parse(p.payload || '{}'); } catch { /* payload 非法则落回帖子标题 */ }
+  // 字段钳制对齐 characters.js /import：payload 来自公开帖子、可被作者构造，
+  // 不能裸插入。名称必填、长度上限一致，世界书条目数封顶。
+  const name = str(data.name, 60).trim() || str(p.title, 60).trim();
+  if (!name) return res.status(400).json({ error: '角色卡缺少名称' });
+  const world = Array.isArray(data.world) ? data.world.filter(w => w && typeof w === 'object').slice(0, 1000) : [];
   const info = db.prepare(`INSERT INTO characters
     (owner_id, name, avatar, background, background_type, tagline, intro, greeting, persona, tags, is_public)
     VALUES (?,?,?,?,?,?,?,?,?,?,0)`).run(
-    req.user.id, data.name, data.avatar || null, data.background || null, data.background_type || 'image',
-    data.tagline || '', data.intro || '', data.greeting || '', data.persona || '', data.tags || ''
+    req.user.id, name, str(data.avatar, 500) || null, str(data.background, 500) || null,
+    ['image', 'color', 'video'].includes(data.background_type) ? data.background_type : 'image',
+    str(data.tagline, 200), str(data.intro, 8000), str(data.greeting, 24000), str(data.persona, 24000), str(data.tags, 200)
   );
-  if (Array.isArray(data.world)) {
+  if (world.length) {
     const stmt = db.prepare('INSERT INTO world_entries (character_id, keys, content, enabled, position) VALUES (?,?,?,?,?)');
-    data.world.forEach((w, i) => stmt.run(info.lastInsertRowid, w.keys || '', w.content || '', w.enabled === false ? 0 : 1, i));
+    world.forEach((w, i) => stmt.run(info.lastInsertRowid, str(w.keys, 500), str(w.content, 24000), w.enabled === false ? 0 : 1, clampInt(i, 0, 100000, i)));
   }
   res.json({ character_id: info.lastInsertRowid });
 });

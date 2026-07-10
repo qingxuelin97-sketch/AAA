@@ -208,6 +208,11 @@ router.put('/me', authRequired, (req, res) => {
   if (email) {
     const e = String(email).trim();
     if (!EMAIL_RE.test(e)) return res.status(400).json({ error: '邮箱格式不正确' });
+    // 白名单复查：开启白名单注册时，改邮箱同样受限，否则可绕过注册闸门换成任意
+    // 未授权邮箱（与注册 :38/:91 一致）。用 normalizeEmail 归一化后判定。
+    if (whitelistEnabled() && !isWhitelisted(e)) {
+      return res.status(403).json({ error: '该邮箱不在允许注册的白名单内' });
+    }
     // 唯一性：不能占用他人已注册邮箱（避免撞 UNIQUE 约束 500，并防邮箱抢注）。
     const taken = db.prepare('SELECT id FROM users WHERE email = ? AND id <> ?').get(e, req.user.id);
     if (taken) return res.status(409).json({ error: '该邮箱已被其他账号使用' });

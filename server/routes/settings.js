@@ -4,6 +4,7 @@ import { authRequired } from '../auth.js';
 import { isVip } from '../wallet.js';
 import { getPlatform, voiceReady, imageReady, featureFee, platformFee, memberDiscount, VOICE_FEE, IMAGE_FEE, PLATFORM_FEE } from '../platform.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
+import { aiLimiter } from '../limiters.js';
 
 const router = Router();
 
@@ -74,7 +75,7 @@ router.put('/', authRequired, (req, res) => {
 });
 
 // Detect available models (OpenAI-compatible GET /models; Anthropic uses /v1/models).
-router.post('/models', authRequired, async (req, res) => {
+router.post('/models', authRequired, aiLimiter, async (req, res) => {
   const cur = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id) || {};
   const proto = req.body?.protocol || 'openai';
   const raw = String(req.body?.base_url || cur.llm_base_url || '');
@@ -114,7 +115,7 @@ router.post('/models', authRequired, async (req, res) => {
 
 // Detect available voices for TTS providers that expose a voice-list endpoint.
 // Currently supports MiniMax (POST /v1/get_voice, voice_type:"all").
-router.post('/voices', authRequired, async (req, res) => {
+router.post('/voices', authRequired, aiLimiter, async (req, res) => {
   const cur = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id) || {};
   const proto = req.body?.protocol || cur.voice_protocol || 'openai';
   if (proto !== 'minimax') return res.status(400).json({ error: '当前语音服务商未提供音色列表端点' });
@@ -144,7 +145,7 @@ router.post('/voices', authRequired, async (req, res) => {
 });
 
 // Connection test — verify the configured/posted LLM credentials respond.
-router.post('/test-llm', authRequired, async (req, res) => {
+router.post('/test-llm', authRequired, aiLimiter, async (req, res) => {
   const cur = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id) || {};
   const base = String(req.body?.base_url || cur.llm_base_url || '').replace(/\/$/, '');
   const key = req.body?.api_key || cur.llm_api_key;

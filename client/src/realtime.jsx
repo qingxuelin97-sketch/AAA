@@ -8,9 +8,11 @@ const KNOWN_EVENTS = ['ready', 'dm', 'friend', 'notification', 'character_new', 
 
 const RealtimeContext = createContext(null);
 
-// 静态构建（GitHub Pages / 单文件离线版 / Capacitor 离线壳）走的是浏览器内 mock 后端，无 SSE；
-// 此时 Provider 退化为 no-op，不影响渲染。
-const STATIC = import.meta.env.VITE_STATIC === '1';
+// 浏览器内 mock 后端接管 /api 时（GitHub Pages / 单文件离线版）无 SSE，Provider 退化为
+// no-op。判断依据是运行时标记 window.__HY_MOCK__（由 installMockBackend 设置），而非构建期
+// VITE_STATIC：Capacitor 原生壳同样用静态构建，但不装 mock、直连独立后端，SSE 必须可用。
+// 每次调用时读取（不缓存）：main.jsx 先 await 安装 mock 再渲染，时序上安全。
+const mockActive = () => typeof window !== 'undefined' && window.__HY_MOCK__ === true;
 
 // 重连上限：超过此次数后停止自动重连，避免 token 永久失效时无限打请求。
 const MAX_RETRIES = 6;
@@ -32,7 +34,7 @@ export function RealtimeProvider({ children }) {
 
   // 核心连接逻辑：每次重连都重新读取 token，避免闭包持有陈旧 token 导致 401 死循环。
   const connect = useCallback(() => {
-    if (stoppedRef.current || STATIC) return;
+    if (stoppedRef.current || mockActive()) return;
     const token = getToken();
     if (!token) { setStatus('idle'); return; }
     // 超过重连上限：停止重试，等待下次手动触发（如页面恢复可见）。
@@ -65,7 +67,7 @@ export function RealtimeProvider({ children }) {
   }, [dispatch]);
 
   useEffect(() => {
-    if (STATIC || !user) {
+    if (mockActive() || !user) {
       stoppedRef.current = true;
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
@@ -87,7 +89,7 @@ export function RealtimeProvider({ children }) {
   // 移动端生命周期：app 切到后台时 OS 会杀掉 SSE 长连接，回前台后需立即重连。
   // Web 端同理：标签页切到后台一段时间后连接也会断。监听 visibilitychange + Capacitor pause/resume。
   useEffect(() => {
-    if (STATIC || !user) return;
+    if (mockActive() || !user) return;
     // 切到后台：主动关闭 SSE，省电省流量，避免移动 OS 维持半开 TCP 跑心跳。
     const onHidden = () => {
       if (document.visibilityState !== 'hidden') return;

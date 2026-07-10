@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { authRequired } from '../auth.js';
+import { authRequired, requireGm } from '../auth.js';
 import { notify } from '../wallet.js';
 import { creatorTier } from '../creator.js';
 import { councilCfg, councilSeats, councilSize, parliamentLocked } from '../council.js';
@@ -119,8 +119,7 @@ router.post('/proposals/:id/vote', authRequired, ensureUnlocked, (req, res) => {
   res.json({ proposal: proposalView(p, me.id) });
 });
 
-router.post('/proposals/:id/adopt', authRequired, ensureUnlocked, (req, res) => {
-  if (!req.user.is_gm) return res.status(403).json({ error: '需要 GM 权限' });
+router.post('/proposals/:id/adopt', authRequired, requireGm, ensureUnlocked, (req, res) => {
   const p = db.prepare('SELECT * FROM proposals WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: '提案不存在' });
   if (p.status !== 'pending') return res.status(400).json({ error: '只有「待采纳」状态的提案可被采纳' });
@@ -137,8 +136,7 @@ router.post('/proposals/:id/adopt', authRequired, ensureUnlocked, (req, res) => 
   res.json({ proposal: proposalView(db.prepare('SELECT * FROM proposals WHERE id=?').get(p.id), req.user.id) });
 });
 
-router.post('/proposals/:id/reject', authRequired, ensureUnlocked, (req, res) => {
-  if (!req.user.is_gm) return res.status(403).json({ error: '需要 GM 权限' });
+router.post('/proposals/:id/reject', authRequired, requireGm, ensureUnlocked, (req, res) => {
   const p = db.prepare('SELECT * FROM proposals WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: '提案不存在' });
   if (p.status !== 'pending' && p.status !== 'voting') return res.status(400).json({ error: '该提案无法驳回' });
@@ -154,8 +152,7 @@ router.post('/proposals/:id/reject', authRequired, ensureUnlocked, (req, res) =>
   res.json({ proposal: proposalView(db.prepare('SELECT * FROM proposals WHERE id=?').get(p.id), req.user.id) });
 });
 
-router.post('/proposals/:id/close', authRequired, ensureUnlocked, (req, res) => {
-  if (!req.user.is_gm) return res.status(403).json({ error: '需要 GM 权限' });
+router.post('/proposals/:id/close', authRequired, requireGm, ensureUnlocked, (req, res) => {
   const p = db.prepare('SELECT * FROM proposals WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: '提案不存在' });
   if (p.status !== 'voting') return res.status(400).json({ error: '只有表决中的提案可以计票结束' });

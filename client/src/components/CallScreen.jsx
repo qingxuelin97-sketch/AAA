@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { getToken, getApiBase, assetUrl } from '../api.jsx';
+import { streamSSE } from '../chat/sse.js';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, detectEmotion } from '../voice.js';
 import { Avatar } from '../ui.jsx';
 import { PhoneOff, Mic, Square, Keyboard, Send, Loader2, Video, Volume2 } from 'lucide-react';
@@ -92,20 +93,15 @@ export default function CallScreen({ character, onClose }) {
     if (!content || !convId || thinking) return;
     stopSpeaking(); setThinking(true); setSubtitle(''); bufRef.current = '';
     try {
-      const res = await fetch(getApiBase() + `/api/chat/conversations/${convId}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ content }) });
-      if (!res.ok) throw new Error('busy');
-      const reader = res.body.getReader(); const dec = new TextDecoder(); let carry = '';
-      while (true) {
-        const { done, value } = await reader.read(); if (done) break;
-        carry += dec.decode(value, { stream: true });
-        const lines = carry.split('\n'); carry = lines.pop() || '';
-        for (const line of lines) {
-          const t = line.trim(); if (!t.startsWith('data:')) continue;
-          const p = t.slice(5).trim(); if (p === '[DONE]') continue;
-          try { const j = JSON.parse(p); if (j.delta) { bufRef.current += j.delta; if (!rafRef.current) rafRef.current = requestAnimationFrame(() => { rafRef.current = 0; setSubtitle(stripParensForSpeech(bufRef.current).slice(-140)); }); } } catch { /* 非 JSON 行忽略 */ }
-        }
-      }
-      const full = bufRef.current; setSubtitle(stripParensForSpeech(full).slice(-140)); speak(full);
+      // 共用 chat/sse.js 的读取器；字幕仍走 rAF 节流，只显示最近 140 字。
+      const full = await streamSSE(`/api/chat/conversations/${convId}/complete`, {
+        body: { content },
+        onDelta: (delta) => {
+          bufRef.current += delta;
+          if (!rafRef.current) rafRef.current = requestAnimationFrame(() => { rafRef.current = 0; setSubtitle(stripParensForSpeech(bufRef.current).slice(-140)); });
+        },
+      });
+      setSubtitle(stripParensForSpeech(full).slice(-140)); speak(full);
     } catch { setSubtitle('（信号不太好，稍后再说说看…）'); }
     finally { setThinking(false); }
   }, [convId, thinking, speak]);
