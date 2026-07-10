@@ -259,7 +259,7 @@ router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
     const gen = await runGeneration(t, settings, req.body || {});
     const info = insertReply(t, gen);
     res.json({ message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
-  } catch (e) { res.status(e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
+  } catch (e) { res.status(e.status === 400 || e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
 });
 
 // 重写最近一段 AI 续写（旁白 / 角色）：先生成新内容，成功后替换旧段，失败则保留原文。
@@ -278,7 +278,7 @@ router.post('/:id/retry', authRequired, aiLimiter, async (req, res) => {
     db.prepare('DELETE FROM theater_messages WHERE id = ?').run(last.id);
     const info = insertReply(t, gen);
     res.json({ removedId: last.id, message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
-  } catch (e) { res.status(e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
+  } catch (e) { res.status(e.status === 400 || e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
 });
 
 // —— 章节分隔：作者在正文中插入一个章节标记（sender_type = 'chapter'）。

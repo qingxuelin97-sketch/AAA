@@ -12,16 +12,27 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // 又保证未配置环境变量时开箱可用（不会 process.exit 导致服务起不来）。
 // 生产环境强烈建议显式设置 JWT_SECRET 环境变量。
 const SECRET_FILE = path.join(__dirname, '.jwt-secret');
+const IS_PROD = process.env.NODE_ENV === 'production';
 export let SECRET = process.env.JWT_SECRET;
 if (!SECRET || SECRET.length < 32) {
+  // 生产环境未显式配置 JWT_SECRET 是真实风险：只读 FS 下退回内存密钥（重启即登出
+  // 所有用户），多实例部署各自生成不同密钥（A 签发的 token 被 B 拒绝）。不 process.exit
+  //（会打死线上部署），但大声告警促运维尽快显式配置。
+  if (IS_PROD) {
+    console.error('[auth] ⚠ 生产环境未配置 JWT_SECRET！只读文件系统下会退回内存密钥（重启即登出所有用户），多实例部署会因密钥不一致导致 token 互拒。请立即设置 JWT_SECRET 环境变量。');
+  }
   if (fs.existsSync(SECRET_FILE)) {
     SECRET = fs.readFileSync(SECRET_FILE, 'utf8').trim();
   }
   if (!SECRET || SECRET.length < 32) {
     SECRET = crypto.randomBytes(48).toString('base64url');
-    try { fs.writeFileSync(SECRET_FILE, SECRET, { mode: 0o600 }); } catch { /* 只读 fs 时退回内存密钥 */ }
+    let persisted = false;
+    try { fs.writeFileSync(SECRET_FILE, SECRET, { mode: 0o600 }); persisted = true; } catch { /* 只读 fs 时退回内存密钥 */ }
+    if (!persisted) {
+      console.error('[auth] ⚠ 无法持久化自动生成的 JWT 密钥（文件系统只读）——本次为进程内内存密钥，重启后所有会话将失效。请显式配置 JWT_SECRET 环境变量。');
+    }
   }
-  if (!process.env.JWT_SECRET) {
+  if (!IS_PROD && !process.env.JWT_SECRET) {
     console.warn('[auth] 未配置 JWT_SECRET 环境变量，已自动生成并持久化到 .jwt-secret。生产环境建议显式设置 JWT_SECRET 环境变量以便多实例一致。');
   }
 }

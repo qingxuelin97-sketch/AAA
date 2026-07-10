@@ -84,6 +84,37 @@ try {
     else console.log('  ✅ 失败响应正确识别 base_resp 错误');
   } finally { globalThis.fetch = origFetch; }
   console.log(failed === 0 ? `\n✅ MiniMax 试听链路通过` : `\n❌ MiniMax 试听链路异常`);
+
+  // —— 安全回归：跨域计费头暴露 + SSRF 拒绝（覆盖 P0/P2 修复，防回退）——
+  console.log('· 验证安全加固（exposedHeaders / SSRF）…');
+  {
+    // 1) CORS exposedHeaders 必须同时含 X-Request-Id 与计费头（历史 bug：链路中间件覆盖了 cors 值）
+    const hr = await fetch(BASE + '/health', { headers: { Origin: 'http://localhost:8080' } });
+    const exp = (hr.headers.get('access-control-expose-headers') || '').toLowerCase();
+    const need = ['x-request-id', 'x-gold-fee', 'x-gold-balance'];
+    const missing = need.filter(h => !exp.includes(h));
+    if (missing.length) { failed++; console.log('  !!! exposedHeaders 缺失：' + missing.join(',') + '（实际：' + exp + '）'); }
+    else console.log('  ✅ 跨域 exposedHeaders 含 X-Request-Id + 计费头');
+
+    // 2) SSRF：把 llm_base_url 指向内网/元数据地址，novels/theater 的出站创作接口必须拒绝。
+    const putSettings = (url) => fetch(BASE + '/settings', { method: 'PUT', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify({ llm_base_url: url, llm_api_key: 'sk-smoke', llm_model: 'gpt-x', llm_provider: 'custom', llm_protocol: 'openai' }) });
+    const post = async (p, body) => { const r = await fetch(BASE + p, { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }); return { status: r.status, text: await r.text().catch(() => '') }; };
+    const ssrfRejected = (r) => r.status === 400 && /内网|不合法|禁止/.test(r.text);
+    await putSettings('http://169.254.169.254/v1');   // 云元数据地址（字面 IP，同步预检即拒）
+    const nov = await post('/novels/brainstorm', { seed: '一句创意' });
+    if (!ssrfRejected(nov)) { failed++; console.log('  !!! novels/brainstorm 未拒绝元数据地址：' + nov.status + ' ' + nov.text.slice(0, 80)); }
+    else console.log('  ✅ novels 出站拒绝内网/元数据地址');
+    // theater/:id/act 需要一个剧场；取种子里的第一个（无则跳过该子断言）
+    const tId = (await j('/theater')).theaters?.[0]?.id;
+    if (tId) {
+      const th = await post(`/theater/${tId}/act`, {});
+      if (!ssrfRejected(th)) { failed++; console.log('  !!! theater/act 未拒绝元数据地址：' + th.status + ' ' + th.text.slice(0, 80)); }
+      else console.log('  ✅ theater 出站拒绝内网/元数据地址');
+    }
+    // 复原设置，避免影响后续（本进程随即退出，稳妥起见仍还原）
+    await putSettings('https://api.example.com/v1');
+  }
+  console.log(failed === 0 ? `\n✅ 安全加固回归通过` : `\n❌ 安全加固回归异常`);
 } finally {
   srv.kill();
   for (const f of [DB_PATH, DB_PATH + '-wal', DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch { /* */ } }

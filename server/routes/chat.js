@@ -358,7 +358,14 @@ function buildSystemPrompt(character, recentText, history) {
     const cs = !!w.case_sensitive;
     const hay = cs ? scanText : scanText.toLowerCase();
     if (mode === 'regex') {
-      return keysRaw.some(k => { try { const re = new RegExp(k, cs ? '' : 'i'); return re.test(scanText); } catch { return false; } });
+      // ReDoS 缓解：世界书 regex 键由角色作者自填、对所有与之聊天的用户生效，
+      // 灾难性回溯的模式能拖死一个 CPU 核。廉价护栏：跳过超长模式（>200 字符），
+      // 只对截断后的扫描文本（≤6k）匹配。无第三方依赖，不引入 RE2。
+      const hayR = scanText.length > 6000 ? scanText.slice(-6000) : scanText;
+      return keysRaw.some(k => {
+        if (!k || k.length > 200) return false;
+        try { const re = new RegExp(k, cs ? '' : 'i'); return re.test(hayR); } catch { return false; }
+      });
     }
     return keysRaw.some(k => { const kk = cs ? k : k.toLowerCase(); return hay.includes(kk); });
   };
@@ -705,10 +712,19 @@ router.post('/conversations/:id/regenerate', authRequired, aiLimiter, async (req
 // 返回累计全文；上游状态码异常时已写错误并返回 null（调用方直接 end）。
 async function pumpModelStream(res, eff, payloadMessages) {
   let full = '';
+  // 断连/超时中止：客户端断开时中止上游读循环（否则会对着已死的连接空转、把 SSE
+  // 句柄与上游连接一直占着）；首字节 60s 超时避免上游挂起时永久悬挂。响应头到达即
+  // clearTimeout，后续 body 慢流不受限。平台裸 fetch 此前两者皆无。
+  const ac = new AbortController();
+  const onClose = () => ac.abort();
+  res.on('close', onClose);
+  const headerTimer = setTimeout(() => ac.abort(), 60000);
   try {
     // 平台模型(admin 配置)允许指向本机/局域网(本地 Ollama/LM Studio)，走原生 fetch；
     // 用户自填 base_url 不可信 → safeFetch 做 DNS 复检 + 逐跳重定向 + 请求头超时(60s，容忍首字节慢)。
-    const doFetch = eff.platform ? fetch : (u, o) => safeFetch(u, o, { timeoutMs: 60000 });
+    const doFetch = eff.platform
+      ? (u, o) => fetch(u, { ...o, signal: ac.signal })
+      : (u, o) => safeFetch(u, { ...o, signal: ac.signal }, { timeoutMs: 60000 });
     const upstream = await doFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
@@ -717,6 +733,7 @@ async function pumpModelStream(res, eff, payloadMessages) {
         temperature: eff.temperature, max_tokens: eff.max_tokens, stream: true
       })
     });
+    clearTimeout(headerTimer);   // 响应头已到，解除首字节超时
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => '');
       // 仅在服务端日志记录上游详情，对客户端只返回通用提示，避免泄露内部信息
@@ -728,6 +745,7 @@ async function pumpModelStream(res, eff, payloadMessages) {
     const decoder = new TextDecoder();
     let buffer = '';
     while (true) {
+      if (res.writableEnded) break;   // 客户端已断开：停止读上游
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -746,8 +764,16 @@ async function pumpModelStream(res, eff, payloadMessages) {
       }
     }
   } catch (err) {
-    console.error('[chat] 连接模型服务失败', err.message);
-    res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`);
+    // 客户端断开：静默（已无接收方）；首字节超时：告知超时；其余：通用不可用提示。
+    if (err.name === 'AbortError') {
+      if (!res.writableEnded) { try { res.write(`data: ${JSON.stringify({ error: '模型服务响应超时，请稍后再试' })}\n\n`); } catch { /* 连接已断 */ } }
+    } else {
+      console.error('[chat] 连接模型服务失败', err.message);
+      if (!res.writableEnded) { try { res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`); } catch { /* 连接已断 */ } }
+    }
+  } finally {
+    clearTimeout(headerTimer);
+    res.off('close', onClose);
   }
   return full;
 }
@@ -799,7 +825,8 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
     return res.end();
   }
   if (full.trim() && feeDue) {
-    try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 面板生成《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ }
+    try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 面板生成《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); }
+    catch (e) { log({ level: 'warn', source: 'server', category: 'chat', event: 'ai_fee_uncharged', message: `平台 AI 扣费失败（面板生成已送达）：${e.message}`, user_id: me.id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { conversation_id: conv.id, character_id: conv.character_id, fee_due: feeDue } }); }
   }
   log({ level: 'info', source: 'server', category: 'chat', event: 'generate',
     message: `面板生成《${character?.name || ''}》`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
@@ -852,7 +879,12 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
     if (userContent) { try { db.prepare('UPDATE conversations SET affinity = COALESCE(affinity,0) + 3 WHERE id = ?').run(conv.id); } catch { /* */ } }
     // Deduct the platform fee only after a successful reply (no charge on failure).
-    if (feeDue) { try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ } }
+    // 扣费失败（并发下余额被前一次调用先扣穿、applyTx 抛「金币不足」）此前被静默
+    // 吞掉 → 回复已送达却漏计费。仍不阻断已交付的回复，但落 warn 便于对账追踪。
+    if (feeDue) {
+      try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); }
+      catch (e) { log({ level: 'warn', source: 'server', category: 'chat', event: 'ai_fee_uncharged', message: `平台 AI 扣费失败（回复已送达）：${e.message}`, user_id: me.id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { conversation_id: conv.id, character_id: conv.character_id, fee_due: feeDue } }); }
+    }
   }
   log({ level: 'info', source: 'server', category: 'chat', event,
     message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}《${character?.name || ''}》`,

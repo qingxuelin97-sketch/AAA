@@ -78,24 +78,36 @@ export async function assertResolvedPublic(hostname) {
 
 // —— 安全出站请求：预检 + DNS 复检 + 逐跳重定向复检 + 请求头超时。
 // 与 fetch 同签名，返回原始 Response（流式 body 不受超时影响：超时仅守到响应头到达）。
+// 调用方可通过 opts.signal 传入自身 AbortSignal（如 res 关闭时中止上游）——与内部的
+// 首字节超时链在一起：超时仅守到响应头到达（到达后 clearTimeout，流式 body 不受限），
+// 而调用方 signal 在整个请求生命周期保持有效，故客户端断开能中止仍在流式的 body。
 export async function safeFetch(rawUrl, opts = {}, { maxRedirects = 4, timeoutMs = 20000 } = {}) {
   let url = String(rawUrl);
+  const callerSignal = opts.signal;
+  const rest = { ...opts }; delete rest.signal;
   for (let hop = 0; hop <= maxRedirects; hop++) {
     const u = new URL(url);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') throw ssrf();
     await assertResolvedPublic(u.hostname);
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), timeoutMs);
+    const onCaller = () => ac.abort();
+    if (callerSignal) { if (callerSignal.aborted) ac.abort(); else callerSignal.addEventListener('abort', onCaller); }
     let res;
     try {
-      res = await fetch(url, { ...opts, redirect: 'manual', signal: ac.signal });
+      res = await fetch(url, { ...rest, redirect: 'manual', signal: ac.signal });
+    } catch (e) {
+      if (callerSignal) callerSignal.removeEventListener('abort', onCaller);
+      throw e;
     } finally { clearTimeout(timer); }
     const loc = res.status >= 300 && res.status < 400 && res.headers.get('location');
     if (loc) {
+      if (callerSignal) callerSignal.removeEventListener('abort', onCaller);
       try { await res.arrayBuffer(); } catch { /* 释放 socket */ }
       url = new URL(loc, url).toString();
       continue;
     }
+    // 命中最终响应：保留 callerSignal 监听，使断开后仍能中止流式 body（onCaller → ac.abort）。
     return res;
   }
   throw Object.assign(new Error('重定向次数过多'), { status: 502, expose: true });

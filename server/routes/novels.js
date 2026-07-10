@@ -485,13 +485,22 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
   }
 
   let full = '';
+  // 断连/超时中止（同 chat.js pumpModelStream）：客户端断开时中止上游读循环，
+  // 首字节 60s 超时避免上游挂起时永久悬挂；响应头到达即解除超时。
+  const ac = new AbortController();
+  const onClose = () => ac.abort();
+  res.on('close', onClose);
+  const headerTimer = setTimeout(() => ac.abort(), 60000);
   try {
     // 同 llmOnce：用户自填 base_url 必须走 safeFetch（DNS 复检 + 逐跳重定向复检）。
-    const doFetch = eff.platform ? fetch : (u, o) => safeFetch(u, o, { timeoutMs: 60000 });
+    const doFetch = eff.platform
+      ? (u, o) => fetch(u, { ...o, signal: ac.signal })
+      : (u, o) => safeFetch(u, { ...o, signal: ac.signal }, { timeoutMs: 60000 });
     const upstream = await doFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
       body: JSON.stringify({ model: eff.model, messages, temperature: eff.temperature ?? 0.9, max_tokens: eff.max_tokens || 1600, stream: true }),
     });
+    clearTimeout(headerTimer);
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => '');
       console.error('[novels] 上游模型错误', upstream.status, text.slice(0, 200));
@@ -501,6 +510,7 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
     const decoder = new TextDecoder();
     let buffer = '';
     while (true) {
+      if (res.writableEnded) break;
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -516,8 +526,15 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
       }
     }
   } catch (err) {
-    console.error('[novels] 连接模型失败', err.message);
-    sse({ error: '模型服务暂不可用，请稍后再试' });
+    if (err.name === 'AbortError') {
+      if (!res.writableEnded) { try { sse({ error: '模型服务响应超时，请稍后再试' }); } catch { /* 连接已断 */ } }
+    } else {
+      console.error('[novels] 连接模型失败', err.message);
+      if (!res.writableEnded) { try { sse({ error: '模型服务暂不可用，请稍后再试' }); } catch { /* 连接已断 */ } }
+    }
+  } finally {
+    clearTimeout(headerTimer);
+    res.off('close', onClose);
   }
 
   full = full.trim();
