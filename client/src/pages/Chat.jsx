@@ -509,7 +509,10 @@ export default function Chat() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      const res = await fetch(endpoint, {
+      // getApiBase() 前缀：Capacitor 原生壳指向独立后端时（BAKED_SERVER），相对路径会
+      // 命中 WebView 自身的 http://localhost 静态服务器导致流式对话 404；web/静态构建
+      // 下前缀为 ''，行为不变。与 /chat/tts、CallScreen、tavernbridge 的做法保持一致。
+      const res = await fetch(getApiBase() + endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify(payload || {}), signal: ctrl.signal
       });

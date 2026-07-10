@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
-import { assertPublicUrl } from '../safeUrl.js';
+import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 
 const router = Router();
@@ -228,15 +228,16 @@ async function runGeneration(t, settings, body, excludeId) {
   const wbCharIds = body?.narrator ? cast.map(c => c.id) : [target.id].filter(Boolean);
   system += buildWorldBlock(t, transcript, wbCharIds);
 
-  // SSRF 防护：发起 fetch 前校验用户配置的 llm_base_url 不指向内网/本机。
+  // SSRF 防护：剧场恒为用户自填 llm_base_url，除同步预检外必须走 safeFetch
+  //（DNS 复检 + 逐跳重定向复检 + 请求头超时），防解析到内网/重定向绕过。
   assertPublicUrl(settings.llm_base_url);
-  const r = await fetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
+  const r = await safeFetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
     body: JSON.stringify({
       model: settings.llm_model, temperature: settings.llm_temperature, max_tokens: 400,
       messages: [{ role: 'system', content: system }, { role: 'user', content: `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请继续：` }]
     })
-  });
+  }, { timeoutMs: 60000 });
   if (!r.ok) { const e = new Error('模型服务暂不可用'); e.code = 502; throw e; }
   const data = await r.json();
   const content = (data.choices?.[0]?.message?.content || '').trim();
@@ -307,14 +308,15 @@ router.post('/:id/choices', authRequired, aiLimiter, async (req, res) => {
   if (t.style) system += `文风：${t.style}。`;
   system += `\n请根据剧情进展，为主角设计 3 个风格迥异、都能推动剧情的下一步行动（每个 8-24 字，第一人称视角的行动或台词，不要编号），只输出 JSON 字符串数组，例如 ["推开吱呀作响的门","质问薇尔为何隐瞒","悄悄退回阴影中"]。`;
   try {
+    // 同上：用户自填地址必须走 safeFetch，防 DNS/重定向绕过同步预检。
     assertPublicUrl(settings.llm_base_url);
-    const r = await fetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
+    const r = await safeFetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
       body: JSON.stringify({
         model: settings.llm_model, temperature: Math.min(1.2, (settings.llm_temperature || 0.8) + 0.15), max_tokens: 200,
         messages: [{ role: 'system', content: system }, { role: 'user', content: `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请给出 3 个抉择：` }]
       })
-    });
+    }, { timeoutMs: 60000 });
     if (!r.ok) return res.status(502).json({ error: '模型服务暂不可用' });
     const data = await r.json();
     let raw = (data.choices?.[0]?.message?.content || '').trim();

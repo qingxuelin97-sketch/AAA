@@ -115,7 +115,8 @@ export default function NovelWorkspace() {
     else setBeats(b => b.map(x => x.id === rewriteId ? { ...x, _orig: x.content, content: '', _streaming: true } : x));
     let errored = false;
     try {
-      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify(payload || {}), signal: ctrl.signal });
+      // getApiBase() 前缀：原生壳指向独立后端时相对路径会命中 WebView 本地静态服务器（同 Chat.jsx streamInto）。
+      const res = await fetch(getApiBase() + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify(payload || {}), signal: ctrl.signal });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '请求失败'); }
       const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
       while (true) {
