@@ -5419,10 +5419,7 @@ html[data-app="1"][data-perf="lite"] .chat-main.has-bg .msg.assistant .bubble { 
 html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act { color: #e8b563; }
 html[data-app="1"] .chat-main.has-bg .msg-name { color: rgba(255,255,255,0.85); text-shadow: 0 1px 5px rgba(0,0,0,0.5); }
 html[data-app="1"] .chat-main.has-bg .msg-acts .speak { color: rgba(255,255,255,0.75); text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
-/* 输入栏：胶囊化，贴近「自由输入」的轻盈观感 */
-html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { border-radius: 999px; background: rgba(20,17,26,0.78);
-  border: 1px solid rgba(255,255,255,0.12); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar .box { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(20,17,26,0.92); }
+/* 输入栏胶囊：玻璃材质统一到 --hy-cg-*（见「统一玻璃」小节），此处仅留文字色 */
 html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea { color: #fff; }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea::placeholder { color: rgba(255,255,255,0.45); }
 /* app 壳对话顶栏：名字紧贴头像成第一行（截断不换行），好感度与工具收进第二行 */
@@ -5923,11 +5920,9 @@ html[data-app="1"] .chat-main.has-bg .msg.user .bubble { box-shadow: 0 6px 20px 
 /* 居中时间戳磨砂胶囊 */
 html[data-app="1"] .chat-main.has-bg .msg-name .msg-time { color: rgba(255,255,255,0.7); }
 
-/* 输入栏：磨砂胶囊 */
-html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { border-radius: 26px; padding: 6px 6px 6px 8px;
-  background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.18);
-  -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%); }
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar .box { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(28,24,34,0.9); }
+/* 输入栏胶囊：仅定几何尺寸，玻璃材质走统一 --hy-cg-* 令牌 */
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { border-radius: 26px; padding: 6px 6px 6px 8px; }
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar .box { background: var(--hy-cg-bg-solid); }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea { color: #fff; }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea::placeholder { color: rgba(255,255,255,0.5); }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .act-btn { color: rgba(255,255,255,0.85); }
@@ -8229,10 +8224,7 @@ html[data-app="1"][data-perf="lite"] .msgs-conv, html[data-app="1"][data-perf="l
   display: grid; place-items: center; border-radius: 999px; font-size: 10px; font-style: normal;
   font-weight: 700; color: #fff; background: var(--accent); box-shadow: 0 0 0 2px var(--panel);
 }
-/* 深色立绘沉浸态：面板换深玻璃 */
-html[data-app="1"] .chat-main.has-bg .chat-plus-sheet {
-  background: rgba(20,17,26,0.82); border-color: rgba(255,255,255,0.12);
-}
+/* 深色立绘沉浸态：面板玻璃统一由 --hy-cg-* 提供（不再单独铺一层深板） */
 html[data-app="1"] .chat-main.has-bg .cps-item { color: rgba(255,255,255,0.82); }
 html[data-app="1"] .chat-main.has-bg .cps-item:active { background: rgba(255,255,255,0.08); }
 /* （彩色渐变图标已成为主视觉，不再用白底覆盖） */
@@ -8261,16 +8253,16 @@ html[data-app="1"] .chat-main.has-bg .chat-bg::after {
       transparent 62%, rgba(8,6,12,0.18) 78%, rgba(8,6,12,0.62) 100%);
 }
 
-/* ---- 「+」功能面板：高级深玻璃 + 把手 + 多彩渐变图标 ---- */
+/* ---- 「+」功能面板：与输入栏共用同一层透明玻璃（不再是深色实心板） ---- */
 .chat-plus-sheet {
   position: relative;
   grid-template-columns: repeat(3, 1fr); gap: 6px 4px;
   padding: 20px 12px 14px; border-radius: 26px;
-  background: linear-gradient(168deg, rgba(38,33,48,0.90), rgba(17,15,24,0.96));
-  border: 1px solid rgba(255,255,255,0.13);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    0 -6px 18px rgba(0,0,0,0.18), 0 22px 60px rgba(0,0,0,0.45);
+  /* 玻璃材质统一由 --hy-cg-* 令牌提供，见下方「统一玻璃」小节 */
+  background: var(--hy-cg-bg);
+  border: 1px solid var(--hy-cg-brd);
+  -webkit-backdrop-filter: var(--hy-cg-blur); backdrop-filter: var(--hy-cg-blur);
+  box-shadow: var(--hy-cg-sh);
 }
 .chat-plus-sheet::before {
   content: ''; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
@@ -8296,15 +8288,16 @@ html[data-app="1"] .chat-main.has-bg .chat-bg::after {
 .chat-main:not(.has-bg) .cps-item { color: var(--muted); }
 .chat-main:not(.has-bg) .cps-item:active { background: var(--bg-2); }
 
-/* ---- 输入栏：流光胶囊 ---- */
+/* ---- 输入栏：与「+」面板共用同一层透明玻璃（统一材质） ---- */
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
-  background: linear-gradient(160deg, rgba(36,31,44,0.72), rgba(18,16,24,0.82));
-  border: 1px solid rgba(255,255,255,0.15);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 34px rgba(0,0,0,0.38);
+  background: var(--hy-cg-bg);
+  border: 1px solid var(--hy-cg-brd);
+  -webkit-backdrop-filter: var(--hy-cg-blur); backdrop-filter: var(--hy-cg-blur);
+  box-shadow: var(--hy-cg-sh);
 }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box:focus-within {
   border-color: rgba(84,214,240,0.55);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 3px rgba(34,211,238,0.18), 0 10px 34px rgba(0,0,0,0.4);
+  box-shadow: var(--hy-cg-sh), 0 0 0 3px rgba(34,211,238,0.18);
 }
 html[data-app="1"] .chat-main.has-bg .send-btn:not(.stop) {
   background: linear-gradient(135deg, #22d3ee, #0e9cb8 55%, #0a7f97);
@@ -8354,6 +8347,78 @@ html[data-app="1"] .chat-main.has-bg .starter-chip.on {
 /* lite 档降级：渐晕保留（纯渐变无成本），玻璃模糊已由既有规则关闭 */
 /* 危险项图标同为白色（红底上深红图标对比度不足） */
 .cps-item.danger .cps-ic { color: #fff; }
+
+/* ============================================================================
+   单层玻璃「床」（沉浸对话底部）—— 容器 .chat-input-bar 本身就是唯一那块透明
+   磨砂玻璃。输入行 .box、「+」功能格 .chat-plus-sheet、快捷动作 .action-panel
+   全部脱掉各自的玻璃，只当透明内容层铺在这张床上。点「+」→ 床向上长高、功能
+   格直接出现在同一块玻璃上，绝不再套第二层玻璃卡。
+   ========================================================================== */
+html[data-app="1"] .chat-main {
+  --hy-cg-blur: blur(24px) saturate(150%);
+  /* 浅色（无立绘）默认：白玻璃 */
+  --hy-cg-bg: linear-gradient(160deg, rgba(255,255,255,0.60), rgba(240,250,252,0.66));
+  --hy-cg-bg-solid: #f3fbfd;
+  --hy-cg-brd: var(--border-2);
+  --hy-cg-sh: inset 0 1px 0 #fff, 0 -4px 14px rgba(13,74,88,0.05), 0 18px 50px rgba(13,74,88,0.14);
+}
+html[data-app="1"] .chat-main.has-bg {
+  /* 深色立绘沉浸：真·透明玻璃（立绘从玻璃后透出），全屏只此一块材质 */
+  --hy-cg-bg: linear-gradient(160deg, rgba(30,27,40,0.36), rgba(15,13,21,0.48));
+  --hy-cg-bg-solid: rgba(24,21,31,0.92);
+  --hy-cg-brd: rgba(255,255,255,0.16);
+  --hy-cg-sh: inset 0 1px 0 rgba(255,255,255,0.12), 0 -4px 16px rgba(0,0,0,0.14), 0 18px 50px rgba(0,0,0,0.34);
+}
+/* 床：容器即玻璃（fixed 定位下用 left/right inset 浮起为圆角卡） */
+html[data-app="1"] .chat-main.has-bg .chat-input-bar {
+  left: 10px; right: 10px;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  border-radius: 28px;
+  background: var(--hy-cg-bg) !important;
+  border: 1px solid var(--hy-cg-brd);
+  -webkit-backdrop-filter: var(--hy-cg-blur) !important; backdrop-filter: var(--hy-cg-blur) !important;
+  box-shadow: var(--hy-cg-sh);
+}
+html[data-app="1"] .chat-main.has-bg .chat-input-bar:focus-within {
+  border-color: rgba(84,214,240,0.5);
+  box-shadow: var(--hy-cg-sh), 0 0 0 3px rgba(34,211,238,0.16);
+}
+/* 床上的内容层：一律透明，去掉各自的玻璃/描边/阴影 */
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box:focus-within,
+html[data-app="1"] .chat-main.has-bg .chat-plus-sheet,
+html[data-app="1"] .chat-main.has-bg .action-panel {
+  background: none !important; border: none !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { padding: 4px 4px 4px 8px; }
+html[data-app="1"] .chat-main.has-bg .chat-plus-sheet,
+html[data-app="1"] .chat-main.has-bg .chat-plus-sheet.paged { margin: 6px 0 0; padding: 6px 4px 2px; border-radius: 0; }
+/* 单层床不需要「另一张卡」的把手 */
+html[data-app="1"] .chat-main.has-bg .chat-plus-sheet::before { display: none; }
+/* lite 档：床退化为不透明底，避免无模糊时糊底穿帮 */
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar {
+  background: var(--hy-cg-bg-solid) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+
+/* ============================================================================
+   呼吸动效 —— 让「在线」的角色更有存在感、就绪的送出键更吸睛（部分 UI）
+   ========================================================================== */
+@keyframes hyBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes hySendBreath {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 14px rgba(14,156,184,0.42); }
+  50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 7px 24px rgba(34,211,238,0.72); }
+}
+/* 角色头像轻呼吸（"活着"的存在感）——与 .live 流式描边互不干扰 */
+html[data-app="1"] .chat-main .ch-av .avatar { animation: hyBreath 3.6s ease-in-out infinite; will-change: transform; }
+/* 送出键就绪呼吸：仅在有内容可发（未禁用、非停止态）时呼吸，引导点击 */
+html[data-app="1"] .chat-input-bar .send-btn:not(:disabled):not(.stop) { animation: hySendBreath 2.6s ease-in-out infinite; }
+[data-perf="lite"] .ch-av .avatar, [data-perf="lite"] .chat-input-bar .send-btn { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .chat-main .ch-av .avatar,
+  html[data-app="1"] .chat-input-bar .send-btn:not(:disabled):not(.stop) { animation: none !important; }
+}
 
 /* ============================================================================
    触屏 hover 粘滞治理 —— 触摸设备上 :hover 在点击后保持到下一次触摸，
