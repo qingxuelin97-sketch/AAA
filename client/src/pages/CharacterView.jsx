@@ -6,7 +6,7 @@ import { pid } from '../assets.jsx';
 import { isAppMode } from '../appmode.js';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
-import { CoverArt } from '../art.jsx';
+import { CoverArt, EmptyArt } from '../art.jsx';
 import {
   MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye,
   ChevronRight, ChevronDown, Drama, BadgeCheck, Download, X, MoreHorizontal,
@@ -32,11 +32,16 @@ export default function CharacterView() {
   const [faved, setFaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [wbOpen, setWbOpen] = useState(false);
+  const [err, setErr] = useState('');
 
   useEffect(() => {
-    setWbOpen(false);
+    setWbOpen(false); setC(null); setErr('');
     // 详情接口已带 faved 字段，无需再全量拉一遍公开列表来找收藏态。
-    api('/characters/' + id).then(d => { setC(d.character); setRelated(d.related || []); setFaved(!!d.character.faved); recordRecent(d.character); }).catch(e => toast(e.message, 'err'));
+    api('/characters/' + id)
+      .then(d => { setC(d.character); setRelated(d.related || []); setFaved(!!d.character.faved); recordRecent(d.character); })
+      // 加载失败（角色已删/无权/链接失效）：记下错误态，改渲染带返回键的空态，
+      // 而不是永远停在纯黑「载入中…」（toast 一闪即逝、用户会以为卡死）。
+      .catch(e => setErr(e.message || '角色不存在'));
     api('/engage/view', { method: 'POST', body: { type: 'character', id: +id } }).catch(() => {});
   }, [id]);
 
@@ -66,6 +71,23 @@ export default function CharacterView() {
     try { if (navigator.share) { await navigator.share({ title: c.name, url }); return; } } catch { /* */ }
     try { await navigator.clipboard.writeText(url); toast('链接已复制'); } catch { toast('分享：' + c.name); }
   };
+
+  // 加载失败：带返回键 + 插画的空态，避免黑屏卡在「载入中…」。
+  if (err) {
+    return (
+      <div className="cvx immersive">
+        <div className="cvx-error">
+          <EmptyArt kind="search" size={132} />
+          <h2>{err}</h2>
+          <p>这个角色可能已被删除，或链接不再有效。</p>
+          <div className="cvx-error-acts">
+            <button className="btn primary" onClick={() => nav('/library')}>去角色库看看</button>
+            <button className="btn ghost" onClick={() => nav(-1)}>返回上一页</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const shared = { c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related, startChat, toggleFav, exportCard, share, id };
   // App 壳走全屏沉浸布局；Web / 移动网页保留编辑视角的卡片布局。

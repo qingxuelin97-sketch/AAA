@@ -5147,6 +5147,12 @@ html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-top) - var(--app
   display: flex; flex-direction: column; max-width: 480px; margin-inline: auto;
   left: 50%; transform: translateX(-50%); width: min(480px, 100%); }
 .cvx-loading { margin: auto; color: rgba(255,255,255,0.5); font-size: 14px; }
+/* 加载失败空态：居中插画 + 文案 + 返回/去角色库，替代黑屏「载入中…」死等 */
+.cvx-error { margin: auto; display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 6px; padding: 32px 28px; max-width: 340px; }
+.cvx-error h2 { margin: 8px 0 0; font-size: 19px; font-weight: 700; color: #f4f1ec; }
+.cvx-error p { margin: 0; font-size: 13.5px; line-height: 1.6; color: rgba(255,255,255,0.6); }
+.cvx-error-acts { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
 .cvx-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .cvx-scroll::-webkit-scrollbar { display: none; }
 
@@ -6166,6 +6172,18 @@ html[data-app="1"] .app-tabbar {
 /* 顶部条：细发丝分隔取代块面 */
 html[data-app="1"] .app-header { border-bottom: 1px solid var(--border); }
 
+/* 编辑/工作台页顶栏（.topbar）在窄屏的收口：标题块 flex:1 会被两侧按钮挤到最小宽度、
+   把「编辑角色」压成竖排单字（多按钮页如角色编辑器实机可见）。给标题块一个最小宽度并
+   让标题不换行——拥挤时是「按钮」换到下一行，而非标题被压竖排；只有一个按钮的干净页
+   仍保持单行，不平白多出一行。 */
+html[data-app="1"] .topbar { flex-wrap: wrap; row-gap: 10px; align-items: center; }
+html[data-app="1"] .topbar > div { min-width: min(58vw, 240px); }
+html[data-app="1"] .topbar h1 { white-space: nowrap; }
+
+/* VIP 套餐「超值」角标位于卡片上沿 -10px，窄屏下与上方分区间距不足会被切顶；
+   给套餐网格补一点顶部余量，保证角标完整可见。 */
+html[data-app="1"] .vm-plans { margin-top: 8px; }
+
 /* 发现流分类 chip：更克制的胶囊，激活态才用强调色 */
 html[data-app="1"] .fd2-cat, html[data-app="1"] .feed-cat {
   background: rgba(255,255,255,0.08); border: 1px solid transparent; font-weight: 500;
@@ -6250,11 +6268,21 @@ html[data-app="1"] button, html[data-app="1"] a { -webkit-tap-highlight-color: t
 
 /* —— 底部 Dock：真·磨砂 + 更细分割 + 稳态活跃指示 —— */
 html[data-app="1"] .app-tabbar {
-  background: var(--hy-glass-bg);
+  /* 比通用玻璃(--hy-glass-bg 78%)更实：底栏内容会从下方滚过，太透会让角色名/正文
+     透出与标签/图标撞在一起（实机可见）。提到 ~94% 并叠一道顶部渐隐，滚动内容在触到
+     底栏前先柔化消失。lite 档已在别处退化为纯色，不受影响。 */
+  background: color-mix(in srgb, var(--bg) 97%, transparent);
   border-top: 1px solid var(--hy-hairline);
   border-left: none; border-right: none; border-bottom: none;
   box-shadow: 0 -1px 0 rgba(255,255,255,0.03) inset, 0 -6px 24px rgba(0,0,0,0.28);
 }
+/* 顶部渐隐：内容滚到底栏上方 14px 起淡出，不再与标签硬碰硬 */
+html[data-app="1"] .app-tabbar::before {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: 16px;
+  background: linear-gradient(to top, color-mix(in srgb, var(--bg) 66%, transparent), transparent);
+  pointer-events: none;
+}
+html[data-app="1"][data-perf="lite"] .app-tabbar::before { display: none; }
 html[data-app="1"] .dock-ink {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent) inset;

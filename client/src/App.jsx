@@ -101,7 +101,9 @@ export default function App() {
             <Route path="/messages" element={P(<Messages />)} />
             <Route path="/me" element={P(<AppProfile />)} />
             <Route path="/vip" element={P(<Vip />)} />
-            <Route path="/chats" element={P(<Chat />)} />
+            {/* App 端「消息」列表是 /messages；裸 /chats 是桌面双栏视角（含「选择左侧对话」
+                空态提示，手机上无左栏、语义错位）。app 端重定向到 /messages，web 保留双栏。 */}
+            <Route path="/chats" element={P(isAppMode() ? <Navigate to="/messages" replace /> : <Chat />)} />
             <Route path="/chats/:id" element={P(<Chat />)} />
             <Route path="/groups" element={P(<Groups />)} />
             <Route path="/group/:id" element={P(<GroupRoom />)} />
