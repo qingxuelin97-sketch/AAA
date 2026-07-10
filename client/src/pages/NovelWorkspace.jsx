@@ -4,6 +4,7 @@ import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Modal, Uploader } from '../ui.jsx';
 import { generateImage } from '../imagegen.js';
 import { stripParensForSpeech, speakBrowser, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
+import { streamSSE } from '../chat/sse.js';
 import {
   ArrowLeft, Feather, Sparkles, Wand2, Loader2, Send, Square, Palette, Layers,
   BookLock, BookOpen, GitBranch, Trash2, Pin, RefreshCw, Lock, Unlock, Network,
@@ -115,28 +116,18 @@ export default function NovelWorkspace() {
     else setBeats(b => b.map(x => x.id === rewriteId ? { ...x, _orig: x.content, content: '', _streaming: true } : x));
     let errored = false;
     try {
-      // getApiBase() 前缀：原生壳指向独立后端时相对路径会命中 WebView 本地静态服务器（同 Chat.jsx streamInto）。
-      const res = await fetch(getApiBase() + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify(payload || {}), signal: ctrl.signal });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '请求失败'); }
-      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
-      while (true) {
-        const { done, value } = await reader.read(); if (done) break;
-        buf += dec.decode(value, { stream: true }); const lines = buf.split('\n'); buf = lines.pop() || '';
-        for (const line of lines) {
-          const t = line.trim(); if (!t.startsWith('data:')) continue;
-          const p = t.slice(5).trim(); if (p === '[DONE]') continue;
-          let j; try { j = JSON.parse(p); } catch { continue; }
-          if (j.error) throw new Error(j.error);
-          if (j.delta) {
-            bufRef.current += j.delta;
-            if (!rafRef.current) rafRef.current = requestAnimationFrame(() => {
-              const chunk = bufRef.current; bufRef.current = ''; rafRef.current = 0;
-              setBeats(b => { const c = [...b]; const last = c[c.length - 1]; if (last?._streaming) c[c.length - 1] = { ...last, content: (last.content || '') + chunk }; return c; });
-            });
-          }
-          if (j.fee) { toast(`本次平台创作扣除 ${j.fee} 金币`, 'info'); refreshUser?.(); }
-        }
-      }
+      // 共用 chat/sse.js 读取器（内置 getApiBase 前缀）；正文增量走 rAF 节流落地，fee 提示扣费。
+      await streamSSE(endpoint, {
+        body: payload, signal: ctrl.signal,
+        onDelta: (delta) => {
+          bufRef.current += delta;
+          if (!rafRef.current) rafRef.current = requestAnimationFrame(() => {
+            const chunk = bufRef.current; bufRef.current = ''; rafRef.current = 0;
+            setBeats(b => { const c = [...b]; const last = c[c.length - 1]; if (last?._streaming) c[c.length - 1] = { ...last, content: (last.content || '') + chunk }; return c; });
+          });
+        },
+        onJson: (j) => { if (j.fee) { toast(`本次平台创作扣除 ${j.fee} 金币`, 'info'); refreshUser?.(); } },
+      });
       flush();
     } catch (err) {
       errored = true; flush();

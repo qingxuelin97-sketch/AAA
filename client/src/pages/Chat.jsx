@@ -8,217 +8,15 @@ import { useAutoGrow, msgPreview } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import CallScreen from '../components/CallScreen.jsx';
 import { EmptyArt } from '../art.jsx';
-import { applyFrontRegex, looksLikeHtml } from '../frontregex.js';
-import { buildPanelDoc, installTavernHost } from '../tavernbridge.js';
-import { Send, Volume2, MessageCircle, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Image as ImageIcon, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap } from 'lucide-react';
-
-// —— 「+」面板 · 互动添趣素材 ——
-// 送礼物：礼物名 + emoji，选中后以 RP 动作发给角色（角色会在剧情里回应）。
-const GIFTS = [
-  { e: '🌹', n: '一枝红玫瑰' }, { e: '🍰', n: '一块草莓蛋糕' }, { e: '☕', n: '一杯热咖啡' },
-  { e: '🧸', n: '一只小熊玩偶' }, { e: '💌', n: '一封手写信' }, { e: '🎁', n: '一份神秘礼物' },
-  { e: '🌙', n: '一枚月亮吊坠' }, { e: '🍬', n: '一把水果糖' },
-];
-// 随机事件：注入一个剧情转折，让 AI 顺着演（互动添趣的核心玩法）。
-const RANDOM_EVENTS = [
-  '窗外突然下起了倾盆大雨', '远处传来一阵急促的敲门声', '灯光忽然闪烁了几下熄灭了',
-  '一只猫不知从哪里跳了进来', '收音机里传来一则奇怪的新闻', '天边划过一道流星',
-  '空气中飘来一阵熟悉的香味', '地面轻轻震动了一下', '门缝下被塞进来一张纸条',
-  '时钟的指针突然开始倒转',
-];
-
-// 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
-const COARSE = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
-
-const LIST_KEY = 'huanyu_chatlist_mini';
-const FONT_KEY = 'huanyu_chat_font';
-const AUTOREAD_KEY = 'huanyu_chat_autoread';
-const BGM_KEY = 'huanyu_chat_bgm';
-const REACTIONS = ['❤️', '😂', '👍', '😮', '😢', '🔥'];
-const STARTERS = ['你好呀～', '很高兴认识你！', '*微笑着向你打招呼*', '今天过得怎么样？', '我们聊点什么好呢？'];
-const QUICK_ACTIONS = ['*微笑*', '*点头*', '*脸红*', '*轻笑*', '*歪头*', '*叹气*', '*眨眨眼*', '*沉默不语*', '*牵起你的手*', '*轻轻拥抱*', '😊', '😳', '🥰', '😢'];
-
-// Relationship tiers driven by accumulated affinity (grows ~+3 per exchange).
-const AFFINITY_LEVELS = [
-  { min: 0, name: '初识', icon: '🌱' }, { min: 10, name: '相识', icon: '🌿' },
-  { min: 30, name: '熟悉', icon: '☕' }, { min: 60, name: '友好', icon: '😊' },
-  { min: 100, name: '亲近', icon: '💗' }, { min: 160, name: '信赖', icon: '✨' },
-  { min: 250, name: '挚爱', icon: '💖' }
-];
-function affinityInfo(v) {
-  v = v || 0; let idx = 0;
-  for (let i = 0; i < AFFINITY_LEVELS.length; i++) if (v >= AFFINITY_LEVELS[i].min) idx = i;
-  const cur = AFFINITY_LEVELS[idx], next = AFFINITY_LEVELS[idx + 1];
-  const pct = next ? Math.min(100, Math.round((v - cur.min) / (next.min - cur.min) * 100)) : 100;
-  return { level: idx + 1, name: cur.name, icon: cur.icon, pct, value: v, nextAt: next ? next.min : null };
-}
-
-// —— 专家档世界书：[[wbimg:<entryId>]] 标记协议 ——
-// 模型在专家世界书触发时嵌入此标记。前端按 wb_image_map[id] 直接展示创建者预注入的图片（不调用 AI 生图）。
-const WBIMG_RE = /\[\[wbimg:(\d+)\]\]/g;
-
-// 把一段助手文本拆成 [text | { marker, id, meta }] 交替片段，供气泡按片段渲染。
-function splitWbMarkers(text, imageMap) {
-  if (!text || !imageMap) return [{ text }];
-  const out = [];
-  let last = 0, m;
-  WBIMG_RE.lastIndex = 0;
-  while ((m = WBIMG_RE.exec(text))) {
-    if (m.index > last) out.push({ text: text.slice(last, m.index) });
-    const id = m[1];
-    out.push({ marker: true, id, meta: imageMap[id] || null });
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) out.push({ text: text.slice(last) });
-  return out;
-}
-
-// —— 角色扮演排版：*动作/神态* 渲染为柔和的斜体强调，与台词在视觉上分层。
-// RP 对话的行文约定是「*叹了口气* 你来了。」，纯文本渲染时动作和台词糊成
-// 一团；这里把星号段落变成带色斜体，读起来像剧本舞台指示，沉浸感立增。
-function renderRp(text, keyBase = 0) {
-  if (!text || (text.indexOf('*') === -1 && text.indexOf('（') === -1)) return text;
-  const out = [];
-  // *动作* 去掉星号后斜体；（神态/动作）保留全角括号并斜体 —— 两种约定都呈现为
-  // 柔和的舞台指示，与台词在视觉上分层（沉浸对话里读起来像剧本旁白）。
-  const re = /\*([^*\n]{1,120})\*|（([^）\n]{1,120})）/g;
-  let last = 0, m2, k = 0;
-  while ((m2 = re.exec(text))) {
-    if (m2.index > last) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last, m2.index)}</span>);
-    out.push(<em key={`${keyBase}-a${k++}`} className="rp-act">{m2[1] != null ? m2[1] : m2[0]}</em>);
-    last = m2.index + m2[0].length;
-  }
-  if (last < text.length) out.push(<span key={`${keyBase}-t${k++}`}>{text.slice(last)}</span>);
-  return out;
-}
-
-// 气泡内容：专家档助手消息可含 [[wbimg:id]] 标记，标记位置直接展示创建者预注入的
-// 图片（不调用 AI 生图）；无标记时退化为 RP 排版文本。
-// React.memo 是这里的性能关键：流式生成期间线程每帧 setMessages 一次，除最后一条外
-// 其余消息的 content 引用都没变，memo 让老消息跳过整段正则解析与片段重建 ——
-// 否则解析成本随对话长度线性增长，长对话时打字都会掉帧。
-// 专家前端面板：把角色卡里的 HTML 面板渲染进 iframe（blob: 文档，CSP 已在 index.html 放行）。
-// 酒馆兼容关键点：
-//   · sandbox 含 allow-same-origin —— 卡片前端普遍依赖 localStorage/IndexedDB 存档，
-//     且通过 window.parent.TavernHelper.generate(...) 直接调宿主 AI（凡人修仙传等标准用法）。
-//     这意味着面板脚本与宿主同权（与酒馆助手的安全模型一致：卡片前端本就是「可信扩展」）。
-//   · buildPanelDoc 注入 shim：eventOn/eventEmit、tavern_events、TavernHelper 本地代理、
-//     SillyTavern.getContext 最小面 + 高度自适应上报（先于卡片脚本执行）。
-// PANEL_CTX 由 Chat 组件维护（角色名/会话 id），供 shim 里 getContext() 使用。
-let PANEL_CTX = { characterName: '', conversationId: 0 };
-function HtmlPanel({ html }) {
-  // 完整 HTML 文档（游戏面板/说明书页）多为 position:fixed 的整页布局：
-  //   · scrollHeight 可能「自指」（=iframe 高度）→ 自适应变矮条
-  //   · 也可能被隐藏的大尺寸区块（地图画布等）撑到数千 px → iframe 拉超高后，
-  //     fixed 居中的开始界面落在 iframe 视口中央 = 屏幕外，肉眼只见黑底
-  // 所以整页面板的高度按「一屏游戏视口」处理：下限 72vh、上限 ~86vh，内部自滚动；
-  // 片段面板才走高度上报完全自适应。
-  const fullDoc = /<!doctype html|<html[\s>]/i.test(String(html || '').slice(0, 400));
-  const vh = window.innerHeight || 800;
-  const baseH = fullDoc ? Math.max(480, Math.round(vh * 0.72)) : 360;
-  const maxH = fullDoc ? Math.max(560, Math.round(vh * 0.86)) : 4000;
-  const [h, setH] = useState(baseH);
-  const [loaded, setLoaded] = useState(false);
-  const frameRef = useRef(null);
-  const src = useMemo(() => {
-    const doc = buildPanelDoc(html, PANEL_CTX);
-    return URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
-  }, [html]);
-  useEffect(() => () => { try { URL.revokeObjectURL(src); } catch { /* */ } }, [src]);
-  useEffect(() => {
-    // 撤加载蒙层的时机不能依赖 iframe load 事件：卡片外链 CDN（Google Fonts 等）
-    // 在弱网/受限网络下会长时间挂起、load 迟迟不触发，而面板 DOM 其实早已渲染。
-    // shim 的高度上报（ResizeObserver 立即触发）就是「已渲染」的可靠信号；再兜一个超时。
-    const onMsg = e => {
-      const v = e.data && e.data.__hyH;
-      if (typeof v !== 'number') return;
-      if (frameRef.current && e.source === frameRef.current.contentWindow) setLoaded(true);
-      // 整页面板钳制在一屏内（不缩回矮条、也不被撑出屏）；片段面板完全自适应
-      setH(prev => Math.min(maxH, Math.max(fullDoc ? Math.max(baseH, prev) : 160, v + 8)));
-    };
-    window.addEventListener('message', onMsg);
-    const t = setTimeout(() => setLoaded(true), 3500);
-    return () => { window.removeEventListener('message', onMsg); clearTimeout(t); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return (
-    <div className={'html-panel-wrap' + (loaded ? ' ready' : '')}>
-      {/* 加载占位：卡片外链 CDN（字体/库/视频）就绪前面板常呈黑屏，给出可感知的加载态 */}
-      {!loaded && (
-        <div className="html-panel-loading" aria-hidden="true">
-          <span className="hp-spin" /><b>角色前端加载中…</b><i>大型面板首次加载可能需要几秒</i>
-        </div>
-      )}
-      <iframe className="html-panel" ref={frameRef} src={src} onLoad={() => setLoaded(true)}
-        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-downloads"
-        allow="clipboard-write; clipboard-read; fullscreen"
-        style={{ height: h }} title="角色前端面板" />
-    </div>
-  );
-}
-
-// 把含 ```html 面板 / 整段 HTML 的文本拆开：面板走 iframe，其余走 RP 排版。
-// 围栏收尾不能用非贪婪 ```：酒馆卡的面板动辄数十万字符，正文里（JS 模板串、
-// 说明文档）常夹杂反引号序列，非贪婪会提前收口、把面板后半段当纯文本渲染。
-// 策略：内容若是完整 HTML 文档（含 </html>），收尾围栏取 </html> 之后最近的 ```；
-// 否则退回最近 ```；找不到则吃到文本结尾。
-function splitHtmlFences(text) {
-  const out = []; const open = /```html\s*\n?/gi; let m, last = 0;
-  while ((m = open.exec(text))) {
-    const start = m.index, cs = open.lastIndex;
-    let close = -1;
-    const endHtml = text.toLowerCase().indexOf('</html>', cs);
-    if (endHtml >= 0) close = text.indexOf('```', endHtml);
-    if (close < 0) close = text.indexOf('```', cs);
-    const html = close < 0 ? text.slice(cs) : text.slice(cs, close);
-    const end = close < 0 ? text.length : close + 3;
-    out.push({ pre: text.slice(last, start), html });
-    last = end; open.lastIndex = end;
-  }
-  return { blocks: out, tail: text.slice(last) };
-}
-function renderWithPanels(text) {
-  const parts = []; let k = 0;
-  const { blocks, tail } = splitHtmlFences(text);
-  for (const b of blocks) {
-    if (b.pre.trim()) parts.push(<span key={'t' + (k++)}>{renderRp(b.pre, k)}</span>);
-    parts.push(<HtmlPanel key={'h' + (k++)} html={b.html} />);
-  }
-  if (blocks.length === 0 && looksLikeHtml(tail)) return [<HtmlPanel key="h0" html={tail} />];
-  if (tail.trim()) parts.push(looksLikeHtml(tail) ? <HtmlPanel key={'h' + k} html={tail} /> : <span key={'t' + k}>{renderRp(tail, k)}</span>);
-  return parts;
-}
-
-const BubbleContent = React.memo(function BubbleContent({ content, role, imageMap, onPreview, frontRegex }) {
-  if (!content) return null;
-  // 先应用前端显示正则（酒馆 regex_scripts）：可把标记替换成 HTML 面板等（仅显示层）。
-  const text = (frontRegex && frontRegex.length) ? applyFrontRegex(content, frontRegex, role) : content;
-  // 助手消息可含面板；用户消息仅当角色带前端正则时才放行（酒馆 placement=1，如表情包/私聊/地图），
-  // 避免普通聊天里用户偶然输入的 HTML 被当成面板渲染。
-  if ((role === 'assistant' || (frontRegex && frontRegex.length)) && (/```html/i.test(text) || looksLikeHtml(text))) return renderWithPanels(text);
-  if (role !== 'assistant' || !imageMap || !WBIMG_RE.test(text)) {
-    WBIMG_RE.lastIndex = 0;
-    return renderRp(text);
-  }
-  WBIMG_RE.lastIndex = 0;
-  const parts = splitWbMarkers(text, imageMap);
-  return parts.map((seg, i) => {
-    if (!seg.marker) return <span key={i}>{renderRp(seg.text, i)}</span>;
-    const meta = seg.meta;
-    if (!meta || !meta.urls || meta.urls.length === 0) {
-      return <span key={i} className="wb-img-missing" title="该标记未预注入图片"><ImageIcon size={12} /> 〔未注入图片〕</span>;
-    }
-    // 多张时堆叠展示，点击任一张进入全屏预览（支持 pinch-zoom 与双指缩放）
-    return (
-      <span key={i} className="wb-inline-imgs">
-        {meta.urls.map((u, j) => (
-          <img key={j} className="wb-inline-img" src={assetUrl(u)} alt={`场景插图 ${j + 1}（点击放大）`} loading="lazy"
-            onClick={() => onPreview(u)} />
-        ))}
-      </span>
-    );
-  });
-});
+import { installTavernHost } from '../tavernbridge.js';
+import { streamSSE } from '../chat/sse.js';
+import { BubbleContent, setPanelCtx } from '../chat/BubbleContent.jsx';
+import { useOverlayBack, useBookmarks } from '../chat/hooks.js';
+import {
+  GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
+  REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo,
+} from '../chat/constants.js';
+import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap } from 'lucide-react';
 
 export default function Chat() {
   const { id } = useParams();
@@ -254,15 +52,14 @@ export default function Chat() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   // 消息书签：本地存储（三端通用、不依赖服务端），按会话隔离。
-  const [marks, setMarks] = useState(new Set());
   const [marksOpen, setMarksOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [fontSize, setFontSize] = useState(() => localStorage.getItem(FONT_KEY) || 'md');
   // 气泡透明度三档（实/半透/极透）：不同立绘明暗差异大，交给用户调 —— 玻璃化的自由度
-  const [bubbleAlpha, setBubbleAlpha] = useState(() => localStorage.getItem('huanyu_bubble_alpha') || 'mid');
+  const [bubbleAlpha, setBubbleAlpha] = useState(() => localStorage.getItem(BUBBLE_ALPHA_KEY) || 'mid');
   const cycleBubbleAlpha = () => setBubbleAlpha(v => {
     const n = v === 'solid' ? 'mid' : v === 'mid' ? 'clear' : 'solid';
-    localStorage.setItem('huanyu_bubble_alpha', n);
+    localStorage.setItem(BUBBLE_ALPHA_KEY, n);
     return n;
   });
   const [autoRead, setAutoRead] = useState(() => localStorage.getItem(AUTOREAD_KEY) === '1');
@@ -303,7 +100,7 @@ export default function Chat() {
   const messagesRef = useRef(messages);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => {
-    PANEL_CTX = { characterName: character?.name || '', conversationId: Number(id) || 0 };
+    setPanelCtx({ characterName: character?.name || '', conversationId: Number(id) || 0 });
     const uninstall = installTavernHost(convIdRef, {
       onToast: (m) => toast(m),
       onFee: (fee) => { toast(`平台 AI · 本次消耗 ${fee} 金币`); refreshUser?.(); },
@@ -349,15 +146,7 @@ export default function Chat() {
     setActionsOpen(false); setReactFor(null); setEditingId(null); setPlusOpen(false); setGiftOpen(false);
   };
   const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null || plusOpen;
-  useEffect(() => {
-    if (!anyOverlayOpen) return;
-    history.pushState({ overlay: true }, '');
-    const onPop = closeAllOverlays;
-    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); closeAllOverlays(); history.state?.overlay && history.back(); } };
-    window.addEventListener('popstate', onPop);
-    document.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('popstate', onPop); document.removeEventListener('keydown', onKey); if (history.state?.overlay) history.back(); };
-  }, [anyOverlayOpen]);
+  useOverlayBack(anyOverlayOpen, closeAllOverlays);
   const setFont = (v) => { setFontSize(v); localStorage.setItem(FONT_KEY, v); };
   const toggleAutoRead = () => setAutoRead(v => { const n = !v; localStorage.setItem(AUTOREAD_KEY, n ? '1' : '0'); return n; });
   const toggleBgm = () => setBgmOn(v => { const n = !v; localStorage.setItem(BGM_KEY, n ? '1' : '0'); return n; });
@@ -503,54 +292,30 @@ export default function Chat() {
   useEffect(() => () => { if (bgParaRef.current) cancelAnimationFrame(bgParaRef.current); }, []);
 
   // Stream a reply from the given endpoint into the trailing assistant bubble.
+  // 解析循环收敛到 chat/sse.js（与 CallScreen / tavernbridge 共用，内置 getApiBase 前缀）；
+  // 这里只保留 rAF 节流的增量落地逻辑（每帧最多一次 setMessages，降低低端机渲染压力）。
   const streamInto = async (endpoint, payload) => {
     setStreaming(true);
     setAtBottom(true);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      // getApiBase() 前缀：Capacitor 原生壳指向独立后端时（BAKED_SERVER），相对路径会
-      // 命中 WebView 自身的 http://localhost 静态服务器导致流式对话 404；web/静态构建
-      // 下前缀为 ''，行为不变。与 /chat/tts、CallScreen、tavernbridge 的做法保持一致。
-      const res = await fetch(getApiBase() + endpoint, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(payload || {}), signal: ctrl.signal
+      await streamSSE(endpoint, {
+        body: payload, signal: ctrl.signal,
+        onDelta: (delta) => {
+          streamBufRef.current = (streamBufRef.current || '') + delta;
+          if (!streamRafRef.current) {
+            streamRafRef.current = requestAnimationFrame(() => {
+              const chunk = streamBufRef.current; streamBufRef.current = ''; streamRafRef.current = 0;
+              setMessages(m => {
+                const copy = [...m]; const last = copy[copy.length - 1];
+                if (last) copy[copy.length - 1] = { ...last, content: (last.content || '') + chunk };
+                return copy;
+              });
+            });
+          }
+        },
       });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '请求失败'); }
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let buf = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop() || '';
-        for (const line of lines) {
-          const t = line.trim();
-          if (!t.startsWith('data:')) continue;
-          const payload2 = t.slice(5).trim();
-          if (payload2 === '[DONE]') continue;
-          try {
-            const j = JSON.parse(payload2);
-            if (j.error) throw new Error(j.error);
-            if (j.delta) {
-              // rAF 节流：累积 delta 到缓冲，每帧最多刷新一次，降低低端机渲染压力
-              streamBufRef.current = (streamBufRef.current || '') + j.delta;
-              if (!streamRafRef.current) {
-                streamRafRef.current = requestAnimationFrame(() => {
-                  const chunk = streamBufRef.current; streamBufRef.current = ''; streamRafRef.current = 0;
-                  setMessages(m => {
-                    const copy = [...m]; const last = copy[copy.length - 1];
-                    if (last) copy[copy.length - 1] = { ...last, content: (last.content || '') + chunk };
-                    return copy;
-                  });
-                });
-              }
-            }
-          } catch (err) { if (err.message && !err.message.includes('JSON')) throw err; }
-        }
-      }
       // 收尾前 flush 残留缓冲，避免末尾 delta 丢失
       if (streamRafRef.current) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = 0; }
       if (streamBufRef.current) {
@@ -625,28 +390,9 @@ export default function Chat() {
     catch { toast('复制失败', 'err'); }
   };
 
-  // —— 消息书签：收藏重要段落，随时跳回。纯本地存储，按会话隔离，三端通用。
-  useEffect(() => {
-    try { setMarks(new Set(JSON.parse(localStorage.getItem('huanyu_chat_marks_' + id) || '[]'))); }
-    catch { setMarks(new Set()); }
-  }, [id]);
-  const toggleMark = (m) => {
-    if (!m.id) return;
-    setMarks(prev => {
-      const n = new Set(prev);
-      if (n.has(m.id)) n.delete(m.id); else n.add(m.id);
-      try { localStorage.setItem('huanyu_chat_marks_' + id, JSON.stringify([...n])); } catch { /* */ }
-      return n;
-    });
-  };
-  const jumpToMark = (mid) => {
-    setMarksOpen(false);
-    const el = document.getElementById('msg-' + mid);
-    if (!el) { toast('未找到该消息（可能已被删除）', 'err'); return; }
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('mark-flash');
-    setTimeout(() => el.classList.remove('mark-flash'), 1800);
-  };
+  // 消息书签（收藏段落随时跳回，纯本地存储、按会话隔离）—— 逻辑收敛到 chat/hooks.js。
+  const { marks, toggleMark, jumpToMark: jumpToMarkRaw } = useBookmarks(id, () => toast('未找到该消息（可能已被删除）', 'err'));
+  const jumpToMark = (mid) => { setMarksOpen(false); jumpToMarkRaw(mid); };
 
   // 专家档世界书的预注入图片映射；引用稳定（随 character 一次性到位），
   // 保证 BubbleContent 的 memo 对老消息始终命中。

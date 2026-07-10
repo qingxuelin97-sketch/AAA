@@ -15,7 +15,7 @@
 //   js_stream_token_received_incrementally    —— 每次新 token 的【增量】文本（卡片用 += 拼接）
 //   js_stream_token_received_fully            —— 每次事件给出【累计】全文
 //   js_generation_ended                       —— 生成结束，参数为最终全文
-import { getToken, getApiBase } from './api.jsx';
+import { streamSSE } from './chat/sse.js';
 
 // ---------- 面板侧 shim（序列化注入 iframe，勿引用外部作用域） ----------
 const PANEL_SHIM = `(function(){
@@ -185,47 +185,24 @@ export function installTavernHost(convRef, opts = {}) {
     const userInput = String(params.user_input ?? params.injects?.map?.(j => j.content).join('\n') ?? '');
     aborter = new AbortController();
     broadcastTavernEvent('js_generation_started');
-    const res = await fetch(getApiBase() + `/api/chat/conversations/${convId}/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-      body: JSON.stringify({
+    // 共用 chat/sse.js 读取器；流式增量以酒馆事件广播进面板，fee 走 onJson 上报宿主。
+    let full = '';
+    const done = await streamSSE(`/api/chat/conversations/${convId}/generate`, {
+      body: {
         user_input: userInput,
         include_history: params.include_history === true,   // 默认静默：卡片面板自带完整上下文
         overrides: params.overrides || null
-      }),
-      signal: aborter.signal
+      },
+      signal: aborter.signal,
+      onDelta: (delta) => {
+        full += delta;
+        broadcastTavernEvent('js_stream_token_received_incrementally', delta);
+        broadcastTavernEvent('js_stream_token_received_fully', full);
+      },
+      onJson: (j) => { if (j.fee) opts.onFee?.(j.fee, j.balance); },
     });
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      throw new Error(e.error || `生成失败（${res.status}）`);
-    }
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = '', full = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split('\n'); buf = lines.pop() || '';
-      for (const line of lines) {
-        const t = line.trim();
-        if (!t.startsWith('data:')) continue;
-        const payload = t.slice(5).trim();
-        if (payload === '[DONE]') continue;
-        try {
-          const j = JSON.parse(payload);
-          if (j.error) throw new Error(j.error);
-          if (j.delta) {
-            full += j.delta;
-            broadcastTavernEvent('js_stream_token_received_incrementally', j.delta);
-            broadcastTavernEvent('js_stream_token_received_fully', full);
-          }
-          if (j.fee) opts.onFee?.(j.fee, j.balance);
-        } catch (err) { if (err.message && !err.message.includes('JSON')) throw err; }
-      }
-    }
-    broadcastTavernEvent('js_generation_ended', full);
-    return full;
+    broadcastTavernEvent('js_generation_ended', done);
+    return done;
   };
 
   window.TavernHelper = {
