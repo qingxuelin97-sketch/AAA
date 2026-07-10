@@ -510,7 +510,7 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
     const decoder = new TextDecoder();
     let buffer = '';
     while (true) {
-      if (res.writableEnded) break;
+      if (res.destroyed) break;   // 客户端已断开（socket 被销毁）：停止读上游
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -538,6 +538,9 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
   }
 
   full = full.trim();
+  // 客户端流式中途断开（socket 已销毁）：正文可能被截断且未确认送达。不落库、不扣费
+  //（避免把截断段落当成品持久化并全额计费）；作者重连后可重新推进。
+  if (res.destroyed) return;
   if (full) {
     if (rewrite) {
       pushHistory(rewrite.id, rewrite.content);

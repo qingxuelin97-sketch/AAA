@@ -139,12 +139,16 @@ function extractQuote(text) {
     if (lines[i].startsWith('> ')) quoted.push(lines[i].slice(2));
     else break;
   }
-  if (!quoted.length) return { quote: null, body: text };
+  // 仅当「引用块 + 空行分隔 + 非空正文」（send() 生成的确切格式）才认定为引用回复；
+  // 否则是用户自己输入的普通 markdown 引用（如 `> 备注：…`），按原文渲染，不误当引用卡。
+  if (!quoted.length || lines[i] === undefined || lines[i].trim() !== '') return { quote: null, body: text };
   while (i < lines.length && lines[i].trim() === '') i++;   // 跳过引用与正文间的空行
+  const body = lines.slice(i).join('\n');
+  if (!body.trim()) return { quote: null, body: text };
   const raw = quoted.join(' ');
   const sep = raw.indexOf('：');
   const quote = sep > 0 && sep <= 12 ? { who: raw.slice(0, sep), text: raw.slice(sep + 1) } : { who: '', text: raw };
-  return { quote, body: lines.slice(i).join('\n') };
+  return { quote, body };
 }
 
 export const BubbleContent = React.memo(function BubbleContent({ content, role, imageMap, onPreview, frontRegex }) {

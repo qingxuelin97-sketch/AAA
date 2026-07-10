@@ -745,7 +745,7 @@ async function pumpModelStream(res, eff, payloadMessages) {
     const decoder = new TextDecoder();
     let buffer = '';
     while (true) {
-      if (res.writableEnded) break;   // 客户端已断开：停止读上游
+      if (res.destroyed) break;   // 客户端已断开（socket 被销毁）：停止读上游
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -824,6 +824,9 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
       extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: 0 } });
     return res.end();
   }
+  // 客户端在流式中途断开：回复未送达且可能被截断，不扣费（与「有产出才扣」一致，避免
+  // 为用户没看到的截断内容全额计费）。socket 已销毁，直接收尾。
+  if (res.destroyed) { try { res.end(); } catch { /* */ } return; }
   if (full.trim() && feeDue) {
     try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 面板生成《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); }
     catch (e) { log({ level: 'warn', source: 'server', category: 'chat', event: 'ai_fee_uncharged', message: `平台 AI 扣费失败（面板生成已送达）：${e.message}`, user_id: me.id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { conversation_id: conv.id, character_id: conv.character_id, fee_due: feeDue } }); }
@@ -873,6 +876,15 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
       endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
       extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: 0 } });
     return res.end();
+  }
+  // 客户端流式中途断开（socket 已销毁）：full 可能被截断且未确认送达。不落库、不扣费
+  //（避免把截断回复当成品持久化、并为用户没看到的内容全额计费）；用户重连后可重新生成。
+  if (res.destroyed) {
+    log({ level: 'warn', source: 'server', category: 'chat', event,
+      message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}中断《${character?.name || ''}》（客户端断开，未落库/未扣费）`,
+      user_id: conv.user_id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+      extra: { conversation_id: conv.id, character_id: conv.character_id, chars: full.length, gold_fee: 0 } });
+    return;
   }
   if (full.trim()) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
