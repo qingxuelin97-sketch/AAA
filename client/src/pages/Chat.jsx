@@ -11,12 +11,12 @@ import { EmptyArt } from '../art.jsx';
 import { installTavernHost } from '../tavernbridge.js';
 import { streamSSE } from '../chat/sse.js';
 import { BubbleContent, setPanelCtx } from '../chat/BubbleContent.jsx';
-import { useOverlayBack, useBookmarks } from '../chat/hooks.js';
+import { useOverlayBack, useBookmarks, useLongPress } from '../chat/hooks.js';
 import {
   GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
-  REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo,
+  REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo, timeDivider,
 } from '../chat/constants.js';
-import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap } from 'lucide-react';
+import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft } from 'lucide-react';
 
 export default function Chat() {
   const { id } = useParams();
@@ -31,6 +31,20 @@ export default function Chat() {
   const frontRegex = useMemo(() => { try { return JSON.parse(character?.front_regex || '[]'); } catch { return []; } }, [character?.front_regex]);
   // 备用开场白（酒馆 alternate_greetings）：对话未开始时可切换开场。
   const altGreetings = useMemo(() => { try { const v = JSON.parse(character?.alt_greetings || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } }, [character?.alt_greetings]);
+  // 角色感知开场建议：从 tagline + 世界书关键词派生几条贴合角色的开场，补足通用开场。
+  const charStarters = useMemo(() => {
+    const out = [];
+    const tag = (character?.tagline || '').trim();
+    if (tag && tag.length <= 16) out.push(`聊聊「${tag}」`);
+    const keys = [];
+    for (const w of (character?.world || [])) {
+      for (const k of String(w.keys || '').split(',')) { const kk = k.trim(); if (kk && kk.length <= 8 && !keys.includes(kk)) keys.push(kk); }
+      if (keys.length >= 3) break;
+    }
+    for (const k of keys.slice(0, 2)) out.push(`说说${k}`);
+    for (const s of STARTERS) { if (out.length >= 5) break; if (!out.includes(s)) out.push(s); }
+    return out.slice(0, 5);
+  }, [character?.tagline, character?.world]);
   const [greetIdx, setGreetIdx] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -51,6 +65,10 @@ export default function Chat() {
   const [newMem, setNewMem] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  // 长按操作面板（触屏取代 hover 操作行）：sheetFor = 目标消息或 null。
+  const [sheetFor, setSheetFor] = useState(null);
+  // 引用回复：replyTo = 被引用的消息或 null；发送时以 markdown 引用块前置。
+  const [replyTo, setReplyTo] = useState(null);
   // 消息书签：本地存储（三端通用、不依赖服务端），按会话隔离。
   const [marksOpen, setMarksOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
@@ -144,8 +162,9 @@ export default function Chat() {
   const closeAllOverlays = () => {
     setDrawerOpen(false); setMenuOpen(false); setSearchOpen(false); setSearchQ('');
     setActionsOpen(false); setReactFor(null); setEditingId(null); setPlusOpen(false); setGiftOpen(false);
+    setSheetFor(null);
   };
-  const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null || plusOpen;
+  const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null || plusOpen || sheetFor != null;
   useOverlayBack(anyOverlayOpen, closeAllOverlays);
   const setFont = (v) => { setFontSize(v); localStorage.setItem(FONT_KEY, v); };
   const toggleAutoRead = () => setAutoRead(v => { const n = !v; localStorage.setItem(AUTOREAD_KEY, n ? '1' : '0'); return n; });
@@ -356,8 +375,16 @@ export default function Chat() {
   const stop = () => { abortRef.current?.abort(); };
 
   const send = async (override) => {
-    const text = (override ?? input).trim();
+    let text = (override ?? input).trim();
     if (!text || streaming) return;
+    // 引用回复：以 markdown 引用块前置（BubbleContent 解析为引用卡）。仅手动输入时附带，
+    // 骰子/礼物/旁白等 override 动作不带引用。
+    if (replyTo && override === undefined) {
+      const who = replyTo.role === 'user' ? '我' : (character?.name || '角色');
+      const quoted = (replyTo.content || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      text = `> ${who}：${quoted}\n\n${text}`;
+      setReplyTo(null);
+    }
     if (override === undefined) setInput('');
     setActionsOpen(false);
     setMessages(m => [...m, { role: 'user', content: text }, { role: 'assistant', content: '', _streaming: true }]);
@@ -389,6 +416,9 @@ export default function Chat() {
     try { await navigator.clipboard.writeText(text); toast('已复制'); }
     catch { toast('复制失败', 'err'); }
   };
+
+  // 触屏长按消息 → 打开操作面板（hover 操作行在触屏不可用，已由 CSS 在 coarse pointer 隐藏）。
+  const bindLongPress = useLongPress((m) => { if (m.content) setSheetFor(m); });
 
   // 消息书签（收藏段落随时跳回，纯本地存储、按会话隔离）—— 逻辑收敛到 chat/hooks.js。
   const { marks, toggleMark, jumpToMark: jumpToMarkRaw } = useBookmarks(id, () => toast('未找到该消息（可能已被删除）', 'err'));
@@ -496,7 +526,7 @@ export default function Chat() {
               <button className="btn ghost sm mobile-only chat-back" onClick={() => nav('/messages')}><ArrowLeft size={16} /></button>
               {/* 身份胶囊：左上空间有限，不再写角色名（每条消息上方已有名字）；只留头像 + 状态 */}
               <div className="ch-idpill">
-                <div className={'ch-av' + (streaming ? ' live' : '')}><Avatar src={character?.avatar} name={character?.name} size={40} /></div>
+                <div className={'ch-av' + (streaming ? ' live' : '')} style={{ '--af': affinityInfo(affinity).pct }}><Avatar src={character?.avatar} name={character?.name} size={40} /></div>
                 {/* 状态文案只留「在线」：长文案在窄屏与好感徽章互相挤压遮挡（实机反馈），
                     沉浸感由头像光环/打字动画传达，不靠字数 */}
                 <div className="nm"><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : '在线'}</span></div>
@@ -594,8 +624,12 @@ export default function Chat() {
                 const q = searchQ.trim().toLowerCase();
                 if (q && !(m.content || '').toLowerCase().includes(q)) return null;
                 const firstOfRun = i === 0 || messages[i - 1].role !== m.role;
+                // 时间分隔：与上一条间隔 > 10min（或会话首条）时插入居中时间胶囊。
+                const divider = !q ? timeDivider(messages[i - 1]?.created_at, m.created_at) : null;
                 return (
-                <div key={m.id || i} id={m.id ? 'msg-' + m.id : undefined} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}>
+                <React.Fragment key={m.id || i}>
+                {divider && <div className="msg-daydivider" aria-hidden="true"><span>{divider}</span></div>}
+                <div id={m.id ? 'msg-' + m.id : undefined} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}>
                   {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={38} />}
                   <div className="msg-col">
                     {m.role === 'assistant' && firstOfRun && (
@@ -614,9 +648,10 @@ export default function Chat() {
                         </div>
                       </div>
                     ) : (
-                      <div className="bubble" onContextMenu={m.content ? (e) => { e.preventDefault(); copyMsg(m.content); } : undefined}
+                      <div className="bubble" {...bindLongPress(m)}
+                        onContextMenu={m.content ? (e) => { e.preventDefault(); copyMsg(m.content); } : undefined}
                         onDoubleClick={m.role === 'assistant' && m.id ? () => react(m, '❤️') : undefined}
-                        title={m.content ? '长按复制 · 双击喜欢' : undefined}>
+                        title={m.content ? '长按操作 · 双击喜欢' : undefined}>
                         {m._streaming && !m.content
                           ? <span className="typing"><span></span><span></span><span></span></span>
                           : <BubbleContent content={m.content} role={m.role} imageMap={imageMap} onPreview={setPreviewImg} frontRegex={frontRegex} />}
@@ -646,12 +681,14 @@ export default function Chat() {
                           )}
                         </>}
                         {m.role === 'user' && <button className="speak" onClick={() => startEdit(m)} disabled={streaming}><Pencil size={13} /> 编辑</button>}
+                        <button className="speak" onClick={() => { setReplyTo(m); inputRef.current?.focus(); }} disabled={streaming} title="引用这条消息回复"><CornerUpLeft size={13} /> 引用</button>
                         {m.id && <button className={'speak' + (marks.has(m.id) ? ' on' : '')} onClick={() => toggleMark(m)} title={marks.has(m.id) ? '取消书签' : '加入书签，可从菜单快速跳回'}><Bookmark size={13} /> {marks.has(m.id) ? '已收藏' : '书签'}</button>}
                         {m.id && <button className="speak" onClick={() => delMsg(m)} disabled={streaming}><Trash2 size={13} /> 删除</button>}
                       </div>
                     )}
                   </div>
                 </div>
+                </React.Fragment>
                 );
               })}
               </div>
@@ -675,7 +712,7 @@ export default function Chat() {
                   </span>
                 )}
                 <span className="muted">试试开口：</span>
-                {STARTERS.map(s => <button key={s} className="starter-chip" onClick={() => send(s)}>{s}</button>)}
+                {charStarters.map(s => <button key={s} className="starter-chip" onClick={() => send(s)}>{s}</button>)}
               </div>
             )}
             {/* 输入栏占位：移动端 fixed 输入栏遮挡下方消息，spacer 留出空白避免遮挡 */}
@@ -684,6 +721,15 @@ export default function Chat() {
                 驱动 bottom 上移到键盘上方。chat-main 布局不动，下方被键盘覆盖是自然的，
                 只有输入框被顶上去 —— 不会"拉出半屏原色背景"。 */}
             <div className="chat-input-bar" ref={inputBarRef}>
+              {replyTo && (
+                <div className="reply-bar">
+                  <div className="rb-body">
+                    <div className="rb-who">回复 {replyTo.role === 'user' ? '我' : (character?.name || '角色')}</div>
+                    <div className="rb-text">{(replyTo.content || '').replace(/\s+/g, ' ').trim()}</div>
+                  </div>
+                  <button className="speak rb-close" onClick={() => setReplyTo(null)} title="取消引用"><X size={15} /></button>
+                </div>
+              )}
               {actionsOpen && (
                 <div className="action-panel">
                   {QUICK_ACTIONS.map(a => <button key={a} onClick={() => insertAction(a)}>{a}</button>)}
@@ -831,6 +877,29 @@ export default function Chat() {
           <button className="btn block" style={{ marginTop: 12 }} onClick={() => setMarksOpen(false)}>关闭</button>
         </Modal>
       )}
+      {/* 长按操作面板（触屏）：承载原 hover 操作行的全部能力 */}
+      {sheetFor && (() => { const m = sheetFor; const isLast = messages[messages.length - 1]?.id === m.id || messages[messages.length - 1] === m; const close = () => setSheetFor(null); return (
+        <>
+          <div className="msg-sheet-mask" onClick={close} />
+          <div className="msg-sheet" role="menu">
+            <div className="ms-preview">{(m.content || '').replace(/^>\s.*\n+/, '').slice(0, 120)}</div>
+            {m.role === 'assistant' && (
+              <div className="react-pop" style={{ position: 'static', margin: '2px 6px 6px', display: 'flex', justifyContent: 'space-around' }}>
+                {REACTIONS.map(e => <button key={e} className={m.reaction === e ? 'on' : ''} onClick={() => { react(m, e); close(); }}>{e}</button>)}
+              </div>
+            )}
+            {m.role === 'assistant' && (playingId === m.id
+              ? <button className="ms-row on" onClick={() => { stopSpeaking(); close(); }}><Square size={18} fill="currentColor" /> 停止播放</button>
+              : <button className="ms-row" onClick={() => { toggleSpeak(m); close(); }}><Volume2 size={18} /> {voicedIds.has(m.id) ? '再听一遍' : '朗读'}</button>)}
+            <button className="ms-row" onClick={() => { copyMsg(m.content); close(); }}><Copy size={18} /> 复制</button>
+            <button className="ms-row" onClick={() => { setReplyTo(m); close(); inputRef.current?.focus(); }}><CornerUpLeft size={18} /> 引用回复</button>
+            {m.role === 'assistant' && isLast && <button className="ms-row" onClick={() => { close(); regenerate(); }} disabled={streaming}><RotateCcw size={18} /> 重新生成</button>}
+            {m.role === 'user' && <button className="ms-row" onClick={() => { startEdit(m); close(); }} disabled={streaming}><Pencil size={18} /> 编辑</button>}
+            {m.id && <button className={'ms-row' + (marks.has(m.id) ? ' on' : '')} onClick={() => { toggleMark(m); close(); }}><Bookmark size={18} /> {marks.has(m.id) ? '取消书签' : '加入书签'}</button>}
+            {m.id && <button className="ms-row danger" onClick={() => { close(); delMsg(m); }} disabled={streaming}><Trash2 size={18} /> 删除</button>}
+          </div>
+        </>
+      ); })()}
       {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
       {callOpen && character && <CallScreen character={character} onClose={() => setCallOpen(false)} />}
       {previewImg && (

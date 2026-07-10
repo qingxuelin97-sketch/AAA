@@ -128,8 +128,39 @@ function renderWithPanels(text) {
 // 气泡内容：专家档助手消息可含 [[wbimg:id]] 标记，标记位置直接展示预注入图片；无标记时退化为 RP 排版。
 // React.memo 是性能关键：流式生成期间每帧 setMessages 一次，除最后一条外其余消息 content 引用不变，
 // memo 让老消息跳过整段正则解析与片段重建 —— 否则解析成本随对话长度线性增长，长对话打字会掉帧。
+// 引用回复：内容以 markdown 引用块（连续 `> ` 行 + 空行 + 正文）开头时，抽出引用卡。
+// 约定格式 `> 谁：被引用的话`。返回 { quote:{who,text}|null, body }。
+function extractQuote(text) {
+  if (!text || !text.startsWith('> ')) return { quote: null, body: text };
+  const lines = text.split('\n');
+  const quoted = [];
+  let i = 0;
+  for (; i < lines.length; i++) {
+    if (lines[i].startsWith('> ')) quoted.push(lines[i].slice(2));
+    else break;
+  }
+  if (!quoted.length) return { quote: null, body: text };
+  while (i < lines.length && lines[i].trim() === '') i++;   // 跳过引用与正文间的空行
+  const raw = quoted.join(' ');
+  const sep = raw.indexOf('：');
+  const quote = sep > 0 && sep <= 12 ? { who: raw.slice(0, sep), text: raw.slice(sep + 1) } : { who: '', text: raw };
+  return { quote, body: lines.slice(i).join('\n') };
+}
+
 export const BubbleContent = React.memo(function BubbleContent({ content, role, imageMap, onPreview, frontRegex }) {
   if (!content) return null;
+  // 引用卡：先抽出（仅纯文本消息；HTML 面板/前端正则消息不处理，避免误伤）。
+  if (content.startsWith('> ') && !(frontRegex && frontRegex.length)) {
+    const { quote, body } = extractQuote(content);
+    if (quote) {
+      return (
+        <>
+          <span className="quote-embed">{quote.who && <b>{quote.who}</b>}{quote.text}</span>
+          {renderRp(body)}
+        </>
+      );
+    }
+  }
   // 先应用前端显示正则（酒馆 regex_scripts）：可把标记替换成 HTML 面板等（仅显示层）。
   const text = (frontRegex && frontRegex.length) ? applyFrontRegex(content, frontRegex, role) : content;
   // 助手消息可含面板；用户消息仅当角色带前端正则时才放行（酒馆 placement=1），避免普通聊天里

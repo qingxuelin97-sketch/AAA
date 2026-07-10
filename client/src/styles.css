@@ -331,6 +331,26 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 /* 软键盘弹起时（html.kbd-open）隐藏「回到底部」浮钮，避免与上移的输入栏叠在一起遮挡点击 */
 html.kbd-open .scroll-bottom-btn { display: none; }
 
+/* —— 对话共享新元素（时间分隔 / 引用）的中性基线样式 ——
+   APP 皮肤在 chat/chat-app.css 里另有玻璃化变体；这里保证 web 端体面呈现。 */
+.msg-daydivider { display: flex; justify-content: center; margin: 12px 0 6px; pointer-events: none; }
+.msg-daydivider span { font-size: 11.5px; color: var(--faint); padding: 3px 11px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); }
+.bubble .quote-embed { display: block; margin: -1px 0 6px; padding: 5px 10px; border-radius: 9px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 12.5px; opacity: 0.85; }
+.msg.user .bubble .quote-embed { border-left-color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.16); }
+.bubble .quote-embed b { display: block; font-size: 11px; opacity: 0.85; margin-bottom: 1px; }
+.reply-bar { max-width: 780px; margin: 0 auto 8px; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+.reply-bar .rb-body { flex: 1; min-width: 0; }
+.reply-bar .rb-who { font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.reply-bar .rb-text { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reply-bar .rb-close { flex: none; }
+/* 长按操作面板：基线仅给非 app 的兜底外观（正常仅在触屏 app 使用，app 玻璃化见 chat-app.css） */
+.msg-sheet-mask { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.32); }
+.msg-sheet { position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 61; border-radius: 18px; padding: 8px; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.msg-sheet .ms-preview { font-size: 12.5px; color: var(--muted); padding: 8px 12px 10px; border-bottom: 1px solid var(--border); margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.msg-sheet .ms-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 12px; font-size: 15px; color: var(--text); background: none; border: none; text-align: left; }
+.msg-sheet .ms-row:active { background: var(--panel-2); }
+.msg-sheet .ms-row.danger { color: #e5484d; }
+
 /* ---------- World book / editor ---------- */
 .editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: clamp(16px, 2.4vw, 26px); align-items: start; }
 .world-entry { border: 1px solid var(--border); border-radius: 13px; padding: 14px; margin-bottom: 12px; background: var(--panel); box-shadow: var(--shadow-sm); position: relative; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
@@ -5906,16 +5926,8 @@ html[data-app="1"] .chat-main.has-bg .chat-ai-mark { display: block; position: a
   top: calc(env(safe-area-inset-top) + 66px); font-size: 11px; letter-spacing: 0.5px; color: rgba(255,255,255,0.55);
   text-shadow: 0 1px 4px rgba(0,0,0,0.6); pointer-events: none; }
 
-/* 助手气泡：深色磨砂 + 白字，动作/神态灰斜体（旁白感）*/
-html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble { background: rgba(22,20,26,0.5); color: #f2f1ee;
-  border: none; border-radius: 22px; box-shadow: 0 6px 22px rgba(0,0,0,0.3);
-  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); }
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .msg.assistant .bubble { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(22,20,26,0.86); }
-html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act { color: rgba(255,255,255,0.56); font-style: italic; opacity: 1; }
-html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name { color: rgba(255,255,255,0.82); text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+/* v1 深色磨砂气泡层已删除 —— 现行气泡皮肤见 chat/chat-app.css §3 */
 html[data-app="1"] .chat-main.has-bg .msg-acts .speak { color: rgba(255,255,255,0.75); text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
-/* 用户气泡：磨砂高亮，右侧对齐（与角色的深色气泡分层）*/
-html[data-app="1"] .chat-main.has-bg .msg.user .bubble { box-shadow: 0 6px 20px rgba(0,0,0,0.28); }
 
 /* 居中时间戳磨砂胶囊 */
 html[data-app="1"] .chat-main.has-bg .msg-name .msg-time { color: rgba(255,255,255,0.7); }
@@ -8348,77 +8360,7 @@ html[data-app="1"] .chat-main.has-bg .starter-chip.on {
 /* 危险项图标同为白色（红底上深红图标对比度不足） */
 .cps-item.danger .cps-ic { color: #fff; }
 
-/* ============================================================================
-   单层玻璃「床」（沉浸对话底部）—— 容器 .chat-input-bar 本身就是唯一那块透明
-   磨砂玻璃。输入行 .box、「+」功能格 .chat-plus-sheet、快捷动作 .action-panel
-   全部脱掉各自的玻璃，只当透明内容层铺在这张床上。点「+」→ 床向上长高、功能
-   格直接出现在同一块玻璃上，绝不再套第二层玻璃卡。
-   ========================================================================== */
-html[data-app="1"] .chat-main {
-  --hy-cg-blur: blur(24px) saturate(150%);
-  /* 浅色（无立绘）默认：白玻璃 */
-  --hy-cg-bg: linear-gradient(160deg, rgba(255,255,255,0.60), rgba(240,250,252,0.66));
-  --hy-cg-bg-solid: #f3fbfd;
-  --hy-cg-brd: var(--border-2);
-  --hy-cg-sh: inset 0 1px 0 #fff, 0 -4px 14px rgba(13,74,88,0.05), 0 18px 50px rgba(13,74,88,0.14);
-}
-html[data-app="1"] .chat-main.has-bg {
-  /* 深色立绘沉浸：真·透明玻璃（立绘从玻璃后透出），全屏只此一块材质 */
-  --hy-cg-bg: linear-gradient(160deg, rgba(30,27,40,0.36), rgba(15,13,21,0.48));
-  --hy-cg-bg-solid: rgba(24,21,31,0.92);
-  --hy-cg-brd: rgba(255,255,255,0.16);
-  --hy-cg-sh: inset 0 1px 0 rgba(255,255,255,0.12), 0 -4px 16px rgba(0,0,0,0.14), 0 18px 50px rgba(0,0,0,0.34);
-}
-/* 床：容器即玻璃（fixed 定位下用 left/right inset 浮起为圆角卡） */
-html[data-app="1"] .chat-main.has-bg .chat-input-bar {
-  left: 10px; right: 10px;
-  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
-  border-radius: 28px;
-  background: var(--hy-cg-bg) !important;
-  border: 1px solid var(--hy-cg-brd);
-  -webkit-backdrop-filter: var(--hy-cg-blur) !important; backdrop-filter: var(--hy-cg-blur) !important;
-  box-shadow: var(--hy-cg-sh);
-}
-html[data-app="1"] .chat-main.has-bg .chat-input-bar:focus-within {
-  border-color: rgba(84,214,240,0.5);
-  box-shadow: var(--hy-cg-sh), 0 0 0 3px rgba(34,211,238,0.16);
-}
-/* 床上的内容层：一律透明，去掉各自的玻璃/描边/阴影 */
-html[data-app="1"] .chat-main.has-bg .chat-input-bar .box,
-html[data-app="1"] .chat-main.has-bg .chat-input-bar .box:focus-within,
-html[data-app="1"] .chat-main.has-bg .chat-plus-sheet,
-html[data-app="1"] .chat-main.has-bg .action-panel {
-  background: none !important; border: none !important;
-  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
-  box-shadow: none !important;
-}
-html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { padding: 4px 4px 4px 8px; }
-html[data-app="1"] .chat-main.has-bg .chat-plus-sheet,
-html[data-app="1"] .chat-main.has-bg .chat-plus-sheet.paged { margin: 6px 0 0; padding: 6px 4px 2px; border-radius: 0; }
-/* 单层床不需要「另一张卡」的把手 */
-html[data-app="1"] .chat-main.has-bg .chat-plus-sheet::before { display: none; }
-/* lite 档：床退化为不透明底，避免无模糊时糊底穿帮 */
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar {
-  background: var(--hy-cg-bg-solid) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
-}
-
-/* ============================================================================
-   呼吸动效 —— 让「在线」的角色更有存在感、就绪的送出键更吸睛（部分 UI）
-   ========================================================================== */
-@keyframes hyBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-@keyframes hySendBreath {
-  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 14px rgba(14,156,184,0.42); }
-  50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 7px 24px rgba(34,211,238,0.72); }
-}
-/* 角色头像轻呼吸（"活着"的存在感）——与 .live 流式描边互不干扰 */
-html[data-app="1"] .chat-main .ch-av .avatar { animation: hyBreath 3.6s ease-in-out infinite; will-change: transform; }
-/* 送出键就绪呼吸：仅在有内容可发（未禁用、非停止态）时呼吸，引导点击 */
-html[data-app="1"] .chat-input-bar .send-btn:not(:disabled):not(.stop) { animation: hySendBreath 2.6s ease-in-out infinite; }
-[data-perf="lite"] .ch-av .avatar, [data-perf="lite"] .chat-input-bar .send-btn { animation: none !important; }
-@media (prefers-reduced-motion: reduce) {
-  html[data-app="1"] .chat-main .ch-av .avatar,
-  html[data-app="1"] .chat-input-bar .send-btn:not(:disabled):not(.stop) { animation: none !important; }
-}
+/* 单层玻璃「床」与呼吸动效 —— 已迁移并进化至 chat/chat-app.css（输入岛 §8） */
 
 /* ============================================================================
    触屏 hover 粘滞治理 —— 触摸设备上 :hover 在点击后保持到下一次触摸，
@@ -8658,121 +8600,8 @@ html[data-app="1"][data-theme="light"] body {
 }
 
 /* ============================================================
-   1. 沉浸对话 —— 参考图重构：亮玻璃内容卡 + 深玻璃控件
+   1. 沉浸对话（chat 皮肤）—— 已整体迁移至 chat/chat-app.css（app 对话皮肤唯一权威来源）
    ============================================================ */
-/* 角色名 → 深玻璃小胶囊，吊在内容卡上沿（参考图的「沈清秋」标签） */
-html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 12px; margin: 0 0 6px 2px; position: relative; z-index: 2;
-  border-radius: 999px;
-  background: var(--gls-dark-bg);
-  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
-  border: 1px solid rgba(255,255,255,0.14);
-  color: #fff; font-size: 12.5px; text-shadow: none;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
-}
-html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name .msg-time { color: rgba(255,255,255,0.55); }
-/* 内容卡：亮玻璃 + 深色文字（可读性远超深卡白字，正是参考 App 的做法） */
-html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble {
-  background: var(--gls-lite-bg);
-  -webkit-backdrop-filter: var(--gls-lite-blur); backdrop-filter: var(--gls-lite-blur);
-  border: 1px solid var(--gls-hairline);
-  color: var(--gls-lite-text);
-  border-radius: 22px; border-top-left-radius: 8px;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255,255,255,0.65);
-  text-shadow: none;
-}
-html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act {
-  color: var(--gls-lite-muted); font-style: italic;
-}
-/* 用户气泡：青渐变玻璃（自己的话保持品牌色，与亮卡形成主客区分） */
-html[data-app="1"] .chat-main.has-bg .msg.user .bubble {
-  background: linear-gradient(135deg, rgba(34, 211, 238, 0.82), rgba(10, 127, 151, 0.86));
-  -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%);
-  border: 1px solid rgba(255,255,255,0.30);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 24px rgba(14,156,184,0.30);
-}
-/* 流式光标适配亮卡 */
-html[data-app="1"] .chat-main.has-bg .msg.assistant.streaming .bubble::after { background: #0e9cb8; }
-/* 好感徽章 / 身份胶囊 / 返回键：统一深玻璃语言（微调密度） */
-html[data-app="1"] .chat-main.has-bg .ch-idpill,
-html[data-app="1"] .chat-main.has-bg .affinity-badge {
-  background: var(--gls-dark-bg);
-  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
-  border: 1px solid rgba(255,255,255,0.13);
-}
-html[data-app="1"] .chat-main.has-bg .chat-tool,
-html[data-app="1"] .chat-main.has-bg .chat-back {
-  background: var(--gls-dark-bg);
-  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
-  border: 1px solid rgba(255,255,255,0.10);
-}
-/* 开场/试试开口 chips：更轻的深玻璃（参考图底部功能 chips 的密度） */
-html[data-app="1"] .chat-main.has-bg .starter-chips .muted { color: rgba(255,255,255,0.85); text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
-html[data-app="1"] .chat-main.has-bg .starter-chip {
-  background: rgba(20, 17, 26, 0.44);
-  -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%);
-}
-/* 消息内嵌图片 / 面板圆角与卡面一致 */
-html[data-app="1"] .chat-main.has-bg .wb-inline-img { border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-/* 档案抽屉：整面深玻璃 */
-html[data-app="1"] .chat-drawer {
-  background: rgba(20, 17, 26, 0.86);
-  -webkit-backdrop-filter: blur(30px) saturate(160%); backdrop-filter: blur(30px) saturate(160%);
-  border-left: 1px solid rgba(255,255,255,0.10); color: #f0edea;
-}
-html[data-app="1"] .chat-drawer .cd-head { border-bottom-color: rgba(255,255,255,0.10); }
-html[data-app="1"] .chat-drawer h4 { color: rgba(255,255,255,0.9); }
-html[data-app="1"] .chat-drawer .muted { color: rgba(255,255,255,0.55); }
-html[data-app="1"] .chat-drawer .wb-item { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; }
-html[data-app="1"] .chat-drawer .wb-keys span { background: rgba(34,211,238,0.16); color: #9ceaf7; }
-html[data-app="1"] .chat-drawer .mem-item { background: rgba(255,255,255,0.06); border-radius: 12px; }
-html[data-app="1"] .chat-drawer .af-bar { background: rgba(255,255,255,0.12); }
-html[data-app="1"] .chat-drawer .input { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); color: #fff; }
-/* 更多菜单 / 反应面板 / 搜索条：深玻璃 */
-html[data-app="1"] .chat-main.has-bg .chat-menu {
-  background: rgba(24, 20, 30, 0.92);
-  -webkit-backdrop-filter: blur(26px) saturate(160%); backdrop-filter: blur(26px) saturate(160%);
-  border: 1px solid rgba(255,255,255,0.12);
-}
-html[data-app="1"] .chat-main.has-bg .chat-menu button { color: rgba(255,255,255,0.88); }
-html[data-app="1"] .chat-main.has-bg .chat-menu button:active { background: rgba(255,255,255,0.08); }
-html[data-app="1"] .chat-main.has-bg .chat-menu-row { color: rgba(255,255,255,0.85); }
-html[data-app="1"] .chat-main.has-bg .chat-menu-sep { background: rgba(255,255,255,0.10); }
-html[data-app="1"] .chat-main.has-bg .react-pop {
-  background: rgba(24, 20, 30, 0.92);
-  -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
-  border: 1px solid rgba(255,255,255,0.12);
-}
-html[data-app="1"] .chat-main.has-bg .chat-search {
-  background: rgba(20, 17, 26, 0.72);
-  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255,255,255,0.10);
-}
-html[data-app="1"] .chat-main.has-bg .chat-search input { color: #fff; }
-/* 动作/表情面板：深玻璃胶囊组 */
-html[data-app="1"] .chat-main.has-bg .action-panel button {
-  background: rgba(20, 17, 26, 0.6);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border-color: rgba(255,255,255,0.14);
-}
-/* 「回到底部」深玻璃圆钮 */
-html[data-app="1"] .chat-main.has-bg .scroll-bottom-btn {
-  background: var(--gls-dark-bg); color: #fff;
-  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
-  border: 1px solid rgba(255,255,255,0.16);
-}
-
-/* ---- 无背景（白+青）聊天：卡面玻璃化，光晕透底 ---- */
-html[data-app="1"] .chat-main:not(.has-bg) .msg.assistant .bubble {
-  background: var(--gls-panel-bg);
-  -webkit-backdrop-filter: var(--gls-panel-blur); backdrop-filter: var(--gls-panel-blur);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-}
-html[data-app="1"] .chat-main:not(.has-bg) .chat-input-bar .box {
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
-}
 
 /* ============================================================
    2. 全局 chrome 玻璃化 —— 顶栏 / 分段 / 弹层 / 菜单 / 输入

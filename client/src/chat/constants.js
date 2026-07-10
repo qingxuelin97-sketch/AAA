@@ -37,6 +37,21 @@ export const AFFINITY_LEVELS = [
   { min: 250, name: '挚爱', icon: '💖' },
 ];
 
+// 时间分隔：相邻两条消息间隔 > 阈值（默认 10min）时返回分隔标签，否则 null。
+// created_at 为服务端 'YYYY-MM-DD HH:MM:SS'（本地化展示只取到分钟；跨天带日期）。
+export function timeDivider(prevAt, curAt, gapMin = 10) {
+  if (!curAt) return null;
+  const cur = new Date(String(curAt).replace(' ', 'T'));
+  if (isNaN(cur)) return null;
+  const hhmm = String(curAt).slice(11, 16);
+  if (!prevAt) return hhmm;   // 会话首条也给一个时间锚
+  const prev = new Date(String(prevAt).replace(' ', 'T'));
+  if (isNaN(prev)) return null;
+  if (cur - prev < gapMin * 60 * 1000) return null;
+  const sameDay = String(prevAt).slice(0, 10) === String(curAt).slice(0, 10);
+  return sameDay ? hhmm : `${String(curAt).slice(5, 10)} ${hhmm}`;
+}
+
 export function affinityInfo(v) {
   v = v || 0; let idx = 0;
   for (let i = 0; i < AFFINITY_LEVELS.length; i++) if (v >= AFFINITY_LEVELS[i].min) idx = i;
