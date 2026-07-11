@@ -473,7 +473,7 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 /* 降采样技巧：盒子取原来的一半、blur 减半，再用 transform: scale(2) 放大回原视觉尺寸。
    模糊像素量降到 1/16 而旋转的彩色柔光观感不变（旧写法每帧对 60%×220% 大层做 60px 模糊）。
    inset 由 -30%/-10% 换算为 25%/5%，保证放大后的视觉中心与原来完全一致。 */
-.wb-hero-aurora { position: absolute; inset: 25% 5% auto auto; width: 30%; height: 110%; background: conic-gradient(from 180deg at 50% 50%, #c97a3f, #7c5bd9, #d4677a, #e89a5b, #c97a3f); filter: blur(30px); opacity: 0.22; transform: scale(2); animation: wb-aurora 18s linear infinite; will-change: transform; }
+.wb-hero-aurora { position: absolute; inset: 25% 5% auto auto; width: 30%; height: 110%; background: conic-gradient(from 180deg at 50% 50%, #c97a3f, #7c5bd9, #d4677a, #e89a5b, #c97a3f); filter: blur(22px); opacity: 0.22; transform: scale(2); animation: wb-aurora 24s linear infinite; will-change: transform; }
 [data-theme="dark"] .wb-hero-aurora { opacity: 0.35; }
 @keyframes wb-aurora { from { transform: scale(2) rotate(0deg); } to { transform: scale(2) rotate(360deg); } }
 .wb-hero-content { position: relative; z-index: 1; }
@@ -6798,9 +6798,11 @@ html[data-app="1"] {
   --gl-1-bg: color-mix(in srgb, var(--panel) 62%, transparent);
   --gl-2-bg: color-mix(in srgb, var(--panel) 74%, transparent);
   --gl-3-bg: color-mix(in srgb, var(--panel) 84%, transparent);
-  --gl-1-blur: blur(18px) saturate(180%);
-  --gl-2-blur: blur(26px) saturate(180%);
-  --gl-3-blur: blur(38px) saturate(200%);
+  /* blur 成本随半径超线性增长；>20px 在手机 DPR 下感知差异极小，
+     三档整体下调一级（18/26/38 → 14/20/28），观感几乎不变、GPU 显著减负 */
+  --gl-1-blur: blur(14px) saturate(180%);
+  --gl-2-blur: blur(20px) saturate(180%);
+  --gl-3-blur: blur(28px) saturate(200%);
   --gl-border: color-mix(in srgb, #fff 14%, transparent);
   --gl-border-in: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
   --gl-shadow: 0 12px 34px rgba(0,0,0,0.28);
@@ -8098,8 +8100,20 @@ html[data-app="1"] .btn.primary:active::after { opacity: 1; transform: scale(1.6
 html[data-app="1"] .empty .big, html[data-app="1"] .empty svg:first-child { animation: emptyFloat 4.4s ease-in-out infinite; }
 @keyframes emptyFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 /* 钱包签到主按钮：待签状态微光呼吸吸引视线，签完静止 */
-html[data-app="1"] .wallet-hero .checkin-btn:not(:disabled) { animation: checkinGlow 2.8s ease-in-out infinite; }
-@keyframes checkinGlow { 0%, 100% { box-shadow: 0 8px 20px rgba(14,156,184,0.30); } 50% { box-shadow: 0 8px 30px rgba(14,156,184,0.52); } }
+/* 签到/CTA 待机微光：辉光画在伪元素上一次光栅化，循环只动 opacity
+   （旧 checkinGlow 逐帧动 box-shadow，每帧 repaint）。hyGlowBreathe 见 CTA 段。 */
+html[data-app="1"] .wallet-hero .checkin-btn, html[data-app="1"] .ah-checkin, html[data-app="1"] .ach-go { position: relative; }
+html[data-app="1"]:not([data-perf="lite"]) .wallet-hero .checkin-btn:not(:disabled)::before,
+html[data-app="1"]:not([data-perf="lite"]) .ah-checkin:not(.done)::before,
+html[data-app="1"]:not([data-perf="lite"]) .ach-go:not(:disabled)::before {
+  content: ''; position: absolute; inset: -5px; border-radius: 999px; z-index: -1;
+  background: radial-gradient(62% 130% at 50% 50%, rgba(14,156,184,0.42), transparent 76%);
+  pointer-events: none; animation: hyGlowBreathe 2.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .wallet-hero .checkin-btn::before, html[data-app="1"] .ah-checkin::before,
+  html[data-app="1"] .ach-go::before { animation: none !important; }
+}
 /* 会员横幅光泽扫过（低频，8s 一次，不打扰） */
 html[data-app="1"] .pf-vip { position: relative; overflow: hidden; }
 html[data-app="1"] .pf-vip::after {
@@ -8149,7 +8163,8 @@ html[data-app="1"] .app-sheet-grip { animation: gripHint 2.6s ease-in-out infini
 /* ---- 角色详情：hero 视差呼吸 + 开聊 CTA 待机微光 ---- */
 html[data-app="1"] .char-hero-bg { animation: heroDrift 34s ease-in-out infinite alternate; will-change: transform; }
 @keyframes heroDrift { from { transform: scale(1.04); } to { transform: scale(1.1) translateY(-1.4%); } }
-html[data-app="1"] .cvx .btn.primary { animation: checkinGlow 3.2s ease-in-out infinite; }
+/* 开聊 CTA（overflow:hidden 容不下外扩辉光）：改为轻微 scale 呼吸（合成器直通） */
+html[data-app="1"] .cvx .btn.primary:not(:active) { animation: hyCtaScale 3.2s ease-in-out infinite; }
 
 /* ---- 扭蛋机：待机摇晃蓄力 + 出货弹跳 + 稀有度闪光 ---- */
 html[data-app="1"] .gx-cover { transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -8169,7 +8184,7 @@ html[data-app="1"] .ach-grid > *:nth-child(3) { animation-delay: 0.10s; }
 html[data-app="1"] .ach-grid > *:nth-child(4) { animation-delay: 0.15s; }
 html[data-app="1"] .ach-grid > *:nth-child(5) { animation-delay: 0.20s; }
 html[data-app="1"] .ach-grid > *:nth-child(6) { animation-delay: 0.25s; }
-html[data-app="1"] .ach-go:not(:disabled) { animation: checkinGlow 2.6s ease-in-out infinite; }
+/* .ach-go 待机微光：见 checkin 段的伪元素 opacity 呼吸（此处不再动 box-shadow） */
 html[data-app="1"] .ach-hall-glow { animation: hallGlow 5s ease-in-out infinite; }
 @keyframes hallGlow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 
@@ -8531,8 +8546,15 @@ html[data-app="1"] .cvx-body .card { border-radius: 20px; }
 /* ---- 通知中心：图标色相分组 + 未读点脉冲 ---- */
 html[data-app="1"] .noti-ic { width: 44px; height: 44px; border-radius: 15px; }
 html[data-app="1"] .noti-item { gap: 12px; }
-html[data-app="1"] .noti-dot { animation: notiPulse 2s ease-in-out infinite; }
-@keyframes notiPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.4); } 50% { box-shadow: 0 0 0 5px rgba(244,63,94,0); } }
+/* 未读点脉冲：box-shadow 扩散环 → 伪元素 scale+opacity 环（合成器直通） */
+html[data-app="1"] .noti-dot { position: relative; }
+html[data-app="1"]:not([data-perf="lite"]) .noti-dot::after {
+  content: ''; position: absolute; inset: -2px; border-radius: 50%;
+  border: 2px solid rgba(244,63,94,0.45); pointer-events: none;
+  animation: notiRing 2s ease-in-out infinite;
+}
+@keyframes notiRing { 0% { transform: scale(0.65); opacity: 0.9; } 70%, 100% { transform: scale(1.7); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] .noti-dot::after { animation: none !important; content: none; } }
 html[data-app="1"] .noti-allread { position: sticky; bottom: calc(var(--app-bot) + 10px); z-index: 5;
   box-shadow: 0 8px 24px rgba(14,156,184,0.30); }
 
@@ -8563,7 +8585,7 @@ html[data-app="1"] .ah-coin { border-radius: 999px; backdrop-filter: blur(10px);
   transition: transform 0.14s; }
 html[data-app="1"] .ah-coin:active { transform: scale(0.92); }
 html[data-app="1"] .ah-checkin { box-shadow: 0 6px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.25); }
-html[data-app="1"] .ah-checkin:not(.done) { animation: checkinGlow 3s ease-in-out infinite; }
+/* .ah-checkin 待机微光：见 checkin 段的伪元素 opacity 呼吸（此处不再动 box-shadow） */
 html[data-app="1"] .ah-sc-ic { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 12px rgba(13,74,88,0.10); }
 
 /* ---- 消息中心：入口卡渐变图标统一挂投影 ---- */
@@ -8612,14 +8634,16 @@ html[data-app="1"] .conv-item:active { transform: scale(0.98); }
 
 /* ---- 0. 玻璃令牌 ---- */
 html[data-app="1"] {
-  --gls-lite-bg: rgba(255, 253, 248, 0.78);        /* 亮玻璃（立绘上的内容卡） */
-  --gls-lite-blur: blur(26px) saturate(170%);
+  /* 亮玻璃是逐条消息一层的实时采样（滚动时 N 个气泡同时算），blur 半径是
+     大头 —— 26→12px 并 +6% 不透明度补观感：像素级差异微小，滚动帧率大改善 */
+  --gls-lite-bg: rgba(255, 253, 248, 0.84);        /* 亮玻璃（立绘上的内容卡） */
+  --gls-lite-blur: blur(12px) saturate(170%);
   --gls-lite-text: #2b2420;
   --gls-lite-muted: rgba(58, 48, 42, 0.66);
   --gls-dark-bg: rgba(22, 18, 28, 0.55);           /* 深玻璃（控件/标签胶囊） */
-  --gls-dark-blur: blur(18px) saturate(160%);
-  --gls-panel-bg: color-mix(in srgb, var(--panel) 76%, transparent);   /* 浅色语境卡 */
-  --gls-panel-blur: blur(22px) saturate(165%);
+  --gls-dark-blur: blur(14px) saturate(160%);
+  --gls-panel-bg: color-mix(in srgb, var(--panel) 78%, transparent);   /* 浅色语境卡 */
+  --gls-panel-blur: blur(16px) saturate(165%);
   --gls-hairline: rgba(255, 255, 255, 0.55);
 }
 html[data-app="1"][data-theme="dark"] {

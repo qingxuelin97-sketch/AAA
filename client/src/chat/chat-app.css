@@ -53,16 +53,17 @@ html[data-app="1"] .chat-head .ch-av {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14) inset;
 }
 html[data-app="1"] .chat-head .ch-av .avatar { border: 2px solid rgba(255, 255, 255, 0.16); }
-/* 在线状态点：呼吸绿 */
+/* 在线状态点：呼吸绿。扩散环从 box-shadow 逐帧动画改为 ::after 的
+   scale+opacity 环（合成器直通，零 repaint）。 */
 html[data-app="1"] .chat-head .ch-dot {
-  background: #34d399; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
-  animation: chatDot 2.4s var(--chat-ease) infinite;
+  position: relative; background: #34d399; box-shadow: none; animation: none;
 }
-@keyframes chatDot {
-  0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
-  70%  { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+html[data-app="1"] .chat-head .ch-dot::after {
+  content: ''; position: absolute; inset: -2px; border-radius: 50%;
+  border: 2px solid rgba(52, 211, 153, 0.55); pointer-events: none;
+  animation: chatDotRing 2.4s var(--chat-ease) infinite;
 }
+@keyframes chatDotRing { 0% { transform: scale(0.6); opacity: 0.9; } 70%, 100% { transform: scale(1.9); opacity: 0; } }
 /* 好感徽章进度条上色为品牌青（原为 accent），与头像环呼应 */
 html[data-app="1"] .chat-main .affinity-badge .af-tx i > em {
   background: linear-gradient(90deg, var(--chat-accent), var(--chat-accent-2));
@@ -114,13 +115,14 @@ html[data-app="1"] .chat-main .msg.user .bubble {
 }
 html[data-app="1"] .chat-main .msg.user.run-start .bubble { border-top-right-radius: var(--chat-anchor-radius); }
 
-/* 角色名 → 深玻璃小胶囊，前置一枚青点 */
+/* 角色名 → 深色小胶囊，前置一枚青点。
+   注：不再挂 backdrop-filter —— 每条 run-start 消息一枚的小胶囊是叠层里
+   最不划算的一档实时模糊，改半透明实底肉眼几乎无差。 */
 html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 5px 12px 5px 10px; margin: 0 0 6px 2px; position: relative; z-index: 2;
   border-radius: 999px;
-  background: var(--gls-dark-bg);
-  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
+  background: rgba(22, 18, 28, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #fff; font-size: 12.5px; text-shadow: none;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
@@ -235,7 +237,7 @@ html[data-app="1"] .chat-main .starter-chip.on { border-color: var(--chat-accent
 
 /* ── 8. 悬浮输入岛 —— 单层玻璃、圆角浮起、送出键就绪呼吸/形变 ── */
 html[data-app="1"] .chat-main {
-  --hy-cg-blur: blur(24px) saturate(150%);
+  --hy-cg-blur: blur(18px) saturate(150%);
   --hy-cg-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(240, 250, 252, 0.68));
   --hy-cg-bg-solid: #f3fbfd;
   --hy-cg-brd: var(--border-2);
@@ -274,18 +276,26 @@ html[data-app="1"] .chat-main .chat-input-bar .box { padding: 4px 4px 4px 8px; }
 html[data-app="1"] .chat-main .chat-plus-sheet,
 html[data-app="1"] .chat-main .chat-plus-sheet.paged { margin: 6px 0 0; padding: 6px 4px 2px; border-radius: 0; }
 html[data-app="1"] .chat-main .chat-plus-sheet::before { display: none; }
-/* 送出键：就绪时青色实心 + 呼吸；点按微缩 */
+/* 送出键：就绪时青色实心 + 呼吸辉光；点按微缩。
+   呼吸辉光画在 ::before 上一次光栅化，循环只动 opacity（合成器直通 ——
+   旧 chatSendBreath 逐帧动 box-shadow，常显键 = 常驻 repaint）。 */
 html[data-app="1"] .chat-main .chat-input-bar .send-btn {
+  position: relative;
   background: linear-gradient(135deg, var(--chat-accent), var(--chat-accent-2));
   color: #fff; transition: transform 0.16s var(--chat-ease);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 14px color-mix(in srgb, var(--chat-accent-2) 42%, transparent);
 }
-html[data-app="1"] .chat-main .chat-input-bar .send-btn:not(:disabled):not(.stop) { animation: chatSendBreath 2.6s var(--chat-ease) infinite; }
+html[data-app="1"] .chat-main .chat-input-bar .send-btn::before {
+  content: ''; position: absolute; inset: -6px; border-radius: 50%; z-index: -1;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--chat-accent) 55%, transparent), transparent);
+  opacity: 0; pointer-events: none;
+}
+html[data-app="1"] .chat-main .chat-input-bar .send-btn:not(:disabled):not(.stop)::before {
+  animation: chatSendGlow 2.6s var(--chat-ease) infinite;
+}
+@keyframes chatSendGlow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.85; } }
 html[data-app="1"] .chat-main .chat-input-bar .send-btn:active { transform: scale(0.9); }
 html[data-app="1"] .chat-main .chat-input-bar .send-btn.stop { background: rgba(120, 120, 130, 0.9); }
-@keyframes chatSendBreath {
-  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 14px color-mix(in srgb, var(--chat-accent-2) 42%, transparent); }
-  50%      { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 7px 24px color-mix(in srgb, var(--chat-accent) 72%, transparent); }
-}
 /* 头像轻呼吸（存在感）——与 .live 流式描边互不干扰 */
 html[data-app="1"] .chat-main .ch-av .avatar { animation: chatBreath 3.6s var(--chat-ease) infinite; }
 @keyframes chatBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
@@ -442,6 +452,14 @@ html[data-app="1"] .msg-sheet .ms-row.on svg { color: var(--chat-accent); }
   html[data-app="1"] .chat-main .msg-acts { display: none; }
 }
 
+/* ── 11b. 长对话渲染裁剪 —— 屏外消息跳过渲染（含 backdrop-filter 采样），
+   数百条的会话滚动/流式时只画视口附近；contain-intrinsic-size 估高避免
+   滚动条跳动。scrollIntoView（搜索/书签跳转）会强制目标渲染，不受影响。 ── */
+html[data-app="1"] .chat-thread .msg {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px;
+}
+
 /* ── 12. 动效编排 —— 消息入场（一次性，进入视口即停）── */
 html[data-app="1"] .chat-main .msg { animation: chatMsgIn 0.34s var(--chat-ease) both; }
 html[data-app="1"] .chat-main .msg.user { animation-name: chatMsgInR; }
@@ -459,7 +477,9 @@ html[data-app="1"][data-perf="lite"] .chat-main .chat-bg > video { animation: no
 [data-perf="lite"] .chat-main .msg,
 [data-perf="lite"] .chat-main .ch-av .avatar,
 [data-perf="lite"] .chat-main .chat-input-bar .send-btn,
+[data-perf="lite"] .chat-main .chat-input-bar .send-btn::before,
 [data-perf="lite"] .chat-main .ch-dot,
+[data-perf="lite"] .chat-main .ch-dot::after,
 [data-perf="lite"] .chat-main .chat-hero .ch-hero-av::after { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] .chat-main .msg,
@@ -467,6 +487,8 @@ html[data-app="1"][data-perf="lite"] .chat-main .chat-bg > video { animation: no
   html[data-app="1"] .chat-main .chat-bg > img,
   html[data-app="1"] .chat-main .chat-bg > video,
   html[data-app="1"] .chat-main .chat-input-bar .send-btn:not(:disabled):not(.stop),
+  html[data-app="1"] .chat-main .chat-input-bar .send-btn::before,
+  html[data-app="1"] .chat-main .ch-dot::after,
   html[data-app="1"] .chat-main .ch-dot,
   html[data-app="1"] .chat-main .msg.assistant.streaming .bubble::after,
   html[data-app="1"] .chat-main .chat-hero .ch-hero-av::after,
