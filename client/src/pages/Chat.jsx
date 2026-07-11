@@ -296,13 +296,15 @@ export default function Chat() {
   // Only auto-stick to the bottom when the user is already near it (don't yank them
   // away while they scroll back to read history).
   useEffect(() => { if (atBottom) scrollToBottom(); }, [messages, streaming]);
-  // 背景视差：滚动聊天时立绘以 6% 速率轻微反向漂移，画面即刻「活」起来。
-  // rAF 节流 + 直接写 CSS 变量（不触发 React 渲染），lite 档/减弱动效自动无感（CSS 侧不消费）。
+  // 背景视差（--chat-para）：仅 Web 壳保留。APP 壳已移除 —— 真机审查发现它与
+  // Ken-Burns 争用同一 transform，滚动时背景层被双重驱动持续 invalidate，上方
+  // 每条玻璃气泡的 backdrop-filter 被迫每帧重采样，是 865 级机型掉帧主因之一；
+  // APP 壳的背景生命感由进入时的单次 Ken-Burns 承担（chat-app.css）。
   const bgParaRef = useRef(0);
   const onScroll = () => {
     const el = scrollRef.current; if (!el) return;
     setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
-    if (!bgParaRef.current) {
+    if (!isAppMode() && !bgParaRef.current) {
       bgParaRef.current = requestAnimationFrame(() => {
         bgParaRef.current = 0;
         const sc = scrollRef.current; if (!sc) return;

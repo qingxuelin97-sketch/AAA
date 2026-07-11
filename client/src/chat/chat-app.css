@@ -31,16 +31,21 @@ html[data-app="1"] .chat-main.has-bg::before {
   background: linear-gradient(180deg, rgba(8, 10, 14, 0.52), rgba(8, 10, 14, 0.14) 58%, transparent);
   pointer-events: none;
 }
-/* 立绘轻微 Ken-Burns + 滚动视差（--chat-para 由 Chat.jsx 写入），活起来但克制 */
+/* 立绘 Ken-Burns：进入时单次缓推 24s 后冻结（both）。
+   不再无限循环 —— 背景每帧在动会逼着上方每条玻璃气泡的 backdrop-filter
+   逐帧重采样模糊（一屏 5-8 条 × 60fps，静置也永不停歇），是 865 级真机
+   最大的常驻 GPU 开销；冻结后模糊只在滚动/流式的脏区重算。
+   视频背景不加缩放动画：视频帧本身在动，叠加 transform 只多花合成费。
+   滚动视差（--chat-para）已随此一并移除，动效来源收敛为一。 */
 html[data-app="1"] .chat-main.has-bg .chat-bg { will-change: transform; }
-html[data-app="1"] .chat-main.has-bg .chat-bg > img,
-html[data-app="1"] .chat-main.has-bg .chat-bg > video {
-  transform: translate3d(0, calc(var(--chat-para, 0px) * -1), 0) scale(1.06);
-  animation: chatKenBurns 42s ease-in-out infinite alternate;
+html[data-app="1"] .chat-main.has-bg .chat-bg > img {
+  transform: scale(1.06);
+  animation: chatKenBurns 24s ease-out 1 both;
 }
+html[data-app="1"] .chat-main.has-bg .chat-bg > video { transform: none; animation: none; }
 @keyframes chatKenBurns {
-  from { transform: translate3d(0, calc(var(--chat-para, 0px) * -1), 0) scale(1.06); }
-  to   { transform: translate3d(0, calc(var(--chat-para, 0px) * -1 - 10px), 0) scale(1.12); }
+  from { transform: scale(1.06); }
+  to   { transform: translate3d(0, -10px, 0) scale(1.12); }
 }
 
 /* ── 2. 临场头部 —— 头像好感环 + 悬浮玻璃药丸 ── */
