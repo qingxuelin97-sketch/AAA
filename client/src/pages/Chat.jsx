@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
+import { useNav } from '../nav.js';
 import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
@@ -22,7 +23,7 @@ import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, Pan
 
 export default function Chat() {
   const { id } = useParams();
-  const nav = useNavigate();
+  const nav = useNav();
   const loc = useLocation();
   const toast = useToast();
   const { refreshUser } = useAuth();

@@ -10,7 +10,7 @@
 // 性能要点：前两屏图片 eager、其余 lazy；开场白/介绍均为纯文本层，无额外请求；
 //  IntersectionObserver 驱动当前卡索引（比 scroll 事件在 snap 下更稳、更省电）。
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
@@ -41,7 +41,7 @@ const pushRecent = (c) => {
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
 export default function DiscoverFeed() {
-  const nav = useNavigate();
+  const nav = useNav();
   const toast = useToast();
   const [chars, setChars] = useState([]);
   const [mode, setMode] = useState('recommend'); // 发现流分段：recommend 推荐 / new 新作 / follow 关注
