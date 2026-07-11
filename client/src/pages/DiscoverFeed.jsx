@@ -224,7 +224,7 @@ export default function DiscoverFeed() {
           // 解码器和内存不随列表膨胀），远处的卡仍用静态图兜底。
           const liveBg = near && c.background && c.background_type === 'video';
           return (
-            <section key={c.id} className="feed-card" data-idx={i}>
+            <section key={c.id} className={'feed-card' + (i === activeIdx ? ' cur' : '')} data-idx={i}>
               {liveBg
                 ? <video className="feed-bg" src={assetUrl(c.background)} poster={c.avatar ? assetUrl(c.avatar) : undefined}
                     muted loop autoPlay playsInline preload="metadata" />

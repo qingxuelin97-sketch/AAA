@@ -9650,12 +9650,26 @@ html[data-app="1"] .cvx-tile svg { color: var(--accent); }
 /* ============================================================================
    幻域重设计 · 真机反馈修正
    ========================================================================== */
-/* ① 发现页「进入对话」呼吸辉光 */
-@keyframes hy-cta-breathe {
-  0%, 100% { box-shadow: 0 8px 22px rgba(15,181,166,0.4); }
-  50% { box-shadow: 0 13px 34px rgba(15,181,166,0.72); }
+/* ① 发现页「进入对话」呼吸：辉光画在 ::before 上一次光栅化，循环只动
+   opacity + scale（合成器直通 —— 旧版逐帧动 box-shadow，每帧 repaint）。
+   仅当前卡（.feed-card.cur，activeIdx 驱动）呼吸，屏外卡零动画。 */
+html[data-app="1"] .fd2-enter { position: relative; }
+html[data-app="1"] .fd2-enter::before {
+  content: ''; position: absolute; inset: -7px; border-radius: 999px; z-index: -1;
+  background: radial-gradient(60% 130% at 50% 50%, rgba(15,181,166,0.55), rgba(15,181,166,0.18) 62%, transparent 78%);
+  opacity: 0; pointer-events: none;
 }
-html[data-app="1"]:not([data-perf="lite"]) .fd2-enter { animation: hy-cta-breathe 2.2s ease-in-out infinite; }
+@keyframes hyGlowBreathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
+@keyframes hyCtaScale { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+html[data-app="1"]:not([data-perf="lite"]) .feed-card.cur .fd2-enter::before {
+  animation: hyGlowBreathe 2.4s ease-in-out infinite;
+}
+html[data-app="1"]:not([data-perf="lite"]) .feed-card.cur .fd2-enter:not(:active) {
+  animation: hyCtaScale 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .fd2-enter, html[data-app="1"] .fd2-enter::before { animation: none !important; }
+}
 
 /* ② 发现页顶部「关注/推荐/新作」真正屏幕居中（搜索钮脱离布局流，绝对定位右上） */
 html[data-app="1"] .feed-modes { flex: 1; gap: 26px; }
