@@ -4641,8 +4641,9 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 .app-tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: min(480px, 100%); z-index: 60; box-sizing: border-box;
   display: flex; align-items: stretch; padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
-  backdrop-filter: saturate(150%) blur(16px); -webkit-backdrop-filter: saturate(150%) blur(16px);
+  /* 不挂 backdrop-filter：底栏固定在一切滚动内容之上，任何页面滚动都会让
+     它每帧重算一条全宽模糊带（865 常驻开销）；高不透明度实底观感近似 */
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
 .app-tab { flex: 1; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 2px; height: 52px; color: var(--faint); font-size: 10.5px; font-weight: 600; text-decoration: none;
@@ -6107,8 +6108,10 @@ html[data-app="1"][data-perf="lite"] .chat-main.has-bg .starter-chip { backdrop-
    ============================================================ */
 /* 注意：.feed-cats / .fd2-acts 永远叠在深色立绘上，铺白玻璃会成一条白带/白块
   （实机图三）；.chat-head 沉浸态另有专属处理 —— 三者从名单剔除。 */
+/* 注：.app-tabbar 已从名单剔除 —— 常驻固定层的实时模糊是滚动帧大开销，
+   底栏改半透明实底（见 .app-tabbar 基础规则与 Dock 段）。 */
 html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) :where(
-  .app-tabbar, .app-sheet, .app-header, .fd2-say,
+  .app-sheet, .app-header, .fd2-say,
   .fd2-intro, .card, .app-card, .chat-composer, .sheet, .modal-card
 ) {
   -webkit-backdrop-filter: saturate(1.5) blur(22px);
@@ -6116,11 +6119,9 @@ html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) :where(
   background-color: color-mix(in srgb, var(--panel) 62%, transparent);
   border-color: color-mix(in srgb, var(--border) 60%, transparent);
 }
-/* 悬浮 Dock 与底部弹层再重一点，玻璃质感更明显 */
+/* 悬浮 Dock：玻璃档也走实底（理由同上，常驻模糊带太贵），仅提高一点透感 */
 html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .app-tabbar {
-  background-color: color-mix(in srgb, var(--panel) 55%, transparent);
-  -webkit-backdrop-filter: saturate(1.6) blur(28px);
-  backdrop-filter: saturate(1.6) blur(28px);
+  background-color: color-mix(in srgb, var(--panel) 92%, transparent);
 }
 html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .fd2-say {
   background-color: rgba(20,16,28,0.42);
@@ -6904,12 +6905,12 @@ html[data-app="1"][data-theme="light"] .glass-noise::before { opacity: 0.05; }
    Dock / 顶部头行 / 发现分类条 / 底部 Sheet / 通话入口卡 / 播放器等
    ========================================================================== */
 
-/* —— Dock：真·双层玻璃 —— */
+/* —— Dock：高不透明实底 + 高光丝 + 噪点（观感保留，去掉常驻实时模糊）——
+   底栏是固定层，内容在其后滚动，backdrop-filter 意味着每帧重算一条全宽
+   模糊带；改 94% 实底后高光丝/噪点细节仍在，865 滚动帧立省一层。 */
 html[data-app="1"] .app-tabbar {
-  background: var(--gl-2-bg);
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
   border-top: 1px solid var(--gl-border);
-  backdrop-filter: var(--gl-2-blur);
-  -webkit-backdrop-filter: var(--gl-2-blur);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
     0 -8px 30px rgba(0,0,0,0.28);
@@ -9322,7 +9323,17 @@ html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name .msg-time { font-s
    ============================================================ */
 .ach-card { content-visibility: auto; contain-intrinsic-size: auto 112px; }
 /* 沉浸流每屏一卡：把布局/绘制影响锁在卡内，滑动时相邻卡互不牵连 */
-.feed-card { contain: layout paint style; }
+/* content-visibility:auto：屏外卡整棵跳过 layout/paint（图/scrim/玻璃层都不算）；
+   卡高是显式 100%，size containment 不影响 specified height，滚动条不跳。 */
+.feed-card { contain: layout paint style; content-visibility: auto; contain-intrinsic-size: auto 100%; }
+/* 滑动窗口期（相邻卡可见但未成 .cur）不算实时模糊：玻璃只留给当前卡 */
+html[data-app="1"] .feed-card:not(.cur) .fd2-intro,
+html[data-app="1"] .feed-card:not(.cur) .fd2-call,
+html[data-app="1"] .feed-card:not(.cur) .fd2-greet {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+html[data-app="1"] .feed-card:not(.cur) .fd2-intro { background: rgba(12,10,16,0.8); }
+html[data-app="1"] .feed-card:not(.cur) .fd2-call { background: rgba(255,255,255,0.92); }
 
 /* ============================================================================
    幻域 · App「白 + 青」毛玻璃重设计（材质层，仅 html[data-app="1"]）
