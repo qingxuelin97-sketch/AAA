@@ -192,7 +192,7 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .toast-err { background: rgba(74, 32, 26, 0.94); border-color: #6e352b; }
 .toast-err .toast-ic { color: #ff9a86; }
 .toast-info .toast-ic { color: #79c6e0; }
-@keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+/* toastIn 定义在 Toast 动效段（文件后部）—— 同名 keyframes 后写者全局获胜，此处旧版已删 */
 /* 到时优雅退场（此前是硬移除，一闪就没） */
 @keyframes toastOut { to { opacity: 0; transform: translateY(8px) scale(0.95); } }
 
@@ -552,7 +552,6 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .img-test-result .itr-sample { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .img-test-result .itr-sample img { max-width: 100%; max-height: 280px; border-radius: 9px; border: 1px solid var(--border-2); }
 .spin { animation: spin 0.9s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
 .uploader { border: 1.5px dashed var(--border-2); border-radius: 13px; padding: 18px; text-align: center; cursor: pointer; transition: 0.15s; position: relative; overflow: hidden; background: #fcfbf7; color: var(--muted); }
 .uploader:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-2); }
 .uploader .preview { width: 100%; height: 150px; object-fit: cover; border-radius: 9px; }
@@ -1107,7 +1106,7 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 @keyframes popIn { from { opacity: 0; transform: scale(0.965); } to { opacity: 1; transform: none; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sheen { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(220%) skewX(-18deg); } }
-@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+/* floaty 定义在空态插画段（-6px 版）—— 同名后写者全局获胜，此处 -3px 旧版已删 */
 
 /* page + element entrances */
 .page { animation: riseIn 0.42s cubic-bezier(0.22,0.61,0.36,1) both; }
@@ -2012,7 +2011,7 @@ body { background-image:
 @media (max-width: 860px) {
   .chat-drawer { width: 100%; border-left: none; }
 }
-@keyframes drawerIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
+/* drawerIn 定义在 APP 动效段（46px 淡入版）—— 同名后写者全局获胜，102% 平移旧版已删 */
 .cd-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .cd-head b { font-size: 14.5px; }
 .cd-head .speak { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; color: var(--muted);
@@ -3454,8 +3453,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 /* 方向性入场（用户从右、角色从左，带轻微缩放） */
 .msg.assistant { animation: msgInL 0.42s cubic-bezier(0.22,0.61,0.36,1) both; }
 .msg.user { animation: msgInR 0.42s cubic-bezier(0.22,0.61,0.36,1) both; }
-@keyframes msgInL { from { opacity: 0; transform: translateX(-14px) translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
-@keyframes msgInR { from { opacity: 0; transform: translateX(14px) translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
+/* msgInL/R 的 keyframes 定义在沉浸聊天动效段（内容相同的重复定义已收敛为一份） */
 @media (prefers-reduced-motion: reduce) { .msg.assistant, .msg.user { animation: fadeIn 0.2s both; } }
 
 /* ---- 输入区：更圆润、聚焦时渐变光圈 ---- */
@@ -3551,7 +3549,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   animation: barGrow 0.62s cubic-bezier(0.22,0.61,0.36,1) backwards; animation-delay: var(--d); }
 .bc-col.lead .bc-bar { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 16px color-mix(in srgb, var(--c) 38%, transparent); }
 .bc-col:hover .bc-bar { filter: brightness(1.06) saturate(1.05); }
-@keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+/* barGrow 定义在洞察页动效段（scaleY(0.08)+淡入版）—— 同名后写者全局获胜，旧版已删 */
 .bc-val { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700;
   color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; opacity: 0; animation: bcValIn 0.4s ease forwards; animation-delay: calc(var(--d) + 0.3s); }
 .bc-col.lead .bc-val { color: var(--accent-2); }
@@ -6965,10 +6963,8 @@ html[data-app="1"] .ah-hero::after {
   border-radius: inherit;
   filter: blur(1px);
 }
-@keyframes heroDrift {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(-8px, 6px, 0) scale(1.06); }
-}
+/* heroDrift 定义在角色详情动效段 —— 同名后写者全局获胜（此处曾有的
+   translate3d 旧版从未生效，已删；如需独立节奏请另起名字） */
 html[data-app="1"][data-perf="lite"] .ah-hero::after { animation: none; }
 @media (prefers-reduced-motion: reduce) { html[data-app="1"] .ah-hero::after { animation: none; } }
 /* hero 内的胶囊按钮真玻璃 */
