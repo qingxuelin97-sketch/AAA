@@ -317,12 +317,57 @@ html[data-app="1"] .chat-main.has-bg .react-pop {
   -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
-html[data-app="1"] .chat-main.has-bg .chat-search {
-  background: rgba(20, 17, 26, 0.72);
-  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+/* ── 对话内搜索 · 悬浮玻璃胶囊（APP 壳专属组件 ChatSearchBar，替代 Web 的过滤式平条）── */
+html[data-app="1"] .chat-main .hy-search {
+  position: relative; z-index: 28;
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 12px 2px; padding: 7px 7px 7px 14px;
+  border-radius: 999px;
+  background: var(--gls-lite-bg);
+  -webkit-backdrop-filter: var(--gls-lite-blur); backdrop-filter: var(--gls-lite-blur);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 10px 26px rgba(13, 74, 88, 0.12);
+  animation: hySearchIn 0.24s var(--chat-ease) both;
 }
-html[data-app="1"] .chat-main.has-bg .chat-search input { color: #fff; }
+@keyframes hySearchIn { from { opacity: 0; transform: translateY(-10px) scale(0.97); } to { opacity: 1; transform: none; } }
+html[data-app="1"] .chat-main .hy-search input {
+  flex: 1; min-width: 0; border: none; outline: none; background: none;
+  font-size: 14px; color: var(--gls-lite-text);
+}
+html[data-app="1"] .chat-main .hy-search .hy-search-ic { color: var(--chat-accent-ink); flex: none; }
+html[data-app="1"] .chat-main .hy-search .hy-search-count {
+  flex: none; font-size: 12px; font-weight: 700; color: var(--chat-accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+html[data-app="1"] .chat-main .hy-search .hy-search-count.none { font-weight: 500; opacity: 0.6; }
+html[data-app="1"] .chat-main .hy-search .hy-search-nav { display: flex; gap: 2px; flex: none; }
+html[data-app="1"] .chat-main .hy-search button {
+  display: grid; place-items: center; width: 30px; height: 30px; flex: none; padding: 0;
+  border: none; border-radius: 50%; background: none; color: var(--chat-accent-ink); cursor: pointer;
+}
+html[data-app="1"] .chat-main .hy-search button:disabled { opacity: 0.35; }
+html[data-app="1"] .chat-main .hy-search button:active { background: var(--chat-accent-soft); }
+/* 有立绘：深玻璃版本，白字 */
+html[data-app="1"] .chat-main.has-bg .hy-search {
+  background: var(--gls-dark-bg);
+  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.30);
+}
+html[data-app="1"] .chat-main.has-bg .hy-search input { color: #fff; }
+html[data-app="1"] .chat-main.has-bg .hy-search input::placeholder { color: rgba(255, 255, 255, 0.5); }
+html[data-app="1"] .chat-main.has-bg .hy-search .hy-search-ic,
+html[data-app="1"] .chat-main.has-bg .hy-search button { color: rgba(255, 255, 255, 0.85); }
+html[data-app="1"] .chat-main.has-bg .hy-search .hy-search-count { color: var(--chat-accent); }
+/* 关键词高亮（CSS Custom Highlight API）：全部命中淡青底，当前条实心青底 */
+::highlight(chat-search) { background-color: rgba(34, 211, 238, 0.30); }
+::highlight(chat-search-cur) { background-color: rgba(34, 211, 238, 0.85); color: #06282e; }
+/* lite 档：去模糊换实底 */
+html[data-app="1"][data-perf="lite"] .chat-main .hy-search {
+  -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel);
+}
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .hy-search { background: rgba(20, 17, 26, 0.92); }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] .chat-main .hy-search { animation: none; } }
 html[data-app="1"] .chat-main.has-bg .action-panel button {
   background: rgba(20, 17, 26, 0.6);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
