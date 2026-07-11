@@ -18,7 +18,7 @@ import { useAppGestures, tick } from '../appgestures.js';
 import { useNav, appBack, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
 import {
   Home, Compass, MessageCircle, Plus, UserRound,
-  Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff
+  Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff, BatteryLow, X
 } from 'lucide-react';
 
 // Bottom tab bar — 4 destinations split around the center create button.
@@ -49,6 +49,13 @@ export default function AppLayout({ children }) {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // bump → remount route → refetch
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
+  // 自适应降级提示（perf.js 检出持续掉帧、本会话临时切省电时弹出，可关闭）
+  const [perfNote, setPerfNote] = useState(false);
+  useEffect(() => {
+    const on = () => setPerfNote(true);
+    window.addEventListener('huanyu-perf-degraded', on);
+    return () => window.removeEventListener('huanyu-perf-degraded', on);
+  }, []);
   const mainRef = useRef(null);
   const tabbarRef = useRef(null);
   const inkRef = useRef(null);
@@ -205,6 +212,12 @@ export default function AppLayout({ children }) {
   return (
     <div className="app-root">
       {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
+      {perfNote && (
+        <div className="app-perfnote" role="status">
+          <BatteryLow size={13} /> 检测到持续掉帧，本次已临时开启省电模式（设置中可改）
+          <button onClick={() => setPerfNote(false)} aria-label="关闭提示"><X size={13} /></button>
+        </div>
+      )}
       <div className={'app-ptr' + (refreshing ? ' spin' : '')} style={{ height: ptr, opacity: ptr ? 1 : 0 }} aria-hidden="true">
         <RefreshCw size={20} style={{ transform: refreshing ? 'none' : `rotate(${ptr * 3}deg)` }} />
       </div>

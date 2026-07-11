@@ -4518,6 +4518,14 @@ html[data-app="1"] { --app-top: env(safe-area-inset-top); --app-bot: calc(60px +
   display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 12px;
   font-size: 12px; font-weight: 600; color: #fff; background: #b5562f; }
 
+/* ---- 自适应降级提示（持续掉帧 → 本会话临时省电）：同 offline 的细条形态 ---- */
+.app-perfnote { position: fixed; top: calc(var(--app-top) + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  width: min(480px, 100%); z-index: 55; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 34px 6px 12px;
+  font-size: 12px; font-weight: 600; color: #fff; background: #0e7490; }
+.app-perfnote button { position: absolute; right: 8px; display: grid; place-items: center;
+  width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(255,255,255,0.16); color: #fff; padding: 0; }
+
 /* ---- content area（无持久顶栏：内容直通状态栏下沿） ---- */
 .app-main { min-height: 100dvh; display: flex; flex-direction: column;
   padding-top: env(safe-area-inset-top);
