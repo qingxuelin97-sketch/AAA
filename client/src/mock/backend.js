@@ -1247,6 +1247,51 @@ async function route(method, path, search, body, headers) {
     db.messages = filter('messages', x => !ids.includes(x.conversation_id));
     save(); return J({ ok: true, removed: ids.length });
   }
+  // 导入 export 包（与真后端 /settings/import 同语义：白名单字段、归属改写、
+  // 计数清零、character_id 重映射、不触碰经济字段）。
+  if (method === 'POST' && path === '/settings/import') {
+    need();
+    if (body?.app !== '幻域 HUANYU') return E('不是本产品导出的数据包');
+    const chars = Array.isArray(body.characters) ? body.characters : [];
+    const scripts = Array.isArray(body.scripts) ? body.scripts : [];
+    const convs = Array.isArray(body.conversations) ? body.conversations : [];
+    const msgTotal = convs.reduce((n, c) => n + (Array.isArray(c?.messages) ? c.messages.length : 0), 0);
+    if (chars.length > 200 || scripts.length > 200 || convs.length > 500 || msgTotal > 20000) return E('数据包超出导入上限');
+    const out = { characters: 0, scripts: 0, conversations: 0, messages: 0 };
+    let skipped = 0;
+    const charMap = new Map();
+    for (const c of chars) {
+      if (!c || !String(c.name || '').trim()) { skipped++; continue; }
+      const nc = insert('characters', {
+        owner_id: me.id, name: String(c.name).slice(0, 80), avatar: c.avatar || null,
+        background: c.background || null, background_type: c.background_type || 'image',
+        bgm: c.bgm || '', tagline: c.tagline || '', intro: c.intro || '', greeting: c.greeting || '',
+        persona: c.persona || '', voice_name: c.voice_name || '', voice_speed: c.voice_speed || 1,
+        voice_pitch: c.voice_pitch || 1, category: c.category || '', tags: c.tags || '',
+        is_public: 0, nsfw: c.nsfw ? 1 : 0, likes: 0, uses: 0,
+        front_regex: normFrontRegex(c.front_regex, '[]'), alt_greetings: normAltGreetings(c.alt_greetings, '[]'),
+      });
+      charMap.set(c.id, nc.id); out.characters++;
+    }
+    for (const s of scripts) {
+      if (!s || !String(s.title || '').trim()) { skipped++; continue; }
+      insert('scripts', { author_id: me.id, title: String(s.title).slice(0, 120), summary: s.summary || '', cover: s.cover || null, content: s.content || '', category: s.category || '', tags: s.tags || '', price_gold: 0, nsfw: s.nsfw ? 1 : 0, plays: 0, likes: 0 });
+      out.scripts++;
+    }
+    for (const cv of convs) {
+      const cid = charMap.get(cv?.character_id);
+      if (!cid) { skipped++; continue; }
+      const nc = insert('conversations', { user_id: me.id, character_id: cid, title: cv.title || '', affinity: cv.affinity || 0, memories: cv.memories || '[]', updated_at: now() });
+      out.conversations++;
+      for (const m of (Array.isArray(cv.messages) ? cv.messages : [])) {
+        if (!m || typeof m.content !== 'string') { skipped++; continue; }
+        insert('messages', { conversation_id: nc.id, role: m.role === 'user' ? 'user' : 'assistant', content: m.content, reaction: m.reaction || null });
+        out.messages++;
+      }
+    }
+    save();
+    return J({ imported: out, skipped });
+  }
   // Export everything the caller owns as a portable JSON bundle.
   if (method === 'GET' && path === '/settings/export') {
     need();
@@ -1581,6 +1626,9 @@ async function route(method, path, search, body, headers) {
     conv.memories = (conv.memories || []).filter(x => x.id !== +m[2]); save();
     return J({ memories: conv.memories });
   }
+  // ASR（语音转文字）：mock 环境无服务端识别，返回未就绪 —— CallScreen 据此
+  // 走浏览器 SpeechRecognition 兜底（此前该路径 404，虽被捕获但徒增报错噪音）。
+  if (method === 'GET' && path === '/asr/status') { return J({ ready: false, provider: '', model: '' }); }
   if (method === 'POST' && path === '/chat/tts') {
     need(); const s = find('settings', x => x.user_id === me.id);
     // Attribute the voice spend to the character's creator (for revenue share).

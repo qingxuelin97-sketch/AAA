@@ -177,6 +177,78 @@ router.post('/clear-conversations', authRequired, (req, res) => {
   res.json({ ok: true, removed: ids.length });
 });
 
+// 导入 /settings/export 生成的 JSON 包（数据互通：网页试玩/mock 数据带入真账号）。
+// 只导创作与对话数据；经济字段（gold/diamond/vip/流水）一概不触碰（防作弊）。
+// 白名单列插入 + 归属改写为调用者 + 传播计数清零；conversation.character_id
+// 按「导出角色 id → 新角色 id」映射重连，映射不到的会话跳过并计数。
+const IMPORT_LIMITS = { characters: 200, scripts: 200, conversations: 500, messages: 20000, field: 200000 };
+const clip = (v, n = IMPORT_LIMITS.field) => String(v ?? '').slice(0, n);
+router.post('/import', authRequired, (req, res) => {
+  const data = req.body || {};
+  if (data.app !== '幻域 HUANYU') return res.status(400).json({ error: '不是本产品导出的数据包' });
+  const chars = Array.isArray(data.characters) ? data.characters : [];
+  const scripts = Array.isArray(data.scripts) ? data.scripts : [];
+  const convs = Array.isArray(data.conversations) ? data.conversations : [];
+  const msgTotal = convs.reduce((n, c) => n + (Array.isArray(c?.messages) ? c.messages.length : 0), 0);
+  if (chars.length > IMPORT_LIMITS.characters) return res.status(400).json({ error: `角色数量超上限（${IMPORT_LIMITS.characters}）` });
+  if (scripts.length > IMPORT_LIMITS.scripts) return res.status(400).json({ error: `剧本数量超上限（${IMPORT_LIMITS.scripts}）` });
+  if (convs.length > IMPORT_LIMITS.conversations) return res.status(400).json({ error: `对话数量超上限（${IMPORT_LIMITS.conversations}）` });
+  if (msgTotal > IMPORT_LIMITS.messages) return res.status(400).json({ error: `消息总量超上限（${IMPORT_LIMITS.messages}）` });
+
+  const uid = req.user.id;
+  const out = { characters: 0, scripts: 0, conversations: 0, messages: 0 };
+  let skipped = 0;
+  const charMap = new Map(); // 导出包里的角色 id → 新插入 id
+
+  const insChar = db.prepare(`INSERT INTO characters
+    (owner_id, name, avatar, background, background_type, tagline, intro, greeting, persona,
+     voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, bgm, front_regex, alt_greetings)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`);
+  const insScript = db.prepare(`INSERT INTO scripts
+    (author_id, title, summary, cover, content, category, tags, price_gold, nsfw)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`);
+  const insConv = db.prepare(`INSERT INTO conversations (user_id, character_id, title, affinity, memories)
+    VALUES (?, ?, ?, ?, ?)`);
+  const insMsg = db.prepare(`INSERT INTO messages (conversation_id, role, content, created_at, reaction)
+    VALUES (?, ?, ?, ?, ?)`);
+
+  try {
+    db.transaction(() => {
+      for (const c of chars) {
+        if (!c || !String(c.name || '').trim()) { skipped++; continue; }
+        const r = insChar.run(uid, clip(c.name, 80), clip(c.avatar, 4000) || null, clip(c.background, 4000) || null,
+          clip(c.background_type, 20) || 'image', clip(c.tagline, 400), clip(c.intro), clip(c.greeting), clip(c.persona),
+          clip(c.voice_name, 120), Number(c.voice_speed) || 1, Number(c.voice_pitch) || 1,
+          clip(c.category, 40), clip(c.tags, 400), c.nsfw ? 1 : 0,
+          clip(c.bgm, 4000), clip(c.front_regex), clip(c.alt_greetings));
+        charMap.set(c.id, r.lastInsertRowid);
+        out.characters++;
+      }
+      for (const s of scripts) {
+        if (!s || !String(s.title || '').trim()) { skipped++; continue; }
+        insScript.run(uid, clip(s.title, 120), clip(s.summary, 2000), clip(s.cover, 4000) || null,
+          clip(s.content), clip(s.category, 40), clip(s.tags, 400), s.nsfw ? 1 : 0);
+        out.scripts++;
+      }
+      for (const cv of convs) {
+        const cid = charMap.get(cv?.character_id);
+        if (!cid) { skipped++; continue; } // 只重连到本次导入的角色，避免挂到他人角色上
+        const r = insConv.run(uid, cid, clip(cv.title, 200), Number(cv.affinity) || 0, clip(cv.memories) || '[]');
+        out.conversations++;
+        for (const m of (Array.isArray(cv.messages) ? cv.messages : [])) {
+          const role = m?.role === 'user' ? 'user' : 'assistant';
+          if (!m || typeof m.content !== 'string') { skipped++; continue; }
+          insMsg.run(r.lastInsertRowid, role, clip(m.content), clip(m.created_at, 40) || null, clip(m.reaction, 40) || null);
+          out.messages++;
+        }
+      }
+    })();
+  } catch (e) {
+    return res.status(400).json({ error: '导入失败：' + (e.message || '数据格式异常') });
+  }
+  res.json({ imported: out, skipped });
+});
+
 router.get('/export', authRequired, (req, res) => {
   const uid = req.user.id;
   const convs = db.prepare('SELECT * FROM conversations WHERE user_id = ?').all(uid);
