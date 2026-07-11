@@ -4,7 +4,7 @@
 // a "continue your story" rail, daily tasks and a personalised pick — the things
 // you reach for when you open the app, not a browse-everything grid.
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
@@ -51,7 +51,7 @@ const CREATE_SHORTCUTS = [
 export default function AppHome() {
   const { user, refreshUser } = useAuth();
   const toast = useToast();
-  const nav = useNavigate();
+  const nav = useNav();
   const [resume, setResume] = useState(null);
   const [pick, setPick] = useState(null);
   const [hero, setHero] = useState(null);

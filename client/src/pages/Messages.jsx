@@ -5,7 +5,7 @@
 // 全部数据来自既有端点，无新协议：/chat/conversations · /characters/favorites/list
 // /social/notifications · /dm。SSE 到达时角标秒级刷新。
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav } from '../nav.js';
 import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar } from '../ui.jsx';
@@ -19,7 +19,7 @@ import {
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
 export default function Messages() {
-  const nav = useNavigate();
+  const nav = useNav();
   const toast = useToast();
   const [tab, setTab] = useState('chatted'); // 'liked' | 'chatted'
   const [convs, setConvs] = useState(null);  // null = loading

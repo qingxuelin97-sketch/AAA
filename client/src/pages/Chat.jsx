@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
+import { useNav } from '../nav.js';
 import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
@@ -12,6 +13,8 @@ import { installTavernHost } from '../tavernbridge.js';
 import { streamSSE } from '../chat/sse.js';
 import { BubbleContent, setPanelCtx } from '../chat/BubbleContent.jsx';
 import { useOverlayBack, useBookmarks, useLongPress } from '../chat/hooks.js';
+import ChatSearchBar from '../chat/ChatSearchBar.jsx';
+import { isAppMode } from '../appmode.js';
 import {
   GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
   REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo, timeDivider,
@@ -20,7 +23,7 @@ import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, Pan
 
 export default function Chat() {
   const { id } = useParams();
-  const nav = useNavigate();
+  const nav = useNav();
   const loc = useLocation();
   const toast = useToast();
   const { refreshUser } = useAuth();
@@ -574,7 +577,11 @@ export default function Chat() {
               </div>
             </div>
             {character?.background && <span className="chat-ai-mark" aria-hidden="true">内容由 AI 生成</span>}
-            {searchOpen && (
+            {/* APP 壳：悬浮玻璃胶囊，高亮 + 上/下条跳转（不过滤，保留上下文）。
+                Web 壳：维持原过滤式搜索不动。 */}
+            {searchOpen && (isAppMode()
+              ? <ChatSearchBar messages={messages} onClose={() => setSearchOpen(false)} />
+              : (
               <div className="chat-search">
                 <Search size={15} className="muted" />
                 <input autoFocus value={searchQ} enterKeyHint="search" autoCapitalize="none" autoCorrect="off" spellCheck={false}
@@ -583,7 +590,7 @@ export default function Chat() {
                 {searchQ && <span className="muted" style={{ fontSize: 12 }}>{messages.filter(mm => mm.content?.toLowerCase().includes(searchQ.toLowerCase())).length} 条</span>}
                 <button className="speak" onClick={() => { setSearchOpen(false); setSearchQ(''); }}><X size={15} /></button>
               </div>
-            )}
+            ))}
 
             <div className={'chat-scroll font-' + fontSize} ref={scrollRef} onScroll={onScroll}>
               {/* 专家档世界书：自构对话前端 banner 槽（若 front_schema 含 banner 类型 slot）。

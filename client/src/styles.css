@@ -192,7 +192,7 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .toast-err { background: rgba(74, 32, 26, 0.94); border-color: #6e352b; }
 .toast-err .toast-ic { color: #ff9a86; }
 .toast-info .toast-ic { color: #79c6e0; }
-@keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+/* toastIn 定义在 Toast 动效段（文件后部）—— 同名 keyframes 后写者全局获胜，此处旧版已删 */
 /* 到时优雅退场（此前是硬移除，一闪就没） */
 @keyframes toastOut { to { opacity: 0; transform: translateY(8px) scale(0.95); } }
 
@@ -473,7 +473,7 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 /* 降采样技巧：盒子取原来的一半、blur 减半，再用 transform: scale(2) 放大回原视觉尺寸。
    模糊像素量降到 1/16 而旋转的彩色柔光观感不变（旧写法每帧对 60%×220% 大层做 60px 模糊）。
    inset 由 -30%/-10% 换算为 25%/5%，保证放大后的视觉中心与原来完全一致。 */
-.wb-hero-aurora { position: absolute; inset: 25% 5% auto auto; width: 30%; height: 110%; background: conic-gradient(from 180deg at 50% 50%, #c97a3f, #7c5bd9, #d4677a, #e89a5b, #c97a3f); filter: blur(30px); opacity: 0.22; transform: scale(2); animation: wb-aurora 18s linear infinite; will-change: transform; }
+.wb-hero-aurora { position: absolute; inset: 25% 5% auto auto; width: 30%; height: 110%; background: conic-gradient(from 180deg at 50% 50%, #c97a3f, #7c5bd9, #d4677a, #e89a5b, #c97a3f); filter: blur(22px); opacity: 0.22; transform: scale(2); animation: wb-aurora 24s linear infinite; will-change: transform; }
 [data-theme="dark"] .wb-hero-aurora { opacity: 0.35; }
 @keyframes wb-aurora { from { transform: scale(2) rotate(0deg); } to { transform: scale(2) rotate(360deg); } }
 .wb-hero-content { position: relative; z-index: 1; }
@@ -552,7 +552,6 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .img-test-result .itr-sample { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .img-test-result .itr-sample img { max-width: 100%; max-height: 280px; border-radius: 9px; border: 1px solid var(--border-2); }
 .spin { animation: spin 0.9s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
 .uploader { border: 1.5px dashed var(--border-2); border-radius: 13px; padding: 18px; text-align: center; cursor: pointer; transition: 0.15s; position: relative; overflow: hidden; background: #fcfbf7; color: var(--muted); }
 .uploader:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-2); }
 .uploader .preview { width: 100%; height: 150px; object-fit: cover; border-radius: 9px; }
@@ -1107,7 +1106,7 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 @keyframes popIn { from { opacity: 0; transform: scale(0.965); } to { opacity: 1; transform: none; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sheen { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(220%) skewX(-18deg); } }
-@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+/* floaty 定义在空态插画段（-6px 版）—— 同名后写者全局获胜，此处 -3px 旧版已删 */
 
 /* page + element entrances */
 .page { animation: riseIn 0.42s cubic-bezier(0.22,0.61,0.36,1) both; }
@@ -2012,7 +2011,7 @@ body { background-image:
 @media (max-width: 860px) {
   .chat-drawer { width: 100%; border-left: none; }
 }
-@keyframes drawerIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
+/* drawerIn 定义在 APP 动效段（46px 淡入版）—— 同名后写者全局获胜，102% 平移旧版已删 */
 .cd-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .cd-head b { font-size: 14.5px; }
 .cd-head .speak { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; color: var(--muted);
@@ -3454,8 +3453,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 /* 方向性入场（用户从右、角色从左，带轻微缩放） */
 .msg.assistant { animation: msgInL 0.42s cubic-bezier(0.22,0.61,0.36,1) both; }
 .msg.user { animation: msgInR 0.42s cubic-bezier(0.22,0.61,0.36,1) both; }
-@keyframes msgInL { from { opacity: 0; transform: translateX(-14px) translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
-@keyframes msgInR { from { opacity: 0; transform: translateX(14px) translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
+/* msgInL/R 的 keyframes 定义在沉浸聊天动效段（内容相同的重复定义已收敛为一份） */
 @media (prefers-reduced-motion: reduce) { .msg.assistant, .msg.user { animation: fadeIn 0.2s both; } }
 
 /* ---- 输入区：更圆润、聚焦时渐变光圈 ---- */
@@ -3551,7 +3549,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   animation: barGrow 0.62s cubic-bezier(0.22,0.61,0.36,1) backwards; animation-delay: var(--d); }
 .bc-col.lead .bc-bar { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 16px color-mix(in srgb, var(--c) 38%, transparent); }
 .bc-col:hover .bc-bar { filter: brightness(1.06) saturate(1.05); }
-@keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+/* barGrow 定义在洞察页动效段（scaleY(0.08)+淡入版）—— 同名后写者全局获胜，旧版已删 */
 .bc-val { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700;
   color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; opacity: 0; animation: bcValIn 0.4s ease forwards; animation-delay: calc(var(--d) + 0.3s); }
 .bc-col.lead .bc-val { color: var(--accent-2); }
@@ -3824,20 +3822,8 @@ html:not([data-app="1"])[data-glass="on"] .chat-menu {
   transition-delay: calc(var(--rv-i, 0) * 0.06s); }
 .reveal.reveal-in { opacity: 1; transform: none; }
 
-/* —— 原生 View Transitions：仅内容区做转场，侧栏保持纹丝不动（精细之处） —— */
-.main { view-transition-name: vt-main; }
-@media (prefers-reduced-motion: no-preference) {
-  ::view-transition-old(vt-main) { animation: vtOut 0.34s cubic-bezier(0.4, 0, 0.2, 1) both; }
-  ::view-transition-new(vt-main) { animation: vtIn 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
-  /* 侧栏等根快照前后一致，禁用其默认交叉淡入，避免闪烁 */
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-}
-@keyframes vtOut {
-  from { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-  to   { opacity: 0; transform: translateY(-10px) scale(0.985); filter: blur(3px); } }
-@keyframes vtIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.992); filter: blur(2px); }
-  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+/* （已删）旧 vt-main View Transition 块：声明式 Router 从不触发 VT，那套
+   CSS 在两个壳里都是死代码。APP 壳的转场现由 nav.js 手动编排（见 4540 区）。 */
 
 /* 当浏览器接管为原生转场时，把旧的 route-fade 收敛成纯淡入，避免双重动画打架。 */
 @supports (view-transition-name: none) {
@@ -4530,6 +4516,14 @@ html[data-app="1"] { --app-top: env(safe-area-inset-top); --app-bot: calc(60px +
   display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 12px;
   font-size: 12px; font-weight: 600; color: #fff; background: #b5562f; }
 
+/* ---- 自适应降级提示（持续掉帧 → 本会话临时省电）：同 offline 的细条形态 ---- */
+.app-perfnote { position: fixed; top: calc(var(--app-top) + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  width: min(480px, 100%); z-index: 55; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 34px 6px 12px;
+  font-size: 12px; font-weight: 600; color: #fff; background: #0e7490; }
+.app-perfnote button { position: absolute; right: 8px; display: grid; place-items: center;
+  width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(255,255,255,0.16); color: #fff; padding: 0; }
+
 /* ---- content area（无持久顶栏：内容直通状态栏下沿） ---- */
 .app-main { min-height: 100dvh; display: flex; flex-direction: column;
   padding-top: env(safe-area-inset-top);
@@ -4540,6 +4534,54 @@ html[data-app="1"] { --app-top: env(safe-area-inset-top); --app-bot: calc(60px +
 html[data-app="1"] .route-fade { animation: appRouteIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 @keyframes appRouteIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { html[data-app="1"] .route-fade { animation: none; } }
+
+/* —— APP 壳 · 方向感知路由过渡（nav.js 编排）——
+   增强层：支持 View Transitions 的 WebView 里，useNav()/appBack() 把导航包进
+   document.startViewTransition；<html data-nav-dir> 标记方向，[data-vt] 标记
+   过渡进行中。全部动画只用 opacity/transform（合成器直通，比旧 vtIn/vtOut
+   的 filter:blur 便宜得多）。
+   兜底层：VT 不可用/未启用时，keyed .route-fade 的入场动画按 data-nav-dir
+   切方向 variant（无退场，但方向正确、观感连贯）。 */
+html[data-app="1"][data-vt] .app-main { view-transition-name: vt-page; }
+html[data-app="1"][data-vt] .app-tabbar { view-transition-name: vt-dock; }
+/* 底栏与其余根快照前后一致：禁用默认交叉淡入，导航时纹丝不动 */
+html[data-app="1"]::view-transition-old(root), html[data-app="1"]::view-transition-new(root),
+html[data-app="1"]::view-transition-old(vt-dock), html[data-app="1"]::view-transition-new(vt-dock) { animation: none; }
+/* push：新页从右推入，旧页向左让位并微暗（原生 stack 手感） */
+html[data-app="1"][data-nav-dir="push"]::view-transition-new(vt-page) { animation: vtPushIn 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="push"]::view-transition-old(vt-page) { animation: vtPushOut 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+/* pop：镜像 —— 旧页滑回右侧，新页从左浮现 */
+html[data-app="1"][data-nav-dir="pop"]::view-transition-new(vt-page) { animation: vtPopIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="pop"]::view-transition-old(vt-page) { animation: vtPopOut 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+/* tab 左右切换：快速平行横滑 */
+html[data-app="1"][data-nav-dir="left"]::view-transition-new(vt-page) { animation: vtSlideInL 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="left"]::view-transition-old(vt-page) { animation: vtSlideOutL 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="right"]::view-transition-new(vt-page) { animation: vtSlideInR 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="right"]::view-transition-old(vt-page) { animation: vtSlideOutR 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+@keyframes vtPushIn  { from { opacity: 0.72; transform: translateX(26%); } to { opacity: 1; transform: none; } }
+@keyframes vtPushOut { from { opacity: 1; transform: none; } to { opacity: 0.55; transform: translateX(-16%); } }
+@keyframes vtPopIn   { from { opacity: 0.6; transform: translateX(-18%); } to { opacity: 1; transform: none; } }
+@keyframes vtPopOut  { from { opacity: 1; transform: none; } to { opacity: 0.65; transform: translateX(30%); } }
+@keyframes vtSlideInL  { from { opacity: 0.6; transform: translateX(22%); } to { opacity: 1; transform: none; } }
+@keyframes vtSlideOutL { from { opacity: 1; transform: none; } to { opacity: 0.6; transform: translateX(-22%); } }
+@keyframes vtSlideInR  { from { opacity: 0.6; transform: translateX(-22%); } to { opacity: 1; transform: none; } }
+@keyframes vtSlideOutR { from { opacity: 1; transform: none; } to { opacity: 0.6; transform: translateX(22%); } }
+/* VT 接管时关掉 route-fade 入场，避免双重动画 */
+html[data-app="1"][data-vt] .route-fade { animation: none; }
+/* CSS 兜底：入场动画按方向切 variant（覆盖 animation-name，时长/缓动沿用基础规则） */
+html[data-app="1"][data-nav-dir="push"] .route-fade { animation-name: appPushIn; }
+html[data-app="1"][data-nav-dir="pop"] .route-fade { animation-name: appPopIn; }
+html[data-app="1"][data-nav-dir="left"] .route-fade { animation-name: appSlideL; animation-duration: 0.26s; }
+html[data-app="1"][data-nav-dir="right"] .route-fade { animation-name: appSlideR; animation-duration: 0.26s; }
+@keyframes appPushIn { from { opacity: 0; transform: translateX(15%); } to { opacity: 1; transform: none; } }
+@keyframes appPopIn  { from { opacity: 0; transform: translateX(-15%); } to { opacity: 1; transform: none; } }
+@keyframes appSlideL { from { opacity: 0; transform: translateX(12%); } to { opacity: 1; transform: none; } }
+@keyframes appSlideR { from { opacity: 0; transform: translateX(-12%); } to { opacity: 1; transform: none; } }
+/* 方向 variant 特异性高于上面的 reduced-motion 兜底，这里再压一层 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"][data-nav-dir] .route-fade { animation: none; }
+  html[data-app="1"]::view-transition-old(vt-page), html[data-app="1"]::view-transition-new(vt-page) { animation: none; }
+}
 
 /* Full-screen / immersive pages (chat-conversation · theater · parliament ·
    novel workspace · novel reader) take the whole screen — they carry their own
@@ -6762,9 +6804,11 @@ html[data-app="1"] {
   --gl-1-bg: color-mix(in srgb, var(--panel) 62%, transparent);
   --gl-2-bg: color-mix(in srgb, var(--panel) 74%, transparent);
   --gl-3-bg: color-mix(in srgb, var(--panel) 84%, transparent);
-  --gl-1-blur: blur(18px) saturate(180%);
-  --gl-2-blur: blur(26px) saturate(180%);
-  --gl-3-blur: blur(38px) saturate(200%);
+  /* blur 成本随半径超线性增长；>20px 在手机 DPR 下感知差异极小，
+     三档整体下调一级（18/26/38 → 14/20/28），观感几乎不变、GPU 显著减负 */
+  --gl-1-blur: blur(14px) saturate(180%);
+  --gl-2-blur: blur(20px) saturate(180%);
+  --gl-3-blur: blur(28px) saturate(200%);
   --gl-border: color-mix(in srgb, #fff 14%, transparent);
   --gl-border-in: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
   --gl-shadow: 0 12px 34px rgba(0,0,0,0.28);
@@ -6919,10 +6963,8 @@ html[data-app="1"] .ah-hero::after {
   border-radius: inherit;
   filter: blur(1px);
 }
-@keyframes heroDrift {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(-8px, 6px, 0) scale(1.06); }
-}
+/* heroDrift 定义在角色详情动效段 —— 同名后写者全局获胜（此处曾有的
+   translate3d 旧版从未生效，已删；如需独立节奏请另起名字） */
 html[data-app="1"][data-perf="lite"] .ah-hero::after { animation: none; }
 @media (prefers-reduced-motion: reduce) { html[data-app="1"] .ah-hero::after { animation: none; } }
 /* hero 内的胶囊按钮真玻璃 */
@@ -8062,8 +8104,20 @@ html[data-app="1"] .btn.primary:active::after { opacity: 1; transform: scale(1.6
 html[data-app="1"] .empty .big, html[data-app="1"] .empty svg:first-child { animation: emptyFloat 4.4s ease-in-out infinite; }
 @keyframes emptyFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 /* 钱包签到主按钮：待签状态微光呼吸吸引视线，签完静止 */
-html[data-app="1"] .wallet-hero .checkin-btn:not(:disabled) { animation: checkinGlow 2.8s ease-in-out infinite; }
-@keyframes checkinGlow { 0%, 100% { box-shadow: 0 8px 20px rgba(14,156,184,0.30); } 50% { box-shadow: 0 8px 30px rgba(14,156,184,0.52); } }
+/* 签到/CTA 待机微光：辉光画在伪元素上一次光栅化，循环只动 opacity
+   （旧 checkinGlow 逐帧动 box-shadow，每帧 repaint）。hyGlowBreathe 见 CTA 段。 */
+html[data-app="1"] .wallet-hero .checkin-btn, html[data-app="1"] .ah-checkin, html[data-app="1"] .ach-go { position: relative; }
+html[data-app="1"]:not([data-perf="lite"]) .wallet-hero .checkin-btn:not(:disabled)::before,
+html[data-app="1"]:not([data-perf="lite"]) .ah-checkin:not(.done)::before,
+html[data-app="1"]:not([data-perf="lite"]) .ach-go:not(:disabled)::before {
+  content: ''; position: absolute; inset: -5px; border-radius: 999px; z-index: -1;
+  background: radial-gradient(62% 130% at 50% 50%, rgba(14,156,184,0.42), transparent 76%);
+  pointer-events: none; animation: hyGlowBreathe 2.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .wallet-hero .checkin-btn::before, html[data-app="1"] .ah-checkin::before,
+  html[data-app="1"] .ach-go::before { animation: none !important; }
+}
 /* 会员横幅光泽扫过（低频，8s 一次，不打扰） */
 html[data-app="1"] .pf-vip { position: relative; overflow: hidden; }
 html[data-app="1"] .pf-vip::after {
@@ -8113,7 +8167,8 @@ html[data-app="1"] .app-sheet-grip { animation: gripHint 2.6s ease-in-out infini
 /* ---- 角色详情：hero 视差呼吸 + 开聊 CTA 待机微光 ---- */
 html[data-app="1"] .char-hero-bg { animation: heroDrift 34s ease-in-out infinite alternate; will-change: transform; }
 @keyframes heroDrift { from { transform: scale(1.04); } to { transform: scale(1.1) translateY(-1.4%); } }
-html[data-app="1"] .cvx .btn.primary { animation: checkinGlow 3.2s ease-in-out infinite; }
+/* 开聊 CTA（overflow:hidden 容不下外扩辉光）：改为轻微 scale 呼吸（合成器直通） */
+html[data-app="1"] .cvx .btn.primary:not(:active) { animation: hyCtaScale 3.2s ease-in-out infinite; }
 
 /* ---- 扭蛋机：待机摇晃蓄力 + 出货弹跳 + 稀有度闪光 ---- */
 html[data-app="1"] .gx-cover { transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -8133,7 +8188,7 @@ html[data-app="1"] .ach-grid > *:nth-child(3) { animation-delay: 0.10s; }
 html[data-app="1"] .ach-grid > *:nth-child(4) { animation-delay: 0.15s; }
 html[data-app="1"] .ach-grid > *:nth-child(5) { animation-delay: 0.20s; }
 html[data-app="1"] .ach-grid > *:nth-child(6) { animation-delay: 0.25s; }
-html[data-app="1"] .ach-go:not(:disabled) { animation: checkinGlow 2.6s ease-in-out infinite; }
+/* .ach-go 待机微光：见 checkin 段的伪元素 opacity 呼吸（此处不再动 box-shadow） */
 html[data-app="1"] .ach-hall-glow { animation: hallGlow 5s ease-in-out infinite; }
 @keyframes hallGlow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 
@@ -8495,8 +8550,15 @@ html[data-app="1"] .cvx-body .card { border-radius: 20px; }
 /* ---- 通知中心：图标色相分组 + 未读点脉冲 ---- */
 html[data-app="1"] .noti-ic { width: 44px; height: 44px; border-radius: 15px; }
 html[data-app="1"] .noti-item { gap: 12px; }
-html[data-app="1"] .noti-dot { animation: notiPulse 2s ease-in-out infinite; }
-@keyframes notiPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.4); } 50% { box-shadow: 0 0 0 5px rgba(244,63,94,0); } }
+/* 未读点脉冲：box-shadow 扩散环 → 伪元素 scale+opacity 环（合成器直通） */
+html[data-app="1"] .noti-dot { position: relative; }
+html[data-app="1"]:not([data-perf="lite"]) .noti-dot::after {
+  content: ''; position: absolute; inset: -2px; border-radius: 50%;
+  border: 2px solid rgba(244,63,94,0.45); pointer-events: none;
+  animation: notiRing 2s ease-in-out infinite;
+}
+@keyframes notiRing { 0% { transform: scale(0.65); opacity: 0.9; } 70%, 100% { transform: scale(1.7); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] .noti-dot::after { animation: none !important; content: none; } }
 html[data-app="1"] .noti-allread { position: sticky; bottom: calc(var(--app-bot) + 10px); z-index: 5;
   box-shadow: 0 8px 24px rgba(14,156,184,0.30); }
 
@@ -8527,7 +8589,7 @@ html[data-app="1"] .ah-coin { border-radius: 999px; backdrop-filter: blur(10px);
   transition: transform 0.14s; }
 html[data-app="1"] .ah-coin:active { transform: scale(0.92); }
 html[data-app="1"] .ah-checkin { box-shadow: 0 6px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.25); }
-html[data-app="1"] .ah-checkin:not(.done) { animation: checkinGlow 3s ease-in-out infinite; }
+/* .ah-checkin 待机微光：见 checkin 段的伪元素 opacity 呼吸（此处不再动 box-shadow） */
 html[data-app="1"] .ah-sc-ic { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 12px rgba(13,74,88,0.10); }
 
 /* ---- 消息中心：入口卡渐变图标统一挂投影 ---- */
@@ -8576,14 +8638,16 @@ html[data-app="1"] .conv-item:active { transform: scale(0.98); }
 
 /* ---- 0. 玻璃令牌 ---- */
 html[data-app="1"] {
-  --gls-lite-bg: rgba(255, 253, 248, 0.78);        /* 亮玻璃（立绘上的内容卡） */
-  --gls-lite-blur: blur(26px) saturate(170%);
+  /* 亮玻璃是逐条消息一层的实时采样（滚动时 N 个气泡同时算），blur 半径是
+     大头 —— 26→12px 并 +6% 不透明度补观感：像素级差异微小，滚动帧率大改善 */
+  --gls-lite-bg: rgba(255, 253, 248, 0.84);        /* 亮玻璃（立绘上的内容卡） */
+  --gls-lite-blur: blur(12px) saturate(170%);
   --gls-lite-text: #2b2420;
   --gls-lite-muted: rgba(58, 48, 42, 0.66);
   --gls-dark-bg: rgba(22, 18, 28, 0.55);           /* 深玻璃（控件/标签胶囊） */
-  --gls-dark-blur: blur(18px) saturate(160%);
-  --gls-panel-bg: color-mix(in srgb, var(--panel) 76%, transparent);   /* 浅色语境卡 */
-  --gls-panel-blur: blur(22px) saturate(165%);
+  --gls-dark-blur: blur(14px) saturate(160%);
+  --gls-panel-bg: color-mix(in srgb, var(--panel) 78%, transparent);   /* 浅色语境卡 */
+  --gls-panel-blur: blur(16px) saturate(165%);
   --gls-hairline: rgba(255, 255, 255, 0.55);
 }
 html[data-app="1"][data-theme="dark"] {
@@ -9650,12 +9714,26 @@ html[data-app="1"] .cvx-tile svg { color: var(--accent); }
 /* ============================================================================
    幻域重设计 · 真机反馈修正
    ========================================================================== */
-/* ① 发现页「进入对话」呼吸辉光 */
-@keyframes hy-cta-breathe {
-  0%, 100% { box-shadow: 0 8px 22px rgba(15,181,166,0.4); }
-  50% { box-shadow: 0 13px 34px rgba(15,181,166,0.72); }
+/* ① 发现页「进入对话」呼吸：辉光画在 ::before 上一次光栅化，循环只动
+   opacity + scale（合成器直通 —— 旧版逐帧动 box-shadow，每帧 repaint）。
+   仅当前卡（.feed-card.cur，activeIdx 驱动）呼吸，屏外卡零动画。 */
+html[data-app="1"] .fd2-enter { position: relative; }
+html[data-app="1"] .fd2-enter::before {
+  content: ''; position: absolute; inset: -7px; border-radius: 999px; z-index: -1;
+  background: radial-gradient(60% 130% at 50% 50%, rgba(15,181,166,0.55), rgba(15,181,166,0.18) 62%, transparent 78%);
+  opacity: 0; pointer-events: none;
 }
-html[data-app="1"]:not([data-perf="lite"]) .fd2-enter { animation: hy-cta-breathe 2.2s ease-in-out infinite; }
+@keyframes hyGlowBreathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
+@keyframes hyCtaScale { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+html[data-app="1"]:not([data-perf="lite"]) .feed-card.cur .fd2-enter::before {
+  animation: hyGlowBreathe 2.4s ease-in-out infinite;
+}
+html[data-app="1"]:not([data-perf="lite"]) .feed-card.cur .fd2-enter:not(:active) {
+  animation: hyCtaScale 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .fd2-enter, html[data-app="1"] .fd2-enter::before { animation: none !important; }
+}
 
 /* ② 发现页顶部「关注/推荐/新作」真正屏幕居中（搜索钮脱离布局流，绝对定位右上） */
 html[data-app="1"] .feed-modes { flex: 1; gap: 26px; }

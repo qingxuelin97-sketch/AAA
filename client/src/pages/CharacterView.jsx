@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNav } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { pid } from '../assets.jsx';
@@ -25,7 +26,7 @@ function recordRecent(c) {
 export default function CharacterView() {
   const { id } = useParams();
   const { user } = useAuth();
-  const nav = useNavigate();
+  const nav = useNav();
   const toast = useToast();
   const [c, setC] = useState(null);
   const [related, setRelated] = useState([]);

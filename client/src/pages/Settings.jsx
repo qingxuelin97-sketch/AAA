@@ -475,7 +475,7 @@ export default function Settings() {
               <div className="hint">
                 「省电」关闭毛玻璃模糊与持续动效、按需渲染卡片，明显降低手机/低端设备的 GPU 占用与发热；
                 「高画质」始终开启全部特效。
-                {perf === 'auto' && <>「自动」会按本机判断，当前为 <b>{resolvePerf('auto') === 'lite' ? '省电' : '高画质'}</b>。</>}
+                {perf === 'auto' && <>「自动」默认高画质，检测到持续掉帧时本次会话会临时切省电；当前为 <b>{resolvePerf('auto') === 'lite' ? '省电' : '高画质'}</b>。</>}
               </div>
             </div>
             <label className="switch" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>

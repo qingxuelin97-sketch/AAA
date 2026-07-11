@@ -3,7 +3,7 @@
 // 内容 Tab → 全部功能），全部为幻域自有品牌/文案/lucide 图标的原创实现。
 // 「全部功能」宫格保底承接原 launcher 的每一个入口，确保功能不丢。
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon, IdentityBadges } from '../ui.jsx';
 import { fmtNum } from '../util.js';
@@ -57,7 +57,7 @@ const GRID = [
 
 export default function AppProfile() {
   const { user, logout } = useAuth();
-  const nav = useNavigate();
+  const nav = useNav();
   const toast = useToast();
   const [stats, setStats] = useState(null);
   const [unread, setUnread] = useState(0);
