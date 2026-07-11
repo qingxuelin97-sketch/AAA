@@ -5,6 +5,7 @@ import { App } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { resolveTheme } from './theme.js';
+import { appBack } from './nav.js';
 
 // 页面语境覆盖：沉浸页（深色聊天/剧场等）可临时把状态栏刷成自己的底色，
 // 否则 App 浅色主题下状态栏恒为奶白，压在深色聊天页顶部就是一条刺眼的白带
@@ -41,7 +42,8 @@ export async function initNative() {
   // 导致只要不在首屏按返回键就直接退出 app，历史回退完全失效。
   try {
     App.addListener('backButton', () => {
-      if (window.history.length > 1) window.history.back();
+      // appBack：带 pop 方向过渡的 history.back()（浮层哨兵在场时自动跳过过渡）。
+      if (window.history.length > 1) appBack();
       else App.exitApp();
     });
   } catch { /* */ }

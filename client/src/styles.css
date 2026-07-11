@@ -3824,20 +3824,8 @@ html:not([data-app="1"])[data-glass="on"] .chat-menu {
   transition-delay: calc(var(--rv-i, 0) * 0.06s); }
 .reveal.reveal-in { opacity: 1; transform: none; }
 
-/* —— 原生 View Transitions：仅内容区做转场，侧栏保持纹丝不动（精细之处） —— */
-.main { view-transition-name: vt-main; }
-@media (prefers-reduced-motion: no-preference) {
-  ::view-transition-old(vt-main) { animation: vtOut 0.34s cubic-bezier(0.4, 0, 0.2, 1) both; }
-  ::view-transition-new(vt-main) { animation: vtIn 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
-  /* 侧栏等根快照前后一致，禁用其默认交叉淡入，避免闪烁 */
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-}
-@keyframes vtOut {
-  from { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-  to   { opacity: 0; transform: translateY(-10px) scale(0.985); filter: blur(3px); } }
-@keyframes vtIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.992); filter: blur(2px); }
-  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+/* （已删）旧 vt-main View Transition 块：声明式 Router 从不触发 VT，那套
+   CSS 在两个壳里都是死代码。APP 壳的转场现由 nav.js 手动编排（见 4540 区）。 */
 
 /* 当浏览器接管为原生转场时，把旧的 route-fade 收敛成纯淡入，避免双重动画打架。 */
 @supports (view-transition-name: none) {
@@ -4540,6 +4528,54 @@ html[data-app="1"] { --app-top: env(safe-area-inset-top); --app-bot: calc(60px +
 html[data-app="1"] .route-fade { animation: appRouteIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 @keyframes appRouteIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { html[data-app="1"] .route-fade { animation: none; } }
+
+/* —— APP 壳 · 方向感知路由过渡（nav.js 编排）——
+   增强层：支持 View Transitions 的 WebView 里，useNav()/appBack() 把导航包进
+   document.startViewTransition；<html data-nav-dir> 标记方向，[data-vt] 标记
+   过渡进行中。全部动画只用 opacity/transform（合成器直通，比旧 vtIn/vtOut
+   的 filter:blur 便宜得多）。
+   兜底层：VT 不可用/未启用时，keyed .route-fade 的入场动画按 data-nav-dir
+   切方向 variant（无退场，但方向正确、观感连贯）。 */
+html[data-app="1"][data-vt] .app-main { view-transition-name: vt-page; }
+html[data-app="1"][data-vt] .app-tabbar { view-transition-name: vt-dock; }
+/* 底栏与其余根快照前后一致：禁用默认交叉淡入，导航时纹丝不动 */
+html[data-app="1"]::view-transition-old(root), html[data-app="1"]::view-transition-new(root),
+html[data-app="1"]::view-transition-old(vt-dock), html[data-app="1"]::view-transition-new(vt-dock) { animation: none; }
+/* push：新页从右推入，旧页向左让位并微暗（原生 stack 手感） */
+html[data-app="1"][data-nav-dir="push"]::view-transition-new(vt-page) { animation: vtPushIn 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="push"]::view-transition-old(vt-page) { animation: vtPushOut 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+/* pop：镜像 —— 旧页滑回右侧，新页从左浮现 */
+html[data-app="1"][data-nav-dir="pop"]::view-transition-new(vt-page) { animation: vtPopIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="pop"]::view-transition-old(vt-page) { animation: vtPopOut 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+/* tab 左右切换：快速平行横滑 */
+html[data-app="1"][data-nav-dir="left"]::view-transition-new(vt-page) { animation: vtSlideInL 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="left"]::view-transition-old(vt-page) { animation: vtSlideOutL 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="right"]::view-transition-new(vt-page) { animation: vtSlideInR 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="right"]::view-transition-old(vt-page) { animation: vtSlideOutR 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+@keyframes vtPushIn  { from { opacity: 0.72; transform: translateX(26%); } to { opacity: 1; transform: none; } }
+@keyframes vtPushOut { from { opacity: 1; transform: none; } to { opacity: 0.55; transform: translateX(-16%); } }
+@keyframes vtPopIn   { from { opacity: 0.6; transform: translateX(-18%); } to { opacity: 1; transform: none; } }
+@keyframes vtPopOut  { from { opacity: 1; transform: none; } to { opacity: 0.65; transform: translateX(30%); } }
+@keyframes vtSlideInL  { from { opacity: 0.6; transform: translateX(22%); } to { opacity: 1; transform: none; } }
+@keyframes vtSlideOutL { from { opacity: 1; transform: none; } to { opacity: 0.6; transform: translateX(-22%); } }
+@keyframes vtSlideInR  { from { opacity: 0.6; transform: translateX(-22%); } to { opacity: 1; transform: none; } }
+@keyframes vtSlideOutR { from { opacity: 1; transform: none; } to { opacity: 0.6; transform: translateX(22%); } }
+/* VT 接管时关掉 route-fade 入场，避免双重动画 */
+html[data-app="1"][data-vt] .route-fade { animation: none; }
+/* CSS 兜底：入场动画按方向切 variant（覆盖 animation-name，时长/缓动沿用基础规则） */
+html[data-app="1"][data-nav-dir="push"] .route-fade { animation-name: appPushIn; }
+html[data-app="1"][data-nav-dir="pop"] .route-fade { animation-name: appPopIn; }
+html[data-app="1"][data-nav-dir="left"] .route-fade { animation-name: appSlideL; animation-duration: 0.26s; }
+html[data-app="1"][data-nav-dir="right"] .route-fade { animation-name: appSlideR; animation-duration: 0.26s; }
+@keyframes appPushIn { from { opacity: 0; transform: translateX(15%); } to { opacity: 1; transform: none; } }
+@keyframes appPopIn  { from { opacity: 0; transform: translateX(-15%); } to { opacity: 1; transform: none; } }
+@keyframes appSlideL { from { opacity: 0; transform: translateX(12%); } to { opacity: 1; transform: none; } }
+@keyframes appSlideR { from { opacity: 0; transform: translateX(-12%); } to { opacity: 1; transform: none; } }
+/* 方向 variant 特异性高于上面的 reduced-motion 兜底，这里再压一层 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"][data-nav-dir] .route-fade { animation: none; }
+  html[data-app="1"]::view-transition-old(vt-page), html[data-app="1"]::view-transition-new(vt-page) { animation: none; }
+}
 
 /* Full-screen / immersive pages (chat-conversation · theater · parliament ·
    novel workspace · novel reader) take the whole screen — they carry their own

@@ -7,21 +7,19 @@
 //   · 白+青清透浅色优先（theme.js 在 app 壳把 system 解析为 light）
 //   · safe-area aware, phone-framed on wide screens for preview
 // Content pages are reused as-is; only the chrome differs.
-import React, { useEffect, useRef, useState } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { NavLink, useNavigate, useLocation, useNavigationType } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { Logo } from '../assets.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
+import { useNav, appBack, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
 import {
   Home, Compass, MessageCircle, Plus, UserRound,
   Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff
 } from 'lucide-react';
-
-// Top-level tabs that horizontal swipe cycles through.
-const SWIPE_TABS = ['/today', '/', '/messages', '/me'];
 
 // Bottom tab bar — 4 destinations split around the center create button.
 const TABS_L = [
@@ -118,6 +116,38 @@ export default function AppLayout({ children }) {
   // Close the create sheet on navigation.
   useEffect(() => { setSheet(false); }, [loc.pathname]);
 
+  // 过渡方向兜底 + VT commit 信号。commit 后、paint 前把方向写到 <html
+  // data-nav-dir>：keyed .route-fade 的入场动画按它切 variant，让未经 useNav
+  // 的裸 navigate() / 系统返回也有方向正确的过渡；同时 resolve nav.js 里
+  // View Transition 正在等待的 commit promise。
+  const navType = useNavigationType();
+  const prevPath = useRef(loc.pathname);
+  const prevRefresh = useRef(refreshKey);
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    if (refreshKey !== prevRefresh.current) {
+      html.dataset.navDir = 'refresh';
+      prevRefresh.current = refreshKey;
+    } else if (loc.pathname !== prevPath.current) {
+      html.dataset.navDir = computeDir(prevPath.current, loc.pathname, navType);
+    }
+    prevPath.current = loc.pathname;
+    routeCommitted();
+  }, [loc.key, refreshKey, loc.pathname, navType]);
+
+  // 空闲预热高频路由 chunk（与 App.jsx 的 lazy() 同模块，Vite 自动去重）：
+  // 消除首跳的 chunk 拉取等待 —— 过渡动画不再被网络卡成「先冻后跳」。
+  useEffect(() => {
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1200));
+    const cancel = window.cancelIdleCallback || clearTimeout;
+    const id = idle(() => {
+      import('../pages/AppHome.jsx'); import('../pages/DiscoverFeed.jsx');
+      import('../pages/Messages.jsx'); import('../pages/AppProfile.jsx');
+      import('../pages/CharacterView.jsx'); import('../pages/Chat.jsx');
+    });
+    return () => cancel(id);
+  }, []);
+
   // Notification / DM counts + online heartbeat。
   // SSE 已秒级推送 dm/notification 事件（见下方 useRealtimeEvent），轮询只作兜底：
   // 间隔放宽到 45s 减少电耗/流量；app 切后台时暂停，回前台立即刷新一次再恢复。
@@ -148,12 +178,13 @@ export default function AppLayout({ children }) {
   }, []);
 
   // Gestures: swipe between top tabs, left-edge swipe-back, pull-to-refresh.
+  const go = useNav();
   const swipeGo = (dir) => {
     const i = SWIPE_TABS.indexOf(loc.pathname);
     if (i < 0) return;                 // only the swipeable top-levels respond
     const n = i + dir;
     if (n < 0 || n >= SWIPE_TABS.length) return;
-    tick(); nav(SWIPE_TABS[n], { viewTransition: true });
+    tick(); go(SWIPE_TABS[n]);
   };
   const doRefresh = () => {
     if (refreshing) return;
@@ -164,7 +195,7 @@ export default function AppLayout({ children }) {
   useAppGestures(mainRef, {
     onNext: () => swipeGo(1),
     onPrev: () => swipeGo(-1),
-    onBack: () => { if (window.history.length > 1) { tick(); window.history.back(); } },
+    onBack: () => { if (window.history.length > 1) { tick(); appBack(); } },
     onPullMove: (px) => { if (!refreshing) setPull(px); },
     onPullEnd: (ok) => { if (ok) doRefresh(); else setPull(0); }
   });
@@ -211,11 +242,15 @@ export default function AppLayout({ children }) {
 }
 
 function Tab({ t, unread, dmUnread, curPath }) {
+  const go = useNav();
   // Tapping the already-active tab scrolls the page back to the top (native pattern).
   // 也覆盖内部滚动容器（发现流 .feed-root、聊天列表等），否则再点无反应。
+  // 非活跃 tab：拦掉 NavLink 默认导航，走 useNav 拿方向化过渡（active 样式仍由
+  // NavLink 按路由位置计算，不受影响）。
   const onClick = (e) => {
-    if (curPath !== t.to) return;
-    e.preventDefault(); tick();
+    e.preventDefault();
+    if (curPath !== t.to) { go(t.to); return; }
+    tick();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     try {
       const inner = document.querySelector('.feed-root, .msgs, .apphome, .pf, .cvx-scroll, .vm-scroll');
@@ -223,7 +258,7 @@ function Tab({ t, unread, dmUnread, curPath }) {
     } catch { /* */ }
   };
   return (
-    <NavLink to={t.to} end={t.end} viewTransition onClick={onClick} className={({ isActive }) => 'app-tab' + (isActive ? ' active' : '')}>
+    <NavLink to={t.to} end={t.end} onClick={onClick} className={({ isActive }) => 'app-tab' + (isActive ? ' active' : '')}>
       <span className="app-tab-ic">
         <t.ic size={23} />
         {t.badge === 'noti' && unread > 0 && <i className="app-dot" />}
@@ -236,8 +271,8 @@ function Tab({ t, unread, dmUnread, curPath }) {
 }
 
 function CreateSheet({ onClose }) {
-  const nav = useNavigate();
-  const go = (to) => { nav(to, { viewTransition: true }); onClose(); };
+  const navTo = useNav();
+  const go = (to) => { navTo(to); onClose(); };
   return (
     <div className="app-sheet-mask" onClick={onClose}>
       <div className="app-sheet" onClick={e => e.stopPropagation()}>
