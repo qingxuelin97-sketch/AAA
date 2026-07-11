@@ -123,6 +123,20 @@ export default function AppLayout({ children }) {
   // Close the create sheet on navigation.
   useEffect(() => { setSheet(false); }, [loc.pathname]);
 
+  // —— 四路一级 tab KeepAlive ——
+  // 切 tab 不再卸载整页重建（旧行为让 DOM 重建 + 接口重拉正好压在过渡动画帧
+  // 上，是真机掉帧放大器）。仅缓存 SWIPE_TABS 四路：render 期把当前 children
+  // 存入缓存（幂等，StrictMode 安全），全部缓存 pane 并列渲染，非活跃者以
+  // content-visibility:hidden 跳过渲染但保留 DOM/状态/内部滚动位置。
+  // React 对同引用元素直接 bailout，同 type+key+位置绝不重挂载。
+  // 语义变化：tab 回访不再自动重拉数据 —— 由 SSE 实时事件 + 下拉刷新（驱逐
+  // 当前 pane 缓存）覆盖。非 tab 路由维持原 keyed 重挂载。
+  const isTab = SWIPE_TABS.includes(loc.pathname);
+  const paneCache = useRef({});   // { path: ReactElement }
+  const paneVer = useRef({});     // { path: n } —— 下拉刷新的驱逐版本号
+  const paneScroll = useRef({});  // { path: window.scrollY }（window 是 tab 页主滚动容器）
+  if (isTab) paneCache.current[loc.pathname] = children;
+
   // 过渡方向兜底 + VT commit 信号。commit 后、paint 前把方向写到 <html
   // data-nav-dir>：keyed .route-fade 的入场动画按它切 variant，让未经 useNav
   // 的裸 navigate() / 系统返回也有方向正确的过渡；同时 resolve nav.js 里
@@ -140,7 +154,54 @@ export default function AppLayout({ children }) {
     }
     prevPath.current = loc.pathname;
     routeCommitted();
+    // VT 接管期间给非 tab 入场页钉内联 animation:none：否则 VT 结束摘除
+    // [data-vt] 时 animation-name 从 none 翻回 → 按规范重新起播（二次滑动）。
+    // 内联样式随元素卸载自然消失；tab pane 走 .pane-enter 机制，天然无此问题。
+    if ('vt' in html.dataset) {
+      const el = mainRef.current?.querySelector(':scope > .route-fade:not(.tab-pane)');
+      if (el) el.style.animation = 'none';
+    }
   }, [loc.key, refreshKey, loc.pathname, navType]);
+
+  // tab pane 切换编排：离开 → 存滚动位置 / 暂停 pane 内视频 / 收焦点；
+  // 进入 → 恢复视频 / 还原滚动（paint 前，VT 新快照拍到的即是还原后状态）/
+  // 重放方向入场动画（VT 接管、lite、reduced-motion 时被 CSS 门控为 no-op）。
+  const prevTab = useRef(null);
+  useLayoutEffect(() => {
+    const cur = SWIPE_TABS.includes(loc.pathname) ? loc.pathname : null;
+    const prev = prevTab.current;
+    if (prev === cur) return;
+    const root = mainRef.current;
+    if (prev && root) {
+      const pane = root.querySelector(`[data-pane="${prev}"]`);
+      if (pane) {
+        paneScroll.current[prev] = window.scrollY;
+        pane.querySelectorAll('video').forEach(v => {
+          if (!v.paused) { v.dataset.hyKaPaused = '1'; try { v.pause(); } catch { /* */ } }
+        });
+        if (pane.contains(document.activeElement)) document.activeElement.blur?.();
+      }
+    }
+    if (cur && root) {
+      const pane = root.querySelector(`[data-pane="${cur}"]`);
+      if (pane) {
+        pane.querySelectorAll('video[data-hy-ka-paused]').forEach(v => {
+          delete v.dataset.hyKaPaused;
+          v.play?.().catch?.(() => {});
+        });
+        window.scrollTo(0, paneScroll.current[cur] || 0);
+        if (!('vt' in document.documentElement.dataset)) {
+          pane.classList.remove('pane-enter');
+          void pane.offsetWidth; // 重启动画
+          pane.classList.add('pane-enter');
+          const done = () => pane.classList.remove('pane-enter');
+          pane.addEventListener('animationend', done, { once: true });
+          setTimeout(done, 450); // 动画被门控为 none 时 animationend 不触发，兜底摘类
+        }
+      }
+    }
+    prevTab.current = cur;
+  }, [loc.pathname]);
 
   // 空闲预热高频路由 chunk（与 App.jsx 的 lazy() 同模块，Vite 自动去重）：
   // 消除首跳的 chunk 拉取等待 —— 过渡动画不再被网络卡成「先冻后跳」。
@@ -196,6 +257,10 @@ export default function AppLayout({ children }) {
   const doRefresh = () => {
     if (refreshing) return;
     tick(12); setRefreshing(true);
+    // tab 页：驱逐当前 pane 缓存（key 变 → 仅该 pane 重挂载重拉），其余 pane 保活
+    if (SWIPE_TABS.includes(loc.pathname)) {
+      paneVer.current[loc.pathname] = (paneVer.current[loc.pathname] || 0) + 1;
+    }
     setRefreshKey(k => k + 1);          // remount current route → its effects refetch
     setTimeout(() => { setRefreshing(false); setPull(0); }, 720);
   };
@@ -223,7 +288,14 @@ export default function AppLayout({ children }) {
       </div>
       <main className="app-main" ref={mainRef}
         style={pull && !refreshing ? { transform: `translateY(${Math.min(pull, 90)}px)`, transition: 'none' } : undefined}>
-        <div className="route-fade" key={loc.pathname + '#' + refreshKey}>{children}</div>
+        {SWIPE_TABS.map(p => paneCache.current[p] && (
+          <div key={p + '#' + (paneVer.current[p] || 0)}
+            className={'route-fade tab-pane' + (isTab && p === loc.pathname ? '' : ' off')}
+            data-pane={p}>
+            {paneCache.current[p]}
+          </div>
+        ))}
+        {!isTab && <div className="route-fade" key={loc.pathname + '#' + refreshKey}>{children}</div>}
       </main>
 
       <nav className="app-tabbar" ref={tabbarRef}>
@@ -266,7 +338,9 @@ function Tab({ t, unread, dmUnread, curPath }) {
     tick();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     try {
-      const inner = document.querySelector('.feed-root, .msgs, .apphome, .pf, .cvx-scroll, .vm-scroll');
+      // KeepAlive 后其它 tab 的 pane 也在 DOM 里，滚动容器必须在活跃 pane 内找
+      const scope = document.querySelector('.tab-pane:not(.off)') || document;
+      const inner = scope.querySelector('.feed-root, .msgs, .apphome, .pf, .cvx-scroll, .vm-scroll');
       inner?.scrollTo?.({ top: 0, behavior: 'smooth' });
     } catch { /* */ }
   };

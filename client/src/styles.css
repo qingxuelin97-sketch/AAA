@@ -4583,6 +4583,31 @@ html[data-app="1"][data-nav-dir="right"] .route-fade { animation-name: appSlideR
   html[data-app="1"]::view-transition-old(vt-page), html[data-app="1"]::view-transition-new(vt-page) { animation: none; }
 }
 
+/* —— tab KeepAlive（AppLayout）：四个一级 tab 常驻缓存，切换即显 ——
+   隐藏 pane 用 content-visibility:hidden 跳过 layout/paint 但保留渲染状态
+   （内部滚动位置、播放进度等），比 display:none 的重现开销低一个量级；
+   flex 覆写防止隐藏者分走 .route-fade{flex:1} 的空间。 */
+.app-main > .route-fade.tab-pane.off {
+  flex: 0 0 0px; min-height: 0;
+  content-visibility: hidden;
+  pointer-events: none;
+}
+@supports not (content-visibility: hidden) {
+  .app-main > .route-fade.tab-pane.off { display: none; }
+}
+/* pane 不走「挂载即播」的 route-fade：入场由激活时 JS 加 .pane-enter 重放
+   （方向沿用 data-nav-dir）；VT 接管 / lite / reduced-motion 门控为 no-op。
+   基础态 animation:none 同时绕开「[data-vt] 摘除后动画重新起播」的规范行为。 */
+html[data-app="1"] .route-fade.tab-pane { animation: none; }
+html[data-app="1"] .tab-pane.pane-enter { animation: appRouteIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"][data-nav-dir="push"] .tab-pane.pane-enter { animation-name: appPushIn; }
+html[data-app="1"][data-nav-dir="pop"] .tab-pane.pane-enter { animation-name: appPopIn; }
+html[data-app="1"][data-nav-dir="left"] .tab-pane.pane-enter { animation-name: appSlideL; animation-duration: 0.26s; }
+html[data-app="1"][data-nav-dir="right"] .tab-pane.pane-enter { animation-name: appSlideR; animation-duration: 0.26s; }
+html[data-app="1"][data-vt] .tab-pane.pane-enter,
+html[data-app="1"][data-perf="lite"] .tab-pane.pane-enter { animation: none; }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] .tab-pane.pane-enter { animation: none !important; } }
+
 /* Full-screen / immersive pages (chat-conversation · theater · parliament ·
    novel workspace · novel reader) take the whole screen — they carry their own
    top bar, so the app chrome steps aside. */
