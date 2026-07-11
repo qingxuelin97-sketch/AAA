@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth, getApiBase, setToken } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker, CoinIcon } from '../ui.jsx';
@@ -8,7 +8,7 @@ import { getPerfPref, setPerfPref, resolvePerf } from '../perf.js';
 import { browserVoices, speakBrowser } from '../voice.js';
 import HelpCenter from '../components/HelpCenter.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
-import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, LifeBuoy, LayoutGrid, Scale, Check } from 'lucide-react';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, Upload, LifeBuoy, LayoutGrid, Scale, Check } from 'lucide-react';
 
 // Renders a gold price; when a membership discount applies it shows the full
 // price struck through next to the discounted one so VIP/SVIP can see the deal.
@@ -177,6 +177,22 @@ export default function Settings() {
       a.download = `huanyu-export-${new Date().toISOString().slice(0, 10)}.json`; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       toast('已导出你的数据');
+    } catch (e) { toast(e.message, 'err'); }
+  };
+
+  // 导入 export 生成的 JSON 包（数据互通：网页试玩数据带入真账号）。
+  // 只导创作与对话数据、经济字段不参与（端点两侧同语义校验）。
+  const importRef = useRef(null);
+  const importData = async (file) => {
+    if (!file) return;
+    let data;
+    try { data = JSON.parse(await file.text()); }
+    catch { toast('文件不是有效的 JSON', 'err'); return; }
+    if (!window.confirm('将把该备份里的角色、剧本与对话作为新数据导入当前账号（金币/钻石等不受影响，重复导入会产生重复数据）。继续？')) return;
+    try {
+      const d = await api('/settings/import', { method: 'POST', body: data });
+      const r = d.imported || {};
+      toast(`导入完成：角色 ${r.characters || 0} · 剧本 ${r.scripts || 0} · 对话 ${r.conversations || 0} · 消息 ${r.messages || 0}` + (d.skipped ? `（跳过 ${d.skipped} 条）` : ''));
     } catch (e) { toast(e.message, 'err'); }
   };
 
@@ -422,6 +438,12 @@ export default function Settings() {
               <div className="priv-data-row">
                 <div><b>导出我的数据</b><div className="muted" style={{ fontSize: 12.5 }}>下载包含资料、设置、角色、剧本与对话的 JSON 备份</div></div>
                 <button className="btn sm" onClick={exportData}><Download size={14} /> 导出 JSON</button>
+              </div>
+              <div className="priv-data-row">
+                <div><b>导入数据</b><div className="muted" style={{ fontSize: 12.5 }}>把导出的 JSON 备份（含网页试玩数据）作为新数据导入本账号</div></div>
+                <input ref={importRef} type="file" accept="application/json,.json" style={{ display: 'none' }}
+                  onChange={e => { importData(e.target.files?.[0]); e.target.value = ''; }} />
+                <button className="btn sm" onClick={() => importRef.current?.click()}><Upload size={14} /> 导入 JSON</button>
               </div>
               <div className="priv-data-row">
                 <div><b>清除本机浏览痕迹</b><div className="muted" style={{ fontSize: 12.5 }}>清空「最近浏览」等仅存于本设备的记录</div></div>
