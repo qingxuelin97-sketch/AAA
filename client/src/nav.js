@@ -75,13 +75,22 @@ function pathOf(to) {
   return to?.pathname || '';
 }
 
+// 沉浸对话页跳过 VT：View Transition 要对整个 .app-main 截图为纹理，
+// 该页是全屏立绘/视频 + 多层玻璃，进出场各拍一次快照本身就是一次大绘制，
+// 而"进入/退出"场景用 CSS 方向入场兜底观感足够 —— 865 上不值这笔快照费。
+const VT_SKIP = /^\/chats\/[^/]+/;
+const vtSkipPath = (p) => VT_SKIP.test(p || '');
+
 // useNavigate 的过渡增强版。返回函数签名与 navigate 完全一致。
 export function useNav() {
   const navigate = useNavigate();
   const loc = useLocation();
   const from = loc.pathname;
   return useCallback((to, opts) => {
-    if (!vtEnabled()) { navigate(to, opts); return; }
+    if (!vtEnabled() || vtSkipPath(from) || (typeof to !== 'number' && vtSkipPath(pathOf(to)))) {
+      navigate(to, opts);
+      return;
+    }
     if (typeof to === 'number') {
       runVT(to < 0 ? 'pop' : 'push', () => navigate(to));
       return;
@@ -92,6 +101,12 @@ export function useNav() {
 
 // 硬件/手势返回的过渡版（非 hook，可在 native.js 等纯模块里用）。
 export function appBack() {
-  if (vtEnabled()) runVT('pop', () => window.history.back());
+  if (vtEnabled() && !vtSkipPath(routePath())) runVT('pop', () => window.history.back());
   else window.history.back();
+}
+
+// 当前路由路径：HashRouter（静态包/APK）在 hash 里，BrowserRouter 在 pathname。
+function routePath() {
+  const h = window.location.hash;
+  return h.startsWith('#/') ? h.slice(1).split('?')[0] : window.location.pathname;
 }

@@ -37,6 +37,9 @@ export function burst(x, y, colors = ['#ff5a8a', '#ff8aa8', '#ffd24a', '#e2885f'
 // 3D 灵动卡片：鼠标悬停时海报卡随指针轻微倾斜 + 光泽掠过（桌面指针设备限定，
 // 省电档/减弱动效直接不装）。事件全局委托，Home/收藏/搜索等所有 .poster 即刻生效。
 function initTilt() {
+  // 原生壳一律不装：即便外接鼠标（平板/DeX 会匹配 pointer:fine），APP 里也
+  // 没有 .poster 悬停场景，省掉全局 pointermove 监听。
+  if (document.documentElement.dataset.native === '1') return;
   if (!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) return;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   if (document.documentElement.dataset.perf === 'lite') return;
