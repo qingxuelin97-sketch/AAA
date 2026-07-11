@@ -6757,10 +6757,23 @@ html[data-app="1"] .app-boot-name {
   letter-spacing: 8px; font-weight: 900;
 }
 
-/* —— 全局：按钮/链接聚焦的可访问性描边（键盘导航必留） —— */
-html[data-app="1"] :focus-visible {
+/* —— 全局焦点体系（APP 壳唯一权威块）——
+   曾有三条同特异性 :focus-visible 互相打架（outline 与 box-shadow 按属性
+   各自后写者胜），净效果是文本框吃到「outline + box-shadow 双环」——真机
+   反馈的"蓝色框框"。合并为一条：键盘可达性给按钮/链接保留 outline；
+   文本输入（Chromium 下永远匹配 :focus-visible）一律不画焦点环，聚焦反馈
+   交给各自容器（输入岛边框 / 表单 :focus 规则）。 */
+html[data-app="1"] :where(button, a, [role="button"], select, summary, .seg button):focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px; border-radius: 8px;
+  outline-offset: 2px; border-radius: 8px; box-shadow: none;
+}
+html[data-app="1"] :where(input, textarea, [contenteditable="true"]):focus-visible {
+  outline: none; box-shadow: none;
+}
+/* 对话页两处输入（搜索胶囊 / 输入岛）显式钉死：任何焦点自绘都不要 */
+html[data-app="1"] .hy-search input:focus, html[data-app="1"] .hy-search input:focus-visible,
+html[data-app="1"] .chat-input-bar textarea:focus, html[data-app="1"] .chat-input-bar textarea:focus-visible {
+  outline: none; box-shadow: none;
 }
 
 /* —— 内容滚动更顺滑（Android WebView 尤其明显） —— */
@@ -7487,13 +7500,8 @@ html[data-app="1"][data-perf="lite"] .cvx-tile {
   backdrop-filter: none; -webkit-backdrop-filter: none;
 }
 
-/* ============================================================================
-   Focus 光环玻璃感
-   ========================================================================== */
-html[data-app="1"] :focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
-}
+/* （Focus 光环玻璃感块已删 —— 与另两条 :focus-visible 打架产生文本框双环，
+   焦点体系已合并到 6760 附近的唯一权威块。） */
 
 /* ============================================================================
    全局 Glass 助手工具类（谁想额外挂玻璃就加 class）
@@ -8388,9 +8396,10 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
   -webkit-backdrop-filter: var(--hy-cg-blur); backdrop-filter: var(--hy-cg-blur);
   box-shadow: var(--hy-cg-sh);
 }
+/* 聚焦反馈只留极弱的边框变化 —— 青蓝描边+3px 外发光是真机反馈的"蓝框"之一 */
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box:focus-within {
-  border-color: rgba(84,214,240,0.55);
-  box-shadow: var(--hy-cg-sh), 0 0 0 3px rgba(34,211,238,0.18);
+  border-color: rgba(84,214,240,0.28);
+  box-shadow: var(--hy-cg-sh);
 }
 html[data-app="1"] .chat-main.has-bg .send-btn:not(.stop) {
   background: linear-gradient(135deg, #22d3ee, #0e9cb8 55%, #0a7f97);
@@ -9244,7 +9253,7 @@ html[data-app="1"] .pf-foot-btn {
 html[data-app="1"] .pf-foot-btn:active { transform: scale(0.95); }
 /* ---- 全局文字选区与聚焦可见性（青色系统一）---- */
 html[data-app="1"] ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
-html[data-app="1"] :focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }
+/* （此处曾有第三条 :focus-visible，已并入 6760 附近的唯一权威块） */
 /* ---- 档案抽屉 section 分隔发丝线 ---- */
 html[data-app="1"] .chat-drawer .cd-body section + section {
   border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 16px;
@@ -9750,25 +9759,25 @@ html[data-app="1"] .cvx-tile svg { color: var(--accent); }
 /* ============================================================================
    幻域重设计 · 真机反馈修正
    ========================================================================== */
-/* ① 发现页「进入对话」呼吸：辉光画在 ::before 上一次光栅化，循环只动
-   opacity + scale（合成器直通 —— 旧版逐帧动 box-shadow，每帧 repaint）。
-   仅当前卡（.feed-card.cur，activeIdx 驱动）呼吸，屏外卡零动画。 */
-html[data-app="1"] .fd2-enter { position: relative; }
-html[data-app="1"] .fd2-enter::before {
-  content: ''; position: absolute; inset: -7px; border-radius: 999px; z-index: -1;
-  background: radial-gradient(60% 130% at 50% 50%, rgba(15,181,166,0.55), rgba(15,181,166,0.18) 62%, transparent 78%);
-  opacity: 0; pointer-events: none;
+/* ① 发现页「进入对话」流动呼吸：一道柔和流光在按钮表面周期性掠过
+   （overflow:hidden 锁在 UI 内部 —— 真机反馈明确不要外圈雾状辉光）。
+   复用 hy-sheen（auth-submit 先例），transform-only 合成器直通；
+   仅当前卡（.feed-card.cur）播放，lite / reduced-motion 关闭。 */
+html[data-app="1"] .fd2-enter { position: relative; overflow: hidden; }
+html[data-app="1"] .fd2-enter::after {
+  content: ''; position: absolute; top: 0; left: 0; width: 42%; height: 100%;
+  pointer-events: none; border-radius: 999px;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.45) 50%, transparent);
+  transform: translateX(-130%) skewX(-18deg);
 }
+html[data-app="1"]:not([data-perf="lite"]) .feed-card.cur .fd2-enter::after {
+  animation: hy-sheen 3.2s ease-in-out 1.1s infinite;
+}
+/* 下面两个 keyframes 由签到/成就辉光与开聊 CTA 复用（8130/8197 附近），保留 */
 @keyframes hyGlowBreathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
 @keyframes hyCtaScale { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
-html[data-app="1"]:not([data-perf="lite"]) .feed-card.cur .fd2-enter::before {
-  animation: hyGlowBreathe 2.4s ease-in-out infinite;
-}
-html[data-app="1"]:not([data-perf="lite"]) .feed-card.cur .fd2-enter:not(:active) {
-  animation: hyCtaScale 2.4s ease-in-out infinite;
-}
 @media (prefers-reduced-motion: reduce) {
-  html[data-app="1"] .fd2-enter, html[data-app="1"] .fd2-enter::before { animation: none !important; }
+  html[data-app="1"] .fd2-enter::after { animation: none !important; }
 }
 
 /* ② 发现页顶部「关注/推荐/新作」真正屏幕居中（搜索钮脱离布局流，绝对定位右上） */

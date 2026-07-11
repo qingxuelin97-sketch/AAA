@@ -264,9 +264,10 @@ html[data-app="1"] .chat-main .chat-input-bar {
   -webkit-backdrop-filter: var(--hy-cg-blur); backdrop-filter: var(--hy-cg-blur);
   box-shadow: var(--hy-cg-sh);
 }
+/* 聚焦反馈只留极弱边框变化（原 3px 青环 = 真机反馈的"蓝框"主源，已去） */
 html[data-app="1"] .chat-main .chat-input-bar:focus-within {
-  border-color: color-mix(in srgb, var(--chat-accent) 55%, transparent);
-  box-shadow: var(--hy-cg-sh), 0 0 0 3px var(--chat-accent-soft);
+  border-color: color-mix(in srgb, var(--chat-accent) 28%, transparent);
+  box-shadow: var(--hy-cg-sh);
 }
 /* 岛上内容层透明 */
 html[data-app="1"] .chat-main .chat-input-bar .box,
