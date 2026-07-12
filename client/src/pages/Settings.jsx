@@ -94,6 +94,8 @@ export default function Settings() {
   const [bvoices, setBvoices] = useState(() => browserVoices());
   // 密钥 / 密码显隐切换（移动端核对长密钥用）
   const [showSecret, setShowSecret] = useState({});
+  // 注意：必须在下面 if (!s) 提前返回之前声明（hooks 数量不能随渲染变化）
+  const importRef = useRef(null);
   useEffect(() => {
     const upd = () => setBvoices(browserVoices());
     upd(); try { window.speechSynthesis?.addEventListener?.('voiceschanged', upd); } catch { /* */ }
@@ -182,7 +184,6 @@ export default function Settings() {
 
   // 导入 export 生成的 JSON 包（数据互通：网页试玩数据带入真账号）。
   // 只导创作与对话数据、经济字段不参与（端点两侧同语义校验）。
-  const importRef = useRef(null);
   const importData = async (file) => {
     if (!file) return;
     let data;

@@ -11,51 +11,71 @@ import Auth from './pages/Auth.jsx';
 // Route-level code splitting — each page is fetched on demand so the initial
 // bundle stays small and the discover page paints fast. The login screen and
 // Layout shell stay eager (they're on the critical path for first paint).
-const Home = lazy(() => import('./pages/Home.jsx'));
-const Library = lazy(() => import('./pages/Library.jsx'));
-const CharacterEditor = lazy(() => import('./pages/CharacterEditor.jsx'));
-const Chat = lazy(() => import('./pages/Chat.jsx'));
-const Settings = lazy(() => import('./pages/Settings.jsx'));
-const Profile = lazy(() => import('./pages/Profile.jsx'));
-const Publish = lazy(() => import('./pages/Publish.jsx'));
-const Scripts = lazy(() => import('./pages/Scripts.jsx'));
-const ScriptDetail = lazy(() => import('./pages/ScriptDetail.jsx'));
-const ScriptEditor = lazy(() => import('./pages/ScriptEditor.jsx'));
-const Community = lazy(() => import('./pages/Community.jsx'));
-const Groups = lazy(() => import('./pages/Groups.jsx'));
-const GroupRoom = lazy(() => import('./pages/GroupRoom.jsx'));
-const Theater = lazy(() => import('./pages/Theater.jsx'));
-const TheaterRoom = lazy(() => import('./pages/TheaterRoom.jsx'));
-const Wallet = lazy(() => import('./pages/Wallet.jsx'));
-const Notifications = lazy(() => import('./pages/Notifications.jsx'));
-const Favorites = lazy(() => import('./pages/Favorites.jsx'));
-const Search = lazy(() => import('./pages/Search.jsx'));
-const CharacterView = lazy(() => import('./pages/CharacterView.jsx'));
-const Announcements = lazy(() => import('./pages/Announcements.jsx'));
-const Leaderboard = lazy(() => import('./pages/Leaderboard.jsx'));
-const Events = lazy(() => import('./pages/Events.jsx'));
-const Admin = lazy(() => import('./pages/Admin.jsx'));
-const Gacha = lazy(() => import('./pages/Gacha.jsx'));
-const Studio = lazy(() => import('./pages/Studio.jsx'));
-const Parliament = lazy(() => import('./pages/Parliament.jsx'));
-const Achievements = lazy(() => import('./pages/Achievements.jsx'));
-const Friends = lazy(() => import('./pages/Friends.jsx'));
-const Draw = lazy(() => import('./pages/Draw.jsx'));
-const Features = lazy(() => import('./pages/Features.jsx'));
-const Help = lazy(() => import('./pages/Help.jsx'));
-const Tags = lazy(() => import('./pages/Tags.jsx'));
-const Worldbooks = lazy(() => import('./pages/Worldbooks.jsx'));
-const WorldbookEditor = lazy(() => import('./pages/WorldbookEditor.jsx'));
-const WorldbookView = lazy(() => import('./pages/WorldbookView.jsx'));
-const Atelier = lazy(() => import('./pages/Atelier.jsx'));
-const NovelWorkspace = lazy(() => import('./pages/NovelWorkspace.jsx'));
-const NovelReader = lazy(() => import('./pages/NovelReader.jsx'));
-const AppHome = lazy(() => import('./pages/AppHome.jsx'));
-const Messages = lazy(() => import('./pages/Messages.jsx'));
-const AppProfile = lazy(() => import('./pages/AppProfile.jsx'));
-const Vip = lazy(() => import('./pages/Vip.jsx'));
-const Insights = lazy(() => import('./pages/Insights.jsx'));
-const DiscoverFeed = lazy(() => import('./pages/DiscoverFeed.jsx'));
+//
+// lazyRetry：chunk 加载失败（发版后缓存引旧哈希 404 / 瞬时网络失败）会让
+// lazy() 把 rejection 抛到唯一的根级 ErrorBoundary —— 整个应用白屏成
+// 「渲染错误」（真机反馈的「点击设置显示渲染错误」即此类）。策略：
+// 300ms 后重试一次 → 仍失败且本会话没刷过 → 硬刷新一次拿新 index.html
+// → 再失败才真正抛给边界。
+const lazyRetry = (factory) => lazy(() =>
+  factory().catch(() =>
+    new Promise(r => setTimeout(r, 300)).then(factory).catch((err) => {
+      try {
+        if (!sessionStorage.getItem('huanyu_chunk_reload')) {
+          sessionStorage.setItem('huanyu_chunk_reload', '1');
+          location.reload();
+          return new Promise(() => {}); // 刷新接管，挂起即可
+        }
+      } catch { /* */ }
+      throw err;
+    })
+  )
+);
+const Home = lazyRetry(() => import('./pages/Home.jsx'));
+const Library = lazyRetry(() => import('./pages/Library.jsx'));
+const CharacterEditor = lazyRetry(() => import('./pages/CharacterEditor.jsx'));
+const Chat = lazyRetry(() => import('./pages/Chat.jsx'));
+const Settings = lazyRetry(() => import('./pages/Settings.jsx'));
+const Profile = lazyRetry(() => import('./pages/Profile.jsx'));
+const Publish = lazyRetry(() => import('./pages/Publish.jsx'));
+const Scripts = lazyRetry(() => import('./pages/Scripts.jsx'));
+const ScriptDetail = lazyRetry(() => import('./pages/ScriptDetail.jsx'));
+const ScriptEditor = lazyRetry(() => import('./pages/ScriptEditor.jsx'));
+const Community = lazyRetry(() => import('./pages/Community.jsx'));
+const Groups = lazyRetry(() => import('./pages/Groups.jsx'));
+const GroupRoom = lazyRetry(() => import('./pages/GroupRoom.jsx'));
+const Theater = lazyRetry(() => import('./pages/Theater.jsx'));
+const TheaterRoom = lazyRetry(() => import('./pages/TheaterRoom.jsx'));
+const Wallet = lazyRetry(() => import('./pages/Wallet.jsx'));
+const Notifications = lazyRetry(() => import('./pages/Notifications.jsx'));
+const Favorites = lazyRetry(() => import('./pages/Favorites.jsx'));
+const Search = lazyRetry(() => import('./pages/Search.jsx'));
+const CharacterView = lazyRetry(() => import('./pages/CharacterView.jsx'));
+const Announcements = lazyRetry(() => import('./pages/Announcements.jsx'));
+const Leaderboard = lazyRetry(() => import('./pages/Leaderboard.jsx'));
+const Events = lazyRetry(() => import('./pages/Events.jsx'));
+const Admin = lazyRetry(() => import('./pages/Admin.jsx'));
+const Gacha = lazyRetry(() => import('./pages/Gacha.jsx'));
+const Studio = lazyRetry(() => import('./pages/Studio.jsx'));
+const Parliament = lazyRetry(() => import('./pages/Parliament.jsx'));
+const Achievements = lazyRetry(() => import('./pages/Achievements.jsx'));
+const Friends = lazyRetry(() => import('./pages/Friends.jsx'));
+const Draw = lazyRetry(() => import('./pages/Draw.jsx'));
+const Features = lazyRetry(() => import('./pages/Features.jsx'));
+const Help = lazyRetry(() => import('./pages/Help.jsx'));
+const Tags = lazyRetry(() => import('./pages/Tags.jsx'));
+const Worldbooks = lazyRetry(() => import('./pages/Worldbooks.jsx'));
+const WorldbookEditor = lazyRetry(() => import('./pages/WorldbookEditor.jsx'));
+const WorldbookView = lazyRetry(() => import('./pages/WorldbookView.jsx'));
+const Atelier = lazyRetry(() => import('./pages/Atelier.jsx'));
+const NovelWorkspace = lazyRetry(() => import('./pages/NovelWorkspace.jsx'));
+const NovelReader = lazyRetry(() => import('./pages/NovelReader.jsx'));
+const AppHome = lazyRetry(() => import('./pages/AppHome.jsx'));
+const Messages = lazyRetry(() => import('./pages/Messages.jsx'));
+const AppProfile = lazyRetry(() => import('./pages/AppProfile.jsx'));
+const Vip = lazyRetry(() => import('./pages/Vip.jsx'));
+const Insights = lazyRetry(() => import('./pages/Insights.jsx'));
+const DiscoverFeed = lazyRetry(() => import('./pages/DiscoverFeed.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();

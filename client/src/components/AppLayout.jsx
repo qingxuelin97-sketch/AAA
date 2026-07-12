@@ -14,6 +14,7 @@ import { useRealtimeEvent } from '../realtime.jsx';
 import { Logo } from '../assets.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
+import RouteErrorBoundary from './RouteErrorBoundary.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
 import { useNav, appBack, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
 import {
@@ -298,10 +299,16 @@ export default function AppLayout({ children }) {
           <div key={p + '#' + (paneVer.current[p] || 0)}
             className={'route-fade tab-pane' + (isTab && p === loc.pathname ? '' : ' off')}
             data-pane={p}>
-            {paneCache.current[p]}
+            {/* 每 pane 各自的错误边界：KeepAlive 后四页常驻渲染树，任何一页
+                崩溃若只靠根边界会把整屏打白且伪装成"当前页崩溃" */}
+            <RouteErrorBoundary label={p}>{paneCache.current[p]}</RouteErrorBoundary>
           </div>
         ))}
-        {!isTab && <div className="route-fade" key={loc.pathname + '#' + refreshKey}>{children}</div>}
+        {!isTab && (
+          <div className="route-fade" key={loc.pathname + '#' + refreshKey}>
+            <RouteErrorBoundary label={loc.pathname}>{children}</RouteErrorBoundary>
+          </div>
+        )}
       </main>
 
       <nav className="app-tabbar" ref={tabbarRef}>

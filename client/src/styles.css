@@ -4516,6 +4516,12 @@ html[data-app="1"] { --app-top: env(safe-area-inset-top); --app-bot: calc(60px +
   display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 12px;
   font-size: 12px; font-weight: 600; color: #fff; background: #b5562f; }
 
+/* ---- 路由级崩溃卡（RouteErrorBoundary）：单页崩溃不再全屏白 ---- */
+.route-crash { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 60px 24px calc(60px + env(safe-area-inset-bottom)); text-align: center; }
+.route-crash b { font-size: 16px; }
+.route-crash p { font-size: 13px; max-width: 320px; word-break: break-all; }
+
 /* ---- 自适应降级提示（持续掉帧 → 本会话临时省电）：同 offline 的细条形态 ---- */
 .app-perfnote { position: fixed; top: calc(var(--app-top) + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
   width: min(480px, 100%); z-index: 55; box-sizing: border-box;
