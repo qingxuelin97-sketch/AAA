@@ -6,6 +6,9 @@
 //   · useNav()：签名与 useNavigate() 返回值一致；满足条件时把导航包进
 //     document.startViewTransition —— 旧页与新页同时做方向化滑动（浏览器
 //     双缓冲快照，天然解决「退场动画」），否则原样透传（Web 壳零影响）。
+//     快照只用 root（视口大小、不透明）：曾对整棵 .app-main 命名快照，
+//     长页 = 数千 px 巨型纹理 ×2 且背景透明 → 截图打爆帧率 + 新旧页
+//     透明叠印（整屏残影）。动画规则见 styles.css「方向感知路由过渡」段。
 //   · appBack()：同理包装 history.back()，供手势/硬件返回键使用。
 //   · 方向由 <html data-nav-dir> 标记，CSS 按 push/pop/left/right 切换动画；
 //     [data-vt] 在过渡期间存在，供 CSS 关掉 route-fade 入场避免双重动画。
