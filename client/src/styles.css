@@ -4572,6 +4572,10 @@ html[data-app="1"] .route-fade { animation: appRouteIn 0.3s cubic-bezier(0.22, 0
    兜底层：VT 不可用/未启用时，keyed .route-fade 的入场动画按 data-nav-dir
    切方向 variant（无退场，但方向正确、观感连贯）。 */
 html[data-app="1"][data-vt] .app-tabbar { view-transition-name: vt-dock; }
+/* VT 进行期间 ::view-transition 伪元素树罩住整屏且默认吃掉全部点击 ——
+   「切完页那零点几秒界面点不动」的直接来源。放行指针：动画照播，点击
+   直达下方真实 DOM（此时已是新页）；快速连点由 nav.js cancelActiveVT 收口。 */
+html[data-app="1"]::view-transition { pointer-events: none; }
 /* 底栏抽出为独立快照且禁动画：导航时纹丝不动；root 默认交叉淡入同样禁掉
   （交叉淡入 = 半透明叠印 = 残影），方向未知时直接硬切。 */
 html[data-app="1"]::view-transition-old(root), html[data-app="1"]::view-transition-new(root),

@@ -5,7 +5,7 @@ import db from'../db.js';
 import { sign, authRequired, bumpTokenVersion } from'../auth.js';
 import { publicUser, applyTx, notify } from'../wallet.js';
 import { sendVerifyCode, getMail } from'../mail.js';
-import { isWhitelisted, normalizeEmail, whitelistEnabled } from'../whitelist.js';
+import { isWhitelisted, normalizeEmail, canonicalEmail, whitelistEnabled } from'../whitelist.js';
 import { log } from '../logger.js';
 
 const router = Router();
@@ -38,9 +38,10 @@ router.post('/send-code', codeLimiter, async (req, res) => {
   if (whitelistEnabled() && !isWhitelisted(e)) {
     return res.status(403).json({ error: '该邮箱不在注册白名单内，无法注册本平台' });
   }
-  // 该邮箱是否已注册
-  if (db.prepare('SELECT id FROM users WHERE email = ?').get(e)) {
-    return res.status(409).json({ error: '该邮箱已注册，请直接登录' });
+  // 该邮箱是否已注册（含规范形别名：+tag / gmail 点号变体）
+  const c = canonicalEmail(e);
+  if (db.prepare('SELECT id FROM users WHERE email = ? OR (email_canon = ? AND email_canon != ?)').get(e, c, '')) {
+    return res.status(409).json({ error: '该邮箱（或其别名形式）已注册，请直接登录' });
   }
   // 邮箱级频率：10 分钟内最多 3 次（防轰炸）。codeLimiter 已限 IP。
   const since = Date.now() - 10 * 60_000;
@@ -91,13 +92,29 @@ router.post('/register', authLimiter, async (req, res) => {
   if (whitelistEnabled() && !isWhitelisted(e)) {
     return res.status(403).json({ error:'该邮箱不在注册白名单内，无法注册本平台' });
   }
-  // 邮箱是否已被注册
-  if (db.prepare('SELECT id FROM users WHERE email = ?').get(e)) {
-    return res.status(409).json({ error:'该邮箱已注册，请直接登录' });
+  // 邮箱是否已被注册 —— 按规范形比对：user+1@ / u.s.e.r@gmail 这类别名
+  // 是「一个真实邮箱批量领新手金币」的标准手法，规范形上视为同一邮箱。
+  const canon = canonicalEmail(e);
+  if (db.prepare('SELECT id FROM users WHERE email = ? OR (email_canon = ? AND email_canon != ?)').get(e, canon, '')) {
+    return res.status(409).json({ error:'该邮箱（或其别名形式）已注册，请直接登录' });
   }
 
   // 先查用户名，避免无效请求浪费验证码尝试次数。
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) return res.status(409).json({ error:'该用户名已被注册' });
+
+  // 同 IP 注册日配额：批量小号的最粗一道闸（新手金币+活动礼包按账号发放，
+  // 无此闸一个 IP 一天能薅上百份）。24h 窗口 3 个成功注册；共享出口 IP 的
+  // 极端场景（校园网）由管理员白名单/邀请码通道兜底。
+  const ip = req.ip || '';
+  if (ip) {
+    const n = db.prepare("SELECT COUNT(*) AS n FROM users WHERE reg_ip = ? AND created_at > datetime('now', '-1 day')").get(ip).n;
+    if (n >= 3) {
+      log({ level: 'warn', source: 'server', category: 'auth', event: 'register_ip_capped',
+        message: `注册 IP 日配额触发 ${ip}`, ip, ua: req.header('user-agent') || '',
+        endpoint: '/auth/register', method: 'POST', status: 429, request_id: req.requestId || '' });
+      return res.status(429).json({ error: '当前网络环境今日注册次数已达上限，请明天再试' });
+    }
+  }
 
   // 校验验证码：取该邮箱最新一条未消费且未过期的记录，比对并防爆破（最多 5 次尝试）。
   const row = db.prepare('SELECT * FROM email_codes WHERE email = ? AND consumed = 0 ORDER BY id DESC LIMIT 1').get(e);
@@ -125,8 +142,8 @@ router.post('/register', authLimiter, async (req, res) => {
   const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
   let info;
   try {
-    info = db.prepare('INSERT INTO users (username, email, password_hash, display_name, gold) VALUES (?, ?, ?, ?, ?)')
-      .run(username, e, hash, (display_name || username).slice(0, 30), 300);
+    info = db.prepare('INSERT INTO users (username, email, email_canon, reg_ip, password_hash, display_name, gold) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(username, e, canon, ip, hash, (display_name || username).slice(0, 30), 300);
   } catch (err) {
     // 并发撞名等插入失败：退还刚扣掉的邀请额度，再报错。
     if (key) db.prepare('UPDATE invite_keys SET used = used - 1 WHERE code = ? AND used > 0').run(key.code);

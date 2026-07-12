@@ -351,6 +351,10 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN last_active INTEGER',
   'ALTER TABLE users ADD COLUMN rev_claim_month TEXT',
   'ALTER TABLE users ADD COLUMN rev_claimed_total INTEGER DEFAULT 0',
+  // 反批量注册：记录注册来源 IP（按 IP 限日配额）与邮箱规范形
+  //（去 +tag / gmail 去点，封别名邮箱无限注册）。
+  'ALTER TABLE users ADD COLUMN reg_ip TEXT',
+  'ALTER TABLE users ADD COLUMN email_canon TEXT',
   'ALTER TABLE transactions ADD COLUMN ref_owner INTEGER',
   'ALTER TABLE conversations ADD COLUMN affinity INTEGER DEFAULT 0',
   "ALTER TABLE conversations ADD COLUMN memories TEXT DEFAULT '[]'",

@@ -33,6 +33,8 @@ import novelRoutes from './routes/novels.js';
 import realtimeRoutes from './routes/realtime.js';
 import asrRoutes from './routes/asr.js';
 import { log, purgeOldLogs, genRequestId } from './logger.js';
+import jwt from 'jsonwebtoken';
+import { SECRET } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -75,7 +77,20 @@ app.use(helmet({
 
 // API 速率限制：每分钟 240 次/IP，防基础滥用。只挂在 /api 上——
 // 静态资源与 /uploads 图片不计数，否则头像密集的列表页会替用户吃光配额。
-app.use('/api', rateLimit({ windowMs: 60_000, max: 240, standardHeaders: true, legacyHeaders: false }));
+// 全局限流分层（反爬虫）：登录用户 240 次/分钟不变；未登录（或持伪造/过期
+// token）降到 60 次/分钟 —— 公开广场接口（角色/剧本列表等）是无本万利的
+// 爬取面，匿名爬虫的预算砍到 1/4，正常游客浏览远用不到这个量。
+// 这里只验 JWT 签名（纯内存 HMAC，微秒级），不查库；数据鉴权仍由各路由的
+// authRequired 全量把关，此标记只用于限流分档，伪造不了签名就到不了高档。
+app.use('/api', (req, _res, next) => {
+  req.rlAuthed = false;
+  const h = req.headers.authorization || '';
+  if (h.startsWith('Bearer ')) {
+    try { jwt.verify(h.slice(7), SECRET, { algorithms: ['HS256'] }); req.rlAuthed = true; } catch { /* 按匿名档 */ }
+  }
+  next();
+});
+app.use('/api', rateLimit({ windowMs: 60_000, max: (req) => (req.rlAuthed ? 240 : 60), standardHeaders: true, legacyHeaders: false }));
 
 app.use(express.json({ limit: '10mb' }));
 

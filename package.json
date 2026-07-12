@@ -26,7 +26,8 @@
     "app:android:remote": "npm run build && npx cap sync android && npx cap open android",
     "app:ios:remote": "npm run build && npx cap sync ios && npx cap open ios",
     "app:add:android": "npx cap add android",
-    "app:add:ios": "npx cap add ios"
+    "app:add:ios": "npx cap add ios",
+    "test:sec": "node server/sec-test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
