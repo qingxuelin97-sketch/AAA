@@ -81,10 +81,12 @@ html[data-app="1"] .chat-main .affinity-badge.pulse { animation: chatAfPulse 1.6
 
 /* ── 3. 气泡 2.0 ── */
 /* 助手（有立绘）：亮玻璃卡 + 顶缘青色高光丝 + run-start 锚角 */
+/* 气泡不再挂 backdrop-filter：逐条消息一层实时模糊是对话页最大的 GPU
+   常驻开销（20 条消息 ≈ 40+ 层同屏），改高不透明实底补观感 —— 玻璃质感
+   由高光丝/阴影/圆角承担；「极透」档（ba-clear）作为用户显式选择仍保留模糊。 */
 html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble {
   position: relative;
-  background: var(--gls-lite-bg);
-  -webkit-backdrop-filter: var(--gls-lite-blur); backdrop-filter: var(--gls-lite-blur);
+  background: rgba(255, 253, 248, 0.92);
   border: 1px solid var(--gls-hairline);
   color: var(--gls-lite-text);
   border-radius: var(--chat-glass-radius);
@@ -101,8 +103,7 @@ html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble::before {
 }
 /* 无立绘（白+青）助手气泡：白玻璃 */
 html[data-app="1"] .chat-main:not(.has-bg) .msg.assistant .bubble {
-  background: var(--gls-panel-bg);
-  -webkit-backdrop-filter: var(--gls-panel-blur); backdrop-filter: var(--gls-panel-blur);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   border-radius: var(--chat-glass-radius);
   box-shadow: 0 8px 26px rgba(13, 74, 88, 0.10);
@@ -111,8 +112,7 @@ html[data-app="1"] .chat-main:not(.has-bg) .msg.assistant.run-start .bubble { bo
 
 /* 用户气泡：青渐变玻璃（品牌色，主客区分），run-start 右上锚角 */
 html[data-app="1"] .chat-main .msg.user .bubble {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--chat-accent) 82%, transparent), color-mix(in srgb, var(--chat-accent-ink) 90%, transparent));
-  -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--chat-accent) 92%, transparent), color-mix(in srgb, var(--chat-accent-ink) 96%, transparent));
   border: 1px solid rgba(255, 255, 255, 0.30);
   color: #fff;
   border-radius: var(--chat-glass-radius);

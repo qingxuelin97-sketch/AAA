@@ -7243,13 +7243,12 @@ html[data-app="1"][data-perf="lite"] .msgs-head {
   backdrop-filter: none; -webkit-backdrop-filter: none;
   background: var(--bg);
 }
-/* 消息入口卡 + 会话行：玻璃底 */
+/* 消息入口卡 + 会话行：高不透明实底卡（每行一层实时模糊 ≈ 20-30 层同屏，
+   是消息页最大 GPU 开销，改实底后描边/内高光质感保留） */
 html[data-app="1"] .msgs-entry,
 html[data-app="1"] .msgs-conv {
-  background: var(--gl-1-bg);
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
   border: 1px solid var(--gl-border);
-  backdrop-filter: var(--gl-1-blur);
-  -webkit-backdrop-filter: var(--gl-1-blur);
   transition: background 0.2s, transform 0.15s var(--hy-spring), box-shadow 0.2s;
   box-shadow: var(--gl-border-in);
 }
@@ -7279,14 +7278,10 @@ html[data-app="1"][data-perf="lite"] .pf-assets {
   backdrop-filter: none; -webkit-backdrop-filter: none;
   background: var(--panel);
 }
-html[data-app="1"] .pf-quick-ic,
-html[data-app="1"] .pf-cell,
-html[data-app="1"] .pf-cell-ic {
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
+/* 宫格/快捷小图标 chip 不再挂 blur：面积小但数量 20+（每个都是一层实时
+   模糊），底色本就近实底，模糊感知为零、GPU 白算 */
 html[data-app="1"] .pf-cell {
-  background: var(--gl-1-bg);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
   border: 1px solid var(--gl-border);
   box-shadow: var(--gl-border-in);
 }
@@ -8773,9 +8768,7 @@ html[data-app="1"] .pf-assets, html[data-app="1"] .pf-vip {
   -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
 }
 html[data-app="1"] .pf-assets { background: color-mix(in srgb, var(--panel) 72%, transparent); }
-html[data-app="1"] .pf-quick-ic, html[data-app="1"] .pf-cell-ic, html[data-app="1"] .ah-sc-ic {
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-}
+/* （pf/今日小图标 chip 的 blur 已移除 —— 见 pf-cell 段注释） */
 html[data-app="1"] .pf-cc, html[data-app="1"] .char-card {
   background: var(--gls-panel-bg);
   -webkit-backdrop-filter: var(--gls-panel-blur); backdrop-filter: var(--gls-panel-blur);
@@ -9054,25 +9047,22 @@ html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name { width: fit-conte
 /* ============================================================
    8. Glass 3.0 · 三段 —— 编辑器/工作台/登录/议会/活动/星轨 全量收口
    ============================================================ */
-/* ---- 动态氛围层：两枚青色光斑极缓漂移（transform-only，GPU 廉价）---- */
+/* ---- 氛围层：两枚青色光斑（静态）。曾是 36/44s 无限漂移动画 + will-change
+   —— 两个 60vmax 常驻动画合成层铺在每一个 APP 页面底下、永不停歇；改为
+   静态渐变后观感几乎无差（漂移极缓本就难察觉），GPU 每页立省两层。 ---- */
 html[data-app="1"][data-theme="light"] .app-root::before,
 html[data-app="1"][data-theme="light"] .app-root::after {
   content: ''; position: fixed; z-index: 0; pointer-events: none;
   width: 60vmax; height: 60vmax; border-radius: 50%;
-  will-change: transform;
 }
 html[data-app="1"][data-theme="light"] .app-root::before {
   left: -22vmax; top: -18vmax;
   background: radial-gradient(circle, rgba(34,211,238,0.13) 0%, rgba(34,211,238,0.05) 45%, transparent 70%);
-  animation: glsOrbA 36s ease-in-out infinite alternate;
 }
 html[data-app="1"][data-theme="light"] .app-root::after {
   right: -26vmax; bottom: -20vmax;
   background: radial-gradient(circle, rgba(14,156,184,0.11) 0%, rgba(14,156,184,0.04) 45%, transparent 70%);
-  animation: glsOrbB 44s ease-in-out infinite alternate;
 }
-@keyframes glsOrbA { from { transform: translate(0, 0) scale(1); } to { transform: translate(7vmax, 5vmax) scale(1.12); } }
-@keyframes glsOrbB { from { transform: translate(0, 0) scale(1.08); } to { transform: translate(-6vmax, -6vmax) scale(0.96); } }
 /* 内容层必须浮在光斑之上 */
 html[data-app="1"] .app-main, html[data-app="1"] .app-tabbar { position: relative; z-index: 1; }
 html[data-app="1"] .app-tabbar { position: fixed; }
@@ -9299,7 +9289,7 @@ html[data-app="1"][data-perf="lite"] .topbar .btn.sm, html[data-app="1"][data-pe
    气泡透明度三档（用户可调：实底/半透/极透）+ 细节修正包
    ============================================================ */
 html[data-app="1"] .chat-main.has-bg.ba-solid .msg.assistant .bubble { background: rgba(255, 253, 248, 0.94); }
-html[data-app="1"] .chat-main.has-bg.ba-mid .msg.assistant .bubble   { background: rgba(255, 253, 248, 0.78); }
+html[data-app="1"] .chat-main.has-bg.ba-mid .msg.assistant .bubble   { background: rgba(255, 253, 248, 0.86); }
 html[data-app="1"] .chat-main.has-bg.ba-clear .msg.assistant .bubble {
   background: rgba(255, 253, 248, 0.55);
   -webkit-backdrop-filter: blur(30px) saturate(175%); backdrop-filter: blur(30px) saturate(175%);
