@@ -9798,3 +9798,57 @@ html[data-app="1"] .msgs-tabs button.on {
 html[data-app="1"] .msgs-tabs button.on::after { display: none; } /* 胶囊态不要下划线 */
 html[data-app="1"] .msgs-tabs button:active { transform: scale(0.95); }
 
+
+/* ============================================================
+   v3 · 被遗忘 UI 附带更新 —— 创作/列表/阅读面的 APP 化补课
+   （此前这些页面只吃 .topbar/.page/.card 通用兜底，无 bespoke 设计）
+   ============================================================ */
+/* ---- ① safe-area 补齐：无 topbar 的沉浸工作台/阅读器顶部不再顶进状态栏 ---- */
+html[data-app="1"] .atl-read-bar { padding-top: calc(10px + env(safe-area-inset-top)); }
+html[data-app="1"] .atl-ws-head { padding-top: calc(9px + env(safe-area-inset-top)); }
+
+/* ---- ② 表单页（角色编辑/发布/世界书编辑）触控与呼吸感 ---- */
+html[data-app="1"] .editor-grid :where(input, select, textarea) {
+  min-height: 44px; font-size: 15px; border-radius: 12px;
+}
+html[data-app="1"] .editor-grid textarea { min-height: 96px; line-height: 1.6; }
+html[data-app="1"] .editor-grid .card { border-radius: 18px; }
+html[data-app="1"] .editor-grid label { font-size: 13.5px; font-weight: 650; }
+
+/* APP 壳吸底保存条（CharacterEditor）：保存动作始终在拇指区。
+   编辑页非沉浸态、底部有 tabbar —— 保存条骑在 tabbar 之上（--app-bot）。 */
+html[data-app="1"] .app-savebar {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: var(--app-bot, calc(60px + env(safe-area-inset-bottom))); z-index: 58;
+  width: min(480px, 100%); box-sizing: border-box;
+  display: flex; align-items: center; justify-content: flex-end; gap: 14px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  border-top: 1px solid var(--gl-border);
+  box-shadow: 0 -8px 30px rgba(0,0,0,0.10);
+}
+html[data-app="1"] .app-savebar .btn.primary { flex: 1; max-width: 260px; height: 46px; border-radius: 999px; font-size: 15.5px; }
+/* 让出保存条高度，表单末尾内容不被盖住 */
+html[data-app="1"] .editor-grid { padding-bottom: 84px; }
+
+/* ---- ③ 列表页（剧本/社区/角色库/收藏）chips 与卡片语言 ---- */
+html[data-app="1"] .cat-chip {
+  border-radius: 999px; padding: 7px 14px; font-size: 13.5px; font-weight: 600;
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  border: 1px solid var(--gl-border);
+  transition: transform 0.15s var(--hy-spring), background 0.2s, color 0.2s;
+}
+html[data-app="1"] .cat-chip.active {
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+html[data-app="1"] .cat-chip:active { transform: scale(0.94); }
+html[data-app="1"] .page > .card, html[data-app="1"] .studio-cards .card { border-radius: 18px; }
+html[data-app="1"] .pill-pub { border-radius: 999px; font-weight: 650; }
+html[data-app="1"] .tag.tag-link { border-radius: 999px; padding: 4px 11px; }
+
+/* ---- ④ 阅读器/工作台头条玻璃化（与 app 其余 chrome 一致的材质） ---- */
+html[data-app="1"] .atl-read-bar, html[data-app="1"] .atl-ws-head {
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border-bottom: 1px solid var(--gl-border);
+}

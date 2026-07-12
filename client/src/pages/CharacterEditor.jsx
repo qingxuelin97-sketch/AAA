@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, uploadFile, getToken, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
@@ -6,6 +7,7 @@ import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
 import { speakBrowser } from '../voice.js';
 import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
+import { isAppMode } from '../appmode.js';
 import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Unlink, BookUp, Globe, Search, Sparkles, Upload } from 'lucide-react';
 import { parseCharacterCard } from '../charcard.js';
 
@@ -541,6 +543,21 @@ export default function CharacterEditor() {
           </div>
         )}
       </div>
+
+      {/* APP 壳吸底保存条：长表单里保存动作始终在拇指区
+          （顶部 topbar 的保存按钮保留；Web 壳不渲染此条）。
+          portal 到 body：路由容器的入场动画会让 transform 祖先成为 fixed
+          的包含块，条会被钉在文档流里而非视口底部。 */}
+      {isAppMode() && createPortal(
+        <div className="app-savebar">
+          <label className="switch">
+            <input type="checkbox" checked={c.is_public} onChange={e => set('is_public', e.target.checked)} />
+            <span className="track" /><span style={{ fontSize: 13 }}>公开</span>
+          </label>
+          <button className="btn primary" onClick={save} disabled={busy}>{busy ? '保存中…' : '保存角色'}</button>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
