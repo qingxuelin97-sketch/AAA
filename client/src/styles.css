@@ -648,6 +648,8 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .msg.narrator { align-self: center; max-width: 92%; }
 .msg.narrator .bubble { background: var(--accent-soft); border: 1px dashed #d9b6a4; font-style: italic; color: #7a5c4e; text-align: center; border-radius: 13px; box-shadow: none; }
 .msg .who { font-size: 11.5px; color: var(--faint); margin-bottom: 4px; font-weight: 600; }
+/* 群聊：自己的消息也有头像+昵称（row-reverse 布局，署名靠右对齐到头像侧） */
+.msg.user .who { text-align: right; }
 
 .room-row { display: flex; gap: 14px; align-items: center; padding: 15px; border: 1px solid var(--border); border-radius: 15px; background: var(--panel); margin-bottom: 12px; cursor: pointer; transition: 0.16s; box-shadow: var(--shadow-sm); }
 .room-row:hover { border-color: var(--border-2); transform: translateY(-2px); box-shadow: var(--shadow); }
@@ -699,10 +701,13 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .inovel-rule::before, .inovel-rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border-2), transparent); }
 .inovel-rule span { font-family: var(--serif); font-size: 13px; letter-spacing: 3px; }
 
-/* 段落淡入：新挂载的段落像翻动书页般浮现；已存在的段落不再重播 */
-.inovel-passage { animation: inovelRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+/* 段落淡入：新挂载的段落像翻动书页般浮现。只让末尾几段播 —— 进入长篇时
+   全量段落（可达数十段）同帧起播位移+淡入，开屏直接一记掉帧；历史段落
+   本来就该「已在页上」，无入场必要。 */
+.inovel-passage { animation: none; }
+.inovel-passage:nth-last-child(-n+6) { animation: inovelRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes inovelRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .inovel-passage { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .inovel-passage:nth-last-child(-n+6) { animation: none; } }
 
 .inovel-narr { font-family: var(--serif); font-size: 16.5px; line-height: 2.0; color: #4a4136; margin: 26px 0; white-space: pre-wrap; word-break: break-word;
   text-indent: 2em; letter-spacing: 0.2px; }
@@ -711,21 +716,23 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .inovel-dlg-body { min-width: 0; flex: 1; }
 .inovel-who { display: flex; align-items: center; gap: 6px; font-family: var(--serif); font-size: 13.5px; font-weight: 650; color: #6a4a3a; margin-bottom: 6px; }
 .inovel-ai-tag { font-size: 9.5px; font-weight: 700; color: #fff; background: color-mix(in srgb, var(--accent) 80%, #7c5bd9); padding: 1px 6px; border-radius: 999px; letter-spacing: 0.5px; }
-/* 对白用「半透明玻璃」面板，与沉浸背景自然融合 */
+/* 对白面板：高不透明实底（不挂 backdrop-filter）—— 对话页气泡的同一课：
+   长篇一屏十几段、每段一层实时模糊压在全屏立绘上，是阅读页滚动掉帧的
+   最大单一来源；玻璃感由描边/左侧色条/阴影承担，观感几乎无差。 */
 .inovel-say { font-size: 15.5px; line-height: 1.85; color: var(--text); white-space: pre-wrap; word-break: break-word;
-  background: color-mix(in srgb, var(--panel) 62%, transparent); backdrop-filter: blur(14px) saturate(135%); -webkit-backdrop-filter: blur(14px) saturate(135%);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent); border-left: 3px solid color-mix(in srgb, var(--accent) 70%, transparent);
   border-radius: 5px 16px 16px 16px; padding: 14px 18px; box-shadow: 0 6px 22px rgba(20,16,10,0.12); }
-/* 「你」的行动也用气泡接住，靠右与角色对白区分（仿角色对话里的用户气泡） */
+/* 「你」的行动也用气泡接住，靠右与角色对白区分（仿角色对话里的用户气泡）；
+   同样撤 blur，改「accent 调入实底」的不透明填充 */
 .inovel-me { margin: 24px 0 24px auto; max-width: 86%; width: fit-content; padding: 12px 16px; border-radius: 16px 16px 5px 16px;
-  background: color-mix(in srgb, var(--accent) 13%, transparent); backdrop-filter: blur(13px) saturate(135%); -webkit-backdrop-filter: blur(13px) saturate(135%);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
   border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); box-shadow: 0 5px 18px rgba(20,16,10,0.10); }
 .inovel-me-tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--accent); margin-bottom: 5px; }
 .inovel-me p { margin: 0; font-size: 15.5px; line-height: 1.85; color: var(--text); white-space: pre-wrap; word-break: break-word; }
 /* 续写中提示也用胶囊接住，不裸在背景上 */
 .inovel-writing { display: inline-flex; align-items: center; gap: 8px; font-style: italic; color: var(--muted); font-size: 14px; margin: 24px 0; width: fit-content;
-  padding: 9px 14px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 45%, transparent); border: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  padding: 9px 14px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
 .inovel-quill { color: var(--accent); }
 .inovel-foot-space { height: 24px; }
 
@@ -843,7 +850,7 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 [data-theme="dark"] .inovel-who { color: #d8a88f; }
 [data-theme="dark"] .inovel-me p { color: #cdbfae; }
 /* 暗色下玻璃对白略提高不透明度，保证暗背景上的文字对比度 */
-[data-theme="dark"] .inovel-say { background: color-mix(in srgb, var(--panel) 70%, transparent); border-color: color-mix(in srgb, #fff 12%, transparent); box-shadow: 0 6px 22px rgba(0,0,0,0.32); }
+[data-theme="dark"] .inovel-say { background: color-mix(in srgb, var(--panel) 94%, transparent); border-color: color-mix(in srgb, #fff 12%, transparent); box-shadow: 0 6px 22px rgba(0,0,0,0.32); }
 [data-theme="dark"] .inovel-bar { background: none !important; }
 /* 角色对话同样删掉底部输入栏的白色渐变遮罩与磨砂模糊 —— 输入框自带底色，背景直接透出 */
 .chat-input-bar, [data-theme="dark"] .chat-input-bar, .has-bg .chat-input-bar, [data-theme="dark"] .has-bg .chat-input-bar { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
@@ -2426,8 +2433,11 @@ body { -webkit-touch-callout: none; }
 .chat-tool.on { color: var(--accent); background: var(--accent-soft); }
 .chat-menu-wrap { position: relative; }
 /* mask 用 absolute（相对 chat-main）而非 fixed：键盘弹起时 fixed 会定位到键盘下方不可见区
-   仍捕获事件导致输入框失灵；absolute 锚定到聊天区，跟随布局而非视口 */
-.chat-menu-mask { position: absolute; inset: 0; z-index: 40; }
+   仍捕获事件导致输入框失灵；absolute 锚定到聊天区，跟随布局而非视口。
+   z-index 必须低于所有悬浮面板/头部（chat-head 30 · inovel-topbar 32 ·
+   inovel-members 33 · inovel-toc 34）：曾经是 40 —— 剧场目录/读者面板
+   （z 33/34）被压在带 blur 的遮罩之下，整屏含面板一起糊掉且不可点击。 */
+.chat-menu-mask { position: absolute; inset: 0; z-index: 25; }
 .chat-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 50; width: 232px; background: var(--panel);
   border: 1px solid var(--border-2); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 6px; animation: cmdkPop 0.2s var(--spring) both; }
 .chat-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 11px; border: none; background: none;
@@ -6339,6 +6349,10 @@ html[data-app="1"][data-theme="light"] {
 
 /* —— 全屏可选择态更克制（一线 App 通常不给非文本区域高亮） —— */
 html[data-app="1"] button, html[data-app="1"] a { -webkit-tap-highlight-color: transparent; }
+/* 点按跟手：manipulation 干掉 WebView 的双击缩放判定等待 —— 每一次 tap 的
+   响应都少一拍「等第二击」的迟疑（保留平移与双指缩放，不伤滚动/图片手势）；
+   overscroll contain 掐掉到边界后的原生橡皮筋/辉光与下拉刷新打架的抖动。 */
+html[data-app="1"] { touch-action: manipulation; overscroll-behavior-y: contain; }
 
 /* —— 底部 Dock：真·磨砂 + 更细分割 + 稳态活跃指示 —— */
 html[data-app="1"] .app-tabbar {

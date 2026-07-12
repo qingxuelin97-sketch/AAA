@@ -64,8 +64,9 @@ export function computeDir(from, to, navType) {
   return 'push';
 }
 
-// 把一次导航包进 View Transition。update callback 里 race 一个 800ms 超时：
-// lazy chunk 网络慢时宁可提前放行（轻微跳变）也绝不冻住整屏。
+// 把一次导航包进 View Transition。update callback 里 race 一个 500ms 超时：
+// lazy chunk 网络慢时宁可提前放行（轻微跳变）也绝不冻住整屏 —— VT 等待期间
+// 画面是冻结的，这个上限就是「点按到动画起步」的最坏空窗，宁短勿长。
 function runVT(dir, go) {
   cancelActiveVT(); // 快速连点：先掐掉上一个（浏览器也会 skip，这里显式收口）
   const html = document.documentElement;
@@ -77,7 +78,7 @@ function runVT(dir, go) {
   try {
     vt = document.startViewTransition(() => {
       go();
-      return Promise.race([committed, new Promise(r => setTimeout(r, 800))]);
+      return Promise.race([committed, new Promise(r => setTimeout(r, 500))]);
     });
   } catch {
     delete html.dataset.vt;
