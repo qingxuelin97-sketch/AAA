@@ -658,7 +658,13 @@ export default function Chat() {
                       </div>
                     ) : (
                       <div className="bubble" {...bindLongPress(m)}
-                        onContextMenu={m.content ? (e) => { e.preventDefault(); copyMsg(m.content); } : undefined}
+                        onContextMenu={m.content ? (e) => {
+                          // 触屏长按会触发 contextmenu：只拦默认菜单，操作交给长按面板
+                          //（此前这里直接 copyMsg = 长按即自动复制，真机反馈的 bug）。
+                          // 桌面鼠标右键保留「右键即复制」。
+                          e.preventDefault();
+                          if (!COARSE) copyMsg(m.content);
+                        } : undefined}
                         onDoubleClick={m.role === 'assistant' && m.id ? () => react(m, '❤️') : undefined}
                         title={m.content ? '长按操作 · 双击喜欢' : undefined}>
                         {m._streaming && !m.content
@@ -892,11 +898,8 @@ export default function Chat() {
           <div className="msg-sheet-mask" onClick={close} />
           <div className="msg-sheet" role="menu">
             <div className="ms-preview">{(m.content || '').replace(/^>\s.*\n+/, '').slice(0, 120)}</div>
-            {m.role === 'assistant' && (
-              <div className="react-pop" style={{ position: 'static', margin: '2px 6px 6px', display: 'flex', justifyContent: 'space-around' }}>
-                {REACTIONS.map(e => <button key={e} className={m.reaction === e ? 'on' : ''} onClick={() => { react(m, e); close(); }}>{e}</button>)}
-              </div>
-            )}
+            {/* 表情反应行已按真机反馈移除（面板保持纯操作列表）；
+                双击气泡点 ❤️ 与 Web 壳 hover 反应仍在。 */}
             {m.role === 'assistant' && (playingId === m.id
               ? <button className="ms-row on" onClick={() => { stopSpeaking(); close(); }}><Square size={18} fill="currentColor" /> 停止播放</button>
               : <button className="ms-row" onClick={() => { toggleSpeak(m); close(); }}><Volume2 size={18} /> {voicedIds.has(m.id) ? '再听一遍' : '朗读'}</button>)}
