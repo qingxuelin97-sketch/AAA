@@ -6353,6 +6353,12 @@ html[data-app="1"] button, html[data-app="1"] a { -webkit-tap-highlight-color: t
    响应都少一拍「等第二击」的迟疑（保留平移与双指缩放，不伤滚动/图片手势）；
    overscroll contain 掐掉到边界后的原生橡皮筋/辉光与下拉刷新打架的抖动。 */
 html[data-app="1"] { touch-action: manipulation; overscroll-behavior-y: contain; }
+/* 按压反馈即时化：按下 ~50ms 内到位，抬起沿各自原时长弹回。点按「迟钝感」
+   的另一大头是按压态也走 0.2s+ 过渡 —— 手指落下后小半秒视觉才确认收到。
+   只覆盖 transition-duration，不改各元素自己的属性/缓动/回弹。 */
+html[data-app="1"] :is(button, a, [role="button"], .card, .msgs-conv, .msgs-entry, .room-row, .inovel-book-card):active {
+  transition-duration: 0.05s;
+}
 
 /* —— 底部 Dock：真·磨砂 + 更细分割 + 稳态活跃指示 —— */
 html[data-app="1"] .app-tabbar {

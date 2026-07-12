@@ -219,6 +219,12 @@ export default function AppLayout({ children }) {
       import('../pages/AppHome.jsx'); import('../pages/DiscoverFeed.jsx');
       import('../pages/Messages.jsx'); import('../pages/AppProfile.jsx');
       import('../pages/CharacterView.jsx'); import('../pages/Chat.jsx');
+      // 二级高频页也一并预热：首跳「点了没反应，隔半拍才进」的 chunk 等待
+      // 是延迟反馈体感的一部分（每个 gzip 后 ~5-20KB，空闲时拉取无感）。
+      import('../pages/Notifications.jsx'); import('../pages/Friends.jsx');
+      import('../pages/Wallet.jsx'); import('../pages/Settings.jsx');
+      import('../pages/Theater.jsx'); import('../pages/TheaterRoom.jsx');
+      import('../pages/Groups.jsx'); import('../pages/GroupRoom.jsx');
     });
     return () => cancel(id);
   }, []);
