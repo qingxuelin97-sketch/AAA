@@ -17,6 +17,7 @@ import WelcomePopup from './WelcomePopup.jsx';
 import RouteErrorBoundary from './RouteErrorBoundary.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
 import { useNav, appBack, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
+import { preheat } from '../routeChunks.js';
 import {
   Home, Compass, MessageCircle, Plus, UserRound,
   Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff, BatteryLow, X
@@ -71,8 +72,13 @@ export default function AppLayout({ children }) {
   useEffect(() => {
     if (!boot) return;
     try { sessionStorage.setItem('huanyu_boot_fx', '1'); } catch { /* */ }
-    const t = setTimeout(() => setBoot(false), 1250);
-    return () => clearTimeout(t);
+    // 1250ms → 1000ms（CSS bootOut 淡出提前到 0.6s 起）。闪屏层 pointer-events:
+    // none 本就不挡触摸，但用户急着点会「隔着闪屏」盲操作 —— 首次按下立即掀掉
+    // 闪屏（该次点按照常穿透生效），品牌动画永远不挡路。
+    const t = setTimeout(() => setBoot(false), 1000);
+    const skip = () => setBoot(false);
+    window.addEventListener('pointerdown', skip, { once: true, passive: true });
+    return () => { clearTimeout(t); window.removeEventListener('pointerdown', skip); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -156,6 +162,12 @@ export default function AppLayout({ children }) {
     if (refreshKey !== prevRefresh.current) {
       html.dataset.navDir = 'refresh';
       prevRefresh.current = refreshKey;
+      // commit 驱动的下拉刷新复位：新 pane 已挂载（数据重拉已发起）即收 spinner，
+      // 只保底 450ms 最短可见转圈（短于此观感像故障闪一下，而非「刷新过了」）。
+      // 此前固定 720ms：新页早已挂载 spinner 还在空转吃视觉延迟。计时器不随
+      // effect 重跑清理 —— 复位是幂等的，中途导航也该收 spinner，掐掉反而卡死。
+      const elapsed = performance.now() - refreshStart.current;
+      setTimeout(() => { setRefreshing(false); setPull(0); }, Math.max(0, 450 - elapsed));
     } else if (loc.pathname !== prevPath.current) {
       html.dataset.navDir = computeDir(prevPath.current, loc.pathname, navType);
     }
@@ -210,24 +222,11 @@ export default function AppLayout({ children }) {
     prevTab.current = cur;
   }, [loc.pathname]);
 
-  // 空闲预热高频路由 chunk（与 App.jsx 的 lazy() 同模块，Vite 自动去重）：
-  // 消除首跳的 chunk 拉取等待 —— 过渡动画不再被网络卡成「先冻后跳」。
-  useEffect(() => {
-    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1200));
-    const cancel = window.cancelIdleCallback || clearTimeout;
-    const id = idle(() => {
-      import('../pages/AppHome.jsx'); import('../pages/DiscoverFeed.jsx');
-      import('../pages/Messages.jsx'); import('../pages/AppProfile.jsx');
-      import('../pages/CharacterView.jsx'); import('../pages/Chat.jsx');
-      // 二级高频页也一并预热：首跳「点了没反应，隔半拍才进」的 chunk 等待
-      // 是延迟反馈体感的一部分（每个 gzip 后 ~5-20KB，空闲时拉取无感）。
-      import('../pages/Notifications.jsx'); import('../pages/Friends.jsx');
-      import('../pages/Wallet.jsx'); import('../pages/Settings.jsx');
-      import('../pages/Theater.jsx'); import('../pages/TheaterRoom.jsx');
-      import('../pages/Groups.jsx'); import('../pages/GroupRoom.jsx');
-    });
-    return () => cancel(id);
-  }, []);
+  // 空闲预热路由 chunk：清单由 routeChunks.js 注册表统一驱动（曾经这里手写
+  // 14 个 import 与 App.jsx 的 lazy 清单两处漂移）。高频页首波、其余全量次波
+  // —— 全部 APP 可达页都焐热后，任意首跳都有完整 View Transition（冷 chunk
+  // 会被 nav.js 跳过 VT，预热就是把「冷」的窗口压到只剩启动后的头几秒）。
+  useEffect(() => preheat(), []);
 
   // Notification / DM counts + online heartbeat。
   // SSE 已秒级推送 dm/notification 事件（见下方 useRealtimeEvent），轮询只作兜底：
@@ -267,15 +266,18 @@ export default function AppLayout({ children }) {
     if (n < 0 || n >= SWIPE_TABS.length) return;
     tick(); go(SWIPE_TABS[n]);
   };
+  const refreshStart = useRef(0);
   const doRefresh = () => {
     if (refreshing) return;
     tick(12); setRefreshing(true);
+    refreshStart.current = performance.now();
     // tab 页：驱逐当前 pane 缓存（key 变 → 仅该 pane 重挂载重拉），其余 pane 保活
     if (SWIPE_TABS.includes(loc.pathname)) {
       paneVer.current[loc.pathname] = (paneVer.current[loc.pathname] || 0) + 1;
     }
     setRefreshKey(k => k + 1);          // remount current route → its effects refetch
-    setTimeout(() => { setRefreshing(false); setPull(0); }, 720);
+    // 复位由 refreshKey 的 commit 信号驱动（见上方 useLayoutEffect）——
+    // 此前固定 720ms 是拍脑袋值，新页早已挂载 spinner 还在空转。
   };
   useAppGestures(mainRef, {
     onNext: () => swipeGo(1),

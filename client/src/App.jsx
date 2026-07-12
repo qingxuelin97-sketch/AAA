@@ -7,6 +7,9 @@ import Layout from './components/Layout.jsx';
 import AppLayout from './components/AppLayout.jsx';
 import { isAppMode } from './appmode.js';
 import Auth from './pages/Auth.jsx';
+// import 工厂集中在 routeChunks.js 注册表（同时供 warm 追踪与空闲预热消费，
+// 见该文件头注释）；本文件只把工厂包上 lazyRetry。
+import { loaders as L } from './routeChunks.js';
 
 // Route-level code splitting — each page is fetched on demand so the initial
 // bundle stays small and the discover page paints fast. The login screen and
@@ -31,51 +34,51 @@ const lazyRetry = (factory) => lazy(() =>
     })
   )
 );
-const Home = lazyRetry(() => import('./pages/Home.jsx'));
-const Library = lazyRetry(() => import('./pages/Library.jsx'));
-const CharacterEditor = lazyRetry(() => import('./pages/CharacterEditor.jsx'));
-const Chat = lazyRetry(() => import('./pages/Chat.jsx'));
-const Settings = lazyRetry(() => import('./pages/Settings.jsx'));
-const Profile = lazyRetry(() => import('./pages/Profile.jsx'));
-const Publish = lazyRetry(() => import('./pages/Publish.jsx'));
-const Scripts = lazyRetry(() => import('./pages/Scripts.jsx'));
-const ScriptDetail = lazyRetry(() => import('./pages/ScriptDetail.jsx'));
-const ScriptEditor = lazyRetry(() => import('./pages/ScriptEditor.jsx'));
-const Community = lazyRetry(() => import('./pages/Community.jsx'));
-const Groups = lazyRetry(() => import('./pages/Groups.jsx'));
-const GroupRoom = lazyRetry(() => import('./pages/GroupRoom.jsx'));
-const Theater = lazyRetry(() => import('./pages/Theater.jsx'));
-const TheaterRoom = lazyRetry(() => import('./pages/TheaterRoom.jsx'));
-const Wallet = lazyRetry(() => import('./pages/Wallet.jsx'));
-const Notifications = lazyRetry(() => import('./pages/Notifications.jsx'));
-const Favorites = lazyRetry(() => import('./pages/Favorites.jsx'));
-const Search = lazyRetry(() => import('./pages/Search.jsx'));
-const CharacterView = lazyRetry(() => import('./pages/CharacterView.jsx'));
-const Announcements = lazyRetry(() => import('./pages/Announcements.jsx'));
-const Leaderboard = lazyRetry(() => import('./pages/Leaderboard.jsx'));
-const Events = lazyRetry(() => import('./pages/Events.jsx'));
-const Admin = lazyRetry(() => import('./pages/Admin.jsx'));
-const Gacha = lazyRetry(() => import('./pages/Gacha.jsx'));
-const Studio = lazyRetry(() => import('./pages/Studio.jsx'));
-const Parliament = lazyRetry(() => import('./pages/Parliament.jsx'));
-const Achievements = lazyRetry(() => import('./pages/Achievements.jsx'));
-const Friends = lazyRetry(() => import('./pages/Friends.jsx'));
-const Draw = lazyRetry(() => import('./pages/Draw.jsx'));
-const Features = lazyRetry(() => import('./pages/Features.jsx'));
-const Help = lazyRetry(() => import('./pages/Help.jsx'));
-const Tags = lazyRetry(() => import('./pages/Tags.jsx'));
-const Worldbooks = lazyRetry(() => import('./pages/Worldbooks.jsx'));
-const WorldbookEditor = lazyRetry(() => import('./pages/WorldbookEditor.jsx'));
-const WorldbookView = lazyRetry(() => import('./pages/WorldbookView.jsx'));
-const Atelier = lazyRetry(() => import('./pages/Atelier.jsx'));
-const NovelWorkspace = lazyRetry(() => import('./pages/NovelWorkspace.jsx'));
-const NovelReader = lazyRetry(() => import('./pages/NovelReader.jsx'));
-const AppHome = lazyRetry(() => import('./pages/AppHome.jsx'));
-const Messages = lazyRetry(() => import('./pages/Messages.jsx'));
-const AppProfile = lazyRetry(() => import('./pages/AppProfile.jsx'));
-const Vip = lazyRetry(() => import('./pages/Vip.jsx'));
-const Insights = lazyRetry(() => import('./pages/Insights.jsx'));
-const DiscoverFeed = lazyRetry(() => import('./pages/DiscoverFeed.jsx'));
+const Home = lazyRetry(L.Home);
+const Library = lazyRetry(L.Library);
+const CharacterEditor = lazyRetry(L.CharacterEditor);
+const Chat = lazyRetry(L.Chat);
+const Settings = lazyRetry(L.Settings);
+const Profile = lazyRetry(L.Profile);
+const Publish = lazyRetry(L.Publish);
+const Scripts = lazyRetry(L.Scripts);
+const ScriptDetail = lazyRetry(L.ScriptDetail);
+const ScriptEditor = lazyRetry(L.ScriptEditor);
+const Community = lazyRetry(L.Community);
+const Groups = lazyRetry(L.Groups);
+const GroupRoom = lazyRetry(L.GroupRoom);
+const Theater = lazyRetry(L.Theater);
+const TheaterRoom = lazyRetry(L.TheaterRoom);
+const Wallet = lazyRetry(L.Wallet);
+const Notifications = lazyRetry(L.Notifications);
+const Favorites = lazyRetry(L.Favorites);
+const Search = lazyRetry(L.Search);
+const CharacterView = lazyRetry(L.CharacterView);
+const Announcements = lazyRetry(L.Announcements);
+const Leaderboard = lazyRetry(L.Leaderboard);
+const Events = lazyRetry(L.Events);
+const Admin = lazyRetry(L.Admin);
+const Gacha = lazyRetry(L.Gacha);
+const Studio = lazyRetry(L.Studio);
+const Parliament = lazyRetry(L.Parliament);
+const Achievements = lazyRetry(L.Achievements);
+const Friends = lazyRetry(L.Friends);
+const Draw = lazyRetry(L.Draw);
+const Features = lazyRetry(L.Features);
+const Help = lazyRetry(L.Help);
+const Tags = lazyRetry(L.Tags);
+const Worldbooks = lazyRetry(L.Worldbooks);
+const WorldbookEditor = lazyRetry(L.WorldbookEditor);
+const WorldbookView = lazyRetry(L.WorldbookView);
+const Atelier = lazyRetry(L.Atelier);
+const NovelWorkspace = lazyRetry(L.NovelWorkspace);
+const NovelReader = lazyRetry(L.NovelReader);
+const AppHome = lazyRetry(L.AppHome);
+const Messages = lazyRetry(L.Messages);
+const AppProfile = lazyRetry(L.AppProfile);
+const Vip = lazyRetry(L.Vip);
+const Insights = lazyRetry(L.Insights);
+const DiscoverFeed = lazyRetry(L.DiscoverFeed);
 
 function Protected({ children }) {
   const { user, loading } = useAuth();

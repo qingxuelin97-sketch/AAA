@@ -4851,7 +4851,7 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 /* ---- 启动品牌闪屏（每会话一次，月门 logo 呼吸浮现 → 整层淡出） ---- */
 .app-boot { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center;
   background: radial-gradient(120% 90% at 50% 8%, color-mix(in srgb, var(--dusk) 16%, var(--bg)), var(--bg) 70%);
-  animation: bootOut 0.4s ease 0.85s both; pointer-events: none; }
+  animation: bootOut 0.4s ease 0.6s both; pointer-events: none; }
 .app-boot-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .app-boot-logo { display: grid; place-items: center; border-radius: 22px;
   box-shadow: 0 18px 50px rgba(125, 68, 104, 0.35);
