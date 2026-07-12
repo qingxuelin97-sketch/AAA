@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Modal } from '../ui.jsx';
 import { Plus, ArrowLeft, Trash, BookOpen, Save, Globe, ChevronDown, ChevronUp,

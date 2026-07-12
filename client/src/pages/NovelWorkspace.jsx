@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Modal, Uploader } from '../ui.jsx';
 import { generateImage } from '../imagegen.js';

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
 import { Tags as TagsIcon } from 'lucide-react';

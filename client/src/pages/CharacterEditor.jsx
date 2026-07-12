@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, uploadFile, getToken, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';

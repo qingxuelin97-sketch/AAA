@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid, parsePid } from '../assets.jsx';

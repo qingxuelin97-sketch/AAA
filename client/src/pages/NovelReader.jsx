@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { ArrowLeft, Minus, Plus, Type, ScrollText, Pencil } from 'lucide-react';

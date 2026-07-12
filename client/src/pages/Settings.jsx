@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth, getApiBase, setToken } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker, CoinIcon } from '../ui.jsx';
 import { getThemeMode, setThemeMode, getGlass, setGlass } from '../theme.js';

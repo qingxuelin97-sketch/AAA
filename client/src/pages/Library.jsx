@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, uploadFile, assetUrl } from '../api.jsx';
 import { parseCharacterCard } from '../charcard.js';
 import { useToast, GridSkeleton } from '../ui.jsx';

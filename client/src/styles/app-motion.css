@@ -1,0 +1,82 @@
+/* ============================================================================
+   APP 全局动效层（app-motion）—— 本文件永远是级联最后一员，可安全覆盖前层。
+   ----------------------------------------------------------------------------
+   设计原则：
+   1) 纯 CSS、transform/opacity-only —— 全部走合成器，不触发 layout/paint；
+   2) 挡位完备：lite 档与 prefers-reduced-motion 一律退化为「立即就位」，
+      自动接入 perf.js 的 LoAF 降级体系（降档即静默关闭，无需 JS 配合）；
+   3) 工具类语义化：页面只管挂类（.stagger-in / .pressable / .flow-sheen /
+      .skel），节奏与曲线由本层统一定调 —— 全站动效一个手感。
+   ============================================================================ */
+
+:root {
+  /* 时长阶梯：即时反馈 / 常规过渡 / 场景切换。与 --spring / --spring-soft
+     （web-modules）、--hy-spring（app-elevated）配套使用。 */
+  --dur-fast: 0.16s;
+  --dur-base: 0.3s;
+  --dur-slow: 0.5s;
+}
+
+/* —— 列表入场 stagger ——
+   容器挂 .stagger-in，直接子元素按 30ms 步进依次浮现；第 9 项起不再追加延迟
+   （长列表尾部等待感 > 仪式感）。入场动画结束即回归静态，滚动零成本。 */
+html[data-app="1"] .stagger-in > * { animation: motionRise var(--dur-base) cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+html[data-app="1"] .stagger-in > :nth-child(1) { animation-delay: 0.03s; }
+html[data-app="1"] .stagger-in > :nth-child(2) { animation-delay: 0.06s; }
+html[data-app="1"] .stagger-in > :nth-child(3) { animation-delay: 0.09s; }
+html[data-app="1"] .stagger-in > :nth-child(4) { animation-delay: 0.12s; }
+html[data-app="1"] .stagger-in > :nth-child(5) { animation-delay: 0.15s; }
+html[data-app="1"] .stagger-in > :nth-child(6) { animation-delay: 0.18s; }
+html[data-app="1"] .stagger-in > :nth-child(7) { animation-delay: 0.21s; }
+html[data-app="1"] .stagger-in > :nth-child(8) { animation-delay: 0.24s; }
+@keyframes motionRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* —— 统一按压弹性 ——
+   挂 .pressable：按下 0.05s 内缩到 0.96（即时确认，快过人眼可察觉的迟滞），
+   抬手沿 --spring 0.35s 弹回（灵动回味）。transform-only，不碰布局。 */
+html[data-app="1"] .pressable { transition: transform 0.35s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)); }
+html[data-app="1"] .pressable:active { transform: scale(0.96); transition-duration: 0.05s; }
+
+/* —— 流光掠面（flow sheen）——
+   hero 卡 / 余额卡的低频光泽扫过：6s 一轮，只动 background-position（合成器
+   直通）。默认亚克力白光，可用 --sheen 换色。用 ::after 叠加，不干扰原背景。 */
+html[data-app="1"] .flow-sheen { position: relative; overflow: hidden; }
+html[data-app="1"] .flow-sheen::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 42%, var(--sheen, rgba(255, 255, 255, 0.22)) 50%, transparent 58%);
+  background-size: 280% 100%;
+  animation: motionSheen 6s ease-in-out infinite;
+}
+@keyframes motionSheen { 0%, 55% { background-position: 120% 0; } 85%, 100% { background-position: -60% 0; } }
+
+/* —— 骨架屏 ——
+   数据到达前的占位微光。行高由使用处内联 height 控制。 */
+html[data-app="1"] .skel {
+  border-radius: 10px;
+  background: linear-gradient(100deg, var(--bg-2) 40%, color-mix(in srgb, var(--panel) 70%, var(--bg-2)) 50%, var(--bg-2) 60%);
+  background-size: 200% 100%;
+  animation: motionSkel 1.4s ease-in-out infinite;
+}
+@keyframes motionSkel { from { background-position: 120% 0; } to { background-position: -80% 0; } }
+
+/* —— 未读脉冲 ——
+   通知/消息的未读圆点：轻微呼吸提示「活的」，不喧宾夺主。 */
+html[data-app="1"] .pulse-dot { animation: motionPulse 2.2s ease-in-out infinite; }
+@keyframes motionPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.72; }
+}
+
+/* —— 挡位门控：lite / 减弱动效 / 后台标签页 全体退化为立即就位 —— */
+html[data-perf="lite"] .stagger-in > *,
+html[data-page-hidden] .stagger-in > * { animation: none; }
+html[data-perf="lite"] .flow-sheen::after,
+html[data-page-hidden] .flow-sheen::after { animation: none; opacity: 0; }
+html[data-perf="lite"] .pulse-dot { animation: none; }
+html[data-perf="lite"] .pressable { transition-duration: 0.05s; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .stagger-in > * { animation: none; }
+  html[data-app="1"] .flow-sheen::after { animation: none; opacity: 0; }
+  html[data-app="1"] .pulse-dot { animation: none; }
+  html[data-app="1"] .pressable, html[data-app="1"] .pressable:active { transform: none; }
+}

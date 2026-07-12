@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon } from '../ui.jsx';
 import {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { Heart, Play, Flame, ScrollText, Trophy, Crown } from 'lucide-react';

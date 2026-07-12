@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { useToast, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { Sparkles, Bug, Crown, MessageSquare, Copy, X } from 'lucide-react';
 

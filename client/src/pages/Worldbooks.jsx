@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
 import { BookOpen, Plus, Globe, BookLock, BookCheck, ArrowRight, Search, Sparkles,

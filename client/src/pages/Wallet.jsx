@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday } from '../util.js';

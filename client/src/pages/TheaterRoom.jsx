@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useRealtimeEvent, useRealtimeFeat } from '../realtime.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
