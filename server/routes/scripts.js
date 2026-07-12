@@ -86,6 +86,13 @@ router.post('/:id/buy', authRequired, (req, res) => {
   if (s.author_id === req.user.id) return res.status(400).json({ error:'这是你自己的剧本' });
   if (owns(s.id, req.user.id)) return res.status(400).json({ error:'你已拥有该剧本' });
   if (s.price_gold === 0) { db.prepare('INSERT INTO script_purchases (script_id, user_id, price) VALUES (?,?,0)').run(s.id, req.user.id); return res.json({ ok: true, free: true }); }
+  // 反刷币冷静期：付费购买是全站唯一「金币在用户间流动」的通道 —— 批量小号
+  // 领完新手金币/活动礼包立刻购买同伙的付费剧本即可汇币。注册未满 24h 只封
+  // 这一个动作：免费剧本、对话、抽卡等平台内消费一律不受影响。
+  const me = db.prepare('SELECT created_at FROM users WHERE id = ?').get(req.user.id);
+  if (me && Date.now() - new Date(me.created_at + 'Z').getTime() < 86_400_000) {
+    return res.status(403).json({ error: '新注册账号需满 24 小时才能购买付费剧本（平台防刷策略）' });
+  }
   try {
     buyTx(req.user.id, s);
     notify(s.author_id,`有人购买了你的剧本《${s.title}》，+${s.price_gold} 金币`);

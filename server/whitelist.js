@@ -8,6 +8,32 @@ export function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+// 邮箱规范形（反批量注册）：`user+tag@x.com` → `user@x.com`；gmail 系再去掉
+// 本地段的点并归并 googlemail → gmail。同一真实邮箱的无限别名（+1、+2、
+// u.s.e.r@gmail）在规范形上都是同一条，注册去重按它比对。
+// 展示/通知仍用用户填写的原始邮箱，规范形只做唯一性判定。
+export function canonicalEmail(email) {
+  const e = normalizeEmail(email);
+  const at = e.lastIndexOf('@');
+  if (at <= 0) return e;
+  let local = e.slice(0, at);
+  let domain = e.slice(at + 1);
+  const plus = local.indexOf('+');
+  if (plus > 0) local = local.slice(0, plus);
+  if (domain === 'googlemail.com') domain = 'gmail.com';
+  if (domain === 'gmail.com') local = local.replace(/\./g, '');
+  return local + '@' + domain;
+}
+
+// 存量用户回填规范形（模块加载一次；db.js 的列迁移先于本模块执行）。
+try {
+  const rows = db.prepare("SELECT id, email FROM users WHERE (email_canon IS NULL OR email_canon = '') AND email IS NOT NULL AND email != ''").all();
+  if (rows.length) {
+    const upd = db.prepare('UPDATE users SET email_canon = ? WHERE id = ?');
+    for (const r of rows) upd.run(canonicalEmail(r.email), r.id);
+  }
+} catch { /* 极老库缺列时静默；正常流程 db.js 已迁移 */ }
+
 // 判断邮箱是否在白名单内。
 export function isWhitelisted(email) {
   const e = normalizeEmail(email);
