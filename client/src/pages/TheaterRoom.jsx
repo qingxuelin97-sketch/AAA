@@ -374,6 +374,12 @@ export default function TheaterRoom() {
           </div>
         )}
 
+        {/* 菜单的点击遮罩必须挂在 .chat-main 层级（全屏），不能塞进
+            .chat-menu-wrap —— wrap 是 38px 按钮的相对定位容器，inset:0 的
+            遮罩会缩成按钮大小的一块，APP 壳的 blur(6px) 让它变成盖在按钮上
+            的「方形模糊块」（实机 bug）。 */}
+        {menuOpen && <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />}
+
         {/* 取消整条标题栏：功能键悬浮成独立 UI，阅读区直通到顶，空间更宽阔。标题已在封面区呈现。 */}
         <div className="inovel-topbar">
           <button className="inovel-fab" onClick={() => nav('/theater')} title="返回"><ArrowLeft size={17} /></button>
@@ -391,7 +397,6 @@ export default function TheaterRoom() {
               <button className={'inovel-fab' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
               {menuOpen && (
                 <>
-                  <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />
                   <div className="chat-menu">
                     <div className="chat-menu-row"><span><Type size={15} /> 字号</span>
                       <div className="seg seg-mini">

@@ -527,6 +527,9 @@ export default function Chat() {
             )}
             {!character?.background && <div className="chat-aura" aria-hidden="true"><span /><span /><span /></div>}
             {character?.bgm && <audio ref={bgmRef} src={assetUrl(character.bgm)} loop preload="auto" />}
+            {/* 菜单遮罩挂 .chat-main 层级：塞进 .chat-menu-wrap 会缩成按钮
+                大小的方形模糊块（见 TheaterRoom 同注释） */}
+            {menuOpen && <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />}
             <div className="chat-head">
               <button className="btn ghost sm mobile-only chat-back" onClick={() => nav('/messages')}><ArrowLeft size={16} /></button>
               {/* 身份胶囊：左上空间有限，不再写角色名（每条消息上方已有名字）；只留头像 + 状态 */}
@@ -555,7 +558,6 @@ export default function Chat() {
                   <button className={'speak chat-tool' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
                   {menuOpen && (
                     <>
-                      <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />
                       <div className="chat-menu">
                         <button onClick={() => { setIllusOpen(true); setMenuOpen(false); }}><Wand2 size={15} /> 为当前剧情生成插图</button>
                         <button onClick={renameConv}><Edit3 size={15} /> 重命名对话</button>

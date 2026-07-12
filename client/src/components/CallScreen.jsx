@@ -18,7 +18,6 @@ export default function CallScreen({ character, onClose }) {
   const [char, setChar] = useState(character);            // 完整角色（挂载后拉取，含背景）
   const [mode, setMode] = useState(character?.background ? 'video' : 'voice');
   const touchedMode = useRef(false);                      // 用户是否手动切过语音/视频
-  const [convId, setConvId] = useState(null);
   const [phase, setPhase] = useState('dialing');     // dialing → live
   const [seconds, setSeconds] = useState(0);
   const [subtitle, setSubtitle] = useState('');       // 角色当前这句（流式）
@@ -36,17 +35,34 @@ export default function CallScreen({ character, onClose }) {
   const srRef = useRef(null);        // 浏览器 SpeechRecognition
   const bufRef = useRef('');
   const rafRef = useRef(0);
+  const convIdRef = useRef(null);    // say() 用 ref 读，避免闭包拿到过期值
+  const abortRef = useRef(null);     // 进行中的补全流（挂断/卸载时掐掉）
   const hue = ((character?.id || 7) * 47) % 360;
+
+  // 建会话（可重入）：挂载时预建；失败或竞态时 say() 按需重建 ——
+  // 旧版仅在挂载时试一次，失败后 convId 恒为 null，用户每次发送都被
+  // 静默吞掉（实机「键盘输入无返回」的一类根因）。
+  const createConv = useCallback(async () => {
+    if (convIdRef.current) return convIdRef.current;
+    const r = await fetch(getApiBase() + '/api/chat/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ character_id: character.id }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || '无法建立通话会话');
+    const cid = d.conversation?.id || null;
+    if (!cid) throw new Error('无法建立通话会话');
+    convIdRef.current = cid;
+    return cid;
+  }, [character.id]);
 
   // 建立会话 + 拉取语音配置 + 探测平台 ASR。
   useEffect(() => {
     let alive = true;
     (async () => {
       const H = { Authorization: `Bearer ${getToken()}` };
-      try {
-        const r = await fetch(getApiBase() + '/api/chat/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json', ...H }, body: JSON.stringify({ character_id: character.id }) });
-        const d = await r.json(); if (alive) setConvId(d.conversation?.id || null);
-      } catch { /* 建会话失败仍展示界面 */ }
+      try { await createConv(); } catch { /* 建会话失败仍展示界面，say() 会按需重试 */ }
       try { const s = await (await fetch(getApiBase() + '/api/settings', { headers: H })).json(); if (alive) setVoiceCfg({ voice_protocol: s.settings?.voice_protocol, voice_name: s.settings?.voice_name }); } catch { /* */ }
       try { const a = await (await fetch(getApiBase() + '/api/asr/status', { headers: H })).json(); if (alive) setAsrReady(!!a.ready); } catch { if (alive) setAsrReady(false); }
       // 拉完整角色（含背景），据此决定是否进入视频形态。
@@ -72,11 +88,15 @@ export default function CallScreen({ character, onClose }) {
     const clean = stripParensForSpeech(text || '').trim();
     if (!clean) return;
     const emotion = detectEmotion(text);
-    if (voiceCfg?.voice_protocol === 'browser' || !voiceCfg) { speakBrowser(clean, voiceCfg?.voice_name, character?.voice_speed, character?.voice_pitch, true, emotion); return; }
+    const browserSpeak = () => speakBrowser(clean, voiceCfg?.voice_name, character?.voice_speed, character?.voice_pitch, true, emotion);
+    if (voiceCfg?.voice_protocol === 'browser' || !voiceCfg) { browserSpeak(); return; }
     fetch(getApiBase() + '/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
       body: JSON.stringify({ text: clean, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, pitch: character?.voice_pitch || undefined, emotion, character_id: character?.id }) })
-      .then(res => res.ok ? res.blob() : null).then(blob => { if (blob) playAudioUrl(URL.createObjectURL(blob), true); })
-      .catch(() => { /* 语音失败不阻断（仍有字幕） */ });
+      .then(res => res.ok ? res.blob() : Promise.reject(new Error(String(res.status))))
+      .then(blob => playAudioUrl(URL.createObjectURL(blob), true))
+      // 平台/自配语音不可用（未配置 503 / 金币不足 402 / 上游挂了）→ 退回
+      // 本机 TTS，通话始终有声音。旧版此处静默吞掉 —— 用户体感「根本不能通话」。
+      .catch(browserSpeak);
   }, [voiceCfg, character]);
 
   // 接通后角色先说一句开场白。
@@ -90,21 +110,36 @@ export default function CallScreen({ character, onClose }) {
   // 说一句 → 流式取回角色回复，边到边显示字幕，收尾自动朗读。
   const say = useCallback(async (text) => {
     const content = String(text || '').trim();
-    if (!content || !convId || thinking) return;
+    if (!content || thinking) return;
     stopSpeaking(); setThinking(true); setSubtitle(''); bufRef.current = '';
+    // 90s 兜底中止：上游模型挂起时不至于把「对方正在说…」冻死在屏上
+    //（服务端自身有 60s 首字节超时，这里是双保险 + 覆盖网络层悬挂）。
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const guard = setTimeout(() => ac.abort(), 90000);
     try {
+      const cid = await createConv();   // 已建则直接复用；失败抛错上屏
       // 共用 chat/sse.js 的读取器；字幕仍走 rAF 节流，只显示最近 140 字。
-      const full = await streamSSE(`/api/chat/conversations/${convId}/complete`, {
+      const full = await streamSSE(`/api/chat/conversations/${cid}/complete`, {
         body: { content },
+        signal: ac.signal,
         onDelta: (delta) => {
           bufRef.current += delta;
           if (!rafRef.current) rafRef.current = requestAnimationFrame(() => { rafRef.current = 0; setSubtitle(stripParensForSpeech(bufRef.current).slice(-140)); });
         },
       });
       setSubtitle(stripParensForSpeech(full).slice(-140)); speak(full);
-    } catch { setSubtitle('（信号不太好，稍后再说说看…）'); }
-    finally { setThinking(false); }
-  }, [convId, thinking, speak]);
+    } catch (e) {
+      // 具体错误直接上屏（金币不足 / 模型未配置 / 超时…）——
+      // 旧版一律「信号不太好」，用户无从得知也无法自救。
+      if (e?.name === 'AbortError') setSubtitle('（这句等太久，掐断了 —— 再说一次试试）');
+      else setSubtitle(`（${e?.message || '信号不太好，稍后再说说看…'}）`);
+    } finally {
+      clearTimeout(guard);
+      if (abortRef.current === ac) abortRef.current = null;
+      setThinking(false);
+    }
+  }, [thinking, speak, createConv]);
 
   // —— 录音 → 平台 ASR 识别 —— //
   const stopTracks = () => { try { streamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* */ } streamRef.current = null; };
@@ -156,9 +191,9 @@ export default function CallScreen({ character, onClose }) {
     setShowKeys(true);
   };
 
-  const hangup = () => { try { recRef.current?.stop(); } catch { /* */ } try { srRef.current?.stop(); } catch { /* */ } stopTracks(); stopSpeaking(); onClose?.(); };
+  const hangup = () => { try { abortRef.current?.abort(); } catch { /* */ } try { recRef.current?.stop(); } catch { /* */ } try { srRef.current?.stop(); } catch { /* */ } stopTracks(); stopSpeaking(); onClose?.(); };
   const sendDraft = () => { const t = draft.trim(); if (!t) return; setDraft(''); say(t); };
-  useEffect(() => () => { stopSpeaking(); stopTracks(); try { recRef.current?.stop(); } catch { /* */ } try { srRef.current?.stop(); } catch { /* */ } }, []);
+  useEffect(() => () => { try { abortRef.current?.abort(); } catch { /* */ } stopSpeaking(); stopTracks(); try { recRef.current?.stop(); } catch { /* */ } try { srRef.current?.stop(); } catch { /* */ } }, []);
 
   const mmss = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   const stateText = phase === 'dialing' ? '正在接通…'

@@ -89,11 +89,16 @@ export default function GroupRoom() {
           )}
           {messages.map((m, i) => {
             const mine = m.user_id === user.id;
+            // 群聊里自己的消息同样带头像+昵称（多人场景需要身份锚点；
+            // 「无头像」是 AI 对话页 user 侧的约定，搬到群聊就成了排版错位）。
+            // 自己这侧优先用当前账号资料 —— 轮询消息里的快照可能滞后。
+            const av = mine ? (user.avatar ?? m.avatar) : m.avatar;
+            const nm = (mine ? (user.display_name || user.username) : m.display_name) || '匿名';
             return (
               <div key={i} className={'msg ' + (mine ? 'user' : 'assistant')}>
-                {!mine && <Avatar src={m.avatar} name={m.display_name} size={36} />}
+                <Avatar src={av} name={nm} size={36} />
                 <div>
-                  {!mine && <div className="who">{m.display_name}</div>}
+                  <div className="who">{nm}</div>
                   <div className="bubble">{m.content}</div>
                 </div>
               </div>
