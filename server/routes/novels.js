@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
-import { applyTx } from '../wallet.js';
-import { getPlatform, platformFee } from '../platform.js';
+import { getPlatform, chargePlatformFee } from '../platform.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { bumpDaily } from '../daily.js';
@@ -477,12 +476,13 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
   }
   const messages = [{ role: 'system', content: eff.platform && eff.system_prompt ? eff.system_prompt + '\n\n' + system : system }, ...ctx, { role: 'user', content: task }];
 
-  // 平台计费：与对话一致，先验余额，成功后扣费。
-  let feeDue = 0;
-  if (eff.platform) {
-    feeDue = platformFee(me, beats.length);
-    if (me.gold < feeDue) { sse({ error: `金币不足，本次平台 AI 创作需 ${feeDue} 金币（当前 ${me.gold}）。可前往钱包签到/兑换，或在设置中填写自己的 API。` }); sse('[DONE]'); return res.end(); }
-  }
+  // 平台计费：与对话一致，预扣 + 失败退款（原子防并发白嫖，见 chargePlatformFee）。
+  const feeCtx = chargePlatformFee({
+    req, res, sse, me, eff, historyLen: beats.length,
+    memo: `AI 创作 ·《${novel.title}》`,
+    insufficientHint: '可前往钱包签到/兑换，或在设置中填写自己的 API。',
+  });
+  if (feeCtx.rejected) return;
 
   let full = '';
   // 断连/超时中止（同 chat.js pumpModelStream）：客户端断开时中止上游读循环，
@@ -504,6 +504,7 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => '');
       console.error('[novels] 上游模型错误', upstream.status, text.slice(0, 200));
+      feeCtx.refund('上游错误');
       sse({ error: '模型服务暂不可用，请稍后再试' }); sse('[DONE]'); return res.end();
     }
     const reader = upstream.body.getReader();
@@ -538,9 +539,9 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
   }
 
   full = full.trim();
-  // 客户端流式中途断开（socket 已销毁）：正文可能被截断且未确认送达。不落库、不扣费
+  // 客户端流式中途断开（socket 已销毁）：正文可能被截断且未确认送达。不落库、退款
   //（避免把截断段落当成品持久化并全额计费）；作者重连后可重新推进。
-  if (res.destroyed) return;
+  if (res.destroyed) { feeCtx.refund('客户端断开'); return; }
   if (full) {
     if (rewrite) {
       pushHistory(rewrite.id, rewrite.content);
@@ -556,7 +557,9 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
     recountWords(run.id);
     touchRun(run.id); touchNovel(run.novel_id);
     try { bumpDaily(userId, 'novel'); } catch { /* */ }
-    if (feeDue) { try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `AI 创作 ·《${novel.title}》` }); sse({ fee: feeDue, balance: w.gold }); } catch { /* */ } }
+    feeCtx.settle();
+  } else {
+    feeCtx.refund('空产出');
   }
   sse('[DONE]');
   res.end();

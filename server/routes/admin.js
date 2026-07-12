@@ -233,11 +233,18 @@ router.get('/stats', (req, res) => {
 
 // ---- GM full backup / restore (数据保全：可一键导出整库 JSON，重新部署后再导入恢复) ----
 router.get('/backup', (req, res) => {
+  // 整库导出含全体用户数据 —— 高敏操作，落审计（谁、何时、从哪导出）。
+  auditLog({ event: 'backup_export', message: 'GM 导出整库备份', actor_id: req.user.id,
+    ip: req.ip, ua: req.header('user-agent') || '', request_id: req.requestId || '' });
   res.json({ app: '幻域 HUANYU', kind: 'server', exported_at: new Date().toISOString(), tables: exportAll() });
 });
 router.post('/restore', async (req, res) => {
   const tables = req.body?.tables;
   if (!tables || typeof tables !== 'object') return res.status(400).json({ error: '备份文件无效' });
+  // 全库覆盖是最高危的 GM 操作：先落审计（含表名与行数摘要），再执行。
+  const summary = Object.entries(tables).map(([t, rows]) => `${t}:${Array.isArray(rows) ? rows.length : '?'}`).join(', ');
+  auditLog({ event: 'restore_import', message: `GM 整库恢复覆盖（${summary.slice(0, 500)}）`, actor_id: req.user.id,
+    ip: req.ip, ua: req.header('user-agent') || '', request_id: req.requestId || '' });
   try { importAll(tables); } catch (e) { return res.status(500).json({ error: '恢复失败：' + e.message }); }
   try { await flush(true); } catch { /* */ } // persist the restored data immediately
   res.json({ ok: true });

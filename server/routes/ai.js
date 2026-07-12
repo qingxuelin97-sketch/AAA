@@ -20,7 +20,17 @@ router.post('/image', authRequired, aiLimiter, async (req, res) => {
   if (!prompt) return res.status(400).json({ error: '请先输入画面描述' });
   if (prompt.length > 1500) return res.status(400).json({ error: '画面描述过长（上限 1500 字）' });
   const fee = featureFee(me, IMAGE_FEE);
-  if (me.gold < fee) return res.status(402).json({ error: `金币不足，生成一张图需 ${fee} 金币（当前 ${me.gold}）。` });
+  // 预扣 + 失败退款：老写法先出图后扣费，多请求并发通过同一份余额快照的预检后
+  // 各自免费出图（上游成本已花掉）。applyTx 事务内校验余额，并发第二笔当场原子拒绝。
+  try { applyTx(me.id, { kind: 'image_fee', gold: -fee, memo: `AI 生图 · ${prompt.slice(0, 18)}` }); }
+  catch { return res.status(402).json({ error: `金币不足，生成一张图需 ${fee} 金币（当前 ${me.gold}）。` }); }
+  let charged = true;
+  const refundFee = (reason) => {
+    if (!charged) return;
+    charged = false;
+    try { applyTx(me.id, { kind: 'ai_refund', gold: fee, memo: `退款（${reason}）· AI 生图 · ${prompt.slice(0, 18)}` }); }
+    catch (e) { console.error('[ai] 生图预扣退款失败', e.message); }
+  };
   const size = SIZES.includes(req.body?.size) ? req.body.size : (cfg.size || '1024x1024');
   try {
     let image;
@@ -38,6 +48,7 @@ router.post('/image', authRequired, aiLimiter, async (req, res) => {
       if (!up.ok) {
         const t = await up.text().catch(() => '');
         console.error('[ai] 混元生图上游错误', up.status, t.slice(0, 400));
+        refundFee('上游错误');
         return res.status(502).json({ error: '混元生图服务暂不可用：' + t.slice(0, 200) });
       }
       const d = await up.json().catch(() => null);
@@ -53,17 +64,20 @@ router.post('/image', authRequired, aiLimiter, async (req, res) => {
       if (!up.ok) {
         const t = await up.text().catch(() => '');
         console.error('[ai] 生图上游错误', up.status, t.slice(0, 300));
+        refundFee('上游错误');
         return res.status(502).json({ error: '生图服务暂不可用，请稍后再试' });
       }
       const d = await up.json().catch(() => null); const item = d?.data?.[0] || {};
       image = item.b64_json ? 'data:image/png;base64,' + item.b64_json : item.url;
     }
-    if (!image) return res.status(502).json({ error: '生图服务未返回图片' });
-    let w; try { w = applyTx(me.id, { kind: 'image_fee', gold: -fee, memo: `AI 生图 · ${prompt.slice(0, 18)}` }); } catch (e) { return res.status(402).json({ error: e.message }); }
+    if (!image) { refundFee('空产出'); return res.status(502).json({ error: '生图服务未返回图片' }); }
     const r = db.prepare('INSERT INTO ai_images (user_id, prompt, size, url) VALUES (?,?,?,?)').run(me.id, prompt, size, image);
+    // 余额现查现报：预扣与出图之间可能有其他消费，别把过期快照报给前端。
+    const w = db.prepare('SELECT gold, diamond FROM users WHERE id = ?').get(me.id);
     res.json({ image, id: r.lastInsertRowid, fee, size, prompt, wallet: w });
   } catch (e) {
     console.error('[ai] 生图失败', e.message);
+    refundFee('生图失败');
     // 腾讯云返回的错误信息含错误码，对用户可见以利排查；其他协议返回通用提示
     const msg = cfg.provider === 'tencent' ? (e.message || '生图服务暂不可用') : '生图服务暂不可用，请稍后再试';
     res.status(502).json({ error: msg });

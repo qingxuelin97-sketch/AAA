@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx } from '../wallet.js';
-import { getPlatform, voiceReady, featureFee, platformFee, VOICE_FEE } from '../platform.js';
+import { getPlatform, voiceReady, featureFee, chargePlatformFee, VOICE_FEE } from '../platform.js';
 import { bumpDaily } from '../daily.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
@@ -805,11 +805,15 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
   const history = req.body?.include_history
     ? db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id)
     : [];
-  let feeDue = 0;
-  if (eff.platform) {
-    feeDue = platformFee(me, history.length);
-    if (me.gold < feeDue) { sse({ error: `金币不足，本次平台 AI 服务需 ${feeDue} 金币（当前 ${me.gold}）。` }); sse('[DONE]'); return res.end(); }
-  }
+  // 平台计费改「预扣 + 失败退款」：老写法先出结果后扣费，多请求并发通过同一份
+  // 余额快照的预检后各自免费送达（applyTx 抛错仅落 warn）—— 可被并发白嫖上游
+  // 成本。预扣在 applyTx 事务内校验余额，并发的第二笔当场被原子拒绝。
+  const feeCtx = chargePlatformFee({
+    req, res, sse, me, eff, historyLen: history.length,
+    memo: `平台 AI · 面板生成《${character?.name || ''}》`, refOwner: character?.owner_id,
+    convId: conv.id, characterId: conv.character_id,
+  });
+  if (feeCtx.rejected) return;
   const system = buildSystemPrompt(character, userInput, history);
   const payloadMessages = [
     { role: 'system', content: system },
@@ -818,19 +822,19 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
   ];
   const full = await pumpModelStream(res, eff, payloadMessages);
   if (full == null) {
+    feeCtx.refund('上游错误');
     log({ level: 'warn', source: 'server', category: 'chat', event: 'generate',
       message: `面板生成失败《${character?.name || ''}》（上游错误）`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
       endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
       extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: 0 } });
     return res.end();
   }
-  // 客户端在流式中途断开：回复未送达且可能被截断，不扣费（与「有产出才扣」一致，避免
-  // 为用户没看到的截断内容全额计费）。socket 已销毁，直接收尾。
-  if (res.destroyed) { try { res.end(); } catch { /* */ } return; }
-  if (full.trim() && feeDue) {
-    try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 面板生成《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); }
-    catch (e) { log({ level: 'warn', source: 'server', category: 'chat', event: 'ai_fee_uncharged', message: `平台 AI 扣费失败（面板生成已送达）：${e.message}`, user_id: me.id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { conversation_id: conv.id, character_id: conv.character_id, fee_due: feeDue } }); }
-  }
+  // 客户端在流式中途断开：回复未确认送达且可能被截断，原路退款（与「有产出才收费」
+  // 的既有政策一致，避免为用户没看到的截断内容全额计费）。socket 已销毁，直接收尾。
+  if (res.destroyed) { feeCtx.refund('客户端断开'); try { res.end(); } catch { /* */ } return; }
+  if (full.trim()) feeCtx.settle();
+  else feeCtx.refund('空产出');
+  const feeDue = feeCtx.fee;
   log({ level: 'info', source: 'server', category: 'chat', event: 'generate',
     message: `面板生成《${character?.name || ''}》`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
     endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
@@ -856,20 +860,23 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   if (!eff) { sse({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' }); sse('[DONE]'); return res.end(); }
 
   const history = db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
-  // Platform service is billed per reply — verify balance up-front, deduct only on success.
-  let feeDue = 0;
-  if (eff.platform) {
-    feeDue = platformFee(me, history.length);
-    if (me.gold < feeDue) { sse({ error: `金币不足，本次平台 AI 服务需 ${feeDue} 金币（当前 ${me.gold}）。可前往钱包签到/兑换，或在设置中填写自己的 API。` }); sse('[DONE]'); return res.end(); }
-  }
+  // 平台按回复计费：预扣 + 失败退款（原子防并发白嫖，详见 chargePlatformFee）。
+  const feeCtx = chargePlatformFee({
+    req, res, sse, me, eff, historyLen: history.length,
+    memo: `平台 AI · 对话《${character?.name || ''}》`, refOwner: character?.owner_id,
+    convId: conv.id, characterId: conv.character_id,
+    insufficientHint: '可前往钱包签到/兑换，或在设置中填写自己的 API。',
+  });
+  if (feeCtx.rejected) return;
   const recentText = history.slice(-6).map(m => m.content).join(' ');
   let system = buildSystemPrompt(character, recentText + ' ' + userContent, history);
   if (eff.platform && eff.system_prompt.trim()) system = eff.system_prompt.trim() + '\n\n' + system;
   const payloadMessages = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
   const full = await pumpModelStream(res, eff, payloadMessages);
-  // AI 上游返回 null：流已写入错误事件，记录 warn 后结束（不向客户端再写 [DONE]）。
+  // AI 上游返回 null：流已写入错误事件，退款、记录 warn 后结束（不向客户端再写 [DONE]）。
   if (full == null) {
+    feeCtx.refund('上游错误');
     log({ level: 'warn', source: 'server', category: 'chat', event,
       message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}失败《${character?.name || ''}》（上游错误）`,
       user_id: conv.user_id, ip: req.ip, ua: req.header('user-agent') || '',
@@ -877,11 +884,12 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
       extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: 0 } });
     return res.end();
   }
-  // 客户端流式中途断开（socket 已销毁）：full 可能被截断且未确认送达。不落库、不扣费
+  // 客户端流式中途断开（socket 已销毁）：full 可能被截断且未确认送达。不落库、退款
   //（避免把截断回复当成品持久化、并为用户没看到的内容全额计费）；用户重连后可重新生成。
   if (res.destroyed) {
+    feeCtx.refund('客户端断开');
     log({ level: 'warn', source: 'server', category: 'chat', event,
-      message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}中断《${character?.name || ''}》（客户端断开，未落库/未扣费）`,
+      message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}中断《${character?.name || ''}》（客户端断开，未落库/已退款）`,
       user_id: conv.user_id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
       extra: { conversation_id: conv.id, character_id: conv.character_id, chars: full.length, gold_fee: 0 } });
     return;
@@ -890,14 +898,11 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
     if (userContent) { try { db.prepare('UPDATE conversations SET affinity = COALESCE(affinity,0) + 3 WHERE id = ?').run(conv.id); } catch { /* */ } }
-    // Deduct the platform fee only after a successful reply (no charge on failure).
-    // 扣费失败（并发下余额被前一次调用先扣穿、applyTx 抛「金币不足」）此前被静默
-    // 吞掉 → 回复已送达却漏计费。仍不阻断已交付的回复，但落 warn 便于对账追踪。
-    if (feeDue) {
-      try { const w = applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); sse({ fee: feeDue, balance: w.gold }); }
-      catch (e) { log({ level: 'warn', source: 'server', category: 'chat', event: 'ai_fee_uncharged', message: `平台 AI 扣费失败（回复已送达）：${e.message}`, user_id: me.id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { conversation_id: conv.id, character_id: conv.character_id, fee_due: feeDue } }); }
-    }
+    feeCtx.settle();
+  } else {
+    feeCtx.refund('空产出');
   }
+  const feeDue = feeCtx.fee;
   log({ level: 'info', source: 'server', category: 'chat', event,
     message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}《${character?.name || ''}》`,
     user_id: conv.user_id, ip: req.ip, ua: req.header('user-agent') || '',

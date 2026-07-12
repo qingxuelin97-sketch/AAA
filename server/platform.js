@@ -1,5 +1,6 @@
 import db from './db.js';
-import { isVip } from './wallet.js';
+import { isVip, applyTx } from './wallet.js';
+import { log } from './logger.js';
 
 // Pay-per-use feature fees (gold). VIP / SVIP get the membership discount.
 export const VOICE_FEE = 20;  // per spoken sentence (platform voice)
@@ -10,6 +11,49 @@ export const featureFee = (u, base) => Math.max(1, Math.round(base * memberDisco
 // Per-reply platform chat fee: heavier (100+ message) sessions cost more.
 export const platformFee = (u, msgCount) =>
   Math.max(1, Math.round((msgCount > PLATFORM_FEE.heavy_threshold ? PLATFORM_FEE.heavy : PLATFORM_FEE.base) * memberDiscount(u)));
+
+// —— 平台 AI 计费：预扣 + 失败退款 ——
+// 旧模式「先出结果、成功后扣费」在并发下可被白嫖：多请求同时通过同一份余额
+// 快照的预检，回复各自送达后 applyTx 才发现扣不动（仅落 warn）——上游 API
+// 成本已经花掉。预扣把「校验 + 扣款」放进 applyTx 的事务里，并发的第二笔在
+// 调上游之前就被原子拒绝；失败路径（上游错误 / 客户端断开 / 空产出）原路
+// 退款（kind='ai_refund'，与预扣同 ref_owner —— 创作者分成池按 ai_fee 减
+// ai_refund 轧差统计，见 routes/me.js，杜绝「刷失败调用虚增分成」）。
+// 崩溃在「已扣未退」窗口的残留由 ai_fee_refund_failed 日志 + GM 钱包补偿兜底。
+export function chargePlatformFee({ req, res, sse, me, eff, historyLen, memo, refOwner = null, convId = null, characterId = null, insufficientHint = '' }) {
+  const ctx = { fee: 0, rejected: false, charged: false, settle: () => {}, refund: () => {} };
+  if (!eff?.platform) return ctx;
+  ctx.fee = platformFee(me, historyLen);
+  const logExtra = { conversation_id: convId, character_id: characterId, fee_due: ctx.fee };
+  const logBase = { source: 'server', category: 'economy', user_id: me.id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '' };
+  try {
+    applyTx(me.id, { kind: 'ai_fee', gold: -ctx.fee, memo, ref_owner: refOwner });
+    ctx.charged = true;
+  } catch {
+    ctx.rejected = true;
+    sse({ error: `金币不足，本次平台 AI 服务需 ${ctx.fee} 金币（当前 ${me.gold}）。${insufficientHint}` });
+    sse('[DONE]'); res.end();
+    return ctx;
+  }
+  ctx.settle = () => {
+    if (!ctx.charged) return;
+    ctx.charged = false;
+    // 余额现查现报：预扣与送达之间可能有其他消费，别把过期快照报给前端。
+    const g = db.prepare('SELECT gold FROM users WHERE id = ?').get(me.id)?.gold ?? 0;
+    if (!res.destroyed) sse({ fee: ctx.fee, balance: g });
+  };
+  ctx.refund = (reason) => {
+    if (!ctx.charged) return;
+    ctx.charged = false;
+    try {
+      applyTx(me.id, { kind: 'ai_refund', gold: ctx.fee, memo: `退款（${reason}）· ${memo}`, ref_owner: refOwner });
+      log({ ...logBase, level: 'info', event: 'ai_fee_refund', message: `平台 AI 预扣退款（${reason}）`, extra: logExtra });
+    } catch (e) {
+      log({ ...logBase, level: 'error', event: 'ai_fee_refund_failed', message: `平台 AI 预扣退款失败（${reason}）：${e.message}`, extra: logExtra });
+    }
+  };
+  return ctx;
+}
 
 // Group-wide platform AI config (language / voice / image). Stored as JSON in
 // app_config. Keys live only in the server DB and are never returned unmasked.

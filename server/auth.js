@@ -42,9 +42,11 @@ export function bumpTokenVersion(userId) {
   db.prepare('UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').run(userId);
 }
 
+// 有效期 14 天 + 滑动续期（见 routes/auth.js GET /me）：活跃用户永不掉线，
+// 泄露的闲置 token 最多存活 14 天（此前 30 天）。改密/封禁仍经 token_version 立即吊销。
 export function sign(user) {
   const tv = user.token_version ?? 0;
-  return jwt.sign({ id: user.id, username: user.username, tv }, SECRET, { expiresIn: '30d', algorithm: 'HS256' });
+  return jwt.sign({ id: user.id, username: user.username, tv }, SECRET, { expiresIn: '14d', algorithm: 'HS256' });
 }
 
 export function authRequired(req, res, next) {
@@ -59,6 +61,7 @@ export function authRequired(req, res, next) {
     // 校验 token 版本：改密后旧 token 失效
     if ((payload.tv ?? 0) !== (user.token_version ?? 0)) return res.status(401).json({ error: '登录态已失效，请重新登录' });
     req.user = user;
+    req.tokenIat = payload.iat || 0; // 签发时间（秒），供 GET /me 判断是否滑动续期
     next();
   } catch {
     return res.status(401).json({ error: '登录已过期，请重新登录' });

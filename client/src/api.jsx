@@ -51,6 +51,8 @@ export async function api(path, { method = 'GET', body, raw } = {}) {
   const headers = {};
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  // 原生壳设备标识（native.js 启动时写入）：服务端注册配额用。Web 端恒无此头。
+  if (window.__HY_DEVICE_ID) headers['X-Device-Id'] = window.__HY_DEVICE_ID;
   let payload = body;
   if (body && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
@@ -77,7 +79,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!getToken()) { setLoading(false); return; }
-    api('/auth/me').then(d => setUser(d.user)).catch(() => setToken(null)).finally(() => setLoading(false));
+    api('/auth/me').then(d => {
+      setUser(d.user);
+      if (d.token) setToken(d.token); // 服务端滑动续期：签发超 7 天时随响应换发新 token
+    }).catch(() => setToken(null)).finally(() => setLoading(false));
   }, []);
 
   const login = async (username, password) => {
@@ -90,7 +95,12 @@ export function AuthProvider({ children }) {
   };
   const logout = () => { setToken(null); setUser(null); };
   const refreshUser = async () => {
-    try { const d = await api('/auth/me'); setUser(d.user); return d.user; } catch { /* */ }
+    try {
+      const d = await api('/auth/me');
+      setUser(d.user);
+      if (d.token) setToken(d.token); // 滑动续期（同上）
+      return d.user;
+    } catch { /* */ }
   };
 
   return (

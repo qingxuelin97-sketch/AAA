@@ -10,9 +10,17 @@ const router = Router();
 const TT = (t) => (t === 'script' ? 'script' : 'character');
 
 // ---- daily tasks ----
+// /track 曾按客户端上报的 action 对全部六类任务 bumpDaily —— 全站唯一信任
+// 客户端上报的经济入口：破解客户端可空刷计数再领奖（~75 金/天/号）。
+// 现收敛为仅认 'gacha'：其余五个 key 都有服务端真实动作路由计数（chat→
+// chat.js 发言、checkin→economy.js 签到、like→community.js 点赞、fav→
+// characters.js 收藏、novel→novels.js AI 写作），客户端无需也无法代报；
+// 唯独「角色扭蛋机」（Gacha.jsx）是纯前端免费玩法、服务端没有对应动作可
+// 校验，而该任务 target=1、合法用户点一下即免费达成 —— 脚本化上报拿不到
+// 任何超出正常玩法的收益，保留它不构成刷币面。
+// 路由本身保留并照旧返回 ok —— 旧版 APK 仍会上报其他 action，不能 404。
 router.post('/track', authRequired, contentLimiter, (req, res) => {
-  const a = String(req.body?.action || '');
-  if (['gacha', 'chat', 'fav', 'like', 'checkin', 'novel'].includes(a)) bumpDaily(req.user.id, a);
+  if (String(req.body?.action || '') === 'gacha') bumpDaily(req.user.id, 'gacha');
   res.json({ ok: true });
 });
 router.get('/tasks', authRequired, (req, res) => {

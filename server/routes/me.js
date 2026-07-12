@@ -19,8 +19,11 @@ const REV_TIERS = [
 const revTierOf = (pool) => [...REV_TIERS].reverse().find(t => pool >= t.min) || REV_TIERS[0];
 function creatorSpendPool(uid) {
   const month = new Date().toISOString().slice(0, 7);
-  const total = db.prepare("SELECT COALESCE(SUM(-gold),0) n FROM transactions WHERE ref_owner = ? AND kind IN ('ai_fee','voice_fee') AND gold < 0").get(uid).n;
-  const mo = db.prepare("SELECT COALESCE(SUM(-gold),0) n FROM transactions WHERE ref_owner = ? AND kind IN ('ai_fee','voice_fee') AND gold < 0 AND substr(created_at,1,7) = ?").get(uid, month).n;
+  // ai_refund 计入轧差：平台费改「预扣 + 失败退款」后，失败调用会留下一对
+  // ai_fee(-fee)/ai_refund(+fee) 流水 —— SUM(-gold) 恰好相互抵消，只有真正
+  // 送达的消费进池。否则刷失败调用（净成本 0）即可虚增分成基数。
+  const total = db.prepare("SELECT COALESCE(SUM(-gold),0) n FROM transactions WHERE ref_owner = ? AND kind IN ('ai_fee','voice_fee','ai_refund')").get(uid).n;
+  const mo = db.prepare("SELECT COALESCE(SUM(-gold),0) n FROM transactions WHERE ref_owner = ? AND kind IN ('ai_fee','voice_fee','ai_refund') AND substr(created_at,1,7) = ?").get(uid, month).n;
   return { total, month: mo };
 }
 function revenuePlan(u) {
