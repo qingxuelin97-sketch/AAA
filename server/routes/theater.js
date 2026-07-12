@@ -3,9 +3,20 @@ import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
+import { push } from '../realtime.js';
 
 const router = Router();
 const memberOf = (tid, uid) => !!db.prepare('SELECT 1 FROM theater_members WHERE theater_id = ? AND user_id = ?').get(tid, uid);
+
+// 新段落 SSE 秒推给其他在线读者 —— 此前只靠前端 4s 轮询，联机共读时
+// 别人的行动/AI 续写要等 0~4s 才出现；轮询保留为断连兜底（前端已放宽）。
+// removedId：「重写」场景先摘旧段再插新段，客户端按此同步。
+function pushTheaterMsg(t, message, exceptUid, removedId = null) {
+  const ids = db.prepare('SELECT user_id FROM theater_members WHERE theater_id = ?').all(t.id).map(r => r.user_id);
+  for (const uid of new Set([...ids, t.owner_id])) {
+    if (uid !== exceptUid) push(uid, 'theater_msg', { theater_id: t.id, message, removedId });
+  }
+}
 
 function castOf(tid) {
   return db.prepare(`SELECT c.* FROM theater_cast tc JOIN characters c ON c.id = tc.character_id WHERE tc.theater_id = ?`).all(tid);
@@ -195,7 +206,9 @@ router.post('/:id/say', authRequired, aiLimiter, (req, res) => {
   const u = db.prepare('SELECT display_name, avatar FROM users WHERE id = ?').get(req.user.id);
   const info = db.prepare('INSERT INTO theater_messages (theater_id, sender_type, sender_id, name, avatar, content) VALUES (?,?,?,?,?,?)')
     .run(t.id, 'user', req.user.id, u.display_name, u.avatar, String(content).slice(0, 2000));
-  res.json({ message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
+  const msg = db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid);
+  pushTheaterMsg(t, msg, req.user.id);
+  res.json({ message: msg });
 });
 
 // 生成一段续写（旁白 / 角色），含世界书注入。excludeId 用于「重写」时排除被替换的那段。
@@ -258,7 +271,9 @@ router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
   try {
     const gen = await runGeneration(t, settings, req.body || {});
     const info = insertReply(t, gen);
-    res.json({ message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
+    const msg = db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid);
+    pushTheaterMsg(t, msg, req.user.id);
+    res.json({ message: msg });
   } catch (e) { res.status(e.status === 400 || e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
 });
 
@@ -277,7 +292,9 @@ router.post('/:id/retry', authRequired, aiLimiter, async (req, res) => {
     const gen = await runGeneration(t, settings, body, last.id);
     db.prepare('DELETE FROM theater_messages WHERE id = ?').run(last.id);
     const info = insertReply(t, gen);
-    res.json({ removedId: last.id, message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
+    const msg = db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid);
+    pushTheaterMsg(t, msg, req.user.id, last.id);
+    res.json({ removedId: last.id, message: msg });
   } catch (e) { res.status(e.status === 400 || e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
 });
 
@@ -291,7 +308,9 @@ router.post('/:id/chapter', authRequired, (req, res) => {
   if (!title) return res.status(400).json({ error: '请填写章节标题' });
   const info = db.prepare('INSERT INTO theater_messages (theater_id, sender_type, name, content) VALUES (?,?,?,?)')
     .run(t.id, 'chapter', '章节', title);
-  res.json({ message: db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid) });
+  const msg = db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid);
+  pushTheaterMsg(t, msg, req.user.id);
+  res.json({ message: msg });
 });
 
 // —— 命运抉择：让 AI 根据当前剧情给主角生成 3 个可选行动（不入库，选中后走 /say）。

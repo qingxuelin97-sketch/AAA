@@ -38,7 +38,10 @@ router.get('/stream', sseAuth, (req, res) => {
   try { db.prepare('UPDATE users SET last_active = ? WHERE id = ?').run(Date.now(), req.user.id); } catch { /* */ }
 
   // 握手事件：让客户端确认连接已就绪并拿到自己的 uid。
-  res.write(`event: ready\ndata: ${JSON.stringify({ uid: req.user.id, at: Date.now() })}\n\n`);
+  // feats 是能力声明：客户端据此决定「消息靠推送、轮询放宽兜底」还是
+  // 「后端尚未升级/声明缺失 → 维持密轮询」。新增推送事件时在此登记，
+  // 老客户端会忽略未知条目，老服务端缺该字段则新客户端自动退回密轮询。
+  res.write(`event: ready\ndata: ${JSON.stringify({ uid: req.user.id, at: Date.now(), feats: ['group_msg', 'theater_msg'] })}\n\n`);
 
   const detach = attach(req.user.id, res);
   req.on('close', detach);

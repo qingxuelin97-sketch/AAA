@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
+import { push } from '../realtime.js';
 
 const router = Router();
 
@@ -62,6 +63,12 @@ router.post('/:id/messages', authRequired, (req, res) => {
   if (!content) return res.status(400).json({ error: '消息不能为空' });
   const info = db.prepare('INSERT INTO group_messages (group_id, user_id, content) VALUES (?,?,?)').run(g.id, req.user.id, String(content).slice(0, 2000));
   const msg = db.prepare(`SELECT m.*, u.display_name, u.avatar FROM group_messages m JOIN users u ON u.id = m.user_id WHERE m.id = ?`).get(info.lastInsertRowid);
+  // SSE 秒推给其他在线成员 —— 群消息此前只靠 4s 轮询，收方延迟 0~4s；
+  // 轮询保留为 SSE 断连时的兜底（前端已放宽间隔）。发送者本人拿响应即得。
+  const memberIds = db.prepare('SELECT user_id FROM group_members WHERE group_id = ?').all(g.id).map(r => r.user_id);
+  for (const uid of new Set([...memberIds, g.owner_id])) {
+    if (uid !== req.user.id) push(uid, 'group_msg', { group_id: g.id, message: msg });
+  }
   res.json({ message: msg });
 });
 

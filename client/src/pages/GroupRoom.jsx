@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
+import { useRealtimeEvent, useRealtimeFeat } from '../realtime.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow } from '../util.js';
@@ -39,15 +40,26 @@ export default function GroupRoom() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
 
+  // 他人消息经 SSE 秒达（服务端 group_msg 事件）。轮询自适应：服务端声明了
+  // 推送能力且连接在线 → 放宽为断连兜底；否则（后端未升级 / SSE 断开）维持密轮询。
+  const live = useRealtimeFeat('group_msg');
+  useRealtimeEvent('group_msg', (d) => {
+    if (!d || Number(d.group_id) !== Number(id)) return;
+    const m = d.message;
+    if (!m || m.id <= lastId.current) return;
+    lastId.current = m.id;
+    setMessages(list => [...list, m]);
+  });
   useEffect(() => {
     const t = setInterval(async () => {
       try {
         const d = await api('/groups/' + id + '/messages?after=' + lastId.current);
-        if (d.messages.length) { setMessages(m => [...m, ...d.messages]); lastId.current = d.messages[d.messages.length - 1].id; }
+        const fresh = d.messages.filter(x => x.id > lastId.current);
+        if (fresh.length) { setMessages(m => [...m, ...fresh]); lastId.current = fresh[fresh.length - 1].id; }
       } catch { /* */ }
-    }, 4000);
+    }, live ? 15000 : 4000);
     return () => clearInterval(t);
-  }, [id]);
+  }, [id, live]);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [messages]);
 

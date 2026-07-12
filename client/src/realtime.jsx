@@ -4,7 +4,7 @@ import { useAuth, getToken, API_BASE } from './api.jsx';
 // 已知的事件名集合。EventSource 需在建连时为每个具名事件注册监听器，
 // 这里枚举服务端会推送的全部事件，建连时一次性注册。
 // 业务侧用 useRealtimeEvent(name, fn) 订阅，handler 写进 ref，每次渲染都刷新，无需重绑。
-const KNOWN_EVENTS = ['ready', 'dm', 'friend', 'notification', 'character_new', 'audit'];
+const KNOWN_EVENTS = ['ready', 'dm', 'friend', 'notification', 'character_new', 'audit', 'group_msg', 'theater_msg'];
 
 const RealtimeContext = createContext(null);
 
@@ -20,6 +20,10 @@ const MAX_RETRIES = 6;
 export function RealtimeProvider({ children }) {
   const { user } = useAuth();
   const [status, setStatus] = useState('idle'); // idle | connecting | open | closed
+  // 服务端 ready 握手声明的推送能力（如 group_msg/theater_msg）。
+  // 页面据此决定轮询节奏：能力在 → 推送为主、轮询放宽兜底；
+  // 后端尚未升级（无 feats 字段）→ 自动维持密轮询，新旧两端互不将就。
+  const [feats, setFeats] = useState([]);
   const esRef = useRef(null);
   const handlersRef = useRef(new Map()); // event -> Set<fn>
   const retryRef = useRef(0);
@@ -27,6 +31,7 @@ export function RealtimeProvider({ children }) {
   const stoppedRef = useRef(false);
 
   const dispatch = useCallback((event, data) => {
+    if (event === 'ready') setFeats(Array.isArray(data?.feats) ? data.feats : []);
     const set = handlersRef.current.get(event);
     if (!set || !set.size) return;
     for (const fn of [...set]) { try { fn(data); } catch { /* handler 抛错不影响其他订阅者 */ } }
@@ -132,7 +137,7 @@ export function RealtimeProvider({ children }) {
   }, []);
 
   return (
-    <RealtimeContext.Provider value={{ status, subscribe }}>
+    <RealtimeContext.Provider value={{ status, subscribe, feats }}>
       {children}
     </RealtimeContext.Provider>
   );
@@ -146,11 +151,18 @@ export function useRealtime() {
 // 因此订阅只在 event 名变化时重绑，避免业务侧手抖把 handler 列进依赖导致频繁重订阅。
 export function useRealtimeEvent(event, handler) {
   const ctx = useContext(RealtimeContext);
+  const subscribe = ctx?.subscribe;
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
   useEffect(() => {
-    if (!ctx) return;
+    if (!subscribe) return;
     const fn = (data) => { try { handlerRef.current?.(data); } catch { /* */ } };
-    return ctx.subscribe(event, fn);
-  }, [ctx, event]);
+    return subscribe(event, fn);
+  }, [subscribe, event]);
+}
+
+// 服务端是否声明了某项推送能力（且连接在线）。用于「推送为主还是密轮询」的分流。
+export function useRealtimeFeat(name) {
+  const ctx = useContext(RealtimeContext);
+  return !!ctx && ctx.status === 'open' && ctx.feats.includes(name);
 }

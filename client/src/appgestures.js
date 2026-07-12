@@ -41,16 +41,30 @@ export function useAppGestures(scrollRef, handlers) {
       else if (dy > 0 && (window.scrollY || document.documentElement.scrollTop || 0) <= 0) mode = 'pull';
       else mode = 'v';
     };
+    // 横滑动作：越过阈值立即触发，不等抬手 —— 「滑动切页要等手指离开才有
+    // 反应」正是延迟反馈体感的大头；fired 保证每次手势只触发一次。
+    const H_TRIG = 56;
+    let fired = false;
+    const fireH = (dx) => {
+      fired = true;
+      if (dx < 0) cb.current.onNext?.();
+      else if (fromEdge) cb.current.onBack?.();
+      else cb.current.onPrev?.();
+    };
+    const trackH = (dx, dy) => {
+      if (!mode) detect(dx, dy);
+      if (mode === 'h' && !fired && Math.abs(dx) > H_TRIG && Math.abs(dx) > Math.abs(dy) * 1.4) fireH(dx);
+    };
     const onMovePassive = (e) => {
-      if (!tracking || pullBound || mode) return;
+      if (!tracking || pullBound) return;
       const t = e.touches[0];
-      detect(t.clientX - sx, t.clientY - sy);
+      trackH(t.clientX - sx, t.clientY - sy);
     };
     const onMovePull = (e) => {
       if (!tracking) return;
       const t = e.touches[0];
       const dx = t.clientX - sx, dy = t.clientY - sy;
-      if (!mode) detect(dx, dy);
+      trackH(dx, dy);
       if (mode === 'pull') {
         pull = Math.min(120, dy * 0.55);
         if (pull > 0) { if (e.cancelable) e.preventDefault(); emitPull(); }
@@ -65,7 +79,7 @@ export function useAppGestures(scrollRef, handlers) {
     const onStart = (e) => {
       if (e.touches.length !== 1) { tracking = false; unbindPull(); return; }
       const t = e.touches[0];
-      sx = t.clientX; sy = t.clientY; mode = ''; pull = 0;
+      sx = t.clientX; sy = t.clientY; mode = ''; pull = 0; fired = false;
       fromEdge = sx <= 24;
       tracking = !e.target.closest?.(NO_SWIPE);
       const atTop = (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
@@ -82,11 +96,8 @@ export function useAppGestures(scrollRef, handlers) {
       const t = (e.changedTouches && e.changedTouches[0]) || {};
       const dx = (t.clientX || 0) - sx, dy = (t.clientY || 0) - sy;
       if (mode === 'pull') { cancelAnimationFrame(raf); raf = 0; cb.current.onPullEnd?.(pull > 66); return; }
-      if (mode === 'h' && Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-        if (dx < 0) cb.current.onNext?.();
-        else if (fromEdge) cb.current.onBack?.();
-        else cb.current.onPrev?.();
-      }
+      // 兜底：move 事件采样稀疏、抬手才越过阈值时仍在此触发（fired 防重复）
+      if (mode === 'h' && !fired && Math.abs(dx) > H_TRIG && Math.abs(dx) > Math.abs(dy) * 1.4) fireH(dx);
     };
 
     el.addEventListener('touchstart', onStart, { passive: true });

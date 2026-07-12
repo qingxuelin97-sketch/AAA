@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, useAuth, assetUrl } from '../api.jsx';
+import { useRealtimeEvent, useRealtimeFeat } from '../realtime.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { useKeyboardInsetBar } from '../mobile.js';
 import { speakBrowser, stopSpeaking, onVoiceStateChange, currentVoiceId } from '../voice.js';
@@ -103,7 +104,19 @@ export default function TheaterRoom() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
 
-  // 轮询其他读者 / AI 贡献的新段落
+  // 其他读者 / AI 的新段落经 SSE 秒达（服务端 theater_msg 事件；removedId
+  // 覆盖「重写」的旧段替换）。轮询自适应：推送能力在 → 放宽为兜底，
+  // 否则（后端未升级 / SSE 断开）维持密轮询。
+  const live = useRealtimeFeat('theater_msg');
+  useRealtimeEvent('theater_msg', (d) => {
+    if (!d || Number(d.theater_id) !== Number(id)) return;
+    setMessages(list => {
+      let next = d.removedId ? list.filter(x => x.id !== d.removedId) : list;
+      const m = d.message;
+      if (m && m.id > lastId.current) { lastId.current = m.id; next = [...next, m]; }
+      return next;
+    });
+  });
   useEffect(() => {
     const t = setInterval(async () => {
       try {
@@ -113,9 +126,9 @@ export default function TheaterRoom() {
           lastId.current = d.messages[d.messages.length - 1].id;
         }
       } catch { /* */ }
-    }, 4000);
+    }, live ? 15000 : 4000);
     return () => clearInterval(t);
-  }, [id]);
+  }, [id, live]);
 
   // 智能跟随：仅当读者已在底部附近时自动滚到最新，避免回看历史被强行拉走。
   const scrollToBottom = (behavior = 'smooth') => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
