@@ -1,7 +1,7 @@
 /* 幻域 PWA service worker — offline app shell.
    Strategy: network-first for navigations (always try fresh index.html, fall back
    to cache when offline), cache-first for hashed build assets (immutable). */
-const CACHE = 'huanyu-v2';
+const CACHE = 'huanyu-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 

@@ -22,9 +22,22 @@ export const SWIPE_TABS = ['/today', '/', '/messages', '/me'];
 
 // 路由 commit 信号：AppLayout 在新路由 commit 的 useLayoutEffect 里 resolve，
 // VT 的 update callback 等它 —— 兼容 React startTransition 异步提交与 lazy chunk。
+// 同时维护 [prev, cur] 路径面包屑：appBack 无法预知 POP 目的地，用它近似判定
+// 「回退的目标是不是 VT 跳过页」（chat↔messages 这类常见回退）。
 let commitResolve = null;
-export function routeCommitted() {
+let pathCrumb = ['', ''];
+export function routeCommitted(path) {
+  if (path && path !== pathCrumb[1]) pathCrumb = [pathCrumb[1], path];
   if (commitResolve) { commitResolve(); commitResolve = null; }
+}
+
+// 进行中的 View Transition 引用。真机残影的根因：VT 快照还在顶层播放时，
+// 一次「跳过 VT 的普通导航」（如点进 /chats/:id）直接改 DOM 并不会中止它，
+// 冻结的旧页快照就叠在新页面上 —— 任何导航开始前必须先掐掉进行中的 VT。
+let activeVT = null;
+function cancelActiveVT() {
+  try { activeVT?.skipTransition(); } catch { /* */ }
+  activeVT = null;
 }
 
 function reducedMotion() {
@@ -51,10 +64,11 @@ export function computeDir(from, to, navType) {
 // 把一次导航包进 View Transition。update callback 里 race 一个 800ms 超时：
 // lazy chunk 网络慢时宁可提前放行（轻微跳变）也绝不冻住整屏。
 function runVT(dir, go) {
+  cancelActiveVT(); // 快速连点：先掐掉上一个（浏览器也会 skip，这里显式收口）
   const html = document.documentElement;
   html.dataset.navDir = dir;
   html.dataset.vt = '';
-  routeCommitted(); // 冲掉上一次未消费的等待者（快速连点）
+  routeCommitted(); // 冲掉上一次未消费的等待者
   const committed = new Promise(res => { commitResolve = res; });
   let vt;
   try {
@@ -67,7 +81,11 @@ function runVT(dir, go) {
     go();
     return;
   }
-  vt.finished.finally(() => { delete html.dataset.vt; });
+  activeVT = vt;
+  vt.finished.finally(() => {
+    if (activeVT === vt) activeVT = null;
+    delete html.dataset.vt;
+  });
 }
 
 function pathOf(to) {
@@ -88,6 +106,7 @@ export function useNav() {
   const from = loc.pathname;
   return useCallback((to, opts) => {
     if (!vtEnabled() || vtSkipPath(from) || (typeof to !== 'number' && vtSkipPath(pathOf(to)))) {
+      cancelActiveVT(); // 不走 VT 的导航也必须先掐掉进行中的快照，否则残影叠加
       navigate(to, opts);
       return;
     }
@@ -100,9 +119,15 @@ export function useNav() {
 }
 
 // 硬件/手势返回的过渡版（非 hook，可在 native.js 等纯模块里用）。
+// 目的地无法预知：用 pathCrumb[0]（上一个 commit 的路径）近似 —— 回退目标
+// 是 VT 跳过页（沉浸对话）时同样不拍快照。
 export function appBack() {
-  if (vtEnabled() && !vtSkipPath(routePath())) runVT('pop', () => window.history.back());
-  else window.history.back();
+  if (vtEnabled() && !vtSkipPath(routePath()) && !vtSkipPath(pathCrumb[0])) {
+    runVT('pop', () => window.history.back());
+  } else {
+    cancelActiveVT();
+    window.history.back();
+  }
 }
 
 // 当前路由路径：HashRouter（静态包/APK）在 hash 里，BrowserRouter 在 pathname。
