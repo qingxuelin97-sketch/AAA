@@ -159,7 +159,7 @@ export default function AppLayout({ children }) {
       html.dataset.navDir = computeDir(prevPath.current, loc.pathname, navType);
     }
     prevPath.current = loc.pathname;
-    routeCommitted();
+    routeCommitted(loc.pathname);
     // VT 接管期间给非 tab 入场页钉内联 animation:none：否则 VT 结束摘除
     // [data-vt] 时 animation-name 从 none 翻回 → 按规范重新起播（二次滑动）。
     // 内联样式随元素卸载自然消失；tab pane 走 .pane-enter 机制，天然无此问题。
