@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { useAuth, getToken, API_BASE } from './api.jsx';
+import { useAuth, getToken, getApiBase, api } from './api.jsx';
 
 // 已知的事件名集合。EventSource 需在建连时为每个具名事件注册监听器，
 // 这里枚举服务端会推送的全部事件，建连时一次性注册。
@@ -25,6 +25,7 @@ export function RealtimeProvider({ children }) {
   // 后端尚未升级（无 feats 字段）→ 自动维持密轮询，新旧两端互不将就。
   const [feats, setFeats] = useState([]);
   const esRef = useRef(null);
+  const connectingRef = useRef(false);
   const handlersRef = useRef(new Map()); // event -> Set<fn>
   const retryRef = useRef(0);
   const timerRef = useRef(null);
@@ -38,28 +39,43 @@ export function RealtimeProvider({ children }) {
   }, []);
 
   // 核心连接逻辑：每次重连都重新读取 token，避免闭包持有陈旧 token 导致 401 死循环。
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (stoppedRef.current || mockActive()) return;
     const token = getToken();
     if (!token) { setStatus('idle'); return; }
     // 超过重连上限：停止重试，等待下次手动触发（如页面恢复可见）。
     if (retryRef.current >= MAX_RETRIES) { setStatus('closed'); return; }
-
+    if (esRef.current || connectingRef.current) return;
+    connectingRef.current = true;
     setStatus('connecting');
-    const es = new EventSource(API_BASE + '/api/realtime/stream?token=' + encodeURIComponent(token));
+    let ticket;
+    try {
+      ({ ticket } = await api('/realtime/ticket', { method: 'POST' }));
+    } catch {
+      connectingRef.current = false;
+      setStatus('closed');
+      retryRef.current = Math.min(retryRef.current + 1, MAX_RETRIES);
+      const delay = Math.min(1000 * 2 ** retryRef.current, 30000);
+      timerRef.current = setTimeout(() => { void connect(); }, delay);
+      return;
+    }
+    if (stoppedRef.current || document.visibilityState === 'hidden') {
+      connectingRef.current = false;
+      return;
+    }
+    const es = new EventSource(getApiBase() + '/api/realtime/stream?ticket=' + encodeURIComponent(ticket));
     esRef.current = es;
+    connectingRef.current = false;
 
     es.onopen = () => { retryRef.current = 0; setStatus('open'); };
     es.onerror = () => {
-      // 临时断网时浏览器会自动重连；致命错误（如 401 鉴权失败 / 服务停止）readyState===CLOSED。
-      if (es.readyState === EventSource.CLOSED) {
-        setStatus('closed');
-        retryRef.current = Math.min(retryRef.current + 1, MAX_RETRIES);
-        const delay = Math.min(1000 * 2 ** retryRef.current, 30000);
-        timerRef.current = setTimeout(connect, delay);
-      } else {
-        setStatus('connecting');
-      }
+      // The ticket is single-use, so every reconnect must obtain a fresh one.
+      es.close();
+      if (esRef.current === es) esRef.current = null;
+      setStatus('closed');
+      retryRef.current = Math.min(retryRef.current + 1, MAX_RETRIES);
+      const delay = Math.min(1000 * 2 ** retryRef.current, 30000);
+      timerRef.current = setTimeout(() => { void connect(); }, delay);
     };
 
     for (const name of KNOWN_EVENTS) {
@@ -81,7 +97,7 @@ export function RealtimeProvider({ children }) {
     }
     stoppedRef.current = false;
     retryRef.current = 0;
-    connect();
+    void connect();
 
     return () => {
       stoppedRef.current = true;
@@ -109,7 +125,7 @@ export function RealtimeProvider({ children }) {
       retryRef.current = 0;
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
-      connect();
+      void connect();
     };
     const onVis = () => {
       if (document.visibilityState === 'hidden') onHidden();

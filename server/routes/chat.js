@@ -68,7 +68,7 @@ const baiduTokens = new Map();
 async function baiduToken(apiKey, secretKey) {
   const hit = baiduTokens.get(apiKey);
   if (hit && hit.exp > Date.now()) return hit.tok;
-  const r = await fetch(`https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${encodeURIComponent(apiKey)}&client_secret=${encodeURIComponent(secretKey)}`, { method: 'POST' });
+  const r = await safeFetch(`https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${encodeURIComponent(apiKey)}&client_secret=${encodeURIComponent(secretKey)}`, { method: 'POST' });
   const d = await r.json().catch(() => null);
   if (!d?.access_token) throw new Error('百度语音鉴权失败：' + (d?.error_description || d?.error || '请检查 API Key / Secret Key 是否正确'));
   baiduTokens.set(apiKey, { tok: d.access_token, exp: Date.now() + (Number(d.expires_in || 2592000) - 86400) * 1000 });
@@ -156,7 +156,7 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       const spd = Math.max(0, Math.min(15, Math.round(rate * 5)));   // 语速 0-15（默认 5 ≈ 1×）
       const pitB = Math.max(0, Math.min(15, Math.round(pit * 5)));   // 音调 0-15（默认 5 ≈ 1×）
       const form = new URLSearchParams({ tok, tex: text, cuid: 'huanyu', ctp: '1', lan: 'zh', spd: String(spd), pit: String(pitB), vol: '5', per: String(voice || '0'), aue: '3' });
-      const r = await fetch(`${b || 'https://tsn.baidu.com'}/text2audio`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form.toString() });
+      const r = await safeFetch(`${b || 'https://tsn.baidu.com'}/text2audio`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form.toString() });
       const ct = r.headers.get('content-type') || '';
       if (!r.ok || ct.includes('json')) { const t = await r.text().catch(() => ''); return { ok: false, status: 502, error: `百度语音失败：${t.slice(0, 200)}` }; }
       return { ok: true, contentType: ct.includes('audio') ? ct : 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
@@ -167,7 +167,7 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       if (!appid || !vtok) return { ok: false, status: 400, error: '火山语音需在 API Key 处填「AppID:AccessToken」（用英文冒号分隔）' };
       const cluster = model || 'volcano_tts';
       const reqid = (globalThis.crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2)));
-      const r = await fetch(`${b || 'https://openspeech.bytedance.com'}/api/v1/tts`, {
+      const r = await safeFetch(`${b || 'https://openspeech.bytedance.com'}/api/v1/tts`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer;${vtok}` },
         body: JSON.stringify({ app: { appid, token: vtok, cluster }, user: { uid: 'huanyu' }, audio: { voice_type: voice || 'BV001_streaming', encoding: 'mp3', speed_ratio: rate, volume_ratio: 1, pitch_ratio: pit }, request: { reqid, text, operation: 'query', ...(VOLCANO_EMOTION[emo] ? { emotion: VOLCANO_EMOTION[emo] } : {}) } }) });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
@@ -185,7 +185,7 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       const payload = JSON.stringify({ Text: text, SessionId: (globalThis.crypto?.randomUUID?.() || ('s' + Date.now())), Volume: 0, Speed: tcSpeed, ModelType: 1, VoiceType: Number(voice) || 101001, PrimaryLanguage: 1, SampleRate: 16000, Codec: 'mp3' });
       const timestamp = Math.floor(Date.now() / 1000);
       const { authorization, ct } = tc3Authorization({ secretId, secretKey, service: 'tts', host, action: 'TextToVoice', version: '2019-08-23', payload, timestamp });
-      const r = await fetch(`https://${host}/`, { method: 'POST', headers: { 'Content-Type': ct, Host: host, Authorization: authorization, 'X-TC-Action': 'TextToVoice', 'X-TC-Timestamp': String(timestamp), 'X-TC-Version': '2019-08-23', 'X-TC-Region': region }, body: payload });
+      const r = await safeFetch(`https://${host}/`, { method: 'POST', headers: { 'Content-Type': ct, Host: host, Authorization: authorization, 'X-TC-Action': 'TextToVoice', 'X-TC-Timestamp': String(timestamp), 'X-TC-Version': '2019-08-23', 'X-TC-Region': region }, body: payload });
       const d = await r.json().catch(() => null);
       const resp = d?.Response;
       if (!resp || resp.Error) return { ok: false, status: 502, error: '腾讯云语音失败：' + (resp?.Error?.Message || JSON.stringify(d || {}).slice(0, 200)) };
@@ -194,7 +194,7 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
     }
     if (proto === 'elevenlabs') {
       // ElevenLabs voice_settings.speed 取值 [0.7,1.2]（仅 v2 模型支持，老模型忽略该字段，安全）。
-      const r = await fetch(`${b}/text-to-speech/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`, {
+      const r = await safeFetch(`${b}/text-to-speech/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'xi-api-key': key, Accept: 'audio/mpeg' },
         body: JSON.stringify({ text, model_id: model || 'eleven_multilingual_v2', voice_settings: { speed: Math.max(0.7, Math.min(1.2, rate)) } }) });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
@@ -217,7 +217,7 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       // 情绪：speech-02 / speech-01-turbo 等支持 voice_setting.emotion；中性不下发。
       const voiceSetting = { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi };
       if (MINIMAX_EMOTION[emo]) voiceSetting.emotion = MINIMAX_EMOTION[emo];
-      const r = await fetch(t2aUrl, {
+      const r = await safeFetch(t2aUrl, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mm.apiKey}` },
         body: JSON.stringify({
           model: mmModel, text, stream: false,
@@ -238,13 +238,13 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       // Aliyun Bailian / DashScope Qwen-TTS — single key, synchronous HTTP, returns
       // an audio URL we then fetch. base default https://dashscope.aliyuncs.com
       const url = `${b}/api/v1/services/aigc/multimodal-generation/generation`;
-      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      const r = await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
         body: JSON.stringify({ model: model || 'qwen-tts', input: { text, voice: voice || 'Cherry' } }) });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
       const d = await r.json().catch(() => null);
       const au = d?.output?.audio || {};
       if (au.url) {
-        const ar = await fetch(au.url);
+        const ar = await safeFetch(au.url);
         if (!ar.ok) return { ok: false, status: 502, error: '语音音频下载失败' };
         return { ok: true, contentType: ar.headers.get('content-type') || 'audio/wav', buffer: Buffer.from(await ar.arrayBuffer()) };
       }
@@ -258,13 +258,13 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       // 情绪：用 mstts:express-as 包裹；音色若不支持该 style 会自动回退，安全。
       const styled = AZURE_STYLE[emo] ? `<mstts:express-as style='${AZURE_STYLE[emo]}'>${inner}</mstts:express-as>` : inner;
       const ssml = `<speak version='1.0' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='zh-CN'><voice xml:lang='zh-CN' name='${voice || 'zh-CN-XiaoxiaoNeural'}'>${styled}</voice></speak>`;
-      const r = await fetch(`${b}/cognitiveservices/v1`, { method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3' }, body: ssml });
+      const r = await safeFetch(`${b}/cognitiveservices/v1`, { method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3' }, body: ssml });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
     }
     if (proto === 'google') {
       const sep = b.includes('?') ? '&' : '?';
-      const r = await fetch(`${b}/v1/text:synthesize${sep}key=${encodeURIComponent(key)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      const r = await safeFetch(`${b}/v1/text:synthesize${sep}key=${encodeURIComponent(key)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: { text }, voice: { languageCode: (voice || 'cmn-CN-Wavenet-A').split('-').slice(0, 2).join('-') || 'cmn-CN', name: voice || 'cmn-CN-Wavenet-A' }, audioConfig: { audioEncoding: 'MP3', speakingRate: rate, pitch: pitSemi } }) });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
       const d = await r.json().catch(() => null);
@@ -272,14 +272,14 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(d.audioContent, 'base64') };
     }
     if (proto === 'deepgram') {
-      const r = await fetch(`${b}/v1/speak?model=${encodeURIComponent(model || 'aura-asteria-en')}`, { method: 'POST', headers: { Authorization: `Token ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+      const r = await safeFetch(`${b}/v1/speak?model=${encodeURIComponent(model || 'aura-asteria-en')}`, { method: 'POST', headers: { Authorization: `Token ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
       if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
       return { ok: true, contentType: 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
     }
     // OpenAI-compatible /audio/speech（gpt-4o-mini-tts 支持 instructions 控制语气；老模型忽略该字段）
     const payload = { model, input: text, voice, speed: rate };
     if (OPENAI_TONE[emo]) payload.instructions = `请用${OPENAI_TONE[emo]}的语气朗读。`;
-    const r = await fetch(b + '/audio/speech', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    const r = await safeFetch(b + '/audio/speech', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       body: JSON.stringify(payload) });
     if (!r.ok) return { ok: false, status: 502, error: `语音服务返回 ${r.status}：${(await r.text().catch(() => '')).slice(0, 200)}` };
     return { ok: true, contentType: r.headers.get('content-type') || 'audio/mpeg', buffer: Buffer.from(await r.arrayBuffer()) };
@@ -936,11 +936,46 @@ router.post('/tts', authRequired, aiLimiter, async (req, res) => {
     return res.status(503).json({ error: '尚未配置语音模型 API，且平台语音服务暂未开启。' });
   }
 
-  const out = await synthesize({ proto, base, key, model, voice, text, speed, pitch, emotion: reqEmotion });
-  if (!out.ok) return res.status(out.status || 502).json({ error: out.error });
+  // Reserve the platform fee before invoking a paid upstream. Charging after
+  // synthesis lets concurrent requests all pass the same stale balance check.
+  let wallet = null;
+  let charged = false;
+  const refundVoiceFee = (reason) => {
+    if (!charged || !fee) return;
+    try {
+      applyTx(me.id, { kind: 'voice_refund', gold: fee, memo: `平台语音退款 · ${reason}` });
+      charged = false;
+    } catch (error) {
+      log({ level: 'error', source: 'server', category: 'wallet', event: 'tts_refund_failed',
+        message: `平台语音退款失败：${error.message}`, user_id: req.user.id, request_id: req.requestId || '',
+        extra: { fee, reason } });
+    }
+  };
   if (fee) {
-    try { const w = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}`, ref_owner: ttsRefOwner }); res.setHeader('X-Gold-Fee', String(fee)); res.setHeader('X-Gold-Balance', String(w.gold)); }
+    try {
+      wallet = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}`, ref_owner: ttsRefOwner });
+      charged = true;
+    }
     catch (e) { return res.status(402).json({ error: e.message }); }
+  }
+  let out;
+  try {
+    out = await synthesize({ proto, base, key, model, voice, text, speed, pitch, emotion: reqEmotion });
+  } catch (error) {
+    refundVoiceFee('合成异常');
+    return res.status(error.status || 502).json({ error: error.expose ? error.message : '语音合成失败' });
+  }
+  if (!out.ok) {
+    refundVoiceFee('合成失败');
+    return res.status(out.status || 502).json({ error: out.error });
+  }
+  if (res.destroyed) {
+    refundVoiceFee('客户端断开');
+    return;
+  }
+  if (fee) {
+    res.setHeader('X-Gold-Fee', String(fee));
+    res.setHeader('X-Gold-Balance', String(wallet.gold));
   }
   log({ level: 'info', source: 'server', category: 'chat', event: 'tts',
     message: `语音合成（${proto}）`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',

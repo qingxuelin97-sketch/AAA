@@ -9,7 +9,7 @@ export const BACKUP_TABLES = [
   'announcements', 'invite_keys', 'transactions', 'categories', 'app_config', 'ai_images', 'daily_progress', 'event_claims',
   'proposals', 'proposal_votes', 'proposal_endorse', 'proposal_comments', 'friendships', 'friend_requests', 'dm_messages',
   'worldbooks', 'worldbook_entries', 'character_worldbooks', 'novels', 'novel_runs', 'novel_beats',
-  'notifications', 'shares', 'email_whitelist', 'email_codes', 'payment_orders', 'payment_events', 'code_redemptions',
+  'notifications', 'shares', 'email_whitelist', 'email_codes', 'payment_orders', 'payment_events', 'code_redemptions', 'user_uploads',
 ];
 
 export function exportAll() {

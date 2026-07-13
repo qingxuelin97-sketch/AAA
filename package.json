@@ -28,7 +28,9 @@
     "app:add:android": "npx cap add android",
     "app:add:ios": "npx cap add ios",
     "test:sec": "node server/sec-test.mjs",
-    "test:payments": "node server/payment-test.mjs"
+    "test:payments": "node server/payment-test.mjs",
+    "test:integrity": "node server/integrity-test.mjs",
+    "test:safe-url": "node server/safe-url-test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

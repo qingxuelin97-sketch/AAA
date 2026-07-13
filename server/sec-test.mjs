@@ -28,7 +28,8 @@ nodemailer.createTransport = function(opts, defaults) {
 `);
 
 const srv = spawn(process.execPath, ['--import', pathToFileURL(interceptor).href, 'server/index.js'], {
-  cwd: ROOT, env: { ...process.env, PORT: String(PORT), DB_PATH, MAIL_CODE_IP_LIMIT: '50', AUTH_RATE_LIMIT: '50' }, stdio: ['ignore', 'pipe', 'pipe'],
+  cwd: ROOT, env: { ...process.env, NODE_ENV: 'test', TEST_EXPOSE_EMAIL_CODES: '1',
+    PORT: String(PORT), DB_PATH, MAIL_CODE_IP_LIMIT: '50', AUTH_RATE_LIMIT: '50' }, stdio: ['ignore', 'pipe', 'pipe'],
 });
 let serverOutput = '';
 srv.stdout.on('data', chunk => { serverOutput = (serverOutput + chunk).slice(-8000); });
@@ -49,8 +50,9 @@ const codeOf = (email) => {
 
 const register = async (username, email, extraHeaders = {}) => {
   const sc = await post('/auth/send-code', { email });
-  if (!sc.ok) return { status: sc.status, ...(await J(sc)) };
-  const code = codeOf(email.toLowerCase());
+  const scBody = await J(sc);
+  if (!sc.ok) return { status: sc.status, ...scBody };
+  const code = scBody.test_code;
   const r = await post('/auth/register', { username, password: 'Passw0rd!', email, code }, null, extraHeaders);
   return { status: r.status, ...(await J(r)) };
 };
@@ -77,10 +79,64 @@ try {
     db.prepare('INSERT INTO users (username, password_hash, display_name, is_gm) VALUES (?,?,?,1)')
       .run('gm', bcrypt.hashSync('123456', 10), 'GM');
     db.prepare('INSERT INTO settings (user_id) VALUES (?)').run(db.prepare("SELECT id FROM users WHERE username='gm'").get().id);
+    db.prepare("INSERT INTO email_whitelist (email, kind, note) VALUES ('@test.dev', 'domain', 'security regression fixture')").run();
     db.close();
   }
   const gmTok = (await J(await post('/auth/login', { username: 'gm', password: '123456' }))).token;
   await fetch(BASE + '/admin/mail', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + gmTok }, body: JSON.stringify({ host: 'smtp.mock.com', port: 465, secure: true, user: 'u@mock.com', pass: 'p', from: '"T" <u@mock.com>' }) });
+
+  // Registration is restricted by default. Invite validation and code
+  // consumption must be one atomic operation, and codes must not be stored as
+  // reusable plaintext secrets.
+  const policy = await J(await fetch(BASE + '/auth/registration-policy'));
+  ok(policy.mode === 'restricted', `注册默认处于受限模式（mode=${policy.mode}）`);
+  const ungated = await post('/auth/send-code', { email: 'ungated@outside.example', username: 'ungated' });
+  ok(ungated.status === 403, `非白名单、无邀请注册被拒绝 → ${ungated.status}`);
+  {
+    const db = new Database(DB_PATH);
+    db.prepare("INSERT INTO invite_keys (code, max_uses, grant_gold, note) VALUES ('SEC-INVITE-TX', 1, 7, 'transaction regression')").run();
+    db.close();
+  }
+  const inviteMail = await post('/auth/send-code', {
+    email: 'invited@outside.example', username: 'invited_user', invite: 'SEC-INVITE-TX',
+  });
+  const inviteMailBody = await J(inviteMail);
+  let inviteCodeRow;
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    inviteCodeRow = db.prepare("SELECT id, code, consumed FROM email_codes WHERE email='invited@outside.example' ORDER BY id DESC LIMIT 1").get();
+    db.close();
+  }
+  ok(inviteMail.ok && /^\d{6}$/.test(inviteMailBody.test_code || ''), `受邀用户可获取一次性验证码 → ${inviteMail.status}`);
+  ok(inviteCodeRow?.code?.startsWith('h1:') && inviteCodeRow.code !== inviteMailBody.test_code,
+    '邮箱验证码以 HMAC 摘要存储，不在数据库保留明文');
+  const badInviteRegister = await post('/auth/register', {
+    username: 'invited_user', password: 'Passw0rd!', email: 'invited@outside.example',
+    code: inviteMailBody.test_code, invite: 'WRONG-INVITE',
+  });
+  let afterBadInvite;
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    afterBadInvite = db.prepare('SELECT consumed FROM email_codes WHERE id=?').get(inviteCodeRow.id);
+    db.close();
+  }
+  ok(badInviteRegister.status === 400 && afterBadInvite?.consumed === 0,
+    `无效邀请不会吞掉验证码 → ${badInviteRegister.status}`);
+  const invitedRegister = await post('/auth/register', {
+    username: 'invited_user', password: 'Passw0rd!', email: 'invited@outside.example',
+    code: inviteMailBody.test_code, invite: 'SEC-INVITE-TX',
+  });
+  const invitedBody = await J(invitedRegister);
+  {
+    const db = new Database(DB_PATH);
+    const state = db.prepare(`SELECT u.reg_trust, k.used,
+      (SELECT COUNT(*) FROM code_redemptions cr WHERE cr.code=k.code AND cr.user_id=u.id) AS redemptions
+      FROM users u JOIN invite_keys k ON k.code='SEC-INVITE-TX' WHERE u.username='invited_user'`).get();
+    ok(invitedRegister.ok && invitedBody.token && state?.reg_trust === 'invite' && state.used === 1 && state.redemptions === 1,
+      '注册、邀请消费、兑换记录在同一事务内落账');
+    db.prepare("UPDATE users SET created_at=datetime('now','-2 days') WHERE username='invited_user'").run();
+    db.close();
+  }
 
   // 1) 同 IP 连注 3 个成功，第 4 个 429
   const r1 = await register('sec_u1', 'sec1@test.dev');
@@ -89,6 +145,34 @@ try {
   ok(r1.token && r2.token && r3.token, `同 IP 前 3 个注册成功 (${r1.status}/${r2.status}/${r3.status})`);
   const r4 = await register('sec_u4', 'sec4@test.dev');
   ok(r4.status === 429, `同 IP 第 4 个注册被日配额拦截 → ${r4.status} ${r4.error || ''}`);
+
+  // Long-lived JWTs must never be accepted in an SSE URL. The replacement
+  // ticket is short-lived, random, and consumed by the first stream attempt.
+  const ticketRes = await post('/realtime/ticket', {}, r1.token);
+  const ticketBody = await J(ticketRes);
+  const jwtInQuery = await fetch(BASE + '/realtime/stream?token=' + encodeURIComponent(r1.token));
+  const streamAbort = new AbortController();
+  const streamRes = await fetch(BASE + '/realtime/stream?ticket=' + encodeURIComponent(ticketBody.ticket), { signal: streamAbort.signal });
+  streamAbort.abort();
+  const ticketReplay = await fetch(BASE + '/realtime/stream?ticket=' + encodeURIComponent(ticketBody.ticket));
+  ok(ticketRes.ok && jwtInQuery.status === 401 && streamRes.ok && ticketReplay.status === 401,
+    `实时连接仅接受一次性票据，拒绝 URL JWT 与票据重放 → ${jwtInQuery.status}/${streamRes.status}/${ticketReplay.status}`);
+
+  // MIME headers are attacker-controlled; a script disguised as PNG must be
+  // removed before it receives a public /uploads URL or quota ledger entry.
+  const fakeImage = new FormData();
+  fakeImage.append('file', new Blob(['<script>alert(1)</script>'], { type: 'image/png' }), 'avatar.png');
+  const fakeUpload = await fetch(BASE + '/upload', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + r1.token }, body: fakeImage,
+  });
+  let uploadRows;
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    uploadRows = db.prepare('SELECT COUNT(*) n FROM user_uploads WHERE user_id=?').get(r1.user.id).n;
+    db.close();
+  }
+  ok(fakeUpload.status === 400 && uploadRows === 0,
+    `伪装 MIME 的上传被拒绝且未写入资源账本 → ${fakeUpload.status}`);
 
   // Emergency controls: a client cannot mint recharge currency, private groups
   // cannot be self-joined, and a GM token cannot grant new GM privileges.
@@ -124,6 +208,22 @@ try {
   const aliasBody = await J(alias);
   ok(alias.status === 409, `别名邮箱 send-code 被拦 → ${alias.status} ${aliasBody.error || ''}`);
 
+  // A valid session alone is insufficient to replace the account email.
+  const emailWithoutCode = await fetch(BASE + '/auth/me', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + r3.token },
+    body: JSON.stringify({ email: 'sec3-new@test.dev' }),
+  });
+  ok(emailWithoutCode.status === 400, `仅凭登录态不能换绑邮箱 → ${emailWithoutCode.status}`);
+  const emailCodeRes = await post('/auth/email/send-code', { email: 'sec3-new@test.dev' }, r3.token);
+  const emailCodeBody = await J(emailCodeRes);
+  const emailChanged = await fetch(BASE + '/auth/me', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + r3.token },
+    body: JSON.stringify({ email: 'sec3-new@test.dev', email_code: emailCodeBody.test_code }),
+  });
+  const emailChangedBody = await J(emailChanged);
+  ok(emailCodeRes.ok && emailChanged.ok && emailChangedBody.user?.email === 'sec3-new@test.dev',
+    `新邮箱验证成功后才完成换绑 → ${emailChanged.status}`);
+
   // 3) 新号 24h 内禁止购买付费剧本：u1 发布付费剧本，u2（刚注册）购买 → 403
   const pub = await post('/scripts', { title: '防刷测试剧本', summary: 't', content: '正文', price_gold: 100 }, r1.token);
   const pubBody = await J(pub);
@@ -140,6 +240,47 @@ try {
   }
   const buy2 = await post(`/scripts/${sid}/buy`, {}, r2.token);
   ok(buy2.ok, `满 24h 账号购买放行 → ${buy2.status}`);
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    const author = db.prepare("SELECT gold FROM users WHERE username='sec_u1'").get();
+    db.close();
+    ok(author?.gold === 300, `退款窗口内货款处于平台托管，作者未提前到账（gold=${author?.gold}）`);
+  }
+  const refunded = await post(`/scripts/${sid}/refund`, {}, r2.token);
+  const refundReplay = await post(`/scripts/${sid}/refund`, {}, r2.token);
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    const buyer = db.prepare("SELECT gold FROM users WHERE username='sec_u2'").get();
+    const author = db.prepare("SELECT gold FROM users WHERE username='sec_u1'").get();
+    db.close();
+    ok(refunded.ok && !refundReplay.ok && buyer?.gold === 300 && author?.gold === 300,
+      `托管退款精确一次且不依赖作者余额（buyer=${buyer?.gold}, author=${author?.gold}）`);
+  }
+  const buyAfterRefund = await post(`/scripts/${sid}/buy`, {}, r2.token);
+  {
+    const db = new Database(DB_PATH);
+    const buyerId = db.prepare("SELECT id FROM users WHERE username='sec_u2'").get().id;
+    db.prepare('UPDATE script_purchases SET settlement_due_at=0 WHERE script_id=? AND user_id=? AND refunded=0').run(sid, buyerId);
+    db.close();
+  }
+  await fetch(BASE + '/scripts');
+  await fetch(BASE + '/scripts');
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    const author = db.prepare("SELECT gold FROM users WHERE username='sec_u1'").get();
+    const sales = db.prepare(`SELECT COUNT(*) n FROM transactions t JOIN users u ON u.id=t.user_id
+      WHERE u.username='sec_u1' AND t.kind='sell_script' AND t.gold=100`).get();
+    db.close();
+    ok(buyAfterRefund.ok && author?.gold === 400 && sales.n === 1,
+      `托管到期后仅结算一次（gold=${author?.gold}, ledger=${sales.n}）`);
+  }
+  const negativePrice = await post('/scripts', { title: 'invalid-price', price_gold: -1 }, r1.token);
+  const invalidUpdate = await fetch(BASE + `/scripts/${sid}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + r1.token },
+    body: JSON.stringify({ price_gold: 'not-a-number' }),
+  });
+  ok(negativePrice.status === 400 && invalidUpdate.status === 400,
+    `剧本价格拒绝负数和非数值 → ${negativePrice.status}/${invalidUpdate.status}`);
 
   // 5) 每日任务进度不再信任客户端上报：/track 报 chat 无效（服务端真实动作才计数），gacha 仍有效（纯前端玩法）
   await post('/engage/track', { action: 'chat' }, r1.token);

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter, aiLimiter } from '../limiters.js';
-import { assertPublicUrl } from '../safeUrl.js';
+import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { str, csv } from '../validate.js';
 
 const router = Router();
@@ -258,7 +258,7 @@ router.post('/assist/extract', authRequired, aiLimiter, async (req, res) => {
   const system = `你是世界观设定整理专家。把用户给出的设定文本拆解成「世界书条目」：每条聚焦一个独立概念（人物 / 地点 / 组织 / 物品 / 规则 / 事件…），并提炼触发关键词（含常见别称）。只输出 JSON 数组，每项形如 {"keys":"关键词1, 关键词2","content":"该概念的设定内容（尽量保留原文关键细节，300字内）","comment":"8字内概括"}。数量以覆盖全部概念为准（通常 5-20 条），不要输出任何 JSON 以外的文字。`;
   try {
     assertPublicUrl(settings.llm_base_url);
-    const r = await fetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
+    const r = await safeFetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
       body: JSON.stringify({
         model: settings.llm_model, temperature: 0.3, max_tokens: 3000,

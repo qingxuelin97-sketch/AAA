@@ -81,7 +81,50 @@ export async function assertResolvedPublic(hostname) {
 // 调用方可通过 opts.signal 传入自身 AbortSignal（如 res 关闭时中止上游）——与内部的
 // 首字节超时链在一起：超时仅守到响应头到达（到达后 clearTimeout，流式 body 不受限），
 // 而调用方 signal 在整个请求生命周期保持有效，故客户端断开能中止仍在流式的 body。
-export async function safeFetch(rawUrl, opts = {}, { maxRedirects = 4, timeoutMs = 20000 } = {}) {
+const oversized = (limit) => Object.assign(new Error(`上游响应体超过安全上限（${Math.ceil(limit / 1024 / 1024)}MB）`), {
+  status: 502, expose: true,
+});
+
+function limitResponseBody(res, ac, callerSignal, onCaller, maxBodyBytes) {
+  const cleanup = () => callerSignal?.removeEventListener('abort', onCaller);
+  const contentLength = Number(res.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > maxBodyBytes) {
+    ac.abort();
+    cleanup();
+    throw oversized(maxBodyBytes);
+  }
+  if (!res.body) { cleanup(); return res; }
+  const reader = res.body.getReader();
+  let total = 0;
+  const body = new ReadableStream({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) { cleanup(); controller.close(); return; }
+        total += value.byteLength;
+        if (total > maxBodyBytes) {
+          ac.abort();
+          cleanup();
+          try { await reader.cancel(); } catch { /* */ }
+          controller.error(oversized(maxBodyBytes));
+          return;
+        }
+        controller.enqueue(value);
+      } catch (error) {
+        cleanup();
+        controller.error(error);
+      }
+    },
+    async cancel(reason) {
+      cleanup();
+      ac.abort();
+      try { await reader.cancel(reason); } catch { /* */ }
+    },
+  });
+  return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+}
+
+export async function safeFetch(rawUrl, opts = {}, { maxRedirects = 4, timeoutMs = 20000, maxBodyBytes = 32 * 1024 * 1024 } = {}) {
   let url = String(rawUrl);
   const callerSignal = opts.signal;
   const rest = { ...opts }; delete rest.signal;
@@ -103,12 +146,12 @@ export async function safeFetch(rawUrl, opts = {}, { maxRedirects = 4, timeoutMs
     const loc = res.status >= 300 && res.status < 400 && res.headers.get('location');
     if (loc) {
       if (callerSignal) callerSignal.removeEventListener('abort', onCaller);
-      try { await res.arrayBuffer(); } catch { /* 释放 socket */ }
+      try { await res.body?.cancel(); } catch { /* release socket */ }
       url = new URL(loc, url).toString();
       continue;
     }
     // 命中最终响应：保留 callerSignal 监听，使断开后仍能中止流式 body（onCaller → ac.abort）。
-    return res;
+    return limitResponseBody(res, ac, callerSignal, onCaller, maxBodyBytes);
   }
   throw Object.assign(new Error('重定向次数过多'), { status: 502, expose: true });
 }
