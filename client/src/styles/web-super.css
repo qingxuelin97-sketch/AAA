@@ -1634,3 +1634,9 @@ html:not([data-app="1"])[data-glass="on"] .chat-menu {
 .vc-ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); margin-top: 2px; }
 .bgm-row audio { border-radius: 10px; }
 
+
+/* —— 搜索页 · 最近搜索 chips（Search.jsx）—— */
+.tag-chip { border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+  border-radius: 999px; padding: 4px 12px; font-size: 13px; line-height: 1.4;
+  transition: transform 0.16s var(--spring), border-color 0.16s, color 0.16s; }
+.tag-chip:hover { border-color: var(--accent); color: var(--accent); }

@@ -105,7 +105,12 @@ export default function Settings() {
 
   useEffect(() => { api('/settings').then(d => setS(d.settings)).catch(e => toast(e.message, 'err')); }, []);
   useEffect(() => { if (user) setProfile({ display_name: user.display_name || '', bio: user.bio || '', avatar: user.avatar || '', banner: user.banner || '' }); }, [user]);
-  if (!s) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
+  if (!s) return (
+    <div className="page" style={{ maxWidth: 760 }} aria-hidden="true">
+      <div className="skel" style={{ height: 40, marginBottom: 16 }} />
+      <div className="skel" style={{ height: 300 }} />
+    </div>
+  );
   const set = (k, v) => setS(p => ({ ...p, [k]: v }));
 
   const saveModel = async () => {
@@ -206,11 +211,11 @@ export default function Settings() {
       </div>
       <div className="page" style={{ maxWidth: 760 }}>
         <div className="tabs-bar">
-          {TABS.map(([k, l, Ic]) => <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}><Ic size={15} style={{ verticalAlign: -2, marginRight: 5 }} />{l}</button>)}
+          {TABS.map(([k, l, Ic]) => <button key={k} className={(tab === k ? 'active' : '') + ' pressable'} onClick={() => setTab(k)}><Ic size={15} style={{ verticalAlign: -2, marginRight: 5 }} />{l}</button>)}
         </div>
 
         {tab === 'model' && (
-          <div className="card">
+          <div className="card stagger-in">
             <div className="section-title"><h2>语言模型 API</h2><div style={{ display: 'flex', gap: 8 }}><button className="btn sm" onClick={testLLM} disabled={testing || !s.llm_api_key}>{testing ? '测试中…' : '测试连接'}</button><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div></div>
             {s.platform_fee && (
               <div className="platform-note">
@@ -269,7 +274,7 @@ export default function Settings() {
         )}
 
         {tab === 'voice' && (
-          <div className="card">
+          <div className="card stagger-in">
             <div className="section-title"><h2>语音模型 API</h2><div style={{ display: 'flex', gap: 8 }}><button className="btn sm" onClick={testVoice} disabled={testing}>{testing ? '试听中…' : '试听'}</button><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div></div>
             {s.voice_fee && (
               <div className="platform-note">
@@ -361,7 +366,7 @@ export default function Settings() {
 
         {tab === 'account' && (
           <>
-            <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card stagger-in" style={{ marginBottom: 20 }}>
               <div className="section-title"><h2>个人资料</h2><button className="btn sm primary" onClick={saveProfile}>保存资料</button></div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'center', marginBottom: 14 }}>
                 <AvatarPicker value={profile.avatar} onChange={url => setProfile({ ...profile, avatar: url })} size={92} />
@@ -395,7 +400,7 @@ export default function Settings() {
 
         {tab === 'privacy' && (
           <>
-            <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card stagger-in" style={{ marginBottom: 20 }}>
               <div className="section-title"><h2><ShieldCheck size={17} style={{ verticalAlign: -3, marginRight: 6 }} />隐私与可见性</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
               <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>掌控谁能看到你、谁能联系你，以及你的数据如何被使用。设置即时保存于账号。</p>
 
@@ -460,7 +465,7 @@ export default function Settings() {
 
         {tab === 'pref' && (
           <>
-          <div className="card">
+          <div className="card stagger-in">
             <div className="section-title"><h2>偏好设置</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
             <div className="field">
               <label>外观主题</label>

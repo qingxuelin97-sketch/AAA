@@ -67,6 +67,12 @@ html[data-app="1"] .pulse-dot { animation: motionPulse 2.2s ease-in-out infinite
   50% { transform: scale(1.25); opacity: 0.72; }
 }
 
+/* —— 签到连签进度点（Wallet.jsx .checkin-btn 内）——
+   7 天一轮的视觉锚：点亮到当前连签天数。Web 与 APP 共用（不含动画，无需门控）。 */
+.ck-dots { display: inline-flex; gap: 4px; margin-left: 2px; }
+.ck-dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.28; transition: opacity 0.3s, transform 0.3s; }
+.ck-dots i.on { opacity: 1; transform: scale(1.15); }
+
 /* —— 挡位门控：lite / 减弱动效 / 后台标签页 全体退化为立即就位 —— */
 html[data-perf="lite"] .stagger-in > *,
 html[data-page-hidden] .stagger-in > * { animation: none; }
