@@ -20,7 +20,8 @@ import './chat/chat-app.css';
 // last so legacy web layers cannot re-enable App blur/ambient animation.
 import './styles/app-runtime.css';
 
-if (import.meta.env.VITE_INSECURE_HTTP_TEST === '1') {
+const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
+if (INSECURE_HTTP_TEST) {
   document.documentElement.dataset.insecureHttp = '1';
 }
 initAppMode(); // resolve native/app shell → data-app first (theme defaults depend on it)
@@ -60,6 +61,11 @@ const Router = STATIC ? HashRouter : BrowserRouter;
 function render() {
   createRoot(document.getElementById('root')).render(
     <React.StrictMode>
+      {INSECURE_HTTP_TEST && (
+        <div className="http-test-badge" role="status" aria-label="HTTP 内测版">
+          HTTP 内测版
+        </div>
+      )}
       <ErrorBoundary>
         <Router>
           <AuthProvider>
