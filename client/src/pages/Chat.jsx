@@ -698,7 +698,8 @@ export default function Chat() {
                           )}
                         </>}
                         {m.role === 'user' && <button className="speak" onClick={() => startEdit(m)} disabled={streaming}><Pencil size={13} /> 编辑</button>}
-                        <button className="speak" onClick={() => { setReplyTo(m); inputRef.current?.focus(); }} disabled={streaming} title="引用这条消息回复"><CornerUpLeft size={13} /> 引用</button>
+                        {/* 引用只是往输入框放素材，不写库 —— 流式期间照样可用 */}
+                        <button className="speak" onClick={() => { setReplyTo(m); inputRef.current?.focus(); }} title="引用这条消息回复"><CornerUpLeft size={13} /> 引用</button>
                         {m.id && <button className={'speak' + (marks.has(m.id) ? ' on' : '')} onClick={() => toggleMark(m)} title={marks.has(m.id) ? '取消书签' : '加入书签，可从菜单快速跳回'}><Bookmark size={13} /> {marks.has(m.id) ? '已收藏' : '书签'}</button>}
                         {m.id && <button className="speak" onClick={() => delMsg(m)} disabled={streaming}><Trash2 size={13} /> 删除</button>}
                       </div>
@@ -753,11 +754,15 @@ export default function Chat() {
                 </div>
               )}
               <div className="box">
-                <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => { setActionsOpen(o => !o); setPlusOpen(false); }} disabled={streaming} title="动作 / 表情"><Smile size={19} /></button>
+                {/* 流式期间不再禁输入：可以照常打字、开表情面板、组织下一句 ——
+                    「AI 说话时我被冻住」是二次交互延迟的大头。发送本身仍被 send()
+                    的 streaming 守卫拦住（发送键此刻也是停止键），写库类操作
+                    （编辑/删除/重生成）维持锁定。 */}
+                <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => { setActionsOpen(o => !o); setPlusOpen(false); }} title="动作 / 表情"><Smile size={19} /></button>
                 <textarea ref={inputRef} rows={1} value={input}
                   placeholder={`对 ${(character?.name || '').length > 5 ? (character.name.slice(0, 5) + '…') : (character?.name || 'TA')} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
                   enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
-                  onChange={e => setInput(e.target.value)} onKeyDown={onKey} disabled={streaming} />
+                  onChange={e => setInput(e.target.value)} onKeyDown={onKey} />
                 {/* 「+」对话功能面板：把散落在头部菜单里的对话内能力聚合到拇指热区 */}
                 <button className={'act-btn plus-btn' + (plusOpen ? ' on' : '')} onClick={() => { setPlusOpen(o => !o); setActionsOpen(false); }} title="对话功能"><Plus size={20} /></button>
                 {streaming

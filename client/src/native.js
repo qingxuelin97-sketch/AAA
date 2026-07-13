@@ -2,6 +2,7 @@
 // Wires the hardware back button, status-bar theming and splash-screen dismissal.
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { Device } from '@capacitor/device';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { resolveTheme } from './theme.js';
@@ -36,6 +37,14 @@ export async function syncStatusBar() {
 }
 
 export async function initNative() {
+  // 设备标识（Android = ANDROID_ID，iOS = identifierForVendor）：挂到全局供
+  // api.jsx 附加 X-Device-Id 头，服务端用于注册配额（限单设备开小号）。
+  // 本文件只在原生壳加载（main.jsx 动态 import），Web 端永远不带此头。
+  // 取值失败静默跳过 —— 服务端对缺失设备头不硬拒（Web 壳本来就没有）。
+  try {
+    const { identifier } = await Device.getId();
+    if (identifier) window.__HY_DEVICE_ID = String(identifier).slice(0, 64);
+  } catch { /* plugin not available */ }
   await syncStatusBar();
   // Android hardware back: 有历史则后退，否则退出 app。
   // 旧实现用 location.hash 判断根页，但 BrowserRouter 下 hash 恒空，

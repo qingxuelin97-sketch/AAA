@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast, Uploader } from '../ui.jsx';
 import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';

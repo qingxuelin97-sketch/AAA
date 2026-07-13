@@ -3,7 +3,7 @@
 // 但品牌 / 文案 / 图标 / 配色均为「幻域」自有，纯 CSS+lucide 绘制，无第三方素材。
 // 功能不变：/economy/wallet · /economy/vip（支持 plan 档位）· /economy/redeem。
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CoinIcon } from '../ui.jsx';
 import { isAppMode } from '../appmode.js';

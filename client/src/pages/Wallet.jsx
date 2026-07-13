@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday } from '../util.js';
@@ -32,7 +32,13 @@ export default function Wallet() {
       <div style={{ flex: 1 }}><h1>我的钱包</h1><div className="sub">金币 · 钻石 · 充值与会员权益</div></div>
     </div>
   );
-  if (loading || !data) return <><Head /><div className="page"><div className="empty">载入中…</div></div></>;
+  if (loading || !data) return (
+    <><Head /><div className="page" aria-hidden="true">
+      <div className="skel" style={{ height: 132, marginBottom: 26 }} />
+      <div className="skel" style={{ height: 120, marginBottom: 26 }} />
+      <div className="skel" style={{ height: 180 }} />
+    </div></>
+  );
 
   const { wallet, transactions = [], packages = [], rates = {} } = data;
   const goldPer = rates.gold_per_diamond || 100;
@@ -46,14 +52,14 @@ export default function Wallet() {
       <Head />
       <div className="page">
         {achPending > 0 && (
-          <div className="wallet-ach" onClick={() => nav('/achievements')}>
+          <div className="wallet-ach pressable" onClick={() => nav('/achievements')}>
             <span className="icon-chip gold"><Trophy size={18} /></span>
             <div style={{ flex: 1 }}><b>有 {achPending} 项成就奖励待领取</b><p>累计可领 {achGold} 金币 · 前往成就殿堂一键领取</p></div>
             <ArrowRight size={18} className="muted" />
           </div>
         )}
-        {/* balance hero */}
-        <div className="wallet-hero">
+        {/* balance hero：flow-sheen 每 6s 一道流光掠过（app-motion 层，lite 档自动关） */}
+        <div className="wallet-hero flow-sheen">
           <div className="col gold">
             <span className="asset-chip gold"><CoinIcon size={46} /></span>
             <div><div className="bal-num"><CountUp value={wallet.gold} /></div><div className="bal-lbl">金币</div></div>
@@ -72,9 +78,16 @@ export default function Wallet() {
                 : <><div className="bal-num" style={{ fontSize: 19 }}>普通会员</div><div className="bal-lbl">开通享专属权益</div></>}
             </div>
           </div>
-          <button className="checkin-btn" disabled={signed || busy === 'checkin'} onClick={checkin}>
+          <button className="checkin-btn pressable" disabled={signed || busy === 'checkin'} onClick={checkin}>
             <CalendarCheck size={16} /> {signed ? '今日已签到' : '每日签到'}
             <span>{wallet.checkin_streak ? `连续 ${wallet.checkin_streak} 天` : '领金币'}</span>
+            {/* 连签进度点：7 天一轮的视觉锚，点亮到当前 streak（含今天已签） */}
+            <span className="ck-dots" aria-hidden="true">
+              {Array.from({ length: 7 }, (_, i) => {
+                const lit = ((wallet.checkin_streak || 0) % 7 || (signed && wallet.checkin_streak ? 7 : 0)) > i;
+                return <i key={i} className={lit ? 'on' : ''} />;
+              })}
+            </span>
           </button>
         </div>
 
@@ -113,12 +126,12 @@ export default function Wallet() {
                 <div className="exch-out">{fmt(exN * goldPer)} <span className="muted">金币</span></div>
               </div>
             </div>
-            <button className="btn primary block" style={{ marginTop: 16 }} disabled={busy === 'exchange'} onClick={exchange}>确认兑换</button>
+            <button className="btn primary block pressable" style={{ marginTop: 16 }} disabled={busy === 'exchange'} onClick={exchange}>确认兑换</button>
           </div>
 
           {/* 会员开通/续费统一收口到「会员中心」（/vip）——此前钱包页内嵌一套
               独立的 VIP 购买卡，与会员中心页重复（两处渠道、两份权益文案），故删。 */}
-          <button className="vip-entry" onClick={() => nav('/vip')}>
+          <button className="vip-entry pressable" onClick={() => nav('/vip')}>
             <span className="icon-chip vip"><Crown size={20} /></span>
             <div style={{ flex: 1, textAlign: 'left' }}>
               <b style={{ fontSize: 15 }}>{wallet.svip ? 'SVIP 尊享会员' : wallet.vip ? 'VIP 会员' : '开通幻域会员'}</b>
@@ -138,13 +151,13 @@ export default function Wallet() {
             <div className="muted" style={{ fontSize: 12.5 }}>输入礼包 / 邀请码领取金币、钻石或 VIP</div>
           </div>
           <input className="input" style={{ flex: 1, minWidth: 160 }} placeholder="输入兑换码" value={code} onChange={e => setCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && redeem()} />
-          <button className="btn primary" disabled={busy === 'redeem'} onClick={redeem}>兑换</button>
+          <button className="btn primary pressable" disabled={busy === 'redeem'} onClick={redeem}>兑换</button>
         </div>
 
         {/* ledger */}
         <div className="section-title" style={{ marginTop: 30 }}><h2>交易流水</h2></div>
         {transactions.length === 0 ? <div className="empty" style={{ padding: 40 }}><div className="big"><WalletIcon size={42} /></div>暂无交易记录</div> : (
-          <div className="card" style={{ padding: '4px 22px' }}>
+          <div className="card stagger-in" style={{ padding: '4px 22px' }}>
             {transactions.map(t => (
               <div key={t.id} className="tx-row">
                 <div><div style={{ fontWeight: 500 }}>{t.memo || t.kind}</div><div className="muted" style={{ fontSize: 12 }}>{String(t.created_at || '').slice(0, 16)}</div></div>

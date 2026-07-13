@@ -1,0 +1,1363 @@
+/* ============================================================================
+   APP 端「一线内容 App」终极精修 · Elevated v1
+   目标：把 APP 壳的每一个像素都摁到一线水准。规则：
+   1) 仅在 html[data-app="1"] 下生效，不干扰 web/mobile-web；
+   2) 全部作为增强层追加，不改老类名语义；
+   3) 触觉与运动曲线统一（spring 收敛、按压回弹一致）；
+   4) 深色底更沉、玻璃更纯、发丝分割更细、文字层级更立体。
+   ========================================================================== */
+
+/* —— 全局曲线与「触觉一致性」变量 —— */
+html[data-app="1"] {
+  --hy-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --hy-spring: cubic-bezier(0.34, 1.32, 0.5, 1);
+  --hy-glass-bg: color-mix(in srgb, var(--bg) 62%, transparent);
+  --hy-glass-b: color-mix(in srgb, #fff 10%, transparent);
+  --hy-hairline: color-mix(in srgb, #fff 8%, transparent);
+}
+html[data-app="1"][data-theme="light"] {
+  --hy-glass-bg: color-mix(in srgb, var(--bg) 78%, transparent);
+  --hy-glass-b: color-mix(in srgb, #000 8%, transparent);
+  --hy-hairline: color-mix(in srgb, #000 8%, transparent);
+}
+
+/* —— 全屏可选择态更克制（一线 App 通常不给非文本区域高亮） —— */
+html[data-app="1"] button, html[data-app="1"] a { -webkit-tap-highlight-color: transparent; }
+/* 点按跟手：manipulation 干掉 WebView 的双击缩放判定等待 —— 每一次 tap 的
+   响应都少一拍「等第二击」的迟疑（保留平移与双指缩放，不伤滚动/图片手势）；
+   overscroll contain 掐掉到边界后的原生橡皮筋/辉光与下拉刷新打架的抖动。 */
+html[data-app="1"] { touch-action: manipulation; overscroll-behavior-y: contain; }
+/* 按压反馈即时化：按下 ~50ms 内到位，抬起沿各自原时长弹回。点按「迟钝感」
+   的另一大头是按压态也走 0.2s+ 过渡 —— 手指落下后小半秒视觉才确认收到。
+   只覆盖 transition-duration，不改各元素自己的属性/缓动/回弹。 */
+html[data-app="1"] :is(button, a, [role="button"], .card, .msgs-conv, .msgs-entry, .room-row, .inovel-book-card):active {
+  transition-duration: 0.05s;
+}
+
+/* —— 底部 Dock：真·磨砂 + 更细分割 + 稳态活跃指示 —— */
+html[data-app="1"] .app-tabbar {
+  background: var(--hy-glass-bg);
+  border-top: 1px solid var(--hy-hairline);
+  border-left: none; border-right: none; border-bottom: none;
+  box-shadow: 0 -1px 0 rgba(255,255,255,0.03) inset, 0 -6px 24px rgba(0,0,0,0.28);
+}
+html[data-app="1"] .dock-ink {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent) inset;
+}
+html[data-app="1"] .app-tab { transition: color 0.2s var(--hy-ease); color: color-mix(in srgb, var(--text) 45%, transparent); }
+html[data-app="1"] .app-tab.active { color: var(--accent); }
+html[data-app="1"] .app-tab.active .app-tab-ic svg { transform: translateY(-1.5px) scale(1.08); filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent)); }
+html[data-app="1"] .app-tab-ic svg { transition: transform 0.28s var(--hy-spring), filter 0.25s var(--hy-ease); }
+/* 未读点更精致（描边环 + 呼吸） */
+html[data-app="1"] .app-dot {
+  width: 9px; height: 9px; background: linear-gradient(140deg, #ff7a58, #e04e34);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 10px rgba(224, 78, 52, 0.65);
+  animation: dotBreath 2.4s ease-in-out infinite;
+}
+@keyframes dotBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] .app-dot { animation: none; } }
+
+/* —— 中央 +AI 描边钮：动态发光 + 按压反弹 —— */
+html[data-app="1"] .app-fab {
+  border-color: color-mix(in srgb, var(--text) 82%, transparent);
+  background: color-mix(in srgb, var(--panel) 40%, transparent);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 6px 20px rgba(0,0,0,0.24);
+  transition: transform 0.24s var(--hy-spring), background 0.2s, box-shadow 0.25s;
+}
+html[data-app="1"] .app-fab:hover {
+  border-color: var(--accent); color: var(--accent);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 8px 26px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+html[data-app="1"] .app-fab.open {
+  border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent); transform: scale(0.92);
+}
+
+/* —— 今日页头行：更精致的品牌胶囊 —— */
+html[data-app="1"] .aht {
+  padding: 8px 4px 2px; align-items: center;
+}
+html[data-app="1"] .aht-brand {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800;
+  padding: 4px 0; letter-spacing: 1.4px;
+}
+/* 品牌字左侧的装饰方块已按用户反馈移除（渐变字本身即品牌视觉） */
+html[data-app="1"] .aht-acts button {
+  color: color-mix(in srgb, var(--text) 65%, transparent);
+}
+html[data-app="1"] .aht-acts button:hover { color: var(--text); }
+html[data-app="1"] .aht-nb {
+  font-size: 10px; padding: 0 4px; min-width: 16px; height: 16px; border-radius: 9px;
+  background: linear-gradient(140deg, #ff7a58, #dd4732);
+  box-shadow: 0 4px 10px rgba(221,71,50,0.4), 0 0 0 2px var(--bg);
+  letter-spacing: 0;
+}
+
+/* —— 今日页 hero 卡：更立体的天色 + 更漂亮的余晖 —— */
+html[data-app="1"] .ah-hero {
+  padding: 22px 20px 18px; border-radius: 26px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+html[data-app="1"] .ah-hero.sky-morning { background: linear-gradient(145deg, #f0b169 0%, #e18a55 42%, #b25a3e 100%); }
+html[data-app="1"] .ah-hero.sky-dusk { background: linear-gradient(145deg, #e07c56 0%, #ad4d5c 46%, #6b3f74 100%); }
+html[data-app="1"] .ah-hero.sky-night { background: linear-gradient(150deg, #4a3f68 0%, #2b234a 52%, #16112b 100%); }
+html[data-app="1"] .ah-hero::after {
+  right: -60px; top: -70px; width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(255,255,255,0.32), transparent 70%);
+  filter: blur(2px);
+}
+html[data-app="1"] .ah-greet { font-size: 13px; font-weight: 500; letter-spacing: 0.6px; color: rgba(255,255,255,0.82); }
+html[data-app="1"] .ah-name { font-size: 28px; letter-spacing: -0.02em; text-shadow: 0 2px 14px rgba(0,0,0,0.25); }
+html[data-app="1"] .ah-coin {
+  background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.32);
+  padding: 8px 14px; backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
+  transition: transform 0.16s var(--hy-spring), background 0.2s;
+}
+html[data-app="1"] .ah-coin:active { transform: scale(0.95); }
+html[data-app="1"] .ah-checkin {
+  padding: 10px 18px; letter-spacing: 0.2px;
+  background: linear-gradient(140deg, #ffffff, #f6ede0);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,1);
+}
+/* 已签到态：上面的白渐变底优先级更高，会把基础 .done 的玻璃底盖掉，
+   结果白底配 75% 白字直接看不见。这里按 .ah-coin 的配方重新落一遍：
+   半透白玻璃 + 纯白字 + 细描边，天色渐变上怎么摆都读得清。 */
+html[data-app="1"] .ah-checkin.done {
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.42);
+  box-shadow: none;
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.3);
+}
+html[data-app="1"] .ah-checkin:not(.done):hover { transform: translateY(-1px); }
+
+/* —— 今日页快捷入口：磁贴更精致 —— */
+html[data-app="1"] .ah-sc { transition: transform 0.18s var(--hy-spring); }
+html[data-app="1"] .ah-sc-ic {
+  width: 52px; height: 52px; border-radius: 18px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06), inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent);
+  transition: transform 0.22s var(--hy-spring), box-shadow 0.2s;
+}
+html[data-app="1"] .ah-sc:hover .ah-sc-ic { transform: translateY(-2px); }
+html[data-app="1"] .ah-sc:active .ah-sc-ic { transform: scale(0.92) translateY(0); }
+
+/* —— 今日页精选卡：更清晰的层次 —— */
+html[data-app="1"] .ah-hero-card {
+  border-radius: 26px;
+  box-shadow: 0 12px 34px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.08);
+}
+html[data-app="1"] .ah-hc-scrim {
+  background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.18) 42%, rgba(0,0,0,0.82) 100%);
+}
+html[data-app="1"] .ah-hc-body b { font-size: 24px; letter-spacing: -0.02em; }
+html[data-app="1"] .ah-hc-tag {
+  background: rgba(255,255,255,0.22); padding: 4px 11px;
+  backdrop-filter: blur(6px) saturate(140%); -webkit-backdrop-filter: blur(6px) saturate(140%);
+  letter-spacing: 0.4px;
+}
+html[data-app="1"] .ah-hc-cta {
+  padding: 9px 18px; font-size: 13.5px; letter-spacing: 0.2px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+/* —— 今日页「继续故事」rail：头像光环变干净 —— */
+html[data-app="1"] .ah-resume { transition: transform 0.16s var(--hy-spring); }
+html[data-app="1"] .ah-resume:active { transform: scale(0.94); }
+html[data-app="1"] .ah-resume .avatar {
+  box-shadow: 0 0 0 2px var(--panel), 0 6px 16px rgba(0,0,0,0.28);
+  transition: box-shadow 0.2s;
+}
+html[data-app="1"] .ah-resume:hover .avatar {
+  box-shadow: 0 0 0 2px var(--panel), 0 8px 20px color-mix(in srgb, var(--accent) 32%, rgba(0,0,0,0.28));
+}
+
+/* —— 今日页「为你挑选」两列：更工整的比例 —— */
+html[data-app="1"] .ah-picks { gap: 12px; }
+html[data-app="1"] .ah-pick {
+  border-radius: 18px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  transition: transform 0.18s var(--hy-spring), box-shadow 0.2s;
+}
+html[data-app="1"] .ah-pick:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.14);
+}
+html[data-app="1"] .ah-pick-tx { padding: 10px 12px 13px; }
+html[data-app="1"] .ah-pick-tx b { font-size: 14.5px; letter-spacing: -0.005em; }
+
+/* —— 任务卡：进度条液体色 —— */
+html[data-app="1"] .ah-task {
+  border-radius: 16px; padding: 12px 14px;
+  transition: border-color 0.2s;
+}
+html[data-app="1"] .ah-task:hover { border-color: color-mix(in srgb, var(--accent) 32%, var(--border)); }
+html[data-app="1"] .ah-task-bar { height: 7px; background: color-mix(in srgb, var(--text) 6%, transparent); }
+html[data-app="1"] .ah-task-bar i {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 48%, transparent);
+  transition: width 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* —— 发现流 · 顶部分类条更贴合原生 —— */
+html[data-app="1"] .feed-top { padding-top: calc(env(safe-area-inset-top) + 10px); }
+html[data-app="1"] .feed-cat {
+  padding: 7px 14px; font-size: 13px; letter-spacing: 0.4px;
+  border-color: rgba(255,255,255,0.14); background: rgba(0,0,0,0.36);
+  backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
+  opacity: 0.88;
+  transition: opacity 0.18s, background 0.2s, border-color 0.2s, transform 0.16s var(--hy-spring);
+}
+html[data-app="1"] .feed-cat:active { transform: scale(0.92); }
+html[data-app="1"] .feed-cat.on {
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  border-color: transparent; opacity: 1;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 44%, transparent);
+}
+html[data-app="1"] .feed-search {
+  width: 36px; height: 36px;
+  border-color: rgba(255,255,255,0.16); background: rgba(0,0,0,0.36);
+  backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
+  transition: transform 0.16s var(--hy-spring), background 0.2s;
+}
+html[data-app="1"] .feed-search:hover { background: rgba(0,0,0,0.55); }
+html[data-app="1"] .feed-search:active { transform: scale(0.9); }
+
+/* —— 发现流 · 信息层更干净的字距与投影 —— */
+html[data-app="1"] .fd2-name { font-size: 26px; letter-spacing: -0.01em; }
+html[data-app="1"] .fd2-author { font-size: 13px; }
+html[data-app="1"] .fd2-cat {
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+html[data-app="1"] .fd2-intro {
+  border-radius: 18px; padding: 14px 42px 14px 16px;
+  background: rgba(10, 8, 14, 0.58);
+  border-color: rgba(255,255,255,0.1);
+  backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+html[data-app="1"] .fd2-greet {
+  border-radius: 20px; border-top-left-radius: 6px;
+  padding: 14px 16px; font-size: 14.5px; line-height: 1.72;
+  background: rgba(255, 253, 249, 0.94);
+  box-shadow: 0 8px 26px rgba(0,0,0,0.32);
+}
+html[data-app="1"] .fd2-act {
+  gap: 4px; font-size: 11px; letter-spacing: 0.4px;
+  transition: transform 0.16s var(--hy-spring), color 0.2s;
+}
+html[data-app="1"] .fd2-act svg {
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.55));
+  transition: transform 0.22s var(--hy-spring);
+}
+html[data-app="1"] .fd2-act:hover svg { transform: scale(1.1); }
+html[data-app="1"] .fd2-act.on svg { filter: drop-shadow(0 2px 12px rgba(255,93,126,0.5)); }
+html[data-app="1"] .fd2-act.on.gold svg { filter: drop-shadow(0 2px 12px rgba(245,196,81,0.55)); }
+html[data-app="1"] .fd2-say {
+  padding: 8px 10px; border-radius: 999px;
+  background: rgba(18, 15, 24, 0.7);
+  border-color: rgba(255,255,255,0.14);
+  backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.32);
+}
+html[data-app="1"] .fd2-say input { font-size: 14.5px; }
+html[data-app="1"] .fd2-say-call, html[data-app="1"] .fd2-say-go {
+  width: 38px; height: 38px;
+  background: rgba(255,255,255,0.14);
+}
+html[data-app="1"] .fd2-say-go.send {
+  background: linear-gradient(140deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* —— 消息中心：分段控件 + 入口卡更精致 —— */
+html[data-app="1"] .msgs { padding: 4px 16px 20px; gap: 4px; }
+html[data-app="1"] .msgs-head { padding-top: 6px; margin-bottom: 14px; align-items: center; }
+html[data-app="1"] .msgs-tabs { gap: 30px; }
+html[data-app="1"] .msgs-tabs button {
+  font-size: 16px; padding: 8px 4px;
+  color: color-mix(in srgb, var(--text) 42%, transparent);
+  transition: color 0.2s;
+}
+html[data-app="1"] .msgs-tabs button.on { font-size: 18px; color: var(--text); font-weight: 800; }
+html[data-app="1"] .msgs-tabs button.on::after {
+  width: 24px; height: 3px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+html[data-app="1"] .msgs-entry {
+  padding: 13px 12px; border-radius: 18px; gap: 14px;
+  transition: background 0.2s, transform 0.16s var(--hy-spring);
+}
+html[data-app="1"] .msgs-entry:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+html[data-app="1"] .msgs-entry:active { transform: scale(0.98); background: var(--bg-2); }
+html[data-app="1"] .msgs-entry-ic {
+  width: 50px; height: 50px; border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+html[data-app="1"] .msgs-entry-ic.noti { background: linear-gradient(140deg, #f36e94, #d43868); }
+html[data-app="1"] .msgs-entry-ic.dm { background: linear-gradient(140deg, #6ba4f5, #4270d8); }
+html[data-app="1"] .msgs-entry-ic.grp { background: linear-gradient(140deg, #a279e6, #7d4bc9); }
+html[data-app="1"] .msgs-entry-tx b { font-size: 15px; letter-spacing: -0.005em; }
+html[data-app="1"] .msgs-badge {
+  min-width: 22px; height: 20px; padding: 0 7px; border-radius: 12px; font-size: 11.5px;
+  background: linear-gradient(140deg, #ff7a58, #dd4732);
+  box-shadow: 0 4px 10px rgba(221,71,50,0.4);
+}
+html[data-app="1"] .msgs-conv {
+  padding: 12px 12px; border-radius: 18px; gap: 13px;
+  transition: background 0.2s;
+}
+html[data-app="1"] .msgs-conv:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+html[data-app="1"] .msgs-conv .avatar {
+  box-shadow: 0 0 0 1.5px var(--panel), 0 4px 12px rgba(0,0,0,0.16);
+}
+html[data-app="1"] .msgs-sep { margin: 14px 12px 6px; }
+html[data-app="1"] .msgs-sep span { font-size: 11.5px; letter-spacing: 1.2px; }
+
+/* —— 我的页 · 资料头 / 会员横幅 更立体 —— */
+html[data-app="1"] .pf { padding-top: 6px; } /* .app-main 已含 safe-area 顶部内边距，勿重复叠加（否则刘海机顶部空一大条） */
+html[data-app="1"] .pf-top { gap: 6px; padding-right: 2px; }
+html[data-app="1"] .pf-top button { transition: transform 0.16s var(--hy-spring), background 0.2s; }
+html[data-app="1"] .pf-top button:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+html[data-app="1"] .pf-top button:active { transform: scale(0.9); }
+html[data-app="1"] .pf-av .avatar {
+  box-shadow:
+    0 0 0 3px var(--panel),
+    0 0 0 4.5px color-mix(in srgb, var(--accent) 32%, transparent),
+    0 10px 26px rgba(0,0,0,0.32);
+}
+html[data-app="1"] .pf-id-tx > b { font-size: 23px; letter-spacing: -0.01em; }
+html[data-app="1"] .pf-uid { font-size: 11.5px; padding: 4px 10px; border-radius: 999px; }
+html[data-app="1"] .pf-vip {
+  border-radius: 22px; padding: 16px 18px; overflow: hidden; position: relative;
+  color: #fff;
+  background: linear-gradient(120deg, #6a52c2, #8d66da 52%, #52408f);
+  box-shadow: 0 14px 34px rgba(72, 52, 138, 0.4), inset 0 1px 0 rgba(255,255,255,0.24);
+  transition: transform 0.18s var(--hy-spring), box-shadow 0.25s;
+}
+html[data-app="1"] .pf-vip:hover { transform: translateY(-1px); box-shadow: 0 20px 42px rgba(72, 52, 138, 0.5); }
+html[data-app="1"] .pf-vip.svip { background: linear-gradient(120deg, #b48432, #f5c451 52%, #d99a2b); color: #3a2606; }
+html[data-app="1"] .pf-vip-glow {
+  right: -40px; top: -50px; width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(255,255,255,0.36), transparent 70%);
+  filter: blur(4px);
+}
+html[data-app="1"] .pf-vip-l b { font-size: 17px; letter-spacing: 0.4px; }
+/* pf-vip-go 不挂 blur：它坐在 pf-vip 的不透明渐变上，模糊不可见 */
+html[data-app="1"] .pf-vip-go {
+  padding: 9px 18px; background: rgba(255,255,255,0.22); color: #fff;
+  border: 1px solid rgba(255,255,255,0.32);
+}
+html[data-app="1"] .pf-vip.svip .pf-vip-go { background: rgba(58, 38, 6, 0.14); color: #3a2606; border-color: rgba(58, 38, 6, 0.2); }
+html[data-app="1"] .pf-assets {
+  border-radius: 20px; padding: 16px 18px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+html[data-app="1"] .pf-asset-bal b { font-size: 18px; letter-spacing: -0.01em; }
+html[data-app="1"] .pf-asset-acts button {
+  padding: 11px 12px; border-radius: 13px;
+  transition: transform 0.16s var(--hy-spring), border-color 0.2s;
+}
+html[data-app="1"] .pf-asset-acts button:hover { border-color: var(--accent); }
+html[data-app="1"] .pf-asset-acts button:active { transform: scale(0.96); }
+html[data-app="1"] .pf-cell {
+  border-radius: 18px; padding: 14px 6px; gap: 8px;
+  transition: transform 0.16s var(--hy-spring), border-color 0.2s, background 0.2s;
+  animation: pfCellIn 0.4s var(--hy-ease) both;
+  animation-delay: calc(var(--i, 0) * 24ms);
+}
+html[data-app="1"] .pf-cell:hover { border-color: color-mix(in srgb, var(--accent) 32%, var(--border)); }
+html[data-app="1"] .pf-cell:active { transform: scale(0.9); }
+html[data-app="1"] .pf-cell-ic {
+  width: 42px; height: 42px; border-radius: 14px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+}
+@keyframes pfCellIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] .pf-cell { animation: none; } }
+html[data-app="1"] .pf-quick-ic {
+  width: 52px; height: 52px; border-radius: 18px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06), inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+  transition: transform 0.2s var(--hy-spring);
+}
+html[data-app="1"] .pf-quick button:hover .pf-quick-ic { transform: translateY(-2px); }
+html[data-app="1"] .pf-tabs { margin: 22px 4px 12px; gap: 24px; }
+html[data-app="1"] .pf-tabs button { font-size: 15.5px; }
+html[data-app="1"] .pf-tabs button.on { font-size: 17px; }
+html[data-app="1"] .pf-tabs button.on::after {
+  height: 3px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+html[data-app="1"] .pf-cc-cover {
+  border-radius: 16px; overflow: hidden; position: relative;
+  transition: transform 0.2s var(--hy-spring), box-shadow 0.2s;
+}
+html[data-app="1"] .pf-cc:hover .pf-cc-cover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.16);
+}
+html[data-app="1"] .pf-foot-btn {
+  padding: 13px; border-radius: 14px; font-weight: 700;
+  transition: transform 0.16s var(--hy-spring), border-color 0.2s;
+}
+html[data-app="1"] .pf-foot-btn:hover { border-color: color-mix(in srgb, var(--text) 22%, var(--border)); }
+html[data-app="1"] .pf-foot-btn:active { transform: scale(0.98); }
+
+/* —— 会员中心（vm）：更锐利的黄金卡与套餐 —— */
+.vm-card { box-shadow: 0 18px 42px rgba(224, 150, 30, 0.44), inset 0 1px 0 rgba(255,255,255,0.65); }
+.vm-plan {
+  padding: 20px 12px 14px; border-radius: 20px;
+  transition: transform 0.18s var(--hy-spring), border-color 0.2s, box-shadow 0.2s;
+}
+.vm-plan:hover { transform: translateY(-2px); }
+.vm-plan.on {
+  box-shadow: 0 10px 26px rgba(224, 154, 47, 0.28), inset 0 1px 0 rgba(255,255,255,0.5);
+}
+.vm-go {
+  height: 54px; border-radius: 20px; font-size: 15.5px; letter-spacing: 0.4px;
+  background: linear-gradient(120deg, #ffe89a, #f5c451 46%, #dc9724);
+  box-shadow: 0 10px 30px rgba(224, 151, 58, 0.5), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.vm-go:hover { transform: translateY(-1px); }
+.vm-go:active { transform: scale(0.98); }
+
+/* —— 沉浸对话（app 壳）气泡与输入更精修 —— */
+html[data-app="1"] .msg .bubble {
+  border-radius: 22px; letter-spacing: 0.002em;
+  transition: box-shadow 0.2s;
+}
+html[data-app="1"] .msg.user .bubble {
+  background: linear-gradient(145deg, var(--accent), var(--accent-2));
+  color: #fff; box-shadow: 0 8px 22px rgba(240,113,63,0.32);
+}
+html[data-app="1"] .msg .bubble:hover { box-shadow: 0 8px 26px rgba(0,0,0,0.16); }
+
+/* —— 通用「面板」层：细发丝阴影统一 —— */
+html[data-app="1"] .card,
+html[data-app="1"] .msgs-entry,
+html[data-app="1"] .msgs-conv,
+html[data-app="1"] .ah-task {
+  border: 1px solid var(--hy-hairline);
+}
+
+/* —— App bottom sheet：更精致的抓手与卡片 —— */
+html[data-app="1"] .app-sheet {
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -18px 44px rgba(0,0,0,0.32);
+}
+html[data-app="1"] .app-sheet-grip {
+  width: 44px; height: 5px; border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 22%, transparent);
+}
+html[data-app="1"] .app-sheet-title {
+  font-size: 18px; margin: 4px 6px 14px;
+}
+html[data-app="1"] .app-create-row {
+  padding: 12px 10px; border-radius: 16px;
+  transition: background 0.2s, transform 0.16s var(--hy-spring);
+}
+html[data-app="1"] .app-create-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+html[data-app="1"] .app-create-row:active { transform: scale(0.98); background: var(--bg-2); }
+html[data-app="1"] .ac-ic {
+  width: 46px; height: 46px; border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08), inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
+}
+html[data-app="1"] .ac-tx b { font-size: 15px; letter-spacing: -0.005em; }
+html[data-app="1"] .ac-tx small { font-size: 12px; margin-top: 2px; }
+
+/* —— 引导启动闪屏更沉浸（把老实现的光晕收拢） —— */
+html[data-app="1"] .app-boot {
+  background: radial-gradient(120% 90% at 50% 18%, color-mix(in srgb, var(--accent) 22%, var(--bg)), var(--bg) 70%);
+}
+html[data-app="1"] .app-boot-name {
+  letter-spacing: 8px; font-weight: 900;
+}
+
+/* —— 全局焦点体系（APP 壳唯一权威块）——
+   曾有三条同特异性 :focus-visible 互相打架（outline 与 box-shadow 按属性
+   各自后写者胜），净效果是文本框吃到「outline + box-shadow 双环」——真机
+   反馈的"蓝色框框"。合并为一条：键盘可达性给按钮/链接保留 outline；
+   文本输入（Chromium 下永远匹配 :focus-visible）一律不画焦点环，聚焦反馈
+   交给各自容器（输入岛边框 / 表单 :focus 规则）。 */
+html[data-app="1"] :where(button, a, [role="button"], select, summary, .seg button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px; border-radius: 8px; box-shadow: none;
+}
+html[data-app="1"] :where(input, textarea, [contenteditable="true"]):focus-visible {
+  outline: none; box-shadow: none;
+}
+/* 对话页两处输入（搜索胶囊 / 输入岛）显式钉死：任何焦点自绘都不要 */
+html[data-app="1"] .hy-search input:focus, html[data-app="1"] .hy-search input:focus-visible,
+html[data-app="1"] .chat-input-bar textarea:focus, html[data-app="1"] .chat-input-bar textarea:focus-visible {
+  outline: none; box-shadow: none;
+}
+
+/* —— 内容滚动更顺滑（Android WebView 尤其明显） —— */
+html[data-app="1"] .app-main,
+html[data-app="1"] .feed-root,
+html[data-app="1"] .cvx-scroll,
+html[data-app="1"] .vm-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* —— 移动端 iOS/Android WebView：图片下拉时防止拉伸破图 —— */
+html[data-app="1"] img { -webkit-user-drag: none; user-select: none; }
+
+/* —— 极端窄屏（<340px）：减少视觉压迫感 —— */
+@media (max-width: 340px) {
+  html[data-app="1"] .apphome { gap: 14px; padding: 12px 14px 8px; }
+  html[data-app="1"] .ah-hero { padding: 18px 16px 14px; }
+  html[data-app="1"] .ah-name { font-size: 22px; }
+  html[data-app="1"] .fd2-name { font-size: 22px; }
+  html[data-app="1"] .fd2-acts { gap: 12px; }
+  html[data-app="1"] .pf-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* —— 大屏 App 预览：拟真更强的沉浸边缘 —— */
+@media (min-width: 501px) {
+  html[data-app="1"] .app-root {
+    border-radius: 28px; overflow: hidden;
+    box-shadow: 0 0 0 1.5px color-mix(in srgb, #fff 4%, var(--border)), 0 30px 90px rgba(0,0,0,0.32);
+  }
+}
+
+/* —— Log · Fix: 之前 .aht-nb 位置是 top:0 right:0 会与图标 svg 重叠 —— */
+html[data-app="1"] .aht-nb { top: 2px; right: 2px; }
+
+/* —— Log · Fix: DiscoverFeed feed-top 曾无左内边距，右滑边缘裁切 —— */
+html[data-app="1"] .feed-top { padding-left: 12px; }
+
+/* —— Log · Fix: 开场白截断策略已废除（改为限高内滚，见基础 .fd2-greet）—— */
+
+/* —— 加载态更精致的骨架 —— */
+html[data-app="1"] .ah-hero-skel,
+html[data-app="1"] .ah-rail-skel,
+html[data-app="1"] .ah-pick-skel,
+html[data-app="1"] .pf-cc-skel,
+html[data-app="1"] .msgs-skel-row {
+  background: linear-gradient(90deg,
+    var(--bg-2) 25%,
+    color-mix(in srgb, var(--accent) 8%, var(--panel)) 50%,
+    var(--bg-2) 75%);
+  background-size: 220% 100%;
+}
+
+/* ============================================================================
+   APP · Liquid Glass 系统 · Elevated v2
+   目标：把毛玻璃做到「像玻璃、而不是像色块」——
+   1) 双层玻璃：底层 backdrop-filter 折射 + 顶层高光条 + 边缘描边光
+   2) 噪点纹理（内联 SVG turbulence）打破塑料感、贴合真玻璃颗粒
+   3) 分层深浅：--glass-1（薄纱）/ --glass-2（磨砂）/ --glass-3（厚玻璃）
+   4) 强调色光晕：卡片背后一枚色环，玻璃层折射出主色，观感像真的加载了色
+   5) [data-perf="lite"] 与 prefers-reduced-motion 全面降级到无 blur 版本
+   仅在 html[data-app="1"] 生效，Web/mobile-web 视觉不受影响。
+   ========================================================================== */
+
+html[data-app="1"] {
+  /* —— 三档磨砂 —— */
+  --gl-1-bg: color-mix(in srgb, var(--panel) 62%, transparent);
+  --gl-2-bg: color-mix(in srgb, var(--panel) 74%, transparent);
+  --gl-3-bg: color-mix(in srgb, var(--panel) 84%, transparent);
+  /* blur 成本随半径超线性增长；>20px 在手机 DPR 下感知差异极小，
+     三档整体下调一级（18/26/38 → 14/20/28），观感几乎不变、GPU 显著减负 */
+  --gl-1-blur: blur(14px) saturate(180%);
+  --gl-2-blur: blur(20px) saturate(180%);
+  --gl-3-blur: blur(28px) saturate(200%);
+  --gl-border: color-mix(in srgb, #fff 14%, transparent);
+  --gl-border-in: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+  --gl-shadow: 0 12px 34px rgba(0,0,0,0.28);
+  /* —— 高光条：玻璃边缘反射 —— */
+  --gl-sheen: linear-gradient(115deg,
+    color-mix(in srgb, #fff 22%, transparent) 0%,
+    color-mix(in srgb, #fff 0%, transparent) 40%);
+  /* —— 强调色光晕（背后隐约透出） —— */
+  --gl-halo-a: radial-gradient(80% 60% at 25% 20%, color-mix(in srgb, var(--accent) 32%, transparent), transparent 62%);
+  --gl-halo-b: radial-gradient(80% 60% at 82% 88%, color-mix(in srgb, var(--dusk, #7d4468) 30%, transparent), transparent 60%);
+}
+html[data-app="1"][data-theme="light"] {
+  /* 白+青 磨砂：白玻璃透出淡青，边缘用青灰描边（在浅底上可见） */
+  --gl-1-bg: color-mix(in srgb, #f2fdff 62%, transparent);
+  --gl-2-bg: color-mix(in srgb, #f2fdff 76%, transparent);
+  --gl-3-bg: color-mix(in srgb, #f6feff 86%, transparent);
+  --gl-border: color-mix(in srgb, #22d3ee 30%, transparent);
+  --gl-border-in: inset 0 1px 0 color-mix(in srgb, #fff 90%, transparent);
+  --gl-shadow: 0 12px 34px rgba(8, 90, 108, 0.14);
+  --gl-halo-a: radial-gradient(80% 60% at 25% 20%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 62%);
+  --gl-halo-b: radial-gradient(80% 60% at 82% 88%, color-mix(in srgb, #22d3ee 24%, transparent), transparent 60%);
+}
+
+/* —— 玻璃通用类（同时给关键既有类补上真玻璃观感） —— */
+html[data-app="1"] .glass,
+html[data-app="1"] .glass-1 {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  box-shadow: var(--gl-border-in), var(--gl-shadow);
+}
+html[data-app="1"] .glass-2 {
+  background: var(--gl-2-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-2-blur);
+  -webkit-backdrop-filter: var(--gl-2-blur);
+  box-shadow: var(--gl-border-in), var(--gl-shadow);
+}
+html[data-app="1"] .glass-3 {
+  background: var(--gl-3-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-3-blur);
+  -webkit-backdrop-filter: var(--gl-3-blur);
+  box-shadow: var(--gl-border-in), var(--gl-shadow);
+}
+
+/* —— 玻璃高光条：任意 .glass* 元素加 .sheen 即触发（伪元素浮层） —— */
+html[data-app="1"] .glass, html[data-app="1"] .glass-1,
+html[data-app="1"] .glass-2, html[data-app="1"] .glass-3 { position: relative; }
+html[data-app="1"] .glass::after, html[data-app="1"] .glass-1::after,
+html[data-app="1"] .glass-2::after, html[data-app="1"] .glass-3::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: var(--gl-sheen);
+  opacity: 0.55; border-radius: inherit; mix-blend-mode: soft-light;
+}
+
+/* —— 玻璃噪点纹理（内联 SVG turbulence，非常轻量）—— */
+html[data-app="1"] .glass-noise::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+  background-size: 120px 120px; opacity: 0.08; mix-blend-mode: overlay;
+}
+html[data-app="1"][data-theme="light"] .glass-noise::before { opacity: 0.05; }
+
+/* ============================================================================
+   把「毛玻璃」真正铺进 APP 壳的关键面：
+   Dock / 顶部头行 / 发现分类条 / 底部 Sheet / 通话入口卡 / 播放器等
+   ========================================================================== */
+
+/* —— Dock：高不透明实底 + 高光丝 + 噪点（观感保留，去掉常驻实时模糊）——
+   底栏是固定层，内容在其后滚动，backdrop-filter 意味着每帧重算一条全宽
+   模糊带；改 94% 实底后高光丝/噪点细节仍在，865 滚动帧立省一层。 */
+html[data-app="1"] .app-tabbar {
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  border-top: 1px solid var(--gl-border);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+    0 -8px 30px rgba(0,0,0,0.28);
+  overflow: hidden;
+}
+html[data-app="1"] .app-tabbar::before {
+  /* 顶部反射高光条（一线 iOS 的经典细节） */
+  content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, #fff 55%, transparent), transparent);
+  opacity: 0.85; pointer-events: none;
+}
+html[data-app="1"] .app-tabbar::after {
+  /* 玻璃噪点微粒 */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.28 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 96px 96px; opacity: 0.06; mix-blend-mode: overlay;
+}
+html[data-app="1"][data-perf="lite"] .app-tabbar {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--bg);
+}
+html[data-app="1"][data-perf="lite"] .app-tabbar::before,
+html[data-app="1"][data-perf="lite"] .app-tabbar::after { display: none; }
+
+/* —— +AI FAB：透明玻璃钮，按压时液态涟漪扩散 —— */
+html[data-app="1"] .app-fab {
+  background: color-mix(in srgb, var(--panel) 34%, transparent);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border-color: color-mix(in srgb, var(--text) 65%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent),
+    0 6px 20px rgba(0,0,0,0.28);
+  overflow: hidden;
+}
+html[data-app="1"] .app-fab::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(135deg, color-mix(in srgb, #fff 22%, transparent), transparent 55%);
+  pointer-events: none;
+}
+html[data-app="1"] .app-fab.open {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent),
+    0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* —— 今日页头行：磨砂胶囊 hover 沁光 —— */
+html[data-app="1"] .aht-acts button {
+  background: color-mix(in srgb, var(--panel) 26%, transparent);
+  border: 1px solid transparent;
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  transition: background 0.2s, border-color 0.2s, transform 0.15s var(--hy-spring);
+}
+html[data-app="1"] .aht-acts button:hover {
+  background: color-mix(in srgb, var(--panel) 44%, transparent);
+  border-color: var(--gl-border);
+}
+html[data-app="1"][data-perf="lite"] .aht-acts button {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--bg-2);
+}
+
+/* —— 今日页问候卡：叠玻璃 hero，光晕透出主色 —— */
+html[data-app="1"] .ah-hero { overflow: hidden; }
+html[data-app="1"] .ah-hero > * { position: relative; z-index: 2; }
+html[data-app="1"] .ah-hero::after {
+  /* 覆盖既有的圆光晕，改为漂移沁光 */
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(50% 40% at 20% 20%, rgba(255,255,255,0.28), transparent 60%),
+    radial-gradient(60% 45% at 85% 80%, rgba(255,255,255,0.12), transparent 62%);
+  animation: heroDrift 12s ease-in-out infinite alternate;
+  border-radius: inherit;
+  filter: blur(1px);
+}
+/* heroDrift 定义在角色详情动效段 —— 同名后写者全局获胜（此处曾有的
+   translate3d 旧版从未生效，已删；如需独立节奏请另起名字） */
+html[data-app="1"][data-perf="lite"] .ah-hero::after { animation: none; }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] .ah-hero::after { animation: none; } }
+/* hero 内的胶囊按钮真玻璃 */
+html[data-app="1"] .ah-hero .ah-coin {
+  background: color-mix(in srgb, #fff 18%, transparent);
+  border-color: color-mix(in srgb, #fff 32%, transparent);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .ah-hero .ah-coin::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(120deg, color-mix(in srgb, #fff 34%, transparent), transparent 55%);
+  opacity: 0.7;
+}
+html[data-app="1"][data-perf="lite"] .ah-hero .ah-coin {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: color-mix(in srgb, #fff 26%, transparent);
+}
+
+/* —— 快捷入口磁贴：玻璃底 + 高光反射 —— */
+html[data-app="1"] .ah-sc-ic {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  box-shadow: var(--gl-border-in), 0 4px 14px rgba(0,0,0,0.10);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .ah-sc-ic::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(140deg, color-mix(in srgb, #fff 24%, transparent), transparent 50%);
+  opacity: 0.7;
+}
+html[data-app="1"][data-perf="lite"] .ah-sc-ic {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
+/* —— 快捷入口色调轮换：底色改为强调色 mix，玻璃透出更纯 —— */
+html[data-app="1"] .ah-sc:nth-child(4n+1) .ah-sc-ic { background: color-mix(in srgb, var(--accent) 14%, var(--gl-1-bg)); color: var(--accent); }
+html[data-app="1"] .ah-sc:nth-child(4n+2) .ah-sc-ic { background: color-mix(in srgb, var(--diamond) 14%, var(--gl-1-bg)); color: var(--diamond); }
+html[data-app="1"] .ah-sc:nth-child(4n+3) .ah-sc-ic { background: color-mix(in srgb, var(--gold) 14%, var(--gl-1-bg)); color: var(--gold); }
+html[data-app="1"] .ah-sc:nth-child(4n) .ah-sc-ic { background: color-mix(in srgb, var(--dusk) 14%, var(--gl-1-bg)); color: var(--dusk); }
+
+/* —— 精选卡：内嵌玻璃标签「今日精选」+ CTA 玻璃钮 —— */
+html[data-app="1"] .ah-hc-tag {
+  background: color-mix(in srgb, #fff 22%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 30%, transparent);
+  backdrop-filter: blur(10px) saturate(170%);
+  -webkit-backdrop-filter: blur(10px) saturate(170%);
+  color: #fff;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
+}
+html[data-app="1"] .ah-hc-cta {
+  background: color-mix(in srgb, #fff 88%, transparent);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.32), inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+}
+
+/* —— 任务卡：玻璃层 —— */
+html[data-app="1"] .ah-task {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  box-shadow: var(--gl-border-in), 0 4px 14px rgba(0,0,0,0.08);
+}
+html[data-app="1"][data-perf="lite"] .ah-task {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+
+/* —— 「为你挑选」两列卡：玻璃盒 —— */
+html[data-app="1"] .ah-pick {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+}
+html[data-app="1"][data-perf="lite"] .ah-pick {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+
+/* —— 「继续故事」rail 与「空态」CTA 玻璃化 —— */
+html[data-app="1"] .ah-empty {
+  background: var(--gl-1-bg);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--gl-border));
+}
+
+/* ============================================================================
+   发现流：全屏玻璃层（一线抖音/B 站的沉浸式质感）
+   ========================================================================== */
+/* —— 分类胶囊：真玻璃 —— */
+html[data-app="1"] .feed-cat {
+  background: color-mix(in srgb, #000 32%, transparent);
+  border-color: color-mix(in srgb, #fff 18%, transparent);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+}
+html[data-app="1"] .feed-cat.on {
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent),
+    0 6px 20px color-mix(in srgb, var(--accent) 52%, transparent);
+}
+/* —— 搜索圆钮 —— */
+html[data-app="1"] .feed-search {
+  background: color-mix(in srgb, #000 32%, transparent);
+  border-color: color-mix(in srgb, #fff 18%, transparent);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
+}
+/* —— 沉浸卡介绍面板：厚玻璃 —— */
+html[data-app="1"] .fd2-intro {
+  background: color-mix(in srgb, #0a0812 55%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent), 0 8px 28px rgba(0,0,0,0.28);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .fd2-intro::before {
+  /* 边缘反射高光条 */
+  content: ''; position: absolute; left: 8%; right: 8%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  pointer-events: none;
+}
+html[data-app="1"][data-perf="lite"] .fd2-intro {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: rgba(10, 8, 18, 0.86);
+}
+/* —— 开场白气泡：更精致的珍珠白玻璃 —— */
+html[data-app="1"] .fd2-greet {
+  background: color-mix(in srgb, #fff8ef 88%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 8px 28px rgba(0,0,0,0.32);
+}
+html[data-app="1"][data-perf="lite"] .fd2-greet {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: rgba(255, 253, 249, 0.96);
+}
+/* —— 自由输入胶囊：厚玻璃 + 顶部反射条 —— */
+html[data-app="1"] .fd2-say {
+  background: color-mix(in srgb, #0f0c18 55%, transparent);
+  border-color: color-mix(in srgb, #fff 14%, transparent);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent),
+    0 8px 26px rgba(0,0,0,0.34);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .fd2-say::before {
+  content: ''; position: absolute; left: 20%; right: 20%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  pointer-events: none;
+}
+html[data-app="1"][data-perf="lite"] .fd2-say {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: rgba(18, 15, 24, 0.9);
+}
+/* —— 通话钮 / 发送钮：内层玻璃 —— */
+html[data-app="1"] .fd2-say-call, html[data-app="1"] .fd2-say-go {
+  background: color-mix(in srgb, #fff 16%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+}
+
+/* ============================================================================
+   底部 Sheet：真·苹果风磨砂
+   ========================================================================== */
+html[data-app="1"] .app-sheet-mask {
+  background: rgba(0,0,0,0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+html[data-app="1"] .app-sheet {
+  background: var(--gl-3-bg);
+  border-top: 1px solid var(--gl-border);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent), 0 -18px 44px rgba(0,0,0,0.32);
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .app-sheet::before {
+  /* 顶部反射高光条 */
+  content: ''; position: absolute; left: 20%; right: 20%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, #fff 45%, transparent), transparent);
+  pointer-events: none;
+}
+html[data-app="1"][data-perf="lite"] .app-sheet {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+/* 创建面板行图标磁贴：玻璃胶囊 */
+html[data-app="1"] .ac-ic {
+  background: color-mix(in srgb, var(--accent) 12%, var(--gl-1-bg));
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  border: 1px solid var(--gl-border);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+}
+html[data-app="1"][data-perf="lite"] .ac-ic {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
+/* ============================================================================
+   消息中心 · 我的 · 会员：玻璃层加深，层次更清晰
+   ========================================================================== */
+/* 头部（分段控件）玻璃底 */
+html[data-app="1"] .msgs-head {
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--gl-border);
+  background: var(--gl-1-bg);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  margin: 0 -16px 8px;
+  border-radius: 0;
+}
+html[data-app="1"][data-perf="lite"] .msgs-head {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--bg);
+}
+/* 消息入口卡 + 会话行：高不透明实底卡（每行一层实时模糊 ≈ 20-30 层同屏，
+   是消息页最大 GPU 开销，改实底后描边/内高光质感保留） */
+html[data-app="1"] .msgs-entry,
+html[data-app="1"] .msgs-conv {
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  border: 1px solid var(--gl-border);
+  transition: background 0.2s, transform 0.15s var(--hy-spring), box-shadow 0.2s;
+  box-shadow: var(--gl-border-in);
+}
+html[data-app="1"] .msgs-entry:hover,
+html[data-app="1"] .msgs-conv:hover {
+  background: var(--gl-2-bg);
+  box-shadow: var(--gl-border-in), 0 6px 20px rgba(0,0,0,0.14);
+}
+html[data-app="1"][data-perf="lite"] .msgs-entry,
+html[data-app="1"][data-perf="lite"] .msgs-conv {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+html[data-app="1"] .msgs-badge {
+  box-shadow: 0 4px 12px rgba(221,71,50,0.45), inset 0 1px 0 rgba(255,255,255,0.28);
+}
+
+/* 我的页 · 资料卡 & VIP 横幅 & 资产卡：玻璃 */
+html[data-app="1"] .pf-assets {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+  box-shadow: var(--gl-border-in);
+}
+html[data-app="1"][data-perf="lite"] .pf-assets {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+/* 宫格/快捷小图标 chip 不再挂 blur：面积小但数量 20+（每个都是一层实时
+   模糊），底色本就近实底，模糊感知为零、GPU 白算 */
+html[data-app="1"] .pf-cell {
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid var(--gl-border);
+  box-shadow: var(--gl-border-in);
+}
+html[data-app="1"][data-perf="lite"] .pf-cell,
+html[data-app="1"][data-perf="lite"] .pf-cell-ic,
+html[data-app="1"][data-perf="lite"] .pf-quick-ic {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+/* VIP 横幅内嵌玻璃 CTA */
+html[data-app="1"] .pf-vip-go {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
+}
+/* 底部功能按钮玻璃化 */
+html[data-app="1"] .pf-foot-btn {
+  background: var(--gl-1-bg);
+  border: 1px solid var(--gl-border);
+}
+html[data-app="1"][data-perf="lite"] .pf-foot-btn {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+
+/* ============================================================================
+   会员中心 (vm)：金色玻璃卡（真金色玻璃观感）
+   ========================================================================== */
+.vm-card {
+  position: relative; overflow: hidden;
+}
+.vm-card::before {
+  /* 底层折射光晕 */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 20% 20%, rgba(255,255,255,0.4), transparent 60%),
+    radial-gradient(60% 50% at 82% 92%, rgba(255,220,128,0.3), transparent 60%);
+  border-radius: inherit;
+}
+.vm-card::after {
+  /* 边缘反射条 */
+  content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.75), transparent);
+  pointer-events: none;
+}
+.vm-plan {
+  position: relative; overflow: hidden;
+}
+.vm-plan::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(140deg, rgba(255,255,255,0.5), transparent 40%);
+  opacity: 0.5; border-radius: inherit;
+}
+.vm-plan.on::before { opacity: 0.7; }
+.vm-perk {
+  position: relative; overflow: hidden;
+  background: color-mix(in srgb, #fff 62%, transparent);
+  backdrop-filter: blur(12px) saturate(170%);
+  -webkit-backdrop-filter: blur(12px) saturate(170%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 4px 14px rgba(224,151,58,0.14);
+}
+[data-perf="lite"] .vm-perk {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.vm-perk::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.4), transparent 50%);
+  opacity: 0.6; border-radius: inherit;
+}
+.vm-go {
+  position: relative; overflow: hidden;
+}
+.vm-go::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.4) 46%, transparent 62%);
+  background-size: 240% 100%;
+  animation: vmGoShine 3.6s ease-in-out infinite;
+}
+@keyframes vmGoShine { 0%, 100% { background-position: 120% 0; } 50% { background-position: -40% 0; } }
+[data-perf="lite"] .vm-go::before { animation: none; }
+@media (prefers-reduced-motion: reduce) { .vm-go::before { animation: none; } }
+
+/* ============================================================================
+   沉浸对话（chat）：气泡玻璃化 + 输入胶囊真磨砂
+   注：既有规则里已有 .has-bg 场景的玻璃，这里再补齐无背景的常态。
+   ========================================================================== */
+html[data-app="1"] .chat-main .chat-head {
+  background: var(--gl-1-bg);
+  border-bottom: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+}
+html[data-app="1"][data-perf="lite"] .chat-main .chat-head {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+/* 有背景图的沉浸对话：头部必须保持透明深色渐变 —— 上两条常态玻璃规则与
+   前文 has-bg 透明规则同特异性且更靠后，lite 档会把头部刷成纯白，
+   压在深色立绘上就是「顶部白屏」（用户实机截图的根因）。这里以更高特异性收口。 */
+html[data-app="1"] .chat-main.has-bg .chat-head,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-head {
+  background: linear-gradient(180deg, rgba(10,8,14,0.55), rgba(10,8,14,0));
+  border-bottom: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+html[data-app="1"] .chat-main .chat-input-bar .box {
+  background: var(--gl-2-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-2-blur);
+  -webkit-backdrop-filter: var(--gl-2-blur);
+  box-shadow: var(--gl-border-in), 0 8px 22px rgba(0,0,0,0.18);
+}
+html[data-app="1"][data-perf="lite"] .chat-main .chat-input-bar .box {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+html[data-app="1"] .msg.assistant .bubble {
+  background: var(--gl-2-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-1-blur);
+  -webkit-backdrop-filter: var(--gl-1-blur);
+  box-shadow: var(--gl-border-in), 0 4px 14px rgba(0,0,0,0.14);
+}
+html[data-app="1"][data-perf="lite"] .msg.assistant .bubble {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--panel);
+}
+html[data-app="1"] .msg.user .bubble {
+  /* 用户气泡保留渐变主色（识别度），但加一层高光 */
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .msg.user .bubble::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.24), transparent 50%);
+  opacity: 0.6; border-radius: inherit;
+}
+
+/* ============================================================================
+   通话（CallScreen）：全屏玻璃控制条 + 头像光环下沁玻璃
+   ========================================================================== */
+html[data-app="1"] .call-tools,
+html[data-app="1"] .call-toolbar,
+html[data-app="1"] .call-actions {
+  background: var(--gl-2-bg);
+  border: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-2-blur);
+  -webkit-backdrop-filter: var(--gl-2-blur);
+  box-shadow: var(--gl-border-in);
+}
+
+/* ============================================================================
+   Toast 与 CommandPalette：玻璃升级
+   ========================================================================== */
+html[data-app="1"] .toast {
+  background: color-mix(in srgb, #14110d 78%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent), 0 10px 40px rgba(0,0,0,0.4);
+}
+html[data-app="1"] .cmdk,
+html[data-app="1"] .cmdk-panel {
+  background: var(--gl-3-bg);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+}
+html[data-app="1"][data-perf="lite"] .toast,
+html[data-app="1"][data-perf="lite"] .cmdk,
+html[data-app="1"][data-perf="lite"] .cmdk-panel {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
+/* ============================================================================
+   顶栏（沉浸次级页 .topbar）：真玻璃化
+   ========================================================================== */
+html[data-app="1"] .topbar {
+  background: var(--gl-2-bg);
+  border-bottom: 1px solid var(--gl-border);
+  backdrop-filter: var(--gl-2-blur);
+  -webkit-backdrop-filter: var(--gl-2-blur);
+  box-shadow: 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
+}
+html[data-app="1"][data-perf="lite"] .topbar {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--bg);
+}
+
+/* ============================================================================
+   角色详情沉浸页 cvx：吸底 CTA 玻璃条 + 顶部返回胶囊玻璃升级
+   ========================================================================== */
+html[data-app="1"] .cvx-cta {
+  background: linear-gradient(180deg, transparent 0%, rgba(13,11,18,0.72) 42%, rgba(13,11,18,0.94) 100%);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-top: 1px solid color-mix(in srgb, #fff 8%, transparent);
+}
+html[data-app="1"] .cvx-orb {
+  background: color-mix(in srgb, #000 45%, transparent);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+}
+html[data-app="1"][data-perf="lite"] .cvx-cta,
+html[data-app="1"][data-perf="lite"] .cvx-orb {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+html[data-app="1"] .cvx-tile {
+  background: color-mix(in srgb, #fff 6%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 8%, transparent);
+  backdrop-filter: blur(12px) saturate(170%);
+  -webkit-backdrop-filter: blur(12px) saturate(170%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent);
+}
+html[data-app="1"][data-perf="lite"] .cvx-tile {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
+/* （Focus 光环玻璃感块已删 —— 与另两条 :focus-visible 打架产生文本框双环，
+   焦点体系已合并到 6760 附近的唯一权威块。） */
+
+/* ============================================================================
+   全局 Glass 助手工具类（谁想额外挂玻璃就加 class）
+   ========================================================================== */
+html[data-app="1"] .g-halo {
+  position: relative; overflow: hidden;
+}
+html[data-app="1"] .g-halo::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 20% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+    radial-gradient(60% 50% at 80% 90%, color-mix(in srgb, var(--dusk) 20%, transparent), transparent 62%);
+}
+
+/* ============================================================================
+   触觉波纹：点击时圆点液态扩散（玻璃感的关键收尾）
+   仅对 .app-tab、.app-fab、.ah-sc、.pf-cell、.msgs-entry 触发
+   ========================================================================== */
+html[data-app="1"] .app-tab,
+html[data-app="1"] .ah-sc,
+html[data-app="1"] .msgs-entry,
+html[data-app="1"] .pf-cell,
+html[data-app="1"] .app-create-row { position: relative; overflow: hidden; }
+html[data-app="1"] .app-tab::after,
+html[data-app="1"] .ah-sc::after,
+html[data-app="1"] .msgs-entry::after,
+html[data-app="1"] .pf-cell::after,
+html[data-app="1"] .app-create-row::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%),
+    color-mix(in srgb, var(--accent) 28%, transparent) 0%,
+    transparent 45%);
+  opacity: 0; transition: opacity 0.4s ease;
+}
+html[data-app="1"] .app-tab:active::after,
+html[data-app="1"] .ah-sc:active::after,
+html[data-app="1"] .msgs-entry:active::after,
+html[data-app="1"] .pf-cell:active::after,
+html[data-app="1"] .app-create-row:active::after {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .app-tab::after,
+  html[data-app="1"] .ah-sc::after,
+  html[data-app="1"] .msgs-entry::after,
+  html[data-app="1"] .pf-cell::after,
+  html[data-app="1"] .app-create-row::after { display: none; }
+}
+
+/* ============================================================================
+   深色主题下卡片阴影更深（玻璃的层次感靠阴影支撑）
+   ========================================================================== */
+html[data-app="1"][data-theme="dark"] .msgs-entry,
+html[data-app="1"][data-theme="dark"] .msgs-conv,
+html[data-app="1"][data-theme="dark"] .ah-task,
+html[data-app="1"][data-theme="dark"] .ah-pick,
+html[data-app="1"][data-theme="dark"] .pf-cell,
+html[data-app="1"][data-theme="dark"] .pf-assets,
+html[data-app="1"][data-theme="dark"] .pf-foot-btn {
+  box-shadow: var(--gl-border-in), 0 6px 20px rgba(0,0,0,0.32);
+}
+
+/* ============================================================================
+   移动 web 端底导航同样玻璃化（非 app 壳也美化，因为响应式 web 常在手机上打开）
+   ========================================================================== */
+@media (max-width: 760px) {
+  .bottom-nav {
+    background: color-mix(in srgb, var(--bg) 68%, transparent) !important;
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent), 0 -8px 28px rgba(0,0,0,0.18);
+  }
+  [data-perf="lite"] .bottom-nav {
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    background: var(--bg) !important;
+  }
+}
+
+/* ============================================================================
+   FIX: 避免 backdrop-filter 与 overflow:hidden 的 iOS Safari 组合导致模糊失效
+   办法：单独把玻璃层的容器 will-change，触发合成层
+   ========================================================================== */
+html[data-app="1"] .app-tabbar,
+html[data-app="1"] .app-sheet,
+html[data-app="1"] .fd2-intro,
+html[data-app="1"] .fd2-say,
+html[data-app="1"] .msgs-head,
+html[data-app="1"] .topbar,
+html[data-app="1"] .cvx-cta {
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+}
+
+/* ============================================================================
+   底部栏：白 + 青 磨砂玻璃（仅 APP）
+   —— 深色壳里那条近黑的 Dock 太压抑；这里把它单独换成清透的白+青毛玻璃。
+   毛玻璃「不改变」：即便 perf=lite 也为这一条固定栏保留 backdrop blur（开销可忽略）。
+   仅 html[data-app="1"] 生效 → Web（data-app="0"）完全不受影响。
+   三个语境全覆盖（base / lite / glass-on），并列以「等特异性后写者胜」压过上面各条。
+   ========================================================================== */
+html[data-app="1"] .app-tabbar,
+html[data-app="1"][data-perf="lite"] .app-tabbar,
+html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .app-tabbar {
+  background: linear-gradient(180deg, rgba(240,253,255,0.82), rgba(214,245,251,0.90));
+  border-top: 1px solid rgba(34,211,238,0.42);
+  backdrop-filter: saturate(1.7) blur(24px);
+  -webkit-backdrop-filter: saturate(1.7) blur(24px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    0 -8px 30px rgba(8,145,178,0.16);
+}
+/* 反射高光：浅底上改为极淡青白，噪点降到几不可见 */
+html[data-app="1"] .app-tabbar::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+  opacity: 0.9;
+}
+html[data-app="1"] .app-tabbar::after { opacity: 0.03; }
+/* lite 档也保留高光/噪点（上文 6760 会 display:none，这里恢复以维持毛玻璃质感） */
+html[data-app="1"][data-perf="lite"] .app-tabbar::before { display: block; }
+html[data-app="1"][data-perf="lite"] .app-tabbar::after { display: block; opacity: 0.03; }
+
+/* 关键布局修复：上面的 iOS 模糊兼容段（.app-tabbar { transform: translateZ(0) }）
+   会覆盖底栏居中用的 transform: translateX(-50%)，导致 Dock 被推到视口右半、
+   "+"钮被右缘裁掉、消息/我的溢出到屏外（即截图现象）。这里把两者合并写回，
+   等特异性后写者胜，既保留合成层提示又恢复居中。 */
+html[data-app="1"] .app-tabbar { transform: translateX(-50%) translateZ(0); }
+
+/* 浅底上的文字/图标对比（原来近白，会看不见）→ 青灰 / teal */
+html[data-app="1"] .app-tab { color: color-mix(in srgb, #0e7490 42%, #64748b); }
+html[data-app="1"] .app-tab.active { color: #0e7490; }
+html[data-app="1"] .dock-ink { background: color-mix(in srgb, #22d3ee 26%, transparent); }
+
+/* 中央 +AI 钮：清透白玻璃 + teal 描边字，与白+青底一致 */
+html[data-app="1"] .app-fab {
+  background: rgba(255,255,255,0.42);
+  border-color: #0e7490;
+  color: #0e7490;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 6px 18px rgba(8,145,178,0.20);
+}
+html[data-app="1"] .app-fab::before {
+  background: linear-gradient(135deg, rgba(255,255,255,0.6), transparent 55%);
+}
+html[data-app="1"] .app-fab:active,
+html[data-app="1"] .app-fab.open {
+  background: color-mix(in srgb, #22d3ee 20%, rgba(255,255,255,0.5));
+  border-color: #0e7490;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 8px 22px rgba(8,145,178,0.30);
+}
+/* 未读红点：浅底上用玫红 + 白环，依旧醒目 */
+html[data-app="1"] .app-dot {
+  background: #f43f5e;
+  box-shadow: 0 0 0 2px rgba(240,253,255,0.95);
+}
+
+

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { useAuth, api } from '../api.jsx';
 import { Avatar } from '../ui.jsx';
 import { getThemeMode, resolveTheme, setThemeMode } from '../theme.js';

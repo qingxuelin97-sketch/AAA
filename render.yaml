@@ -9,6 +9,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Render 流量必经平台反代：信任 1 跳才能从 X-Forwarded-For 还原真实客户端 IP，
+      # 否则按 IP 的限流/注册配额/登录锁定全部退化为共享代理 IP（详见 server/index.js）。
+      - key: TRUST_PROXY
+        value: "1"
       - key: DB_PATH
         value: /data/data.sqlite
       - key: JWT_SECRET

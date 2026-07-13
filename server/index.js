@@ -46,15 +46,37 @@ const PORT = process.env.PORT || 4000;
 //  · TRUST_PROXY=0 强制关闭；TRUST_PROXY=N 信任前 N 跳（多层代理/云 LB）。
 const _tp = process.env.TRUST_PROXY;
 app.set('trust proxy', (_tp == null || _tp === '') ? 'loopback' : (_tp === '0' ? false : (Number(_tp) || _tp)));
+// 部署自检：Render / Railway / Fly 等 PaaS 的流量必经平台反代（非回环 IP），
+// 默认 'loopback' 会拒信平台注入的 XFF → req.ip 退化成全体用户共享的代理 IP，
+// 按 IP 的注册配额/登录锁定/匿名限流全部失效（要么全站互相误伤、要么形同虚设）。
+// 这类平台必须显式设 TRUST_PROXY=1（层数按实际反代跳数），这里只大声告警不擅自改值——
+// 直连公网的部署（阿里云 pm2 直听 :4000）默认 'loopback' 才是对的，改了反而开放 XFF 伪造。
+if ((_tp == null || _tp === '') && (process.env.RENDER || process.env.RAILWAY_ENVIRONMENT || process.env.FLY_APP_NAME)) {
+  console.error('[security] 检测到 PaaS 反代环境但未设置 TRUST_PROXY —— 按 IP 的限流/注册配额/登录锁定已退化为共享代理 IP，请设置 TRUST_PROXY=1（多层代理按实际跳数）。');
+}
 
-// CORS：来自环境变量 CORS_ORIGINS（逗号分隔）的白名单；未配置则允许所有来源，
-// 保证同源部署（前后端在同一阿里云实例）和静态托管+独立后端的场景都能开箱可用。
+// CORS：来自环境变量 CORS_ORIGINS（逗号分隔）的白名单。未配置时不再对任意
+// 来源放行 —— 默认只认 Capacitor/Ionic 原生壳 WebView 的固定来源；同源部署
+//（前后端同一实例）的请求浏览器本就不做跨域拦截、无 Origin 的请求（curl /
+// 原生 http 客户端 / 同源 GET）照常放行，两类主力场景零配置可用。
+// 静态托管 + 独立后端的跨域 Web 部署需显式配置 CORS_ORIGINS（启动时有提示）。
+// 注：cors 中间件对未匹配 origin 只是不下发 ACAO 头（浏览器侧拒读响应），
+// 并不中断请求 —— 数据鉴权仍由各路由 authRequired 把关，此处是纵深防御，
+// 收掉「任意网站可驱动已登录用户浏览器调 API / 放大爬取面」的口子。
+// 原生壳 WebView 与本机开发器的来源：capacitor://localhost（iOS）、
+// http(s)://localhost[:端口]（Android androidScheme / vite dev）。Origin 头
+// 浏览器不可伪造，localhost 来源不构成跨站攻击面，默认放行不损防御。
+const CAP_SHELL_ORIGIN_RE = /^(https?|capacitor|ionic):\/\/localhost(:\d+)?$/i;
 const ALLOWED_ORIGINS = new Set(
   (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
 );
+if (!ALLOWED_ORIGINS.size && process.env.NODE_ENV === 'production') {
+  console.warn('[security] CORS_ORIGINS 未配置：跨域仅默认放行原生壳来源（localhost / capacitor://）。独立托管的 Web 前端请显式设置 CORS_ORIGINS=https://你的域名。');
+}
 app.use(cors({
   origin: (origin, cb) => {
-    if (!ALLOWED_ORIGINS.size || !origin || ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+    if (!origin) return cb(null, true); // 同源 / curl / 原生客户端：无 Origin，无需 CORS 头
+    if (ALLOWED_ORIGINS.size ? ALLOWED_ORIGINS.has(origin) : CAP_SHELL_ORIGIN_RE.test(origin)) return cb(null, true);
     return cb(null, false);
   },
   credentials: false,
@@ -88,6 +110,11 @@ app.use('/api', (req, _res, next) => {
   if (h.startsWith('Bearer ')) {
     try { jwt.verify(h.slice(7), SECRET, { algorithms: ['HS256'] }); req.rlAuthed = true; } catch { /* 按匿名档 */ }
   }
+  // 原生壳设备标识（反单设备多注册，见 routes/auth.js /register）。仅做格式
+  // 校验，不合法即丢弃 —— 该值本质是客户端自报（root/模拟器可伪造），只作
+  // 配额与审计信号，不承担鉴权，任何路由不得据此放宽权限。
+  const did = String(req.headers['x-device-id'] || '');
+  req.deviceId = /^[A-Za-z0-9-]{8,64}$/.test(did) ? did : '';
   next();
 });
 app.use('/api', rateLimit({ windowMs: 60_000, max: (req) => (req.rlAuthed ? 240 : 60), standardHeaders: true, legacyHeaders: false }));

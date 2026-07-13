@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Modal, Uploader } from '../ui.jsx';
 import { generateImage } from '../imagegen.js';
@@ -141,7 +142,7 @@ export default function NovelWorkspace() {
     try { await loadRun(run.id); } catch { /* 网络异常则保留本地，避免丢内容 */ }
     if (!errored) {
       refreshRuns();
-      try { api('/engage/track', { method: 'POST', body: { action: 'novel' } }); } catch { /* */ }
+      // 每日任务 'novel' 计数由服务端写作路由（novels.js）在真实产出时 bump，无需客户端上报。
       if (autoSync && !rewriteId) syncCanon(true);
     }
     return !errored;

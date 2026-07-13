@@ -19,6 +19,7 @@ import { useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { isAppMode } from './appmode.js';
 import { isLite } from './perf.js';
+import { isWarm } from './routeChunks.js';
 
 // 一级 tab 序（横滑与底栏共用）；tab 间切换按索引方向左右滑。
 export const SWIPE_TABS = ['/today', '/', '/messages', '/me'];
@@ -64,9 +65,12 @@ export function computeDir(from, to, navType) {
   return 'push';
 }
 
-// 把一次导航包进 View Transition。update callback 里 race 一个 500ms 超时：
-// lazy chunk 网络慢时宁可提前放行（轻微跳变）也绝不冻住整屏 —— VT 等待期间
-// 画面是冻结的，这个上限就是「点按到动画起步」的最坏空窗，宁短勿长。
+// 把一次导航包进 View Transition。update callback 里 race 一个 180ms 超时：
+// VT 等待新页 commit 期间画面是冻结的，这个上限就是「点按到动画起步」的最坏
+// 空窗，宁短勿长。冷 chunk（网络拉取不可控）已在 useNav 处直接跳过 VT 走
+// CSS 兜底（见 routeChunks.isWarm），进到这里的等待只剩「热 chunk 但 React
+// 提交意外慢」——180ms 在体感阈值内，超了宁可轻微跳变也不冻屏。
+const VT_FUSE_MS = 180;
 function runVT(dir, go) {
   cancelActiveVT(); // 快速连点：先掐掉上一个（浏览器也会 skip，这里显式收口）
   const html = document.documentElement;
@@ -78,7 +82,7 @@ function runVT(dir, go) {
   try {
     vt = document.startViewTransition(() => {
       go();
-      return Promise.race([committed, new Promise(r => setTimeout(r, 500))]);
+      return Promise.race([committed, new Promise(r => setTimeout(r, VT_FUSE_MS))]);
     });
   } catch {
     delete html.dataset.vt;
@@ -109,7 +113,11 @@ export function useNav() {
   const loc = useLocation();
   const from = loc.pathname;
   return useCallback((to, opts) => {
-    if (!vtEnabled() || vtSkipPath(from) || (typeof to !== 'number' && vtSkipPath(pathOf(to)))) {
+    // 冷 chunk 跳过 VT：目标页代码未落地时，VT 只能冻屏干等网络。直接导航走
+    // CSS 方向入场兜底（Suspense 期零冻结），且本次加载就把 chunk 焐热 ——
+    // 同一路由第二次导航起恢复完整 VT。数字型 to（history.go）必是访问过的页，不查。
+    const cold = typeof to !== 'number' && !isWarm(pathOf(to));
+    if (!vtEnabled() || cold || vtSkipPath(from) || (typeof to !== 'number' && vtSkipPath(pathOf(to)))) {
       cancelActiveVT(); // 不走 VT 的导航也必须先掐掉进行中的快照，否则残影叠加
       navigate(to, opts);
       return;

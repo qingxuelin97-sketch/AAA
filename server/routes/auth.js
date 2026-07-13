@@ -11,7 +11,8 @@ import { log } from '../logger.js';
 const router = Router();
 
 // 登录/注册：每 15 分钟最多 10 次/IP，防撞库与批量注册。
-const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: 10, standardHeaders: true, legacyHeaders: false,
+// 测试环境可通过 AUTH_RATE_LIMIT 放宽（默认 10，同 codeLimiter 的 MAIL_CODE_IP_LIMIT 先例）。
+const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: Number(process.env.AUTH_RATE_LIMIT) || 10, standardHeaders: true, legacyHeaders: false,
   message: { error: '尝试过于频繁，请稍后再试' } });
 
 // 发送验证码：每 10 分钟最多 5 次/IP + 每邮箱 3 次，防短信邮件轰炸。
@@ -116,6 +117,26 @@ router.post('/register', authLimiter, async (req, res) => {
     }
   }
 
+  // 同设备注册配额（原生壳）：X-Device-Id（index.js 格式校验后挂 req.deviceId）
+  // 30 天内 3 个成功注册封顶 —— 换 IP 开小号在设备维度被拦。诚实边界：设备
+  // 标识可被 root/模拟器/恢复出厂重置，此闸只拦普通用户开小号与低成本脚本，
+  // 不是对抗专业黑产的防线（那是 Play Integrity 的活）。缺失设备头不硬拒
+  //（Web 壳/浏览器没有），但「原生 UA + 无设备头」是破解客户端信号，落 warn 审计。
+  const deviceId = req.deviceId || '';
+  if (deviceId) {
+    const n = db.prepare("SELECT COUNT(*) AS n FROM users WHERE reg_device = ? AND created_at > datetime('now', '-30 day')").get(deviceId).n;
+    if (n >= 3) {
+      log({ level: 'warn', source: 'server', category: 'auth', event: 'register_device_capped',
+        message: `注册设备配额触发 ${deviceId.slice(0, 12)}…`, ip, ua: req.header('user-agent') || '',
+        endpoint: '/auth/register', method: 'POST', status: 429, request_id: req.requestId || '', extra: { device: deviceId } });
+      return res.status(429).json({ error: '该设备注册的账号数已达上限' });
+    }
+  } else if (/huanyu|capacitor/i.test(req.header('user-agent') || '') ) {
+    log({ level: 'warn', source: 'server', category: 'auth', event: 'register_no_device_id',
+      message: '疑似原生壳注册但未携带设备标识（客户端被改装？）', ip, ua: req.header('user-agent') || '',
+      endpoint: '/auth/register', method: 'POST', status: 200, request_id: req.requestId || '' });
+  }
+
   // 校验验证码：取该邮箱最新一条未消费且未过期的记录，比对并防爆破（最多 5 次尝试）。
   const row = db.prepare('SELECT * FROM email_codes WHERE email = ? AND consumed = 0 ORDER BY id DESC LIMIT 1').get(e);
   if (!row) return res.status(400).json({ error:'请先获取验证码' });
@@ -142,8 +163,8 @@ router.post('/register', authLimiter, async (req, res) => {
   const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
   let info;
   try {
-    info = db.prepare('INSERT INTO users (username, email, email_canon, reg_ip, password_hash, display_name, gold) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(username, e, canon, ip, hash, (display_name || username).slice(0, 30), 300);
+    info = db.prepare('INSERT INTO users (username, email, email_canon, reg_ip, reg_device, password_hash, display_name, gold) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(username, e, canon, ip, deviceId || null, hash, (display_name || username).slice(0, 30), 300);
   } catch (err) {
     // 并发撞名等插入失败：退还刚扣掉的邀请额度，再报错。
     if (key) db.prepare('UPDATE invite_keys SET used = used - 1 WHERE code = ? AND used > 0').run(key.code);
@@ -216,7 +237,13 @@ router.post('/login', authLimiter, async (req, res) => {
 
 router.get('/me', authRequired, (req, res) => {
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-  res.json({ user: publicUser(row) });
+  const out = { user: publicUser(row) };
+  // 滑动续期：token 签发超过 7 天的活跃用户随响应换发新 token（14 天有效期
+  // 重新起算，见 auth.js sign）。活跃用户永不掉线；闲置/被盗的 token 最多
+  // 存活 14 天。客户端（api.jsx AuthProvider）收到 token 字段即静默替换。
+  const ageSec = Math.floor(Date.now() / 1000) - (req.tokenIat || 0);
+  if (req.tokenIat && ageSec > 7 * 86400) out.token = sign(row);
+  res.json(out);
 });
 
 router.put('/me', authRequired, (req, res) => {
@@ -236,15 +263,24 @@ router.put('/me', authRequired, (req, res) => {
     emailVal = e;
   }
   // 头像/横幅 URL 只允许 http(s)/站内相对路径/data:image，拒绝 javascript: 等危险 scheme。
+  // data:image 超过 500 字符的（内联 base64 图片必然超）此前被静默 slice 截断成
+  // 坏图入库 —— 现在明确拒绝并提示走上传接口；http(s)/相对路径超长仍截断（URL 截断无毒）。
+  const OVERLONG_DATA = Symbol('overlong-data-uri');
   const safeUrlField = (v) => {
     if (!v) return null; // 空/未传 → COALESCE 保持原值
-    const s = String(v).slice(0, 500).trim();
-    return (/^(https?:\/\/|\/)/i.test(s) || /^data:image\//i.test(s)) ? s : null;
+    const raw = String(v).trim();
+    if (/^data:image\//i.test(raw)) return raw.length <= 500 ? raw : OVERLONG_DATA;
+    const s = raw.slice(0, 500);
+    return /^(https?:\/\/|\/)/i.test(s) ? s : null;
   };
+  const avatarVal = safeUrlField(avatar), bannerVal = safeUrlField(banner);
+  if (avatarVal === OVERLONG_DATA || bannerVal === OVERLONG_DATA) {
+    return res.status(400).json({ error: '内联图片过大，请使用「上传图片」而非直接粘贴 base64' });
+  }
   db.prepare(`UPDATE users SET display_name = COALESCE(?, display_name), bio = COALESCE(?, bio),
     avatar = COALESCE(?, avatar), banner = COALESCE(?, banner), email = COALESCE(?, email) WHERE id = ?`)
     .run(display_name ? String(display_name).slice(0, 30) : null, bio ? String(bio).slice(0, 500) : null,
-      safeUrlField(avatar), safeUrlField(banner), emailVal, req.user.id);
+      avatarVal, bannerVal, emailVal, req.user.id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   res.json({ user: publicUser(user) });
 });

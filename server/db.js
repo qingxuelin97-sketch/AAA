@@ -355,6 +355,9 @@ for (const sql of [
   //（去 +tag / gmail 去点，封别名邮箱无限注册）。
   'ALTER TABLE users ADD COLUMN reg_ip TEXT',
   'ALTER TABLE users ADD COLUMN email_canon TEXT',
+  // 反单设备多注册：原生壳注册时记录设备标识（Android ANDROID_ID / iOS
+  // identifierForVendor，经 X-Device-Id 头上报），按设备限 30 天注册配额。
+  'ALTER TABLE users ADD COLUMN reg_device TEXT',
   'ALTER TABLE transactions ADD COLUMN ref_owner INTEGER',
   'ALTER TABLE conversations ADD COLUMN affinity INTEGER DEFAULT 0',
   "ALTER TABLE conversations ADD COLUMN memories TEXT DEFAULT '[]'",

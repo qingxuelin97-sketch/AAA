@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
 import { EmptyArt } from '../art.jsx';
@@ -72,25 +72,29 @@ export default function Notifications() {
         </div>
 
         {loading ? (
-          <div className="empty">载入中…</div>
+          /* 骨架屏：三行占位微光，避免「载入中…」文本闪一下的毛坯感 */
+          <div className="noti-list" aria-hidden="true">
+            {[64, 64, 64].map((h, i) => <div key={i} className="skel" style={{ height: h, marginBottom: 10 }} />)}
+          </div>
         ) : shown.length === 0 ? (
           <div className="empty"><EmptyArt kind="notifications" />{tab === 'unread' ? '没有未读通知' : '暂时没有新通知'}</div>
         ) : (
-          <div className="noti-list">
+          /* stagger-in：通知行依次浮现（app-motion 层，lite/reduced-motion 自动退化） */
+          <div className="noti-list stagger-in">
             {groups.map(([label, arr]) => (
               <React.Fragment key={label}>
                 <div className="noti-group">{label}</div>
                 {arr.map(n => {
                   const [kind, Ic] = iconFor(n.text);
                   return (
-                    <div key={n.id} className={'noti-item ' + kind + (n.read ? '' : ' unread')}
+                    <div key={n.id} className={'noti-item pressable ' + kind + (n.read ? '' : ' unread')}
                       onClick={() => n.link && nav(n.link)} style={{ cursor: n.link ? 'pointer' : 'default' }}>
                       <span className="noti-ic"><Ic size={17} /></span>
                       <div className="noti-tx">
                         <div className="noti-body">{n.text}</div>
                         <div className="noti-time">{fmtDate(n.created_at)}</div>
                       </div>
-                      {!n.read && <span className="noti-dot" />}
+                      {!n.read && <span className="noti-dot pulse-dot" />}
                     </div>
                   );
                 })}
