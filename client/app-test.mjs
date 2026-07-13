@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { registrationRequestHash as clientHash } from './src/playIntegrity.js';
 import { registrationRequestHash as serverHash } from '../server/integrity.js';
 import { mergeMessages, messageId } from './src/groupMessages.js';
@@ -14,4 +15,12 @@ assert.deepEqual(ordered.map(messageId), [10, 11, 12], 'messages must be sorted 
 assert.equal(ordered.length, 3, 'SSE/poll duplicates must collapse');
 assert.equal(ordered[2].content, 'updated', 'newest duplicate payload must win');
 
-console.log('app invariants: 4/4 passed');
+const runtimeCss = await readFile(new URL('./src/styles/app-runtime.css', import.meta.url), 'utf8');
+assert.doesNotMatch(
+  runtimeCss,
+  /data-insecure-http[^\n{]*body::after/,
+  'HTTP badge must not share the global body texture pseudo-element',
+);
+assert.match(runtimeCss, /data-insecure-http[^\n{]*\.http-test-badge/, 'HTTP badge must use its own DOM node');
+
+console.log('app invariants: 6/6 passed');
