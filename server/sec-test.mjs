@@ -51,7 +51,7 @@ const register = async (username, email, extraHeaders = {}) => {
   const r = await post('/auth/register', { username, password: 'Passw0rd!', email, code }, null, extraHeaders);
   return { status: r.status, ...(await J(r)) };
 };
-// 把既有用户的注册时间挪出 24h IP 配额窗（30 天设备窗不受影响），供后续注册用例隔离。
+// 把既有用户的注册时间挪出 24h IP 配额窗（设备终身配额不看时间，不受影响），供后续注册用例隔离。
 const backdateAll = () => {
   const db = new Database(DB_PATH);
   db.prepare("UPDATE users SET created_at = datetime('now', '-2 days')").run();
@@ -112,16 +112,22 @@ try {
   ok(chatT && chatT.progress === 0, `客户端上报 chat 不计任务进度（progress=${chatT?.progress}）`);
   ok(gachaT && gachaT.progress >= 1, `扭蛋机 gacha 上报仍计数（progress=${gachaT?.progress}）`);
 
-  // 6) 同设备注册配额：同 X-Device-Id 30 天内 3 号封顶（IP 窗每轮回拨隔离）
+  // 6) 同设备注册配额：同 X-Device-Id 终身 1 号封顶（默认 DEVICE_REG_QUOTA=1，无时间窗）
   const DEV = 'devicequota-test-0001';
   backdateAll();
   const d1 = await register('dev_u1', 'dev1@test.dev', { 'X-Device-Id': DEV });
+  ok(!!d1.token, `同设备首个注册成功 → ${d1.status}`);
+  backdateAll(); // 让 IP 日配额出窗，只留设备终身配额生效
   const d2 = await register('dev_u2', 'dev2@test.dev', { 'X-Device-Id': DEV });
+  ok(d2.status === 429 && /设备/.test(d2.error || ''), `同设备第 2 个注册被设备配额拦截 → ${d2.status} ${d2.error || ''}`);
+  // 无时间窗：把该设备的注册回拨 60 天，仍然被拦（旧 30 天窗的「等风头过再开小号」通道已封死）
+  {
+    const db = new Database(DB_PATH);
+    db.prepare("UPDATE users SET created_at = datetime('now', '-60 day') WHERE reg_device = ?").run(DEV);
+    db.close();
+  }
   const d3 = await register('dev_u3', 'dev3@test.dev', { 'X-Device-Id': DEV });
-  ok(d1.token && d2.token && d3.token, `同设备前 3 个注册成功 (${d1.status}/${d2.status}/${d3.status})`);
-  backdateAll(); // 让 IP 日配额出窗，只留设备 30 天窗生效
-  const d4 = await register('dev_u4', 'dev4@test.dev', { 'X-Device-Id': DEV });
-  ok(d4.status === 429 && /设备/.test(d4.error || ''), `同设备第 4 个注册被设备配额拦截 → ${d4.status} ${d4.error || ''}`);
+  ok(d3.status === 429 && /设备/.test(d3.error || ''), `60 天前的注册仍占用设备名额 → ${d3.status} ${d3.error || ''}`);
   const d5 = await register('dev_u5', 'dev5@test.dev', { 'X-Device-Id': 'another-device-000042' });
   ok(!!d5.token, `换设备注册放行 → ${d5.status}`);
   const dBad = await register('dev_u6', 'dev6@test.dev', { 'X-Device-Id': 'x'.repeat(200) });

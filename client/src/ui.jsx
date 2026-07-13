@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { uploadFile, assetUrl } from './api.jsx';
+import { useExitClose, exitMs } from './motion.js';
 import { UploadCloud, UserRound, CheckCircle2, AlertTriangle, Info, Scale, BadgeCheck, ShieldCheck, Crown } from 'lucide-react';
 import { FACE_PRESETS, ANIME_PRESETS, ONLINE_AV } from './faces.js';
 
@@ -14,6 +15,10 @@ export function ToastProvider({ children }) {
   const show = useCallback((msg, type = 'ok') => {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t.slice(-3), { id, msg, type }]);
+    // 退场分两拍：先标记 out 播退场动画，再真正移除。exitMs 为 0（Web 壳 /
+    // lite / 减弱动效）时跳过标记，行为与旧版完全一致。
+    const out = exitMs(300);
+    if (out) setTimeout(() => setToasts((t) => t.map((x) => x.id === id ? { ...x, out: true } : x)), 2800 - out);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2800);
   }, []);
   return (
@@ -23,7 +28,7 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => {
           const Ic = TOAST_IC[t.type] || TOAST_IC.ok;
           return (
-            <div key={t.id} className={'toast toast-' + (t.type === 'err' ? 'err' : t.type === 'info' ? 'info' : 'ok')}>
+            <div key={t.id} className={'toast toast-' + (t.type === 'err' ? 'err' : t.type === 'info' ? 'info' : 'ok') + (t.out ? ' out' : '')}>
               <span className="toast-ic"><Ic size={17} /></span>
               <span className="toast-msg">{t.msg}</span>
             </div>
@@ -209,6 +214,7 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
       </div>
       {open && (
         <Modal onClose={() => setOpen(false)}>
+          <WithModalClose>{(close) => (<>
           <h2 style={{ marginTop: 0 }}>选择头像</h2>
           <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>从真人风格脸模预设中挑选，或上传自定义图片。</p>
           <div className="seg" style={{ marginBottom: 14 }}>
@@ -218,7 +224,7 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
           </div>
           <div className="face-grid">
             {list.map(p => (
-              <button key={p.id} className={'face-opt' + (value === p.url ? ' on' : '')} onClick={() => { onChange(p.url); setOpen(false); }}>
+              <button key={p.id} className={'face-opt' + (value === p.url ? ' on' : '')} onClick={() => { onChange(p.url); close(); }}>
                 <img src={p.url} alt="" />
               </button>
             ))}
@@ -228,7 +234,7 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
               <div className="muted" style={{ fontSize: 12, margin: '12px 0 6px' }}>在线二次元头像 · 实时随机（来自开源社区图接口，每次不同）</div>
               <div className="face-grid">
                 {ONLINE_AV.map(p => (
-                  <button key={p.name} className={'face-opt' + (value === p.url ? ' on' : '')} title={p.name} onClick={() => { onChange(p.url); setOpen(false); }}>
+                  <button key={p.name} className={'face-opt' + (value === p.url ? ' on' : '')} title={p.name} onClick={() => { onChange(p.url); close(); }}>
                     <img src={p.url} alt={p.name} loading="lazy" referrerPolicy="no-referrer" />
                   </button>
                 ))}
@@ -241,24 +247,45 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
             </div>
             <div className="muted" style={{ fontSize: 12.5, flex: 1 }}>也可上传自定义图片（点击左侧圆形）。上传后点击右上角关闭即可。</div>
           </div>
-          <button className="btn block" style={{ marginTop: 14 }} onClick={() => setOpen(false)}>完成</button>
+          <button className="btn block" style={{ marginTop: 14 }} onClick={close}>完成</button>
+          </>)}</WithModalClose>
         </Modal>
       )}
     </>
   );
 }
 
+// Modal 内部可用 useModalClose() 拿到「带退场动画」的关闭函数（等价于点击
+// 遮罩/按 ESC 的路径）。调用点内自己的「完成/取消」按钮直接调父级 onClose 仍
+// 是瞬时关闭 —— 渐进迁移到 useModalClose 即获得退场，两种写法都正确。
+const ModalCloseCtx = createContext(null);
+export const useModalClose = () => useContext(ModalCloseCtx);
+
+// render-prop 形式：Modal 的直接使用方（自身不在 Provider 之内）无法直接
+// useModalClose，用它把带退场的 close 递进内容里。
+// 用法：<Modal onClose={…}><WithModalClose>{close => (…)}</WithModalClose></Modal>
+export function WithModalClose({ children }) {
+  return children(useModalClose());
+}
+
 export function Modal({ children, onClose }) {
+  // 退场：遮罩点击/ESC 先播 .out 退场动画（APP 壳 200ms，Web/lite/减弱动效
+  // 瞬时）再卸载。.out 配套 CSS 置 pointer-events:none —— 退场中的弹窗立即
+  // 让路，不产生二次交互等待期（见 app-motion.css 浮层退场段）。
+  const [closing, requestClose] = useExitClose(onClose, 200);
+  const close = onClose ? requestClose : undefined;
   // ESC 关闭 + 无障碍语义：桌面端用户习惯按 ESC 关闭弹窗，并补充 dialog 角色供读屏识别。
   useEffect(() => {
-    if (!onClose) return;
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    if (!close) return;
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [close]);
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="card modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>{children}</div>
+    <div className={'modal-backdrop' + (closing ? ' out' : '')} onClick={close}>
+      <div className="card modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+        <ModalCloseCtx.Provider value={close}>{children}</ModalCloseCtx.Provider>
+      </div>
     </div>
   );
 }

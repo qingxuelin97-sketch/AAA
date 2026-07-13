@@ -118,18 +118,22 @@ router.post('/register', authLimiter, async (req, res) => {
   }
 
   // 同设备注册配额（原生壳）：X-Device-Id（index.js 格式校验后挂 req.deviceId）
-  // 30 天内 3 个成功注册封顶 —— 换 IP 开小号在设备维度被拦。诚实边界：设备
-  // 标识可被 root/模拟器/恢复出厂重置，此闸只拦普通用户开小号与低成本脚本，
-  // 不是对抗专业黑产的防线（那是 Play Integrity 的活）。缺失设备头不硬拒
-  //（Web 壳/浏览器没有），但「原生 UA + 无设备头」是破解客户端信号，落 warn 审计。
+  // 一台设备终身 1 个账号（产品决策；DEVICE_REG_QUOTA 环境变量可放宽），
+  // 不设时间窗 —— 曾是 30 天 3 个，等 30 天再开小号的通道一并封死。管理员
+  // 删除账号会释放名额（按 users 表现存记录计数），换机/合规特批走 GM 处理。
+  // 诚实边界：设备标识可被 root/模拟器/恢复出厂重置，此闸只拦普通用户开
+  // 小号与低成本脚本，不是对抗专业黑产的防线（那是 Play Integrity 的活）。
+  // 缺失设备头不硬拒（Web 壳/浏览器没有），但「原生 UA + 无设备头」是破解
+  // 客户端信号，落 warn 审计。
+  const DEVICE_REG_QUOTA = Number(process.env.DEVICE_REG_QUOTA) || 1;
   const deviceId = req.deviceId || '';
   if (deviceId) {
-    const n = db.prepare("SELECT COUNT(*) AS n FROM users WHERE reg_device = ? AND created_at > datetime('now', '-30 day')").get(deviceId).n;
-    if (n >= 3) {
+    const n = db.prepare('SELECT COUNT(*) AS n FROM users WHERE reg_device = ?').get(deviceId).n;
+    if (n >= DEVICE_REG_QUOTA) {
       log({ level: 'warn', source: 'server', category: 'auth', event: 'register_device_capped',
         message: `注册设备配额触发 ${deviceId.slice(0, 12)}…`, ip, ua: req.header('user-agent') || '',
         endpoint: '/auth/register', method: 'POST', status: 429, request_id: req.requestId || '', extra: { device: deviceId } });
-      return res.status(429).json({ error: '该设备注册的账号数已达上限' });
+      return res.status(429).json({ error: DEVICE_REG_QUOTA === 1 ? '该设备已注册过账号 —— 每台设备仅限注册一个账号，请直接登录' : '该设备注册的账号数已达上限' });
     }
   } else if (/huanyu|capacitor/i.test(req.header('user-agent') || '') ) {
     log({ level: 'warn', source: 'server', category: 'auth', event: 'register_no_device_id',

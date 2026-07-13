@@ -65,9 +65,33 @@ function initTilt() {
   }, { passive: true });
 }
 
+// APP 壳全局触感层：按下任何可交互元素给一记轻触感 —— 「看得见的反馈」
+// （涟漪/按压缩放）配「摸得着的反馈」，一处委托全站生效。
+//  · 仅 APP 壳且平台支持 vibrate（iOS WebView 无此 API，天然静默不报错）；
+//  · 80ms 节流：多指/快速连点不至于变成蜂鸣；
+//  · lite 档不震（省电档动画都停了，马达也歇）；[data-nohaptic] 为元素级
+//    逃生口（挂在自身或祖先上即跳过，供未来高频输入场景退出）。
+function initHaptics() {
+  if (document.documentElement.dataset.app !== '1') return;
+  if (typeof navigator.vibrate !== 'function') return;
+  const SEL = 'button, a[href], [role="button"], [role="tab"], [role="switch"], input[type="checkbox"], input[type="radio"], select, .pressable';
+  let last = 0;
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    if (document.documentElement.dataset.perf === 'lite') return;
+    const t = e.target.closest?.(SEL);
+    if (!t || t.disabled || t.closest('[data-nohaptic]')) return;
+    const now = performance.now();
+    if (now - last < 80) return;
+    last = now;
+    try { navigator.vibrate(4); } catch { /* */ }
+  }, { passive: true });
+}
+
 export function initFx() {
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   initTilt();
+  initHaptics();
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     const t = e.target.closest('.btn, .nav-item, .cast-chip, .seg button, .cat-bar button, .send-btn, .task-row .btn, .theme-seg button, .tabs-bar button');

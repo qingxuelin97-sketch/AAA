@@ -16,6 +16,7 @@ import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import RouteErrorBoundary from './RouteErrorBoundary.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
+import { useExitClose } from '../motion.js';
 import { useNav, appBack, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
 import { preheat } from '../routeChunks.js';
 import {
@@ -47,6 +48,10 @@ export default function AppLayout({ children }) {
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
   const [sheet, setSheet] = useState(false); // create sheet open?
+  // 创建面板的退场关闭：先播下滑退场（240ms，遮罩同步 pointer-events:none
+  // 不锁交互）再卸载。导航离开走 setSheet(false) 瞬时卸载 —— VT 快照不能
+  // 拍到还在退场的浮层。
+  const [sheetClosing, closeSheet] = useExitClose(() => setSheet(false), 240);
   const [pull, setPull] = useState(0);        // pull-to-refresh distance (px)
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // bump → remount route → refetch
@@ -322,14 +327,15 @@ export default function AppLayout({ children }) {
       <nav className="app-tabbar" ref={tabbarRef}>
         <span className="dock-ink" ref={inkRef} aria-hidden="true" />
         {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-        <button className={'app-fab' + (sheet ? ' open' : '')} onClick={() => setSheet(s => !s)} aria-label={sheet ? '关闭' : '创建'}>
+        <button className={'app-fab' + (sheet && !sheetClosing ? ' open' : '')}
+          onClick={() => (sheet ? closeSheet() : setSheet(true))} aria-label={sheet ? '关闭' : '创建'}>
           <Plus size={20} strokeWidth={2.8} />
           <i className="app-fab-ai" aria-hidden="true">AI</i>
         </button>
         {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
       </nav>
 
-      {sheet && <CreateSheet onClose={() => setSheet(false)} />}
+      {sheet && <CreateSheet closing={sheetClosing} onClose={closeSheet} onNav={() => setSheet(false)} />}
 
       <CommandPalette />
       <WelcomePopup />
@@ -378,11 +384,13 @@ function Tab({ t, unread, dmUnread, curPath }) {
   );
 }
 
-function CreateSheet({ onClose }) {
+function CreateSheet({ closing, onClose, onNav }) {
   const navTo = useNav();
-  const go = (to) => { navTo(to); onClose(); };
+  // 选中入口：立即卸载（onNav）而非动画退场 —— 页面过渡本身就是反馈，
+  // 且 View Transition 的新页快照不能拍到还挂着的面板。
+  const go = (to) => { navTo(to); onNav(); };
   return (
-    <div className="app-sheet-mask" onClick={onClose}>
+    <div className={'app-sheet-mask' + (closing ? ' out' : '')} onClick={onClose}>
       <div className="app-sheet" onClick={e => e.stopPropagation()}>
         <div className="app-sheet-grip" />
         <h3 className="app-sheet-title">想创作点什么？</h3>
