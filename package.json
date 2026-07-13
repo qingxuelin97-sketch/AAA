@@ -27,7 +27,8 @@
     "app:ios:remote": "npm run build && npx cap sync ios && npx cap open ios",
     "app:add:android": "npx cap add android",
     "app:add:ios": "npx cap add ios",
-    "test:sec": "node server/sec-test.mjs"
+    "test:sec": "node server/sec-test.mjs",
+    "test:payments": "node server/payment-test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
@@ -53,7 +54,7 @@
     "lucide-react": "^1.18.0",
     "multer": "^2.2.0",
     "mysql2": "^3.11.5",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^9.0.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.17.0"

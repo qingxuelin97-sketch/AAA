@@ -359,6 +359,7 @@ for (const sql of [
   // identifierForVendor，经 X-Device-Id 头上报），按设备限 30 天注册配额。
   'ALTER TABLE users ADD COLUMN reg_device TEXT',
   'ALTER TABLE transactions ADD COLUMN ref_owner INTEGER',
+  'ALTER TABLE transactions ADD COLUMN payment_order_id TEXT',
   'ALTER TABLE conversations ADD COLUMN affinity INTEGER DEFAULT 0',
   "ALTER TABLE conversations ADD COLUMN memories TEXT DEFAULT '[]'",
   'ALTER TABLE messages ADD COLUMN reaction TEXT',
@@ -435,6 +436,53 @@ CREATE TABLE IF NOT EXISTS email_codes (
 );
 CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes (email);
 `);
+
+// Payment orders are immutable price snapshots. Only a verified provider
+// callback may move an order to credited and attach it to one ledger row.
+db.exec(`
+CREATE TABLE IF NOT EXISTS payment_orders (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  provider TEXT NOT NULL,
+  package_id TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+  currency TEXT NOT NULL DEFAULT 'CNY',
+  diamond INTEGER NOT NULL CHECK (diamond > 0),
+  bonus INTEGER NOT NULL DEFAULT 0 CHECK (bonus >= 0),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','credited','failed','expired','refunded')),
+  provider_tx_id TEXT,
+  client_request_id TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  paid_at INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_provider_tx
+  ON payment_orders (provider, provider_tx_id) WHERE provider_tx_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_client_request
+  ON payment_orders (user_id, client_request_id) WHERE client_request_id IS NOT NULL;
+CREATE TABLE IF NOT EXISTS payment_events (
+  provider TEXT NOT NULL,
+  event_id TEXT NOT NULL,
+  order_id TEXT NOT NULL REFERENCES payment_orders(id) ON DELETE RESTRICT,
+  payload_hash TEXT NOT NULL,
+  received_at INTEGER NOT NULL,
+  PRIMARY KEY (provider, event_id)
+);
+CREATE TABLE IF NOT EXISTS code_redemptions (
+  code TEXT NOT NULL REFERENCES invite_keys(code) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  redeemed_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (code, user_id)
+);
+`);
+
+try {
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_payment_order
+    ON transactions (payment_order_id) WHERE payment_order_id IS NOT NULL`);
+} catch { /* duplicate legacy data must be repaired before enabling payments */ }
+
+try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email IS NOT NULL AND email != ''"); } catch { /* legacy duplicates */ }
+try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_canon ON users (email_canon) WHERE email_canon IS NOT NULL AND email_canon != ''"); } catch { /* legacy duplicates */ }
 
 // 独立世界书：可脱离角色单独编辑，并跨角色复用（多对多关联）。
 // 三类能力（通常/高级/专家）可在同一本世界书里共存，不再单选档位：

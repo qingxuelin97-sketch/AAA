@@ -1,45 +1,57 @@
 import db from './db.js';
 
-// Every table whose contents make up a full site snapshot (used by both the GM
-// backup/restore endpoints and the automatic rolling persistence).
-// 注意：'logs' 不在备份集内——它是增长最快且对恢复无意义的运维日志，纳入会拖垮滚存快照。
-// 世界书 / 小说 / 通知 / 收件箱 / 剧本点赞 / 邮箱白名单等模块必须在册，否则临时磁盘部署重启即丢。
-export const BACKUP_TABLES = ['users', 'settings', 'characters', 'world_entries', 'favorites', 'conversations', 'messages',
+// Every table whose contents make up a full site snapshot. Operational logs
+// stay outside snapshots because they grow quickly and are not restore data.
+export const BACKUP_TABLES = [
+  'users', 'settings', 'characters', 'world_entries', 'favorites', 'conversations', 'messages',
   'scripts', 'script_likes', 'reviews', 'reports', 'script_purchases', 'posts', 'post_likes', 'moments', 'moment_likes', 'comments',
   'follows', 'groups', 'group_members', 'group_messages', 'theaters', 'theater_members', 'theater_cast', 'theater_messages',
   'announcements', 'invite_keys', 'transactions', 'categories', 'app_config', 'ai_images', 'daily_progress', 'event_claims',
   'proposals', 'proposal_votes', 'proposal_endorse', 'proposal_comments', 'friendships', 'friend_requests', 'dm_messages',
   'worldbooks', 'worldbook_entries', 'character_worldbooks', 'novels', 'novel_runs', 'novel_beats',
-  'notifications', 'shares', 'email_whitelist', 'email_codes'];
+  'notifications', 'shares', 'email_whitelist', 'email_codes', 'payment_orders', 'payment_events', 'code_redemptions',
+];
 
 export function exportAll() {
   const tables = {};
-  for (const t of BACKUP_TABLES) { try { tables[t] = db.prepare(`SELECT * FROM ${t}`).all(); } catch { /* table absent */ } }
+  for (const table of BACKUP_TABLES) {
+    // A rolling upgrade may briefly run against an older schema. Missing new
+    // tables can be omitted from export, but existing-table read failures must
+    // be visible to callers.
+    const exists = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table);
+    if (exists) tables[table] = db.prepare(`SELECT * FROM ${table}`).all();
+  }
   return tables;
 }
 
 export function importAll(tables) {
-  if (!tables || typeof tables !== 'object') throw new Error('备份数据无效');
-  const tx = db.transaction(() => {
-    for (const t of BACKUP_TABLES) {
-      const rows = tables[t]; if (!Array.isArray(rows)) continue;
-      try {
-        // 动态取该表实际列名做白名单交集，防止恶意列名拼接 SQL。
-        const realCols = db.prepare(`PRAGMA table_info(${t})`).all().map(c => c.name);
-        const allowed = new Set(realCols);
-        db.prepare(`DELETE FROM ${t}`).run();
-        for (const row of rows) {
-          const cols = Object.keys(row).filter(c => allowed.has(c)); if (!cols.length) continue;
-          db.prepare(`INSERT INTO ${t} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).run(...cols.map(k => row[k]));
-        }
-      } catch { /* skip incompatible table */ }
+  if (!tables || typeof tables !== 'object' || Array.isArray(tables)) throw new Error('备份数据无效');
+  const restore = db.transaction(() => {
+    for (const table of BACKUP_TABLES) {
+      const rows = tables[table];
+      if (!Array.isArray(rows)) continue;
+      const realCols = db.prepare(`PRAGMA table_info(${table})`).all().map(column => column.name);
+      if (!realCols.length) throw new Error(`备份目标表不存在: ${table}`);
+      const allowed = new Set(realCols);
+      db.prepare(`DELETE FROM ${table}`).run();
+      for (const row of rows) {
+        if (!row || typeof row !== 'object' || Array.isArray(row)) throw new Error(`备份表 ${table} 含无效行`);
+        const cols = Object.keys(row).filter(column => allowed.has(column));
+        if (!cols.length) throw new Error(`备份表 ${table} 的行没有兼容字段`);
+        db.prepare(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`)
+          .run(...cols.map(column => row[column]));
+      }
     }
+    const violations = db.prepare('PRAGMA foreign_key_check').all();
+    if (violations.length) throw new Error(`备份违反外键约束（${violations.length} 处）`);
   });
-  // 恢复期间关闭 FK 强制：父/子表按数组顺序 DELETE+INSERT 时不因引用顺序触发约束失败。
-  // 事务内不能改 PRAGMA，故在事务外切换（restore 属离线重建，短暂关闭安全）。
+
   db.pragma('foreign_keys = OFF');
-  try { tx(); }
+  try { restore.immediate(); }
   finally { db.pragma('foreign_keys = ON'); }
 }
 
-export const rowCount = (t) => { try { return db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n; } catch { return 0; } };
+export const rowCount = (table) => {
+  try { return db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n; }
+  catch { return 0; }
+};

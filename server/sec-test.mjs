@@ -4,7 +4,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -27,9 +27,12 @@ nodemailer.createTransport = function(opts, defaults) {
 };
 `);
 
-const srv = spawn('node', ['--import', interceptor, 'server/index.js'], {
-  cwd: ROOT, env: { ...process.env, PORT: String(PORT), DB_PATH, MAIL_CODE_IP_LIMIT: '50', AUTH_RATE_LIMIT: '50' }, stdio: 'ignore',
+const srv = spawn(process.execPath, ['--import', pathToFileURL(interceptor).href, 'server/index.js'], {
+  cwd: ROOT, env: { ...process.env, PORT: String(PORT), DB_PATH, MAIL_CODE_IP_LIMIT: '50', AUTH_RATE_LIMIT: '50' }, stdio: ['ignore', 'pipe', 'pipe'],
 });
+let serverOutput = '';
+srv.stdout.on('data', chunk => { serverOutput = (serverOutput + chunk).slice(-8000); });
+srv.stderr.on('data', chunk => { serverOutput = (serverOutput + chunk).slice(-8000); });
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) { pass++; console.log('  ✓', m); } else { fail++; console.log('  ✗', m); } };
 const J = (r) => r.json();
@@ -59,7 +62,13 @@ const backdateAll = () => {
 };
 
 try {
-  for (let i = 0; i < 40; i++) { try { if ((await fetch(BASE + '/health')).ok) break; } catch { /* */ } await sleep(250); }
+  let ready = false;
+  for (let i = 0; i < 80; i++) {
+    if (srv.exitCode !== null) break;
+    try { if ((await fetch(BASE + '/health')).ok) { ready = true; break; } } catch { /* retry */ }
+    await sleep(250);
+  }
+  if (!ready) throw new Error(`测试服务未就绪（exit=${srv.exitCode}）\n${serverOutput}`);
 
   // GM 用户 + SMTP 配置（mock 拦截后任意配置可用）—— 同 reg-flow 的做法
   {
@@ -80,6 +89,35 @@ try {
   ok(r1.token && r2.token && r3.token, `同 IP 前 3 个注册成功 (${r1.status}/${r2.status}/${r3.status})`);
   const r4 = await register('sec_u4', 'sec4@test.dev');
   ok(r4.status === 429, `同 IP 第 4 个注册被日配额拦截 → ${r4.status} ${r4.error || ''}`);
+
+  // Emergency controls: a client cannot mint recharge currency, private groups
+  // cannot be self-joined, and a GM token cannot grant new GM privileges.
+  const oldRecharge = await post('/economy/recharge', { package_id: 'p1' }, r1.token);
+  ok(oldRecharge.status === 410, `旧充值直发接口已永久停用 → ${oldRecharge.status}`);
+  const orderWithoutProvider = await post('/economy/recharge/orders', { package_id: 'p1', idempotency_key: 'sec-order-0001' }, r1.token);
+  ok(orderWithoutProvider.status === 503, `未配置支付通道时无法创建可入账订单 → ${orderWithoutProvider.status}`);
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    const wallet = db.prepare("SELECT diamond FROM users WHERE username='sec_u1'").get();
+    db.close();
+    ok(wallet?.diamond === 0, `伪造充值请求后钻石余额保持不变（diamond=${wallet?.diamond}）`);
+  }
+
+  const privateCreate = await post('/groups', { name: 'private-sec', is_public: false }, r1.token);
+  const privateBody = await J(privateCreate);
+  const privateJoin = await post(`/groups/${privateBody.group?.id}/join`, {}, r2.token);
+  ok(privateJoin.status === 403, `非受邀用户无法自行加入私有群 → ${privateJoin.status}`);
+
+  let r1Id;
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    r1Id = db.prepare("SELECT id FROM users WHERE username='sec_u1'").get().id;
+    db.close();
+  }
+  const gmChange = await post(`/admin/users/${r1Id}/gm`, { value: true }, gmTok);
+  ok(gmChange.status === 403, `Web 管理端不能授予 GM 权限 → ${gmChange.status}`);
+  const negativeGift = await post('/admin/gift', { user_id: r1Id, gold: -1 }, gmTok);
+  ok(negativeGift.status === 400, `管理员赠送接口拒绝负数余额变更 → ${negativeGift.status}`);
 
   // 2) 邮箱别名去重：sec1+alt@test.dev 与 sec1@test.dev 同规范形 → 409（send-code 即拦）
   const alias = await post('/auth/send-code', { email: 'sec1+alt@test.dev' });

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomInt } from 'node:crypto';
 import db from '../db.js';
 import { authRequired, requireGm } from '../auth.js';
 import { applyTx, isVip, notify } from '../wallet.js';
@@ -17,7 +18,9 @@ import { auditLog, queryLogs, getLogStats, getLogTimeseries, getLogTop, getError
 const router = Router();
 // authRequired 已带 is_gm，requireGm 直接读 req.user，无需再查库。
 router.use(authRequired, requireGm);
-const rnd = (n = 6) => Array.from({ length: n }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const rnd = (n = 6) => Array.from({ length: n }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
+const dataOpsEnabled = () => process.env.ADMIN_DATA_OPS === 'true';
 
 router.get('/check', (req, res) => res.json({ is_gm: true }));
 
@@ -233,12 +236,14 @@ router.get('/stats', (req, res) => {
 
 // ---- GM full backup / restore (数据保全：可一键导出整库 JSON，重新部署后再导入恢复) ----
 router.get('/backup', (req, res) => {
+  if (!dataOpsEnabled()) return res.status(403).json({ error: 'Web 端整库导出默认关闭，请通过受控运维流程执行' });
   // 整库导出含全体用户数据 —— 高敏操作，落审计（谁、何时、从哪导出）。
   auditLog({ event: 'backup_export', message: 'GM 导出整库备份', actor_id: req.user.id,
     ip: req.ip, ua: req.header('user-agent') || '', request_id: req.requestId || '' });
   res.json({ app: '幻域 HUANYU', kind: 'server', exported_at: new Date().toISOString(), tables: exportAll() });
 });
 router.post('/restore', async (req, res) => {
+  if (!dataOpsEnabled()) return res.status(403).json({ error: 'Web 端整库恢复默认关闭，请通过受控运维流程执行' });
   const tables = req.body?.tables;
   if (!tables || typeof tables !== 'object') return res.status(400).json({ error: '备份文件无效' });
   // 全库覆盖是最高危的 GM 操作：先落审计（含表名与行数摘要），再执行。
@@ -261,6 +266,9 @@ router.get('/users', (req, res) => {
     gold: u.gold, diamond: u.diamond, vip: isVip(u), is_gm: !!u.is_gm, is_banned: !!u.is_banned, ban_reason: u.ban_reason })) });
 });
 router.post('/users/:id/ban', (req, res) => {
+  const target = db.prepare('SELECT id, is_gm FROM users WHERE id = ?').get(req.params.id);
+  if (!target) return res.status(404).json({ error: '用户不存在' });
+  if (target.is_gm) return res.status(403).json({ error: '不能通过 Web 管理端封禁管理员账号' });
   db.prepare('UPDATE users SET is_banned = 1, ban_reason = ? WHERE id = ?').run(req.body?.reason || '', req.params.id);
   auditLog({ event: 'ban', message: `GM 封禁用户 U${req.params.id}${req.body?.reason ? '：' + req.body.reason : ''}`,
     user_id: req.params.id, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
@@ -275,27 +283,37 @@ router.post('/users/:id/unban', (req, res) => {
   res.json({ ok: true });
 });
 router.post('/users/:id/gm', (req, res) => {
-  const value = req.body?.value ? 1 : 0;
-  db.prepare('UPDATE users SET is_gm = ? WHERE id = ?').run(value, req.params.id);
-  auditLog({ event: value ? 'grant_gm' : 'revoke_gm', message: `GM ${value ? '授予' : '撤销'} U${req.params.id} 的 GM 权限`,
+  auditLog({ event: 'gm_change_blocked', message: `拒绝 Web 端修改 U${req.params.id} 的 GM 权限`,
     user_id: req.params.id, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
     request_id: req.requestId || '' });
-  res.json({ ok: true });
+  res.status(403).json({ error: '管理员权限只能通过服务器本地运维命令修改' });
 });
 router.post('/gift', (req, res) => {
   const { user_id, username, gold = 0, diamond = 0, vip_days = 0, memo } = req.body || {};
   const target = user_id ? db.prepare('SELECT * FROM users WHERE id = ?').get(user_id)
     : db.prepare('SELECT * FROM users WHERE username = ? OR display_name = ?').get(username, username);
   if (!target) return res.status(404).json({ error: '目标用户不存在' });
-  if (gold || diamond) applyTx(target.id, { kind: 'reward', gold: +gold || 0, diamond: +diamond || 0, memo: memo || 'GM 赠送' });
-  if (+vip_days > 0) {
-    const base = isVip(target) ? new Date(target.vip_until).getTime() : Date.now();
-    db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(new Date(base + vip_days * 86400000).toISOString(), target.id);
+  const amounts = { gold: Number(gold), diamond: Number(diamond), vip_days: Number(vip_days) };
+  const caps = {
+    gold: Number(process.env.ADMIN_GIFT_GOLD_MAX) || 1_000_000,
+    diamond: Number(process.env.ADMIN_GIFT_DIAMOND_MAX) || 100_000,
+    vip_days: Number(process.env.ADMIN_GIFT_VIP_DAYS_MAX) || 3650,
+  };
+  for (const key of Object.keys(amounts)) {
+    if (!Number.isSafeInteger(amounts[key]) || amounts[key] < 0 || amounts[key] > caps[key]) {
+      return res.status(400).json({ error: `${key} 必须是 0 至 ${caps[key]} 的整数` });
+    }
   }
-  notify(target.id, `管理员赠送了你 ${gold ? gold + ' 金币 ' : ''}${diamond ? diamond + ' 钻石 ' : ''}${+vip_days > 0 ? vip_days + ' 天 VIP' : ''}`.trim());
-  auditLog({ event: 'gift', message: `GM 赠送 U${target.id} ${gold ? gold + '金 ' : ''}${diamond ? diamond + '钻 ' : ''}${+vip_days > 0 ? vip_days + '天VIP' : ''}`.trim(),
+  if (!amounts.gold && !amounts.diamond && !amounts.vip_days) return res.status(400).json({ error: '赠送内容不能为空' });
+  if (amounts.gold || amounts.diamond) applyTx(target.id, { kind: 'reward', gold: amounts.gold, diamond: amounts.diamond, memo: String(memo || 'GM 赠送').slice(0, 200) });
+  if (amounts.vip_days > 0) {
+    const base = isVip(target) ? new Date(target.vip_until).getTime() : Date.now();
+    db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(new Date(base + amounts.vip_days * 86400000).toISOString(), target.id);
+  }
+  notify(target.id, `管理员赠送了你 ${amounts.gold ? amounts.gold + ' 金币 ' : ''}${amounts.diamond ? amounts.diamond + ' 钻石 ' : ''}${amounts.vip_days > 0 ? amounts.vip_days + ' 天 VIP' : ''}`.trim());
+  auditLog({ event: 'gift', message: `GM 赠送 U${target.id} ${amounts.gold ? amounts.gold + '金 ' : ''}${amounts.diamond ? amounts.diamond + '钻 ' : ''}${amounts.vip_days > 0 ? amounts.vip_days + '天VIP' : ''}`.trim(),
     user_id: target.id, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
-    extra: { gold: +gold || 0, diamond: +diamond || 0, vip_days: +vip_days || 0, memo: memo || '' }, request_id: req.requestId || '' });
+    extra: { ...amounts, memo: String(memo || '').slice(0, 200) }, request_id: req.requestId || '' });
   res.json({ ok: true, user_id: target.id });
 });
 
