@@ -3,9 +3,12 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import fs from 'node:fs';
+import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { uploadLimiter } from '../limiters.js';
 import { log } from '../logger.js';
+import { mediaMimeMatches } from '../mediaMagic.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = Router();
@@ -38,8 +41,35 @@ const upload = multer({
   }
 });
 
-router.post('/', authRequired, uploadLimiter, upload.single('file'), (req, res) => {
+const TOTAL_QUOTA = Math.max(10, Number(process.env.UPLOAD_USER_TOTAL_MB) || 250) * 1024 * 1024;
+const DAILY_QUOTA = Math.max(5, Number(process.env.UPLOAD_USER_DAILY_MB) || 100) * 1024 * 1024;
+const HEADER_BYTES = 256 * 1024;
+
+const reserveUpload = db.transaction((userId, file) => {
+  const total = db.prepare('SELECT COALESCE(SUM(bytes),0) AS n FROM user_uploads WHERE user_id=?').get(userId).n;
+  const daily = db.prepare('SELECT COALESCE(SUM(bytes),0) AS n FROM user_uploads WHERE user_id=? AND created_at>=?')
+    .get(userId, Date.now() - 86_400_000).n;
+  if (total + file.size > TOTAL_QUOTA) throw Object.assign(new Error('个人上传空间已满，请删除旧资源后再试'), { status: 413, expose: true });
+  if (daily + file.size > DAILY_QUOTA) throw Object.assign(new Error('今日上传流量已达上限，请明天再试'), { status: 429, expose: true });
+  db.prepare('INSERT INTO user_uploads (user_id,filename,mime,bytes,created_at) VALUES (?,?,?,?,?)')
+    .run(userId, file.filename, file.mimetype, file.size, Date.now());
+});
+
+router.post('/', authRequired, uploadLimiter, upload.single('file'), (req, res, next) => {
   if (!req.file) return res.status(400).json({ error: '未收到文件' });
+  const absolute = req.file.path;
+  try {
+    const fd = fs.openSync(absolute, 'r');
+    const header = Buffer.alloc(Math.min(HEADER_BYTES, req.file.size));
+    try { fs.readSync(fd, header, 0, header.length, 0); } finally { fs.closeSync(fd); }
+    if (!mediaMimeMatches(header, req.file.mimetype)) {
+      throw Object.assign(new Error('文件内容与声明的媒体类型不一致'), { status: 400, expose: true });
+    }
+    reserveUpload(req.user.id, req.file);
+  } catch (error) {
+    try { fs.unlinkSync(absolute); } catch { /* */ }
+    return next(error);
+  }
   const kind = req.file.mimetype.startsWith('video') ? 'video' : req.file.mimetype.startsWith('audio') ? 'audio' : 'image';
   log({
     level: 'info', category: 'upload', event: 'upload',

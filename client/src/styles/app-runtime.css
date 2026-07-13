@@ -1,0 +1,122 @@
+/* Native App final material/performance layer. Never affects the web UI. */
+html[data-app="1"] {
+  --app-ink: #087f79;
+  --app-cyan: #18a9b0;
+  --app-coral: #e66c5c;
+  --app-gold: #c99b42;
+  --app-depth-border: color-mix(in srgb, var(--accent) 18%, var(--border));
+  --app-depth-shadow: 0 1px 0 rgba(255,255,255,0.72) inset,
+    0 5px 14px rgba(6,74,78,0.08), 0 18px 42px rgba(6,74,78,0.08);
+  --app-depth-shadow-raised: 0 1px 0 rgba(255,255,255,0.78) inset,
+    0 8px 18px rgba(6,74,78,0.11), 0 24px 54px rgba(6,74,78,0.12);
+  --app-surface: linear-gradient(145deg, color-mix(in srgb, var(--panel) 97%, #fff),
+    color-mix(in srgb, var(--panel) 91%, #dff7f3));
+  --app-surface-raised: linear-gradient(145deg, #fff,
+    color-mix(in srgb, var(--panel) 90%, #e9faf7));
+}
+
+html[data-app="1"][data-theme="dark"] {
+  --app-depth-border: color-mix(in srgb, var(--accent) 28%, var(--border));
+  --app-depth-shadow: 0 1px 0 rgba(255,255,255,0.055) inset,
+    0 7px 18px rgba(0,0,0,0.25), 0 22px 48px rgba(0,0,0,0.20);
+  --app-depth-shadow-raised: 0 1px 0 rgba(255,255,255,0.08) inset,
+    0 10px 24px rgba(0,0,0,0.32), 0 28px 62px rgba(0,0,0,0.26);
+  --app-surface: linear-gradient(145deg, color-mix(in srgb, var(--panel) 94%, #173b3d),
+    color-mix(in srgb, var(--panel) 91%, #082f34));
+  --app-surface-raised: linear-gradient(145deg, color-mix(in srgb, var(--panel) 91%, #214449),
+    color-mix(in srgb, var(--panel) 94%, #10282c));
+}
+
+/* Static depth is cheaper and clearer than stacking translucent blur layers. */
+html[data-app="1"] :where(.card, .set-card, .msgs-conv, .msgs-entry, .room-row, .noti-item, .gm-row) {
+  background: var(--app-surface);
+  border-color: var(--app-depth-border);
+  box-shadow: var(--app-depth-shadow);
+}
+html[data-app="1"] :where(.card, .set-card, .msgs-conv, .room-row):active {
+  box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 3px 10px rgba(6,74,78,0.09);
+}
+html[data-app="1"] :where(.modal, .app-sheet, .group-members) {
+  background: var(--app-surface-raised);
+  border-color: var(--app-depth-border);
+  box-shadow: var(--app-depth-shadow-raised);
+}
+html[data-app="1"] :where(.input, textarea, select, .chat-input-bar .box) {
+  border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.55), 0 2px 7px rgba(5,74,79,0.05) inset;
+}
+html[data-app="1"][data-theme="dark"] :where(.input, textarea, select, .chat-input-bar .box) {
+  box-shadow: 0 1px 0 rgba(255,255,255,0.045) inset, 0 3px 9px rgba(0,0,0,0.22) inset;
+}
+html[data-app="1"] :where(.btn.primary, .send-btn) {
+  background: linear-gradient(140deg, var(--app-cyan), var(--app-ink));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.28) inset, 0 8px 19px rgba(8,127,121,0.24);
+}
+html[data-app="1"] .section-title::before {
+  content: '';
+  width: 4px; height: 1.05em; border-radius: 999px;
+  background: linear-gradient(180deg, var(--app-coral), var(--app-gold));
+  box-shadow: 0 3px 9px rgba(230,108,92,0.24);
+}
+html[data-app="1"] :where(.badge, .tag, .gm-owner) {
+  border-color: color-mix(in srgb, var(--app-coral) 24%, var(--border));
+}
+
+/* Auto/balanced: remove compositor-heavy live sampling and persistent layers. */
+html[data-app="1"][data-perf="balanced"] :where(*) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  will-change: auto !important;
+}
+html[data-app="1"][data-perf="balanced"] :where(
+  .app-dot, .flow-sheen::after, .pulse-dot, .auth-orbs i, .ring-track,
+  .chat-aura span, .chat-bg img, .chat-bg video, .ch-av .avatar,
+  .msg.user .bubble::before, .empty .big, .empty svg:first-child,
+  .char-hero-bg, .ah-celestial, .ah-hero::after, .ah-coin,
+  .vipx-card-shine, .vx2-shine, .vm-card-shine, .vm-spark,
+  .wb-hero-aurora, .wb-cap-ribbon, .title-glow, .lb-crown,
+  .ach-hall-glow, .app-sheet-grip, .auth-card-badge
+) { animation: none !important; }
+html[data-app="1"][data-perf="balanced"] .flow-sheen::after,
+html[data-app="1"][data-perf="balanced"] .msg.user .bubble::before,
+html[data-app="1"][data-perf="balanced"] .ah-hero::after {
+  animation: none !important;
+}
+html[data-app="1"][data-perf="balanced"] :where(.app-tabbar, .topbar, .tabs-bar, .cat-bar) {
+  background: color-mix(in srgb, var(--bg) 96%, var(--accent) 4%) !important;
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--accent) 16%, transparent) inset,
+    0 -9px 26px rgba(4,51,55,0.10);
+}
+
+/* Group chat has its own two-sided conversation geometry. The old page placed
+   messages directly in the scroller, so align-self and gap never applied. */
+html[data-app="1"] .group-thread {
+  width: 100%; min-height: 100%; gap: 18px;
+  padding-block: 2px 8px;
+}
+html[data-app="1"] .group-thread .group-message {
+  width: fit-content; max-width: min(86%, 660px); margin: 0;
+  align-items: flex-start; gap: 10px;
+  content-visibility: auto; contain-intrinsic-size: auto 86px;
+}
+html[data-app="1"] .group-thread .group-message.user { margin-left: auto; }
+html[data-app="1"] .group-thread .group-message.assistant { margin-right: auto; }
+html[data-app="1"] .group-thread .group-message-body {
+  display: flex; min-width: 0; max-width: 100%; flex-direction: column; align-items: flex-start;
+}
+html[data-app="1"] .group-thread .group-message.user .group-message-body { align-items: flex-end; }
+html[data-app="1"] .group-thread .group-message .bubble {
+  max-width: 100%; overflow-wrap: anywhere;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.22) inset, 0 7px 18px rgba(5,58,64,0.12);
+}
+html[data-app="1"] .group-thread .group-message.assistant .bubble {
+  background: var(--app-surface-raised);
+  border: 1px solid var(--app-depth-border);
+}
+html[data-app="1"] .group-thread .group-message.user .bubble {
+  background: linear-gradient(140deg, #22b8b0, #087f79);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] :where(*) { scroll-behavior: auto !important; }
+}

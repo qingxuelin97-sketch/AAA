@@ -4,8 +4,8 @@ import { getApiBase, getToken } from '../api.jsx';
 // tavernbridge.generate / NovelWorkspace.stream 四处几乎逐字重复的解析循环。
 //
 // 关键点：
-//  · 内置 getApiBase() 前缀 —— Capacitor 原生壳指向独立后端(BAKED_SERVER)时，相对
-//    路径会命中 WebView 自身的 http://localhost 静态服务器导致流式请求失败（BUG1 根因）。
+//  · 内置 getApiBase() 前缀 —— Capacitor 原生壳使用构建期 HTTPS 后端时，相对
+//    路径会命中 WebView 自身的 localhost 静态服务器导致流式请求失败（BUG1 根因）。
 //  · onDelta(text)：每个 { delta } 增量的便捷回调（消费方自行做 rAF 节流）。
 //  · onJson(obj)：每个解析出的 JSON 对象（{delta}/{fee}/{beat_id}/{seq}… 等），
 //    供需要读取非 delta 字段（如平台计费 fee）的消费方使用。

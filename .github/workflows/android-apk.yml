@@ -1,15 +1,16 @@
 name: Build Android APK
 
-# 纯云端打包：无需本地安装 Node / Android Studio。在 GitHub 网页 Actions 标签页手动运行。
-# App 已在底层焊死正式服务器地址（client/src/api.jsx 的 BAKED_SERVER），装机即强制联网、
-# 直连后端，无需在此填任何东西。下面的输入框仅供临时改连别的服务器（留空即用焊死地址）。
 on:
   workflow_dispatch:
     inputs:
       server_url:
-        description: "可选：临时改连的服务器地址（例 http://你的IP:4000）。留空=用 App 内焊死的正式服务器"
-        required: false
-        default: ""
+        description: "正式后端 HTTPS 地址，例如 https://api.example.com"
+        required: true
+        type: string
+      play_cloud_project_number:
+        description: "已启用 Play Integrity 的 Google Cloud 项目编号"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -20,52 +21,41 @@ jobs:
     env:
       PUPPETEER_SKIP_DOWNLOAD: "1"
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      VITE_API_BASE: ${{ inputs.server_url }}
+      PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ inputs.play_cloud_project_number }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22   # Capacitor 8 CLI 要求 Node >= 22
+          node-version: 22
+          cache: npm
+
       - run: npm ci
 
-      - name: Build web assets
-        run: npm run build:static
+      - name: Validate HTTPS and configure native security
+        run: node scripts/configure-android.mjs --before
 
-      # 若填了服务器地址：让 App 直接连你的服务器（与网页共用同一数据库）。
-      - name: Point app at your server (data sync)
-        if: ${{ github.event.inputs.server_url != '' }}
-        env:
-          SERVER_URL: ${{ github.event.inputs.server_url }}
-        run: |
-          node -e '
-            const fs = require("fs");
-            const p = "capacitor.config.json";
-            const c = JSON.parse(fs.readFileSync(p, "utf8"));
-            const url = process.env.SERVER_URL.trim();
-            c.server = c.server || {};
-            c.server.androidScheme = c.server.androidScheme || "https";
-            c.server.url = url;
-            if (url.startsWith("http://")) c.server.cleartext = true;
-            fs.writeFileSync(p, JSON.stringify(c, null, 2));
-            console.log("App will load from:", url);
-          '
+      - name: Build bundled web assets
+        run: npm run build:static
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"   # Capacitor 8 的安卓库用 Java 21 编译，需 JDK 21
+          java-version: "21"
 
       - name: Generate Android project
         run: npx cap add android
 
+      - name: Install Play Integrity bridge and deny cleartext
+        run: node scripts/configure-android.mjs --after
+
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
-      # 品牌启动器图标 + 启动屏：从 resources/ 里的官方图标源生成安卓全套
-      # mipmap（含自适应图标前景/背景）。没有这一步 APK 会顶着 Capacitor 默认图标。
-      - name: Generate launcher icons & splash
+      - name: Generate launcher icons and splash
         run: |
           npm i -D --no-save @capacitor/assets
           npx capacitor-assets generate --android --assetPath resources \

@@ -5,6 +5,7 @@ import { authRequired } from'../auth.js';
 import { applyTx, isVip, publicUser, GOLD_PER_DIAMOND, VIP_COST_GOLD, VIP_DAYS, notify } from'../wallet.js';
 import { bumpDaily, cnToday } from '../daily.js';
 import { log } from '../logger.js';
+import { createPaymentOrder, getPaymentOrder, paymentAvailability } from '../payment.js';
 
 const router = Router();
 
@@ -39,23 +40,32 @@ router.get('/wallet', authRequired, (req, res) => {
       vip_plans: Object.values(VIP_PLANS) } });
 });
 
-router.get('/packages', (req, res) => res.json({ packages: PACKAGES }));
+router.get('/packages', (req, res) => res.json({ packages: PACKAGES, payment: paymentAvailability() }));
 
-// Simulated recharge — credits diamonds immediately.
+// Removed compatibility endpoint. A client request must never mint currency;
+// only a verified provider webhook may credit a persisted payment order.
 router.post('/recharge', authRequired, (req, res) => {
+  res.status(410).json({ error: '旧充值接口已停用，请创建充值订单', code: 'PAYMENT_ORDER_REQUIRED' });
+});
+
+router.post('/recharge/orders', authRequired, (req, res, next) => {
   const pkg = PACKAGES.find(p => p.id === (req.body || {}).package_id);
-  if (!pkg) return res.status(400).json({ error:'套餐不存在' });
-  // 模拟支付门控：生产环境必须显式开启 PAYMENT_ENABLED=true 才能充值，避免白嫖。
-  if (process.env.PAYMENT_ENABLED !== 'true') {
-    return res.status(503).json({ error: '在线支付尚未开启，演示环境充值已禁用' });
-  }
-  const total = pkg.diamond + pkg.bonus;
-  const w = applyTx(req.user.id, { kind:'recharge', diamond: total, memo:`充值 ¥${pkg.cny} 获得 ${total} 钻石` });
-  log({ level: 'info', category: 'economy', event: 'recharge',
-    message: `用户充值 ${total} 钻石`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
-    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
-    extra: { package_id: pkg.id, cny: pkg.cny, diamond: pkg.diamond, bonus: pkg.bonus, total } });
-  res.json({ wallet: w });
+  if (!pkg) return res.status(400).json({ error: '套餐不存在' });
+  const idempotencyKey = req.header('Idempotency-Key') || req.body?.idempotency_key || null;
+  try {
+    const order = createPaymentOrder(req.user.id, pkg, idempotencyKey);
+    log({ level: 'info', category: 'payment', event: 'order_created',
+      message: `创建充值订单 ${order.id}`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+      endpoint: req.path, method: req.method, status: 201, request_id: req.requestId || '',
+      extra: { order_id: order.id, package_id: pkg.id, amount_cents: order.amount_cents } });
+    res.status(201).json({ order });
+  } catch (err) { next(err); }
+});
+
+router.get('/recharge/orders/:id', authRequired, (req, res) => {
+  const order = getPaymentOrder(req.user.id, String(req.params.id || ''));
+  if (!order) return res.status(404).json({ error: '充值订单不存在' });
+  res.json({ order });
 });
 
 // Exchange diamonds -> gold (1 : 100)
@@ -135,6 +145,7 @@ router.post('/redeem', authRequired, redeemLimiter, (req, res) => {
   try {
     // 核销 + 发奖 + 续期一并原子提交：applyTx 抛错则整体回滚，兑换码不被白白消耗。
     db.transaction(() => {
+      db.prepare('INSERT INTO code_redemptions (code, user_id) VALUES (?, ?)').run(code, req.user.id);
       const upd = db.prepare('UPDATE invite_keys SET used = used + 1 WHERE code = ? AND used < max_uses').run(code);
       if (upd.changes === 0) throw Object.assign(new Error('该密钥已用完'), { status: 400, expose: true });
       if (key.grant_gold || key.grant_diamond)
@@ -145,7 +156,10 @@ router.post('/redeem', authRequired, redeemLimiter, (req, res) => {
         db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(new Date(base + key.grant_vip_days * 86400000).toISOString(), req.user.id);
       }
     }).immediate();
-  } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+  } catch (e) {
+    if (/UNIQUE/i.test(e.message || '')) return res.status(409).json({ error: '该兑换码每个账号只能使用一次' });
+    return res.status(e.status || 400).json({ error: e.message });
+  }
   log({ level: 'warn', category: 'economy', event: 'redeem',
     message: `用户兑换码 ${code}`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
     endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',

@@ -32,6 +32,7 @@ import worldbookRoutes from './routes/worldbooks.js';
 import novelRoutes from './routes/novels.js';
 import realtimeRoutes from './routes/realtime.js';
 import asrRoutes from './routes/asr.js';
+import paymentRoutes from './routes/payments.js';
 import { log, purgeOldLogs, genRequestId } from './logger.js';
 import jwt from 'jsonwebtoken';
 import { SECRET } from './auth.js';
@@ -119,7 +120,12 @@ app.use('/api', (req, _res, next) => {
 });
 app.use('/api', rateLimit({ windowMs: 60_000, max: (req) => (req.rlAuthed ? 240 : 60), standardHeaders: true, legacyHeaders: false }));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: process.env.JSON_BODY_LIMIT || '2mb',
+  verify: (req, _res, buf) => {
+    if (req.originalUrl?.startsWith('/api/payments/')) req.rawBody = Buffer.from(buf);
+  },
+}));
 
 // —— 链路追踪 + 访问日志中间件 ——
 // 每个请求注入 request_id（响应头回传 X-Request-Id，便于前端排查），
@@ -129,7 +135,8 @@ const SLOW_THRESHOLD_MS = 1500; // 慢请求阈值：超过 1.5s 标注
 app.use('/api', (req, res, next) => {
   const start = Date.now();
   // 优先复用客户端传来的 request_id（前端 fetch 拦截器可生成），否则服务端生成。
-  req.requestId = req.header('X-Request-Id') || genRequestId();
+  const suppliedRequestId = req.header('X-Request-Id') || '';
+  req.requestId = /^[A-Za-z0-9._:-]{8,128}$/.test(suppliedRequestId) ? suppliedRequestId : genRequestId();
   res.setHeader('X-Request-Id', req.requestId);
   // 跨域暴露统一在上方 cors 的 exposedHeaders 声明（含 X-Request-Id / X-Gold-*）。
   // 此处不可再 setHeader('Access-Control-Expose-Headers')——那会整体覆盖 cors 写入的
@@ -198,6 +205,7 @@ app.use('/api/worldbooks', worldbookRoutes);
 app.use('/api/novels', novelRoutes);
 app.use('/api/realtime', realtimeRoutes);
 app.use('/api/asr', asrRoutes);
+app.use('/api/payments', paymentRoutes);
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // —— 客户端日志上报端点 ——
@@ -273,11 +281,21 @@ process.on('uncaughtException', (err) => {
 // Start serving immediately (so platform health checks pass even if the DB is slow),
 // then restore the rolling snapshot in the background and begin rolling saves.
 // 显式绑定 0.0.0.0：确保外部（安全组放行的 4000 端口）可访问，避免某些环境下默认绑到 127.0.0.1。
-app.listen(PORT, '0.0.0.0', () => console.log(`AI 聊天平台后端运行于 http://0.0.0.0:${PORT}`));
-import('./persist.js').then(async ({ restoreOnBoot, startRolling }) => {
+async function startServer() {
+  const { restoreOnBoot, startRolling } = await import('./persist.js');
+  // Restoring after listen() allowed real requests to write into a database
+  // that could then be overwritten. Business traffic now starts only after a
+  // successful restore (or after confirming persistence is disabled).
   await restoreOnBoot();
+  const server = app.listen(PORT, '0.0.0.0', () => console.log(`AI 聊天平台后端运行于 http://0.0.0.0:${PORT}`));
   startRolling();
-}).catch(e => console.error('[persist] 初始化失败：', e.message));
+  return server;
+}
+
+startServer().catch((err) => {
+  console.error('[startup] 初始化失败，拒绝对外提供业务流量：', err);
+  process.exitCode = 1;
+});
 
 // —— 日志保留清理任务 ——
 // 启动时清理一次（清理上次运行遗留的过期日志），之后每 24h 一次。

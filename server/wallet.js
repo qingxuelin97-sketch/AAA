@@ -21,7 +21,7 @@ export function publicUser(u) {
 }
 
 // Atomic balance change + ledger entry. Throws if it would go negative.
-export const applyTx = db.transaction((userId, { kind, gold = 0, diamond = 0, memo = '', ref_owner = null }) => {
+export const applyTx = db.transaction((userId, { kind, gold = 0, diamond = 0, memo = '', ref_owner = null, payment_order_id = null }) => {
   const u = db.prepare('SELECT gold, diamond FROM users WHERE id = ?').get(userId);
   if (!u) throw new Error('用户不存在');
   if (u.gold + gold < 0) throw new Error('金币不足');
@@ -29,8 +29,8 @@ export const applyTx = db.transaction((userId, { kind, gold = 0, diamond = 0, me
   db.prepare('UPDATE users SET gold = gold + ?, diamond = diamond + ? WHERE id = ?').run(gold, diamond, userId);
   // ref_owner: 该笔消费归属的创作者（按用户真实投入分成用），仅当消费者非作者本人时记录。
   const owner = (ref_owner && ref_owner !== userId) ? ref_owner : null;
-  db.prepare('INSERT INTO transactions (user_id, kind, gold, diamond, memo, ref_owner) VALUES (?,?,?,?,?,?)')
-    .run(userId, kind, gold, diamond, memo, owner);
+  db.prepare('INSERT INTO transactions (user_id, kind, gold, diamond, memo, ref_owner, payment_order_id) VALUES (?,?,?,?,?,?,?)')
+    .run(userId, kind, gold, diamond, memo, owner, payment_order_id);
   return db.prepare('SELECT gold, diamond FROM users WHERE id = ?').get(userId);
 });
 

@@ -14,6 +14,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SECRET_FILE = path.join(__dirname, '.jwt-secret');
 const IS_PROD = process.env.NODE_ENV === 'production';
 export let SECRET = process.env.JWT_SECRET;
+if (IS_PROD && (!SECRET || SECRET.length < 32)) {
+  throw new Error('[auth] JWT_SECRET is required in production and must contain at least 32 characters');
+}
 if (!SECRET || SECRET.length < 32) {
   // 生产环境未显式配置 JWT_SECRET 是真实风险：只读 FS 下退回内存密钥（重启即登出
   // 所有用户），多实例部署各自生成不同密钥（A 签发的 token 被 B 拒绝）。不 process.exit

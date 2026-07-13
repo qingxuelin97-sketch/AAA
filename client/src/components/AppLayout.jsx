@@ -146,9 +146,18 @@ export default function AppLayout({ children }) {
   // 当前 pane 缓存）覆盖。非 tab 路由维持原 keyed 重挂载。
   const isTab = SWIPE_TABS.includes(loc.pathname);
   const paneCache = useRef({});   // { path: ReactElement }
+  const paneLru = useRef([]);     // only current + most-recent tab stay mounted
   const paneVer = useRef({});     // { path: n } —— 下拉刷新的驱逐版本号
   const paneScroll = useRef({});  // { path: window.scrollY }（window 是 tab 页主滚动容器）
-  if (isTab) paneCache.current[loc.pathname] = children;
+  if (isTab) {
+    paneCache.current[loc.pathname] = children;
+    paneLru.current = [loc.pathname, ...paneLru.current.filter(p => p !== loc.pathname)];
+    while (paneLru.current.length > 2) {
+      const evicted = paneLru.current.pop();
+      delete paneCache.current[evicted];
+      delete paneVer.current[evicted];
+    }
+  }
 
   // 过渡方向兜底 + VT commit 信号。commit 后、paint 前把方向写到 <html
   // data-nav-dir>：keyed .route-fade 的入场动画按它切 variant，让未经 useNav

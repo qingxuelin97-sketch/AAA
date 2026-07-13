@@ -32,6 +32,9 @@ router.post('/', authRequired, (req, res) => {
 router.post('/:id/join', authRequired, (req, res) => {
   const g = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.id);
   if (!g) return res.status(404).json({ error: '群不存在' });
+  if (!g.is_public && g.owner_id !== req.user.id && !memberOf(g.id, req.user.id)) {
+    return res.status(403).json({ error: '私有群仅限受邀成员加入' });
+  }
   if (!memberOf(g.id, req.user.id))
     db.prepare('INSERT INTO group_members (group_id, user_id) VALUES (?,?)').run(g.id, req.user.id);
   res.json({ ok: true });

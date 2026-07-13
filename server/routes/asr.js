@@ -4,6 +4,7 @@ import { authRequired } from '../auth.js';
 import { aiLimiter } from '../limiters.js';
 import { getPlatform, asrReady } from '../platform.js';
 import { transcribe } from '../asr.js';
+import { audioMimeMatches } from '../mediaMagic.js';
 
 // 语音识别（语音转文字）—— 「通话」把用户说的话转成文字后再走对话补全。
 // 统一使用平台（GM 后台配置）的 ASR 服务；未配置则返回 501，前端回退到浏览器识别或文本输入。
@@ -20,6 +21,9 @@ router.get('/status', authRequired, (req, res) => {
 router.post('/transcribe', authRequired, aiLimiter, upload.single('audio'), async (req, res) => {
   if (!asrReady()) return res.status(501).json({ error: '平台尚未配置语音识别服务' });
   if (!req.file || !req.file.buffer?.length) return res.status(400).json({ error: '没有收到音频' });
+  if (!audioMimeMatches(req.file.buffer.subarray(0, 256 * 1024), req.file.mimetype)) {
+    return res.status(400).json({ error: '音频内容与声明的文件类型不一致' });
+  }
   const a = getPlatform().asr;
   const out = await transcribe({
     proto: a.protocol || 'openai',

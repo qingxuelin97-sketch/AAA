@@ -47,12 +47,11 @@ const SESSION_ID = getSessionId();
 // 日志上报端点（与 api.jsx 的 getApiBase 同口径，但此处独立解析避免循环依赖）。
 function getApiBase() {
   try {
-    const env = import.meta.env.VITE_API_BASE;
-    if (env) return String(env).replace(/\/+$/, '');
+    const env = String(import.meta.env.VITE_API_BASE || '').trim().replace(/\/+$/, '');
     if (window.Capacitor?.isNativePlatform?.()) {
-      // 与 api.jsx BAKED_SERVER 保持一致 —— 原生壳指向焊死的后端。
-      return 'http://120.27.249.73:4000';
+      return /^https:\/\//i.test(env) ? env : '';
     }
+    if (env) return env;
     const pref = (localStorage.getItem('huanyu_server') || '').trim();
     return pref;
   } catch { return ''; }
@@ -101,6 +100,7 @@ function scheduleFlush() {
 function ship(items) {
   if (!items.length) return;
   const base = getApiBase();
+  if (!base && window.Capacitor?.isNativePlatform?.()) return;
   const url = base + '/api/logs/client';
   const payload = JSON.stringify({ batch: items });
   // sendBeacon 只能发单条 payload；批量时把 batch 作为 extra 传，服务端展开。
@@ -128,17 +128,19 @@ function flush(isUnload = false) {
   if (!buffer.length) return;
   const items = buffer.splice(0);
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+  const base = getApiBase();
+  if (!base && window.Capacitor?.isNativePlatform?.()) return;
   if (isUnload) {
     // 卸载场景：逐条 sendBeacon（最可靠）
     for (const item of items) {
       try {
         const blob = new Blob([JSON.stringify(item)], { type: 'application/json' });
-        const ok = navigator.sendBeacon?.(getApiBase() + '/api/logs/client', blob);
+        const ok = navigator.sendBeacon?.(base + '/api/logs/client', blob);
         if (!ok) throw new Error('beacon failed');
       } catch {
         // 回退 keepalive fetch（同步发起，不 await）
         try {
-          fetch(getApiBase() + '/api/logs/client', {
+          fetch(base + '/api/logs/client', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(item), keepalive: true,
           }).catch(() => {});

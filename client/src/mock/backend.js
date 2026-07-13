@@ -3092,7 +3092,7 @@ function pubSettings(s, me) {
 export function installMockBackend() {
   // 运行时标记「浏览器内 mock 后端已接管 /api」。realtime.jsx 等据此判断是否有真实
   // 服务端可连——不能用构建期 VITE_STATIC 判断：Capacitor 原生壳同样是静态构建，
-  // 但 main.jsx 不会安装 mock（直连 BAKED_SERVER），此时 SSE 等能力必须保持可用。
+  // 但 main.jsx 不会安装 mock（直连构建期 HTTPS 后端），此时 SSE 等能力必须保持可用。
   window.__HY_MOCK__ = true;
   load();
   // 合并落盘的兜底：切后台 / 关页面时把还没写出去的变更冲刷掉。

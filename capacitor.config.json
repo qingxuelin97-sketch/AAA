@@ -4,8 +4,8 @@
   "webDir": "client/dist",
   "backgroundColor": "#1b1733",
   "server": {
-    "androidScheme": "http",
-    "cleartext": true
+    "androidScheme": "https",
+    "cleartext": false
   },
   "plugins": {
     "SplashScreen": {
@@ -23,6 +23,9 @@
     "Keyboard": {
       "resize": "native",
       "resizeOnFullScreen": true
+    },
+    "PlayIntegrity": {
+      "cloudProjectNumber": ""
     }
   }
 }

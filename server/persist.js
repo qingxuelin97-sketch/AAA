@@ -23,7 +23,11 @@ function mysqlCfg() {
   const host = trim(env.MYSQL_HOST || env.DB_HOST || env.MYSQL_IP || (addr ? addr.split(':')[0] : ''));
   if (!host) return null;
   const port = parseInt(trim(env.MYSQL_PORT || env.DB_PORT || (addr.includes(':') ? addr.split(':')[1] : '') || '3306'), 10);
-  const user = trim(env.MYSQL_USERNAME || env.MYSQL_USER || env.DB_USER || 'root');
+  const user = trim(env.MYSQL_USERNAME || env.MYSQL_USER || env.DB_USER || '');
+  if (!user) throw new Error('MYSQL_USERNAME/MYSQL_USER is required when MySQL persistence is enabled');
+  if (String(user).toLowerCase() === 'root' && env.ALLOW_ROOT_DB_USER !== '1') {
+    throw new Error('Refusing to use the MySQL root account; configure a least-privilege application user');
+  }
   const password = env.MYSQL_PASSWORD ?? env.MYSQL_PWD ?? env.DB_PASSWORD ?? '';
   const database = trim(env.MYSQL_DATABASE || env.MYSQL_DB || env.DB_NAME || 'huanyu').replace(/[^A-Za-z0-9_]/g, '') || 'huanyu';
   // 启用 SSL 时使用系统 CA 校验证书，杜绝中间人截获数据库流量。
@@ -88,11 +92,15 @@ async function put(json) {
 export async function flush(force = false) {
   if (!persistenceEnabled()) return;
   try {
-    const json = JSON.stringify({ v: 1, at: Date.now(), tables: exportAll() });
-    const h = hash(json);
+    const tables = exportAll();
+    const h = hash(JSON.stringify(tables));
     if (!force && h === lastHash) return;
+    const json = JSON.stringify({ v: 1, at: Date.now(), tables });
     await put(json); lastHash = h;
-  } catch (e) { console.error('[persist] 滚存失败：', e.message); }
+  } catch (e) {
+    console.error('[persist] 滚存失败：', e.message);
+    if (force) throw e;
+  }
 }
 
 // On boot: if the backend holds a snapshot, load it into the (fresh) DB.
@@ -103,12 +111,16 @@ export async function restoreOnBoot() {
     const raw = await pull();
     if (raw) {
       const data = JSON.parse(raw);
-      if (data?.tables) { importAll(data.tables); lastHash = hash(raw); console.log(`[persist] 已从快照恢复（用户 ${rowCount('users')} 名）。`); return; }
+      if (data?.tables) { importAll(data.tables); lastHash = hash(JSON.stringify(data.tables)); console.log(`[persist] 已从快照恢复（用户 ${rowCount('users')} 名）。`); return; }
     }
     // No snapshot yet — this is the first run; seed/local data becomes the baseline.
     await flush(true);
     console.log('[persist] 暂无远端快照，已用当前数据建立首个快照。');
-  } catch (e) { console.error('[persist] 启动恢复失败：', e.message); }
+  } catch (e) {
+    console.error('[persist] 启动恢复失败：', e.message);
+    if (env.PERSIST_FAIL_OPEN === '1') return;
+    throw e;
+  }
 }
 
 // Start the rolling timer + flush on shutdown.

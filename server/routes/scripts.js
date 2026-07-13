@@ -5,6 +5,31 @@ import { applyTx, notify } from'../wallet.js';
 
 const router = Router();
 const REFUND_WINDOW_MS = 30 * 60 * 1000; // 30 分钟内可退款
+const MAX_SCRIPT_PRICE = Number(process.env.MAX_SCRIPT_PRICE_GOLD) || 1_000_000;
+function scriptPrice(value, fallback = 0) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const price = Number(value);
+  if (!Number.isSafeInteger(price) || price < 0 || price > MAX_SCRIPT_PRICE) {
+    throw Object.assign(new Error(`剧本价格必须是 0 至 ${MAX_SCRIPT_PRICE} 的整数`), { status: 400, expose: true });
+  }
+  return price;
+}
+
+// Funds stay in platform escrow throughout the refund window. Settlement is
+// demand-driven by marketplace traffic and remains exactly-once transactionally.
+const settleDuePurchases = db.transaction(() => {
+  const due = db.prepare(`SELECT sp.*, s.author_id, s.title FROM script_purchases sp
+    JOIN scripts s ON s.id = sp.script_id
+    WHERE sp.refunded = 0 AND sp.settled_at IS NULL AND sp.settlement_due_at IS NOT NULL AND sp.settlement_due_at <= ?
+    ORDER BY sp.id LIMIT 100`).all(Date.now());
+  for (const purchase of due) {
+    const claimed = db.prepare('UPDATE script_purchases SET settled_at = ? WHERE id = ? AND settled_at IS NULL AND refunded = 0')
+      .run(Date.now(), purchase.id);
+    if (claimed.changes !== 1) continue;
+    applyTx(purchase.author_id, { kind: 'sell_script', gold: purchase.price, memo: `售出剧本《${purchase.title}》` });
+  }
+  return due.length;
+});
 
 function owns(scriptId, userId) {
   if (!userId) return false;
@@ -15,6 +40,7 @@ function owns(scriptId, userId) {
 }
 
 router.get('/', authOptional, (req, res) => {
+  settleDuePurchases();
   const { category, q, sort } = req.query;
   let sql =`SELECT s.*, u.display_name AS author_name, u.avatar AS author_avatar
     FROM scripts s JOIN users u ON u.id = s.author_id WHERE 1=1`;
@@ -27,6 +53,7 @@ router.get('/', authOptional, (req, res) => {
 });
 
 router.get('/mine', authRequired, (req, res) => {
+  settleDuePurchases();
   const created = db.prepare('SELECT * FROM scripts WHERE author_id = ? ORDER BY created_at DESC').all(req.user.id);
   const purchased = db.prepare(`SELECT s.*, sp.created_at AS bought_at, sp.refunded, sp.price AS paid
     FROM script_purchases sp JOIN scripts s ON s.id = sp.script_id
@@ -48,9 +75,11 @@ router.get('/:id', authOptional, (req, res) => {
 router.post('/', authRequired, (req, res) => {
   const b = req.body || {};
   if (!b.title) return res.status(400).json({ error:'标题必填' });
+  let price;
+  try { price = scriptPrice(b.price_gold); } catch (err) { return res.status(err.status || 400).json({ error: err.message }); }
   const info = db.prepare(`INSERT INTO scripts (author_id,title,summary,cover,content,category,tags,price_gold,nsfw)
     VALUES (?,?,?,?,?,?,?,?,?)`).run(req.user.id, b.title, b.summary ||'', b.cover || null, b.content ||'',
-    b.category ||'', b.tags ||'', Math.max(0, parseInt(b.price_gold, 10) || 0), b.nsfw ? 1 : 0);
+    b.category ||'', b.tags ||'', price, b.nsfw ? 1 : 0);
   res.json({ script: db.prepare('SELECT * FROM scripts WHERE id = ?').get(info.lastInsertRowid) });
 });
 
@@ -58,9 +87,11 @@ router.put('/:id', authRequired, (req, res) => {
   const s = db.prepare('SELECT * FROM scripts WHERE id = ?').get(req.params.id);
   if (!s || s.author_id !== req.user.id) return res.status(403).json({ error:'无权编辑' });
   const b = req.body || {};
+  let price;
+  try { price = scriptPrice(b.price_gold, s.price_gold); } catch (err) { return res.status(err.status || 400).json({ error: err.message }); }
   db.prepare(`UPDATE scripts SET title=?, summary=?, cover=?, content=?, category=?, tags=?, price_gold=?, nsfw=? WHERE id=?`)
     .run(b.title ?? s.title, b.summary ?? s.summary, b.cover ?? s.cover, b.content ?? s.content,
-      b.category ?? s.category, b.tags ?? s.tags, b.price_gold ?? s.price_gold, b.nsfw ? 1 : 0, s.id);
+      b.category ?? s.category, b.tags ?? s.tags, price, b.nsfw === undefined ? s.nsfw : (b.nsfw ? 1 : 0), s.id);
   res.json({ script: db.prepare('SELECT * FROM scripts WHERE id = ?').get(s.id) });
 });
 
@@ -73,19 +104,25 @@ router.delete('/:id', authRequired, (req, res) => {
 
 // Purchase a paid script — gold flows from buyer to author.
 const buyTx = db.transaction((buyer, script) => {
+  const dueAt = Date.now() + REFUND_WINDOW_MS;
+  const info = db.prepare(`INSERT INTO script_purchases
+    (script_id, user_id, price, settlement_due_at, settled_at) VALUES (?,?,?,?,NULL)`)
+    .run(script.id, buyer, script.price_gold, dueAt);
   applyTx(buyer, { kind:'buy_script', gold: -script.price_gold, memo:`购买剧本《${script.title}》` });
-  applyTx(script.author_id, { kind:'sell_script', gold: script.price_gold, memo:`售出剧本《${script.title}》` });
-  const info = db.prepare('INSERT INTO script_purchases (script_id, user_id, price) VALUES (?,?,?)').run(script.id, buyer, script.price_gold);
   db.prepare('UPDATE scripts SET plays = plays + 1 WHERE id = ?').run(script.id);
-  return info.lastInsertRowid;
+  return { id: info.lastInsertRowid, dueAt };
 });
 
 router.post('/:id/buy', authRequired, (req, res) => {
+  settleDuePurchases();
   const s = db.prepare('SELECT * FROM scripts WHERE id = ?').get(req.params.id);
   if (!s) return res.status(404).json({ error:'剧本不存在' });
   if (s.author_id === req.user.id) return res.status(400).json({ error:'这是你自己的剧本' });
   if (owns(s.id, req.user.id)) return res.status(400).json({ error:'你已拥有该剧本' });
-  if (s.price_gold === 0) { db.prepare('INSERT INTO script_purchases (script_id, user_id, price) VALUES (?,?,0)').run(s.id, req.user.id); return res.json({ ok: true, free: true }); }
+  if (s.price_gold === 0) {
+    db.prepare('INSERT INTO script_purchases (script_id, user_id, price, settled_at) VALUES (?,?,0,?)').run(s.id, req.user.id, Date.now());
+    return res.json({ ok: true, free: true });
+  }
   // 反刷币冷静期：付费购买是全站唯一「金币在用户间流动」的通道 —— 批量小号
   // 领完新手金币/活动礼包立刻购买同伙的付费剧本即可汇币。注册未满 24h 只封
   // 这一个动作：免费剧本、对话、抽卡等平台内消费一律不受影响。
@@ -94,17 +131,17 @@ router.post('/:id/buy', authRequired, (req, res) => {
     return res.status(403).json({ error: '新注册账号需满 24 小时才能购买付费剧本（平台防刷策略）' });
   }
   try {
-    buyTx(req.user.id, s);
-    notify(s.author_id,`有人购买了你的剧本《${s.title}》，+${s.price_gold} 金币`);
-    res.json({ ok: true, refundable_until: Date.now() + REFUND_WINDOW_MS });
+    const purchase = buyTx(req.user.id, s);
+    notify(s.author_id, `有人购买了你的剧本《${s.title}》，款项将在退款期结束后结算`);
+    res.json({ ok: true, refundable_until: purchase.dueAt });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // Refund within 30 minutes — reverses the gold flow.
 const refundTx = db.transaction((p, script) => {
+  const claimed = db.prepare('UPDATE script_purchases SET refunded = 1 WHERE id = ? AND refunded = 0 AND settled_at IS NULL').run(p.id);
+  if (claimed.changes !== 1) throw Object.assign(new Error('该订单已结算或已退款'), { status: 409, expose: true });
   applyTx(p.user_id, { kind:'refund', gold: p.price, memo:`退款剧本《${script.title}》` });
-  applyTx(script.author_id, { kind:'refund', gold: -p.price, memo:`剧本《${script.title}》被退款` });
-  db.prepare('UPDATE script_purchases SET refunded = 1 WHERE id = ?').run(p.id);
 });
 
 router.post('/:id/refund', authRequired, (req, res) => {
@@ -115,8 +152,10 @@ router.post('/:id/refund', authRequired, (req, res) => {
   const age = Date.now() - new Date(p.created_at +'Z').getTime();
   if (age > REFUND_WINDOW_MS) return res.status(400).json({ error:'已超过 30 分钟退款时限' });
   const s = db.prepare('SELECT * FROM scripts WHERE id = ?').get(req.params.id);
-  refundTx(p, s);
-  res.json({ ok: true });
+  try {
+    refundTx(p, s);
+    res.json({ ok: true });
+  } catch (err) { res.status(err.status || 400).json({ error: err.message }); }
 });
 
 router.post('/:id/like', authRequired, (req, res) => {

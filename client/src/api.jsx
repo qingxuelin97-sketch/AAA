@@ -3,12 +3,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const TOKEN_KEY = 'huanyu_token';
 const SERVER_KEY = 'huanyu_server';
 
-// 幻域正式服务器 —— 底层焊死的后端地址。
-// 强制联网：原生 App（APK）不给用户任何「离线/换服务器」的口子，装机即连这台。
-// 想换服务器只需改这一行（或打包时用 VITE_API_BASE 覆盖）后重新出包。
-// 注：走明文 HTTP + 自定义端口，配套 capacitor.config 的 androidScheme:'http'
-// 与 cleartext:true —— WebView 以 http://localhost 为源，同为 http 故无混合内容拦截。
-const BAKED_SERVER = 'http://120.27.249.73:4000';
+// 原生 App 的服务地址只允许在构建时注入，不接受用户侧覆盖。这样既能固定
+// 正式后端，也不会把可被中间人篡改的明文 HTTP 地址烙进每一个安装包。
 
 // 兼容保留：Web 同源部署时的本地覆盖入口（设置页已不再暴露，值恒为空 → 同源相对 /api）。
 export function getServerPref() {
@@ -21,22 +17,27 @@ export function setServerPref(url) {
 }
 // API 基址解析：
 //   · 打包期显式注入的 VITE_API_BASE 最优先（换服务器不改码）
-//   · 原生 App → 焊死的正式服务器（强制联网）
+//   · 原生 App → 构建期注入的 HTTPS 正式服务器（强制联网）
 //   · 网页 → 本地覆盖（恒空）→ 同源相对 /api
 export function getApiBase() {
-  const env = import.meta.env.VITE_API_BASE;
-  if (env) return String(env).replace(/\/+$/, '');
-  if (window.Capacitor?.isNativePlatform?.()) return BAKED_SERVER;
+  const env = String(import.meta.env.VITE_API_BASE || '').trim().replace(/\/+$/, '');
+  if (window.Capacitor?.isNativePlatform?.()) {
+    if (!/^https:\/\//i.test(env)) throw new Error('此安装包未配置安全的 HTTPS 服务地址，请由管理员重新打包');
+    return env;
+  }
+  if (env) return env;
   return getServerPref();
 }
-// 兼容既有引用（模块加载时解析一次；运行中修改服务器地址后需整页重载生效）
-export const API_BASE = getApiBase();
+
+function requiredApiBase() {
+  return getApiBase();
+}
 
 // 相对上传资源（/uploads/...）在 APK 指向独立后端时必须补全域名，
 // 否则会打到 webview 自身的 https://localhost。所有展示层统一走这里解析。
 export function assetUrl(u) {
   if (!u || typeof u !== 'string') return u;
-  return u.startsWith('/uploads/') ? getApiBase() + u : u;
+  return u.startsWith('/uploads/') ? requiredApiBase() + u : u;
 }
 
 export function getToken() {
@@ -58,7 +59,7 @@ export async function api(path, { method = 'GET', body, raw } = {}) {
     headers['Content-Type'] = 'application/json';
     payload = JSON.stringify(body);
   }
-  const res = await fetch(getApiBase() + '/api' + path, { method, headers, body: payload });
+  const res = await fetch(requiredApiBase() + '/api' + path, { method, headers, body: payload });
   if (raw) return res;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `请求失败 (${res.status})`);
