@@ -1,5 +1,6 @@
 // 安全加固专项测试：注册 IP 日配额 / 邮箱别名去重 / 新号购买冷静期 / 匿名限流分档
-// / 任务进度不信任客户端上报 / 设备注册配额 / CORS 默认白名单 / AI 预扣-退款。
+// / 任务进度不信任客户端上报 / 设备注册配额 / 设备完整性闸（root 拦注册）
+// / CORS 默认白名单 / AI 预扣-退款。
 // 运行：npm run test:sec
 import { spawn } from 'node:child_process';
 import path from 'node:path';
@@ -132,6 +133,21 @@ try {
   ok(!!d5.token, `换设备注册放行 → ${d5.status}`);
   const dBad = await register('dev_u6', 'dev6@test.dev', { 'X-Device-Id': 'x'.repeat(200) });
   ok(!!dBad.token, `非法格式设备头被忽略、注册照常 → ${dBad.status}`);
+
+  // 6b) 设备完整性闸（默认 enforce）：客户端自报 root（软信号）→ 拦注册；
+  //     自报 clean / 缺信号 / 畸形信号 → 判定 unknown、放行（不误伤主力场景）。
+  backdateAll(); // 清 IP 日配额窗（各用例用不同设备 id，避开设备终身配额）
+  const iRoot = await register('int_u1', 'int1@test.dev', { 'X-Device-Id': 'integ-dev-rooted-1', 'X-Device-Integrity': JSON.stringify({ r: 1 }) });
+  ok(iRoot.status === 403 && /root|越狱|篡改/.test(iRoot.error || ''), `自报 root 设备被完整性闸拦注册 → ${iRoot.status} ${iRoot.error || ''}`);
+  backdateAll();
+  const iClean = await register('int_u2', 'int2@test.dev', { 'X-Device-Id': 'integ-dev-clean-2', 'X-Device-Integrity': JSON.stringify({ r: 0 }) });
+  ok(!!iClean.token, `自报 clean 设备正常注册（软信号 negative 不可信、判 unknown 放行）→ ${iClean.status}`);
+  backdateAll();
+  const iNone = await register('int_u3', 'int3@test.dev', { 'X-Device-Id': 'integ-dev-none-3' });
+  ok(!!iNone.token, `无完整性信号（Web 壳 / 旧包）判 unknown、放行 → ${iNone.status}`);
+  backdateAll();
+  const iBad = await register('int_u4', 'int4@test.dev', { 'X-Device-Id': 'integ-dev-bad-4', 'X-Device-Integrity': 'not-json{' });
+  ok(!!iBad.token, `畸形完整性头被丢弃、注册照常 → ${iBad.status}`);
 
   // 7) CORS 默认白名单：localhost 放行、陌生 origin 不下发 ACAO
   const cOk = await fetch(BASE + '/health', { headers: { Origin: 'http://localhost:8080' } });

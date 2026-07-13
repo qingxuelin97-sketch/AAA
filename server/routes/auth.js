@@ -6,6 +6,7 @@ import { sign, authRequired, bumpTokenVersion } from'../auth.js';
 import { publicUser, applyTx, notify } from'../wallet.js';
 import { sendVerifyCode, getMail } from'../mail.js';
 import { isWhitelisted, normalizeEmail, canonicalEmail, whitelistEnabled } from'../whitelist.js';
+import { assessDevice } from'../integrity.js';
 import { log } from '../logger.js';
 
 const router = Router();
@@ -141,6 +142,26 @@ router.post('/register', authLimiter, async (req, res) => {
       endpoint: '/auth/register', method: 'POST', status: 200, request_id: req.requestId || '' });
   }
 
+  // 设备完整性闸（root/篡改设备）：判定见 integrity.js（Play Integrity 硬信号
+  // 优先，客户端自报 root 软信号兜底）。'unknown'（Web 壳 / 未接原生检测的包）
+  // 永不拦，避免误伤主力场景。处置力度由 DEVICE_INTEGRITY_POLICY 控制：
+  //   · 'enforce'（默认）：判定 tampered → 403 拒绝注册（只卡注册这一滥用入口，
+  //     不影响存量已登录用户）；
+  //   · 'monitor'：只落审计不拦，用于上线初期观察真实命中率与误报。
+  // 诚实边界同设备配额：软信号能被改客户端的 root 用户绕过，硬信号才顶得住，
+  // 硬信号需部署侧配置 Play Integrity。此处判定结果一并入库（reg_integrity）供回溯。
+  const integrity = assessDevice(req.integrity || {});
+  const integrityPolicy = process.env.DEVICE_INTEGRITY_POLICY || 'enforce';
+  if (integrity.verdict === 'tampered') {
+    log({ level: 'warn', source: 'server', category: 'auth', event: 'register_integrity_blocked',
+      message: `设备完整性判定为篡改/root（${integrity.source}，policy=${integrityPolicy}）`, ip, ua: req.header('user-agent') || '',
+      endpoint: '/auth/register', method: 'POST', status: integrityPolicy === 'enforce' ? 403 : 200,
+      request_id: req.requestId || '', extra: { integrity_source: integrity.source, device: deviceId || null } });
+    if (integrityPolicy === 'enforce') {
+      return res.status(403).json({ error: '检测到当前设备处于 root / 越狱或被篡改状态，出于安全考虑无法在此设备注册账号' });
+    }
+  }
+
   // 校验验证码：取该邮箱最新一条未消费且未过期的记录，比对并防爆破（最多 5 次尝试）。
   const row = db.prepare('SELECT * FROM email_codes WHERE email = ? AND consumed = 0 ORDER BY id DESC LIMIT 1').get(e);
   if (!row) return res.status(400).json({ error:'请先获取验证码' });
@@ -167,8 +188,8 @@ router.post('/register', authLimiter, async (req, res) => {
   const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
   let info;
   try {
-    info = db.prepare('INSERT INTO users (username, email, email_canon, reg_ip, reg_device, password_hash, display_name, gold) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(username, e, canon, ip, deviceId || null, hash, (display_name || username).slice(0, 30), 300);
+    info = db.prepare('INSERT INTO users (username, email, email_canon, reg_ip, reg_device, reg_integrity, password_hash, display_name, gold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(username, e, canon, ip, deviceId || null, `${integrity.verdict}:${integrity.source}`, hash, (display_name || username).slice(0, 30), 300);
   } catch (err) {
     // 并发撞名等插入失败：退还刚扣掉的邀请额度，再报错。
     if (key) db.prepare('UPDATE invite_keys SET used = used - 1 WHERE code = ? AND used > 0').run(key.code);

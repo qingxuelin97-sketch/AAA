@@ -35,6 +35,7 @@ import asrRoutes from './routes/asr.js';
 import { log, purgeOldLogs, genRequestId } from './logger.js';
 import jwt from 'jsonwebtoken';
 import { SECRET } from './auth.js';
+import { parseIntegrity } from './integrity.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -115,6 +116,10 @@ app.use('/api', (req, _res, next) => {
   // 配额与审计信号，不承担鉴权，任何路由不得据此放宽权限。
   const did = String(req.headers['x-device-id'] || '');
   req.deviceId = /^[A-Za-z0-9-]{8,64}$/.test(did) ? did : '';
+  // 设备完整性信号（原生壳自报 root 软信号 + Play Integrity 令牌）。同样是
+  // 客户端自报，仅作信号与审计，不承担鉴权 —— 解析在 integrity.js，格式不
+  // 合法即丢弃。硬信号（Play Integrity）的可信度来自服务端验签，不来自此头。
+  req.integrity = parseIntegrity(req.headers['x-device-integrity']);
   next();
 });
 app.use('/api', rateLimit({ windowMs: 60_000, max: (req) => (req.rlAuthed ? 240 : 60), standardHeaders: true, legacyHeaders: false }));

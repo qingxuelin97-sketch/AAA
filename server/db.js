@@ -356,8 +356,11 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN reg_ip TEXT',
   'ALTER TABLE users ADD COLUMN email_canon TEXT',
   // 反单设备多注册：原生壳注册时记录设备标识（Android ANDROID_ID / iOS
-  // identifierForVendor，经 X-Device-Id 头上报），按设备限 30 天注册配额。
+  // identifierForVendor，经 X-Device-Id 头上报），按设备限终身注册配额。
   'ALTER TABLE users ADD COLUMN reg_device TEXT',
+  // 设备完整性判定（注册时评估：ok / tampered / unknown + 来源）。见 integrity.js。
+  // 供审计与后续风控回溯（哪些号是 root/篡改设备上注册的）。
+  'ALTER TABLE users ADD COLUMN reg_integrity TEXT',
   'ALTER TABLE transactions ADD COLUMN ref_owner INTEGER',
   'ALTER TABLE conversations ADD COLUMN affinity INTEGER DEFAULT 0',
   "ALTER TABLE conversations ADD COLUMN memories TEXT DEFAULT '[]'",

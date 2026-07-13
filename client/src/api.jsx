@@ -53,6 +53,10 @@ export async function api(path, { method = 'GET', body, raw } = {}) {
   if (token) headers.Authorization = `Bearer ${token}`;
   // 原生壳设备标识（native.js 启动时写入）：服务端注册配额用。Web 端恒无此头。
   if (window.__HY_DEVICE_ID) headers['X-Device-Id'] = window.__HY_DEVICE_ID;
+  // 设备完整性信号（native.js 采集：root 软信号 + Play Integrity 令牌）。存在
+  // 即上报，服务端注册闸评估用（见 server/integrity.js）。Web 端 / 未接原生
+  // 检测的包恒无此头 —— 服务端对缺失信号判定 unknown、永不拦截。
+  if (window.__HY_INTEGRITY) headers['X-Device-Integrity'] = window.__HY_INTEGRITY;
   let payload = body;
   if (body && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
