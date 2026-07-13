@@ -17,15 +17,16 @@ html[data-app="1"] {
 
 /* Deliberately loud: an HTTP test package must never be mistaken for a
    production build or distributed as one. */
-html[data-app="1"][data-insecure-http="1"] body::after {
-  content: 'HTTP 内测版';
+html[data-app="1"][data-insecure-http="1"] .http-test-badge {
   position: fixed; z-index: 2147483647;
   top: calc(env(safe-area-inset-top, 0px) + 7px); right: 9px;
+  width: max-content; height: auto;
   padding: 4px 8px; border-radius: 999px;
   color: #fff; background: #c0342b;
   box-shadow: 0 3px 10px rgba(120, 20, 16, 0.28);
   font: 700 11px/1.2 system-ui, sans-serif;
-  letter-spacing: .04em; pointer-events: none;
+  letter-spacing: .04em; opacity: 1; mix-blend-mode: normal;
+  pointer-events: none; isolation: isolate;
 }
 
 html[data-app="1"][data-theme="dark"] {
