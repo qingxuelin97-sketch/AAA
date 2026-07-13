@@ -24,22 +24,29 @@ function localEnv() {
 const envFile = localEnv();
 const serverUrl = String(process.env.VITE_API_BASE || envFile.VITE_API_BASE || '').trim().replace(/\/+$/, '');
 const projectNumber = String(process.env.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER || envFile.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER || '').trim();
+const httpTest = mode === '--before-debug-http' || mode === '--after-debug-http';
 
 function validateInputs() {
   let parsed;
-  try { parsed = new URL(serverUrl); } catch { throw new Error('VITE_API_BASE must be a valid HTTPS URL'); }
-  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.hash || parsed.search) {
-    throw new Error('VITE_API_BASE must be an HTTPS URL without credentials, query, or fragment');
+  try { parsed = new URL(serverUrl); } catch { throw new Error('VITE_API_BASE must be a valid absolute URL'); }
+  const expectedProtocol = httpTest ? 'http:' : 'https:';
+  if (parsed.protocol !== expectedProtocol || parsed.username || parsed.password || parsed.hash || parsed.search
+      || (parsed.pathname && parsed.pathname !== '/')) {
+    throw new Error(`VITE_API_BASE must be a bare ${expectedProtocol.slice(0, -1).toUpperCase()} origin without credentials, path, query, or fragment`);
   }
-  if (!/^\d{6,20}$/.test(projectNumber)) {
+  if (httpTest && ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname)) {
+    throw new Error('HTTP test endpoint must be reachable by the physical test device');
+  }
+  if (!httpTest && !/^\d{6,20}$/.test(projectNumber)) {
     throw new Error('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER must contain 6-20 digits');
   }
+  return parsed;
 }
 
-function writeCapacitorConfig(cloudProjectNumber) {
+function writeCapacitorConfig(cloudProjectNumber, insecureHttp = false) {
   const file = path.join(root, 'capacitor.config.json');
   const config = JSON.parse(fs.readFileSync(file, 'utf8'));
-  config.server = { androidScheme: 'https', cleartext: false };
+  config.server = { androidScheme: insecureHttp ? 'http' : 'https', cleartext: insecureHttp };
   config.plugins ||= {};
   config.plugins.PlayIntegrity = { cloudProjectNumber };
   fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
@@ -47,7 +54,7 @@ function writeCapacitorConfig(cloudProjectNumber) {
 
 function before() {
   validateInputs();
-  writeCapacitorConfig(projectNumber);
+  writeCapacitorConfig(httpTest ? '' : projectNumber, httpTest);
 }
 
 function after() {
@@ -55,28 +62,38 @@ function after() {
   try {
     const appRoot = path.join(root, 'android', 'app');
     const javaDir = path.join(appRoot, 'src', 'main', 'java', 'ai', 'huanyu', 'app');
-    const templateDir = path.join(root, '.github', 'native', 'android');
+    const integrityPluginFile = path.join(javaDir, 'PlayIntegrityPlugin.java');
     fs.mkdirSync(javaDir, { recursive: true });
-    for (const name of ['MainActivity.java', 'PlayIntegrityPlugin.java']) {
-      fs.copyFileSync(path.join(templateDir, name), path.join(javaDir, name));
-    }
-
     const gradleFile = path.join(appRoot, 'build.gradle');
     let gradle = fs.readFileSync(gradleFile, 'utf8');
     const dependency = "implementation 'com.google.android.play:integrity:1.6.0'";
-    if (!gradle.includes(dependency)) {
-      gradle = gradle.replace(/dependencies\s*\{/, match => `${match}\n    ${dependency}`);
-      fs.writeFileSync(gradleFile, gradle);
+    if (httpTest) {
+      // A sideloaded HTTP debug build has no Play licence verdict. Keep the
+      // bridge entirely out of this variant; invite/whitelist registration
+      // remains the only registration path.
+      gradle = gradle.replace(new RegExp(`\\s*${dependency.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'g'), '\n');
+      fs.copyFileSync(path.join(root, '.github', 'native', 'debug', 'MainActivity.java'), path.join(javaDir, 'MainActivity.java'));
+      if (fs.existsSync(integrityPluginFile)) fs.rmSync(integrityPluginFile);
+    } else {
+      const templateDir = path.join(root, '.github', 'native', 'android');
+      for (const name of ['MainActivity.java', 'PlayIntegrityPlugin.java']) {
+        fs.copyFileSync(path.join(templateDir, name), path.join(javaDir, name));
+      }
+      if (!gradle.includes(dependency)) {
+        gradle = gradle.replace(/dependencies\s*\{/, match => `${match}\n    ${dependency}`);
+      }
     }
+    fs.writeFileSync(gradleFile, gradle);
 
     const manifestFile = path.join(appRoot, 'src', 'main', 'AndroidManifest.xml');
     let manifest = fs.readFileSync(manifestFile, 'utf8');
-    for (const attribute of ['usesCleartextTraffic', 'allowBackup']) {
+    const attributes = { usesCleartextTraffic: httpTest ? 'true' : 'false', allowBackup: 'false' };
+    for (const [attribute, value] of Object.entries(attributes)) {
       const pattern = new RegExp(`android:${attribute}="[^"]*"`, 'i');
       if (pattern.test(manifest)) {
-        manifest = manifest.replace(pattern, `android:${attribute}="false"`);
+        manifest = manifest.replace(pattern, `android:${attribute}="${value}"`);
       } else {
-        manifest = manifest.replace('<application', `<application android:${attribute}="false"`);
+        manifest = manifest.replace('<application', `<application android:${attribute}="${value}"`);
       }
     }
     fs.writeFileSync(manifestFile, manifest);
@@ -87,6 +104,6 @@ function after() {
   }
 }
 
-if (mode === '--before') before();
-else if (mode === '--after') after();
-else throw new Error('Usage: node scripts/configure-android.mjs --before|--after');
+if (mode === '--before' || mode === '--before-debug-http') before();
+else if (mode === '--after' || mode === '--after-debug-http') after();
+else throw new Error('Usage: node scripts/configure-android.mjs --before|--after|--before-debug-http|--after-debug-http');

@@ -1,0 +1,74 @@
+name: Build Android HTTP Test APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "仅限内测的 HTTP 后端，例如 http://120.27.249.73:4000"
+        required: true
+        default: "http://120.27.249.73:4000"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-http-test-apk:
+    runs-on: ubuntu-latest
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: "1"
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      VITE_API_BASE: ${{ inputs.server_url }}
+      VITE_INSECURE_HTTP_TEST: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate explicit HTTP test endpoint
+        run: node scripts/configure-android.mjs --before-debug-http
+
+      - name: Build bundled web assets with HTTP test gate
+        run: npm run build:static
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Generate Android project
+        run: npx cap add android
+
+      - name: Enable cleartext only for the debug package
+        run: node scripts/configure-android.mjs --after-debug-http
+
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+      - name: Generate launcher icons and splash
+        run: |
+          npm i -D --no-save @capacitor/assets
+          npx capacitor-assets generate --android --assetPath resources \
+            --iconBackgroundColor '#211c3f' --iconBackgroundColorDark '#211c3f' \
+            --splashBackgroundColor '#1b1733' --splashBackgroundColorDark '#15120e'
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload explicitly insecure test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: huanyu-http-test-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7

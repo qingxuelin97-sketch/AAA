@@ -11,6 +11,17 @@ PWA 仍可作为网页安装；正式 Android App 则只连接构建时指定的
 
 工作流会构建随包 Web 资源、生成 Android 工程、安装 Play Integrity 原生桥、关闭明文网络和 Android 备份，然后输出 debug APK。
 
+### 并行 HTTP 内测包
+
+尚未配置域名/TLS 时，可单独运行 **Build Android HTTP Test APK**。它默认连接
+`http://120.27.249.73:4000`，无需 Play Integrity 项目，只生成带有“HTTP 内测版”
+常驻标识的 debug APK，产物保留 7 天。
+
+该链路与生产构建隔离：只有显式的 `VITE_INSECURE_HTTP_TEST=1` 编译标记才能让
+原生客户端接受 HTTP，生成的 Android Manifest 才会临时开启 cleartext；生产工作流
+仍强制 HTTPS、关闭 cleartext 并安装 Play Integrity。HTTP 包只能通过邀请码/白名单
+注册，不得公开分发或用于真实充值，因为登录凭据、Token 与业务数据可能被中间人窃取。
+
 ## 本地首次生成 Android 工程
 
 复制配置模板：
@@ -65,6 +76,7 @@ CORS_ORIGINS=https://localhost,https://你的网页域名
 ## 相关文件
 
 - `.github/workflows/android-apk.yml`：云端构建
+- `.github/workflows/android-http-test-apk.yml`：隔离的 HTTP 内测 debug APK
 - `scripts/configure-android.mjs`：输入验证与原生工程加固
 - `.github/native/android/PlayIntegrityPlugin.java`：原生标准令牌桥
 - `client/src/playIntegrity.js`：请求哈希与前端调用

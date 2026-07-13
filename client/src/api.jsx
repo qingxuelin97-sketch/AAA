@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const TOKEN_KEY = 'huanyu_token';
 const SERVER_KEY = 'huanyu_server';
+const HTTP_TEST_BUILD = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 
 // 原生 App 的服务地址只允许在构建时注入，不接受用户侧覆盖。这样既能固定
 // 正式后端，也不会把可被中间人篡改的明文 HTTP 地址烙进每一个安装包。
@@ -22,7 +23,9 @@ export function setServerPref(url) {
 export function getApiBase() {
   const env = String(import.meta.env.VITE_API_BASE || '').trim().replace(/\/+$/, '');
   if (window.Capacitor?.isNativePlatform?.()) {
-    if (!/^https:\/\//i.test(env)) throw new Error('此安装包未配置安全的 HTTPS 服务地址，请由管理员重新打包');
+    const secure = /^https:\/\//i.test(env);
+    const explicitHttpTest = HTTP_TEST_BUILD && /^http:\/\//i.test(env);
+    if (!secure && !explicitHttpTest) throw new Error('此安装包未配置安全的 HTTPS 服务地址，请由管理员重新打包');
     return env;
   }
   if (env) return env;
