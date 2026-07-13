@@ -1,4 +1,5 @@
 node_modules/
+.npm-cache/
 client/dist/
 server/data.sqlite
 server/data.sqlite-shm
@@ -16,9 +17,13 @@ server/.jwt-secret
 .env
 # 安卓原生工程 —— 本地生成，不进仓库，避免 pull/push 冲突
 android/
+!.github/native/android/
+!.github/native/android/*.java
 ios/
 *.apk
 *.aab
 *.ipa
 server/sec-test.tmp.sqlite*
 server/sec-test.interceptor.mjs
+server/diagnostic.tmp.sqlite*
+client/*-smoke.png

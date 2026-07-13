@@ -16,6 +16,9 @@ import './styles.css';
 // APP 端沉浸对话皮肤（白+青玻璃深度进化）—— 在 styles.css 之后引入，import 顺序即级联
 // 顺序，故此文件为 app 对话皮肤的唯一权威来源（覆盖 styles.css 里历史层叠的 chat 规则）。
 import './chat/chat-app.css';
+// Final native-only material and balanced-performance overrides. Must remain
+// last so legacy web layers cannot re-enable App blur/ambient animation.
+import './styles/app-runtime.css';
 
 initAppMode(); // resolve native/app shell → data-app first (theme defaults depend on it)
 initTheme();   // apply saved theme before first paint (no flash; app shell defaults dark)

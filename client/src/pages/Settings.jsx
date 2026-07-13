@@ -67,8 +67,8 @@ const VOICE_PROVIDER_OPTS = [
 ];
 const VOICE_BY_VALUE = Object.fromEntries(VOICE_PROVIDER_OPTS.map(([v, , b, p]) => [v, { base: b, proto: p }]));
 
-// 服务器连接已从设置页移除：幻域为强制联网 App，后端地址在底层焊死（见 api.jsx
-// 的 BAKED_SERVER），普通用户无需、也无从配置，避免误改导致连不上。
+// 服务器连接已从设置页移除：原生 App 的 HTTPS 后端由构建配置注入，普通用户
+// 无需、也无从改写，避免把凭据和数据误发到非官方服务器。
 
 export default function Settings() {
   const toast = useToast();
@@ -503,7 +503,7 @@ export default function Settings() {
               <div className="hint">
                 「省电」关闭毛玻璃模糊与持续动效、按需渲染卡片，明显降低手机/低端设备的 GPU 占用与发热；
                 「高画质」始终开启全部特效。
-                {perf === 'auto' && <>「自动」默认高画质，检测到持续掉帧时本次会话会临时切省电；当前为 <b>{resolvePerf('auto') === 'lite' ? '省电' : '高画质'}</b>。</>}
+                {perf === 'auto' && <>「自动」在 App 中默认使用静态立体效果，低端设备或持续掉帧时切省电；当前为 <b>{{ high: '高画质', balanced: '平衡', lite: '省电' }[resolvePerf('auto')]}</b>。</>}
               </div>
             </div>
             <label className="switch" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>

@@ -7,6 +7,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { resolveTheme } from './theme.js';
 import { appBack } from './nav.js';
+import { preparePlayIntegrity } from './playIntegrity.js';
 
 // 页面语境覆盖：沉浸页（深色聊天/剧场等）可临时把状态栏刷成自己的底色，
 // 否则 App 浅色主题下状态栏恒为奶白，压在深色聊天页顶部就是一条刺眼的白带
@@ -37,6 +38,10 @@ export async function syncStatusBar() {
 }
 
 export async function initNative() {
+  // Warm the standard-token provider before the registration screen needs it.
+  // Failure is intentionally non-fatal: invited/whitelisted users remain able
+  // to register, while the backend still refuses an unverified public signup.
+  preparePlayIntegrity().catch(() => {});
   // 设备标识（Android = ANDROID_ID，iOS = identifierForVendor）：挂到全局供
   // api.jsx 附加 X-Device-Id 头，服务端用于注册配额（限单设备开小号）。
   // 本文件只在原生壳加载（main.jsx 动态 import），Web 端永远不带此头。

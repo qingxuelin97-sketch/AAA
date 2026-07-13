@@ -36,14 +36,10 @@ export function preheat() {
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1200));
   const cancel = window.cancelIdleCallback || clearTimeout;
   const pull = (list) => list.forEach(e => { if (!e.warm) e.load().catch(() => {}); });
-  const id1 = idle(() => {
-    pull(registry.filter(e => e.hot));
-    // 次波挂在首波之后的下一个空闲期，避免一次性 30+ 请求挤占启动期带宽。
-    const id2 = idle(() => pull(registry.filter(e => !e.hot)));
-    cancels.push(() => cancel(id2));
-  });
-  const cancels = [() => cancel(id1)];
-  return () => cancels.forEach(fn => fn());
+  // Registry order puts the four tabs and Chat first. Warming only those five
+  // avoids parsing and retaining the entire product during a cold start.
+  const id = idle(() => pull(registry.filter(e => e.hot).slice(0, 5)));
+  return () => cancel(id);
 }
 
 // —— 注册表本体（与 App.jsx 路由一一对应）——

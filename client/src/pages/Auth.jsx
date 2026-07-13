@@ -4,6 +4,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
+import { getRegistrationIntegrityToken } from '../playIntegrity.js';
 import { Drama, Plug, Volume2, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare, LayoutGrid, LifeBuoy, Mail, ShieldCheck, KeyRound } from 'lucide-react';
 
 const TAGLINES = [
@@ -53,7 +54,7 @@ export default function Auth() {
   const toast = useToast();
   const nav = useNavigate();
   const [mode, setMode] = useState('login');
-  const [form, setForm] = useState({ username: '', password: '', display_name: '', email: '', code: '', invite: '' });
+  const [form, setForm] = useState({ username: '', password: '', display_name: '', email: '', code: '', invite: '', integrity_ticket: '' });
   const [busy, setBusy] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [tl, setTl] = useState(0);
@@ -76,15 +77,39 @@ export default function Auth() {
     const t = setInterval(() => setCodeCountdown(s => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(t);
   }, [codeCountdown]);
-  const upd = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const upd = (k) => (e) => {
+    const value = e.target.value;
+    setForm(current => ({
+      ...current,
+      [k]: value,
+      ...((k === 'email' || k === 'username') ? { integrity_ticket: '' } : {}),
+    }));
+  };
 
   const sendCode = async () => {
     if (!form.email.trim()) { toast('请先填写邮箱', 'err'); return; }
+    if (!form.username.trim()) { toast('请先填写用户名', 'err'); return; }
     if (sendingCode || codeCountdown > 0) return;
     setSendingCode(true);
     try {
-      const d = await api('/auth/send-code', { method: 'POST', body: { email: form.email.trim() } });
-      toast(`验证码已发送至 ${form.email.trim()}（${d.ttl_min || 10} 分钟内有效）`);
+      const request = {
+        email: form.email.trim(),
+        username: form.username.trim(),
+        invite: form.invite.trim(),
+      };
+      let integrity_token = '';
+      if (!request.invite) {
+        // A whitelist may not need Play Integrity. If native attestation is
+        // unavailable we still ask the server, which makes the final policy
+        // decision without trusting any client-side root/emulator flag.
+        try { integrity_token = await getRegistrationIntegrityToken(request); } catch { /* server explains fallback */ }
+      }
+      const d = await api('/auth/send-code', { method: 'POST', body: { ...request, integrity_token } });
+      setForm(current => {
+        const unchanged = current.email.trim() === request.email && current.username.trim() === request.username;
+        return unchanged ? { ...current, integrity_ticket: d.integrity_ticket || '' } : current;
+      });
+      toast(`验证码已发送至 ${request.email}（${d.ttl_min || 10} 分钟内有效）`);
       setCodeCountdown(60);
     } catch (err) {
       toast(err.message, 'err');
@@ -145,7 +170,7 @@ export default function Auth() {
         <div className="card auth-card">
           <div className="auth-card-badge"><Sparkles size={13} /> AI 角色扮演平台</div>
           <h2>{mode === 'login' ? '登录账号' : '创建账号'}</h2>
-          <p className="muted" style={{ fontSize: 13, margin: 0 }}>{mode === 'login' ? '欢迎回来，继续你的故事' : '邮箱验证码注册 · 仅白名单邮箱可注册'}</p>
+          <p className="muted" style={{ fontSize: 13, margin: 0 }}>{mode === 'login' ? '欢迎回来，继续你的故事' : '白名单 / 邀请密钥 / 正式 Play App 可注册'}</p>
           <div className="auth-tabs">
             <button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>登录</button>
             <button className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>注册</button>
@@ -176,20 +201,20 @@ export default function Auth() {
                 <div className="field">
                   <label><Mail size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邮箱</label>
                   <input className="input" type="email" value={form.email} onChange={upd('email')} placeholder="white@example.com" autoComplete="email" />
-                  <div className="hint">仅白名单内邮箱可注册。注册后该邮箱将作为账号凭证，请确保可正常收信。</div>
+                  <div className="hint">注册后该邮箱将作为账号凭证。非白名单用户需填写邀请密钥，或使用 Google Play 安装的正式 App 完成设备完整性校验。</div>
+                </div>
+                <div className="field">
+                  <label><ShieldCheck size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邀请密钥 <span className="muted">(可选)</span></label>
+                  <input className="input" value={form.invite} onChange={upd('invite')} placeholder="若有邀请密钥请在获取验证码前填写" />
                 </div>
                 <div className="field">
                   <label><KeyRound size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邮箱验证码</label>
                   <div className="input-affix" style={{ display: 'flex', gap: 8 }}>
                     <input className="input" style={{ flex: 1 }} value={form.code} onChange={upd('code')} placeholder="6 位验证码" inputMode="numeric" autoComplete="one-time-code" />
-                    <button type="button" className="btn sm" onClick={sendCode} disabled={sendingCode || codeCountdown > 0 || !form.email.trim()} style={{ whiteSpace: 'nowrap' }}>
+                    <button type="button" className="btn sm" onClick={sendCode} disabled={sendingCode || codeCountdown > 0 || !form.email.trim() || !form.username.trim()} style={{ whiteSpace: 'nowrap' }}>
                       {sendingCode ? '发送中…' : codeCountdown > 0 ? `${codeCountdown}s 后重发` : '获取验证码'}
                     </button>
                   </div>
-                </div>
-                <div className="field">
-                  <label><ShieldCheck size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邀请密钥 <span className="muted">(可选)</span></label>
-                  <input className="input" value={form.invite} onChange={upd('invite')} placeholder="若有邀请密钥可填，可领取邀请奖励" />
                 </div>
               </>
             )}

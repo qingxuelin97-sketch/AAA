@@ -28,12 +28,7 @@ function deviceIsWeak() {
     const cores = nav.hardwareConcurrency || 0;
     const mem = nav.deviceMemory || 0;                         // GiB, Chrome-only
     if (cores && cores <= 4) return true;
-    if (mem && mem <= 4) return true;
-    // Touch primary + small viewport ⇒ treat as a phone unless it's clearly
-    // a beefy machine (already returned false above on high core/mem).
-    const coarse = window.matchMedia?.('(pointer: coarse)').matches;
-    const small = Math.min(window.innerWidth, window.innerHeight) <= 820;
-    if (coarse && small) return true;
+    if (mem && mem <= 3) return true;
   } catch { /* very old browser — assume capable */ }
   return false;
 }
@@ -48,6 +43,10 @@ export function resolvePerf(pref = getPerfPref()) {
   // 自适应降级（initAdaptivePerf 检出持续严重掉帧）只影响本会话，同样只在
   // auto 档生效 —— 用户手选 high/lite 永远说了算。
   try { if (sessionStorage.getItem(DEGRADED_KEY)) return 'lite'; } catch { /* */ }
+  // Native WebViews pay a higher price for backdrop sampling and many
+  // independently composited animations. Auto starts in a static,
+  // dimensional tier; full effects remain available as an explicit choice.
+  if (isAppMode()) return deviceIsWeak() ? 'lite' : 'balanced';
   return navigator.connection?.saveData ? 'lite' : 'high';
 }
 
@@ -76,7 +75,7 @@ export function isLite() { return document.documentElement.dataset.perf === 'lit
 // huanyu-perf-degraded 事件（AppLayout 展示可关闭提示）。产品决策不破坏：
 // 默认满血不变、只在严重掉帧时降、不落盘、用户手选可即刻覆盖。
 export function initAdaptivePerf() {
-  if (!isAppMode() || getPerfPref() !== 'auto' || resolvePerf() !== 'high') return;
+  if (!isAppMode() || getPerfPref() !== 'auto' || resolvePerf() === 'lite') return;
   if (typeof PerformanceObserver === 'undefined'
     || !PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) return;
   let loafMs = 0;

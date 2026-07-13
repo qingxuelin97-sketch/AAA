@@ -1,121 +1,71 @@
-# 幻域 · 打包为手机应用
+# 幻域 · Android App 构建
 
-本项目已经做好两种「手机 App」形态，**都不需要服务器**（业务逻辑跑在浏览器内置后端 + localStorage）。
+PWA 仍可作为网页安装；正式 Android App 则只连接构建时指定的 HTTPS 后端。APK 不再内置明文 IP，也不允许 cleartext 或把整站改成远程 `server.url`。
 
----
+## GitHub Actions 构建
 
-## 方式一：PWA（现在就能装，零配置）
+在 Actions 中运行 **Build Android APK**，必须填写：
 
-应用已是可安装的 PWA：含 `manifest.webmanifest`、App 图标、Service Worker（离线可用）、随主题变化的状态栏色。
+- `server_url`：正式后端地址，例如 `https://api.example.com`；只接受 HTTPS。
+- `play_cloud_project_number`：已启用 Play Integrity API 的 Google Cloud 数字项目编号。
 
-**手机安装：**
-1. 用手机浏览器打开站点（线上：`https://qingxuelin97-sketch.github.io/AAA/`）。
-2. **Android Chrome**：右上角菜单 →「安装应用 / 添加到主屏幕」。也可在左上角 ☰ 菜单里点「安装到桌面」。
-3. **iOS Safari**：分享按钮 →「添加到主屏幕」。
-4. 桌面会出现「幻域」图标，点开即全屏运行，**无浏览器地址栏**，可离线打开。
+工作流会构建随包 Web 资源、生成 Android 工程、安装 Play Integrity 原生桥、关闭明文网络和 Android 备份，然后输出 debug APK。
 
-> 说明：PWA 的安装提示（beforeinstallprompt）只有在 **HTTPS** 下才会出现；本地 `http://localhost` 也可。
+## 本地首次生成 Android 工程
 
----
-
-## 方式二：原生 App（APK / IPA，用 Capacitor）
-
-已集成 [Capacitor](https://capacitorjs.com/)：`capacitor.config.json` + 原生插件（状态栏 / 返回键 / 启动屏 / 键盘）已就绪，构建产物目录为 `client/dist`。
-
-> 需要本机有 **Android Studio**（出 APK）或 **macOS + Xcode**（出 IPA）。在没有这些 SDK 的环境（如本仓库的云端）无法直接产出安装包，但工程配置已完成，按下面命令即可一键生成。
-
-### 首次生成原生工程
-```bash
-npm install                 # 安装依赖（含 @capacitor/*）
-npm run build:static        # 产出 client/dist（静态、内置后端）
-npm run app:add:android     # = npx cap add android  → 生成 android/ 工程
-# 如需 iOS（仅 macOS）：
-npm run app:add:ios         # = npx cap add ios
-```
-
-### 打包 / 调试
-```bash
-npm run app:android   # 构建 + 同步 + 打开 Android Studio，然后点 Run / Build APK
-npm run app:ios       # 构建 + 同步 + 打开 Xcode（仅 macOS）
-# 仅同步网页改动到原生工程：
-npm run app:build     # = build:static + npx cap sync
-```
-- 在 Android Studio 里 `Build → Build Bundle(s)/APK(s) → Build APK` 即得安装包。
-- 应用图标/启动屏：把 `client/public/icons/` 里的图标用 Android Studio 的 *Image Asset* 或 `@capacitor/assets` 生成各分辨率资源。
-
-### 将来接入服务器
-现在前端通过 `VITE_STATIC=1` 用浏览器内置后端（`client/src/mock/backend.js`）。等你部署了真实后端：
-1. 改用 `npm run build`（不带 `VITE_STATIC`），让 `/api` 走真实接口；或在 `capacitor.config.json` 配 `server.url` 指向你的后端。
-2. 重新 `npm run app:build` 同步即可，无需改动业务代码。
-
----
-
-## 让 App 连接真实服务器（重点）
-
-打包成原生 App 后，webview 运行在 `https://localhost`，前端代码里的相对路径 `/api/...`
-会请求到 **localhost 本地**而非你的服务器——表现为 App 能打开但登录、数据全部失败。
-必须让前端在打包时把后端地址写死成绝对地址。
-
-### 一、配置后端地址
-
-复制环境变量模板并填入你的后端域名：
+复制配置模板：
 
 ```bash
 cp client/.env.example client/.env
-# 编辑 client/.env，填入后端完整 HTTPS 地址，例如：
-#   VITE_API_BASE=https://api.your-domain.com
 ```
 
-要求：
-- **必须 `https://`**：Android 9+ 默认禁止明文 HTTP 请求，iOS 同理。
-- 前后端同域（由 Nginx 反代分流 `/api`）就填主域名；后端独立子域就填子域。
-- REST 请求和 SSE 长连接都会自动用这个地址（见 `client/src/api.jsx` 的 `API_BASE`）。
+填写：
 
-### 二、后端 CORS 放行 App 来源
+```dotenv
+VITE_API_BASE=https://api.example.com
+PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=123456789012
+```
 
-App 的 webview 来源是 `https://localhost`，后端需放行它：
+然后执行：
 
 ```bash
-# 启动后端时设置环境变量
-CORS_ORIGINS=https://localhost node server/index.js
+npm ci
+npm run app:add:android
 ```
 
-或若你的后端供应商支持环境变量配置，加上 `https://localhost`。不配 `CORS_ORIGINS`
-时后端默认允许所有来源（开发友好），生产建议显式配白名单：`https://localhost,https://你的网站域名`。
-
-### 三、用「连服务器」脚本打包
+后续同步并打开 Android Studio：
 
 ```bash
-npm run app:android:remote   # 构建（注入后端地址）+ 同步 + 打开 Android Studio
-# 或 iOS（仅 macOS）：
-npm run app:ios:remote
+npm run app:android:remote
 ```
 
-这组 `*:remote` 脚本用 `npm run build`（**不带** `VITE_STATIC`），读取 `client/.env`
-里的 `VITE_API_BASE`，产出连真实后端的 `client/dist`，再 `cap sync` 进原生工程。
+构建脚本会拒绝 HTTP、带凭据、查询参数或 fragment 的后端地址。`android/app/src/main/AndroidManifest.xml` 会被强制写入 `usesCleartextTraffic=false` 与 `allowBackup=false`。
 
-> 对比：`app:android`（不带 `:remote`）用的是 `build:static`，产物走浏览器内置 mock
-> 后端，**不连服务器**，适合离线演示。两套脚本对应两种用途，别用混。
+## 后端 Play Integrity 配置
 
-### 四、在 Android Studio 出 APK
+生产服务器至少需要：
 
-1. `npm run app:android:remote` 会自动打开 Android Studio。
-2. 菜单 `Build → Build Bundle(s)/APK(s) → Build APK`。
-3. 装到手机测试：登录、聊天、收发消息应全部正常，SSE 秒级推送生效。
+```dotenv
+PLAY_INTEGRITY_PACKAGE_NAME=ai.huanyu.app
+PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON={...服务账号 JSON...}
+CORS_ORIGINS=https://localhost,https://你的网页域名
+```
 
-### 常见问题
+服务账号必须获准调用 Play Integrity API，应用还需在 Play Console 与对应 Cloud 项目关联。注册请求会绑定邮箱和用户名的 SHA-256 `requestHash`；后端只接受包名匹配、`PLAY_RECOGNIZED`、`LICENSED` 且包含 `MEETS_DEVICE_INTEGRITY` 的新鲜 verdict。
 
-- **App 打开白屏 / 登录一直转圈**：99% 是 `VITE_API_BASE` 没填或填成了 http。
-- **登录失败但页面能开**：后端 CORS 没放行 `https://localhost`，看后端日志有无跨域拒绝。
-- **改了后端地址没生效**：`.env` 改完必须重新 `npm run app:android:remote`，Vite 在构建时把环境变量编译进 JS。
-- **真机调试看日志**：`chrome://inspect` 连手机 webview，或 Android Studio Logcat 过滤 `Capacitor`。
-- **SSE 不通**：确认反代/Nginx 没缓冲 SSE 流，需加 `proxy_buffering off;`（Nginx）让 `text/event-stream` 实时下发。
+> debug APK 侧载后通常没有 `LICENSED` verdict，因此调试注册请使用白名单或邀请密钥。正式公开注册路径应从 Google Play 安装测试轨道或生产版本验证。
 
----
+## 后端与网络要求
 
-## 资源清单
-- `client/public/manifest.webmanifest` — PWA 清单
-- `client/public/sw.js` — Service Worker（离线 App 壳）
-- `client/public/icons/` — App 图标（192/512/maskable/apple-touch）
-- `capacitor.config.json` — 原生壳配置
-- `client/src/native.js` — 原生集成（仅在 App 内加载：状态栏随主题、Android 返回键、启动屏）
+- App WebView 来源是 `https://localhost`，生产环境请将它加入 CORS 白名单。
+- 反向代理必须正确转发 `/api` 与 `/uploads`；SSE 需关闭代理缓冲。
+- 当前后端 URL 若仍只有裸 IP/HTTP，先配置域名和 TLS，再构建 APK。构建系统不会为兼容旧地址重新开启明文网络。
+- 服务账号 JSON 是服务器机密，绝不能放入 `client/.env`、Capacitor 配置或 GitHub workflow 输入；应使用部署平台 secret。
+
+## 相关文件
+
+- `.github/workflows/android-apk.yml`：云端构建
+- `scripts/configure-android.mjs`：输入验证与原生工程加固
+- `.github/native/android/PlayIntegrityPlugin.java`：原生标准令牌桥
+- `client/src/playIntegrity.js`：请求哈希与前端调用
+- `capacitor.config.json`：安全的本地 WebView 配置
