@@ -20,6 +20,9 @@ import './chat/chat-app.css';
 // last so legacy web layers cannot re-enable App blur/ambient animation.
 import './styles/app-runtime.css';
 
+if (import.meta.env.VITE_INSECURE_HTTP_TEST === '1') {
+  document.documentElement.dataset.insecureHttp = '1';
+}
 initAppMode(); // resolve native/app shell → data-app first (theme defaults depend on it)
 initTheme();   // apply saved theme before first paint (no flash; app shell defaults dark)
 initAccent();  // apply saved accent palette before first paint

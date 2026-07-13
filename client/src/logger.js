@@ -19,6 +19,7 @@ const BUFFER_MAX = 5;
 const FLUSH_INTERVAL_MS = 3000;
 const DEDUP_WINDOW_MS = 60_000;
 const DEBUG_SAMPLE_RATE = 0.1;
+const HTTP_TEST_BUILD = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 
 // 检测当前运行端：原生壳 = 'app'，否则 = 'client'。
 function detectSource() {
@@ -49,7 +50,7 @@ function getApiBase() {
   try {
     const env = String(import.meta.env.VITE_API_BASE || '').trim().replace(/\/+$/, '');
     if (window.Capacitor?.isNativePlatform?.()) {
-      return /^https:\/\//i.test(env) ? env : '';
+      return (/^https:\/\//i.test(env) || (HTTP_TEST_BUILD && /^http:\/\//i.test(env))) ? env : '';
     }
     if (env) return env;
     const pref = (localStorage.getItem('huanyu_server') || '').trim();

@@ -15,6 +15,19 @@ html[data-app="1"] {
     color-mix(in srgb, var(--panel) 90%, #e9faf7));
 }
 
+/* Deliberately loud: an HTTP test package must never be mistaken for a
+   production build or distributed as one. */
+html[data-app="1"][data-insecure-http="1"] body::after {
+  content: 'HTTP 内测版';
+  position: fixed; z-index: 2147483647;
+  top: calc(env(safe-area-inset-top, 0px) + 7px); right: 9px;
+  padding: 4px 8px; border-radius: 999px;
+  color: #fff; background: #c0342b;
+  box-shadow: 0 3px 10px rgba(120, 20, 16, 0.28);
+  font: 700 11px/1.2 system-ui, sans-serif;
+  letter-spacing: .04em; pointer-events: none;
+}
+
 html[data-app="1"][data-theme="dark"] {
   --app-depth-border: color-mix(in srgb, var(--accent) 28%, var(--border));
   --app-depth-shadow: 0 1px 0 rgba(255,255,255,0.055) inset,
