@@ -98,6 +98,7 @@ export function stripSpeechActions(input) {
 // 规则按强度从强到弱匹配，先命中者为准；无命中则中性。
 const EMOTION_RULES = [
   ['angry',     /怒|愤|吼|咆哮|生气|发火|暴怒|可恶|混蛋|滚开|岂有此理|怒视|咬牙|瞪|恼怒|气恼|恼火|怒喝|怒斥|训斥|斥责|喝道/],
+  ['disgusted', /厌恶|嫌恶|恶心|反胃|作呕|嫌弃|鄙夷|不屑|唾弃|嫌弃|恶心|令人生厌|令人作呕|咦|呸|切[！!]|真恶心/],
   ['sad',       /哭|泪|呜咽|抽泣|伤心|难过|悲伤|哀伤|叹气|叹息|绝望|哽咽|失落|委屈|低落|泪流|啜泣|哀痛|哀愁|怅然|落寞|凄凉|心碎|黯然|神伤/],
   ['fearful',   /颤抖|发抖|害怕|恐惧|惊恐|战栗|瑟瑟|不敢|畏惧|惶恐|心惊|慌乱|心慌|胆寒|心悸|惊慌|忐忑/],
   ['surprised', /震惊|吃惊|惊讶|不会吧|竟然|居然|难以置信|目瞪口呆|啊？|什么[?？！]|天啊|天哪|我的天|哎呀/],
@@ -111,7 +112,7 @@ export function detectEmotion(raw) {
   if (/[!！]{2,}/.test(s)) return 'surprised'; // 连续感叹 → 偏激动/惊讶
   return 'neutral';
 }
-const EMOTION_ALL = new Set(['neutral', 'happy', 'sad', 'angry', 'fearful', 'surprised', 'gentle']);
+const EMOTION_ALL = new Set(['neutral', 'happy', 'sad', 'angry', 'fearful', 'surprised', 'gentle', 'disgusted']);
 const normalizeEmotion = (e) => EMOTION_ALL.has(e) ? e : '';
 // 通用韵律微调（所有厂商都支持 speed/pitch）：在创作者配置的基准上做相对小幅叠加。
 const EMOTION_PROSODY = {
@@ -121,10 +122,14 @@ const EMOTION_PROSODY = {
   fearful:   { rate: 1.07, pitch: 1.06 },
   surprised: { rate: 1.06, pitch: 1.08 },
   gentle:    { rate: 0.94, pitch: 0.98 },
+  disgusted: { rate: 0.95, pitch: 0.92 },
   neutral:   { rate: 1, pitch: 1 },
 };
-// MiniMax voice_setting.emotion 支持集（gentle/neutral 不下发，走韵律即可）。
-const MINIMAX_EMOTION = { happy: 'happy', sad: 'sad', angry: 'angry', fearful: 'fearful', surprised: 'surprised' };
+// MiniMax voice_setting.emotion 支持集（speech-02 / 2.5 / 01 全系均支持）。
+// 文档枚举值：happy / sad / angry / fearful / disgusted / surprised / calm。
+// 我们把 gentle → calm 下发；neutral 不下发（让 MiniMax 按文本自动情绪化，更自然）。
+// 参考文档：https://platform.minimaxi.com/document/T2A%20V2
+const MINIMAX_EMOTION = { happy: 'happy', sad: 'sad', angry: 'angry', fearful: 'fearful', disgusted: 'disgusted', surprised: 'surprised', gentle: 'calm' };
 // 火山引擎 request.emotion：仅多情感音色支持，不支持的音色会忽略该字段，安全。
 const VOLCANO_EMOTION = { happy: 'happy', sad: 'sad', angry: 'angry', surprised: 'surprised', fearful: 'fear' };
 // Azure <mstts:express-as style=…>：未支持该 style 的音色会自动回退，安全。
@@ -214,7 +219,8 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
       if (!mm.apiKey) return { ok: false, status: 400, error: 'MiniMax 缺少 API Key：请在 API Key 处填写 MiniMax 控制台的接口密钥' };
       const mmModel = model || 'speech-02-hd';
       const t2aUrl = mm.gid ? `${mm.root}/t2a_v2?GroupId=${encodeURIComponent(mm.gid)}` : `${mm.root}/t2a_v2`;
-      // 情绪：speech-02 / speech-01-turbo 等支持 voice_setting.emotion；中性不下发。
+      // 情绪：speech-02 / 2.5 / 01 全系均支持 voice_setting.emotion。
+      // 检测到具体情绪（含 gentle→calm）就下发；neutral 不下发，让 MiniMax 按文本自动情绪化（文档默认行为）。
       const voiceSetting = { voice_id: voice || 'male-qn-qingse', speed: rate, vol: 1, pitch: pitSemi };
       if (MINIMAX_EMOTION[emo]) voiceSetting.emotion = MINIMAX_EMOTION[emo];
       const r = await safeFetch(t2aUrl, {
