@@ -42,28 +42,17 @@ const PROVIDER_OPTS = [
   ['together', 'Together'], ['ollama', 'Ollama 本地'], ['lmstudio', 'LM Studio 本地'], ['custom', '自定义']
 ];
 
-// Providers that genuinely expose an OpenAI-compatible POST /audio/speech
-// endpoint with `Authorization: Bearer` (the exact call the backend makes).
-// Anything else can be reached via 自定义 if it implements the same protocol.
-// [value, label, baseUrl, protocol]. The backend has an adapter per protocol,
-// so this genuinely spans multiple vendor APIs — not just one format.
+// 用户层面只暴露「浏览器内置语音」与「MiniMax 海螺」两个选项：
+//   · 浏览器语音：免配置、离线、免费（朗读不扣金币），作为兜底。
+//   · MiniMax 语音：服务端 / 用户自填 API Key 均走 MiniMax T2A v2，
+//     平台语音每句扣 20 金币（VIP/SVIP 折扣），支持根据文本自动情绪化。
+// 其余厂商（OpenAI / 火山 / 腾讯 / 百度 / Azure / ElevenLabs 等）的适配器在
+// 后端 routes/chat.js 全部保留，仅在用户设置页隐藏；已配置过这些厂商的老用户
+// 仍可正常朗读（前端只展示当前已保存的厂商，下拉不再新增其它选项）。
+// [value, label, baseUrl, protocol]
 const VOICE_PROVIDER_OPTS = [
-  ['browser', '浏览器内置语音（免配置 · 离线 · 无需密钥）', '', 'browser'],
-  ['openai', 'OpenAI（tts-1 / gpt-4o-mini-tts）', 'https://api.openai.com/v1', 'openai'],
-  ['groq', 'Groq · PlayAI TTS（playai-tts）', 'https://api.groq.com/openai/v1', 'openai'],
-  ['siliconflow', '硅基流动 SiliconFlow（CosyVoice2 / Fish-Speech）', 'https://api.siliconflow.cn/v1', 'openai'],
-  ['aliyun', '阿里云百炼 · 通义千问语音（Qwen-TTS）', 'https://dashscope.aliyuncs.com', 'aliyun'],
-  ['baidu', '百度智能云 · 在线语音合成（度家族发音人）', 'https://tsn.baidu.com', 'baidu'],
-  ['volcano', '火山引擎 · 豆包语音合成（BV 音色）', 'https://openspeech.bytedance.com', 'volcano'],
-  ['tencent', '腾讯云 · 语音合成 TTS（智瑜/智聆等）', 'https://tts.tencentcloudapi.com', 'tencent'],
-  ['deepinfra', 'DeepInfra（Kokoro 等）', 'https://api.deepinfra.com/v1/openai', 'openai'],
-  ['lemonfox', 'Lemonfox.ai（OpenAI 兼容）', 'https://api.lemonfox.ai/v1', 'openai'],
-  ['elevenlabs', 'ElevenLabs（多语种角色配音）', 'https://api.elevenlabs.io/v1', 'elevenlabs'],
-  ['minimax', 'MiniMax 海螺语音（需 GroupId）', 'https://api.minimax.chat/v1', 'minimax'],
-  ['azure', 'Azure 认知语音（Neural · SSML）', 'https://eastus.tts.speech.microsoft.com', 'azure'],
-  ['google', 'Google Cloud TTS（Wavenet / Neural2）', 'https://texttospeech.googleapis.com', 'google'],
-  ['deepgram', 'Deepgram Aura', 'https://api.deepgram.com', 'deepgram'],
-  ['custom', '自定义（OpenAI /audio/speech 兼容）', '', 'openai']
+  ['browser', '浏览器内置语音（免配置 · 离线 · 无需密钥 · 免费）', '', 'browser'],
+  ['minimax', 'MiniMax 海螺语音（音色随文情绪化 · 平台每句 20 金币）', 'https://api.minimax.chat/v1', 'minimax'],
 ];
 const VOICE_BY_VALUE = Object.fromEntries(VOICE_PROVIDER_OPTS.map(([v, , b, p]) => [v, { base: b, proto: p }]));
 
@@ -293,7 +282,7 @@ export default function Settings() {
                 </div>
               </div>
             )}
-            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>后端为每种 TTS 协议内置适配器：浏览器内置语音（免配置·离线）、OpenAI 协议族（OpenAI / Groq / 硅基流动 / DeepInfra / Lemonfox）、阿里云百炼、<b>百度智能云</b>、<b>火山引擎（豆包）</b>、<b>腾讯云</b>、ElevenLabs、MiniMax 海螺、Azure 认知语音、Google Cloud TTS、Deepgram Aura 等。密钥仅存于本地。国内厂商（百度 / 火山 / 腾讯 / 阿里）建议在服务端部署版使用，浏览器纯静态站受跨域限制。</p>
+            <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>用户层面仅暴露「浏览器内置语音」与「MiniMax 海螺语音」两项；后端仍保留对 OpenAI 协议族、阿里云、百度、火山、腾讯、ElevenLabs、Azure、Google、Deepgram 等厂商的适配器（已配置这些厂商的老用户可继续朗读，下拉不再展示新选项）。MiniMax 语音会根据文字主动情绪化：检测到情绪词时下发对应 emotion，否则由 MiniMax 按文本自动选择最自然的语气。密钥仅存于本地。</p>
             {(() => {
               const vproto = s.voice_protocol || 'openai';
               const MODEL_PH = { openai: 'tts-1 / gpt-4o-mini-tts', elevenlabs: 'eleven_multilingual_v2', minimax: 'speech-02-hd / speech-01-turbo / speech-2.5-hd-preview', deepgram: 'aura-asteria-en', google: '（在音色处填完整 voice）', azure: '（无需填，音色即模型）', aliyun: 'qwen-tts', baidu: '（无需填）', volcano: 'volcano_tts（集群名）', tencent: '地域 Region，如 ap-guangzhou' };
@@ -303,11 +292,20 @@ export default function Settings() {
               const KEY_PH = vproto === 'elevenlabs' ? 'xi-api-key' : vproto === 'baidu' ? 'API Key:Secret Key（冒号分隔）' : vproto === 'volcano' ? 'AppID:AccessToken（冒号分隔）' : vproto === 'minimax' ? 'MiniMax APIKey（或 GroupId:APIKey）' : vproto === 'tencent' ? 'SecretId:SecretKey（冒号分隔）' : 'sk-...';
               const BASE_PH = { azure: 'https://eastus.tts.speech.microsoft.com', google: 'https://texttospeech.googleapis.com', deepgram: 'https://api.deepgram.com', aliyun: 'https://dashscope.aliyuncs.com', baidu: 'https://tsn.baidu.com', volcano: 'https://openspeech.bytedance.com', minimax: 'https://api.minimax.chat/v1?GroupId=你的GroupId', tencent: 'https://tts.tencentcloudapi.com' };
 
+              // 已保存的厂商若已不在用户可选清单里（如老用户曾配过 openai / baidu 等），
+              // 渲染一个禁用的占位 option 让 <select> 不至于显示空白；切到清单内任意项即生效。
+              const curProvider = s.voice_provider || 'minimax';
+              const providerInList = VOICE_PROVIDER_OPTS.some(([v]) => v === curProvider);
+              const legacyOpt = !providerInList
+                ? <option value={curProvider} disabled>（已不再可选）{curProvider}</option>
+                : null;
+
               // ---- Browser Web Speech: zero-config, no key/base ----
               if (vproto === 'browser') {
                 return (<>
                   <div className="field"><label>服务商预设</label>
-                    <select className="select" value={s.voice_provider || 'openai'} onChange={e => { const p = e.target.value; const info = VOICE_BY_VALUE[p] || {}; set('voice_provider', p); set('voice_protocol', info.proto || 'openai'); if (info.base) set('voice_base_url', info.base); }}>
+                    <select className="select" value={curProvider} onChange={e => { const p = e.target.value; const info = VOICE_BY_VALUE[p] || {}; set('voice_provider', p); set('voice_protocol', info.proto || 'openai'); if (info.base) set('voice_base_url', info.base); }}>
+                      {legacyOpt}
                       {VOICE_PROVIDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select></div>
                   <div className="field"><label>音色（系统语音 · 共 {bvoices.length} 个）</label>
@@ -322,7 +320,8 @@ export default function Settings() {
               return (<>
             <div className="row">
               <div className="field"><label>服务商预设</label>
-                <select className="select" value={s.voice_provider || 'openai'} onChange={e => { const p = e.target.value; const info = VOICE_BY_VALUE[p] || {}; set('voice_provider', p); set('voice_protocol', info.proto || 'openai'); if (info.base) set('voice_base_url', info.base); }}>
+                <select className="select" value={curProvider} onChange={e => { const p = e.target.value; const info = VOICE_BY_VALUE[p] || {}; set('voice_provider', p); set('voice_protocol', info.proto || 'openai'); if (info.base) set('voice_base_url', info.base); }}>
+                  {legacyOpt}
                   {VOICE_PROVIDER_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select></div>
               <div className="field"><label>模型</label>
