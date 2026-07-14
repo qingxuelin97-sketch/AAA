@@ -149,6 +149,26 @@ html[data-app="1"] .modal {
   border-radius: 24px 24px 0 0; border: 1px solid var(--border);
   box-shadow: 0 -12px 48px rgba(13,74,88,0.18);
 }
+/* 头像选择器通过 Portal 挂到 body：避免被页面容器的 transform / overflow 裁剪。
+   遮罩和抽屉仅在原生 APP 壳启用，始终避开系统安全区并覆盖底部 Dock。 */
+html[data-app="1"] .avatar-picker-backdrop {
+  z-index: 1000;
+  box-sizing: border-box;
+  align-items: flex-end;
+  padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
+}
+html[data-app="1"] .avatar-picker-modal {
+  width: min(100%, 480px);
+  max-width: none;
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 24px;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+}
 @media (max-width: 500px) {
   /* 手机上的 Modal 走底部抽屉范式（原生 sheet 手感） */
   html[data-app="1"] .modal-mask { align-items: flex-end; padding: 0; }
