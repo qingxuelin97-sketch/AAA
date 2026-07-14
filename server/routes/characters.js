@@ -19,6 +19,11 @@ const clampSpeed = (v) => { const n = Number(v); return n >= 0.5 && n <= 2 ? Mat
 // Voice pitch is a 0.5–1.5 multiplier; default 1 (natural).
 const clampPitch = (v) => { const n = Number(v); return n >= 0.5 && n <= 1.5 ? Math.round(n * 100) / 100 : 1; };
 
+// 独立世界书可在角色创建时一并挂载。只接受正整数、去重且限制数量，
+// 后续仍需由路由校验「本人拥有或公开」的使用权限。
+const linkedWorldbookIds = (value) => [...new Set((Array.isArray(value) ? value : [])
+  .map(Number).filter(id => Number.isSafeInteger(id) && id > 0))].slice(0, 20);
+
 function ownerView(c) {
   if (!c) return c;
   c.world = loadWorld(c.id);
@@ -134,6 +139,13 @@ router.get('/:id', authOptional, (req, res) => {
 router.post('/', authRequired, (req, res) => {
   const b = req.body || {};
   if (!b.name) return res.status(400).json({ error: '角色名必填' });
+  const wbIds = linkedWorldbookIds(b.linked_worldbook_ids);
+  if (wbIds.length) {
+    const usable = db.prepare(`SELECT COUNT(*) AS n FROM worldbooks
+      WHERE id IN (${wbIds.map(() => '?').join(',')}) AND (is_public = 1 OR owner_id = ?)`)
+      .get(...wbIds, req.user.id).n;
+    if (usable !== wbIds.length) return res.status(403).json({ error: '含有不存在、私有或无权使用的世界书' });
+  }
   const info = db.prepare(`INSERT INTO characters
     (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, alt_greetings)
     VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@alt_greetings)`)
@@ -148,6 +160,13 @@ router.post('/', authRequired, (req, res) => {
       alt_greetings: normAltGreetings(b.alt_greetings)
     });
   saveWorld(info.lastInsertRowid, b.world);
+  // 创建时一并落库，避免「先保存角色、再返回编辑页关联」的断裂流程。
+  if (wbIds.length) {
+    const attach = db.prepare('INSERT OR IGNORE INTO character_worldbooks (character_id, worldbook_id) VALUES (?,?)');
+    const bumpUses = db.prepare('UPDATE worldbooks SET uses = uses + 1 WHERE id = ?');
+    const linkAll = db.transaction(() => wbIds.forEach(wbId => { attach.run(info.lastInsertRowid, wbId); bumpUses.run(wbId); }));
+    linkAll();
+  }
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);
   // 新建即公开的角色卡：秒级广播给所有在线用户（排除发布者本人，避免自打扰）。
   if (b.is_public) {
