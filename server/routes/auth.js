@@ -12,13 +12,11 @@ import { registrationRequestHash, verifyPlayIntegrityToken, playIntegrityAvailab
 import { log } from '../logger.js';
 
 const router = Router();
-const authLimiter = rateLimit({
-  windowMs: 15 * 60_000,
-  max: Number(process.env.AUTH_RATE_LIMIT) || 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: '尝试过于频繁，请稍后再试' },
-});
+// 开放策略：登录/注册不再对用户做尝试频率限制（移除 authLimiter），
+// 不再因 IP/设备限定注册次数，也不再对非管理员账号做失败锁定——
+// 普通用户登录访问一律放行，不再跳出「尝试过于频繁」类提示。
+// 邮箱验证码请求仍保留 codeLimiter（仅用于防邮件发送接口被刷），但其配额
+// 同样宽松：仅作邮件成本兜底，不阻断正常注册流程。
 const codeLimiter = rateLimit({
   windowMs: 10 * 60_000,
   max: Number(process.env.MAIL_CODE_IP_LIMIT) || 5,
@@ -168,7 +166,7 @@ router.post('/send-code', codeLimiter, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/register', authLimiter, async (req, res, next) => {
+router.post('/register', async (req, res, next) => {
   try {
     const { password, display_name, code, invite, integrity_ticket } = req.body || {};
     const username = String(req.body?.username || '').trim();
@@ -185,16 +183,9 @@ router.post('/register', authLimiter, async (req, res, next) => {
 
     const gate = registrationGate({ email, username, invite, integrityTicket: integrity_ticket });
     const codeRow = validateEmailCode(email, code, 'register');
+    // 开放策略：不再按 IP/设备限定注册次数——普通用户不论网络与设备均可注册。
     const ip = req.ip || '';
-    if (ip) {
-      const count = db.prepare("SELECT COUNT(*) AS n FROM users WHERE reg_ip = ? AND created_at > datetime('now', '-1 day')").get(ip).n;
-      if (count >= 3) throw httpError(429, '当前网络环境今日注册次数已达上限，请明天再试');
-    }
     const deviceId = req.deviceId || '';
-    if (deviceId) {
-      const count = db.prepare("SELECT COUNT(*) AS n FROM users WHERE reg_device = ? AND created_at > datetime('now', '-30 day')").get(deviceId).n;
-      if (count >= 3) throw httpError(429, '该设备注册的账号数已达上限');
-    }
 
     const passwordHash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
     let userId;
@@ -241,16 +232,18 @@ router.post('/register', authLimiter, async (req, res, next) => {
   }
 });
 
-router.post('/login', authLimiter, async (req, res) => {
+router.post('/login', async (req, res) => {
   const username = String(req.body?.username || '');
   const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-  if (row?.locked_until > Date.now()) {
+  // 开放策略：仅管理员（root）账号保留失败锁定，普通用户登录访问一律放行——
+  // 不论调用频次、来源 IP 或设备，都不会再因「尝试过于频繁」被拦在登录入口。
+  if (row?.is_gm && row?.locked_until > Date.now()) {
     const minutes = Math.ceil((row.locked_until - Date.now()) / 60000);
     return res.status(429).json({ error: `账号已被锁定，请 ${minutes} 分钟后再试` });
   }
   const ok = await bcrypt.compare(String(req.body?.password || ''), row ? row.password_hash : DUMMY_HASH);
   if (!row || !ok) {
-    if (row) {
+    if (row?.is_gm) {
       const failures = (row.failed_logins || 0) + 1;
       const lockedUntil = failures >= 5 ? Date.now() + 15 * 60_000 : 0;
       db.prepare('UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?').run(failures, lockedUntil, row.id);
@@ -261,7 +254,7 @@ router.post('/login', authLimiter, async (req, res) => {
     return res.status(401).json({ error: '用户名或密码错误' });
   }
   if (row.is_banned) return res.status(403).json({ error: '账号已被封禁' + (row.ban_reason ? `：${row.ban_reason}` : '') });
-  db.prepare('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?').run(row.id);
+  if (row.is_gm) db.prepare('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?').run(row.id);
   log({ level: 'info', source: 'server', category: 'auth', event: 'login', message: `用户登录 ${username}`,
     user_id: row.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: '/auth/login', method: 'POST', status: 200,
     request_id: req.requestId || '' });

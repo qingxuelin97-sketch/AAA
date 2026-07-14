@@ -1,5 +1,5 @@
-// 安全加固专项测试：注册 IP 日配额 / 邮箱别名去重 / 新号购买冷静期 / 匿名限流分档
-// / 任务进度不信任客户端上报 / 设备注册配额 / CORS 默认白名单 / AI 预扣-退款。
+// 安全加固专项测试：邮箱别名去重 / 新号购买冷静期 / 匿名限流分档
+// / 任务进度不信任客户端上报 / 开放注册政策（IP/设备不限额）/ CORS 默认白名单 / AI 预扣-退款。
 // 运行：npm run test:sec
 import { spawn } from 'node:child_process';
 import path from 'node:path';
@@ -138,13 +138,13 @@ try {
     db.close();
   }
 
-  // 1) 同 IP 连注 3 个成功，第 4 个 429
+  // 1) 开放策略：同 IP 注册不再设日配额——4 个注册全部成功
   const r1 = await register('sec_u1', 'sec1@test.dev');
   const r2 = await register('sec_u2', 'sec2@test.dev');
   const r3 = await register('sec_u3', 'sec3@test.dev');
   ok(r1.token && r2.token && r3.token, `同 IP 前 3 个注册成功 (${r1.status}/${r2.status}/${r3.status})`);
   const r4 = await register('sec_u4', 'sec4@test.dev');
-  ok(r4.status === 429, `同 IP 第 4 个注册被日配额拦截 → ${r4.status} ${r4.error || ''}`);
+  ok(!!r4.token, `开放策略：同 IP 第 4 个注册照常放行 → ${r4.status} ${r4.error || ''}`);
 
   // Long-lived JWTs must never be accepted in an SSE URL. The replacement
   // ticket is short-lived, random, and consumed by the first stream attempt.
@@ -291,16 +291,16 @@ try {
   ok(chatT && chatT.progress === 0, `客户端上报 chat 不计任务进度（progress=${chatT?.progress}）`);
   ok(gachaT && gachaT.progress >= 1, `扭蛋机 gacha 上报仍计数（progress=${gachaT?.progress}）`);
 
-  // 6) 同设备注册配额：同 X-Device-Id 30 天内 3 号封顶（IP 窗每轮回拨隔离）
+  // 6) 开放策略：同设备注册不再设配额——同 X-Device-Id 4 个注册全部成功
   const DEV = 'devicequota-test-0001';
   backdateAll();
   const d1 = await register('dev_u1', 'dev1@test.dev', { 'X-Device-Id': DEV });
   const d2 = await register('dev_u2', 'dev2@test.dev', { 'X-Device-Id': DEV });
   const d3 = await register('dev_u3', 'dev3@test.dev', { 'X-Device-Id': DEV });
   ok(d1.token && d2.token && d3.token, `同设备前 3 个注册成功 (${d1.status}/${d2.status}/${d3.status})`);
-  backdateAll(); // 让 IP 日配额出窗，只留设备 30 天窗生效
+  backdateAll();
   const d4 = await register('dev_u4', 'dev4@test.dev', { 'X-Device-Id': DEV });
-  ok(d4.status === 429 && /设备/.test(d4.error || ''), `同设备第 4 个注册被设备配额拦截 → ${d4.status} ${d4.error || ''}`);
+  ok(!!d4.token, `开放策略：同设备第 4 个注册照常放行 → ${d4.status} ${d4.error || ''}`);
   const d5 = await register('dev_u5', 'dev5@test.dev', { 'X-Device-Id': 'another-device-000042' });
   ok(!!d5.token, `换设备注册放行 → ${d5.status}`);
   const dBad = await register('dev_u6', 'dev6@test.dev', { 'X-Device-Id': 'x'.repeat(200) });
