@@ -125,6 +125,77 @@ router.post('/platform/detect-voices', async (req, res) => {
   } catch (e) { console.error('[admin] minimax /get_voice 连接失败', e.message); res.status(502).json({ error: '音色列表获取失败：' + e.message }); }
 });
 
+// GM 语言模型在线检测——用当前表单值（未保存的也行）发起一次最小对话请求，
+// 验证 base_url / key / model / protocol 是否可用，返回结果与延迟。空 key 回落
+// 到已保存的平台密钥（与 test-voice / test-image 一致：GM 保存后表单 key 被清空，
+// 不应因此无法测试）。
+router.post('/platform/test-llm', async (req, res) => {
+  const b = req.body?.llm || req.body || {};
+  const saved = getPlatform();
+  const proto = b.protocol || saved.protocol || 'openai';
+  const base = String(b.base_url || saved.base_url || '').replace(/\/$/, '');
+  const model = b.model || saved.model;
+  const key = (b.key && b.key.trim()) ? b.key.trim() : saved.key;
+  if (!base) return res.json({ ok: false, message: '请先填写 API Base URL' });
+  if (!key) return res.json({ ok: false, message: '请先填写 API Key' });
+  if (!model) return res.json({ ok: false, message: '请先填写最终调用模型' });
+  try {
+    const { assertPublicUrl, safeFetch } = await import('../safeUrl.js');
+    assertPublicUrl(base);
+    const t0 = Date.now();
+    let reply = '';
+    if (proto === 'anthropic') {
+      const up = await safeFetch(base.replace(/\/v1$/, '') + '/v1/messages', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }),
+      });
+      const latency_ms = Date.now() - t0;
+      if (!up.ok) { const t = await up.text().catch(() => ''); return res.json({ ok: false, message: `HTTP ${up.status}：${t.slice(0, 180)}`, latency_ms }); }
+      const d = await up.json().catch(() => null);
+      reply = d?.content?.[0]?.text || 'OK';
+      return res.json({ ok: true, message: '连接成功，密钥有效', reply: String(reply).slice(0, 40), latency_ms });
+    }
+    const up = await safeFetch(base + '/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }),
+    });
+    const latency_ms = Date.now() - t0;
+    if (!up.ok) { const t = await up.text().catch(() => ''); return res.json({ ok: false, message: `HTTP ${up.status}：${t.slice(0, 180)}`, latency_ms }); }
+    const d = await up.json().catch(() => null);
+    reply = d?.choices?.[0]?.message?.content || 'OK';
+    return res.json({ ok: true, message: '连接成功，密钥有效', reply: String(reply).slice(0, 40), latency_ms });
+  } catch (e) {
+    return res.json({ ok: false, message: '连接失败：' + e.message });
+  }
+});
+
+// GM 语言模型列表检测——OpenAI 兼容 GET /models / Anthropic /v1/models。
+// 关键：用平台表单值（+ 已保存平台 key 回退），而非 GM 个人的 settings
+// （老接口 /settings/models 读的是 req.user 的个人配置，平台 LLM 检测会拿错密钥来源）。
+router.post('/platform/detect-llm-models', async (req, res) => {
+  const b = req.body?.llm || req.body || {};
+  const saved = getPlatform();
+  const proto = b.protocol || saved.protocol || 'openai';
+  const base = String(b.base_url || saved.base_url || '').split('?')[0].replace(/\/$/, '');
+  const key = (b.key && b.key.trim()) ? b.key.trim() : saved.key;
+  if (!base) return res.status(400).json({ error: '请先填写 API Base URL' });
+  if (!key) return res.status(400).json({ error: '请先填写 API Key' });
+  try {
+    const { assertPublicUrl, safeFetch } = await import('../safeUrl.js');
+    assertPublicUrl(base);
+    const url = proto === 'anthropic' ? base.replace(/\/v1$/, '') + '/v1/models' : base + '/models';
+    const headers = proto === 'anthropic'
+      ? { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
+      : { Authorization: `Bearer ${key}` };
+    const r = await safeFetch(url, { headers });
+    if (!r.ok) { const t = await r.text().catch(() => ''); console.error('[admin] /platform/detect-llm-models 上游错误', r.status, t.slice(0, 300)); return res.status(502).json({ error: '获取模型列表失败，请检查 API Base URL 与 Key 是否正确' }); }
+    const d = await r.json();
+    const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.models) ? d.models : (Array.isArray(d) ? d : []));
+    const models = list.map(m => (typeof m === 'string' ? m : (m.model_id || m.id || m.name))).filter(Boolean);
+    res.json({ models, source: '服务商 /models 端点' });
+  } catch (e) { console.error('[admin] /platform/detect-llm-models 连接失败', e.message); res.status(502).json({ error: '获取模型列表失败：' + e.message }); }
+});
+
 // GM 图像服务在线检测——用当前表单值（未保存的也行）发起一次最小生成请求，
 // 验证密钥/签名/区域是否可用，返回结果与延迟。空 key 回落到已保存配置。
 router.post('/platform/test-image', async (req, res) => {

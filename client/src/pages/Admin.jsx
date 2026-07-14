@@ -479,6 +479,8 @@ function PlatformTab({ toast }) {
   const [det, setDet] = useState('');
   const [detVoices, setDetVoices] = useState(false);
   const [vprev, setVprev] = useState(false);
+  const [llmTest, setLlmTest] = useState(null);   // { ok, message, reply?, latency_ms? }
+  const [llmTesting, setLlmTesting] = useState(false);
 
   // 试听平台语音 — synthesize a sample with the current form values (server falls
   // back to the saved key when the key field is left blank).
@@ -504,11 +506,30 @@ function PlatformTab({ toast }) {
     if (!cfg.base_url) { toast('请先填写该服务的 Base URL', 'err'); return; }
     setDet(kind);
     try {
-      const d = await api('/settings/models', { method: 'POST', body: { base_url: cfg.base_url, api_key: cfg.key || undefined, protocol: cfg.protocol } });
+      // 语言模型走平台接口 /admin/platform/detect-llm-models：用平台表单值 + 已保存
+      // 平台 key 回退（老接口 /settings/models 读的是 GM 个人 settings，平台检测会拿错密钥来源）。
+      // 语音仍走 /settings/models（个人 TTS 检测场景）。
+      const endpoint = kind === 'llm' ? '/admin/platform/detect-llm-models' : '/settings/models';
+      const body = kind === 'llm'
+        ? { llm: { base_url: cfg.base_url, key: cfg.key || undefined, protocol: cfg.protocol } }
+        : { base_url: cfg.base_url, api_key: cfg.key || undefined, protocol: cfg.protocol };
+      const d = await api(endpoint, { method: 'POST', body });
       if (!d.models?.length) { toast('未返回任何模型（请在下方先填入该服务的密钥再检测）', 'err'); return; }
       (kind === 'voice' ? setVoiceModels : setLlmModels)(d.models);
       toast(`检测到 ${d.models.length} 个可用模型`);
     } catch (e) { toast(e.message, 'err'); } finally { setDet(''); }
+  };
+
+  // 平台语言模型连接测试——用当前表单值（未保存的也行）发起一次最小对话请求，
+  // 验证 base_url / key / model / protocol 是否可用。表单 key 为空时后端回退到已保存
+  // 平台密钥（GM 保存后表单 key 会被清空，不应因此无法测试）。
+  const testLlm = async () => {
+    setLlmTesting(true); setLlmTest(null);
+    try {
+      const d = await api('/admin/platform/test-llm', { method: 'POST', body: { llm: { base_url: llm.base_url, model: llm.model, protocol: llm.protocol, key: llm.key || undefined } } });
+      setLlmTest(d);
+      toast(d.ok ? `连接成功${d.latency_ms != null ? `（${d.latency_ms}ms）` : ''}` : d.message, d.ok ? '' : 'err');
+    } catch (e) { toast(e.message, 'err'); } finally { setLlmTesting(false); }
   };
 
   // 检测可用音色（当前仅 MiniMax 提供音色列表端点 /v1/get_voice）。
@@ -591,7 +612,10 @@ function PlatformTab({ toast }) {
       {/* ---- 语言模型 ---- */}
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="section-title"><h2 style={{ fontSize: 17 }}><Cpu size={16} style={{ verticalAlign: -3, marginRight: 6 }} />平台内置语言服务</h2>
-          <button className="btn sm primary" disabled={busy} onClick={() => save('llm')}><Check size={14} /> 保存</button></div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn sm" disabled={llmTesting || busy} onClick={testLlm}><Zap size={14} className={llmTesting ? 'spin' : ''} /> {llmTesting ? '测试中' : '测试连接'}</button>
+            <button className="btn sm primary" disabled={busy} onClick={() => save('llm')}><Check size={14} /> 保存</button>
+          </div></div>
         <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>未配置自有 API 的用户对话时统一调用此服务。<b>群体性配置，修改后立即对全体无 API 用户生效</b>，普通用户看不到任何接口或密钥。</p>
         <div className="row">
           <div className="field"><label>服务商预设</label>
@@ -618,6 +642,15 @@ function PlatformTab({ toast }) {
           <div className="hint">检测前请先在下方填入该服务的密钥（检测需要密钥）。</div></div>
         <div className="field"><label>API Key {cfg.key_set && <span className="tag">已配置 · {cfg.key_masked}</span>}</label>
           <input className="input" type="password" value={llm.key} onChange={e => setLlm(l => ({ ...l, key: e.target.value }))} placeholder={cfg.key_set ? '••••••（留空则不修改）' : '填写平台密钥'} /></div>
+        {llmTest && (
+          <div className="field">
+            <div style={{ padding: 10, borderRadius: 8, fontSize: 13, background: llmTest.ok ? 'var(--ok-soft, rgba(80,160,80,0.12))' : 'var(--danger-soft, rgba(187,75,53,0.12))', color: llmTest.ok ? 'var(--ok, #4a8a4a)' : 'var(--danger, #bb4b35)' }}>
+              <b>{llmTest.ok ? '✓ ' : '✕ '}{llmTest.message}</b>
+              {llmTest.reply && <span className="muted"> · 模型回复：{llmTest.reply}</span>}
+              {llmTest.latency_ms != null && <span className="muted"> · 延迟 {llmTest.latency_ms}ms</span>}
+            </div>
+          </div>
+        )}
         <div className="field"><label>平台系统提示词（全局）</label>
           <textarea className="input" rows={5} value={llm.system_prompt} onChange={e => setLlm(l => ({ ...l, system_prompt: e.target.value }))} style={{ resize: 'vertical', lineHeight: 1.6 }}
             placeholder="统一的安全 / 风格约束、平台世界观等。自动前置注入到所有「无自有 API」用户的每次对话，与角色人设叠加。留空则不注入。" /></div>
