@@ -1224,6 +1224,11 @@ function LogsTab({ toast }) {
   const [fQ, setFQ] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [livePulse, setLivePulse] = useState(0); // 实时错误脉冲计数
+  // 选中账号查看登录历史：fUserId 锁定到某用户，fLoginOnly=1 时再叠加 category=auth&event=login
+  const [fUserId, setFUserId] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null); // 选中账号的展示信息 {id,username,display_name,avatar}
+  const [userQ, setUserQ] = useState(''); // 账号搜索输入
+  const [userResults, setUserResults] = useState([]); // 账号搜索结果
 
   // 构建查询参数
   const queryStr = (extra = {}) => {
@@ -1233,6 +1238,7 @@ function LogsTab({ toast }) {
     if (fCategory) p.set('category', fCategory);
     if (fEvent) p.set('event', fEvent);
     if (fQ) p.set('q', fQ);
+    if (fUserId) p.set('user_id', fUserId);
     p.set('limit', PAGE_SIZE);
     p.set('offset', (extra.page ?? page) * PAGE_SIZE);
     for (const [k, v] of Object.entries(extra)) if (v != null) p.set(k, v);
@@ -1265,7 +1271,21 @@ function LogsTab({ toast }) {
   };
 
   useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, []);
-  useEffect(() => { loadList(page); /* eslint-disable-next-line */ }, [page, fLevel, fSource, fCategory, fEvent]);
+  useEffect(() => { loadList(page); /* eslint-disable-next-line */ }, [page, fLevel, fSource, fCategory, fEvent, fUserId]);
+
+  // 账号搜索：复用 /admin/users（空查询返回最新 50，纯数字按 id 精确，否则按用户名/昵称模糊）
+  const searchUsers = async () => {
+    try { const d = await api('/admin/users' + (userQ.trim() ? '?q=' + encodeURIComponent(userQ.trim()) : '')); setUserResults(d.users || []); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  // 选中某账号 → 锁定 user_id 并自动叠加 auth/login 过滤，直接定位到该账号登录历史
+  const pickUser = (u) => {
+    setSelectedUser(u); setFUserId(String(u.id)); setFCategory('auth'); setFEvent('login');
+    setUserQ(''); setUserResults([]); setPage(0);
+  };
+  const clearUser = () => {
+    setSelectedUser(null); setFUserId(''); setFCategory(''); setFEvent(''); setPage(0);
+  };
 
   // SSE 实时推送：error/fatal 事件触发刷新 + 脉冲动画
   useRealtimeEvent('audit', (data) => {
@@ -1363,6 +1383,41 @@ function LogsTab({ toast }) {
         </div>
       )}
 
+      {/* 登录日志 · 按账号查看 */}
+      <div className="card" style={{ marginTop: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: 16, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <UserCheck size={16} style={{ verticalAlign: -3 }} /> 登录日志 · 按账号查看
+          </h2>
+          {selectedUser && (
+            <span className="tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--accent-soft, rgba(120,140,255,0.12))', color: 'var(--accent-2)' }}>
+              <Avatar src={selectedUser.avatar} name={selectedUser.display_name} size={16} />
+              {selectedUser.display_name} @{selectedUser.username} · U{selectedUser.id}
+              <button onClick={clearUser} title="取消选中" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, display: 'inline-flex' }}><X size={12} /></button>
+            </span>
+          )}
+          <span className="muted" style={{ fontSize: 12 }}>选中账号后自动过滤该账号的登录成功记录（category=auth · event=login）</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input className="input" placeholder="搜索用户名 / 昵称，或输入用户 ID（留空列出最新 50）" value={userQ} onChange={e => setUserQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchUsers()} style={{ flex: '1 1 240px', minWidth: 200 }} />
+          <button className="btn" onClick={searchUsers}><Search size={14} /> 搜索账号</button>
+        </div>
+        {userResults.length > 0 && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {userResults.map(u => (
+              <div key={u.id} className="adm-row" style={{ cursor: 'pointer', padding: '6px 8px' }} onClick={() => pickUser(u)}>
+                <Avatar src={u.avatar} name={u.display_name} size={28} />
+                <div className="grow" style={{ minWidth: 0 }}>
+                  <b style={{ fontSize: 13 }}>{u.display_name}</b>
+                  <div className="sub2" style={{ fontSize: 11 }}>@{u.username} · U{u.id}{u.is_gm ? ' · GM' : ''}{u.is_banned ? ' · 已封禁' : ''}</div>
+                </div>
+                <span className="muted" style={{ fontSize: 11 }}>查看登录记录 <ChevronRight size={12} style={{ verticalAlign: -2 }} /></span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 过滤栏 */}
       <div className="card" style={{ marginTop: 18 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -1402,7 +1457,7 @@ function LogsTab({ toast }) {
             <input className="input" value={fQ} onChange={e => setFQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && (setPage(0), loadList(0))} placeholder="消息/事件/接口" />
           </div>
           <button className="btn" onClick={() => { setPage(0); loadList(0); }}><Search size={14} /> 查询</button>
-          <button className="btn" onClick={() => { setFLevel(''); setFSource(''); setFCategory(''); setFEvent(''); setFQ(''); setPage(0); }}>重置</button>
+          <button className="btn" onClick={() => { setFLevel(''); setFSource(''); setFCategory(''); setFEvent(''); setFQ(''); setFUserId(''); setSelectedUser(null); setUserResults([]); setPage(0); }}>重置</button>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
