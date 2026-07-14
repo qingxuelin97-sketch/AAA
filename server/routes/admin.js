@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { randomInt } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { authRequired, requireGm } from '../auth.js';
 import { applyTx, isVip, notify } from '../wallet.js';
@@ -23,6 +24,53 @@ const rnd = (n = 6) => Array.from({ length: n }, () => CODE_ALPHABET[randomInt(C
 const dataOpsEnabled = () => process.env.ADMIN_DATA_OPS === 'true';
 
 router.get('/check', (req, res) => res.json({ is_gm: true }));
+
+// ---- 账号新建（GM 在后台直接创建账号，仅凭用户名+密码）----
+// 与 server/scripts/add-account.mjs 同源逻辑：bcrypt 12 轮哈希、reg_trust='legacy'、
+// 同步建 settings 行。区别在于网页端不幂等重置密码——用户名已存在即拒绝（避免误覆盖）。
+const ADMIN_NAME_RE = /^[\w\u4e00-\u9fa5]{2,20}$/;
+function adminValidPassword(password) {
+  if (typeof password !== 'string' || password.length < 8 || password.length > 72) return false;
+  let kinds = 0;
+  if (/[a-z]/.test(password)) kinds++;
+  if (/[A-Z]/.test(password)) kinds++;
+  if (/\d/.test(password)) kinds++;
+  if (/[^a-zA-Z0-9]/.test(password)) kinds++;
+  return kinds >= 2;
+}
+router.post('/accounts', async (req, res) => {
+  try {
+    const username = String(req.body?.username || '').trim();
+    const password = String(req.body?.password || '');
+    const displayName = String(req.body?.display_name || '').trim();
+    const goldRaw = Number(req.body?.gold);
+    const gold = Number.isFinite(goldRaw) ? Math.max(0, Math.min(1_000_000, Math.floor(goldRaw))) : 100;
+    if (!ADMIN_NAME_RE.test(username)) return res.status(400).json({ error: '用户名需 2-20 位，仅限字母、数字、下划线或中文' });
+    if (!adminValidPassword(password)) return res.status(400).json({ error: '密码需为 8-72 位，并包含字母、数字、符号中的至少两类' });
+    if (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) {
+      return res.status(409).json({ error: '该用户名已被注册' });
+    }
+    const passwordHash = await bcrypt.hash(password, 12);
+    let userId;
+    db.transaction(() => {
+      const info = db.prepare(`INSERT INTO users
+        (username, password_hash, display_name, gold, reg_trust)
+        VALUES (?, ?, ?, ?, 'legacy')`)
+        .run(username, passwordHash, (displayName || username).slice(0, 30), gold);
+      userId = Number(info.lastInsertRowid);
+      db.prepare('INSERT INTO settings (user_id) VALUES (?)').run(userId);
+    }).immediate();
+    auditLog({ event: 'account_create', message: `GM 新建账号 ${username} (U${userId})`,
+      user_id: userId, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+      extra: { username, gold }, request_id: req.requestId || '' });
+    res.json({ ok: true, user_id: userId, username, gold });
+  } catch (e) {
+    if (/UNIQUE constraint failed: users\.username/i.test(e.message || '')) {
+      return res.status(409).json({ error: '该用户名已被注册' });
+    }
+    res.status(500).json({ error: '创建失败：' + e.message });
+  }
+});
 
 // ---- platform AI config (language / voice / image) ----
 router.get('/platform', (req, res) => res.json({ platform: adminView() }));

@@ -149,6 +149,7 @@ function UsersTab({ toast }) {
   const [q, setQ] = useState('');
   const [users, setUsers] = useState([]);
   const [gifting, setGifting] = useState(null);
+  const [creating, setCreating] = useState(false);
 
   const load = (query = q) => api('/admin/users?q=' + encodeURIComponent(query)).then(d => setUsers(d.users || [])).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(''); /* eslint-disable-next-line */ }, []);
@@ -164,6 +165,7 @@ function UsersTab({ toast }) {
       <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
         <input className="input" placeholder="搜索用户名 / 昵称" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && load()} style={{ flex: 1 }} />
         <button className="btn" onClick={() => load()}><Search size={15} /> 搜索</button>
+        <button className="btn primary" onClick={() => setCreating(true)}><Plus size={15} /> 新建账号</button>
       </div>
       {users.length === 0 ? <div className="empty">没有找到用户</div> : users.map(u => (
         <div key={u.id} className="adm-row">
@@ -185,7 +187,47 @@ function UsersTab({ toast }) {
         </div>
       ))}
       {gifting && <GiftModal user={gifting} toast={toast} onClose={() => setGifting(null)} onDone={() => { setGifting(null); load(); }} />}
+      {creating && <CreateAccountModal toast={toast} onClose={() => setCreating(false)} onDone={() => { setCreating(false); load(); }} />}
     </>
+  );
+}
+
+// GM 后台直接新建账号：仅需用户名 + 密码即可开号（昵称 / 金币可选）。
+// 与注册流程不同：免邮箱验证、免邀请码、免 Play Integrity，reg_trust='legacy'。
+function CreateAccountModal({ toast, onClose, onDone }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [gold, setGold] = useState('100');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!username.trim() || !password) { toast('请填写用户名和密码', 'err'); return; }
+    setBusy(true);
+    try {
+      const d = await api('/admin/accounts', { method: 'POST', body: {
+        username: username.trim(), password,
+        display_name: displayName.trim(),
+        gold: Number(gold) || 0,
+      } });
+      toast(`已创建账号 ${d.username} (U${d.user_id})`);
+      onDone();
+    } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <h2 style={{ margin: '0 0 14px', fontSize: 18 }}><Plus size={17} style={{ verticalAlign: -3, marginRight: 6 }} />新建账号</h2>
+      <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>免邮箱验证 / 免邀请码，直接凭用户名 + 密码开号。账号可用该密码立即登录。</p>
+      <div className="field"><label>用户名 <span className="muted">*</span></label><input className="input" value={username} onChange={e => setUsername(e.target.value)} placeholder="2-20 位，字母 / 数字 / 下划线 / 中文" /></div>
+      <div className="field"><label>密码 <span className="muted">*</span></label><input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="8-72 位，含字母 / 数字 / 符号至少两类" /></div>
+      <div className="field"><label>昵称 <span className="muted">(可选，留空同用户名)</span></label><input className="input" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="最多 30 字" /></div>
+      <div className="field"><label>初始金币 <span className="muted">(可选)</span></label><input className="input" type="number" min="0" value={gold} onChange={e => setGold(e.target.value)} placeholder="100" /></div>
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <button className="btn ghost" style={{ flex: 1 }} onClick={onClose}>取消</button>
+        <button className="btn primary" style={{ flex: 1 }} disabled={busy} onClick={submit}><Plus size={15} /> 创建</button>
+      </div>
+    </Modal>
   );
 }
 
