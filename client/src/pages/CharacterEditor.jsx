@@ -210,7 +210,7 @@ export default function CharacterEditor() {
   const updWorld = (i, k, v) => set('world', c.world.map((w, j) => j === i ? { ...w, [k]: v } : w));
   const delWorld = (i) => set('world', c.world.filter((_, j) => j !== i));
 
-  // ── 独立世界书关联（跨角色复用）── 仅已保存角色可关联
+  // ── 独立世界书关联（跨角色复用）── 新建时暂存，保存角色时一并关联。
   const linked = c.linked_worldbooks || [];
 
   // 按需加载公开广场世界书（满血版，任何人发布的公开世界书都可关联）
@@ -238,14 +238,25 @@ export default function CharacterEditor() {
   const attachWb = async (w) => {
     setWbBusy(true);
     try {
+      const linkedWb = { id: w.id, name: w.name, is_public: w.is_public, owner_id: w.owner_id, entry_count: w.entry_count };
+      if (!editing) {
+        set('linked_worldbooks', [...linked, linkedWb]);
+        toast('已选择，保存角色时将关联满血世界书');
+        return;
+      }
       await api('/worldbooks/' + w.id + '/attach/' + id, { method: 'POST' });
-      set('linked_worldbooks', [...linked, { id: w.id, name: w.name, is_public: w.is_public, owner_id: w.owner_id, entry_count: w.entry_count }]);
+      set('linked_worldbooks', [...linked, linkedWb]);
       toast('已关联满血世界书');
     } catch (e) { toast(e.message, 'err'); } finally { setWbBusy(false); }
   };
   const detachWb = async (wbId) => {
     setWbBusy(true);
     try {
+      if (!editing) {
+        set('linked_worldbooks', linked.filter(x => x.id !== wbId));
+        toast('已取消待关联的满血世界书');
+        return;
+      }
       await api('/worldbooks/' + wbId + '/attach/' + id, { method: 'DELETE' });
       set('linked_worldbooks', linked.filter(x => x.id !== wbId));
       toast('已解除关联');
@@ -268,7 +279,7 @@ export default function CharacterEditor() {
     setBusy(true);
     try {
       if (editing) await api('/characters/' + id, { method: 'PUT', body: c });
-      else await api('/characters', { method: 'POST', body: c });
+      else await api('/characters', { method: 'POST', body: { ...c, linked_worldbook_ids: linked.map(w => w.id) } });
       draft.discard(); // 保存成功后清理本地草稿
       toast('已保存');
       nav('/library');
@@ -413,17 +424,16 @@ export default function CharacterEditor() {
               </div>
             ))}
 
-            {editing && (
-              <div className="card" style={{ marginTop: 22, background: 'var(--bg-2)' }}>
+            <div className="card" style={{ marginTop: 22, background: 'var(--bg-2)' }}>
                 <div className="section-title">
                   <h2 style={{ fontSize: 15 }}><Sparkles size={14} style={{ verticalAlign: -2, marginRight: 5, color: 'var(--accent)' }} />关联满血世界书 ({linked.length})</h2>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn sm" onClick={saveAsWb} disabled={wbBusy} title="把上方内嵌条目另存为独立世界书（即可升级为满血版编辑）"><BookUp size={13} /> 另存为</button>
+                    {editing && <button className="btn sm" onClick={saveAsWb} disabled={wbBusy} title="把上方内嵌条目另存为独立世界书（即可升级为满血版编辑）"><BookUp size={13} /> 另存为</button>}
                     <button className="btn sm primary" onClick={openAttach} disabled={wbBusy}><Plus size={13} /> 关联</button>
                   </div>
                 </div>
                 <p className="muted" style={{ fontSize: 12.5, marginTop: -8 }}>
-                  关联独立世界书即可让本角色获得<b>完整（满血）能力</b>：可关联<b>自己的</b>世界书，也可直接关联<b>广场上任何人公开</b>的世界书。关联后其条目与内嵌条目一起在对话中触发，且能力（图片注入 / 变量 / 分支 / 语义检索等）全部生效；多个角色可共享同一本。
+                  关联独立世界书即可让本角色获得<b>完整（满血）能力</b>：可关联<b>自己的</b>世界书，也可直接关联<b>广场上任何人公开</b>的世界书。新建角色时，所选世界书会在保存时自动关联；关联后其条目与内嵌条目一起在对话中触发，且能力（图片注入 / 变量 / 分支 / 语义检索等）全部生效；多个角色可共享同一本。
                 </p>
                 {linked.length === 0 && <div className="muted" style={{ fontSize: 13, padding: '6px 0' }}>尚未关联任何满血世界书</div>}
                 {linked.map(w => (
@@ -476,8 +486,7 @@ export default function CharacterEditor() {
                     </div>
                   );
                 })()}
-              </div>
-            )}
+            </div>
           </div>
         )}
 
