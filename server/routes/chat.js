@@ -770,12 +770,17 @@ async function pumpModelStream(res, eff, payloadMessages) {
       }
     }
   } catch (err) {
-    // 客户端断开：静默（已无接收方）；首字节超时：告知超时；其余：通用不可用提示。
+    // 客户端断开：静默（已无接收方）；首字节超时：告知超时；SSRF/网络错误：给出可排查提示；其余：通用不可用。
     if (err.name === 'AbortError') {
       if (!res.writableEnded) { try { res.write(`data: ${JSON.stringify({ error: '模型服务响应超时，请稍后再试' })}\n\n`); } catch { /* 连接已断 */ } }
     } else {
       console.error('[chat] 连接模型服务失败', err.message);
-      if (!res.writableEnded) { try { res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`); } catch { /* 连接已断 */ } }
+      // SSRF 预检错误（safeFetch 抛出，带 expose 标记）：把真实原因透传给客户端，
+      // 便于用户发现是 Base URL 配置问题（如误填内网地址、域名无法解析）。
+      const hint = err.expose
+        ? `模型服务连接失败：${err.message}。请检查「设置 → 语言模型」的 Base URL 是否正确。`
+        : '模型服务暂不可用，请稍后再试';
+      if (!res.writableEnded) { try { res.write(`data: ${JSON.stringify({ error: hint })}\n\n`); } catch { /* 连接已断 */ } }
     }
   } finally {
     clearTimeout(headerTimer);
@@ -796,7 +801,6 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
   const settings = getSettings(req.user.id);
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
   const eff = effectiveLLM(settings);
-  if (eff && !eff.platform) assertPublicUrl(eff.base_url);
 
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
@@ -853,15 +857,17 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
 async function streamReply(res, req, conv, character, settings, userContent, event) {
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
   const eff = effectiveLLM(settings);
-  // SSRF 防护：仅校验用户自带的 base_url。平台 base_url 由管理员配置，
-  // 自托管部署常指向内网/本机自建 LLM，故不校验以免破坏现有功能。在写 SSE 头之前，便于把 400 以 JSON 返回。
-  if (eff && !eff.platform) assertPublicUrl(eff.base_url);
 
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
   const sse = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
+  // SSRF 防护由 pumpModelStream 内的 safeFetch 统一承担（DNS 复检 + 逐跳重定向复检）。
+  // 此前在 SSE 头之前做同步 assertPublicUrl 预检：① 与 safeFetch 重复；② 抛出会冒泡成
+  // HTTP 错误（前端 streamSSE 走 !res.ok 分支，显示「连接出错」而非 SSE 错误事件）；
+  // ③ 同步预检只看字面字符串，遇到生产环境 DNS 差异会误伤 DeepSeek 等合法公网域名。
+  // 改为：先发 SSE 头，SSRF/网络错误一律经 pumpModelStream 的 catch 转成 SSE 错误事件。
 
   if (!eff) { sse({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' }); sse('[DONE]'); return res.end(); }
 
