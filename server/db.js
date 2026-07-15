@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS users (
   bio TEXT DEFAULT '',
   gold INTEGER DEFAULT 300,
   diamond INTEGER DEFAULT 0,
+  diamond_debt INTEGER DEFAULT 0,
+  economic_hold INTEGER DEFAULT 0,
+  economic_hold_reason TEXT DEFAULT '',
+  economic_hold_at INTEGER,
   vip_until TEXT,
   last_checkin TEXT,
   checkin_streak INTEGER DEFAULT 0,
@@ -83,6 +87,11 @@ CREATE TABLE IF NOT EXISTS transactions (
   kind TEXT NOT NULL,          -- recharge|exchange|vip|buy_script|sell_script|refund|checkin|invite|reward
   gold INTEGER DEFAULT 0,      -- signed delta
   diamond INTEGER DEFAULT 0,   -- signed delta
+  gross_diamond INTEGER,
+  diamond_debt_delta INTEGER DEFAULT 0,
+  diamond_debt_after INTEGER DEFAULT 0,
+  gold_balance_after INTEGER,
+  diamond_balance_after INTEGER,
   memo TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now'))
 );
@@ -360,6 +369,10 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN reg_device TEXT',
   "ALTER TABLE users ADD COLUMN reg_trust TEXT DEFAULT 'legacy'",
   'ALTER TABLE users ADD COLUMN integrity_checked_at INTEGER',
+  'ALTER TABLE users ADD COLUMN diamond_debt INTEGER DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN economic_hold INTEGER DEFAULT 0',
+  "ALTER TABLE users ADD COLUMN economic_hold_reason TEXT DEFAULT ''",
+  'ALTER TABLE users ADD COLUMN economic_hold_at INTEGER',
   'ALTER TABLE transactions ADD COLUMN ref_owner INTEGER',
   'ALTER TABLE transactions ADD COLUMN payment_order_id TEXT',
   // Ledger correlation/idempotency. share_eligible keeps a reserved upstream
@@ -369,6 +382,11 @@ for (const sql of [
   'ALTER TABLE transactions ADD COLUMN idempotency_key TEXT',
   'ALTER TABLE transactions ADD COLUMN reversal_of INTEGER',
   'ALTER TABLE transactions ADD COLUMN share_eligible INTEGER DEFAULT 1',
+  'ALTER TABLE transactions ADD COLUMN gross_diamond INTEGER',
+  'ALTER TABLE transactions ADD COLUMN diamond_debt_delta INTEGER DEFAULT 0',
+  'ALTER TABLE transactions ADD COLUMN diamond_debt_after INTEGER DEFAULT 0',
+  'ALTER TABLE transactions ADD COLUMN gold_balance_after INTEGER',
+  'ALTER TABLE transactions ADD COLUMN diamond_balance_after INTEGER',
   'ALTER TABLE script_purchases ADD COLUMN settlement_due_at INTEGER',
   'ALTER TABLE script_purchases ADD COLUMN settled_at INTEGER',
   // Scripts are unpublished rather than destroyed. Purchase snapshots remain
@@ -492,12 +510,20 @@ CREATE TABLE IF NOT EXISTS payment_orders (
   currency TEXT NOT NULL DEFAULT 'CNY',
   diamond INTEGER NOT NULL CHECK (diamond > 0),
   bonus INTEGER NOT NULL DEFAULT 0 CHECK (bonus >= 0),
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','credited','failed','expired','refunded')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','credited','refunded','chargeback','failed','expired','review_required')),
   provider_tx_id TEXT,
   client_request_id TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  paid_at INTEGER
+  expires_at INTEGER NOT NULL,
+  paid_at INTEGER,
+  credited_at INTEGER,
+  refunded_at INTEGER,
+  chargeback_at INTEGER,
+  credited_diamond INTEGER NOT NULL DEFAULT 0,
+  refund_amount_cents INTEGER NOT NULL DEFAULT 0,
+  last_event_id TEXT,
+  review_reason TEXT DEFAULT ''
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_provider_tx
   ON payment_orders (provider, provider_tx_id) WHERE provider_tx_id IS NOT NULL;
@@ -506,8 +532,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_client_request
 CREATE TABLE IF NOT EXISTS payment_events (
   provider TEXT NOT NULL,
   event_id TEXT NOT NULL,
-  order_id TEXT NOT NULL REFERENCES payment_orders(id) ON DELETE RESTRICT,
+  -- Deliberately no foreign key: every verified callback must be retained even
+  -- when it references an unknown or already-pruned order. The reducer records
+  -- that condition in processing_status/error_code instead of losing evidence.
+  order_id TEXT NOT NULL,
+  provider_tx_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL,
+  refund_amount_cents INTEGER NOT NULL DEFAULT 0,
+  key_version TEXT NOT NULL,
   payload_hash TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  processing_status TEXT NOT NULL DEFAULT 'received',
+  processed_at INTEGER,
+  error_code TEXT DEFAULT '',
   received_at INTEGER NOT NULL,
   PRIMARY KEY (provider, event_id)
 );
@@ -528,9 +567,119 @@ CREATE TABLE IF NOT EXISTS user_uploads (
 CREATE INDEX IF NOT EXISTS idx_user_uploads_owner_time ON user_uploads (user_id, created_at);
 `);
 
+// SQLite cannot widen a CHECK constraint in place. Rebuild the two payment
+// tables once when upgrading from the original paid/failed-only state model.
+// All historical rows and event hashes are preserved; payment processing stays
+// disabled unless the post-migration health check in payment.js passes.
+const paymentOrderSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='payment_orders'").get()?.sql || '';
+if (paymentOrderSql && !paymentOrderSql.includes('review_required')) {
+  let backupReady = dbFile === ':memory:';
+  if (!backupReady) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = `${dbFile}.pre-payment-v2-${stamp}.bak`;
+    try {
+      // VACUUM INTO produces a transactionally consistent snapshot even with
+      // WAL enabled. If backup creation fails, do not touch the legacy tables.
+      db.prepare('VACUUM INTO ?').run(backupPath);
+      backupReady = true;
+      console.info(`[payment] 支付表升级前备份已写入 ${backupPath}`);
+    } catch (error) {
+      console.error('[payment] 无法创建升级前备份，支付表保持原状并安全关闭：', error.message);
+    }
+  }
+  if (backupReady) db.pragma('foreign_keys = OFF');
+  try {
+    if (!backupReady) throw new Error('payment migration backup unavailable');
+    db.exec(`
+      BEGIN IMMEDIATE;
+      ALTER TABLE payment_events RENAME TO payment_events_legacy;
+      ALTER TABLE payment_orders RENAME TO payment_orders_legacy;
+      CREATE TABLE payment_orders (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+        provider TEXT NOT NULL,
+        package_id TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+        currency TEXT NOT NULL DEFAULT 'CNY',
+        diamond INTEGER NOT NULL CHECK (diamond > 0),
+        bonus INTEGER NOT NULL DEFAULT 0 CHECK (bonus >= 0),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','credited','refunded','chargeback','failed','expired','review_required')),
+        provider_tx_id TEXT,
+        client_request_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        paid_at INTEGER,
+        credited_at INTEGER,
+        refunded_at INTEGER,
+        chargeback_at INTEGER,
+        credited_diamond INTEGER NOT NULL DEFAULT 0,
+        refund_amount_cents INTEGER NOT NULL DEFAULT 0,
+        last_event_id TEXT,
+        review_reason TEXT DEFAULT ''
+      );
+      INSERT INTO payment_orders
+        (id,user_id,provider,package_id,amount_cents,currency,diamond,bonus,status,provider_tx_id,client_request_id,
+         created_at,updated_at,expires_at,paid_at,credited_at,credited_diamond)
+      SELECT id,user_id,provider,package_id,amount_cents,currency,diamond,bonus,status,provider_tx_id,client_request_id,
+         created_at,updated_at,created_at + 1800000,paid_at,
+         CASE WHEN status='credited' THEN updated_at ELSE NULL END,
+         CASE WHEN status='credited' THEN diamond + bonus ELSE 0 END
+      FROM payment_orders_legacy;
+      CREATE TABLE payment_events (
+        provider TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        order_id TEXT NOT NULL,
+        provider_tx_id TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        currency TEXT NOT NULL,
+        refund_amount_cents INTEGER NOT NULL DEFAULT 0,
+        key_version TEXT NOT NULL,
+        payload_hash TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        processing_status TEXT NOT NULL DEFAULT 'received',
+        processed_at INTEGER,
+        error_code TEXT DEFAULT '',
+        received_at INTEGER NOT NULL,
+        PRIMARY KEY (provider, event_id)
+      );
+      INSERT INTO payment_events
+        (provider,event_id,order_id,provider_tx_id,event_type,amount_cents,currency,refund_amount_cents,key_version,
+         payload_hash,payload_json,processing_status,processed_at,received_at)
+      SELECT e.provider,e.event_id,e.order_id,COALESCE(o.provider_tx_id,'legacy'),
+         CASE WHEN o.status='failed' THEN 'failed' ELSE 'paid' END,o.amount_cents,o.currency,0,'legacy',
+         e.payload_hash,'{}','applied',e.received_at,e.received_at
+      FROM payment_events_legacy e JOIN payment_orders_legacy o ON o.id=e.order_id;
+      DROP TABLE payment_events_legacy;
+      DROP TABLE payment_orders_legacy;
+      COMMIT;
+    `);
+  } catch (error) {
+    try { db.exec('ROLLBACK'); } catch { /* no active migration */ }
+    console.error('[payment] 支付表升级失败，支付功能将保持关闭：', error.message);
+  } finally {
+    if (backupReady) db.pragma('foreign_keys = ON');
+  }
+}
+
+for (const sql of [
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_provider_tx
+    ON payment_orders (provider, provider_tx_id) WHERE provider_tx_id IS NOT NULL`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_client_request
+    ON payment_orders (user_id, client_request_id) WHERE client_request_id IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_payment_orders_user_created
+    ON payment_orders (user_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_payment_orders_user_open
+    ON payment_orders (user_id, status, expires_at)`,
+]) { try { db.exec(sql); } catch { /* health check will fail closed */ } }
+
 try {
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_payment_order
-    ON transactions (payment_order_id) WHERE payment_order_id IS NOT NULL`);
+  // A payment has one credit but may also have one linked refund/chargeback.
+  // The original broad index prevented recording the reversal beside its credit.
+  db.exec('DROP INDEX IF EXISTS idx_transactions_payment_order');
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_payment_credit
+    ON transactions (payment_order_id) WHERE payment_order_id IS NOT NULL AND kind = 'recharge'`);
 } catch { /* duplicate legacy data must be repaired before enabling payments */ }
 try {
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_operation
