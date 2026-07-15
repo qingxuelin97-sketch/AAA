@@ -33,6 +33,7 @@ import novelRoutes from './routes/novels.js';
 import realtimeRoutes from './routes/realtime.js';
 import asrRoutes from './routes/asr.js';
 import paymentRoutes from './routes/payments.js';
+import { MAX_WEBHOOK_BYTES } from './payment.js';
 import { log, purgeOldLogs, genRequestId } from './logger.js';
 import jwt from 'jsonwebtoken';
 import { SECRET } from './auth.js';
@@ -128,13 +129,33 @@ app.use('/api', rateLimit({
   // Login has stricter database-backed account+IP and IP-only buckets. Letting
   // the anonymous 60/min middleware run first would make its specified 100/min
   // spray ceiling unreachable and would not be shared across workers.
-  skip: (req) => req.method === 'POST' && req.path === '/auth/login',
+  skip: (req) => req.method === 'POST' && (
+    req.path === '/auth/login'
+    // Payment providers commonly share an egress IP. Exact webhook routes use
+    // their own signature-aware 120/min limiter below; applying the anonymous
+    // 60/min bucket first would make valid callback bursts impossible.
+    || /^\/payments\/[A-Za-z0-9._-]+\/webhook$/.test(req.path)
+  ),
 }));
 
+app.use('/api/payments', (req, res, next) => {
+  const declared = Number(req.headers['content-length']);
+  if (Number.isFinite(declared) && declared > MAX_WEBHOOK_BYTES) {
+    return res.status(413).json({ error: '支付回调请求体过大', code: 'PAYMENT_WEBHOOK_TOO_LARGE' });
+  }
+  next();
+});
 app.use(express.json({
   limit: process.env.JSON_BODY_LIMIT || '2mb',
   verify: (req, _res, buf) => {
-    if (req.originalUrl?.startsWith('/api/payments/')) req.rawBody = Buffer.from(buf);
+    if (req.originalUrl?.startsWith('/api/payments/')) {
+      if (buf.length > MAX_WEBHOOK_BYTES) {
+        const error = new Error('支付回调请求体过大');
+        error.status = 413;
+        throw error;
+      }
+      req.rawBody = Buffer.from(buf);
+    }
   },
 }));
 

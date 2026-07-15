@@ -2,10 +2,10 @@ import { Router } from'express';
 import rateLimit from 'express-rate-limit';
 import db from'../db.js';
 import { authRequired } from'../auth.js';
-import { applyTx, isVip, publicUser, GOLD_PER_DIAMOND, VIP_COST_GOLD, VIP_DAYS, notify } from'../wallet.js';
+import { applyTx, assertEconomicAccess, isVip, publicUser, GOLD_PER_DIAMOND, VIP_COST_GOLD, VIP_DAYS, notify } from'../wallet.js';
 import { bumpDaily, cnToday } from '../daily.js';
 import { log } from '../logger.js';
-import { createPaymentOrder, getPaymentOrder, paymentAvailability } from '../payment.js';
+import { createPaymentOrder, getPaymentOrder, paymentAvailability, PAYMENT_PACKAGES } from '../payment.js';
 
 const router = Router();
 
@@ -22,15 +22,8 @@ export const VIP_PLANS = {
 const redeemLimiter = rateLimit({ windowMs: 60_000, max: 5, standardHeaders: true, legacyHeaders: false,
   message: { error: '兑换尝试过于频繁，请稍后再试' } });
 
-// Recharge packages (diamonds). Payment is simulated for the demo.
-export const PACKAGES = [
-  { id:'p1', cny: 6, diamond: 60, bonus: 0 },
-  { id:'p2', cny: 30, diamond: 300, bonus: 30 },
-  { id:'p3', cny: 68, diamond: 680, bonus: 120 },
-  { id:'p4', cny: 128, diamond: 1280, bonus: 320 },
-  { id:'p5', cny: 328, diamond: 3280, bonus: 1080 },
-  { id:'p6', cny: 648, diamond: 6480, bonus: 2880 }
-];
+// Server-authoritative recharge package snapshots (diamonds).
+export const PACKAGES = PAYMENT_PACKAGES;
 
 router.get('/wallet', authRequired, (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
@@ -74,13 +67,14 @@ router.post('/exchange', authRequired, (req, res) => {
   if (!n || n <= 0) return res.status(400).json({ error:'请输入有效的钻石数量' });
   if (n > 1_000_000) return res.status(400).json({ error:'单次兑换上限 100 万钻石' });
   try {
+    assertEconomicAccess(req.user.id);
     const w = applyTx(req.user.id, { kind:'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo:`${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` });
     log({ level: 'info', category: 'economy', event: 'exchange',
       message: `用户兑换 ${n} 钻石为 ${n * GOLD_PER_DIAMOND} 金币`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
       endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
       extra: { diamond: n, gold: n * GOLD_PER_DIAMOND } });
     res.json({ wallet: w });
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) { res.status(e.status || 400).json({ error: e.message, ...(e.code ? { code: e.code } : {}) }); }
 });
 
 // Buy VIP with gold. 可选 plan（week/month/season）；缺省 month（向后兼容）。

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
-import { applyTx, notify } from '../wallet.js';
+import { applyTx, assertEconomicAccess, notify } from '../wallet.js';
 import { creatorWorks } from '../creator.js';
 import { log } from '../logger.js';
 
@@ -90,6 +90,7 @@ router.post('/revenue-plan/claim', authRequired, (req, res) => {
     // IMMEDIATE 事务内重读并重算分成：并发/多进程下第二次领取读到更新后的 rev_claimed_total
     // → claimable 为假而拒绝，杜绝重复领取；累计与发奖一并原子提交。
     db.transaction(() => {
+      assertEconomicAccess(req.user.id);
       const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
       plan = revenuePlan(u);
       if (!plan.claimable) throw Object.assign(new Error('暂无可领取的分成；当用户在你的作品上消费金币后即可分成'), { status: 400, expose: true });
@@ -97,7 +98,7 @@ router.post('/revenue-plan/claim', authRequired, (req, res) => {
       db.prepare('UPDATE users SET rev_claimed_total = COALESCE(rev_claimed_total,0) + ? WHERE id = ?').run(amount, u.id);
       w = applyTx(u.id, { kind: 'revenue_share', gold: amount, memo: `创作者分成（${plan.tier_name} · ${Math.round(plan.rate * 100)}%）` });
     }).immediate();
-  } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+  } catch (e) { return res.status(e.status || 400).json({ error: e.message, ...(e.code ? { code: e.code } : {}) }); }
   notify(req.user.id, `💰 创作者收益分成 ${amount} 金币已到账（${plan.tier_name}）`, '/studio');
   log({
     level: 'info', category: 'economy', event: 'revenue_claim',
