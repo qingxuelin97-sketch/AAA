@@ -8,6 +8,7 @@
 //   · safe-area aware, phone-framed on wide screens for preview
 // Content pages are reused as-is; only the chrome differs.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, useNavigate, useLocation, useNavigationType } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
@@ -16,7 +17,9 @@ import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import RouteErrorBoundary from './RouteErrorBoundary.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
-import { useNav, appBack, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
+import { useNav, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
+import { useAppNavigation } from '../appNavigation.jsx';
+import { useAppOverlay } from '../overlay.jsx';
 import { preheat } from '../routeChunks.js';
 import {
   Home, Compass, MessageCircle, Plus, UserRound,
@@ -44,6 +47,7 @@ const CREATE = [
 
 export default function AppLayout({ children }) {
   const loc = useLocation();
+  const { route, requestBack } = useAppNavigation();
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
   const [sheet, setSheet] = useState(false); // create sheet open?
@@ -144,15 +148,15 @@ export default function AppLayout({ children }) {
   // React 对同引用元素直接 bailout，同 type+key+位置绝不重挂载。
   // 语义变化：tab 回访不再自动重拉数据 —— 由 SSE 实时事件 + 下拉刷新（驱逐
   // 当前 pane 缓存）覆盖。非 tab 路由维持原 keyed 重挂载。
-  const isTab = SWIPE_TABS.includes(loc.pathname);
+  const isTab = route.cache === 'keep-alive' && SWIPE_TABS.includes(loc.pathname);
   const paneCache = useRef({});   // { path: ReactElement }
-  const paneLru = useRef([]);     // only current + most-recent tab stay mounted
+  const paneLru = useRef([]);     // all four top-level tabs stay mounted
   const paneVer = useRef({});     // { path: n } —— 下拉刷新的驱逐版本号
   const paneScroll = useRef({});  // { path: window.scrollY }（window 是 tab 页主滚动容器）
   if (isTab) {
     paneCache.current[loc.pathname] = children;
     paneLru.current = [loc.pathname, ...paneLru.current.filter(p => p !== loc.pathname)];
-    while (paneLru.current.length > 2) {
+    while (paneLru.current.length > SWIPE_TABS.length) {
       const evicted = paneLru.current.pop();
       delete paneCache.current[evicted];
       delete paneVer.current[evicted];
@@ -281,7 +285,7 @@ export default function AppLayout({ children }) {
     tick(12); setRefreshing(true);
     refreshStart.current = performance.now();
     // tab 页：驱逐当前 pane 缓存（key 变 → 仅该 pane 重挂载重拉），其余 pane 保活
-    if (SWIPE_TABS.includes(loc.pathname)) {
+    if (route.refresh === 'evict' && SWIPE_TABS.includes(loc.pathname)) {
       paneVer.current[loc.pathname] = (paneVer.current[loc.pathname] || 0) + 1;
     }
     setRefreshKey(k => k + 1);          // remount current route → its effects refetch
@@ -291,7 +295,7 @@ export default function AppLayout({ children }) {
   useAppGestures(mainRef, {
     onNext: () => swipeGo(1),
     onPrev: () => swipeGo(-1),
-    onBack: () => { if (window.history.length > 1) { tick(); appBack(); } },
+    onBack: () => { tick(); void requestBack({ source: 'gesture' }); },
     onPullMove: (px) => { if (!refreshing) setPull(px); },
     onPullEnd: (ok) => { if (ok) doRefresh(); else setPull(0); }
   });
@@ -299,7 +303,8 @@ export default function AppLayout({ children }) {
   const ptr = refreshing ? 56 : pull;
 
   return (
-    <div className="app-root">
+    <div className={'app-root' + (route.dock ? '' : ' no-dock')}
+      data-statusbar-tone={route.statusBar} data-dirty-policy={route.dirty}>
       {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
       {perfNote && (
         <div className="app-perfnote" role="status">
@@ -328,15 +333,17 @@ export default function AppLayout({ children }) {
         )}
       </main>
 
-      <nav className="app-tabbar" ref={tabbarRef}>
-        <span className="dock-ink" ref={inkRef} aria-hidden="true" />
-        {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-        <button className={'app-fab' + (sheet ? ' open' : '')} onClick={() => setSheet(s => !s)} aria-label={sheet ? '关闭' : '创建'}>
-          <Plus size={20} strokeWidth={2.8} />
-          <i className="app-fab-ai" aria-hidden="true">AI</i>
-        </button>
-        {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-      </nav>
+      {route.dock && (
+        <nav className="app-tabbar" ref={tabbarRef} aria-label="主导航">
+          <span className="dock-ink" ref={inkRef} aria-hidden="true" />
+          {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+          <button className={'app-fab' + (sheet ? ' open' : '')} onClick={() => setSheet(s => !s)} aria-label={sheet ? '关闭' : '创建'}>
+            <Plus size={20} strokeWidth={2.8} />
+            <i className="app-fab-ai" aria-hidden="true">AI</i>
+          </button>
+          {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+        </nav>
+      )}
 
       {sheet && <CreateSheet onClose={() => setSheet(false)} />}
 
@@ -389,10 +396,12 @@ function Tab({ t, unread, dmUnread, curPath }) {
 
 function CreateSheet({ onClose }) {
   const navTo = useNav();
+  const sheetRef = useRef(null);
+  useAppOverlay(true, onClose, { rootRef: sheetRef, isolate: true });
   const go = (to) => { navTo(to); onClose(); };
-  return (
+  return createPortal((
     <div className="app-sheet-mask" onClick={onClose}>
-      <div className="app-sheet" onClick={e => e.stopPropagation()}>
+      <div ref={sheetRef} className="app-sheet" role="dialog" aria-modal="true" aria-label="创建" tabIndex={-1} onClick={e => e.stopPropagation()}>
         <div className="app-sheet-grip" />
         <h3 className="app-sheet-title">想创作点什么？</h3>
         {CREATE.map((c, i) => (
@@ -403,5 +412,5 @@ function CreateSheet({ onClose }) {
         ))}
       </div>
     </div>
-  );
+  ), document.body);
 }

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { useToast, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { Sparkles, Bug, Crown, MessageSquare, Copy, X } from 'lucide-react';
+import { useAppOverlay } from '../overlay.jsx';
 
 const QQ = '3487923507';
 const SEEN_KEY = 'huanyu_welcome_seen';
@@ -10,6 +11,7 @@ const SEEN_KEY = 'huanyu_welcome_seen';
 // official Bug 赏金 program (submit a bug → 100+ 金币).
 export default function WelcomePopup() {
   const [open, setOpen] = useState(false);
+  const popupRef = useRef(null);
   const nav = useNavigate();
   const toast = useToast();
 
@@ -25,6 +27,7 @@ export default function WelcomePopup() {
     localStorage.setItem(SEEN_KEY, new Date().toISOString().slice(0, 10));
     setOpen(false);
   };
+  useAppOverlay(open, close, { rootRef: popupRef });
   const copyQQ = async () => {
     try { await navigator.clipboard.writeText(QQ); toast('已复制官方技术 QQ：' + QQ); }
     catch { toast('复制失败，请手动记录 QQ：' + QQ, 'err'); }
@@ -33,7 +36,7 @@ export default function WelcomePopup() {
   if (!open) return null;
   return (
     <div className="modal-backdrop" onClick={close}>
-      <div className="card welcome-pop" onClick={e => e.stopPropagation()}>
+      <div ref={popupRef} className="card welcome-pop" role="dialog" aria-modal="true" tabIndex={-1} onClick={e => e.stopPropagation()}>
         <button className="wp-x" onClick={close} aria-label="关闭"><X size={18} /></button>
         <div className="wp-hero">
           <span className="wp-badge"><Sparkles size={14} /> 欢迎来到幻域</span>

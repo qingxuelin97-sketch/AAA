@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { isAppMode } from './appmode.js';
 
 const TOKEN_KEY = 'huanyu_token';
 const SERVER_KEY = 'huanyu_server';
@@ -51,7 +52,17 @@ export function setToken(t) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-export async function api(path, { method = 'GET', body, raw } = {}) {
+export class ApiError extends Error {
+  constructor(message, { status = 0, code = '', retryAfter = '' } = {}) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.retryAfter = retryAfter;
+  }
+}
+
+export async function api(path, { method = 'GET', body, raw, signal } = {}) {
   const headers = {};
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -62,10 +73,14 @@ export async function api(path, { method = 'GET', body, raw } = {}) {
     headers['Content-Type'] = 'application/json';
     payload = JSON.stringify(body);
   }
-  const res = await fetch(requiredApiBase() + '/api' + path, { method, headers, body: payload });
+  const res = await fetch(requiredApiBase() + '/api' + path, { method, headers, body: payload, signal });
   if (raw) return res;
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `请求失败 (${res.status})`);
+  if (!res.ok) throw new ApiError(data.error || `请求失败 (${res.status})`, {
+    status: res.status,
+    code: data.code || '',
+    retryAfter: res.headers.get('Retry-After') || '',
+  });
   return data;
 }
 
@@ -77,38 +92,73 @@ export async function uploadFile(file) {
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+export async function restoreAuthSession({ retainTransient = isAppMode() } = {}) {
+  if (!getToken()) return { state: 'anonymous', user: null, error: null };
+  try {
+    const data = await api('/auth/me');
+    if (data.token) setToken(data.token);
+    return { state: 'authenticated', user: data.user, error: null };
+  } catch (error) {
+    // Only an authoritative authentication verdict invalidates the local
+    // session. Offline/timeout/5xx keeps the token and offers a retry screen.
+    if (error?.status === 401 || error?.status === 403) {
+      setToken(null);
+      return { state: 'anonymous', user: null, error: null };
+    }
+    // Keep the established Web interaction baseline. Retained offline sessions
+    // are an App-shell policy, where intermittent mobile connectivity is normal.
+    if (!retainTransient) {
+      setToken(null);
+      return { state: 'anonymous', user: null, error: null };
+    }
+    return { state: 'retry', user: null, error };
+  }
+}
+
+export function AuthProvider({ children, initialSession }) {
+  const [user, setUser] = useState(initialSession?.user || null);
+  const [loading, setLoading] = useState(initialSession === undefined);
+  const [sessionError, setSessionError] = useState(initialSession?.state === 'retry' ? initialSession.error : null);
+
+  const applySession = (session) => {
+    setUser(session?.user || null);
+    setSessionError(session?.state === 'retry' ? session.error : null);
+    return session;
+  };
 
   useEffect(() => {
-    if (!getToken()) { setLoading(false); return; }
-    api('/auth/me').then(d => {
-      setUser(d.user);
-      if (d.token) setToken(d.token); // 服务端滑动续期：签发超 7 天时随响应换发新 token
-    }).catch(() => setToken(null)).finally(() => setLoading(false));
+    if (initialSession !== undefined) return;
+    restoreAuthSession().then(applySession).finally(() => setLoading(false));
+    // Initial session is deliberately sampled once; native bootstrap already
+    // completed before this provider mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (username, password) => {
     const d = await api('/auth/login', { method: 'POST', body: { username, password } });
-    setToken(d.token); setUser(d.user); return d.user;
+    setToken(d.token); setUser(d.user); setSessionError(null); return d.user;
   };
   const register = async (form) => {
     const d = await api('/auth/register', { method: 'POST', body: form });
-    setToken(d.token); setUser(d.user); return d.user;
+    setToken(d.token); setUser(d.user); setSessionError(null); return d.user;
   };
-  const logout = () => { setToken(null); setUser(null); };
+  const logout = () => { setToken(null); setUser(null); setSessionError(null); };
   const refreshUser = async () => {
-    try {
-      const d = await api('/auth/me');
-      setUser(d.user);
-      if (d.token) setToken(d.token); // 滑动续期（同上）
-      return d.user;
-    } catch { /* */ }
+    const session = await restoreAuthSession({ retainTransient: true });
+    // Background refreshes (balance/realtime resume) must not replace a
+    // usable screen with the recovery gate on a transient network failure.
+    if (session.state === 'retry' && user) return user;
+    applySession(session);
+    return session.user;
+  };
+  const retrySession = async () => {
+    setLoading(true);
+    try { return applySession(await restoreAuthSession()); }
+    finally { setLoading(false); }
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading, refreshUser }}>
+    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading, sessionError, refreshUser, retrySession }}>
       {children}
     </AuthContext.Provider>
   );

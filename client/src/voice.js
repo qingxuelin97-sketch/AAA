@@ -64,6 +64,8 @@ export function browserVoices() {
 
 // —— 单例播放状态 ——
 let _audio = null;        // 平台语音的 <audio> 元素
+let _audioUrl = null;     // 当前对象 URL；结束/停止时必须释放
+let _audioRevoke = false; // 对话缓存 URL 由缓存生命周期释放；一次性通话 URL 立即释放
 let _token = 0;           // 单调递增令牌；每次开播/停止都自增，使旧的 onend 回调失效
 let _playingId = null;    // 当前正在播放的标识（消息 id 或 true）
 const _listeners = new Set();
@@ -80,6 +82,9 @@ export function stopSpeaking() {
   _token++;
   try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch { /* noop */ }
   if (_audio) { try { _audio.pause(); } catch { /* noop */ } _audio = null; }
+  if (_audioRevoke && _audioUrl?.startsWith?.('blob:')) { try { URL.revokeObjectURL(_audioUrl); } catch { /* noop */ } }
+  _audioUrl = null;
+  _audioRevoke = false;
   setPlaying(null);
 }
 
@@ -110,12 +115,21 @@ export function speakBrowser(text, voiceName, rate, pitch, playId, emotion) {
 }
 
 // 播放一段已生成的音频 URL（不重新合成）。用于平台语音的首播与「再听一遍」。
-export function playAudioUrl(url, playId) {
+export function playAudioUrl(url, playId, { revoke = false } = {}) {
   stopSpeaking();
   const token = _token;
   const a = new Audio(url);
   _audio = a;
-  const done = () => { if (token === _token) { _audio = null; setPlaying(null); } };
+  _audioUrl = url;
+  _audioRevoke = revoke;
+  const done = () => {
+    if (token !== _token) return;
+    _audio = null;
+    if (_audioRevoke && _audioUrl?.startsWith?.('blob:')) { try { URL.revokeObjectURL(_audioUrl); } catch { /* noop */ } }
+    _audioUrl = null;
+    _audioRevoke = false;
+    setPlaying(null);
+  };
   a.onended = done; a.onerror = done;
   a.play().catch(() => { /* 自动播放被拦截时静默 */ });
   setPlaying(playId == null ? true : playId);

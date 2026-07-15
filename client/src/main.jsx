@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { AuthProvider } from './api.jsx';
+import AppBootstrap from './AppBootstrap.jsx';
+import { OverlayProvider } from './overlay.jsx';
+import { AppNavProvider } from './appNavigation.jsx';
 import { initTheme } from './theme.js';
 import { initAccent } from './accent.js';
 import { initPerf } from './perf.js';
@@ -31,17 +34,14 @@ initPerf();    // resolve device perf tier → data-perf, gating heavy GPU effec
 initFx();      // global click ripples + tap bursts
 installGlobalErrorCapture(); // 三端统一：捕获 window.onerror / unhandledrejection 并上报
 
+const NATIVE = !!window.Capacitor?.isNativePlatform?.();
+
 // Register the PWA service worker (web only; Capacitor serves from a native scheme).
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+if (!NATIVE && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   const base = import.meta.env.BASE_URL || './';
   window.addEventListener('load', () => {
     navigator.serviceWorker.register(base + 'sw.js', { scope: base }).catch(() => {});
   });
-}
-
-// Native shell only: wire status bar / back button / splash (code-split, never loaded on web).
-if (window.Capacitor?.isNativePlatform?.()) {
-  import('./native.js').then((m) => m.initNative()).catch(() => {});
 }
 
 // Static build (GitHub Pages): use an in-browser backend + hash routing so the
@@ -67,11 +67,19 @@ function render() {
         </div>
       )}
       <ErrorBoundary>
-        <Router>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </Router>
+        <AppBootstrap native={NATIVE}>
+          {(initialSession) => (
+            <Router>
+              <OverlayProvider>
+                <AppNavProvider>
+                  <AuthProvider initialSession={initialSession}>
+                    <App />
+                  </AuthProvider>
+                </AppNavProvider>
+              </OverlayProvider>
+            </Router>
+          )}
+        </AppBootstrap>
       </ErrorBoundary>
     </React.StrictMode>
   );
@@ -83,8 +91,6 @@ function render() {
 //   · 网页 / 静态站演示 → 无真实后端时装内置 mock 跑离线演示（本仓库预览与试玩用）。
 //   · 同源部署（服务器自己托管前端）→ 直接 render，/api 走同源。
 const RUNTIME_SERVER = (() => { try { return (localStorage.getItem('huanyu_server') || '').trim(); } catch { return ''; } })();
-const NATIVE = !!window.Capacitor?.isNativePlatform?.();
-
 if (NATIVE) {
   render();
 } else if (STATIC && !RUNTIME_SERVER) {

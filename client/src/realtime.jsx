@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth, getToken, getApiBase, api } from './api.jsx';
+import { isNativeShell } from './appmode.js';
+import { reconnectDelay } from './realtimePolicy.js';
 
 // 已知的事件名集合。EventSource 需在建连时为每个具名事件注册监听器，
 // 这里枚举服务端会推送的全部事件，建连时一次性注册。
@@ -14,11 +16,8 @@ const RealtimeContext = createContext(null);
 // 每次调用时读取（不缓存）：main.jsx 先 await 安装 mock 再渲染，时序上安全。
 const mockActive = () => typeof window !== 'undefined' && window.__HY_MOCK__ === true;
 
-// 重连上限：超过此次数后停止自动重连，避免 token 永久失效时无限打请求。
-const MAX_RETRIES = 6;
-
 export function RealtimeProvider({ children }) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [status, setStatus] = useState('idle'); // idle | connecting | open | closed
   // 服务端 ready 握手声明的推送能力（如 group_msg/theater_msg）。
   // 页面据此决定轮询节奏：能力在 → 推送为主、轮询放宽兜底；
@@ -30,6 +29,10 @@ export function RealtimeProvider({ children }) {
   const retryRef = useRef(0);
   const timerRef = useRef(null);
   const stoppedRef = useRef(false);
+  const epochRef = useRef(0);
+  const ticketAbortRef = useRef(null);
+  const refreshRef = useRef(refreshUser);
+  refreshRef.current = refreshUser;
 
   const dispatch = useCallback((event, data) => {
     if (event === 'ready') setFeats(Array.isArray(data?.feats) ? data.feats : []);
@@ -43,23 +46,32 @@ export function RealtimeProvider({ children }) {
     if (stoppedRef.current || mockActive()) return;
     const token = getToken();
     if (!token) { setStatus('idle'); return; }
-    // 超过重连上限：停止重试，等待下次手动触发（如页面恢复可见）。
-    if (retryRef.current >= MAX_RETRIES) { setStatus('closed'); return; }
     if (esRef.current || connectingRef.current) return;
+    const epoch = epochRef.current;
     connectingRef.current = true;
     setStatus('connecting');
     let ticket;
+    const ticketAbort = new AbortController();
+    ticketAbortRef.current = ticketAbort;
     try {
-      ({ ticket } = await api('/realtime/ticket', { method: 'POST' }));
-    } catch {
+      ({ ticket } = await api('/realtime/ticket', { method: 'POST', signal: ticketAbort.signal }));
+    } catch (error) {
       connectingRef.current = false;
+      if (ticketAbortRef.current === ticketAbort) ticketAbortRef.current = null;
+      if (error?.name === 'AbortError' || stoppedRef.current || epoch !== epochRef.current) return;
+      if (error?.status === 401 || error?.status === 403) {
+        await refreshRef.current?.();
+        return;
+      }
       setStatus('closed');
-      retryRef.current = Math.min(retryRef.current + 1, MAX_RETRIES);
-      const delay = Math.min(1000 * 2 ** retryRef.current, 30000);
+      retryRef.current += 1;
+      const delay = reconnectDelay(retryRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => { void connect(); }, delay);
       return;
     }
-    if (stoppedRef.current || document.visibilityState === 'hidden') {
+    if (ticketAbortRef.current === ticketAbort) ticketAbortRef.current = null;
+    if (stoppedRef.current || epoch !== epochRef.current || document.visibilityState === 'hidden') {
       connectingRef.current = false;
       return;
     }
@@ -67,14 +79,19 @@ export function RealtimeProvider({ children }) {
     esRef.current = es;
     connectingRef.current = false;
 
-    es.onopen = () => { retryRef.current = 0; setStatus('open'); };
+    es.onopen = () => {
+      if (stoppedRef.current || epoch !== epochRef.current || esRef.current !== es) { es.close(); return; }
+      retryRef.current = 0; setStatus('open');
+    };
     es.onerror = () => {
       // The ticket is single-use, so every reconnect must obtain a fresh one.
       es.close();
+      if (stoppedRef.current || epoch !== epochRef.current || esRef.current !== es) return;
       if (esRef.current === es) esRef.current = null;
       setStatus('closed');
-      retryRef.current = Math.min(retryRef.current + 1, MAX_RETRIES);
-      const delay = Math.min(1000 * 2 ** retryRef.current, 30000);
+      retryRef.current += 1;
+      const delay = reconnectDelay(retryRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => { void connect(); }, delay);
     };
 
@@ -90,17 +107,26 @@ export function RealtimeProvider({ children }) {
   useEffect(() => {
     if (mockActive() || !user) {
       stoppedRef.current = true;
+      epochRef.current += 1;
+      ticketAbortRef.current?.abort();
+      ticketAbortRef.current = null;
+      connectingRef.current = false;
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
       setStatus('idle');
       return;
     }
     stoppedRef.current = false;
+    epochRef.current += 1;
     retryRef.current = 0;
     void connect();
 
     return () => {
       stoppedRef.current = true;
+      epochRef.current += 1;
+      ticketAbortRef.current?.abort();
+      ticketAbortRef.current = null;
+      connectingRef.current = false;
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
       setStatus('idle');
@@ -111,21 +137,41 @@ export function RealtimeProvider({ children }) {
   // Web 端同理：标签页切到后台一段时间后连接也会断。监听 visibilitychange + Capacitor pause/resume。
   useEffect(() => {
     if (mockActive() || !user) return;
+    let resuming = false;
     // 切到后台：主动关闭 SSE，省电省流量，避免移动 OS 维持半开 TCP 跑心跳。
-    const onHidden = () => {
-      if (document.visibilityState !== 'hidden') return;
+    const pause = () => {
+      epochRef.current += 1;
+      ticketAbortRef.current?.abort();
+      ticketAbortRef.current = null;
+      connectingRef.current = false;
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
       setStatus('closed');
     };
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') pause();
+    };
     // 回前台：连接已断，立即重连。
-    const onVisible = () => {
-      if (document.visibilityState !== 'visible') return;
-      if (esRef.current && esRef.current.readyState === EventSource.OPEN) return;
+    const resume = async (force = false) => {
+      if (resuming) return;
+      if (!force && esRef.current && esRef.current.readyState === EventSource.OPEN) return;
+      resuming = true;
       retryRef.current = 0;
+      epochRef.current += 1;
+      ticketAbortRef.current?.abort();
+      ticketAbortRef.current = null;
+      connectingRef.current = false;
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
-      void connect();
+      try { await refreshRef.current?.(); }
+      finally {
+        resuming = false;
+        void connect();
+      }
+    };
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      void resume();
     };
     const onVis = () => {
       if (document.visibilityState === 'hidden') onHidden();
@@ -134,10 +180,10 @@ export function RealtimeProvider({ children }) {
     document.addEventListener('visibilitychange', onVis);
     // Capacitor 原生壳：pause/resume 与 visibilitychange 在部分 WebView 不同步，双保险。
     let pauseUnsub, resumeUnsub;
-    try {
+    if (isNativeShell()) try {
       import('@capacitor/app').then(({ App }) => {
-        App.addListener('pause', onHidden).then?.(h => { pauseUnsub = h; });
-        App.addListener('resume', onVisible).then?.(h => { resumeUnsub = h; });
+        App.addListener('pause', pause).then?.(h => { pauseUnsub = h; });
+        App.addListener('resume', () => { void resume(true); }).then?.(h => { resumeUnsub = h; });
       }).catch(() => {});
     } catch { /* not in native shell */ }
     return () => {

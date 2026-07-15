@@ -9,7 +9,7 @@
 //     快照只用 root（视口大小、不透明）：曾对整棵 .app-main 命名快照，
 //     长页 = 数千 px 巨型纹理 ×2 且背景透明 → 截图打爆帧率 + 新旧页
 //     透明叠印（整屏残影）。动画规则见 styles.css「方向感知路由过渡」段。
-//   · appBack()：同理包装 history.back()，供手势/硬件返回键使用。
+//   · AppNavProvider：统一处理浮层、键盘、脏数据、父路由与原生退出。
 //   · 方向由 <html data-nav-dir> 标记，CSS 按 push/pop/left/right 切换动画；
 //     [data-vt] 在过渡期间存在，供 CSS 关掉 route-fade 入场避免双重动画。
 //
@@ -20,21 +20,17 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { isAppMode } from './appmode.js';
 import { isLite } from './perf.js';
 import { isWarm } from './routeChunks.js';
+import { useAppNavigationOptional } from './appNavigation.jsx';
 
 // 一级 tab 序（横滑与底栏共用）；tab 间切换按索引方向左右滑。
 export const SWIPE_TABS = ['/today', '/', '/messages', '/me'];
 
 // 路由 commit 信号：AppLayout 在新路由 commit 的 useLayoutEffect 里 resolve，
 // VT 的 update callback 等它 —— 兼容 React startTransition 异步提交与 lazy chunk。
-// 同时维护 [prev, cur] 路径面包屑：appBack 无法预知 POP 目的地，用它近似判定
-// 「回退的目标是不是 VT 跳过页」（chat↔messages 这类常见回退）。
 let commitResolve = null;
-let pathCrumb = ['', ''];
 export function routeCommitted(path) {
-  if (path && path !== pathCrumb[1]) pathCrumb = [pathCrumb[1], path];
   if (commitResolve) { commitResolve(); commitResolve = null; }
 }
-
 // 进行中的 View Transition 引用。真机残影的根因：VT 快照还在顶层播放时，
 // 一次「跳过 VT 的普通导航」（如点进 /chats/:id）直接改 DOM 并不会中止它，
 // 冻结的旧页快照就叠在新页面上 —— 任何导航开始前必须先掐掉进行中的 VT。
@@ -111,8 +107,13 @@ const vtSkipPath = (p) => VT_SKIP.test(p || '');
 export function useNav() {
   const navigate = useNavigate();
   const loc = useLocation();
+  const appNavigation = useAppNavigationOptional();
   const from = loc.pathname;
   return useCallback((to, opts) => {
+    if (to === -1 && isAppMode() && appNavigation) {
+      void appNavigation.requestBack({ source: 'ui' });
+      return;
+    }
     // 冷 chunk 跳过 VT：目标页代码未落地时，VT 只能冻屏干等网络。直接导航走
     // CSS 方向入场兜底（Suspense 期零冻结），且本次加载就把 chunk 焐热 ——
     // 同一路由第二次导航起恢复完整 VT。数字型 to（history.go）必是访问过的页，不查。
@@ -127,23 +128,6 @@ export function useNav() {
       return;
     }
     runVT(computeDir(from, pathOf(to), 'PUSH'), () => navigate(to, opts));
-  }, [navigate, from]);
+  }, [navigate, from, appNavigation]);
 }
-
-// 硬件/手势返回的过渡版（非 hook，可在 native.js 等纯模块里用）。
-// 目的地无法预知：用 pathCrumb[0]（上一个 commit 的路径）近似 —— 回退目标
-// 是 VT 跳过页（沉浸对话）时同样不拍快照。
-export function appBack() {
-  if (vtEnabled() && !vtSkipPath(routePath()) && !vtSkipPath(pathCrumb[0])) {
-    runVT('pop', () => window.history.back());
-  } else {
-    cancelActiveVT();
-    window.history.back();
-  }
-}
-
-// 当前路由路径：HashRouter（静态包/APK）在 hash 里，BrowserRouter 在 pathname。
-function routePath() {
-  const h = window.location.hash;
-  return h.startsWith('#/') ? h.slice(1).split('?')[0] : window.location.pathname;
-}
+// Native back navigation is owned by AppNavProvider.

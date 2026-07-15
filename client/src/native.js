@@ -3,10 +3,10 @@
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { Device } from '@capacitor/device';
+import { Keyboard } from '@capacitor/keyboard';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { resolveTheme } from './theme.js';
-import { appBack } from './nav.js';
 import { preparePlayIntegrity } from './playIntegrity.js';
 
 // 页面语境覆盖：沉浸页（深色聊天/剧场等）可临时把状态栏刷成自己的底色，
@@ -16,6 +16,8 @@ import { preparePlayIntegrity } from './playIntegrity.js';
 //   dispatchEvent(new CustomEvent('huanyu-statusbar', { detail: { color: '#100d16', dark: true } }))
 //   dispatchEvent(new CustomEvent('huanyu-statusbar', { detail: null }))  // 恢复主题默认
 let ctxOverride = null;
+let initialized = false;
+let nativeBackHandler = null;
 
 export async function syncStatusBar() {
   try {
@@ -41,7 +43,7 @@ export async function initNative() {
   // Warm the standard-token provider before the registration screen needs it.
   // Failure is intentionally non-fatal: invited/whitelisted users remain able
   // to register, while the backend still refuses an unverified public signup.
-  preparePlayIntegrity().catch(() => {});
+  await preparePlayIntegrity().catch(() => false);
   // 设备标识（Android = ANDROID_ID，iOS = identifierForVendor）：挂到全局供
   // api.jsx 附加 X-Device-Id 头，服务端用于注册配额（限单设备开小号）。
   // 本文件只在原生壳加载（main.jsx 动态 import），Web 端永远不带此头。
@@ -50,20 +52,52 @@ export async function initNative() {
     const { identifier } = await Device.getId();
     if (identifier) window.__HY_DEVICE_ID = String(identifier).slice(0, 64);
   } catch { /* plugin not available */ }
-  await syncStatusBar();
-  // Android hardware back: 有历史则后退，否则退出 app。
-  // 旧实现用 location.hash 判断根页，但 BrowserRouter 下 hash 恒空，
-  // 导致只要不在首屏按返回键就直接退出 app，历史回退完全失效。
   try {
-    App.addListener('backButton', () => {
-      // appBack：带 pop 方向过渡的 history.back()（浮层哨兵在场时自动跳过过渡）。
-      if (window.history.length > 1) appBack();
-      else App.exitApp();
+    // Android 15+ is edge-to-edge by default. App-only safe-area tokens keep
+    // interactive controls outside the system bars.
+    await StatusBar.setOverlaysWebView({ overlay: true });
+  } catch { /* older plugin / platform */ }
+  await syncStatusBar();
+  if (initialized) return;
+  initialized = true;
+  // The Router-aware AppNavProvider owns the back ordering. Native glue exits
+  // only when the provider declines the second root press.
+  try {
+    App.addListener('backButton', async () => {
+      let handled = false;
+      try { handled = (await nativeBackHandler?.()) === true; } catch { handled = true; }
+      if (!handled) App.exitApp();
     });
   } catch { /* */ }
   // Re-apply status bar when the app resumes or the user toggles the theme.
   try { App.addListener('resume', syncStatusBar); } catch { /* */ }
+  const keyboardOn = (info = {}) => {
+    document.documentElement.dataset.keyboard = '1';
+    document.documentElement.style.setProperty('--keyboard-height', `${Math.max(0, Number(info.keyboardHeight) || 0)}px`);
+  };
+  const keyboardOff = () => {
+    delete document.documentElement.dataset.keyboard;
+    document.documentElement.style.removeProperty('--keyboard-height');
+  };
+  try {
+    Keyboard.addListener('keyboardWillShow', keyboardOn);
+    Keyboard.addListener('keyboardDidShow', keyboardOn);
+    Keyboard.addListener('keyboardWillHide', keyboardOff);
+    Keyboard.addListener('keyboardDidHide', keyboardOff);
+  } catch { /* */ }
   window.addEventListener('huanyu-theme', syncStatusBar);
   window.addEventListener('huanyu-statusbar', (e) => { ctxOverride = e.detail || null; syncStatusBar(); });
-  setTimeout(() => { SplashScreen.hide().catch(() => {}); }, 300);
+}
+
+export function setNativeBackHandler(handler) {
+  nativeBackHandler = typeof handler === 'function' ? handler : null;
+  return () => { if (nativeBackHandler === handler) nativeBackHandler = null; };
+}
+
+export async function dismissNativeKeyboard() {
+  try { await Keyboard.hide(); } catch { /* plugin not available */ }
+}
+
+export async function hideNativeSplash() {
+  try { await SplashScreen.hide(); } catch { /* plugin not available */ }
 }

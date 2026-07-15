@@ -4,6 +4,7 @@ import { useAuth, api } from '../api.jsx';
 import { Avatar } from '../ui.jsx';
 import { getThemeMode, resolveTheme, setThemeMode } from '../theme.js';
 import { ACCENTS, getAccent, setAccent } from '../accent.js';
+import { useAppOverlay } from '../overlay.jsx';
 import {
   Search, Compass, PartyPopper, Dices, ScrollText, Users, Trophy, Megaphone,
   MessageCircle, Drama, Library, TrendingUp, Heart, Wallet, Bell, Settings,
@@ -37,6 +38,8 @@ const NAV = [
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef(null);
+  useAppOverlay(open, () => setOpen(false), { rootRef: dialogRef });
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const [chars, setChars] = useState([]);
@@ -155,7 +158,7 @@ export default function CommandPalette() {
 
   return (
     <div className="cmdk-backdrop" onMouseDown={() => setOpen(false)}>
-      <div className="cmdk" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="命令面板">
+      <div ref={dialogRef} className="cmdk" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="命令面板" tabIndex={-1}>
         <div className="cmdk-input">
           <Search size={18} className="muted" />
           <input ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); setActive(0); }}

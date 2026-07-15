@@ -134,3 +134,63 @@ html[data-app="1"] .group-thread .group-message.user .bubble {
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] :where(*) { scroll-behavior: auto !important; }
 }
+/* App architecture states: native bootstrap, route chunk fallback, retained
+   session recovery and Android double-back feedback. Web remains untouched. */
+html[data-app="1"] .app-bootstrap,
+html[data-app="1"] .app-route-loading,
+html[data-app="1"] .app-session-recovery {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 28px) 28px calc(env(safe-area-inset-bottom, 0px) + 28px);
+  text-align: center;
+  color: var(--text);
+  background: var(--bg);
+}
+html[data-app="1"] .app-bootstrap-mark {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 8px;
+  border-radius: 18px;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 28%, transparent);
+  font: 700 24px/1 var(--serif);
+}
+html[data-app="1"] :where(.app-bootstrap, .app-route-loading, .app-session-recovery) small,
+html[data-app="1"] .app-session-recovery p { max-width: 320px; color: var(--faint); font-size: 13px; }
+html[data-app="1"] .app-session-recovery small { margin-top: 8px; overflow-wrap: anywhere; }
+html[data-app="1"] .app-route-loading-dot {
+  width: 28px;
+  height: 28px;
+  border: 3px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: appRouteSpin .75s linear infinite;
+}
+html[data-app="1"] .app-exit-hint {
+  position: fixed;
+  z-index: 10020;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  transform: translateX(-50%);
+  padding: 9px 14px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(16, 43, 41, .9);
+  box-shadow: 0 8px 24px rgba(10, 28, 27, .22);
+  font-size: 13px;
+  pointer-events: none;
+}
+html[data-app="1"] .app-root.no-dock .app-main { padding-bottom: env(safe-area-inset-bottom, 0px); }
+html[data-app="1"][data-keyboard="1"] .app-tabbar { display: none; }
+html[data-app="1"][data-keyboard="1"] .app-main { padding-bottom: 0; }
+@keyframes appRouteSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .app-route-loading-dot { animation-duration: 1.5s; }
+}

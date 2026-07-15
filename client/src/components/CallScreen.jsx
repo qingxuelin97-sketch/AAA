@@ -3,6 +3,8 @@ import { getToken, getApiBase, assetUrl } from '../api.jsx';
 import { streamSSE } from '../chat/sse.js';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, detectEmotion } from '../voice.js';
 import { Avatar } from '../ui.jsx';
+import { CallSession } from '../callSession.js';
+import { useAppOverlay } from '../overlay.jsx';
 import { PhoneOff, Mic, Square, Keyboard, Send, Loader2, Video, Volume2 } from 'lucide-react';
 
 // 幻域 · 通话模式（APP 端沉浸形态）—— 给角色「打电话」。
@@ -37,44 +39,54 @@ export default function CallScreen({ character, onClose }) {
   const rafRef = useRef(0);
   const convIdRef = useRef(null);    // say() 用 ref 读，避免闭包拿到过期值
   const abortRef = useRef(null);     // 进行中的补全流（挂断/卸载时掐掉）
+  const sessionRef = useRef(null);
+  const callRootRef = useRef(null);
+  if (!sessionRef.current) sessionRef.current = new CallSession();
   const hue = ((character?.id || 7) * 47) % 360;
 
   // 建会话（可重入）：挂载时预建；失败或竞态时 say() 按需重建 ——
   // 旧版仅在挂载时试一次，失败后 convId 恒为 null，用户每次发送都被
   // 静默吞掉（实机「键盘输入无返回」的一类根因）。
-  const createConv = useCallback(async () => {
+  const createConv = useCallback(async (token = sessionRef.current.token()) => {
     if (convIdRef.current) return convIdRef.current;
-    const r = await fetch(getApiBase() + '/api/chat/conversations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-      body: JSON.stringify({ character_id: character.id }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || '无法建立通话会话');
-    const cid = d.conversation?.id || null;
-    if (!cid) throw new Error('无法建立通话会话');
-    convIdRef.current = cid;
-    return cid;
+    const task = sessionRef.current.task(token);
+    try {
+      const r = await fetch(getApiBase() + '/api/chat/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ character_id: character.id }),
+        signal: task.signal,
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || '无法建立通话会话');
+      if (!sessionRef.current.isActive(token)) throw new DOMException('Call ended', 'AbortError');
+      const cid = d.conversation?.id || null;
+      if (!cid) throw new Error('无法建立通话会话');
+      convIdRef.current = cid;
+      return cid;
+    } finally { task.done(); }
   }, [character.id]);
 
   // 建立会话 + 拉取语音配置 + 探测平台 ASR。
   useEffect(() => {
     let alive = true;
+    const token = sessionRef.current.token();
     (async () => {
       const H = { Authorization: `Bearer ${getToken()}` };
-      try { await createConv(); } catch { /* 建会话失败仍展示界面，say() 会按需重试 */ }
-      try { const s = await (await fetch(getApiBase() + '/api/settings', { headers: H })).json(); if (alive) setVoiceCfg({ voice_protocol: s.settings?.voice_protocol, voice_name: s.settings?.voice_name }); } catch { /* */ }
-      try { const a = await (await fetch(getApiBase() + '/api/asr/status', { headers: H })).json(); if (alive) setAsrReady(!!a.ready); } catch { if (alive) setAsrReady(false); }
+      const active = () => alive && !sessionRef.current.ended;
+      try { await createConv(token); } catch { /* 建会话失败仍展示界面，say() 会按需重试 */ }
+      try { const s = await (await fetch(getApiBase() + '/api/settings', { headers: H })).json(); if (active()) setVoiceCfg({ voice_protocol: s.settings?.voice_protocol, voice_name: s.settings?.voice_name }); } catch { /* */ }
+      try { const a = await (await fetch(getApiBase() + '/api/asr/status', { headers: H })).json(); if (active()) setAsrReady(!!a.ready); } catch { if (active()) setAsrReady(false); }
       // 拉完整角色（含背景），据此决定是否进入视频形态。
       try {
         const cd = await (await fetch(getApiBase() + '/api/characters/' + character.id, { headers: H })).json();
-        if (alive && cd.character) {
+        if (active() && cd.character) {
           setChar(prev => ({ ...prev, ...cd.character }));
           if (!touchedMode.current) setMode(cd.character.background ? 'video' : 'voice');
         }
       } catch { /* 拉取失败则沿用列表数据 */ }
     })();
-    const t = setTimeout(() => alive && setPhase('live'), 1600);
+    const t = setTimeout(() => alive && !sessionRef.current.ended && setPhase('live'), 1600);
     return () => { alive = false; clearTimeout(t); };
   }, [character.id]);
 
@@ -84,26 +96,34 @@ export default function CallScreen({ character, onClose }) {
     return () => clearInterval(t);
   }, [phase]);
 
-  const speak = useCallback((text) => {
+  const speak = useCallback((text, token = sessionRef.current.token()) => {
     const clean = stripParensForSpeech(text || '').trim();
-    if (!clean) return;
+    if (!clean || !sessionRef.current.isActive(token)) return;
     const emotion = detectEmotion(text);
-    const browserSpeak = () => speakBrowser(clean, voiceCfg?.voice_name, character?.voice_speed, character?.voice_pitch, true, emotion);
+    const browserSpeak = () => {
+      if (sessionRef.current.isActive(token)) speakBrowser(clean, voiceCfg?.voice_name, character?.voice_speed, character?.voice_pitch, true, emotion);
+    };
     if (voiceCfg?.voice_protocol === 'browser' || !voiceCfg) { browserSpeak(); return; }
+    const task = sessionRef.current.task(token);
     fetch(getApiBase() + '/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-      body: JSON.stringify({ text: clean, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, pitch: character?.voice_pitch || undefined, emotion, character_id: character?.id }) })
+      body: JSON.stringify({ text: clean, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, pitch: character?.voice_pitch || undefined, emotion, character_id: character?.id }), signal: task.signal })
       .then(res => res.ok ? res.blob() : Promise.reject(new Error(String(res.status))))
-      .then(blob => playAudioUrl(URL.createObjectURL(blob), true))
+      .then(blob => {
+        if (!sessionRef.current.isActive(token)) return;
+        playAudioUrl(URL.createObjectURL(blob), true, { revoke: true });
+      })
       // 平台/自配语音不可用（未配置 503 / 金币不足 402 / 上游挂了）→ 退回
       // 本机 TTS，通话始终有声音。旧版此处静默吞掉 —— 用户体感「根本不能通话」。
-      .catch(browserSpeak);
+      .catch((error) => { if (error?.name !== 'AbortError') browserSpeak(); })
+      .finally(task.done);
   }, [voiceCfg, character]);
 
   // 接通后角色先说一句开场白。
   useEffect(() => {
     if (phase !== 'live' || !character) return;
+    const token = sessionRef.current.token();
     const hello = stripParensForSpeech(character.greeting || '喂？是你呀，我在听。').slice(0, 80);
-    setSubtitle(hello); speak(hello);
+    setSubtitle(hello); speak(hello, token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -111,41 +131,55 @@ export default function CallScreen({ character, onClose }) {
   const say = useCallback(async (text) => {
     const content = String(text || '').trim();
     if (!content || thinking) return;
+    const token = sessionRef.current.beginTurn();
+    if (!token) return;
+    try { if (recRef.current?.state === 'recording') recRef.current.stop(); } catch { /* */ }
+    try { srRef.current?.abort?.(); } catch { /* */ }
+    stopTracks(); setRecording(false); setListening(false); setTranscribing(false);
     stopSpeaking(); setThinking(true); setSubtitle(''); bufRef.current = '';
     // 90s 兜底中止：上游模型挂起时不至于把「对方正在说…」冻死在屏上
     //（服务端自身有 60s 首字节超时，这里是双保险 + 覆盖网络层悬挂）。
-    const ac = new AbortController();
-    abortRef.current = ac;
-    const guard = setTimeout(() => ac.abort(), 90000);
+    const task = sessionRef.current.task(token);
+    abortRef.current = task;
+    const guard = setTimeout(task.abort, 90000);
     try {
-      const cid = await createConv();   // 已建则直接复用；失败抛错上屏
+      const cid = await createConv(token);   // 已建则直接复用；失败抛错上屏
       // 共用 chat/sse.js 的读取器；字幕仍走 rAF 节流，只显示最近 140 字。
       const full = await streamSSE(`/api/chat/conversations/${cid}/complete`, {
         body: { content },
-        signal: ac.signal,
+        signal: task.signal,
         onDelta: (delta) => {
+          if (!sessionRef.current.isActive(token)) return;
           bufRef.current += delta;
-          if (!rafRef.current) rafRef.current = requestAnimationFrame(() => { rafRef.current = 0; setSubtitle(stripParensForSpeech(bufRef.current).slice(-140)); });
+          if (!rafRef.current) rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = 0;
+            if (sessionRef.current.isActive(token)) setSubtitle(stripParensForSpeech(bufRef.current).slice(-140));
+          });
         },
       });
-      setSubtitle(stripParensForSpeech(full).slice(-140)); speak(full);
+      if (!sessionRef.current.isActive(token)) return;
+      setSubtitle(stripParensForSpeech(full).slice(-140)); speak(full, token);
     } catch (e) {
       // 具体错误直接上屏（金币不足 / 模型未配置 / 超时…）——
       // 旧版一律「信号不太好」，用户无从得知也无法自救。
+      if (!sessionRef.current.isActive(token)) return;
       if (e?.name === 'AbortError') setSubtitle('（这句等太久，掐断了 —— 再说一次试试）');
       else setSubtitle(`（${e?.message || '信号不太好，稍后再说说看…'}）`);
     } finally {
       clearTimeout(guard);
-      if (abortRef.current === ac) abortRef.current = null;
-      setThinking(false);
+      task.done();
+      if (abortRef.current === task) abortRef.current = null;
+      if (sessionRef.current.isActive(token)) setThinking(false);
     }
   }, [thinking, speak, createConv]);
 
   // —— 录音 → 平台 ASR 识别 —— //
   const stopTracks = () => { try { streamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* */ } streamRef.current = null; };
   const startRecording = async () => {
+    const token = sessionRef.current.token();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!sessionRef.current.isActive(token)) { stream.getTracks().forEach(t => t.stop()); return; }
       streamRef.current = stream;
       const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
@@ -153,32 +187,50 @@ export default function CallScreen({ character, onClose }) {
       rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
       rec.onstop = async () => {
         stopTracks();
+        if (!sessionRef.current.isActive(token)) { chunksRef.current = []; return; }
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
         chunksRef.current = [];
         if (!blob.size) return;
         setTranscribing(true);
+        const task = sessionRef.current.task(token);
         try {
           const fd = new FormData(); fd.append('audio', blob, 'call.webm');
-          const r = await fetch(getApiBase() + '/api/asr/transcribe', { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd });
+          const r = await fetch(getApiBase() + '/api/asr/transcribe', { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd, signal: task.signal });
           const d = await r.json().catch(() => ({}));
-          if (r.ok && d.text) { setDraft(''); say(d.text); }
+          if (!sessionRef.current.isActive(token)) return;
+          if (r.ok && d.text) { setTranscribing(false); setDraft(''); say(d.text); }
           else setSubtitle('（没太听清，再说一遍试试…）');
-        } catch { setSubtitle('（识别服务开小差了，改用键盘吧）'); setShowKeys(true); }
-        finally { setTranscribing(false); }
+        } catch (error) {
+          if (error?.name !== 'AbortError' && sessionRef.current.isActive(token)) {
+            setSubtitle('（识别服务开小差了，改用键盘吧）'); setShowKeys(true);
+          }
+        } finally {
+          task.done();
+          if (!sessionRef.current.ended) setTranscribing(false);
+        }
       };
       recRef.current = rec; stopSpeaking(); rec.start(); setRecording(true);
-    } catch { setSubtitle('（没有麦克风权限，改用键盘吧）'); setShowKeys(true); }
+    } catch {
+      if (sessionRef.current.isActive(token)) { setSubtitle('（没有麦克风权限，改用键盘吧）'); setShowKeys(true); }
+    }
   };
   const stopRecording = () => { try { recRef.current?.stop(); } catch { /* */ } setRecording(false); };
 
   // —— 浏览器语音识别（平台未配置 ASR 时的回退）—— //
   const browserListen = () => {
     if (listening) { srRef.current?.stop(); return; }
+    const token = sessionRef.current.token();
     const rec = new SR(); rec.lang = 'zh-CN'; rec.interimResults = true; rec.continuous = false;
     let finalText = '';
-    rec.onresult = (e) => { let interim = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const tr = e.results[i][0].transcript; if (e.results[i].isFinal) finalText += tr; else interim += tr; } setDraft(finalText || interim); };
-    rec.onend = () => { setListening(false); const t = (finalText || '').trim(); setDraft(''); if (t) say(t); };
-    rec.onerror = () => setListening(false);
+    rec.onresult = (e) => {
+      if (!sessionRef.current.isActive(token)) return;
+      let interim = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const tr = e.results[i][0].transcript; if (e.results[i].isFinal) finalText += tr; else interim += tr; } setDraft(finalText || interim);
+    };
+    rec.onend = () => {
+      if (!sessionRef.current.isActive(token)) return;
+      setListening(false); const t = (finalText || '').trim(); setDraft(''); if (t) say(t);
+    };
+    rec.onerror = () => { if (sessionRef.current.isActive(token)) setListening(false); };
     srRef.current = rec; stopSpeaking(); setDraft(''); setListening(true); try { rec.start(); } catch { setListening(false); }
   };
 
@@ -191,9 +243,24 @@ export default function CallScreen({ character, onClose }) {
     setShowKeys(true);
   };
 
-  const hangup = () => { try { abortRef.current?.abort(); } catch { /* */ } try { recRef.current?.stop(); } catch { /* */ } try { srRef.current?.stop(); } catch { /* */ } stopTracks(); stopSpeaking(); onClose?.(); };
+  const hangup = () => {
+    sessionRef.current.end();
+    cancelAnimationFrame(rafRef.current); rafRef.current = 0;
+    try { abortRef.current?.abort(); } catch { /* */ }
+    try { recRef.current?.stop(); } catch { /* */ }
+    try { srRef.current?.abort?.(); } catch { try { srRef.current?.stop(); } catch { /* */ } }
+    stopTracks(); stopSpeaking(); onClose?.();
+  };
+  useAppOverlay(true, hangup, { rootRef: callRootRef });
   const sendDraft = () => { const t = draft.trim(); if (!t) return; setDraft(''); say(t); };
-  useEffect(() => () => { try { abortRef.current?.abort(); } catch { /* */ } stopSpeaking(); stopTracks(); try { recRef.current?.stop(); } catch { /* */ } try { srRef.current?.stop(); } catch { /* */ } }, []);
+  useEffect(() => () => {
+    sessionRef.current.end();
+    cancelAnimationFrame(rafRef.current);
+    try { abortRef.current?.abort(); } catch { /* */ }
+    stopSpeaking(); stopTracks();
+    try { recRef.current?.stop(); } catch { /* */ }
+    try { srRef.current?.abort?.(); } catch { try { srRef.current?.stop(); } catch { /* */ } }
+  }, []);
 
   const mmss = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   const stateText = phase === 'dialing' ? '正在接通…'
@@ -209,7 +276,7 @@ export default function CallScreen({ character, onClose }) {
   const toggleMode = () => { if (!bg) return; touchedMode.current = true; setMode(m => (m === 'video' ? 'voice' : 'video')); };
 
   return (
-    <div className={'call-screen' + (videoOn ? ' video' : '')} style={{ '--call-hue': hue }}>
+    <div ref={callRootRef} className={'call-screen' + (videoOn ? ' video' : '')} style={{ '--call-hue': hue }} role="dialog" aria-modal="true" aria-label={`与${char?.name || '角色'}通话`} tabIndex={-1}>
       {videoOn
         ? <div className="call-video">
             {char.background_type === 'video'

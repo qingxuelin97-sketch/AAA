@@ -19,6 +19,7 @@ import { EmptyArt, CoverArt } from '../art.jsx';
 import { shareUrl } from '../util.js';
 import { tick } from '../appgestures.js';
 import CallScreen from '../components/CallScreen.jsx';
+import { useAppOverlay } from '../overlay.jsx';
 import {
   Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp,
   ChevronRight, ScrollText, Maximize2, Phone, Search, History, X
@@ -53,10 +54,12 @@ export default function DiscoverFeed() {
     try { return new Set(JSON.parse(localStorage.getItem('feed_liked') || '[]')); } catch { return new Set(); }
   });
   const [activeIdx, setActiveIdx] = useState(0);
+  const historySheetRef = useRef(null);
   const [burst, setBurst] = useState(null);        // 双击点赞爱心迸发 { id, x, y, k }
   const [expandedId, setExpandedId] = useState(null); // 介绍卡展开态（每次只展开一张）
   const [entering, setEntering] = useState(false); // 正在建立对话
   const [histOpen, setHistOpen] = useState(false); // 「历史」最近看过面板
+  useAppOverlay(histOpen, () => setHistOpen(false), { rootRef: historySheetRef });
   const [callChar, setCallChar] = useState(null);  // 通话中的角色（电话键落点）
   const containerRef = useRef(null);
   const loadFlag = useRef(0);   // 防竞态
@@ -328,7 +331,7 @@ export default function DiscoverFeed() {
       {/* 「历史」—— 最近看过的角色（本地记录），一键回访 / 续聊 */}
       {histOpen && (
         <div className="app-sheet-mask" onClick={() => setHistOpen(false)}>
-          <div className="app-sheet" onClick={e => e.stopPropagation()}>
+          <div ref={historySheetRef} className="app-sheet" role="dialog" aria-modal="true" aria-label="最近看过" tabIndex={-1} onClick={e => e.stopPropagation()}>
             <div className="app-sheet-grip" />
             <h3 className="app-sheet-title"><History size={16} style={{ verticalAlign: -2, marginRight: 6 }} />最近看过</h3>
             {readRecent().length === 0 && (

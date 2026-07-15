@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAppOverlay } from '../overlay.jsx';
 
 // 长按识别：触屏上取代不可用的 hover 操作行。用一组共享 ref 管理计时，onLongPress(target)
 // 在按住 ms 毫秒且未移动超阈值时触发。返回 bind(target) → 事件处理器（可展开到任意元素，
@@ -27,20 +28,10 @@ export function useLongPress(onLongPress, { ms = 450, moveTol = 10 } = {}) {
   });
 }
 
-// 浮层后退键拦截：任一浮层（抽屉/菜单/搜索/反应面板/编辑/+面板）打开时向 history 压一个
-// 哨兵状态，浏览器/系统后退优先关闭浮层而非跳路由；ESC 同义。关闭时回退掉哨兵。
-// 从 Chat.jsx 原样抽出（逻辑不变），供对话页复用；不发明新的浮层栈状态机。
+// 对话页的多个轻浮层注册进统一 OverlayProvider。它不再伪造浏览器历史，
+// 因而关闭菜单不会意外触发路由 POP，也不会污染 Android 返回栈。
 export function useOverlayBack(anyOverlayOpen, closeAllOverlays) {
-  useEffect(() => {
-    if (!anyOverlayOpen) return;
-    history.pushState({ overlay: true }, '');
-    const onPop = closeAllOverlays;
-    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); closeAllOverlays(); history.state?.overlay && history.back(); } };
-    window.addEventListener('popstate', onPop);
-    document.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('popstate', onPop); document.removeEventListener('keydown', onKey); if (history.state?.overlay) history.back(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anyOverlayOpen]);
+  useAppOverlay(anyOverlayOpen, closeAllOverlays);
 }
 
 // 消息书签：收藏重要段落随时跳回。纯本地存储（三端通用、不依赖服务端），按会话隔离。

@@ -16,9 +16,9 @@
       "androidScaleType": "CENTER_CROP"
     },
     "StatusBar": {
-      "overlaysWebView": false,
+      "overlaysWebView": true,
       "style": "LIGHT",
-      "backgroundColor": "#eefbfd"
+      "backgroundColor": "#00000000"
     },
     "Keyboard": {
       "resize": "native",

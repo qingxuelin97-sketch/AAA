@@ -92,12 +92,36 @@ function Protected({ children }) {
 
 const P = (el) => <Protected>{el}</Protected>;
 
+function AppLoading({ session = false }) {
+  if (!isAppMode()) return <div className="empty" style={{ paddingTop: 160 }}>载入中…</div>;
+  return (
+    <div className="app-route-loading" role="status" aria-live="polite">
+      <span className="app-route-loading-dot" aria-hidden="true" />
+      <b>{session ? '正在恢复会话' : '正在打开页面'}</b>
+      <small>请稍候…</small>
+    </div>
+  );
+}
+
+function SessionRecovery({ error, onRetry }) {
+  return (
+    <div className="app-session-recovery" role="alert">
+      <b>暂时无法连接服务器</b>
+      <p>你的登录仍保留在本机，没有被退出。网络恢复后可以继续。</p>
+      <button className="btn primary" onClick={onRetry}>重新连接</button>
+      {error?.message && <small>{String(error.message).slice(0, 120)}</small>}
+    </div>
+  );
+}
+
 export default function App() {
-  const { user } = useAuth();
+  const { user, loading, sessionError, retrySession } = useAuth();
+  if (loading) return <AppLoading session />;
+  if (sessionError) return <SessionRecovery error={sessionError} onRetry={retrySession} />;
   return (
     <ToastProvider>
       <RealtimeProvider>
-        <Suspense fallback={<div className="empty" style={{ paddingTop: 160 }}>载入中…</div>}>
+        <Suspense fallback={<AppLoading />}>
           <Routes>
             <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
             <Route path="/features" element={<Features />} />

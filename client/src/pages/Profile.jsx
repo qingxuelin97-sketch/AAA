@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
@@ -8,6 +8,7 @@ import { pid } from '../assets.jsx';
 import { shareUrl } from '../util.js';
 import { CoverArt } from '../art.jsx';
 import ReportButton from '../components/ReportButton.jsx';
+import { useAppOverlay } from '../overlay.jsx';
 
 export default function Profile() {
   const { id } = useParams();
@@ -20,6 +21,8 @@ export default function Profile() {
   const [tab, setTab] = useState('characters');
   const [following, setFollowing] = useState(false);
   const [listModal, setListModal] = useState(null); // { kind, title, users }
+  const listModalRef = useRef(null);
+  useAppOverlay(!!listModal, () => setListModal(null), { rootRef: listModalRef });
   const [fr, setFr] = useState({ state: 'none', can_dm: false });
 
   const load = () => api('/users/' + targetId).then(d => { setData(d); setFollowing(d.following); }).catch(e => toast(e.message, 'err'));
@@ -152,7 +155,7 @@ export default function Profile() {
 
       {listModal && (
         <div className="modal-backdrop" onClick={() => setListModal(null)}>
-          <div className="card modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+          <div ref={listModalRef} className="card modal" role="dialog" aria-modal="true" tabIndex={-1} style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
             <div className="section-title"><h2>{listModal.title} · {listModal.users.length}</h2>
               <button className="btn ghost sm" onClick={() => setListModal(null)}><X size={16} /></button></div>
             {listModal.users.length === 0 ? <div className="empty" style={{ padding: 30 }}>还没有{listModal.title}</div> : (

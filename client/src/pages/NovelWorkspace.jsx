@@ -6,6 +6,9 @@ import { useToast, Modal, Uploader } from '../ui.jsx';
 import { generateImage } from '../imagegen.js';
 import { stripParensForSpeech, speakBrowser, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { streamSSE } from '../chat/sse.js';
+import { useUnsavedChanges } from '../appNavigation.jsx';
+import { useAppOverlay } from '../overlay.jsx';
+import { isAppMode } from '../appmode.js';
 import {
   ArrowLeft, Feather, Sparkles, Wand2, Loader2, Send, Square, Palette, Layers,
   BookLock, BookOpen, GitBranch, Trash2, Pin, RefreshCw, Lock, Unlock, Network,
@@ -232,7 +235,7 @@ export default function NovelWorkspace() {
       if (!res.ok) throw new Error('platform-tts-unavailable');
       const charged = res.headers.get('X-Gold-Fee');
       const url = URL.createObjectURL(await res.blob());
-      playAudioUrl(url, beat.id);
+      playAudioUrl(url, beat.id, { revoke: true });
       if (charged) { toast(`平台语音 · 消耗 ${charged} 金币`, 'info'); refreshUser?.(); }
     } catch { speakBrowser(text, undefined, 1, 1, beat.id, emotion); }
   };
@@ -497,28 +500,35 @@ function Composer({ input, setInput, streaming, autoRunning, onWrite, onFree, on
 
 /* ───────────────────────── side panel ───────────────────────── */
 function SidePanel({ panel, novel, run, setRun, onClose, onSaveNovel, refreshRuns, onSwitchRun, onSyncCanon, toast, loadRun, nav }) {
+  const [panelDirty, setPanelDirty] = useState(false);
+  useEffect(() => setPanelDirty(false), [panel]);
+  useUnsavedChanges(panelDirty, '创作面板里有尚未保存的修改，确定离开吗？');
+  const closePanel = () => {
+    if (!panelDirty || !isAppMode() || confirm('这部分修改还没有保存，确定关闭吗？')) onClose();
+  };
   const titles = { style: '整体文风', codex: '局外设定 · 永不可改的母版', canon: '局内设定 · 唯一生效', runs: '剧情线', analysis: 'AI 分析', info: '作品信息' };
   return (
     <div className="atl-panel">
       <div className="atl-panel-head">
         <b>{titles[panel]}</b>
-        <button className="atl-panel-x" onClick={onClose}><X size={17} /></button>
+        <button className="atl-panel-x" onClick={closePanel}><X size={17} /></button>
       </div>
       <div className="atl-panel-body">
-        {panel === 'style' && <StylePanel novel={novel} onSaveNovel={onSaveNovel} toast={toast} />}
-        {panel === 'codex' && <CodexPanel novel={novel} onSaveNovel={onSaveNovel} toast={toast} />}
-        {panel === 'canon' && <CanonPanel run={run} setRun={setRun} onSyncCanon={onSyncCanon} toast={toast} />}
+        {panel === 'style' && <StylePanel novel={novel} onSaveNovel={onSaveNovel} toast={toast} onDirtyChange={setPanelDirty} />}
+        {panel === 'codex' && <CodexPanel novel={novel} onSaveNovel={onSaveNovel} toast={toast} onDirtyChange={setPanelDirty} />}
+        {panel === 'canon' && <CanonPanel run={run} setRun={setRun} onSyncCanon={onSyncCanon} toast={toast} onDirtyChange={setPanelDirty} />}
         {panel === 'runs' && <RunsPanel novel={novel} run={run} onSwitchRun={onSwitchRun} refreshRuns={refreshRuns} toast={toast} loadRun={loadRun} />}
         {panel === 'analysis' && <AnalysisPanel run={run} toast={toast} />}
-        {panel === 'info' && <InfoPanel novel={novel} run={run} onSaveNovel={onSaveNovel} refreshRuns={refreshRuns} toast={toast} />}
+        {panel === 'info' && <InfoPanel novel={novel} run={run} onSaveNovel={onSaveNovel} refreshRuns={refreshRuns} toast={toast} onDirtyChange={setPanelDirty} />}
       </div>
     </div>
   );
 }
 
-function StylePanel({ novel, onSaveNovel, toast }) {
+function StylePanel({ novel, onSaveNovel, toast, onDirtyChange }) {
   const [style, setStyle] = useState(novel.style);
   const [dirty, setDirty] = useState(false);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   const set = (k, v) => { setStyle(s => ({ ...s, [k]: v })); setDirty(true); };
   const save = async () => {
     try { const d = await api(`/novels/${novel.id}`, { method: 'PATCH', body: { style } }); onSaveNovel(d.novel); setDirty(false); toast('文风已保存', 'ok'); }
@@ -548,9 +558,10 @@ function StylePanel({ novel, onSaveNovel, toast }) {
   );
 }
 
-function CodexPanel({ novel, onSaveNovel, toast }) {
+function CodexPanel({ novel, onSaveNovel, toast, onDirtyChange }) {
   const [codex, setCodex] = useState(novel.codex);
   const [dirty, setDirty] = useState(false);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   const [gen, setGen] = useState(false);
   const [focus, setFocus] = useState('');
   const update = (next) => { setCodex(next); setDirty(true); };
@@ -577,9 +588,10 @@ function CodexPanel({ novel, onSaveNovel, toast }) {
   );
 }
 
-function CanonPanel({ run, setRun, onSyncCanon, toast }) {
+function CanonPanel({ run, setRun, onSyncCanon, toast, onDirtyChange }) {
   const [canon, setCanon] = useState(run.canon);
   const [dirty, setDirty] = useState(false);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   const [syncing, setSyncing] = useState(false);
   useEffect(() => { setCanon(run.canon); setDirty(false); }, [run.canon]);
   const update = (next) => { setCanon(next); setDirty(true); };
@@ -735,9 +747,10 @@ function GraphView({ graph }) {
 }
 
 /* ───────────────────────── work info / publish panel ───────────────────────── */
-function InfoPanel({ novel, run, onSaveNovel, refreshRuns, toast }) {
+function InfoPanel({ novel, run, onSaveNovel, refreshRuns, toast, onDirtyChange }) {
   const [form, setForm] = useState({ title: novel.title, logline: novel.logline || '', genre: novel.genre || '', tags: novel.tags || '', cover: novel.cover || '' });
   const [dirty, setDirty] = useState(false);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   const [genCover, setGenCover] = useState(false);
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setDirty(true); };
   const save = async () => {
@@ -858,9 +871,10 @@ function StatsModal({ novelId, onClose, toast }) {
 /* ───────────────────────── immersive reader ───────────────────────── */
 function ReaderOverlay({ novel, run, beats, onClose }) {
   const [size, setSize] = useState(18);
-  useEffect(() => { const onKey = (e) => { if (e.key === 'Escape') onClose(); }; document.addEventListener('keydown', onKey); return () => document.removeEventListener('keydown', onKey); }, [onClose]);
+  const readerRef = useRef(null);
+  useAppOverlay(true, onClose, { rootRef: readerRef });
   return (
-    <div className="atl-reader">
+    <div ref={readerRef} className="atl-reader" role="dialog" aria-modal="true" aria-label="沉浸阅读" tabIndex={-1}>
       <div className="atl-reader-bar">
         <button className="btn ghost sm" onClick={onClose}><X size={16} /> 退出阅读</button>
         <span className="atl-reader-title">{novel.title} · {run.name}</span>

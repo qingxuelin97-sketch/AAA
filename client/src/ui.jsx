@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { createPortal } from 'react-dom';
 import { uploadFile, assetUrl } from './api.jsx';
 import { isAppMode } from './appmode.js';
+import { useAppOverlay } from './overlay.jsx';
 import { UploadCloud, UserRound, CheckCircle2, AlertTriangle, Info, Scale, BadgeCheck, ShieldCheck, Crown } from 'lucide-react';
 import { FACE_PRESETS, ANIME_PRESETS, ONLINE_AV } from './faces.js';
 
@@ -251,19 +252,21 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
 }
 
 export function Modal({ children, onClose, portal = false, className = '', backdropClassName = '' }) {
-  // ESC 关闭 + 无障碍语义：桌面端用户习惯按 ESC 关闭弹窗，并补充 dialog 角色供读屏识别。
+  const dialogRef = useRef(null);
+  const actualPortal = portal || isAppMode();
+  useAppOverlay(true, onClose, { rootRef: dialogRef, isolate: actualPortal });
   useEffect(() => {
-    if (!onClose) return;
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isAppMode() || !onClose) return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
   const modal = (
     <div className={'modal-backdrop ' + backdropClassName} onClick={onClose}>
-      <div className={'card modal ' + className} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>{children}</div>
+      <div ref={dialogRef} className={'card modal ' + className} role="dialog" aria-modal="true" tabIndex={-1} onClick={e => e.stopPropagation()}>{children}</div>
     </div>
   );
-  return portal && typeof document !== 'undefined' ? createPortal(modal, document.body) : modal;
+  return actualPortal && typeof document !== 'undefined' ? createPortal(modal, document.body) : modal;
 }
 
 // 金币：浮雕星纹玻璃币（「白+青」重设计货币纹样）。
