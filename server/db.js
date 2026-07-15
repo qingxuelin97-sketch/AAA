@@ -362,8 +362,25 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN integrity_checked_at INTEGER',
   'ALTER TABLE transactions ADD COLUMN ref_owner INTEGER',
   'ALTER TABLE transactions ADD COLUMN payment_order_id TEXT',
+  // Ledger correlation/idempotency. share_eligible keeps a reserved upstream
+  // fee out of creator revenue until the result is actually delivered (or the
+  // fee and its reversal are made visible atomically).
+  'ALTER TABLE transactions ADD COLUMN operation_id TEXT',
+  'ALTER TABLE transactions ADD COLUMN idempotency_key TEXT',
+  'ALTER TABLE transactions ADD COLUMN reversal_of INTEGER',
+  'ALTER TABLE transactions ADD COLUMN share_eligible INTEGER DEFAULT 1',
   'ALTER TABLE script_purchases ADD COLUMN settlement_due_at INTEGER',
   'ALTER TABLE script_purchases ADD COLUMN settled_at INTEGER',
+  // Scripts are unpublished rather than destroyed. Purchase snapshots remain
+  // immutable evidence and keep paid content available after unpublishing.
+  'ALTER TABLE scripts ADD COLUMN deleted_at INTEGER',
+  'ALTER TABLE script_purchases ADD COLUMN snapshot_author_id INTEGER',
+  "ALTER TABLE script_purchases ADD COLUMN snapshot_title TEXT DEFAULT ''",
+  "ALTER TABLE script_purchases ADD COLUMN snapshot_summary TEXT DEFAULT ''",
+  'ALTER TABLE script_purchases ADD COLUMN snapshot_cover TEXT',
+  "ALTER TABLE script_purchases ADD COLUMN snapshot_content TEXT DEFAULT ''",
+  "ALTER TABLE script_purchases ADD COLUMN snapshot_category TEXT DEFAULT ''",
+  "ALTER TABLE script_purchases ADD COLUMN snapshot_tags TEXT DEFAULT ''",
   'ALTER TABLE conversations ADD COLUMN affinity INTEGER DEFAULT 0',
   "ALTER TABLE conversations ADD COLUMN memories TEXT DEFAULT '[]'",
   'ALTER TABLE messages ADD COLUMN reaction TEXT',
@@ -416,6 +433,22 @@ db.exec(`CREATE TABLE IF NOT EXISTS script_likes (
 
 // 安全相关：event_claims 加 (user_id, event_id) 唯一索引，原子防并发重复领取。
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_event_claims_uniq ON event_claims (user_id, event_id)'); } catch { /* */ }
+
+// Failed-login buckets are stored in SQLite rather than process memory, so
+// multiple server workers share the same rolling window. Only keyed HMACs are
+// persisted; raw usernames and IP addresses are intentionally omitted.
+db.exec(`
+CREATE TABLE IF NOT EXISTS auth_login_failures (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_ip_key TEXT NOT NULL,
+  ip_key TEXT NOT NULL,
+  failed_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_auth_login_failures_account
+  ON auth_login_failures (account_ip_key, failed_at);
+CREATE INDEX IF NOT EXISTS idx_auth_login_failures_ip
+  ON auth_login_failures (ip_key, failed_at);
+`);
 
 // 注册白名单 + 邮箱验证码：
 //   email_whitelist —— 仅白名单内的邮箱允许注册（白名单政策）。
@@ -499,6 +532,18 @@ try {
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_payment_order
     ON transactions (payment_order_id) WHERE payment_order_id IS NOT NULL`);
 } catch { /* duplicate legacy data must be repaired before enabling payments */ }
+try {
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_operation
+    ON transactions (operation_id) WHERE operation_id IS NOT NULL`);
+} catch { /* duplicate legacy data must be repaired before enabling correlated ledger writes */ }
+try {
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_idempotency
+    ON transactions (user_id, idempotency_key) WHERE idempotency_key IS NOT NULL`);
+} catch { /* duplicate legacy data */ }
+try {
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_reversal
+    ON transactions (reversal_of) WHERE reversal_of IS NOT NULL`);
+} catch { /* duplicate legacy data */ }
 
 try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email IS NOT NULL AND email != ''"); } catch { /* legacy duplicates */ }
 try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_canon ON users (email_canon) WHERE email_canon IS NOT NULL AND email_canon != ''"); } catch { /* legacy duplicates */ }
@@ -506,6 +551,18 @@ try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_script_purchase_active ON s
 // Purchases created before escrow existed already paid their authors. Mark them
 // settled so the new settlement worker never pays them a second time.
 try { db.exec("UPDATE script_purchases SET settled_at = COALESCE(settled_at, CAST(strftime('%s', created_at) AS INTEGER) * 1000) WHERE refunded = 0 AND settlement_due_at IS NULL"); } catch { /* */ }
+// Backfill immutable purchase metadata for pre-migration rows while their
+// source script still exists. Future purchases write snapshots at creation.
+try {
+  db.exec(`UPDATE script_purchases SET
+    snapshot_author_id = COALESCE(snapshot_author_id, (SELECT author_id FROM scripts WHERE scripts.id = script_purchases.script_id)),
+    snapshot_title = CASE WHEN COALESCE(snapshot_title,'') = '' THEN COALESCE((SELECT title FROM scripts WHERE scripts.id = script_purchases.script_id),'') ELSE snapshot_title END,
+    snapshot_summary = CASE WHEN COALESCE(snapshot_summary,'') = '' THEN COALESCE((SELECT summary FROM scripts WHERE scripts.id = script_purchases.script_id),'') ELSE snapshot_summary END,
+    snapshot_cover = COALESCE(snapshot_cover, (SELECT cover FROM scripts WHERE scripts.id = script_purchases.script_id)),
+    snapshot_content = CASE WHEN COALESCE(snapshot_content,'') = '' THEN COALESCE((SELECT content FROM scripts WHERE scripts.id = script_purchases.script_id),'') ELSE snapshot_content END,
+    snapshot_category = CASE WHEN COALESCE(snapshot_category,'') = '' THEN COALESCE((SELECT category FROM scripts WHERE scripts.id = script_purchases.script_id),'') ELSE snapshot_category END,
+    snapshot_tags = CASE WHEN COALESCE(snapshot_tags,'') = '' THEN COALESCE((SELECT tags FROM scripts WHERE scripts.id = script_purchases.script_id),'') ELSE snapshot_tags END`);
+} catch { /* best-effort legacy backfill */ }
 
 // 独立世界书：可脱离角色单独编辑，并跨角色复用（多对多关联）。
 // 三类能力（通常/高级/专家）可在同一本世界书里共存，不再单选档位：

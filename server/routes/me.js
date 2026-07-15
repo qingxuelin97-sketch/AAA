@@ -19,12 +19,16 @@ const REV_TIERS = [
 const revTierOf = (pool) => [...REV_TIERS].reverse().find(t => pool >= t.min) || REV_TIERS[0];
 function creatorSpendPool(uid) {
   const month = new Date().toISOString().slice(0, 7);
-  // ai_refund 计入轧差：平台费改「预扣 + 失败退款」后，失败调用会留下一对
-  // ai_fee(-fee)/ai_refund(+fee) 流水 —— SUM(-gold) 恰好相互抵消，只有真正
-  // 送达的消费进池。否则刷失败调用（净成本 0）即可虚增分成基数。
-  const total = db.prepare("SELECT COALESCE(SUM(-gold),0) n FROM transactions WHERE ref_owner = ? AND kind IN ('ai_fee','voice_fee','ai_refund')").get(uid).n;
-  const mo = db.prepare("SELECT COALESCE(SUM(-gold),0) n FROM transactions WHERE ref_owner = ? AND kind IN ('ai_fee','voice_fee','ai_refund') AND substr(created_at,1,7) = ?").get(uid, month).n;
-  return { total, month: mo };
+  // Failed AI/TTS calls leave a linked fee/refund pair with the same ref_owner.
+  // Reserved fees are hidden via share_eligible until success; a refund makes
+  // both sides visible atomically, so a creator can never claim during the
+  // temporary charge window or grow the pool with zero-net failures.
+  const kinds = "('ai_fee','voice_fee','ai_refund','voice_refund')";
+  const total = db.prepare(`SELECT COALESCE(SUM(-gold),0) n FROM transactions
+    WHERE ref_owner = ? AND share_eligible = 1 AND kind IN ${kinds}`).get(uid).n;
+  const mo = db.prepare(`SELECT COALESCE(SUM(-gold),0) n FROM transactions
+    WHERE ref_owner = ? AND share_eligible = 1 AND kind IN ${kinds} AND substr(created_at,1,7) = ?`).get(uid, month).n;
+  return { total: Math.max(0, total), month: Math.max(0, mo) };
 }
 function revenuePlan(u) {
   const pool = creatorSpendPool(u.id);
@@ -60,7 +64,7 @@ router.get('/studio', authRequired, (req, res) => {
     id: c.id, name: c.name, avatar: c.avatar, is_public: !!c.is_public, uses: c.uses || 0, likes: c.likes || 0,
     favs: db.prepare('SELECT COUNT(*) n FROM favorites WHERE character_id = ?').get(c.id).n,
   }));
-  const scripts = db.prepare('SELECT * FROM scripts WHERE author_id = ?').all(uid);
+  const scripts = db.prepare('SELECT * FROM scripts WHERE author_id = ? AND deleted_at IS NULL').all(uid);
   const scriptRows = scripts.map(s => {
     let purchases = [];
     try { purchases = db.prepare('SELECT price FROM script_purchases WHERE script_id = ? AND COALESCE(refunded,0) = 0').all(s.id); } catch { purchases = []; }
@@ -148,7 +152,7 @@ router.get('/insights', authRequired, (req, res) => {
   const creations = {
     characters: one('SELECT COUNT(*) n FROM characters WHERE owner_id = ?', uid).n || 0,
     worldbooks: one('SELECT COUNT(*) n FROM worldbooks WHERE owner_id = ?', uid).n || 0,
-    scripts: one('SELECT COUNT(*) n FROM scripts WHERE author_id = ?', uid).n || 0,
+    scripts: one('SELECT COUNT(*) n FROM scripts WHERE author_id = ? AND deleted_at IS NULL', uid).n || 0,
     novels: one('SELECT COUNT(*) n FROM novels WHERE owner_id = ?', uid).n || 0,
     images: one('SELECT COUNT(*) n FROM ai_images WHERE user_id = ?', uid).n || 0,
     favorites: one('SELECT COUNT(*) n FROM favorites WHERE user_id = ?', uid).n || 0,

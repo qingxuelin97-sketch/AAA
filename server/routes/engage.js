@@ -10,17 +10,10 @@ const router = Router();
 const TT = (t) => (t === 'script' ? 'script' : 'character');
 
 // ---- daily tasks ----
-// /track 曾按客户端上报的 action 对全部六类任务 bumpDaily —— 全站唯一信任
-// 客户端上报的经济入口：破解客户端可空刷计数再领奖（~75 金/天/号）。
-// 现收敛为仅认 'gacha'：其余五个 key 都有服务端真实动作路由计数（chat→
-// chat.js 发言、checkin→economy.js 签到、like→community.js 点赞、fav→
-// characters.js 收藏、novel→novels.js AI 写作），客户端无需也无法代报；
-// 唯独「角色扭蛋机」（Gacha.jsx）是纯前端免费玩法、服务端没有对应动作可
-// 校验，而该任务 target=1、合法用户点一下即免费达成 —— 脚本化上报拿不到
-// 任何超出正常玩法的收益，保留它不构成刷币面。
-// 路由本身保留并照旧返回 ok —— 旧版 APK 仍会上报其他 action，不能 404。
+// Compatibility no-op: no client-declared action may advance an economic
+// reward. Every supported task, including gacha, is bumped by its authoritative
+// server route after the real operation commits.
 router.post('/track', authRequired, contentLimiter, (req, res) => {
-  if (String(req.body?.action || '') === 'gacha') bumpDaily(req.user.id, 'gacha');
   res.json({ ok: true });
 });
 router.get('/tasks', authRequired, (req, res) => {
@@ -64,10 +57,16 @@ router.get('/events', authOptional, (req, res) => {
 router.post('/events/:id/claim', authRequired, (req, res) => {
   const ev = EVENTS.find(e => e.id === req.params.id);
   if (!ev || ev.kind !== 'claim') return res.status(400).json({ error: '该活动无可领取奖励' });
-  // INSERT OR IGNORE + UNIQUE(user_id,event_id) 原子去重，防并发重复领取。
-  const ins = db.prepare('INSERT OR IGNORE INTO event_claims (user_id, event_id) VALUES (?,?)').run(req.user.id, ev.id);
-  if (ins.changes === 0) return res.status(400).json({ error: '该活动奖励已领取' });
-  const w = applyTx(req.user.id, { kind: 'event', gold: ev.reward?.gold || 0, diamond: ev.reward?.diamond || 0, memo: `活动奖励 · ${ev.title}` });
+  let w;
+  try {
+    // Claim marker and wallet credit commit together. A crash cannot consume a
+    // claim without paying it, or pay it without the unique marker.
+    db.transaction(() => {
+      const ins = db.prepare('INSERT OR IGNORE INTO event_claims (user_id, event_id) VALUES (?,?)').run(req.user.id, ev.id);
+      if (ins.changes === 0) throw Object.assign(new Error('该活动奖励已领取'), { status: 400, expose: true });
+      w = applyTx(req.user.id, { kind: 'event', gold: ev.reward?.gold || 0, diamond: ev.reward?.diamond || 0, memo: `活动奖励 · ${ev.title}` });
+    }).immediate();
+  } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
   notify(req.user.id, `已领取活动「${ev.title}」奖励`, '/events');
   res.json({ ok: true, wallet: w });
 });
@@ -78,7 +77,9 @@ router.post('/view', authRequired, (req, res) => {
   const { type, id } = req.body || {};
   const isScript = TT(type) === 'script';
   const tbl = isScript ? 'scripts' : 'characters';
-  const row = db.prepare(`SELECT 1 FROM ${tbl} WHERE id = ? AND is_public = 1`).get(id);
+  const row = isScript
+    ? db.prepare('SELECT 1 FROM scripts WHERE id = ? AND deleted_at IS NULL').get(id)
+    : db.prepare('SELECT 1 FROM characters WHERE id = ? AND is_public = 1').get(id);
   if (!row) return res.json({ ok: true }); // 静默忽略，避免泄露目标是否存在
   db.prepare(`UPDATE ${tbl} SET views = views + 1 WHERE id = ?`).run(id);
   res.json({ ok: true });
@@ -96,8 +97,10 @@ router.get('/reviews/:type/:id', authOptional, (req, res) => {
 router.post('/reviews/:type/:id', authRequired, (req, res) => {
   const type = TT(req.params.type), id = +req.params.id;
   // 校验目标存在且公开，防对私有/他人资源刷评分。
-  const tbl = type === 'script' ? 'scripts' : 'characters';
-  if (!db.prepare(`SELECT 1 FROM ${tbl} WHERE id = ? AND is_public = 1`).get(id)) return res.status(404).json({ error: '目标不存在或不可评价' });
+  const target = type === 'script'
+    ? db.prepare('SELECT 1 FROM scripts WHERE id = ? AND deleted_at IS NULL').get(id)
+    : db.prepare('SELECT 1 FROM characters WHERE id = ? AND is_public = 1').get(id);
+  if (!target) return res.status(404).json({ error: '目标不存在或不可评价' });
   const rating = Math.min(5, Math.max(1, parseInt(req.body?.rating, 10) || 5));
   const text = (req.body?.text || '').slice(0, 500);
   const ex = db.prepare('SELECT id FROM reviews WHERE target_type=? AND target_id=? AND user_id=?').get(type, id, req.user.id);
@@ -135,12 +138,13 @@ router.get('/leaderboard', authOptional, (req, res) => {
   const characters = db.prepare(`SELECT c.id, c.name, c.avatar, c.likes, c.uses, c.views, u.display_name owner_name
     FROM characters c JOIN users u ON u.id=c.owner_id WHERE c.is_public=1 ORDER BY c.likes DESC, c.uses DESC LIMIT 20`).all();
   const scripts = db.prepare(`SELECT s.id, s.title, s.cover, s.plays, s.likes, s.price_gold, u.display_name author_name
-    FROM scripts s JOIN users u ON u.id=s.author_id ORDER BY s.plays DESC, s.likes DESC LIMIT 20`).all();
+    FROM scripts s JOIN users u ON u.id=s.author_id WHERE s.deleted_at IS NULL
+    ORDER BY s.plays DESC, s.likes DESC LIMIT 20`).all();
   const authors = db.prepare(`SELECT u.id, u.display_name, u.avatar,
       (SELECT COALESCE(SUM(likes),0) FROM characters WHERE owner_id=u.id) +
-      (SELECT COALESCE(SUM(likes),0) FROM scripts WHERE author_id=u.id) AS score,
+      (SELECT COALESCE(SUM(likes),0) FROM scripts WHERE author_id=u.id AND deleted_at IS NULL) AS score,
       (SELECT COUNT(*) FROM characters WHERE owner_id=u.id AND is_public=1) AS chars,
-      (SELECT COUNT(*) FROM scripts WHERE author_id=u.id) AS scripts
+      (SELECT COUNT(*) FROM scripts WHERE author_id=u.id AND deleted_at IS NULL) AS scripts
     FROM users u WHERE u.is_banned=0 ORDER BY score DESC LIMIT 20`)
     .all().map(a => ({ ...a, creator_tier: creatorTier(a.id) }));
   res.json({ characters, scripts, authors });

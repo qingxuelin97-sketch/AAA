@@ -29,7 +29,8 @@ nodemailer.createTransport = function(opts, defaults) {
 
 const srv = spawn(process.execPath, ['--import', pathToFileURL(interceptor).href, 'server/index.js'], {
   cwd: ROOT, env: { ...process.env, NODE_ENV: 'test', TEST_EXPOSE_EMAIL_CODES: '1',
-    PORT: String(PORT), DB_PATH, MAIL_CODE_IP_LIMIT: '50', AUTH_RATE_LIMIT: '50' }, stdio: ['ignore', 'pipe', 'pipe'],
+    PORT: String(PORT), DB_PATH, MAIL_CODE_IP_LIMIT: '50',
+    API_ANON_RATE_LIMIT: '120', API_AUTH_RATE_LIMIT: '1000' }, stdio: ['ignore', 'pipe', 'pipe'],
 });
 let serverOutput = '';
 srv.stdout.on('data', chunk => { serverOutput = (serverOutput + chunk).slice(-8000); });
@@ -84,6 +85,35 @@ try {
   }
   const gmTok = (await J(await post('/auth/login', { username: 'gm', password: '123456' }))).token;
   await fetch(BASE + '/admin/mail', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + gmTok }, body: JSON.stringify({ host: 'smtp.mock.com', port: 465, secure: true, user: 'u@mock.com', pass: 'p', from: '"T" <u@mock.com>' }) });
+
+  // Login throttling is failure-based and temporary: ten failures are normal
+  // 401 responses, the eleventh request inside 60 seconds is throttled, and a
+  // successful login clears only the matching account+source bucket.
+  const loginStatuses = [];
+  let loginRetryAfter = 0;
+  for (let i = 0; i < 11; i++) {
+    const attempt = await post('/auth/login', { username: 'rate-probe', password: 'wrong-password' });
+    loginStatuses.push(attempt.status);
+    loginRetryAfter = Number(attempt.headers.get('retry-after') || loginRetryAfter || 0);
+    await attempt.text();
+  }
+  ok(loginStatuses.slice(0, 10).every(s => s === 401) && loginStatuses[10] === 429 && loginRetryAfter >= 1 && loginRetryAfter <= 60,
+    `登录前 10 次失败为 401、第 11 次为 429（${loginStatuses.join('/')}，Retry-After=${loginRetryAfter}）`);
+  {
+    const db = new Database(DB_PATH);
+    db.prepare('UPDATE auth_login_failures SET failed_at = 0').run();
+    db.close();
+  }
+  const afterWindow = await post('/auth/login', { username: 'rate-probe', password: 'wrong-password' });
+  ok(afterWindow.status === 401, `60 秒窗口过期后可继续尝试且不永久锁号 → ${afterWindow.status}`);
+  await afterWindow.text();
+  await (await post('/auth/login', { username: 'gm', password: 'wrong-password' })).text();
+  const gmRelogin = await post('/auth/login', { username: 'gm', password: '123456' });
+  const gmReloginBody = await J(gmRelogin);
+  const afterSuccessFailure = await post('/auth/login', { username: 'gm', password: 'wrong-password' });
+  ok(gmRelogin.ok && gmReloginBody.token && afterSuccessFailure.status === 401,
+    `成功登录清除同账号失败桶，下一次错误仍从 401 开始 → ${afterSuccessFailure.status}`);
+  await afterSuccessFailure.text();
 
   // Registration is restricted by default. Invite validation and code
   // consumption must be one atomic operation, and codes must not be stored as
@@ -203,6 +233,60 @@ try {
   const negativeGift = await post('/admin/gift', { user_id: r1Id, gold: -1 }, gmTok);
   ok(negativeGift.status === 400, `管理员赠送接口拒绝负数余额变更 → ${negativeGift.status}`);
 
+  // Cross-account authorization: a private character cannot be favorited or
+  // smuggled into a theater, and a private theater cannot be joined by ID.
+  const privateCharacterRes = await post('/characters', {
+    name: 'private-owner-card', persona: 'PRIVATE_PERSONA_MUST_NOT_LEAK', is_public: false,
+  }, r1.token);
+  const privateCharacter = (await J(privateCharacterRes)).character;
+  const publicCharacterRes = await post('/characters', {
+    name: 'public-gacha-card', persona: 'public', is_public: true,
+  }, r1.token);
+  const publicCharacter = (await J(publicCharacterRes)).character;
+  const ttsCharacterRes = await post('/characters', {
+    name: 'creator-voice-card', persona: 'creator', is_public: true,
+  }, r2.token);
+  const ttsCharacter = (await J(ttsCharacterRes)).character;
+  ok(privateCharacterRes.ok && publicCharacterRes.ok && ttsCharacterRes.ok,
+    '建立私有角色、公开角色与创作者语音角色安全夹具');
+
+  const privateFavorite = await post(`/characters/${privateCharacter.id}/favorite`, {}, r2.token);
+  {
+    const db = new Database(DB_PATH);
+    db.prepare('INSERT OR IGNORE INTO favorites (user_id, character_id) VALUES (?,?)').run(r2.user.id, privateCharacter.id);
+    db.close();
+  }
+  const favoritesAfterLegacyLeak = await J(await fetch(BASE + '/characters/favorites/list', {
+    headers: { Authorization: 'Bearer ' + r2.token },
+  }));
+  ok(privateFavorite.status === 404 && !favoritesAfterLegacyLeak.characters.some(c => c.id === privateCharacter.id),
+    `他人私有角色不可收藏，历史脏收藏也不回显 → ${privateFavorite.status}`);
+
+  const privateTheaterRes = await post('/theater', {
+    name: 'private-stage', scene: 'secret stage', cast: [privateCharacter.id], is_public: false,
+  }, r1.token);
+  const privateTheater = (await J(privateTheaterRes)).theater;
+  const guessedJoin = await post(`/theater/${privateTheater.id}/join`, {}, r2.token);
+  const guessedRead = await fetch(BASE + `/theater/${privateTheater.id}`, {
+    headers: { Authorization: 'Bearer ' + r2.token },
+  });
+  const ownerTheaterRead = await fetch(BASE + `/theater/${privateTheater.id}`, {
+    headers: { Authorization: 'Bearer ' + r1.token },
+  });
+  const ownerTheaterBody = await J(ownerTheaterRead);
+  const publicPrivateCast = await post('/theater', {
+    name: 'public-private-cast', cast: [privateCharacter.id], is_public: true,
+  }, r1.token);
+  const stolenPrivateCast = await post('/theater', {
+    name: 'stolen-private-cast', cast: [privateCharacter.id], is_public: false,
+  }, r2.token);
+  ok(privateTheaterRes.ok && guessedJoin.status === 403 && guessedRead.status === 403,
+    `猜测 ID 不能加入或读取私有剧场 → ${guessedJoin.status}/${guessedRead.status}`);
+  ok(publicPrivateCast.status === 403 && stolenPrivateCast.status === 403,
+    `公开剧场不能夹带私有角色，私有剧场不能盗用他人私有角色 → ${publicPrivateCast.status}/${stolenPrivateCast.status}`);
+  ok(ownerTheaterRead.ok && ownerTheaterBody.cast?.length === 1 && ownerTheaterBody.cast[0].persona === undefined,
+    '剧场响应使用角色字段白名单，不再通过 c.* 泄露 persona');
+
   // 2) 邮箱别名去重：sec1+alt@test.dev 与 sec1@test.dev 同规范形 → 409（send-code 即拦）
   const alias = await post('/auth/send-code', { email: 'sec1+alt@test.dev' });
   const aliasBody = await J(alias);
@@ -282,14 +366,59 @@ try {
   ok(negativePrice.status === 400 && invalidUpdate.status === 400,
     `剧本价格拒绝负数和非数值 → ${negativePrice.status}/${invalidUpdate.status}`);
 
-  // 5) 每日任务进度不再信任客户端上报：/track 报 chat 无效（服务端真实动作才计数），gacha 仍有效（纯前端玩法）
+  const deleteScript = await fetch(BASE + `/scripts/${sid}`, {
+    method: 'DELETE', headers: { Authorization: 'Bearer ' + r1.token },
+  });
+  const marketAfterDelete = await J(await fetch(BASE + '/scripts'));
+  const purchasedAfterDeleteRes = await fetch(BASE + `/scripts/${sid}`, {
+    headers: { Authorization: 'Bearer ' + r2.token },
+  });
+  const purchasedAfterDelete = await J(purchasedAfterDeleteRes);
+  const buyDeleted = await post(`/scripts/${sid}/buy`, {}, r3.token);
+  let preservedPurchase;
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    preservedPurchase = db.prepare(`SELECT s.deleted_at, COUNT(sp.id) AS purchases,
+      MAX(CASE WHEN COALESCE(sp.snapshot_content,'') != '' THEN 1 ELSE 0 END) AS has_snapshot
+      FROM scripts s LEFT JOIN script_purchases sp ON sp.script_id=s.id WHERE s.id=?`).get(sid);
+    db.close();
+  }
+  ok(deleteScript.ok && !marketAfterDelete.scripts.some(s => s.id === sid) && buyDeleted.status === 404,
+    `剧本删除改为下架：市场隐藏且禁止新购买 → ${deleteScript.status}/${buyDeleted.status}`);
+  ok(purchasedAfterDeleteRes.ok && purchasedAfterDelete.script?.content && purchasedAfterDelete.script?.deleted &&
+      preservedPurchase?.deleted_at && preservedPurchase.purchases >= 2 && preservedPurchase.has_snapshot === 1,
+    '已购内容继续使用不可变快照，购买与结算记录未被级联删除');
+
+  // 5) 每日任务进度不再信任客户端上报；真实抽卡提交后才计数。
   await post('/engage/track', { action: 'chat' }, r1.token);
   await post('/engage/track', { action: 'gacha' }, r1.token);
-  const tasks = await J(await fetch(BASE + '/engage/tasks', { headers: { Authorization: 'Bearer ' + r1.token } }));
-  const chatT = tasks.tasks.find(t => t.id === 'chat' || t.name.includes('对话') || t.name.includes('聊'));
-  const gachaT = tasks.tasks.find(t => t.id === 'gacha');
+  const tasksBeforeRealGacha = await J(await fetch(BASE + '/engage/tasks', { headers: { Authorization: 'Bearer ' + r1.token } }));
+  const chatT = tasksBeforeRealGacha.tasks.find(t => t.id === 'chat' || t.name.includes('对话') || t.name.includes('聊'));
+  const fakeGachaT = tasksBeforeRealGacha.tasks.find(t => t.id === 'gacha');
   ok(chatT && chatT.progress === 0, `客户端上报 chat 不计任务进度（progress=${chatT?.progress}）`);
-  ok(gachaT && gachaT.progress >= 1, `扭蛋机 gacha 上报仍计数（progress=${gachaT?.progress}）`);
+  ok(fakeGachaT && fakeGachaT.progress === 0, `客户端伪造 gacha 上报不计任务进度（progress=${fakeGachaT?.progress}）`);
+  {
+    const db = new Database(DB_PATH);
+    db.prepare("UPDATE users SET diamond=100 WHERE username='sec_u1'").run();
+    db.close();
+  }
+  const realGacha = await post('/engage/gacha', {}, r1.token);
+  const tasksAfterRealGacha = await J(await fetch(BASE + '/engage/tasks', { headers: { Authorization: 'Bearer ' + r1.token } }));
+  const realGachaT = tasksAfterRealGacha.tasks.find(t => t.id === 'gacha');
+  ok(realGacha.ok && realGachaT?.progress === 1,
+    `服务器完成真实抽卡后才推进 gacha 任务（progress=${realGachaT?.progress}）`);
+  {
+    const db = new Database(DB_PATH);
+    db.prepare('UPDATE characters SET uses=10 WHERE id=?').run(publicCharacter.id);
+    db.close();
+  }
+  const achievements = await J(await fetch(BASE + '/achievements', {
+    headers: { Authorization: 'Bearer ' + r1.token },
+  }));
+  const creatorHall = achievements.achievements.find(a => a.id === 'creator_hall');
+  const creatorHallClaim = await post('/achievements/creator_hall/claim', {}, r1.token);
+  ok(creatorHall?.unlocked && creatorHall.honor && creatorHall.reward === 0 && !creatorHall.claimable && creatorHallClaim.status === 400,
+    '实时创作者排名仅授予荣誉徽章，不再成为可刷取的货币奖励');
 
   // 6) 开放策略：同设备注册不再设配额——同 X-Device-Id 4 个注册全部成功
   const DEV = 'devicequota-test-0001';
@@ -312,7 +441,53 @@ try {
   const cBad = await fetch(BASE + '/health', { headers: { Origin: 'https://evil.example' } });
   ok(!cBad.headers.get('access-control-allow-origin'), '陌生来源不下发 ACAO（浏览器侧拒读）');
 
-  // 8) AI 生图预扣-退款：平台生图指向不可达上游 → 502，余额分文不少，流水留下 image_fee/ai_refund 对
+  // 8) Repeated TTS failures must create linked net-zero reversals and must
+  // never increase the referenced creator's revenue-share pool.
+  await fetch(BASE + '/admin/platform', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + gmTok },
+    body: JSON.stringify({ voice: {
+      provider: 'openai', protocol: 'openai', base_url: 'https://unreachable-voice.invalid',
+      key: 'test-voice-key', model: 'tts-1', voice_name: 'alloy',
+    } }),
+  });
+  {
+    const db = new Database(DB_PATH);
+    db.prepare("UPDATE users SET gold=1000 WHERE username='sec_u1'").run();
+    db.close();
+  }
+  const failedTts1 = await post('/chat/tts', { text: 'refund-one', character_id: ttsCharacter.id }, r1.token);
+  const failedTts2 = await post('/chat/tts', { text: 'refund-two', character_id: ttsCharacter.id }, r1.token);
+  await failedTts1.text();
+  await failedTts2.text();
+  const creatorPlanRes = await fetch(BASE + '/me/revenue-plan', {
+    headers: { Authorization: 'Bearer ' + r2.token },
+  });
+  const creatorPlanText = await creatorPlanRes.text();
+  let creatorPlan = {};
+  try { creatorPlan = JSON.parse(creatorPlanText); } catch { creatorPlan = { error: creatorPlanText }; }
+  let voiceLedger;
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    const rows = db.prepare(`SELECT id, kind, gold, ref_owner, reversal_of, share_eligible
+      FROM transactions WHERE user_id=? AND kind IN ('voice_fee','voice_refund') ORDER BY id`).all(r1.user.id);
+    const fees = rows.filter(r => r.kind === 'voice_fee');
+    const refunds = rows.filter(r => r.kind === 'voice_refund');
+    voiceLedger = {
+      fees: fees.length,
+      refunds: refunds.length,
+      net: rows.reduce((n, r) => n + r.gold, 0),
+      linked: refunds.every(r => fees.some(f => f.id === r.reversal_of && f.ref_owner === r.ref_owner)),
+      visible: rows.every(r => r.share_eligible === 1),
+    };
+    db.close();
+  }
+  ok(failedTts1.status === 502 && failedTts2.status === 502 && voiceLedger.fees === 2 &&
+      voiceLedger.refunds === 2 && voiceLedger.net === 0 && voiceLedger.linked && voiceLedger.visible,
+    `TTS 失败扣费均精确冲正并继承创作者归属（fee=${voiceLedger.fees}, refund=${voiceLedger.refunds}, net=${voiceLedger.net}）`);
+  ok(creatorPlanRes.ok && creatorPlan.plan?.pool_total === 0 && creatorPlan.plan?.claimable_amount === 0,
+    `失败 TTS 不增加创作者分成池（status=${creatorPlanRes.status}, pool=${creatorPlan.plan?.pool_total}）`);
+
+  // 9) AI 生图预扣-退款：平台生图指向不可达上游 → 502，余额分文不少，流水留下 image_fee/ai_refund 对
   await fetch(BASE + '/admin/platform', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + gmTok },
     body: JSON.stringify({ image: { provider: 'openai', base_url: 'https://unreachable-upstream.invalid', key: 'test-key', model: 'test' } }) });
   {
@@ -333,13 +508,22 @@ try {
     ok(fee === 1 && refund === 1, `流水留下预扣/退款对（image_fee×${fee} ai_refund×${refund}）`);
   }
 
-  // 9) 匿名限流分档：60/min。快速打 70 发匿名请求，出现 429；带合法 token 同量不拦。
+  let normalUserAi429 = 0;
+  for (let i = 0; i < 14; i++) {
+    const limited = await post('/ai/image', {}, r3.token);
+    if (limited.status === 429) normalUserAi429++;
+    await limited.text();
+  }
+  ok(normalUserAi429 > 0, `普通登录用户同样受 AI 12/min 限流保护（429 × ${normalUserAi429}）`);
+
+  // 10) 匿名限流分档。测试进程将匿名档提高到 120 以免前置注册夹具污染，
+  // 末尾快速打 130 发仍应出现 429；登录档单独提高后同量不拦。
   // 放最后：爆掉匿名配额后 send-code 等匿名接口在窗口内都会 429，会污染前面的注册用例。
   let anon429 = 0;
-  for (let i = 0; i < 70; i++) { const r = await fetch(BASE + '/economy/packages'); if (r.status === 429) anon429++; }
-  ok(anon429 > 0, `匿名请求超 60/min 触发限流（429 × ${anon429}）`);
+  for (let i = 0; i < 130; i++) { const r = await fetch(BASE + '/economy/packages'); if (r.status === 429) anon429++; }
+  ok(anon429 > 0, `匿名请求超过测试配额触发限流（429 × ${anon429}）`);
   let auth429 = 0;
-  for (let i = 0; i < 70; i++) { const r = await fetch(BASE + '/economy/packages', { headers: { Authorization: 'Bearer ' + r1.token } }); if (r.status === 429) auth429++; }
+  for (let i = 0; i < 130; i++) { const r = await fetch(BASE + '/economy/packages', { headers: { Authorization: 'Bearer ' + r1.token } }); if (r.status === 429) auth429++; }
   ok(auth429 === 0, `登录用户同量请求不受匿名档限制（429 × ${auth429}）`);
 } finally {
   srv.kill();

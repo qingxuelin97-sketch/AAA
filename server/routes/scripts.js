@@ -15,10 +15,42 @@ function scriptPrice(value, fallback = 0) {
   return price;
 }
 
+function snapshotView(script, purchase) {
+  if (!purchase) return script;
+  return {
+    ...script,
+    id: script?.id ?? purchase.script_id,
+    author_id: purchase.snapshot_author_id ?? script?.author_id,
+    title: purchase.snapshot_title || script?.title || '',
+    summary: purchase.snapshot_summary || script?.summary || '',
+    cover: purchase.snapshot_cover ?? script?.cover ?? null,
+    content: purchase.snapshot_content || script?.content || '',
+    category: purchase.snapshot_category || script?.category || '',
+    tags: purchase.snapshot_tags || script?.tags || '',
+    price_gold: purchase.price,
+    deleted: !!script?.deleted_at,
+  };
+}
+
+function insertPurchase(script, userId, { dueAt = null, settledAt = null } = {}) {
+  return db.prepare(`INSERT INTO script_purchases
+    (script_id, user_id, price, settlement_due_at, settled_at,
+     snapshot_author_id, snapshot_title, snapshot_summary, snapshot_cover,
+     snapshot_content, snapshot_category, snapshot_tags)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    script.id, userId, script.price_gold, dueAt, settledAt,
+    script.author_id, script.title, script.summary || '', script.cover || null,
+    script.content || '', script.category || '', script.tags || '',
+  );
+}
+
 // Funds stay in platform escrow throughout the refund window. Settlement is
 // demand-driven by marketplace traffic and remains exactly-once transactionally.
 const settleDuePurchases = db.transaction(() => {
-  const due = db.prepare(`SELECT sp.*, s.author_id, s.title FROM script_purchases sp
+  const due = db.prepare(`SELECT sp.*,
+      COALESCE(sp.snapshot_author_id, s.author_id) AS author_id,
+      COALESCE(NULLIF(sp.snapshot_title,''), s.title) AS title
+    FROM script_purchases sp
     JOIN scripts s ON s.id = sp.script_id
     WHERE sp.refunded = 0 AND sp.settled_at IS NULL AND sp.settlement_due_at IS NOT NULL AND sp.settlement_due_at <= ?
     ORDER BY sp.id LIMIT 100`).all(Date.now());
@@ -43,7 +75,7 @@ router.get('/', authOptional, (req, res) => {
   settleDuePurchases();
   const { category, q, sort } = req.query;
   let sql =`SELECT s.*, u.display_name AS author_name, u.avatar AS author_avatar
-    FROM scripts s JOIN users u ON u.id = s.author_id WHERE 1=1`;
+    FROM scripts s JOIN users u ON u.id = s.author_id WHERE s.deleted_at IS NULL`;
   const args = [];
   if (category && category !=='all') { sql +=' AND s.category = ?'; args.push(category); }
   if (q) { sql +=' AND (s.title LIKE ? OR s.tags LIKE ? OR s.summary LIKE ?)'; const k =`%${q}%`; args.push(k, k, k); }
@@ -55,17 +87,32 @@ router.get('/', authOptional, (req, res) => {
 router.get('/mine', authRequired, (req, res) => {
   settleDuePurchases();
   const created = db.prepare('SELECT * FROM scripts WHERE author_id = ? ORDER BY created_at DESC').all(req.user.id);
-  const purchased = db.prepare(`SELECT s.*, sp.created_at AS bought_at, sp.refunded, sp.price AS paid
-    FROM script_purchases sp JOIN scripts s ON s.id = sp.script_id
-    WHERE sp.user_id = ? ORDER BY sp.id DESC`).all(req.user.id);
+  const purchased = db.prepare(`SELECT s.*,
+      COALESCE(s.id, sp.script_id) AS id,
+      COALESCE(NULLIF(sp.snapshot_title,''), s.title) AS title,
+      COALESCE(NULLIF(sp.snapshot_summary,''), s.summary) AS summary,
+      COALESCE(sp.snapshot_cover, s.cover) AS cover,
+      COALESCE(NULLIF(sp.snapshot_content,''), s.content) AS content,
+      COALESCE(NULLIF(sp.snapshot_category,''), s.category) AS category,
+      COALESCE(NULLIF(sp.snapshot_tags,''), s.tags) AS tags,
+      COALESCE(sp.snapshot_author_id, s.author_id) AS author_id,
+      sp.created_at AS bought_at, sp.refunded, sp.price AS paid,
+      CASE WHEN s.deleted_at IS NOT NULL OR s.id IS NULL THEN 1 ELSE 0 END AS deleted
+    FROM script_purchases sp LEFT JOIN scripts s ON s.id = sp.script_id
+    WHERE sp.user_id = ? AND sp.refunded = 0 ORDER BY sp.id DESC`).all(req.user.id);
   res.json({ created, purchased });
 });
 
 router.get('/:id', authOptional, (req, res) => {
-  const s = db.prepare(`SELECT s.*, u.display_name AS author_name, u.avatar AS author_avatar
+  let s = db.prepare(`SELECT s.*, u.display_name AS author_name, u.avatar AS author_avatar
     FROM scripts s JOIN users u ON u.id = s.author_id WHERE s.id = ?`).get(req.params.id);
   if (!s) return res.status(404).json({ error:'剧本不存在' });
-  const unlocked = s.price_gold === 0 || owns(s.id, req.user?.id);
+  const purchase = req.user ? db.prepare(`SELECT * FROM script_purchases
+    WHERE script_id = ? AND user_id = ? AND refunded = 0 ORDER BY id DESC LIMIT 1`).get(s.id, req.user.id) : null;
+  const isAuthor = req.user?.id === s.author_id;
+  if (s.deleted_at && !isAuthor && !purchase) return res.status(404).json({ error:'剧本不存在' });
+  if (s.deleted_at && purchase) s = snapshotView(s, purchase);
+  const unlocked = s.price_gold === 0 || isAuthor || !!purchase;
   if (!unlocked) s.content =''; // hide paid content until purchased
   s.unlocked = unlocked;
   s.purchases = db.prepare('SELECT COUNT(*) n FROM script_purchases WHERE script_id = ? AND refunded = 0').get(s.id).n;
@@ -86,6 +133,7 @@ router.post('/', authRequired, (req, res) => {
 router.put('/:id', authRequired, (req, res) => {
   const s = db.prepare('SELECT * FROM scripts WHERE id = ?').get(req.params.id);
   if (!s || s.author_id !== req.user.id) return res.status(403).json({ error:'无权编辑' });
+  if (s.deleted_at) return res.status(410).json({ error:'剧本已下架，不能继续编辑' });
   const b = req.body || {};
   let price;
   try { price = scriptPrice(b.price_gold, s.price_gold); } catch (err) { return res.status(err.status || 400).json({ error: err.message }); }
@@ -98,16 +146,14 @@ router.put('/:id', authRequired, (req, res) => {
 router.delete('/:id', authRequired, (req, res) => {
   const s = db.prepare('SELECT * FROM scripts WHERE id = ?').get(req.params.id);
   if (!s || s.author_id !== req.user.id) return res.status(403).json({ error:'无权删除' });
-  db.prepare('DELETE FROM scripts WHERE id = ?').run(s.id);
-  res.json({ ok: true });
+  db.prepare('UPDATE scripts SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?').run(Date.now(), s.id);
+  res.json({ ok: true, deleted: true });
 });
 
 // Purchase a paid script — gold flows from buyer to author.
 const buyTx = db.transaction((buyer, script) => {
   const dueAt = Date.now() + REFUND_WINDOW_MS;
-  const info = db.prepare(`INSERT INTO script_purchases
-    (script_id, user_id, price, settlement_due_at, settled_at) VALUES (?,?,?,?,NULL)`)
-    .run(script.id, buyer, script.price_gold, dueAt);
+  const info = insertPurchase(script, buyer, { dueAt });
   applyTx(buyer, { kind:'buy_script', gold: -script.price_gold, memo:`购买剧本《${script.title}》` });
   db.prepare('UPDATE scripts SET plays = plays + 1 WHERE id = ?').run(script.id);
   return { id: info.lastInsertRowid, dueAt };
@@ -116,11 +162,11 @@ const buyTx = db.transaction((buyer, script) => {
 router.post('/:id/buy', authRequired, (req, res) => {
   settleDuePurchases();
   const s = db.prepare('SELECT * FROM scripts WHERE id = ?').get(req.params.id);
-  if (!s) return res.status(404).json({ error:'剧本不存在' });
+  if (!s || s.deleted_at) return res.status(404).json({ error:'剧本不存在' });
   if (s.author_id === req.user.id) return res.status(400).json({ error:'这是你自己的剧本' });
   if (owns(s.id, req.user.id)) return res.status(400).json({ error:'你已拥有该剧本' });
   if (s.price_gold === 0) {
-    db.prepare('INSERT INTO script_purchases (script_id, user_id, price, settled_at) VALUES (?,?,0,?)').run(s.id, req.user.id, Date.now());
+    insertPurchase(s, req.user.id, { settledAt: Date.now() });
     return res.json({ ok: true, free: true });
   }
   // 反刷币冷静期：付费购买是全站唯一「金币在用户间流动」的通道 —— 批量小号
@@ -160,7 +206,7 @@ router.post('/:id/refund', authRequired, (req, res) => {
 
 router.post('/:id/like', authRequired, (req, res) => {
   const id = +req.params.id;
-  const s = db.prepare('SELECT id FROM scripts WHERE id = ?').get(id);
+  const s = db.prepare('SELECT id FROM scripts WHERE id = ? AND deleted_at IS NULL').get(id);
   if (!s) return res.status(404).json({ error: '剧本不存在' });
   // toggle 去重：已点赞则取消，未点赞则新增，PRIMARY KEY 原子防重复刷数。
   const exist = db.prepare('SELECT 1 FROM script_likes WHERE script_id = ? AND user_id = ?').get(id, req.user.id);
@@ -179,10 +225,13 @@ router.post('/:id/like', authRequired, (req, res) => {
 // 访问权限与「解锁」逻辑一致：作者 / 已购买者可进入；免费剧本人人可进。
 // 复用调用者名下、按 tags=script:<id> 标记的私人「主持人」角色，避免每次进入都新建角色。
 router.post('/:id/play', authRequired, (req, res) => {
-  const s = db.prepare('SELECT * FROM scripts WHERE id = ?').get(req.params.id);
+  let s = db.prepare('SELECT * FROM scripts WHERE id = ?').get(req.params.id);
   if (!s) return res.status(404).json({ error: '剧本不存在' });
   const isAuthor = s.author_id === req.user.id;
-  const hasPurchased = !!db.prepare('SELECT 1 FROM script_purchases WHERE script_id = ? AND user_id = ? AND refunded = 0').get(s.id, req.user.id);
+  const purchase = db.prepare('SELECT * FROM script_purchases WHERE script_id = ? AND user_id = ? AND refunded = 0 ORDER BY id DESC LIMIT 1').get(s.id, req.user.id);
+  const hasPurchased = !!purchase;
+  if (s.deleted_at && !isAuthor && !hasPurchased) return res.status(404).json({ error: '剧本不存在' });
+  if (s.deleted_at && purchase) s = snapshotView(s, purchase);
   if (!isAuthor && !hasPurchased && s.price_gold > 0) return res.status(403).json({ error: '请先购买该剧本' });
 
   const tag = `script:${s.id}`;

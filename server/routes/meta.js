@@ -24,7 +24,7 @@ router.get('/categories', (req, res) => res.json({ categories: CATEGORIES }));
 router.get('/tags', (req, res) => {
   const rows = [
     ...db.prepare("SELECT tags FROM characters WHERE is_public = 1 AND tags IS NOT NULL AND tags != ''").all(),
-    ...db.prepare("SELECT tags FROM scripts WHERE tags IS NOT NULL AND tags != ''").all(),
+    ...db.prepare("SELECT tags FROM scripts WHERE deleted_at IS NULL AND tags IS NOT NULL AND tags != ''").all(),
   ];
   const counts = {};
   for (const row of rows) {

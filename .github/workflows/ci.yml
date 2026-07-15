@@ -1,0 +1,52 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "agent/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle
+        run: npm run build
+
+      - name: Build static app bundle
+        run: npm run build:static
+
+      - name: Security regression
+        run: npm run test:sec
+
+      - name: Payment regression
+        run: npm run test:payments
+
+      - name: Play Integrity regression
+        run: npm run test:integrity
+
+      - name: Safe outbound URL regression
+        run: npm run test:safe-url
+
+      - name: App invariants
+        run: npm run test:app
