@@ -118,7 +118,18 @@ app.use('/api', (req, _res, next) => {
   req.deviceId = /^[A-Za-z0-9-]{8,64}$/.test(did) ? did : '';
   next();
 });
-app.use('/api', rateLimit({ windowMs: 60_000, max: (req) => (req.rlAuthed ? 240 : 60), standardHeaders: true, legacyHeaders: false }));
+app.use('/api', rateLimit({
+  windowMs: 60_000,
+  max: (req) => (req.rlAuthed
+    ? Math.max(1, Number(process.env.API_AUTH_RATE_LIMIT) || 240)
+    : Math.max(1, Number(process.env.API_ANON_RATE_LIMIT) || 60)),
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Login has stricter database-backed account+IP and IP-only buckets. Letting
+  // the anonymous 60/min middleware run first would make its specified 100/min
+  // spray ceiling unreachable and would not be shared across workers.
+  skip: (req) => req.method === 'POST' && req.path === '/auth/login',
+}));
 
 app.use(express.json({
   limit: process.env.JSON_BODY_LIMIT || '2mb',

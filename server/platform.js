@@ -1,5 +1,5 @@
 import db from './db.js';
-import { isVip, applyTx } from './wallet.js';
+import { isVip, applyTx, settleTransaction } from './wallet.js';
 import { log } from './logger.js';
 
 // Pay-per-use feature fees (gold). VIP / SVIP get the membership discount.
@@ -26,8 +26,9 @@ export function chargePlatformFee({ req, res, sse, me, eff, historyLen, memo, re
   ctx.fee = platformFee(me, historyLen);
   const logExtra = { conversation_id: convId, character_id: characterId, fee_due: ctx.fee };
   const logBase = { source: 'server', category: 'economy', user_id: me.id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '' };
+  let charge = null;
   try {
-    applyTx(me.id, { kind: 'ai_fee', gold: -ctx.fee, memo, ref_owner: refOwner });
+    charge = applyTx(me.id, { kind: 'ai_fee', gold: -ctx.fee, memo, ref_owner: refOwner, share_eligible: false });
     ctx.charged = true;
   } catch {
     ctx.rejected = true;
@@ -37,6 +38,7 @@ export function chargePlatformFee({ req, res, sse, me, eff, historyLen, memo, re
   }
   ctx.settle = () => {
     if (!ctx.charged) return;
+    settleTransaction(charge.transaction_id);
     ctx.charged = false;
     // 余额现查现报：预扣与送达之间可能有其他消费，别把过期快照报给前端。
     const g = db.prepare('SELECT gold FROM users WHERE id = ?').get(me.id)?.gold ?? 0;
@@ -44,9 +46,12 @@ export function chargePlatformFee({ req, res, sse, me, eff, historyLen, memo, re
   };
   ctx.refund = (reason) => {
     if (!ctx.charged) return;
-    ctx.charged = false;
     try {
-      applyTx(me.id, { kind: 'ai_refund', gold: ctx.fee, memo: `退款（${reason}）· ${memo}`, ref_owner: refOwner });
+      applyTx(me.id, {
+        kind: 'ai_refund', gold: ctx.fee, memo: `退款（${reason}）· ${memo}`,
+        reversal_of: charge.transaction_id, idempotency_key: `ai-refund:${charge.transaction_id}`,
+      });
+      ctx.charged = false;
       log({ ...logBase, level: 'info', event: 'ai_fee_refund', message: `平台 AI 预扣退款（${reason}）`, extra: logExtra });
     } catch (e) {
       log({ ...logBase, level: 'error', event: 'ai_fee_refund_failed', message: `平台 AI 预扣退款失败（${reason}）：${e.message}`, extra: logExtra });

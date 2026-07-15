@@ -424,7 +424,7 @@ router.post('/gift', (req, res) => {
     }
   }
   if (!amounts.gold && !amounts.diamond && !amounts.vip_days) return res.status(400).json({ error: '赠送内容不能为空' });
-  if (amounts.gold || amounts.diamond) applyTx(target.id, { kind: 'reward', gold: amounts.gold, diamond: amounts.diamond, memo: String(memo || 'GM 赠送').slice(0, 200) });
+  if (amounts.gold || amounts.diamond) applyTx(target.id, { kind: 'admin_adjustment', gold: amounts.gold, diamond: amounts.diamond, memo: String(memo || 'GM 赠送').slice(0, 200) });
   if (amounts.vip_days > 0) {
     const base = isVip(target) ? new Date(target.vip_until).getTime() : Date.now();
     db.prepare('UPDATE users SET vip_until = ? WHERE id = ?').run(new Date(base + amounts.vip_days * 86400000).toISOString(), target.id);
@@ -453,7 +453,10 @@ router.get('/scripts', (req, res) => {
   res.json({ scripts: rows });
 });
 router.post('/scripts/:id/feature', (req, res) => { db.prepare('UPDATE scripts SET featured = ? WHERE id = ?').run(req.body?.value ? 1 : 0, req.params.id); res.json({ ok: true }); });
-router.delete('/scripts/:id', (req, res) => { db.prepare('DELETE FROM scripts WHERE id = ?').run(req.params.id); res.json({ ok: true }); });
+router.delete('/scripts/:id', (req, res) => {
+  db.prepare('UPDATE scripts SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?').run(Date.now(), req.params.id);
+  res.json({ ok: true, deleted: true });
+});
 
 router.delete('/moments/:id', (req, res) => { db.prepare('DELETE FROM moments WHERE id = ?').run(req.params.id); res.json({ ok: true }); });
 router.delete('/comments/:id', (req, res) => { db.prepare('DELETE FROM comments WHERE id = ?').run(req.params.id); res.json({ ok: true }); });

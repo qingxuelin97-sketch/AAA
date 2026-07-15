@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
-import { applyTx } from '../wallet.js';
+import { applyTx, settleTransaction } from '../wallet.js';
 import { getPlatform, voiceReady, featureFee, chargePlatformFee, VOICE_FEE } from '../platform.js';
 import { bumpDaily } from '../daily.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
@@ -1004,7 +1004,11 @@ router.post('/tts', authRequired, aiLimiter, async (req, res) => {
   const refundVoiceFee = (reason) => {
     if (!charged || !fee) return;
     try {
-      applyTx(me.id, { kind: 'voice_refund', gold: fee, memo: `平台语音退款 · ${reason}` });
+      applyTx(me.id, {
+        kind: 'voice_refund', gold: fee, memo: `平台语音退款 · ${reason}`,
+        reversal_of: wallet.transaction_id,
+        idempotency_key: `voice-refund:${wallet.transaction_id}`,
+      });
       charged = false;
     } catch (error) {
       log({ level: 'error', source: 'server', category: 'wallet', event: 'tts_refund_failed',
@@ -1014,7 +1018,10 @@ router.post('/tts', authRequired, aiLimiter, async (req, res) => {
   };
   if (fee) {
     try {
-      wallet = applyTx(me.id, { kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}`, ref_owner: ttsRefOwner });
+      wallet = applyTx(me.id, {
+        kind: 'voice_fee', gold: -fee, memo: `平台语音 · ${text.slice(0, 16)}`,
+        ref_owner: ttsRefOwner, share_eligible: false,
+      });
       charged = true;
     }
     catch (e) { return res.status(402).json({ error: e.message }); }
@@ -1035,6 +1042,15 @@ router.post('/tts', authRequired, aiLimiter, async (req, res) => {
     return;
   }
   if (fee) {
+    try { settleTransaction(wallet.transaction_id); }
+    catch (error) {
+      refundVoiceFee('结算异常');
+      log({ level: 'error', source: 'server', category: 'wallet', event: 'tts_settlement_failed',
+        message: `平台语音结算失败：${error.message}`, user_id: req.user.id, request_id: req.requestId || '',
+        extra: { fee, transaction_id: wallet.transaction_id } });
+      return res.status(500).json({ error: '语音计费结算失败，费用已退回' });
+    }
+    charged = false;
     res.setHeader('X-Gold-Fee', String(fee));
     res.setHeader('X-Gold-Balance', String(wallet.gold));
   }

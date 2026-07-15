@@ -20,7 +20,9 @@ const ACHIEVEMENTS = [
   { id: 'novel_words_5k', name: '初成卷帙', desc: 'AI 协作累计写下 5000 字小说', icon: 'BookText', cat: '创作', goal: 5000, reward: 260, metric: 'novel_words', link: '/atelier' },
   { id: 'novel_words_50k', name: '著作等身', desc: 'AI 协作累计写下 5 万字小说', icon: 'Library', cat: '创作', goal: 50000, reward: 900, metric: 'novel_words', link: '/atelier' },
   { id: 'creator_v', name: '创作者认证', desc: '获得创作者 V 认证', icon: 'BadgeCheck', cat: '创作', goal: 1, reward: 120, metric: 'creator_bronze', link: '/studio' },
-  { id: 'creator_hall', name: '殿堂创作者', desc: '登顶创作者榜成为 TOP 1', icon: 'Crown', cat: '创作', goal: 1, reward: 1000, metric: 'creator_gold', link: '/leaderboard' },
+  // Ranking remains a visible honor, but has no real-time currency payout.
+  // Mutable likes/plays are not a safe server-authoritative money source.
+  { id: 'creator_hall', name: '殿堂创作者', desc: '登顶创作者榜成为 TOP 1', icon: 'Crown', cat: '创作', goal: 1, reward: 0, honor: true, metric: 'creator_gold', link: '/leaderboard' },
   { id: 'first_fav', name: '一见倾心', desc: '收藏 1 个喜欢的角色', icon: 'Star', cat: '社交', goal: 1, reward: 20, metric: 'favorites', link: '/' },
   { id: 'fav_10', name: '收藏家', desc: '收藏 10 个角色', icon: 'Bookmark', cat: '社交', goal: 10, reward: 120, metric: 'favorites', link: '/favorites' },
   { id: 'first_moment', name: '初次发声', desc: '在社区发布 1 条动态', icon: 'PenLine', cat: '社交', goal: 1, reward: 40, metric: 'moments', link: '/community' },
@@ -38,11 +40,11 @@ const count = (sql, ...args) => { try { return db.prepare(sql).get(...args)?.n |
 
 function creatorScore(uid) {
   const c = count('SELECT COALESCE(SUM(uses),0)+COALESCE(SUM(likes)*2,0) n FROM characters WHERE owner_id=? AND is_public=1', uid);
-  const s = count('SELECT COALESCE(SUM(plays),0)+COALESCE(SUM(likes)*2,0) n FROM scripts WHERE author_id=?', uid);
+  const s = count('SELECT COALESCE(SUM(plays),0)+COALESCE(SUM(likes)*2,0) n FROM scripts WHERE author_id=? AND deleted_at IS NULL', uid);
   return c + s;
 }
 function creatorWorks(uid) {
-  return count('SELECT COUNT(*) n FROM characters WHERE owner_id=? AND is_public=1', uid) + count('SELECT COUNT(*) n FROM scripts WHERE author_id=?', uid);
+  return count('SELECT COUNT(*) n FROM characters WHERE owner_id=? AND is_public=1', uid) + count('SELECT COUNT(*) n FROM scripts WHERE author_id=? AND deleted_at IS NULL', uid);
 }
 function isTopCreator(uid) {
   if (creatorWorks(uid) === 0) return false;
@@ -60,7 +62,7 @@ function metric(u, m) {
     case 'affinity_max': return count('SELECT COALESCE(MAX(affinity),0) n FROM conversations WHERE user_id=?', uid);
     case 'characters': return count('SELECT COUNT(*) n FROM characters WHERE owner_id=?', uid);
     case 'public_characters': return count('SELECT COUNT(*) n FROM characters WHERE owner_id=? AND is_public=1', uid);
-    case 'scripts': return count('SELECT COUNT(*) n FROM scripts WHERE author_id=?', uid);
+    case 'scripts': return count('SELECT COUNT(*) n FROM scripts WHERE author_id=? AND deleted_at IS NULL', uid);
     case 'novels': return count('SELECT COUNT(*) n FROM novels WHERE owner_id=?', uid);
     case 'novel_words': return count('SELECT COALESCE(SUM(words),0) n FROM novel_runs WHERE owner_id=?', uid);
     case 'creator_bronze': return creatorWorks(uid) > 0 ? 1 : 0;
@@ -71,7 +73,11 @@ function metric(u, m) {
     case 'theaters': return count('SELECT COUNT(*) n FROM theater_members WHERE user_id=?', uid);
     case 'followers': return count('SELECT COUNT(*) n FROM follows WHERE following_id=?', uid);
     case 'checkin_streak': return u.checkin_streak || 0;
-    case 'gold_earned': return count('SELECT COALESCE(SUM(gold),0) n FROM transactions WHERE user_id=? AND gold>0', uid);
+    // Count only server-authoritative earnings. Refunds, exchanges, recharges
+    // and GM adjustments are explicitly excluded from achievement progress.
+    case 'gold_earned': return count(`SELECT COALESCE(SUM(gold),0) n FROM transactions
+      WHERE user_id=? AND gold>0 AND kind IN
+      ('sell_script','revenue_share','checkin','reward','event','achievement','invite')`, uid);
     case 'gacha_pulls': return u.gacha_pulls || 0;
     case 'vip': return isVip(u) ? 1 : 0;
     default: return 0;
@@ -85,8 +91,9 @@ router.get('/', authRequired, (req, res) => {
   const claimed = claimedOf(u);
   const list = ACHIEVEMENTS.map(a => {
     const raw = metric(u, a.metric); const unlocked = raw >= a.goal;
-    return { id: a.id, name: a.name, desc: a.desc, icon: a.icon, cat: a.cat, goal: a.goal, reward: a.reward, link: a.link,
-      value: Math.min(raw, a.goal), unlocked, claimed: claimed.includes(a.id), claimable: unlocked && !claimed.includes(a.id) };
+    const isClaimed = a.honor ? unlocked : claimed.includes(a.id);
+    return { id: a.id, name: a.name, desc: a.desc, icon: a.icon, cat: a.cat, goal: a.goal, reward: a.reward, honor: !!a.honor, link: a.link,
+      value: Math.min(raw, a.goal), unlocked, claimed: isClaimed, claimable: !a.honor && unlocked && !isClaimed };
   });
   res.json({ achievements: list, summary: {
     unlocked: list.filter(x => x.unlocked).length, total: list.length,
@@ -96,6 +103,7 @@ router.get('/', authRequired, (req, res) => {
 router.post('/:id/claim', authRequired, (req, res) => {
   const a = ACHIEVEMENTS.find(x => x.id === req.params.id);
   if (!a) return res.status(404).json({ error: '成就不存在' });
+  if (a.honor) return res.status(400).json({ error: '该成就是荣誉徽章，不发放实时排名奖金' });
   let w;
   try {
     // IMMEDIATE 事务内重读 ach_claimed 再判定：并发/多进程下第二次领取会读到已含该成就的
