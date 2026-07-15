@@ -14,10 +14,10 @@ const webhookLimiter = rateLimit({
 
 router.post('/:provider/webhook', webhookLimiter, (req, res, next) => {
   try {
-    const rawBody = req.rawBody || Buffer.from(JSON.stringify(req.body || {}));
+    const rawBody = req.rawBody;
     const provider = String(req.params.provider || '').toLowerCase();
-    verifyWebhook(provider, req.headers, rawBody);
-    const result = applyVerifiedPayment(provider, req.body, rawBody);
+    const verification = verifyWebhook(provider, req.headers, rawBody);
+    const result = applyVerifiedPayment(provider, req.body, rawBody, verification);
     log({
       level: 'info', source: 'server', category: 'payment', event: result.duplicate ? 'webhook_duplicate' : 'webhook_applied',
       message: `支付回调 ${result.order?.id || ''}`,
