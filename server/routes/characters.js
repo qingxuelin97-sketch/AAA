@@ -106,7 +106,8 @@ router.get('/recommended', authRequired, (req, res) => {
 router.get('/favorites/list', authRequired, (req, res) => {
   const rows = db.prepare(`SELECT c.*, u.display_name AS owner_name FROM favorites f
     JOIN characters c ON c.id = f.character_id JOIN users u ON u.id = c.owner_id
-    WHERE f.user_id = ? ORDER BY c.id DESC`).all(req.user.id);
+    WHERE f.user_id = ? AND (c.is_public = 1 OR c.owner_id = ?) ORDER BY c.id DESC`)
+    .all(req.user.id, req.user.id);
   res.json({ characters: rows });
 });
 router.post('/:id/favorite', authRequired, (req, res) => {
@@ -115,6 +116,12 @@ router.post('/:id/favorite', authRequired, (req, res) => {
     db.prepare('UPDATE characters SET likes = MAX(0, likes - 1) WHERE id = ?').run(req.params.id);
     log({ category: 'character', level: 'info', event: 'favorite', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: Number(req.params.id), faved: false }, message: '取消收藏角色' });
     return res.json({ faved: false }); }
+  const character = db.prepare('SELECT id, owner_id, is_public FROM characters WHERE id = ?').get(req.params.id);
+  // Return 404 for an inaccessible private card so the favorite endpoint is
+  // not an existence oracle. Owners may still organize their own private cards.
+  if (!character || (!character.is_public && character.owner_id !== req.user.id)) {
+    return res.status(404).json({ error: '角色不存在或不可收藏' });
+  }
   db.prepare('INSERT INTO favorites (user_id, character_id) VALUES (?,?)').run(req.user.id, req.params.id);
   db.prepare('UPDATE characters SET likes = likes + 1 WHERE id = ?').run(req.params.id);
   bumpDaily(req.user.id, 'fav');

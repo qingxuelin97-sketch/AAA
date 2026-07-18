@@ -26,7 +26,7 @@ router.get('/:id', authOptional, (req, res) => {
   u.vip = isVip(u);
   u.is_gm = !!u.is_gm; u.svip = !!u.svip; u.verified = !!u.verified;
   const characters = db.prepare('SELECT * FROM characters WHERE owner_id = ? AND is_public = 1 ORDER BY created_at DESC').all(u.id);
-  const scripts = db.prepare('SELECT * FROM scripts WHERE author_id = ? ORDER BY created_at DESC').all(u.id);
+  const scripts = db.prepare('SELECT * FROM scripts WHERE author_id = ? AND deleted_at IS NULL ORDER BY created_at DESC').all(u.id);
   const moments = db.prepare('SELECT * FROM moments WHERE user_id = ? ORDER BY created_at DESC LIMIT 20').all(u.id);
   const stats = {
     characters: db.prepare('SELECT COUNT(*) n FROM characters WHERE owner_id = ?').get(u.id).n,

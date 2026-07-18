@@ -10,11 +10,11 @@ import { sendVerifyCode, getMail } from '../mail.js';
 import { isWhitelisted, normalizeEmail, canonicalEmail, whitelistEnabled } from '../whitelist.js';
 import { registrationRequestHash, verifyPlayIntegrityToken, playIntegrityAvailability } from '../integrity.js';
 import { log } from '../logger.js';
+import { getLoginThrottle, recordLoginFailure, clearLoginFailures } from '../loginFailures.js';
 
 const router = Router();
-// 开放策略：登录/注册不再对用户做尝试频率限制（移除 authLimiter），
-// 不再因 IP/设备限定注册次数，也不再对非管理员账号做失败锁定——
-// 普通用户登录访问一律放行，不再跳出「尝试过于频繁」类提示。
+// 登录失败使用数据库共享的 60 秒滚动桶：账号+IP 10 次、IP 100 次。
+// 不做永久锁号；窗口结束即可继续。注册失败仍不消耗设备名额。
 // 邮箱验证码请求仍保留 codeLimiter（仅用于防邮件发送接口被刷），但其配额
 // 同样宽松：仅作邮件成本兜底，不阻断正常注册流程。
 const codeLimiter = rateLimit({
@@ -233,28 +233,32 @@ router.post('/register', async (req, res, next) => {
 });
 
 router.post('/login', async (req, res) => {
-  const username = String(req.body?.username || '');
+  const username = String(req.body?.username || '').slice(0, 256);
+  const source = req.ip || '';
+  const sendThrottle = (state) => {
+    res.setHeader('Retry-After', String(state.retryAfter));
+    return res.status(429).json({ error: '登录失败次数过多，请稍后再试', retry_after: state.retryAfter });
+  };
+  // Temporary rolling buckets replace the old account lock. The check before
+  // bcrypt also prevents a blocked source from consuming password-hash CPU.
+  const initial = getLoginThrottle({ username, ip: source, secret: SECRET });
+  if (initial.blocked) return sendThrottle(initial);
+
   const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-  // 开放策略：仅管理员（root）账号保留失败锁定，普通用户登录访问一律放行——
-  // 不论调用频次、来源 IP 或设备，都不会再因「尝试过于频繁」被拦在登录入口。
-  if (row?.is_gm && row?.locked_until > Date.now()) {
-    const minutes = Math.ceil((row.locked_until - Date.now()) / 60000);
-    return res.status(429).json({ error: `账号已被锁定，请 ${minutes} 分钟后再试` });
-  }
   const ok = await bcrypt.compare(String(req.body?.password || ''), row ? row.password_hash : DUMMY_HASH);
   if (!row || !ok) {
-    if (row?.is_gm) {
-      const failures = (row.failed_logins || 0) + 1;
-      const lockedUntil = failures >= 5 ? Date.now() + 15 * 60_000 : 0;
-      db.prepare('UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?').run(failures, lockedUntil, row.id);
-    }
+    const limited = recordLoginFailure({ username, ip: source, secret: SECRET });
+    const status = limited.blocked ? 429 : 401;
     log({ level: 'warn', source: 'server', category: 'auth', event: 'login_failed', message: `登录失败 ${username}`,
-      user_id: row?.id || null, ip: req.ip, ua: req.header('user-agent') || '', endpoint: '/auth/login', method: 'POST', status: 401,
+      user_id: row?.id || null, ip: source, ua: req.header('user-agent') || '', endpoint: '/auth/login', method: 'POST', status,
       request_id: req.requestId || '' });
+    if (limited.blocked) return sendThrottle(limited);
     return res.status(401).json({ error: '用户名或密码错误' });
   }
   if (row.is_banned) return res.status(403).json({ error: '账号已被封禁' + (row.ban_reason ? `：${row.ban_reason}` : '') });
-  if (row.is_gm) db.prepare('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?').run(row.id);
+  clearLoginFailures({ username, ip: source, secret: SECRET });
+  // Clear obsolete fields left by releases that permanently locked accounts.
+  db.prepare('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?').run(row.id);
   log({ level: 'info', source: 'server', category: 'auth', event: 'login', message: `用户登录 ${username}`,
     user_id: row.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: '/auth/login', method: 'POST', status: 200,
     request_id: req.requestId || '' });

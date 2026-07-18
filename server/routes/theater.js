@@ -22,6 +22,18 @@ function castOf(tid) {
   return db.prepare(`SELECT c.* FROM theater_cast tc JOIN characters c ON c.id = tc.character_id WHERE tc.theater_id = ?`).all(tid);
 }
 
+// API responses expose only presentation fields. Persona, prompts, voice
+// credentials and private character metadata remain server-side for generation.
+function publicCastOf(tid) {
+  return db.prepare(`SELECT c.id, c.name, c.avatar, c.background, c.background_type,
+      c.tagline, c.category
+    FROM theater_cast tc JOIN characters c ON c.id = tc.character_id
+    WHERE tc.theater_id = ? ORDER BY c.id`).all(tid);
+}
+
+const castIdsOf = (raw) => [...new Set((Array.isArray(raw) ? raw : [])
+  .map(Number).filter(id => Number.isSafeInteger(id) && id > 0))].slice(0, 20);
+
 // 舞台设定（互动小说背景系统，全部由创作者自定义）：
 //   charAuto — 角色发言时是否自动切到该角色背景
 //   charBg   — { 角色id: 背景图 }，覆盖该角色在本小说里的背景（留空则用角色自带背景）
@@ -111,8 +123,10 @@ router.get('/', authRequired, (req, res) => {
     (SELECT MAX(tm3.created_at) FROM theater_messages tm3 WHERE tm3.theater_id = t.id) AS last_at,
     EXISTS(SELECT 1 FROM theater_members tj WHERE tj.theater_id = t.id AND tj.user_id = ?) AS joined
     FROM theaters t JOIN users u ON u.id = t.owner_id
-    WHERE (t.is_public = 1 OR t.owner_id = ?)`;
-  const args = [req.user.id, req.user.id];
+    WHERE (t.is_public = 1 OR t.owner_id = ? OR EXISTS(
+      SELECT 1 FROM theater_members tv WHERE tv.theater_id = t.id AND tv.user_id = ?
+    ))`;
+  const args = [req.user.id, req.user.id, req.user.id];
   if (q) { sql += ' AND (t.name LIKE ? OR t.scene LIKE ?)'; const k = `%${q}%`; args.push(k, k); }
   sql += ' ORDER BY COALESCE(last_at, t.created_at) DESC LIMIT 200';
   res.json({ theaters: db.prepare(sql).all(...args) });
@@ -121,14 +135,29 @@ router.get('/', authRequired, (req, res) => {
 router.post('/', authRequired, (req, res) => {
   const { name, scene, cover, cast, is_public, stage_config, worldbook, style } = req.body || {};
   if (!name) return res.status(400).json({ error: '剧场名称必填' });
-  if (!Array.isArray(cast) || cast.length === 0) return res.status(400).json({ error: '请至少选择一位 AI 角色登场' });
-  const info = db.prepare('INSERT INTO theaters (name, owner_id, scene, cover, is_public, stage_config, worldbook, style) VALUES (?,?,?,?,?,?,?,?)')
-    .run(name, req.user.id, scene || '', cover || null, is_public === false ? 0 : 1, JSON.stringify(cleanStage(stage_config)), JSON.stringify(cleanWorld(worldbook)), cleanStyle(style));
-  const tid = info.lastInsertRowid;
-  db.prepare('INSERT INTO theater_members (theater_id, user_id) VALUES (?,?)').run(tid, req.user.id);
-  const add = db.prepare('INSERT OR IGNORE INTO theater_cast (theater_id, character_id) VALUES (?,?)');
-  cast.forEach(cid => add.run(tid, cid));
-  if (scene) db.prepare('INSERT INTO theater_messages (theater_id, sender_type, name, content) VALUES (?,?,?,?)').run(tid, 'narrator', '旁白', scene);
+  const castIds = castIdsOf(cast);
+  if (!castIds.length || castIds.length !== cast.length) return res.status(400).json({ error: '登场角色列表无效' });
+  const characters = db.prepare(`SELECT id, owner_id, is_public FROM characters
+    WHERE id IN (${castIds.map(() => '?').join(',')})`).all(...castIds);
+  if (characters.length !== castIds.length) return res.status(404).json({ error: '登场角色不存在' });
+  const publicTheater = is_public !== false;
+  // Public theaters may contain only public cards. A private theater may also
+  // use the creator's own private cards, never another user's private card.
+  if (characters.some(c => publicTheater ? !c.is_public : (!c.is_public && c.owner_id !== req.user.id))) {
+    return res.status(403).json({ error: '含有私有或无权使用的登场角色' });
+  }
+  let tid;
+  db.transaction(() => {
+    const info = db.prepare('INSERT INTO theaters (name, owner_id, scene, cover, is_public, stage_config, worldbook, style) VALUES (?,?,?,?,?,?,?,?)')
+      .run(String(name).slice(0, 80), req.user.id, String(scene || '').slice(0, 4000), cover || null, publicTheater ? 1 : 0,
+        JSON.stringify(cleanStage(stage_config)), JSON.stringify(cleanWorld(worldbook)), cleanStyle(style));
+    tid = Number(info.lastInsertRowid);
+    db.prepare('INSERT INTO theater_members (theater_id, user_id) VALUES (?,?)').run(tid, req.user.id);
+    const add = db.prepare('INSERT INTO theater_cast (theater_id, character_id) VALUES (?,?)');
+    castIds.forEach(cid => add.run(tid, cid));
+    if (scene) db.prepare('INSERT INTO theater_messages (theater_id, sender_type, name, content) VALUES (?,?,?,?)')
+      .run(tid, 'narrator', '旁白', String(scene).slice(0, 4000));
+  }).immediate();
   res.json({ theater: db.prepare('SELECT * FROM theaters WHERE id = ?').get(tid) });
 });
 
@@ -137,7 +166,7 @@ router.get('/:id', authRequired, (req, res) => {
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   // 私有剧场仅 owner 与成员可见，防 IDOR。
   if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '无权访问该剧场' });
-  const cast = castOf(t.id);
+  const cast = publicCastOf(t.id);
   const members = db.prepare(`SELECT u.id, u.display_name, u.avatar FROM theater_members tm JOIN users u ON u.id = tm.user_id WHERE tm.theater_id = ?`).all(t.id);
   const messages = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id').all(t.id);
   t.stage_config = cleanStage(t.stage_config);
@@ -173,6 +202,9 @@ router.patch('/:id', authRequired, (req, res) => {
 router.post('/:id/join', authRequired, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) {
+    return res.status(403).json({ error: '私有剧场仅限受邀成员加入' });
+  }
   if (!memberOf(t.id, req.user.id)) db.prepare('INSERT INTO theater_members (theater_id, user_id) VALUES (?,?)').run(t.id, req.user.id);
   res.json({ ok: true });
 });

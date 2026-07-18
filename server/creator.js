@@ -6,11 +6,11 @@ const n = (sql, ...a) => { try { return db.prepare(sql).get(...a)?.n || 0; } cat
 
 export function creatorScore(uid) {
   return n('SELECT COALESCE(SUM(uses),0)+COALESCE(SUM(likes)*2,0) n FROM characters WHERE owner_id=? AND is_public=1', uid)
-       + n('SELECT COALESCE(SUM(plays),0)+COALESCE(SUM(likes)*2,0) n FROM scripts WHERE author_id=?', uid);
+       + n('SELECT COALESCE(SUM(plays),0)+COALESCE(SUM(likes)*2,0) n FROM scripts WHERE author_id=? AND deleted_at IS NULL', uid);
 }
 export function creatorWorks(uid) {
   return n('SELECT COUNT(*) n FROM characters WHERE owner_id=? AND is_public=1', uid)
-       + n('SELECT COUNT(*) n FROM scripts WHERE author_id=?', uid);
+       + n('SELECT COUNT(*) n FROM scripts WHERE author_id=? AND deleted_at IS NULL', uid);
 }
 function topCreatorId() {
   let best = null, bestScore = 0;
