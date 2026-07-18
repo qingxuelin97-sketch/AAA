@@ -329,7 +329,7 @@ router.post('/:id/choices', authRequired, aiLimiter, async (req, res) => {
   try {
     // 同上：用户自填地址必须走 safeFetch，防 DNS/重定向绕过同步预检。
     assertPublicUrl(settings.llm_base_url);
-    const r = await safeFetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
+    const r = await safeFetch(String(settings.llm_base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
       body: JSON.stringify({
         model: settings.llm_model, temperature: Math.min(1.2, (settings.llm_temperature || 0.8) + 0.15), max_tokens: 200,

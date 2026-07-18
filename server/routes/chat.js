@@ -729,9 +729,12 @@ async function pumpModelStream(res, eff, payloadMessages) {
   // payload 概要（不记 key 明文），供 GM 从 pm2 logs 直接看到 chat 路径的真实调用参数，
   // 与 /admin/platform/test-llm 的调用参数对比差异。
   const reqId = res.req?.requestId || '';
-  const targetUrl = eff.base_url.replace(/\/$/, '') + '/chat/completions';
+  // URL 构造与 /admin/platform/test-llm 对齐：强制 String + split('?')[0] 去查询参数 + 去尾斜杠。
+  // 否则用户填了带 ? 的 base_url（如 MiniMax ?GroupId=xxx 或误填）会拼出非法 URL 抛 ERR_INVALID_URL。
+  const targetUrl = String(eff.base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions';
   console.log('[chat:diag] pumpModelStream 开始', {
     request_id: reqId, platform: !!eff.platform, model: eff.model,
+    raw_base_url: String(eff.base_url || '').slice(0, 80),
     target: targetUrl, fetch_mode: eff.platform ? 'native' : 'safeFetch',
     msgs_count: payloadMessages?.length, total_chars: payloadMessages?.reduce((n,m)=>n+(m.content?.length||0),0),
     max_tokens: eff.max_tokens, temperature: eff.temperature, stream: true,
