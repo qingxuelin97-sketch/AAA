@@ -742,18 +742,42 @@ async function pumpModelStream(res, eff, payloadMessages) {
     clearTimeout(headerTimer);   // 响应头已到，解除首字节超时
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => '');
-      // 仅在服务端日志记录上游详情，对客户端只返回通用提示，避免泄露内部信息
-      console.error('[chat] 上游模型服务错误', upstream.status, text.slice(0, 300));
+      // 服务端日志保留完整上游详情（status + 响应体前 300 字），便于排查。
+      console.error('[chat] 上游模型服务错误', upstream.status, text.slice(0, 300), eff.platform ? '(platform)' : '(user-key)');
       // 用户自带 key 鉴权失败（401/403）：key 可能已失效/被撤销。抛出带 authFailed
       // 标记的错误，让 streamReply 捕获后自动回退到平台模型重试（而非直接报错中断对话）。
-      // 仅对非平台请求生效——平台模型本身 401/403 没有回退目标，按原逻辑报错即可。
+      // 仅对非平台请求生效——平台模型本身 401/403 没有回退目标，走下面的细化错误。
       if (!eff.platform && (upstream.status === 401 || upstream.status === 403)) {
         const e = new Error('用户 API Key 鉴权失败');
         e.authFailed = true;
         e.upstreamStatus = upstream.status;
         throw e;
       }
-      res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`);
+      // 细化上游错误，杜绝笼统「模型服务暂不可用」——让用户/管理员能直接看到真实原因：
+      //   · 平台 401/403 → 平台 key 失效，提示联系管理员（普通用户无权改平台配置）
+      //   · 429          → 限流，提示稍后重试
+      //   · 5xx          → 上游服务故障，提示稍后重试（这才是真正的「暂不可用」）
+      //   · 400          → 请求格式/参数错（model 名错、上下文超限等），透传上游关键信息
+      //   · 其他 4xx     → 透传状态码 + 摘要
+      // 平台与用户 key 两种来源都适用；用户 key 路径的错误文案指向「设置 → 语言模型」。
+      const where = eff.platform ? '后台「平台 AI → 语言模型」' : '「设置 → 语言模型」';
+      let hint;
+      if (upstream.status === 401 || upstream.status === 403) {
+        hint = eff.platform
+          ? `平台 API Key 鉴权失败（上游 ${upstream.status}），请联系管理员检查${where}的 Key 配置`
+          : `API Key 鉴权失败（上游 ${upstream.status}），请前往${where}更新 Key`;
+      } else if (upstream.status === 429) {
+        hint = '模型请求过于频繁（429），请稍后再试';
+      } else if (upstream.status >= 500) {
+        hint = `模型服务暂时不可用（上游 ${upstream.status}），请稍后再试`;
+      } else if (upstream.status === 400) {
+        // 上游 400 多为 model 名错 / 上下文超限 / 参数不兼容，透传前 120 字便于定位
+        const detail = text.slice(0, 120).replace(/\s+/g, ' ').trim();
+        hint = `模型服务拒绝请求（400）：${detail || '请检查 model 名与参数'}`;
+      } else {
+        hint = `模型服务返回 ${upstream.status}，请稍后再试`;
+      }
+      res.write(`data: ${JSON.stringify({ error: hint, upstream_status: upstream.status, platform: !!eff.platform })}\n\n`);
       return null;
     }
     const reader = upstream.body.getReader();
@@ -785,12 +809,31 @@ async function pumpModelStream(res, eff, payloadMessages) {
     if (err.name === 'AbortError') {
       if (!res.writableEnded) { try { res.write(`data: ${JSON.stringify({ error: '模型服务响应超时，请稍后再试' })}\n\n`); } catch { /* 连接已断 */ } }
     } else {
-      console.error('[chat] 连接模型服务失败', err.message);
-      // SSRF 预检错误（safeFetch 抛出，带 expose 标记）：把真实原因透传给客户端，
-      // 便于用户发现是 Base URL 配置问题（如误填内网地址、域名无法解析）。
-      const hint = err.expose
-        ? `模型服务连接失败：${err.message}。请检查「设置 → 语言模型」的 Base URL 是否正确。`
-        : '模型服务暂不可用，请稍后再试';
+      console.error('[chat] 连接模型服务失败', err.message, err.code || '', eff.platform ? '(platform)' : '(user-key)');
+      // 网络层错误按 err.code 细化，让用户能直接判断是 DNS / 拒连 / 超时还是其他；
+      // SSRF 预检错误（safeFetch 抛出，带 expose 标记）透传真实原因；
+      // 其余非暴露错误也带上 err.message，避免笼统「暂不可用」掩盖真实故障。
+      // Node 原生 fetch 的网络错误是 TypeError "fetch failed"，真实原因在 err.cause
+      //（如 ENOTFOUND / ECONNREFUSED），这里展开 cause 给出可定位的提示。
+      const where = eff.platform ? '后台「平台 AI → 语言模型」' : '「设置 → 语言模型」';
+      const cause = err.cause || {};
+      const code = err.code || cause.code || '';
+      let hint;
+      if (err.expose) {
+        hint = `模型服务连接失败：${err.message}。请检查${where}的 Base URL 是否正确。`;
+      } else if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
+        hint = `无法解析模型服务域名（${code}），请检查${where}的 Base URL 是否正确`;
+      } else if (code === 'ECONNREFUSED' || code === 'ECONNRESET') {
+        hint = `模型服务拒绝连接 / 连接被重置（${code}），请检查 Base URL 与端口，或稍后再试`;
+      } else if (code === 'ETIMEDOUT' || err.name === 'TimeoutError' || cause.name === 'TimeoutError') {
+        hint = '模型服务连接超时，请稍后再试';
+      } else if (err.message === 'fetch failed' && cause.message) {
+        // 原生 fetch 网络错误：展开 cause 给出更具体原因
+        hint = `模型服务连接失败：${cause.message}。请检查${where}的 Base URL 与网络是否可达`;
+      } else {
+        // 兜底：带 err.message，不再用笼统「暂不可用」掩盖真实原因
+        hint = `模型服务连接失败：${err.message || '未知错误'}${code ? `（${code}）` : ''}`;
+      }
       if (!res.writableEnded) { try { res.write(`data: ${JSON.stringify({ error: hint })}\n\n`); } catch { /* 连接已断 */ } }
     }
   } finally {
