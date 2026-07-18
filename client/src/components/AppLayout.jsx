@@ -21,6 +21,7 @@ import { useNav, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
 import { useAppNavigation } from '../appNavigation.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { preheat } from '../routeChunks.js';
+import { statusBarContextForTone } from '../routeRegistry.js';
 import {
   Home, Compass, MessageCircle, Plus, UserRound,
   Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff, BatteryLow, X
@@ -139,6 +140,16 @@ export default function AppLayout({ children }) {
 
   // Close the create sheet on navigation.
   useEffect(() => { setSheet(false); }, [loc.pathname]);
+
+  // Execute the Route Registry's native chrome policy. Pages no longer need
+  // bespoke status-bar effects that race each other during route transitions.
+  useEffect(() => {
+    const emit = (detail) => {
+      try { window.dispatchEvent(new CustomEvent('huanyu-statusbar', { detail })); } catch { /* */ }
+    };
+    emit(statusBarContextForTone(route.statusBar));
+    return () => emit(null);
+  }, [route.statusBar]);
 
   // —— 四路一级 tab KeepAlive ——
   // 切 tab 不再卸载整页重建（旧行为让 DOM 重建 + 接口重拉正好压在过渡动画帧
@@ -398,7 +409,7 @@ function CreateSheet({ onClose }) {
   const navTo = useNav();
   const sheetRef = useRef(null);
   useAppOverlay(true, onClose, { rootRef: sheetRef, isolate: true });
-  const go = (to) => { navTo(to); onClose(); };
+  const go = (to) => { if (navTo(to) !== false) onClose(); };
   return createPortal((
     <div className="app-sheet-mask" onClick={onClose}>
       <div ref={sheetRef} className="app-sheet" role="dialog" aria-modal="true" aria-label="创建" tabIndex={-1} onClick={e => e.stopPropagation()}>

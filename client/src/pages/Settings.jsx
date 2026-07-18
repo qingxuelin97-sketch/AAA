@@ -5,7 +5,7 @@ import { useToast, Uploader, Avatar, AvatarPicker, CoinIcon } from '../ui.jsx';
 import { getThemeMode, setThemeMode, getGlass, setGlass } from '../theme.js';
 import { ACCENTS, getAccent, setAccent } from '../accent.js';
 import { getPerfPref, setPerfPref, resolvePerf } from '../perf.js';
-import { browserVoices, speakBrowser } from '../voice.js';
+import { browserVoices, playAudioUrl, speakBrowser, stopSpeaking } from '../voice.js';
 import HelpCenter from '../components/HelpCenter.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
 import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, Upload, LifeBuoy, LayoutGrid, Scale, Check } from 'lucide-react';
@@ -74,6 +74,8 @@ export default function Settings() {
   const [voiceModels, setVoiceModels] = useState([]);
   const [detectingVoice, setDetectingVoice] = useState(false);
   const [testing, setTesting] = useState(false);
+  const voiceAbortRef = useRef(null);
+  const mountedRef = useRef(true);
   const [theme, setTheme] = useState(getThemeMode());
   const [glass, setGlassOn] = useState(getGlass());
   const [accent, setAccentId] = useState(getAccent());
@@ -85,6 +87,21 @@ export default function Settings() {
   const [showSecret, setShowSecret] = useState({});
   // 注意：必须在下面 if (!s) 提前返回之前声明（hooks 数量不能随渲染变化）
   const importRef = useRef(null);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      voiceAbortRef.current?.abort();
+      voiceAbortRef.current = null;
+      stopSpeaking();
+    };
+  }, []);
+  useEffect(() => {
+    if (tab === 'voice') return;
+    voiceAbortRef.current?.abort();
+    voiceAbortRef.current = null;
+    stopSpeaking();
+  }, [tab]);
   useEffect(() => {
     const upd = () => setBvoices(browserVoices());
     upd(); try { window.speechSynthesis?.addEventListener?.('voiceschanged', upd); } catch { /* */ }
@@ -126,14 +143,25 @@ export default function Settings() {
   };
   const testVoice = async () => {
     const proto = s.voice_protocol || 'openai';
+    voiceAbortRef.current?.abort();
     if (proto === 'browser') { speakBrowser('你好，这是浏览器内置语音的试听。', s.voice_name); toast('正在试听浏览器语音'); return; }
+    const controller = new AbortController();
+    voiceAbortRef.current = controller;
     setTesting(true);
     try {
-      await api('/settings', { method: 'PUT', body: s });
-      const res = await fetch(getApiBase() + '/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('huanyu_token') || '') }, body: JSON.stringify({ text: '你好，这是语音试听。' }) });
+      await api('/settings', { method: 'PUT', body: s, signal: controller.signal });
+      const res = await fetch(getApiBase() + '/api/chat/tts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('huanyu_token') || '') }, body: JSON.stringify({ text: '你好，这是语音试听。' }), signal: controller.signal });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || ('HTTP ' + res.status)); }
-      const blob = await res.blob(); new Audio(URL.createObjectURL(blob)).play(); toast('语音试听已播放');
-    } catch (e) { toast('语音失败：' + e.message, 'err'); } finally { setTesting(false); }
+      const blob = await res.blob();
+      if (!mountedRef.current || controller.signal.aborted || voiceAbortRef.current !== controller) return;
+      playAudioUrl(URL.createObjectURL(blob), 'settings-preview', { revoke: true });
+      toast('语音试听已播放');
+    } catch (e) {
+      if (e?.name !== 'AbortError' && mountedRef.current) toast('语音失败：' + e.message, 'err');
+    } finally {
+      if (voiceAbortRef.current === controller) voiceAbortRef.current = null;
+      if (mountedRef.current) setTesting(false);
+    }
   };
   const detectVoiceModels = async () => {
     setDetectingVoice(true);

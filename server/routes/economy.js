@@ -103,7 +103,10 @@ router.post('/vip', authRequired, (req, res) => {
 router.post('/checkin', authRequired, (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   const today = cnToday();
-  if (u.last_checkin === today) return res.status(400).json({ error:'今天已经签到过啦' });
+  if (u.last_checkin === today) return res.status(409).json({
+    error: '今天已经签到过啦',
+    code: 'ALREADY_CHECKED_IN',
+  });
   const yesterday = cnToday(new Date(Date.now() - 86400000));
   const streak = u.last_checkin === yesterday ? (u.checkin_streak || 0) + 1 : 1;
   // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
@@ -114,11 +117,20 @@ router.post('/checkin', authRequired, (req, res) => {
   try {
     db.transaction(() => {
       const upd = db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ? AND last_checkin != ?').run(today, streak, req.user.id, today);
-      if (upd.changes === 0) throw Object.assign(new Error('今天已经签到过啦'), { status: 400, expose: true });
+      if (upd.changes === 0) throw Object.assign(new Error('今天已经签到过啦'), {
+        status: 409,
+        code: 'ALREADY_CHECKED_IN',
+        expose: true,
+      });
       w = applyTx(req.user.id, { kind: 'checkin', gold: reward, memo: `第 ${streak} 天签到` });
       bumpDaily(req.user.id, 'checkin');
     }).immediate();
-  } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+  } catch (e) {
+    return res.status(e.status || 400).json({
+      error: e.message,
+      ...(e.code ? { code: e.code } : {}),
+    });
+  }
   log({ level: 'info', category: 'economy', event: 'checkin',
     message: `用户签到 第 ${streak} 天 奖励 ${reward} 金币`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
     endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',

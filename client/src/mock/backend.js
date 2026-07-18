@@ -674,7 +674,7 @@ function chargePlatformFee(me, msgCount, memo) {
 }
 
 const J = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
-const E = (msg, status = 400) => J({ error: msg }, status);
+const E = (msg, status = 400, code = '') => J({ error: msg, ...(code ? { code } : {}) }, status);
 
 function authUser(headers) {
   let h = '';
@@ -1849,7 +1849,7 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/economy/exchange') { need(); const n = parseInt(body.diamond, 10); if (!n || n <= 0) return E('请输入有效的钻石数量'); try { return J({ wallet: applyTx(me.id, { kind: 'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo: `${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` }) }); } catch (e) { return E(e.message); } }
   if (method === 'POST' && path === '/economy/vip') { need(); const plan = VIP_PLANS[body.plan] || VIP_PLANS.month; try { applyTx(me.id, { kind: 'vip', gold: -plan.gold, memo: `购买 ${plan.days} 天 VIP（${plan.label}）` }); } catch (e) { return E(e.message); } const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + plan.days * 86400000).toISOString(); save(); return J({ wallet: publicUser(me) }); }
   if (method === 'POST' && path === '/economy/checkin') {
-    need(); const today = todayStr(); if (me.last_checkin === today) return E('今天已经签到过啦');
+    need(); const today = todayStr(); if (me.last_checkin === today) return E('今天已经签到过啦', 409, 'ALREADY_CHECKED_IN');
     const y = new Date(Date.now() - 86400000 + 8 * 3600e3).toISOString().slice(0, 10); const streak = me.last_checkin === y ? (me.checkin_streak || 0) + 1 : 1;
     // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
     const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200; if (isVip(me)) reward *= 2;

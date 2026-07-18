@@ -112,8 +112,12 @@ export function useNav() {
   return useCallback((to, opts) => {
     if (to === -1 && isAppMode() && appNavigation) {
       void appNavigation.requestBack({ source: 'ui' });
-      return;
+      return true;
     }
+    // Dock, gestures, page actions and Create Sheet all use this adapter. One
+    // guard here covers every forward App navigation without double-prompting
+    // the dedicated requestBack path above. Web navigation is unchanged.
+    if (isAppMode() && appNavigation && !appNavigation.confirmNavigation()) return false;
     // 冷 chunk 跳过 VT：目标页代码未落地时，VT 只能冻屏干等网络。直接导航走
     // CSS 方向入场兜底（Suspense 期零冻结），且本次加载就把 chunk 焐热 ——
     // 同一路由第二次导航起恢复完整 VT。数字型 to（history.go）必是访问过的页，不查。
@@ -121,13 +125,14 @@ export function useNav() {
     if (!vtEnabled() || cold || vtSkipPath(from) || (typeof to !== 'number' && vtSkipPath(pathOf(to)))) {
       cancelActiveVT(); // 不走 VT 的导航也必须先掐掉进行中的快照，否则残影叠加
       navigate(to, opts);
-      return;
+      return true;
     }
     if (typeof to === 'number') {
       runVT(to < 0 ? 'pop' : 'push', () => navigate(to));
-      return;
+      return true;
     }
     runVT(computeDir(from, pathOf(to), 'PUSH'), () => navigate(to, opts));
+    return true;
   }, [navigate, from, appNavigation]);
 }
 // Native back navigation is owned by AppNavProvider.

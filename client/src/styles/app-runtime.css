@@ -194,3 +194,56 @@ html[data-app="1"][data-keyboard="1"] .app-main { padding-bottom: 0; }
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] .app-route-loading-dot { animation-duration: 1.5s; }
 }
+
+/* PR #53 carry-forward: App-only narrow chrome fixes. These live in the final
+   runtime layer so older stacked App styles cannot reintroduce the defects. */
+@media (max-width: 520px) {
+  /* Dense editor bars may have five or more actions. Keep each title on one
+     line, but let whole controls flow to a second row instead of pushing the
+     360px viewport sideways. */
+  html[data-app="1"] .topbar { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
+  html[data-app="1"] .topbar > :where(div, section):has(h1) {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: min(58vw, 240px);
+    max-width: 100%;
+  }
+  html[data-app="1"] .topbar h1,
+  html[data-app="1"] .topbar .sub {
+    max-width: 100%;
+    white-space: nowrap;
+    word-break: keep-all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  html[data-app="1"] .topbar > :where(button, .btn, label, .switch, .draft-badge) { flex: 0 0 auto; }
+}
+
+/* Recommendation badges sit 10px above their plan card. Reserve that space so
+   the first row is never clipped by the sheet header on short viewports. */
+html[data-app="1"] .vm-plans { padding-top: 12px; }
+
+/* A nearly opaque Dock plus a short fade prevents moving content from showing
+   through the navigation labels, while preserving the raised control layer. */
+html[data-app="1"] .app-tabbar,
+html[data-app="1"][data-perf="balanced"] .app-tabbar,
+html[data-app="1"][data-perf="lite"] .app-tabbar {
+  overflow: visible;
+  background: color-mix(in srgb, var(--bg) 98%, var(--accent) 2%) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html[data-app="1"] .app-tabbar::before,
+html[data-app="1"][data-perf="lite"] .app-tabbar::before {
+  display: block;
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  left: -1px;
+  right: -1px;
+  top: -18px;
+  height: 18px;
+  opacity: 1;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--bg) 96%, transparent));
+}

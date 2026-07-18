@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNav as useNavigate } from '../nav.js';
 import { useToast, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { Sparkles, Bug, Crown, MessageSquare, Copy, X } from 'lucide-react';
 import { useAppOverlay } from '../overlay.jsx';
+import { isAppMode } from '../appmode.js';
 
 const QQ = '3487923507';
 const SEEN_KEY = 'huanyu_welcome_seen';
@@ -12,6 +14,7 @@ const SEEN_KEY = 'huanyu_welcome_seen';
 export default function WelcomePopup() {
   const [open, setOpen] = useState(false);
   const popupRef = useRef(null);
+  const appPortal = isAppMode();
   const nav = useNavigate();
   const toast = useToast();
 
@@ -27,14 +30,14 @@ export default function WelcomePopup() {
     localStorage.setItem(SEEN_KEY, new Date().toISOString().slice(0, 10));
     setOpen(false);
   };
-  useAppOverlay(open, close, { rootRef: popupRef });
+  useAppOverlay(open, close, { rootRef: popupRef, isolate: appPortal });
   const copyQQ = async () => {
     try { await navigator.clipboard.writeText(QQ); toast('已复制官方技术 QQ：' + QQ); }
     catch { toast('复制失败，请手动记录 QQ：' + QQ, 'err'); }
   };
 
   if (!open) return null;
-  return (
+  const popup = (
     <div className="modal-backdrop" onClick={close}>
       <div ref={popupRef} className="card welcome-pop" role="dialog" aria-modal="true" tabIndex={-1} onClick={e => e.stopPropagation()}>
         <button className="wp-x" onClick={close} aria-label="关闭"><X size={18} /></button>
@@ -64,11 +67,12 @@ export default function WelcomePopup() {
 
         <div className="row" style={{ marginTop: 18 }}>
           <button className="btn block" onClick={close}>开始探索</button>
-          <button className="btn primary block" onClick={() => { close(); nav('/events'); }}><PartyIcon /> 查看全部活动</button>
+          <button className="btn primary block" onClick={() => { if (nav('/events') !== false) close(); }}><PartyIcon /> 查看全部活动</button>
         </div>
       </div>
     </div>
   );
+  return appPortal && typeof document !== 'undefined' ? createPortal(popup, document.body) : popup;
 }
 
 function PartyIcon() {

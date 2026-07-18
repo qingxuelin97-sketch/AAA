@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getToken, getApiBase, assetUrl } from '../api.jsx';
 import { streamSSE } from '../chat/sse.js';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, detectEmotion } from '../voice.js';
 import { Avatar } from '../ui.jsx';
 import { CallSession } from '../callSession.js';
 import { useAppOverlay } from '../overlay.jsx';
+import { isAppMode } from '../appmode.js';
 import { PhoneOff, Mic, Square, Keyboard, Send, Loader2, Video, Volume2 } from 'lucide-react';
 
 // 幻域 · 通话模式（APP 端沉浸形态）—— 给角色「打电话」。
@@ -38,6 +40,8 @@ export default function CallScreen({ character, onClose }) {
   const bufRef = useRef('');
   const rafRef = useRef(0);
   const convIdRef = useRef(null);    // say() 用 ref 读，避免闭包拿到过期值
+  const convPromiseRef = useRef(null); // mount/say races share one conversation request
+  const convPromiseGenerationRef = useRef(null);
   const abortRef = useRef(null);     // 进行中的补全流（挂断/卸载时掐掉）
   const sessionRef = useRef(null);
   const callRootRef = useRef(null);
@@ -49,22 +53,48 @@ export default function CallScreen({ character, onClose }) {
   // 静默吞掉（实机「键盘输入无返回」的一类根因）。
   const createConv = useCallback(async (token = sessionRef.current.token()) => {
     if (convIdRef.current) return convIdRef.current;
-    const task = sessionRef.current.task(token);
-    try {
-      const r = await fetch(getApiBase() + '/api/chat/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ character_id: character.id }),
-        signal: task.signal,
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error || '无法建立通话会话');
-      if (!sessionRef.current.isActive(token)) throw new DOMException('Call ended', 'AbortError');
-      const cid = d.conversation?.id || null;
-      if (!cid) throw new Error('无法建立通话会话');
-      convIdRef.current = cid;
-      return cid;
-    } finally { task.done(); }
+    // The eager mount request and the user's first utterance can overlap. Join
+    // the in-flight request instead of creating two billable conversations.
+    // If beginTurn aborted an older generation, the active generation retries
+    // once the obsolete promise has settled.
+    for (;;) {
+      if (convIdRef.current) return convIdRef.current;
+      if (!convPromiseRef.current) {
+        const task = sessionRef.current.task(token);
+        let request;
+        request = (async () => {
+          try {
+            const r = await fetch(getApiBase() + '/api/chat/conversations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+              body: JSON.stringify({ character_id: character.id }),
+              signal: task.signal,
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error || '无法建立通话会话');
+            if (!sessionRef.current.isActive(token)) throw new DOMException('Call ended', 'AbortError');
+            const cid = d.conversation?.id || null;
+            if (!cid) throw new Error('无法建立通话会话');
+            convIdRef.current = cid;
+            return cid;
+          } finally {
+            task.done();
+            if (convPromiseRef.current === request) convPromiseRef.current = null;
+          }
+        })();
+        convPromiseRef.current = request;
+        convPromiseGenerationRef.current = token?.generation;
+      }
+      const joinedGeneration = convPromiseGenerationRef.current;
+      try {
+        return await convPromiseRef.current;
+      } catch (error) {
+        if (!sessionRef.current.isActive(token)) throw error;
+        // An older generation may have owned the joined request and been
+        // aborted by beginTurn(). The current generation now gets a fresh one.
+        if (error?.name !== 'AbortError' || joinedGeneration === token?.generation) throw error;
+      }
+    }
   }, [character.id]);
 
   // 建立会话 + 拉取语音配置 + 探测平台 ASR。
@@ -211,6 +241,8 @@ export default function CallScreen({ character, onClose }) {
       };
       recRef.current = rec; stopSpeaking(); rec.start(); setRecording(true);
     } catch {
+      stopTracks();
+      setRecording(false);
       if (sessionRef.current.isActive(token)) { setSubtitle('（没有麦克风权限，改用键盘吧）'); setShowKeys(true); }
     }
   };
@@ -251,7 +283,8 @@ export default function CallScreen({ character, onClose }) {
     try { srRef.current?.abort?.(); } catch { try { srRef.current?.stop(); } catch { /* */ } }
     stopTracks(); stopSpeaking(); onClose?.();
   };
-  useAppOverlay(true, hangup, { rootRef: callRootRef });
+  const appPortal = isAppMode();
+  useAppOverlay(true, hangup, { rootRef: callRootRef, isolate: appPortal });
   const sendDraft = () => { const t = draft.trim(); if (!t) return; setDraft(''); say(t); };
   useEffect(() => () => {
     sessionRef.current.end();
@@ -275,7 +308,7 @@ export default function CallScreen({ character, onClose }) {
   const videoOn = mode === 'video' && !!bg;
   const toggleMode = () => { if (!bg) return; touchedMode.current = true; setMode(m => (m === 'video' ? 'voice' : 'video')); };
 
-  return (
+  const screen = (
     <div ref={callRootRef} className={'call-screen' + (videoOn ? ' video' : '')} style={{ '--call-hue': hue }} role="dialog" aria-modal="true" aria-label={`与${char?.name || '角色'}通话`} tabIndex={-1}>
       {videoOn
         ? <div className="call-video">
@@ -342,4 +375,5 @@ export default function CallScreen({ character, onClose }) {
       </div>
     </div>
   );
+  return appPortal && typeof document !== 'undefined' ? createPortal(screen, document.body) : screen;
 }

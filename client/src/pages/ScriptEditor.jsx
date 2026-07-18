@@ -4,6 +4,7 @@ import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast, Uploader } from '../ui.jsx';
 import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
+import { useUnsavedValue } from '../appNavigation.jsx';
 import { RotateCcw, Trash } from 'lucide-react';
 
 const BLANK = {
@@ -23,6 +24,7 @@ export default function ScriptEditor() {
   const [draftHint, setDraftHint] = useState(null);
   const draftKey = id || 'new';
   const draft = useDraftAutosave('script', draftKey, s, s.title, loaded);
+  const markScriptClean = useUnsavedValue(s, loaded, '剧本还有尚未保存的修改，确定离开吗？');
 
   useEffect(() => {
     api('/meta/categories').then(d => setCats(d.categories || [])).catch(() => {});
@@ -31,9 +33,16 @@ export default function ScriptEditor() {
   useEffect(() => {
     if (editing) {
       api('/scripts/' + id)
-        .then(d => { setS({ ...BLANK, ...d.script, nsfw: !!d.script.nsfw }); setLoaded(true); const dl = listDrafts('script').find(x => x.key === id); if (dl) setDraftHint(dl); })
+        .then(d => {
+          const next = { ...BLANK, ...d.script, nsfw: !!d.script.nsfw };
+          markScriptClean(next);
+          setS(next);
+          setLoaded(true);
+          const dl = listDrafts('script').find(x => x.key === id); if (dl) setDraftHint(dl);
+        })
         .catch(e => toast(e.message, 'err'));
     } else {
+      markScriptClean(BLANK);
       setLoaded(true);
       const dl = listDrafts('script').find(x => x.key === 'new'); if (dl) setDraftHint(dl);
     }
@@ -61,6 +70,7 @@ export default function ScriptEditor() {
     try {
       if (editing) await api('/scripts/' + id, { method: 'PUT', body });
       else await api('/scripts', { method: 'POST', body });
+      markScriptClean(s);
       draft.discard();
       toast('已保存');
       nav('/scripts');

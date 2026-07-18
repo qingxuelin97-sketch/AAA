@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Modal } from '../ui.jsx';
+import { useUnsavedValue } from '../appNavigation.jsx';
 import { Plus, ArrowLeft, Trash, BookOpen, Save, Globe, ChevronDown, ChevronUp,
   Settings2, Image as ImageIcon, Layout, Play, Eye, Sliders, Filter, Clock, Percent, Layers,
   Copy, Folder, FolderOpen, Search, Download, Upload, Variable, GitBranch, Sparkles, Timer,
@@ -80,13 +81,14 @@ export default function WorldbookEditor() {
   const [aiSplit, setAiSplit] = useState(null);   // AI 拆书：null 关闭 | { text, loading, result, picked }
   const fileRef = React.useRef(null);
   const readOnly = editing && user && ownerId != null && ownerId !== user.id;
+  const markWorldbookClean = useUnsavedValue(wb, loaded && !readOnly, '世界书还有尚未保存的修改，确定离开吗？');
 
   useEffect(() => {
-    if (!editing) { setLoaded(true); return; }
+    if (!editing) { markWorldbookClean(BLANK); setLoaded(true); return; }
     api('/worldbooks/' + id).then(d => {
       const w = d.worldbook;
       setOwnerId(w.owner_id);
-      setWb({
+      const next = {
         name: w.name, description: w.description, tags: w.tags,
         is_public: !!w.is_public, front_schema: w.front_schema || '', prompt_overlay: w.prompt_overlay || '',
         variable_schema: w.variable_schema || '',
@@ -106,7 +108,9 @@ export default function WorldbookEditor() {
           folder: e.folder || '',
           _id: e.id
         }))
-      });
+      };
+      markWorldbookClean(next);
+      setWb(next);
       setLoaded(true);
     }).catch(e => toast(e.message, 'err'));
   }, [id]);
@@ -292,9 +296,11 @@ export default function WorldbookEditor() {
       delete payload._format; delete payload._at;
       if (editing) {
         await api('/worldbooks/' + id, { method: 'PUT', body: payload });
+        markWorldbookClean(wb);
         toast('已保存');
       } else {
         const d = await api('/worldbooks', { method: 'POST', body: payload });
+        markWorldbookClean(wb);
         toast('已创建');
         nav('/worldbook/' + d.worldbook.id + '/edit', { replace: true });
       }
@@ -304,7 +310,7 @@ export default function WorldbookEditor() {
   const del = async () => {
     if (!editing) return;
     if (!confirm(`删除世界书「${wb.name}」？关联的角色将自动解除关联。`)) return;
-    try { await api('/worldbooks/' + id, { method: 'DELETE' }); toast('已删除'); nav('/worldbooks'); }
+    try { await api('/worldbooks/' + id, { method: 'DELETE' }); markWorldbookClean(wb); toast('已删除'); nav('/worldbooks'); }
     catch (e) { toast(e.message, 'err'); }
   };
 

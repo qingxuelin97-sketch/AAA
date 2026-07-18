@@ -93,9 +93,14 @@ export default function AppHome() {
       toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
       refreshUser?.(); // 顶部金币余额立即更新，不留旧值
     } catch (e) {
-      // already signed in today (or no endpoint) — mark done so the CTA settles
-      setChecked(true);
-      toast(e?.message || '今天已签到');
+      // Only the server's explicit idempotent verdict may settle the CTA as
+      // complete. Offline, timeout and 5xx failures keep it retryable.
+      if (e?.code === 'ALREADY_CHECKED_IN') {
+        setChecked(true);
+        toast('今天已签到');
+      } else {
+        toast(e?.message || '签到失败，请稍后重试', 'err');
+      }
     } finally { setBusy(false); }
   };
 

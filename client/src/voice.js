@@ -25,7 +25,7 @@ export function stripParensForSpeech(input) {
     for (const [re] of PAREN_PAIRS) s = s.replace(re, '');
   } while (s !== prev && ++guard < 50);
   // 残留的未配对括号字符也清掉，避免单独读出
-  for (const [, , open, close] of PAREN_PAIRS) s = s.replace(open, ' ').replace(close, ' ');
+  for (const [, open, close] of PAREN_PAIRS) s = s.replace(open, ' ').replace(close, ' ');
   return s.replace(/\s{2,}/g, ' ').trim();
 }
 
@@ -66,6 +66,7 @@ export function browserVoices() {
 let _audio = null;        // 平台语音的 <audio> 元素
 let _audioUrl = null;     // 当前对象 URL；结束/停止时必须释放
 let _audioRevoke = false; // 对话缓存 URL 由缓存生命周期释放；一次性通话 URL 立即释放
+let _audioOnDone = null;  // preview controls must also reset when playback is interrupted
 let _token = 0;           // 单调递增令牌；每次开播/停止都自增，使旧的 onend 回调失效
 let _playingId = null;    // 当前正在播放的标识（消息 id 或 true）
 const _listeners = new Set();
@@ -85,7 +86,10 @@ export function stopSpeaking() {
   if (_audioRevoke && _audioUrl?.startsWith?.('blob:')) { try { URL.revokeObjectURL(_audioUrl); } catch { /* noop */ } }
   _audioUrl = null;
   _audioRevoke = false;
+  const onDone = _audioOnDone;
+  _audioOnDone = null;
   setPlaying(null);
+  try { onDone?.(); } catch { /* a preview callback must not break global audio cleanup */ }
 }
 
 // 浏览器内置 TTS（离线、无 CORS、免费）。playId 用于状态联动；返回是否成功开播。
@@ -115,23 +119,35 @@ export function speakBrowser(text, voiceName, rate, pitch, playId, emotion) {
 }
 
 // 播放一段已生成的音频 URL（不重新合成）。用于平台语音的首播与「再听一遍」。
-export function playAudioUrl(url, playId, { revoke = false } = {}) {
+export function playAudioUrl(url, playId, { revoke = false, onDone } = {}) {
   stopSpeaking();
   const token = _token;
   const a = new Audio(url);
   _audio = a;
   _audioUrl = url;
   _audioRevoke = revoke;
+  _audioOnDone = typeof onDone === 'function' ? onDone : null;
   const done = () => {
     if (token !== _token) return;
     _audio = null;
     if (_audioRevoke && _audioUrl?.startsWith?.('blob:')) { try { URL.revokeObjectURL(_audioUrl); } catch { /* noop */ } }
     _audioUrl = null;
     _audioRevoke = false;
+    const callback = _audioOnDone;
+    _audioOnDone = null;
     setPlaying(null);
+    try { callback?.(); } catch { /* */ }
   };
   a.onended = done; a.onerror = done;
-  a.play().catch(() => { /* 自动播放被拦截时静默 */ });
   setPlaying(playId == null ? true : playId);
+  // Mobile WebViews can reject play() when the gesture allowance has expired.
+  // Treat that as a completed attempt so the UI and one-shot Blob URL cannot
+  // remain stuck until some later playback happens to call stopSpeaking().
+  try {
+    const started = a.play();
+    started?.catch?.(done);
+  } catch {
+    done();
+  }
   return a;
 }

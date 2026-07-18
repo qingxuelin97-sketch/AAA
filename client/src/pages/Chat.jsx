@@ -89,8 +89,11 @@ export default function Chat() {
   const [previewImg, setPreviewImg] = useState(null);
   // 当前正在朗读的消息标识（消息 id 或 true）；用于切换「朗读 / 停止」按钮态
   const [playingId, setPlayingId] = useState(null);
+  const [voiceLoadingId, setVoiceLoadingId] = useState(null);
   // 已生成的平台语音缓存：消息 id -> blob URL。「再听一遍」直接重放，不重新合成、不再计费。
   const voiceCacheRef = useRef(new Map());
+  const voiceRequestRef = useRef(null);
+  const autoReadTimerRef = useRef(0);
   const [voicedIds, setVoicedIds] = useState(() => new Set());
   const [loadingConv, setLoadingConv] = useState(false);
   const scrollRef = useRef();
@@ -134,18 +137,6 @@ export default function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, character?.name]);
 
-  // 原生状态栏语境：进入带背景图的沉浸对话时把状态栏刷成深色底
-  //（否则 App 浅色主题下状态栏是一条奶白实心条，压在深色聊天页顶端 = 「顶部白屏」）。
-  // 离开对话/卸载时撤销，恢复主题默认。
-  useEffect(() => {
-    const dark = !!(conv && character?.background);
-    try {
-      window.dispatchEvent(new CustomEvent('huanyu-statusbar', {
-        detail: dark ? { color: '#12101a', dark: true } : null
-      }));
-    } catch { /* */ }
-    return () => { try { window.dispatchEvent(new CustomEvent('huanyu-statusbar', { detail: null })); } catch { /* */ } };
-  }, [conv, character?.background]);
   // 输入框随内容自动增高（发送清空后回落单行），多行长文不再挤在一行内滚动。
   useAutoGrow(inputRef, input);
 
@@ -153,13 +144,32 @@ export default function Chat() {
   useEffect(() => onVoiceStateChange(setPlayingId), []);
   // 离开对话或卸载时停止朗读，并回收缓存的语音 blob URL，避免叠音与内存泄漏。
   useEffect(() => {
+    setStreaming(false);
     return () => {
+      const stream = abortRef.current;
+      stream?.abort();
+      if (abortRef.current === stream) abortRef.current = null;
+      if (streamRafRef.current) cancelAnimationFrame(streamRafRef.current);
+      streamRafRef.current = 0;
+      streamBufRef.current = null;
+      clearTimeout(autoReadTimerRef.current);
+      autoReadTimerRef.current = 0;
+      voiceRequestRef.current?.controller?.abort();
+      voiceRequestRef.current = null;
       stopSpeaking();
       for (const url of voiceCacheRef.current.values()) { try { URL.revokeObjectURL(url); } catch { /* */ } }
       voiceCacheRef.current.clear();
       setVoicedIds(new Set());
     };
   }, [id]);
+
+  const cancelPendingVoice = () => {
+    clearTimeout(autoReadTimerRef.current);
+    autoReadTimerRef.current = 0;
+    voiceRequestRef.current?.controller?.abort();
+    voiceRequestRef.current = null;
+    setVoiceLoadingId(null);
+  };
 
   // 浮层（抽屉/菜单/搜索/反应面板/编辑）拦截浏览器后退键：打开时压栈，后退先关浮层而非跳路由。
   const closeAllOverlays = () => {
@@ -170,7 +180,12 @@ export default function Chat() {
   const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null || plusOpen || sheetFor != null;
   useOverlayBack(anyOverlayOpen, closeAllOverlays);
   const setFont = (v) => { setFontSize(v); localStorage.setItem(FONT_KEY, v); };
-  const toggleAutoRead = () => setAutoRead(v => { const n = !v; localStorage.setItem(AUTOREAD_KEY, n ? '1' : '0'); return n; });
+  const toggleAutoRead = () => setAutoRead(v => {
+    const n = !v;
+    if (!n) { clearTimeout(autoReadTimerRef.current); autoReadTimerRef.current = 0; }
+    localStorage.setItem(AUTOREAD_KEY, n ? '1' : '0');
+    return n;
+  });
   const toggleBgm = () => setBgmOn(v => { const n = !v; localStorage.setItem(BGM_KEY, n ? '1' : '0'); return n; });
 
   // Character background music — loop softly while in the conversation. Browsers
@@ -319,18 +334,23 @@ export default function Chat() {
   // 解析循环收敛到 chat/sse.js（与 CallScreen / tavernbridge 共用，内置 getApiBase 前缀）；
   // 这里只保留 rAF 节流的增量落地逻辑（每帧最多一次 setMessages，降低低端机渲染压力）。
   const streamInto = async (endpoint, payload) => {
+    clearTimeout(autoReadTimerRef.current);
+    autoReadTimerRef.current = 0;
     setStreaming(true);
     setAtBottom(true);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+    const isCurrent = () => abortRef.current === ctrl;
     try {
-      await streamSSE(endpoint, {
+      const full = await streamSSE(endpoint, {
         body: payload, signal: ctrl.signal,
         onDelta: (delta) => {
+          if (!isCurrent()) return;
           streamBufRef.current = (streamBufRef.current || '') + delta;
           if (!streamRafRef.current) {
             streamRafRef.current = requestAnimationFrame(() => {
               const chunk = streamBufRef.current; streamBufRef.current = ''; streamRafRef.current = 0;
+              if (!isCurrent()) return;
               setMessages(m => {
                 const copy = [...m]; const last = copy[copy.length - 1];
                 if (last) copy[copy.length - 1] = { ...last, content: (last.content || '') + chunk };
@@ -340,6 +360,7 @@ export default function Chat() {
           }
         },
       });
+      if (!isCurrent()) return;
       // 收尾前 flush 残留缓冲，避免末尾 delta 丢失
       if (streamRafRef.current) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = 0; }
       if (streamBufRef.current) {
@@ -353,13 +374,19 @@ export default function Chat() {
       setMessages(m => {
         const c = [...m]; const last = c[c.length - 1];
         c[c.length - 1] = { ...last, _streaming: false };
-        if (autoReadRef.current && last?.content) setTimeout(() => speak(last.content), 120);
         return c;
       });
+      if (autoReadRef.current && full) {
+        autoReadTimerRef.current = setTimeout(() => {
+          autoReadTimerRef.current = 0;
+          speak(full);
+        }, 120);
+      }
       loadConvs();
       refreshUser?.();
       syncMessages(); // pull server IDs so edit/delete work on the new turn
     } catch (err) {
+      if (!isCurrent()) return;
       // User-initiated stop: keep whatever streamed so far, no error toast.
       if (err.name === 'AbortError') {
         setMessages(m => { const c = [...m]; const last = c[c.length - 1];
@@ -370,10 +397,12 @@ export default function Chat() {
           if (last?._streaming) c[c.length - 1] = { role: 'assistant', content: '（连接出错）' + err.message, _streaming: false }; return c; });
       }
     } finally {
-      // 清理流式缓冲与未完成的 rAF，避免内存泄漏或悬空刷新
-      if (streamRafRef.current) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = 0; }
-      streamBufRef.current = null;
-      setStreaming(false); abortRef.current = null;
+      if (isCurrent()) {
+        // 清理流式缓冲与未完成的 rAF，避免内存泄漏或悬空刷新
+        if (streamRafRef.current) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = 0; }
+        streamBufRef.current = null;
+        setStreaming(false); abortRef.current = null;
+      }
     }
   };
 
@@ -447,32 +476,50 @@ export default function Chat() {
     const emotion = detectEmotion(raw);
     // Browser Web Speech needs no server round-trip (offline / no CORS)，免费，重放即可。
     if (voiceCfg?.voice_protocol === 'browser') {
+      cancelPendingVoice();
       speakBrowser(text, voiceCfg.voice_name, character?.voice_speed, character?.voice_pitch, mid ?? true, emotion);
       markVoiced(mid);
       return;
     }
     // 平台语音：已有缓存则直接重放，不再请求服务器（省钱、防叠音）。
     const cached = mid != null && voiceCacheRef.current.get(mid);
-    if (cached) { playAudioUrl(cached, mid); return; }
+    if (cached) { cancelPendingVoice(); playAudioUrl(cached, mid); return; }
+    cancelPendingVoice();
+    const controller = new AbortController();
+    const requestId = mid ?? true;
+    voiceRequestRef.current = { controller, id: requestId };
+    setVoiceLoadingId(requestId);
     try {
       const res = await fetch(getApiBase() + '/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ text, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, pitch: character?.voice_pitch || undefined, emotion, character_id: character?.id })
+        body: JSON.stringify({ text, voice: character?.voice_name || undefined, speed: character?.voice_speed || undefined, pitch: character?.voice_pitch || undefined, emotion, character_id: character?.id }),
+        signal: controller.signal,
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
       // Platform voice is billed per sentence — the server reports the charge via headers.
       const charged = res.headers.get('X-Gold-Fee');
       const blob = await res.blob();
+      if (controller.signal.aborted || voiceRequestRef.current?.controller !== controller) return;
       const url = URL.createObjectURL(blob);
       if (mid != null) { voiceCacheRef.current.set(mid, url); markVoiced(mid); }
-      playAudioUrl(url, mid ?? true);
+      // ID-backed clips remain in the conversation cache for replay. Auto-read
+      // runs before the server ID sync, so its anonymous clip is one-shot and
+      // must be revoked as soon as playback ends or is interrupted.
+      playAudioUrl(url, mid ?? true, { revoke: mid == null });
       if (charged) { toast(`平台语音 · 本次消耗 ${charged} 金币`); refreshUser?.(); }
-    } catch (err) { toast(err.message, 'err'); }
+    } catch (err) {
+      if (err?.name !== 'AbortError') toast(err.message, 'err');
+    } finally {
+      if (voiceRequestRef.current?.controller === controller) {
+        voiceRequestRef.current = null;
+        setVoiceLoadingId(null);
+      }
+    }
   };
 
   // 朗读按钮点击：正在播放本条→停止；否则播放（缓存则重放）。
   const toggleSpeak = (m) => {
-    if (playingId === m.id) { stopSpeaking(); return; }
+    if (playingId === m.id || voiceLoadingId === m.id) { cancelPendingVoice(); stopSpeaking(); return; }
     speak(m.content, m.id);
   };
 
@@ -678,8 +725,8 @@ export default function Chat() {
                     {!m._streaming && m.content && editingId !== m.id && (
                       <div className="msg-acts">
                         {m.role === 'assistant' && <>
-                          {playingId === m.id
-                            ? <button className="speak on" onClick={() => stopSpeaking()} title="停止播放"><Square size={12} fill="currentColor" /> 停止</button>
+                          {playingId === m.id || voiceLoadingId === m.id
+                            ? <button className="speak on" onClick={() => { cancelPendingVoice(); stopSpeaking(); }} title="停止播放"><Square size={12} fill="currentColor" /> 停止</button>
                             : <button className="speak" onClick={() => toggleSpeak(m)} title={voicedIds.has(m.id) ? '重放已生成的语音（不再重新合成）' : '朗读这段话'}><Volume2 size={13} /> {voicedIds.has(m.id) ? '再听一遍' : '朗读'}</button>}
                           <button className="speak" onClick={() => copyMsg(m.content)}><Copy size={13} /> 复制</button>
                           {i === messages.length - 1 && <button className="speak" onClick={regenerate} disabled={streaming}><RotateCcw size={13} /> 重新生成</button>}
@@ -907,8 +954,8 @@ export default function Chat() {
             <div className="ms-preview">{(m.content || '').replace(/^>\s.*\n+/, '').slice(0, 120)}</div>
             {/* 表情反应行已按真机反馈移除（面板保持纯操作列表）；
                 双击气泡点 ❤️ 与 Web 壳 hover 反应仍在。 */}
-            {m.role === 'assistant' && (playingId === m.id
-              ? <button className="ms-row on" onClick={() => { stopSpeaking(); close(); }}><Square size={18} fill="currentColor" /> 停止播放</button>
+            {m.role === 'assistant' && (playingId === m.id || voiceLoadingId === m.id
+              ? <button className="ms-row on" onClick={() => { cancelPendingVoice(); stopSpeaking(); close(); }}><Square size={18} fill="currentColor" /> 停止播放</button>
               : <button className="ms-row" onClick={() => { toggleSpeak(m); close(); }}><Volume2 size={18} /> {voicedIds.has(m.id) ? '再听一遍' : '朗读'}</button>)}
             <button className="ms-row" onClick={() => { copyMsg(m.content); close(); }}><Copy size={18} /> 复制</button>
             <button className="ms-row" onClick={() => { setReplyTo(m); close(); inputRef.current?.focus(); }}><CornerUpLeft size={18} /> 引用回复</button>

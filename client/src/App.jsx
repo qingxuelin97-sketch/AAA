@@ -148,7 +148,7 @@ export default function App() {
             <Route path="/messages" element={P(<Messages />)} />
             <Route path="/me" element={P(<AppProfile />)} />
             <Route path="/vip" element={P(<Vip />)} />
-            <Route path="/chats" element={P(<Chat />)} />
+            <Route path="/chats" element={isAppMode() ? <Navigate to="/messages" replace /> : P(<Chat />)} />
             <Route path="/chats/:id" element={P(<Chat />)} />
             <Route path="/groups" element={P(<Groups />)} />
             <Route path="/group/:id" element={P(<GroupRoom />)} />

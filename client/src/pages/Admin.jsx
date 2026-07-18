@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api, useAuth, getToken, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal, CouncilorBadge, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { Shield, Users, ScrollText, Tag, Megaphone, Gift, Ban, Crown, Trash2, Plus, Copy, Check, Search, AlertTriangle, Cpu, Landmark, Gavel, Scale, Radio, X, MessageSquare, UserCheck, TrendingUp, Volume2, RefreshCw, Download, Upload, Zap, ImageIcon, Loader2, Mic, Mail, ShieldCheck, KeyRound, AtSign, FileText, Terminal, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
 import { BarChart, LineChart } from '../components/Charts.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
+import { playAudioUrl, stopSpeaking } from '../voice.js';
 
 export default function Admin() {
   const toast = useToast();
@@ -457,6 +458,17 @@ const TENCENT_IMG_MODELS = [
 ];
 
 function PlatformTab({ toast }) {
+  const voiceAbortRef = useRef(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      voiceAbortRef.current?.abort();
+      voiceAbortRef.current = null;
+      stopSpeaking();
+    };
+  }, []);
   const [cfg, setCfg] = useState(null);
   const [busy, setBusy] = useState(false);
   // language
@@ -487,18 +499,32 @@ function PlatformTab({ toast }) {
   const previewVoice = async () => {
     if (vprev) return;
     if (!voice.base_url) { toast('请先填写语音服务的 Base URL', 'err'); return; }
+    voiceAbortRef.current?.abort();
+    const controller = new AbortController();
+    voiceAbortRef.current = controller;
+    let started = false;
     setVprev(true);
     try {
       const res = await fetch(getApiBase() + '/api/admin/platform/test-voice', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ voice: { protocol: voice.protocol, base_url: voice.base_url, model: voice.model, voice_name: voice.voice_name, key: voice.key } })
+        body: JSON.stringify({ voice: { protocol: voice.protocol, base_url: voice.base_url, model: voice.model, voice_name: voice.voice_name, key: voice.key } }),
+        signal: controller.signal,
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
-      const audio = new Audio(URL.createObjectURL(await res.blob()));
-      audio.onended = () => setVprev(false); audio.onerror = () => setVprev(false);
-      await audio.play();
+      const blob = await res.blob();
+      if (!mountedRef.current || controller.signal.aborted || voiceAbortRef.current !== controller) return;
+      started = true;
+      playAudioUrl(URL.createObjectURL(blob), 'admin-voice-preview', {
+        revoke: true,
+        onDone: () => { if (mountedRef.current) setVprev(false); },
+      });
       toast('平台语音试听播放中');
-    } catch (e) { toast(e.message, 'err'); setVprev(false); }
+    } catch (e) {
+      if (e?.name !== 'AbortError' && mountedRef.current) toast(e.message, 'err');
+    } finally {
+      if (voiceAbortRef.current === controller) voiceAbortRef.current = null;
+      if (!started && mountedRef.current) setVprev(false);
+    }
   };
 
   const detect = async (kind) => {

@@ -7,7 +7,7 @@ import { pid } from '../assets.jsx';
 import { isAppMode } from '../appmode.js';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
-import { CoverArt } from '../art.jsx';
+import { CoverArt, EmptyArt } from '../art.jsx';
 import {
   MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye,
   ChevronRight, ChevronDown, Drama, BadgeCheck, Download, X, MoreHorizontal,
@@ -33,11 +33,29 @@ export default function CharacterView() {
   const [faved, setFaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [wbOpen, setWbOpen] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
+    const controller = new AbortController();
     setWbOpen(false);
+    setC(null);
+    setRelated([]);
+    setLoadError('');
     // 详情接口已带 faved 字段，无需再全量拉一遍公开列表来找收藏态。
-    api('/characters/' + id).then(d => { setC(d.character); setRelated(d.related || []); setFaved(!!d.character.faved); recordRecent(d.character); }).catch(e => toast(e.message, 'err'));
+    api('/characters/' + id, { signal: controller.signal })
+      .then(d => { setC(d.character); setRelated(d.related || []); setFaved(!!d.character.faved); recordRecent(d.character); })
+      .catch(e => {
+        if (e?.name === 'AbortError') return;
+        setLoadError(e?.message || '角色暂时无法打开');
+        toast(e?.message || '角色暂时无法打开', 'err');
+      });
+    return () => controller.abort();
+  }, [id, loadAttempt]);
+
+  // A manual retry reloads the resource but must not manufacture another
+  // engagement event for the same mounted character page.
+  useEffect(() => {
     api('/engage/view', { method: 'POST', body: { type: 'character', id: +id } }).catch(() => {});
   }, [id]);
 
@@ -67,6 +85,24 @@ export default function CharacterView() {
     try { if (navigator.share) { await navigator.share({ title: c.name, url }); return; } } catch { /* */ }
     try { await navigator.clipboard.writeText(url); toast('链接已复制'); } catch { toast('分享：' + c.name); }
   };
+
+  // Resolve loading failures before splitting into the App/Web presentations.
+  // Keeping retry state here avoids a child view reaching into parent scope,
+  // and gives both clients the same explicit recovery path.
+  if (!c && loadError) return (
+    <div className={isAppMode() ? 'cvx immersive' : 'page'}>
+      <div className="empty" role="alert" style={{ minHeight: '70dvh', display: 'grid', placeItems: 'center', alignContent: 'center', gap: 10, padding: 28 }}>
+        <EmptyArt kind="library" size={128} />
+        <b>这个角色暂时无法打开</b>
+        <span className="muted" style={{ maxWidth: 340, overflowWrap: 'anywhere' }}>{loadError}</span>
+        <div className="row" style={{ justifyContent: 'center', marginTop: 6 }}>
+          <button className="btn" onClick={() => nav(-1)}><ArrowLeft size={16} /> 返回</button>
+          <button className="btn" onClick={() => nav('/library')}><BookOpen size={16} /> 角色库</button>
+          <button className="btn primary" onClick={() => setLoadAttempt(n => n + 1)}>重试</button>
+        </div>
+      </div>
+    </div>
+  );
 
   const shared = { c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related, startChat, toggleFav, exportCard, share, id };
   // App 壳走全屏沉浸布局；Web / 移动网页保留编辑视角的卡片布局。

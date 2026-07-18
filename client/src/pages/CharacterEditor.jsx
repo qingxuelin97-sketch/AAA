@@ -6,9 +6,10 @@ import { api, uploadFile, getToken, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Uploader, AvatarPicker } from '../ui.jsx';
 import { CATEGORIES } from '../assets.jsx';
 import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js';
-import { speakBrowser } from '../voice.js';
+import { playAudioUrl, speakBrowser, stopSpeaking } from '../voice.js';
 import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
 import { isAppMode } from '../appmode.js';
+import { useUnsavedValue } from '../appNavigation.jsx';
 import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Unlink, BookUp, Globe, Search, Sparkles, Upload } from 'lucide-react';
 import { parseCharacterCard } from '../charcard.js';
 
@@ -91,8 +92,20 @@ export default function CharacterEditor() {
   const [plazaWbs, setPlazaWbs] = useState([]);        // 公开广场世界书（满血版，可直接关联）
   const [plazaQ, setPlazaQ] = useState('');
   const [plazaLoading, setPlazaLoading] = useState(false);
+  const voiceAbortRef = useRef(null);
+  const mountedRef = useRef(true);
   const draftKey = id || 'new';
   const draft = useDraftAutosave('character', draftKey, c, c.name, loaded);
+  const markCharacterClean = useUnsavedValue(c, loaded, '角色还有尚未保存的修改，确定离开吗？');
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      voiceAbortRef.current?.abort();
+      voiceAbortRef.current = null;
+      stopSpeaking();
+    };
+  }, []);
 
   // 加载我的世界书列表（供关联选择器使用）
   useEffect(() => { api('/worldbooks/mine').then(d => setMyWbs(d.worldbooks || [])).catch(() => {}); }, []);
@@ -104,21 +117,34 @@ export default function CharacterEditor() {
   // 试听 — speak a sample line using this character's chosen voice + speed.
   const previewVoice = async () => {
     if (previewing) return;
+    voiceAbortRef.current?.abort();
     if (voiceCfg?.proto === 'browser') { speakBrowser(VOICE_SAMPLE, c.voice_name || voiceCfg.name, c.voice_speed, c.voice_pitch); return; }
+    const controller = new AbortController();
+    voiceAbortRef.current = controller;
+    let started = false;
     setPreviewing(true);
     try {
       const res = await fetch(getApiBase() + '/api/chat/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ text: VOICE_SAMPLE, voice: c.voice_name || undefined, speed: c.voice_speed || undefined, pitch: c.voice_pitch || undefined })
+        body: JSON.stringify({ text: VOICE_SAMPLE, voice: c.voice_name || undefined, speed: c.voice_speed || undefined, pitch: c.voice_pitch || undefined }),
+        signal: controller.signal,
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || '语音合成失败'); }
       const charged = res.headers.get('X-Gold-Fee');
-      const audio = new Audio(URL.createObjectURL(await res.blob()));
-      audio.onended = () => setPreviewing(false);
-      audio.onerror = () => setPreviewing(false);
-      await audio.play();
+      const blob = await res.blob();
+      if (!mountedRef.current || controller.signal.aborted || voiceAbortRef.current !== controller) return;
+      started = true;
+      playAudioUrl(URL.createObjectURL(blob), 'character-preview', {
+        revoke: true,
+        onDone: () => { if (mountedRef.current) setPreviewing(false); },
+      });
       if (charged) toast(`平台语音试听 · 消耗 ${charged} 金币`);
-    } catch (err) { toast(err.message, 'err'); setPreviewing(false); }
+    } catch (err) {
+      if (err?.name !== 'AbortError' && mountedRef.current) toast(err.message, 'err');
+    } finally {
+      if (voiceAbortRef.current === controller) voiceAbortRef.current = null;
+      if (!started && mountedRef.current) setPreviewing(false);
+    }
   };
 
   // Upload a character BGM — rejected client-side if longer than 60s so we never
@@ -159,9 +185,16 @@ export default function CharacterEditor() {
 
   useEffect(() => {
     if (editing) {
-      api('/characters/' + id).then(d => { setC({ ...BLANK, ...d.character, is_public: !!d.character.is_public, world: d.character.world || [] }); setLoaded(true); const dl = listDrafts('character').find(x => x.key === id); if (dl) setDraftHint(dl); })
+      api('/characters/' + id).then(d => {
+        const next = { ...BLANK, ...d.character, is_public: !!d.character.is_public, world: d.character.world || [] };
+        markCharacterClean(next);
+        setC(next);
+        setLoaded(true);
+        const dl = listDrafts('character').find(x => x.key === id); if (dl) setDraftHint(dl);
+      })
         .catch(e => toast(e.message, 'err'));
     } else {
+      markCharacterClean(BLANK);
       setLoaded(true);
       const dl = listDrafts('character').find(x => x.key === 'new'); if (dl) setDraftHint(dl);
     }
@@ -280,6 +313,7 @@ export default function CharacterEditor() {
     try {
       if (editing) await api('/characters/' + id, { method: 'PUT', body: c });
       else await api('/characters', { method: 'POST', body: { ...c, linked_worldbook_ids: linked.map(w => w.id) } });
+      markCharacterClean(c);
       draft.discard(); // 保存成功后清理本地草稿
       toast('已保存');
       nav('/library');

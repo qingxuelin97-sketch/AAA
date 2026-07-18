@@ -110,3 +110,8 @@ export function getAppParent(path) {
 export function appDockVisible(path) {
   return getAppRoute(path).dock;
 }
+
+export function statusBarContextForTone(tone) {
+  if (tone === 'immersive') return { color: '#12101a', dark: true };
+  return null;
+}

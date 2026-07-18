@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNav as useNavigate } from '../nav.js';
 import { useAuth, api } from '../api.jsx';
 import { Avatar } from '../ui.jsx';
 import { getThemeMode, resolveTheme, setThemeMode } from '../theme.js';
 import { ACCENTS, getAccent, setAccent } from '../accent.js';
 import { useAppOverlay } from '../overlay.jsx';
+import { isAppMode } from '../appmode.js';
 import {
   Search, Compass, PartyPopper, Dices, ScrollText, Users, Trophy, Megaphone,
   MessageCircle, Drama, Library, TrendingUp, Heart, Wallet, Bell, Settings,
@@ -39,7 +41,8 @@ const NAV = [
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef(null);
-  useAppOverlay(open, () => setOpen(false), { rootRef: dialogRef });
+  const appPortal = isAppMode();
+  useAppOverlay(open, () => setOpen(false), { rootRef: dialogRef, isolate: appPortal });
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const [chars, setChars] = useState([]);
@@ -123,9 +126,17 @@ export default function CommandPalette() {
 
   const run = (row) => {
     if (!row) return;
-    if (row.kind === 'char') { nav('/character/' + row.c.id); setOpen(false); }
-    else if (row.kind === 'nav') { nav(row.n.to); setOpen(false); }
-    else if (row.kind === 'action') { row.a.run(); if (!row.a.keepOpen) setOpen(false); }
+    // A dirty editor can veto App navigation. Keep the palette open when that
+    // happens so the user's search/result context is not discarded behind the
+    // confirmation dialog.
+    if (row.kind === 'char') {
+      if (nav('/character/' + row.c.id) !== false) setOpen(false);
+    } else if (row.kind === 'nav') {
+      if (nav(row.n.to) !== false) setOpen(false);
+    } else if (row.kind === 'action') {
+      const result = row.a.run();
+      if (result !== false && !row.a.keepOpen) setOpen(false);
+    }
   };
 
   const onKeyDown = (e) => {
@@ -156,7 +167,7 @@ export default function CommandPalette() {
     );
   };
 
-  return (
+  const palette = (
     <div className="cmdk-backdrop" onMouseDown={() => setOpen(false)}>
       <div ref={dialogRef} className="cmdk" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="命令面板" tabIndex={-1}>
         <div className="cmdk-input">
@@ -207,4 +218,5 @@ export default function CommandPalette() {
       </div>
     </div>
   );
+  return appPortal && typeof document !== 'undefined' ? createPortal(palette, document.body) : palette;
 }

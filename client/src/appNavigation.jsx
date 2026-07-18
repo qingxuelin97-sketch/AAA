@@ -30,8 +30,10 @@ export function AppNavProvider({ children }) {
 
   const dismissInput = useCallback(() => {
     const active = document.activeElement;
-    if (!isEditableTarget(active)) return false;
-    active.blur?.();
+    const editable = isEditableTarget(active);
+    const keyboardOpen = document.documentElement.dataset.keyboard === '1';
+    if (!editable && !keyboardOpen) return false;
+    if (editable) active.blur?.();
     if (isNativeShell()) import('./native.js').then((m) => m.dismissNativeKeyboard?.()).catch(() => {});
     return true;
   }, []);
@@ -45,10 +47,20 @@ export function AppNavProvider({ children }) {
     return window.confirm(dirty.message || '有尚未保存的内容，确定离开吗？');
   }, []);
 
+  // All App navigation funnels through this synchronous guard before a route
+  // transition starts. Keeping the prompt outside View Transitions prevents a
+  // cancelled confirmation from leaving a frozen route snapshot behind.
+  const confirmNavigation = useCallback(() => confirmDirty(), [confirmDirty]);
+  const requestNavigate = useCallback((to, options) => {
+    if (!confirmNavigation()) return false;
+    navigate(to, options);
+    return true;
+  }, [confirmNavigation, navigate]);
+
   const requestBack = useCallback(async ({ source = 'app' } = {}) => {
     if (overlays?.closeTop?.()) return true;
     if (dismissInput()) return true;
-    if (!confirmDirty()) return true;
+    if (!confirmNavigation()) return true;
 
     const route = getAppRoute(location.pathname);
     if (route.parent) {
@@ -70,7 +82,7 @@ export function AppNavProvider({ children }) {
     clearTimeout(hintTimer.current);
     hintTimer.current = setTimeout(() => setExitHint(false), EXIT_WINDOW_MS);
     return true;
-  }, [confirmDirty, dismissInput, location.pathname, navigate, overlays]);
+  }, [confirmNavigation, dismissInput, location.pathname, navigate, overlays]);
   requestBackRef.current = requestBack;
 
   useEffect(() => {
@@ -92,7 +104,10 @@ export function AppNavProvider({ children }) {
   }, [location.pathname]);
 
   const route = useMemo(() => getAppRoute(location.pathname), [location.pathname]);
-  const value = useMemo(() => ({ route, requestBack, registerDirty }), [route, requestBack, registerDirty]);
+  const value = useMemo(
+    () => ({ route, requestBack, requestNavigate, confirmNavigation, registerDirty }),
+    [route, requestBack, requestNavigate, confirmNavigation, registerDirty],
+  );
   return (
     <AppNavigationContext.Provider value={value}>
       {children}
@@ -131,4 +146,31 @@ export function useUnsavedChanges(isDirty, message = '有尚未保存的内容�
     window.addEventListener('beforeunload', beforeUnload);
     return () => window.removeEventListener('beforeunload', beforeUnload);
   }, [enabled, isDirty]);
+
+  // Saving and route navigation often happen in the same async continuation.
+  // React has not necessarily rendered the new `isDirty=false` value before
+  // navigate() runs, so callers need a synchronous way to clear the guard.
+  return useCallback(() => { dirtyRef.current = false; }, []);
+}
+
+// Tracks form objects by identity instead of serialising a potentially huge
+// worldbook on every keystroke. Loaders call markClean(next) with the exact
+// object they install; subsequent immutable form updates become dirty. A
+// successful save clears both React state and the synchronous navigation ref.
+export function useUnsavedValue(value, ready, message) {
+  const cleanValueRef = useRef(value);
+  const currentValueRef = useRef(value);
+  const [dirty, setDirty] = useState(false);
+  currentValueRef.current = value;
+  const clearNavigationGuard = useUnsavedChanges(ready && dirty, message);
+
+  useEffect(() => {
+    if (ready && value !== cleanValueRef.current) setDirty(true);
+  }, [ready, value]);
+
+  return useCallback((nextValue = currentValueRef.current) => {
+    cleanValueRef.current = nextValue;
+    setDirty(false);
+    clearNavigationGuard();
+  }, [clearNavigationGuard]);
 }

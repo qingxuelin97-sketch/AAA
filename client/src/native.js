@@ -96,6 +96,10 @@ export function setNativeBackHandler(handler) {
 
 export async function dismissNativeKeyboard() {
   try { await Keyboard.hide(); } catch { /* plugin not available */ }
+  finally {
+    delete document.documentElement.dataset.keyboard;
+    document.documentElement.style.removeProperty('--keyboard-height');
+  }
 }
 
 export async function hideNativeSplash() {

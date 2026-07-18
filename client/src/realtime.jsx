@@ -180,15 +180,26 @@ export function RealtimeProvider({ children }) {
     document.addEventListener('visibilitychange', onVis);
     // Capacitor 原生壳：pause/resume 与 visibilitychange 在部分 WebView 不同步，双保险。
     let pauseUnsub, resumeUnsub;
+    let listenersDisposed = false;
+    const removeHandle = (handle) => {
+      try { Promise.resolve(handle?.remove?.()).catch(() => {}); } catch { /* */ }
+    };
     if (isNativeShell()) try {
       import('@capacitor/app').then(({ App }) => {
-        App.addListener('pause', pause).then?.(h => { pauseUnsub = h; });
-        App.addListener('resume', () => { void resume(true); }).then?.(h => { resumeUnsub = h; });
+        const keepHandle = (kind) => (handle) => {
+          if (listenersDisposed) { removeHandle(handle); return; }
+          if (kind === 'pause') pauseUnsub = handle;
+          else resumeUnsub = handle;
+        };
+        Promise.resolve(App.addListener('pause', pause)).then(keepHandle('pause')).catch(() => {});
+        Promise.resolve(App.addListener('resume', () => { void resume(true); })).then(keepHandle('resume')).catch(() => {});
       }).catch(() => {});
     } catch { /* not in native shell */ }
     return () => {
+      listenersDisposed = true;
       document.removeEventListener('visibilitychange', onVis);
-      try { pauseUnsub?.remove?.(); resumeUnsub?.remove?.(); } catch { /* */ }
+      removeHandle(pauseUnsub);
+      removeHandle(resumeUnsub);
     };
   }, [user?.id, connect]);
 
