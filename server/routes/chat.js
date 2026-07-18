@@ -725,13 +725,26 @@ async function pumpModelStream(res, eff, payloadMessages) {
   const onClose = () => ac.abort();
   res.on('close', onClose);
   const headerTimer = setTimeout(() => ac.abort(), 60000);
+  // 诊断日志：定位「后台测试有效但对话失败」——记录实际使用的模型来源、目标 URL、
+  // payload 概要（不记 key 明文），供 GM 从 pm2 logs 直接看到 chat 路径的真实调用参数，
+  // 与 /admin/platform/test-llm 的调用参数对比差异。
+  const reqId = res.req?.requestId || '';
+  const targetUrl = eff.base_url.replace(/\/$/, '') + '/chat/completions';
+  console.log('[chat:diag] pumpModelStream 开始', {
+    request_id: reqId, platform: !!eff.platform, model: eff.model,
+    target: targetUrl, fetch_mode: eff.platform ? 'native' : 'safeFetch',
+    msgs_count: payloadMessages?.length, total_chars: payloadMessages?.reduce((n,m)=>n+(m.content?.length||0),0),
+    max_tokens: eff.max_tokens, temperature: eff.temperature, stream: true,
+  });
+  let headerArrivedMs = 0;
+  const t_start = Date.now();
   try {
     // 平台模型(admin 配置)允许指向本机/局域网(本地 Ollama/LM Studio)，走原生 fetch；
     // 用户自填 base_url 不可信 → safeFetch 做 DNS 复检 + 逐跳重定向 + 请求头超时(60s，容忍首字节慢)。
     const doFetch = eff.platform
       ? (u, o) => fetch(u, { ...o, signal: ac.signal })
       : (u, o) => safeFetch(u, { ...o, signal: ac.signal }, { timeoutMs: 60000 });
-    const upstream = await doFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
+    const upstream = await doFetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
       body: JSON.stringify({
@@ -739,7 +752,9 @@ async function pumpModelStream(res, eff, payloadMessages) {
         temperature: eff.temperature, max_tokens: eff.max_tokens, stream: true
       })
     });
+    headerArrivedMs = Date.now() - t_start;
     clearTimeout(headerTimer);   // 响应头已到，解除首字节超时
+    console.log('[chat:diag] 上游响应头到达', { request_id: reqId, status: upstream.status, latency_ms: headerArrivedMs, content_type: upstream.headers.get('content-type') });
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => '');
       // 服务端日志保留完整上游详情（status + 响应体前 300 字），便于排查。
@@ -783,6 +798,8 @@ async function pumpModelStream(res, eff, payloadMessages) {
     const reader = upstream.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let firstDeltaMs = 0;
+    let chunkCount = 0;
     while (true) {
       if (res.destroyed) break;   // 客户端已断开（socket 被销毁）：停止读上游
       const { done, value } = await reader.read();
@@ -798,11 +815,24 @@ async function pumpModelStream(res, eff, payloadMessages) {
         try {
           const json = JSON.parse(data);
           const delta = json.choices?.[0]?.delta?.content || '';
-          if (delta) { full += delta; res.write(`data: ${JSON.stringify({ delta })}\n\n`); }
+          if (delta) {
+            if (!firstDeltaMs) firstDeltaMs = Date.now() - t_start;
+            chunkCount++;
+            full += delta;
+            res.write(`data: ${JSON.stringify({ delta })}\n\n`);
+          }
         } catch { /* partial chunk */ }
       }
     }
+    console.log('[chat:diag] 流式读取完成', { request_id: reqId, chunks: chunkCount, chars: full.length, first_delta_ms: firstDeltaMs, total_ms: Date.now() - t_start });
   } catch (err) {
+    // 诊断：网络/超时/SSRF 错误的关键字段，便于从日志直接定位失败点
+    console.error('[chat:diag] pumpModelStream 异常', {
+      request_id: reqId, error: err.message, code: err.code || err.cause?.code || '',
+      cause: err.cause?.message || '', name: err.name,
+      platform: !!eff.platform, target: targetUrl, elapsed_ms: Date.now() - t_start,
+      header_arrived: headerArrivedMs > 0,
+    });
     // 用户 key 鉴权失败：向上抛出，由 streamReply 捕获后回退平台模型重试（不在此吞掉）。
     if (err.authFailed) throw err;
     // 客户端断开：静默（已无接收方）；首字节超时：告知超时；SSRF/网络错误：给出可排查提示；其余：通用不可用。

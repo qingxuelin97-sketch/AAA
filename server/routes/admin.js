@@ -145,25 +145,38 @@ router.post('/platform/test-llm', async (req, res) => {
     const t0 = Date.now();
     let reply = '';
     if (proto === 'anthropic') {
+      // Anthropic 用 stream:true 测试，与真实对话路径一致（Anthropic 流式协议不同，单独处理）
       const up = await safeFetch(base.replace(/\/v1$/, '') + '/v1/messages', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }),
+        body: JSON.stringify({ model, max_tokens: 64, stream: true, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }),
       });
       const latency_ms = Date.now() - t0;
       if (!up.ok) { const t = await up.text().catch(() => ''); return res.json({ ok: false, message: `HTTP ${up.status}：${t.slice(0, 180)}`, latency_ms }); }
-      const d = await up.json().catch(() => null);
-      reply = d?.content?.[0]?.text || 'OK';
-      return res.json({ ok: true, message: '连接成功，密钥有效', reply: String(reply).slice(0, 40), latency_ms });
+      // 解析 Anthropic 流式：content_block_delta 事件携带 text
+      const reader = up.body.getReader(); const dec = new TextDecoder(); let buf = '';
+      while (true) { const { done, value } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true });
+        for (const line of buf.split('\n')) { const tt = line.trim(); if (!tt.startsWith('data:')) continue;
+          try { const j = JSON.parse(tt.slice(5).trim()); if (j.type === 'content_block_delta' && j.delta?.text) reply += j.delta.text; } catch {} }
+        buf = buf.includes('\n') ? buf.slice(buf.lastIndexOf('\n')+1) : buf; }
+      return res.json({ ok: true, message: '连接成功，密钥有效（流式）', reply: String(reply).slice(0, 40) || 'OK', latency_ms });
     }
+    // OpenAI 兼容：用 stream:true + max_tokens:64 测试，参数与真实对话路径一致，
+    // 避免「非流式测试通过、流式对话失败」的假阳性（某些中转服务对 stream 支持有缺陷）。
     const up = await safeFetch(base + '/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }),
+      body: JSON.stringify({ model, max_tokens: 64, stream: true, temperature: 0.8, messages: [{ role: 'user', content: '请只回复两个字：在线' }] }),
     });
     const latency_ms = Date.now() - t0;
     if (!up.ok) { const t = await up.text().catch(() => ''); return res.json({ ok: false, message: `HTTP ${up.status}：${t.slice(0, 180)}`, latency_ms }); }
-    const d = await up.json().catch(() => null);
-    reply = d?.choices?.[0]?.message?.content || 'OK';
-    return res.json({ ok: true, message: '连接成功，密钥有效', reply: String(reply).slice(0, 40), latency_ms });
+    // 解析流式 SSE，验证上游真的能流出 delta（而非只返回 200 空响应）
+    const reader = up.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    while (true) { const { done, value } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true });
+      for (const line of buf.split('\n')) { const tt = line.trim(); if (!tt.startsWith('data:')) continue;
+        const d = tt.slice(5).trim(); if (d === '[DONE]') continue;
+        try { const j = JSON.parse(d); const delta = j.choices?.[0]?.delta?.content || ''; if (delta) reply += delta; } catch {} }
+      buf = buf.includes('\n') ? buf.slice(buf.lastIndexOf('\n')+1) : buf; }
+    if (!reply) return res.json({ ok: false, message: '连接成功但流式响应为空（上游可能不兼容 stream 参数）', latency_ms });
+    return res.json({ ok: true, message: '连接成功，密钥有效（流式）', reply: String(reply).slice(0, 40), latency_ms });
   } catch (e) {
     return res.json({ ok: false, message: '连接失败：' + e.message });
   }
