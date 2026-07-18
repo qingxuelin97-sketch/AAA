@@ -176,6 +176,34 @@ try {
   const r4 = await register('sec_u4', 'sec4@test.dev');
   ok(!!r4.token, `开放策略：同 IP 第 4 个注册照常放行 → ${r4.status} ${r4.error || ''}`);
 
+  // A freshly registered account stores last_checkin as SQL NULL. SQLite's
+  // `NULL != value` is not true, so the atomic claim predicate must handle
+  // NULL explicitly or every user's first check-in is rejected as a duplicate.
+  let firstCheckinBefore;
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    firstCheckinBefore = db.prepare("SELECT last_checkin FROM users WHERE username='sec_u4'").get();
+    db.close();
+  }
+  const firstCheckin = await post('/economy/checkin', {}, r4.token);
+  const firstCheckinBody = await J(firstCheckin);
+  const duplicateCheckin = await post('/economy/checkin', {}, r4.token);
+  const duplicateCheckinBody = await J(duplicateCheckin);
+  let firstCheckinAfter;
+  {
+    const db = new Database(DB_PATH, { readonly: true });
+    firstCheckinAfter = db.prepare(`SELECT u.last_checkin, u.checkin_streak,
+      COUNT(t.id) AS tx_count FROM users u
+      LEFT JOIN transactions t ON t.user_id=u.id AND t.kind='checkin'
+      WHERE u.username='sec_u4' GROUP BY u.id`).get();
+    db.close();
+  }
+  ok(firstCheckinBefore?.last_checkin == null && firstCheckin.ok && firstCheckinBody.reward > 0
+      && firstCheckinAfter?.last_checkin && firstCheckinAfter.checkin_streak === 1
+      && firstCheckinAfter.tx_count === 1 && duplicateCheckin.status === 409
+      && duplicateCheckinBody.code === 'ALREADY_CHECKED_IN',
+    `首次签到可从 NULL 原子领取，重复签到仅返回稳定冲突码 → ${firstCheckin.status}/${duplicateCheckin.status}/${firstCheckinAfter?.tx_count}`);
+
   // Long-lived JWTs must never be accepted in an SSE URL. The replacement
   // ticket is short-lived, random, and consumed by the first stream attempt.
   const ticketRes = await post('/realtime/ticket', {}, r1.token);

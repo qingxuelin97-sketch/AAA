@@ -116,7 +116,7 @@ router.post('/checkin', authRequired, (req, res) => {
   let w;
   try {
     db.transaction(() => {
-      const upd = db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ? AND last_checkin != ?').run(today, streak, req.user.id, today);
+      const upd = db.prepare('UPDATE users SET last_checkin = ?, checkin_streak = ? WHERE id = ? AND (last_checkin IS NULL OR last_checkin != ?)').run(today, streak, req.user.id, today);
       if (upd.changes === 0) throw Object.assign(new Error('今天已经签到过啦'), {
         status: 409,
         code: 'ALREADY_CHECKED_IN',
