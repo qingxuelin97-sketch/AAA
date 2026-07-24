@@ -164,6 +164,47 @@ html[data-app="1"] .chat-main .msg.assistant.streaming .bubble::after {
   animation: chatCaret 1.05s var(--chat-ease) infinite;
 }
 @keyframes chatCaret { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+
+/* ── 4b. pending / failed 消息状态（包 F6 离线韧性）——
+   · pending：user 气泡降低不透明度 + 灰边 + ⏳ 待发送标记
+   · failed：user 气泡红边 + ⚠ 发送失败标记 + 行内「重试 / 丢弃」动作 ── */
+html[data-app="1"] .chat-main .msg.pending .bubble {
+  opacity: 0.55;
+  border: 1px dashed color-mix(in srgb, var(--muted, #94a3b8) 60%, transparent);
+  box-shadow: none;
+}
+html[data-app="1"] .chat-main .msg.failed .bubble {
+  border: 1px solid color-mix(in srgb, #ef4444 55%, transparent);
+  background: color-mix(in srgb, #ef4444 8%, var(--chat-me-bg, #eefbfd));
+}
+html[data-app="1"] .chat-main .msg-state {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-left: 8px; padding: 2px 7px; border-radius: 999px;
+  font-size: 11px; font-weight: 500; vertical-align: middle;
+}
+html[data-app="1"] .chat-main .msg-pending {
+  color: var(--muted, #64748b);
+  background: color-mix(in srgb, var(--muted, #94a3b8) 12%, transparent);
+}
+html[data-app="1"] .chat-main .msg-failed {
+  color: #dc2626;
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+}
+html[data-app="1"] .chat-main .msg-failed-acts {
+  display: flex; gap: 6px; margin-top: 4px;
+}
+html[data-app="1"] .chat-main .msg-failed-acts .speak {
+  padding: 3px 9px; font-size: 12px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--muted, #94a3b8) 40%, transparent);
+  background: color-mix(in srgb, var(--panel, #fff) 70%, transparent);
+}
+html[data-app="1"] .chat-main .msg-failed-acts .speak.warn {
+  border-color: color-mix(in srgb, #ef4444 50%, transparent);
+  color: #dc2626;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* 减弱动效下不打 pending 的虚线脉动（如有）—— 当前未加脉动，预留位 */
+}
 /* 首包前的「正在输入」：三点换成 shimmer 条 */
 html[data-app="1"] .chat-main .msg .typing {
   display: inline-flex; gap: 5px; align-items: center;

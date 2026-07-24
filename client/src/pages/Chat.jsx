@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useNav } from '../nav.js';
+import { haptic } from '../haptics.js';
 import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
@@ -15,11 +16,41 @@ import { BubbleContent, setPanelCtx } from '../chat/BubbleContent.jsx';
 import { useOverlayBack, useBookmarks, useLongPress } from '../chat/hooks.js';
 import ChatSearchBar from '../chat/ChatSearchBar.jsx';
 import { isAppMode } from '../appmode.js';
+import { isOnline } from '../netquality.js';
 import {
   GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
   REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo, timeDivider,
 } from '../chat/constants.js';
-import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft } from 'lucide-react';
+import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft, Clock, AlertCircle } from 'lucide-react';
+
+// —— 离线消息队列（包 F6）——
+// 离线时把待发消息持久化到 localStorage，网络恢复后批量重放。每项 {chatId, text, ts}，
+// ts 同时是前端消息对象的 _ts 标识，用于在重放时定位「哪条 user 气泡要转成已发送态」。
+// 设计取舍：不入队 assistant 占位（避免在重放前渲染半截气泡），只在 user 气泡上加
+// _pending / _failed 标记，重放成功后由 streamInto 的正常收尾流程接管。
+const PENDING_KEY = 'huanyu_pending_msgs';
+const pendingStore = {
+  load(chatId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+      return chatId == null ? all : all.filter(p => String(p.chatId) === String(chatId));
+    } catch { return []; }
+  },
+  add(chatId, text, ts) {
+    try {
+      const all = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+      all.push({ chatId: String(chatId), text, ts });
+      localStorage.setItem(PENDING_KEY, JSON.stringify(all));
+    } catch { /* */ }
+  },
+  remove(ts) {
+    try {
+      const all = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+      const next = all.filter(p => p.ts !== ts);
+      localStorage.setItem(PENDING_KEY, JSON.stringify(next));
+    } catch { /* */ }
+  },
+};
 
 export default function Chat() {
   const { id } = useParams();
@@ -287,7 +318,12 @@ export default function Chat() {
     setDrawerOpen(false);
     setLoadingConv(true);
     api('/chat/conversations/' + id).then(d => {
-      setConv(d.conversation); setCharacter(d.character); setMessages(d.messages);
+      setConv(d.conversation); setCharacter(d.character);
+      // 服务端消息 + 重水合本会话遗留的离线 pending 队列（用户离线发完又重挂载场景）。
+      // pending 气泡只在 UI 标记，未发到服务端，故不会与 d.messages 重复。
+      const pending = pendingStore.load(id);
+      const hydrate = pending.map(p => ({ role: 'user', content: p.text, _pending: true, _ts: p.ts }));
+      setMessages([...(d.messages || []), ...hydrate]);
       setAffinity(d.conversation.affinity || 0); setMemories(d.conversation.memories || []);
     }).catch(e => toast(e.message, 'err')).finally(() => setLoadingConv(false));
   }, [id]);
@@ -359,15 +395,32 @@ export default function Chat() {
       loadConvs();
       refreshUser?.();
       syncMessages(); // pull server IDs so edit/delete work on the new turn
+      haptic.success(); // 流式回复完整落地 —— 发送成功触觉
     } catch (err) {
       // User-initiated stop: keep whatever streamed so far, no error toast.
       if (err.name === 'AbortError') {
         setMessages(m => { const c = [...m]; const last = c[c.length - 1];
           if (last?._streaming) c[c.length - 1] = { ...last, content: last.content || '（已停止）', _streaming: false }; return c; });
       } else {
+        haptic.error(); // 连接出错 —— 发送失败触觉
         toast(err.message, 'err');
-        setMessages(m => { const c = [...m]; const last = c[c.length - 1];
-          if (last?._streaming) c[c.length - 1] = { role: 'assistant', content: '（连接出错）' + err.message, _streaming: false }; return c; });
+        // 把空的/半截的 assistant 占位撤掉，避免留一条「（连接出错）」的助手气泡
+        // 把发送失败归到 user 气泡上（_failed 标记 + 入队待重放）。
+        setMessages(m => {
+          const c = [...m];
+          // 撤掉尾部的 assistant 占位（streaming 中 / 空内容）
+          while (c.length && c[c.length - 1]?.role === 'assistant' && (c[c.length - 1]?._streaming || !c[c.length - 1]?.content)) c.pop();
+          // 找到对应的 user 消息标记为 failed + 入队
+          for (let i = c.length - 1; i >= 0; i--) {
+            if (c[i].role === 'user') {
+              const ts = c[i]._ts || Date.now();
+              c[i] = { ...c[i], _failed: true, _ts: ts };
+              if (id != null) pendingStore.add(id, c[i].content, ts);
+              break;
+            }
+          }
+          return c;
+        });
       }
     } finally {
       // 清理流式缓冲与未完成的 rAF，避免内存泄漏或悬空刷新
@@ -378,6 +431,63 @@ export default function Chat() {
   };
 
   const stop = () => { abortRef.current?.abort(); };
+
+  // —— 离线发送：仅前端入队 + 气泡打 _pending 标记，等 huanyu-online 事件批量重放 ——
+  const sendOffline = (text) => {
+    const ts = Date.now();
+    setMessages(m => [...m, { role: 'user', content: text, _pending: true, _ts: ts }]);
+    if (id != null) pendingStore.add(id, text, ts);
+    toast('已离线，消息会在网络恢复后发送', 'warn');
+  };
+
+  // 网络恢复 → 把当前会话的待发消息依次重放。每条：清掉 _pending、补 assistant 占位、
+  // 调 streamInto。失败再次入队（streamInto 的 catch 已处理）。串行执行避免并发写
+  // 同一对话造成服务端消息顺序错乱。
+  const drainPending = useCallback(async () => {
+    if (streaming || id == null) return;
+    const queue = pendingStore.load(id);
+    if (!queue.length) return;
+    for (const item of queue) {
+      // 先从队列移除：成功则不再补；失败则由 streamInto 的 catch 重新入队（同 ts）。
+      pendingStore.remove(item.ts);
+      // 检查消息是否还在 DOM 中（用户可能已切走 / 重挂载丢失 _pending 气泡）
+      // —— 不在也照样发，只是无气泡可清。
+      setMessages(m => {
+        const c = [...m];
+        const idx = c.findIndex(x => x._ts === item.ts && x.role === 'user');
+        if (idx >= 0) c[idx] = { ...c[idx], _pending: false };
+        c.push({ role: 'assistant', content: '', _streaming: true });
+        return c;
+      });
+      // 略等一帧让 UI 更新，再开始流式
+      await new Promise(r => setTimeout(r, 30));
+      try {
+        await streamInto(`/api/chat/conversations/${id}/complete`, { content: item.text });
+      } catch {
+        // streamInto 内部已处理失败态与入队，这里吞掉异常继续下一条
+      }
+    }
+    haptic.success(); // 重放完成 —— 一次性肯定触觉（避免每条都震）
+  }, [id, streaming]);
+
+  // 手动重试一条失败消息：清 _failed → 重新走 streamInto（在线才允许）。
+  const retryMsg = async (msg) => {
+    if (streaming) return;
+    if (!isOnline()) { toast('仍处于离线状态', 'warn'); return; }
+    const ts = msg._ts || Date.now();
+    if (msg._ts) pendingStore.remove(msg._ts);
+    setMessages(m => {
+      const c = [...m];
+      const idx = c.findIndex(x => x === msg || (x._ts === msg._ts && x.role === 'user'));
+      if (idx >= 0) c[idx] = { ...c[idx], _failed: false, _pending: true, _ts: ts };
+      c.push({ role: 'assistant', content: '', _streaming: true });
+      return c;
+    });
+    try {
+      await streamInto(`/api/chat/conversations/${id}/complete`, { content: msg.content });
+      pendingStore.remove(ts);
+    } catch { /* streamInto 已处理 */ }
+  };
 
   const send = async (override) => {
     let text = (override ?? input).trim();
@@ -392,10 +502,27 @@ export default function Chat() {
     }
     if (override === undefined) setInput('');
     setActionsOpen(false);
-    setMessages(m => [...m, { role: 'user', content: text }, { role: 'assistant', content: '', _streaming: true }]);
+    // 离线短路：仅前端入队 + 待发送气泡，不挂 assistant 占位（避免重放前留半截气泡）
+    if (!isOnline()) { sendOffline(text); return; }
+    setMessages(m => [...m, { role: 'user', content: text, _ts: Date.now() }, { role: 'assistant', content: '', _streaming: true }]);
     await streamInto(`/api/chat/conversations/${id}/complete`, { content: text });
   };
   const insertAction = (a) => { setInput(v => (v ? v.replace(/\s*$/, '') + ' ' : '') + a + ' '); setActionsOpen(false); };
+
+  // 监听 AppLayout 派发的 huanyu-online 事件：网络恢复时自动重放本会话的待发消息。
+  // drainPending 用 ref 持有最新闭包，避免 effect 重绑丢失 streaming/queue 状态。
+  const drainPendingRef = useRef(drainPending);
+  useEffect(() => { drainPendingRef.current = drainPending; }, [drainPending]);
+  useEffect(() => {
+    const onOnline = () => { drainPendingRef.current(); };
+    window.addEventListener('huanyu-online', onOnline);
+    return () => window.removeEventListener('huanyu-online', onOnline);
+  }, []);
+  // 进入会话时若已有 pending 队列（上次离线遗留）且当前在线，立即重放一次。
+  useEffect(() => {
+    if (id != null && isOnline()) { const q = pendingStore.load(id); if (q.length) setTimeout(() => drainPendingRef.current(), 600); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // 切换开场白（仅对话未开始时提供入口；服务端按 greeting_index 重置为对应开场）。
   const switchGreeting = async (gi) => {
@@ -640,7 +767,7 @@ export default function Chat() {
                 return (
                 <React.Fragment key={m.id || i}>
                 {divider && <div className="msg-daydivider" aria-hidden="true"><span>{divider}</span></div>}
-                <div id={m.id ? 'msg-' + m.id : undefined} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}>
+                <div id={m.id ? 'msg-' + m.id : undefined} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont') + (m._pending ? ' pending' : '') + (m._failed ? ' failed' : '')}>
                   {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={38} />}
                   <div className="msg-col">
                     {m.role === 'assistant' && firstOfRun && (
@@ -673,6 +800,17 @@ export default function Chat() {
                           ? <span className="typing"><span></span><span></span><span></span></span>
                           : <BubbleContent content={m.content} role={m.role} imageMap={imageMap} onPreview={setPreviewImg} frontRegex={frontRegex} />}
                         {m.reaction && <span className="msg-reaction" title="我的反应">{m.reaction}</span>}
+                        {m._pending && <span className="msg-state msg-pending" title="等待网络恢复后发送"><Clock size={11} /> 待发送</span>}
+                        {m._failed && <span className="msg-state msg-failed" title="发送失败，点击重试"><AlertCircle size={11} /> 发送失败</span>}
+                      </div>
+                    )}
+                    {m._failed && m.role === 'user' && editingId !== m.id && (
+                      <div className="msg-failed-acts">
+                        <button className="speak warn" onClick={() => retryMsg(m)}><RefreshCcw size={12} /> 重试</button>
+                        <button className="speak" onClick={() => {
+                          setMessages(ms => ms.filter(x => x !== m));
+                          if (m._ts) pendingStore.remove(m._ts);
+                        }}><Trash2 size={12} /> 丢弃</button>
                       </div>
                     )}
                     {!m._streaming && m.content && editingId !== m.id && (

@@ -348,6 +348,112 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 .ah-pick-tx b { display: block; font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ah-pick-tx span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; color: var(--faint); margin-top: 2px; }
 
+/* ============================================================================
+   包 D1/D2/D3/D4/D5 — AppHome 内容扩容 + 磁贴自定义
+   全部 html[data-app="1"] 作用域，web 端零影响。
+   段落：D1 最近浏览 rail / D2 热门标签 chip / D3 活跃创作者 rail /
+         D4 磁贴编辑态（抖动 + ✕ + 拖拽 ghost + 添加抽屉）/ D5 性能（content-visibility）
+   ========================================================================== */
+html[data-app="1"] .ah-sec-hint { font-size: 11.5px; color: var(--faint); font-weight: 600; }
+
+/* —— D1：最近浏览 rail —— 圆角头像 + 名字 + 分类小标 */
+html[data-app="1"] .ah-recent-sec { content-visibility: auto; contain-intrinsic-size: 160px; }
+html[data-app="1"] .ah-recent-rail { gap: 12px; }
+html[data-app="1"] .ah-recent { flex: 0 0 auto; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: none; border: none; cursor: pointer; padding: 0; transition: transform 0.16s var(--spring); }
+html[data-app="1"] .ah-recent:active { transform: scale(0.92); }
+html[data-app="1"] .ah-recent-av { width: 64px; height: 64px; border-radius: 18px; overflow: hidden; background: var(--bg-2);
+  box-shadow: 0 0 0 2px var(--panel), 0 4px 12px rgba(0,0,0,0.10); position: relative; }
+html[data-app="1"] .ah-recent-av img { width: 100%; height: 100%; object-fit: cover; }
+html[data-app="1"] .ah-recent-av .ah-pick-ph { border-radius: 18px; }
+html[data-app="1"] .ah-recent b { font-size: 12px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+html[data-app="1"] .ah-recent-cat { font-size: 10px; color: var(--accent); font-weight: 700; padding: 1px 6px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* —— D2：热门标签 chip 横滑 —— 胶囊 chip，# 前缀加品牌青 */
+html[data-app="1"] .ah-tags-sec { content-visibility: auto; contain-intrinsic-size: 60px; }
+html[data-app="1"] .ah-tags-rail { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+html[data-app="1"] .ah-tags-rail::-webkit-scrollbar { display: none; }
+html[data-app="1"] .ah-tag-chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--panel); cursor: pointer;
+  transition: transform 0.14s var(--spring), border-color 0.15s, background 0.15s; }
+html[data-app="1"] .ah-tag-chip:active { transform: scale(0.94); }
+html[data-app="1"] .ah-tag-chip .ah-tag-name { font-size: 13px; font-weight: 600; color: var(--text); }
+html[data-app="1"] .ah-tag-chip .ah-tag-name::before { content: '#'; color: var(--accent); margin-right: 1px; font-weight: 700; }
+html[data-app="1"] .ah-tag-chip .ah-tag-count { font-size: 10.5px; color: var(--faint); font-weight: 700; padding: 1px 6px;
+  border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); }
+html[data-app="1"] .ah-tag-chip:active .ah-tag-name { color: var(--accent); }
+
+/* —— D3：活跃创作者 rail —— 与 .ah-resume 同构（头像 + 名字 + 元信息） */
+html[data-app="1"] .ah-creators-sec { content-visibility: auto; contain-intrinsic-size: 160px; }
+html[data-app="1"] .ah-creators-rail { gap: 12px; }
+html[data-app="1"] .ah-creator { flex: 0 0 auto; width: 80px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: none; border: none; cursor: pointer; padding: 0; transition: transform 0.16s var(--spring); }
+html[data-app="1"] .ah-creator:active { transform: scale(0.92); }
+html[data-app="1"] .ah-creator .avatar { box-shadow: 0 0 0 2px var(--panel), 0 4px 12px rgba(0,0,0,0.12); }
+html[data-app="1"] .ah-creator b { font-size: 12px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+html[data-app="1"] .ah-creator-meta { font-size: 10.5px; color: var(--faint); text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* —— D4：磁贴自定义 —— 编辑态工具条 / 抖动 / ✕ 按钮 / 拖拽 ghost / 添加抽屉 */
+html[data-app="1"] .ah-shortcuts-wrap { position: relative; }
+html[data-app="1"] .ah-shortcuts-wrap.editing { padding-top: 4px; }
+html[data-app="1"] .ah-sc-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 8px; padding: 7px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); animation: ahScToolbarIn 0.26s var(--spring) both; }
+html[data-app="1"] .ah-sc-tip { font-size: 11.5px; color: var(--accent-2); font-weight: 600; flex: 1; min-width: 0; }
+html[data-app="1"] .ah-sc-btns { display: flex; gap: 6px; flex: 0 0 auto; }
+html[data-app="1"] .ah-sc-tool { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text); font-size: 11.5px; font-weight: 600; cursor: pointer; }
+html[data-app="1"] .ah-sc-tool.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+html[data-app="1"] .ah-sc-tool:active { transform: scale(0.94); }
+@keyframes ahScToolbarIn { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 磁贴容器：默认与 .ah-shortcuts 子元素一致，编辑态包成 .ah-tile 以承载 ✕ / grip */
+html[data-app="1"] .ah-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: none; padding: 4px 0; }
+html[data-app="1"] .ah-tile.editing { animation: tileWiggle 0.32s ease-in-out infinite alternate; animation-delay: calc(var(--i, 0) * 40ms); }
+html[data-app="1"] .ah-tile.editing .ah-sc { cursor: grab; }
+html[data-app="1"] .ah-tile.editing .ah-sc:active { cursor: grabbing; transform: scale(0.94); }
+html[data-app="1"] .ah-tile.dragging { opacity: 0.4; transform: scale(0.92); }
+html[data-app="1"] .ah-tile.dragging .ah-sc { box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+html[data-app="1"] .ah-tile-x { position: absolute; top: -4px; right: -2px; width: 18px; height: 18px; border-radius: 50%;
+  background: linear-gradient(135deg, #ff5a5f, #ff2a55); color: #fff; border: 2px solid var(--bg);
+  display: grid; place-items: center; cursor: pointer; z-index: 2;
+  box-shadow: 0 2px 6px rgba(255,42,85,0.4); }
+html[data-app="1"] .ah-tile-x:active { transform: scale(0.85); }
+html[data-app="1"] .ah-tile-grip { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  color: var(--faint); opacity: 0.5; pointer-events: none; }
+html[data-app="1"] .ah-tile-add .ah-sc-ic { background: color-mix(in srgb, var(--accent) 8%, var(--panel)); color: var(--accent);
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 50%, transparent); }
+@keyframes tileWiggle {
+  from { transform: rotate(-1.2deg); }
+  to   { transform: rotate(1.2deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .ah-tile.editing { animation: none; }
+  html[data-app="1"] .ah-sc-toolbar { animation: none; }
+}
+
+/* 添加磁贴抽屉 —— 折叠在磁贴下方，展开后显示已隐藏项的 chip 列表 */
+html[data-app="1"] .ah-tile-addtray { margin-top: 12px; padding: 12px; border-radius: 14px;
+  background: var(--panel); border: 1px dashed var(--border-2);
+  animation: ahAddtrayIn 0.24s var(--spring) both; }
+html[data-app="1"] .ah-tile-addtray-head { font-size: 11.5px; color: var(--faint); font-weight: 600; margin-bottom: 8px; }
+html[data-app="1"] .ah-tile-addtray-list { display: flex; flex-wrap: wrap; gap: 7px; }
+html[data-app="1"] .ah-tile-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: transform 0.14s var(--spring), border-color 0.15s; }
+html[data-app="1"] .ah-tile-chip:active { transform: scale(0.94); border-color: var(--accent); color: var(--accent); }
+html[data-app="1"] .ah-tile-addtray-empty { margin-top: 12px; padding: 12px; border-radius: 14px; text-align: center;
+  font-size: 12px; color: var(--faint); background: var(--panel); border: 1px dashed var(--border-2); }
+@keyframes ahAddtrayIn { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* —— D5：性能优化 —— 段落加 content-visibility: auto，长页面滚动跳过离屏渲染 */
+html[data-app="1"] .ah-resume-sec, html[data-app="1"] .ah-tasks-sec, html[data-app="1"] .ah-picks-sec { content-visibility: auto; contain-intrinsic-size: 200px; }
+html[data-app="1"][data-perf="lite"] .ah-tile.editing { animation: none; }
+html[data-app="1"][data-perf="lite"] .ah-sc-toolbar,
+html[data-app="1"][data-perf="lite"] .ah-tile-addtray { animation: none; }
+
 /* Sheets / launcher reach full-bleed on real phones. */
 @media (max-width: 500px) {
   .app-sheet { width: 100%; }
@@ -1832,4 +1938,222 @@ html[data-app="1"] ::selection { background: var(--accent-soft); }
 .html-panel-loading i { font-size: 12px; font-style: normal; color: rgba(255,255,255,0.45); }
 .hp-spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.18); border-top-color: var(--accent); animation: spin360 0.8s linear infinite; }
 .html-panel-wrap.ready .html-panel-loading { display: none; }
+
+/* ============================================================================
+   APP 通用组件层（包 A）—— AppSheet / AppEmpty / AppSkeleton / AppError
+   ----------------------------------------------------------------------------
+   可复用 UI 原语，替代各页重复造轮子。全部 scoped 于 html[data-app="1"]。
+   ========================================================================== */
+
+/* —— AppSheet 关闭动画 ——
+   AppSheet 组件在 close() 时挂 .app-sheet-closing，让 sheet 滑到底再卸载，
+   避免瞬时消失的突兀感。mask 同步淡出。 */
+html[data-app="1"] .app-sheet-closing {
+  transform: translateY(100%) !important;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 1, 1) !important;
+}
+html[data-app="1"] .app-sheet-mask-closing { animation: appSheetMaskOut 0.2s ease forwards; }
+@keyframes appSheetMaskOut { to { opacity: 0; } }
+/* 拖拽跟手时禁掉 sheetUp 入场动画（避免与实时 transform 打架） */
+html[data-app="1"] .app-sheet[style*="transition: none"] { animation: none; }
+
+/* —— AppEmpty 插画化空态 —— */
+html[data-app="1"] .app-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 32px 22px; text-align: center;
+  border-radius: 22px; border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  box-shadow: 0 1px 2px rgba(13,74,88,0.04), 0 10px 30px rgba(13,74,88,0.06);
+}
+html[data-app="1"] .app-empty-illu {
+  width: 120px; height: 96px; color: var(--accent); opacity: 0.85;
+  animation: appEmptyBreath 3.2s ease-in-out infinite;
+}
+html[data-app="1"] .app-empty-illu svg { width: 100%; height: 100%; display: block; }
+@keyframes appEmptyBreath {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+html[data-app="1"] .app-empty-body { display: flex; flex-direction: column; gap: 6px; max-width: 280px; }
+html[data-app="1"] .app-empty-title { font-size: 16px; font-weight: 700; color: var(--text); }
+html[data-app="1"] .app-empty-hint { margin: 0; font-size: 13px; line-height: 1.5; color: var(--faint); }
+html[data-app="1"] .app-empty-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+html[data-app="1"] .app-empty-actions .btn { border-radius: 999px; padding: 9px 18px; font-size: 13.5px; }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] .app-empty-illu { animation: none; } }
+html[data-app="1"][data-perf="lite"] .app-empty-illu { animation: none; }
+
+/* —— AppSkeleton 变体微调（基类 .skel 在 app-motion.css）—— */
+html[data-app="1"] .app-skel { width: 100%; box-sizing: border-box; }
+html[data-app="1"] .app-skel-avatar { width: 44px; }
+html[data-app="1"] .app-skel-line { width: 100%; }
+html[data-app="1"] .app-skel-list, html[data-app="1"] .app-skel-grid, html[data-app="1"] .app-skel-rowav { width: 100%; }
+
+/* ============================================================================
+   包 C —— tab 数字角标 + 浮动铃铛 + 顶部下拉通知抽屉
+   ========================================================================= */
+/* —— tab 数字角标：count>0 用数字胶囊替代 .app-dot 红点（向后兼容）—— */
+html[data-app="1"] .app-tab-badge {
+  position: absolute; top: -4px; right: -8px;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff5a5f, #ff2a55);
+  color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+  box-shadow: 0 1px 3px rgba(255, 42, 85, 0.4), 0 0 0 2px var(--bg);
+  pointer-events: none;
+  animation: badgeBounce 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes badgeBounce {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .app-tab-badge { animation: none; }
+}
+
+/* —— 浮动铃铛：屏幕右上角常驻，tap 开抽屉、长按跳整页 —— */
+html[data-app="1"] .app-bell-fab {
+  position: fixed; top: calc(env(safe-area-inset-top) + 10px); right: 14px;
+  z-index: 90;
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  color: var(--text);
+  display: grid; place-items: center;
+  box-shadow: 0 2px 8px rgba(13,74,88,0.08), 0 6px 18px rgba(13,74,88,0.06);
+  cursor: pointer;
+  transition: transform 0.22s var(--spring), opacity 0.2s ease;
+}
+html[data-app="1"] .app-bell-fab:active { transform: scale(0.88); }
+html[data-app="1"] .app-bell-fab.hidden { opacity: 0; pointer-events: none; transform: scale(0.6); }
+html[data-app="1"] .app-bell-fab.has-unread { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+html[data-app="1"] .app-bell-badge {
+  position: absolute; top: -4px; right: -4px;
+  min-width: 15px; height: 15px; padding: 0 3px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff5a5f, #ff2a55);
+  color: #fff; font-size: 9px; font-weight: 700; line-height: 15px; text-align: center;
+  box-shadow: 0 0 0 2px var(--panel);
+  animation: badgeBounce 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* —— 通知抽屉：顶部下拉，三档吸附（0 / 40dvh / 85dvh）—— */
+html[data-app="1"] .noti-drawer-mask {
+  position: fixed; inset: 0; z-index: 130;
+  background: rgba(0,0,0,0); /* 收起态透明；show 时渐显 */
+  pointer-events: none;       /* 收起态不拦截：让顶部下拉预览态可穿透 */
+  transition: background 0.26s ease;
+}
+html[data-app="1"] .noti-drawer-mask.show {
+  background: rgba(0,0,0,0.42);
+  pointer-events: auto;
+}
+html[data-app="1"] .noti-drawer {
+  position: absolute; top: 0; left: 0; right: 0;
+  width: 100%; max-width: 520px; margin: 0 auto;
+  background: var(--panel);
+  border-radius: 0 0 22px 22px;
+  box-shadow: 0 12px 40px rgba(13,74,88,0.18), 0 2px 8px rgba(13,74,88,0.08);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  /* 安全区顶部留白：状态栏区域不画背景 */
+  padding-top: env(safe-area-inset-top);
+}
+html[data-app="1"] .noti-drawer-grip {
+  width: 38px; height: 4px; border-radius: 3px;
+  background: var(--border-2);
+  margin: 6px auto 4px;
+  flex-shrink: 0;
+}
+html[data-app="1"] .noti-drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 16px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+html[data-app="1"] .noti-drawer-head b {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 15px; font-weight: 700;
+  color: var(--text);
+}
+html[data-app="1"] .noti-drawer-head b svg { color: var(--accent); }
+html[data-app="1"] .noti-drawer-x {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: none; background: transparent; color: var(--muted);
+  display: grid; place-items: center; cursor: pointer;
+}
+html[data-app="1"] .noti-drawer-x:active { background: var(--border); }
+html[data-app="1"] .noti-drawer-body {
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  padding: 4px 12px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+html[data-app="1"] .noti-drawer-loading { display: flex; flex-direction: column; gap: 12px; padding: 12px 4px; }
+html[data-app="1"] .noti-drawer-group { margin-top: 8px; }
+html[data-app="1"] .noti-drawer-glabel {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  padding: 8px 8px 4px; letter-spacing: 0.02em;
+}
+html[data-app="1"] .noti-drawer-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 10px;
+  border: none; background: transparent;
+  border-radius: 12px; cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+  position: relative;
+}
+html[data-app="1"] .noti-drawer-item:active { background: var(--border); }
+html[data-app="1"] .noti-drawer-item.unread {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+html[data-app="1"] .noti-drawer-item.unread::before {
+  content: ''; position: absolute; left: 2px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 22px; border-radius: 2px; background: var(--accent);
+}
+html[data-app="1"] .noti-drawer-ic {
+  width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+html[data-app="1"] .noti-drawer-tx {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+html[data-app="1"] .noti-drawer-item .noti-drawer-text {
+  font-size: 13px; line-height: 1.4; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+html[data-app="1"] .noti-drawer-time {
+  font-size: 11px; color: var(--muted);
+}
+html[data-app="1"] .noti-drawer-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--panel);
+}
+html[data-app="1"] .noti-drawer-chev { color: var(--muted); flex-shrink: 0; }
+html[data-app="1"] .noti-drawer-foot {
+  display: flex; gap: 8px; padding: 12px 8px 4px;
+  border-top: 1px solid var(--border);
+  position: sticky; bottom: 0; background: var(--panel);
+}
+html[data-app="1"] .noti-drawer-foot button {
+  flex: 1; padding: 9px 8px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--panel);
+  color: var(--text); font-size: 13px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  cursor: pointer;
+}
+html[data-app="1"] .noti-drawer-foot button:active { background: var(--border); }
+html[data-app="1"] .noti-drawer-foot button:disabled { opacity: 0.45; }
+html[data-app="1"] .noti-drawer-foot button svg { color: var(--accent); }
+/* 抽屉内空态缩放：让 AppEmpty 在窄抽屉里不撑爆 */
+html[data-app="1"] .noti-drawer-body .app-empty { padding: 24px 14px; }
+html[data-app="1"] .noti-drawer-body .app-empty-illu { width: 96px; height: 76px; }
+
 

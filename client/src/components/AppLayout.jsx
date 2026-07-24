@@ -15,12 +15,17 @@ import { Logo } from '../assets.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import RouteErrorBoundary from './RouteErrorBoundary.jsx';
-import { useAppGestures, tick } from '../appgestures.js';
+import AppSheet from './AppSheet.jsx';
+import NotificationDrawer from './NotificationDrawer.jsx';
+import { useAppGestures } from '../appgestures.js';
+import { haptic } from '../haptics.js';
+import { initNetworkWatch } from '../netquality.js';
+import { useToast } from '../ui.jsx';
 import { useNav, appBack, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
 import { preheat } from '../routeChunks.js';
 import {
   Home, Compass, MessageCircle, Plus, UserRound,
-  Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff, BatteryLow, X
+  Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff, BatteryLow, X, Bell
 } from 'lucide-react';
 
 // Bottom tab bar — 4 destinations split around the center create button.
@@ -44,13 +49,18 @@ const CREATE = [
 
 export default function AppLayout({ children }) {
   const loc = useLocation();
+  const toast = useToast();
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
   const [sheet, setSheet] = useState(false); // create sheet open?
+  const [notiOpen, setNotiOpen] = useState(false); // 通知抽屉（包 C）
   const [pull, setPull] = useState(0);        // pull-to-refresh distance (px)
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // bump → remount route → refetch
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
+  // 离线/恢复边界触发的 doRefresh 需要最新闭包，用 ref 持有「当前是否在刷新」。
+  const refreshingRef = useRef(refreshing);
+  useEffect(() => { refreshingRef.current = refreshing; }, [refreshing]);
   // 自适应降级提示（perf.js 检出持续掉帧、本会话临时切省电时弹出，可关闭）
   const [perfNote, setPerfNote] = useState(false);
   useEffect(() => {
@@ -112,14 +122,43 @@ export default function AppLayout({ children }) {
   useEffect(() => {
     const h = (e) => { e.preventDefault(); window.__hyInstallEvt = e; try { window.dispatchEvent(new Event('huanyu-install-ready')); } catch { /* */ } };
     window.addEventListener('beforeinstallprompt', h);
-    const on = () => setOffline(false), off = () => setOffline(true);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', h);
-      window.removeEventListener('online', on);
-      window.removeEventListener('offline', off);
+    return () => { window.removeEventListener('beforeinstallprompt', h); };
+  }, []);
+
+  // —— 网络韧性（包 F）——
+  // 启动网络质量监听（原生壳用 @capacitor/network，web 降级到 online/offline +
+  // effectiveType）。监听变化：
+  //   · 离线 → toast「网络已断开」+ haptic.warn + 顶部 banner（offline state）
+  //   · 恢复 → toast「网络已恢复」+ haptic.success + 自动重拉当前 tab（doRefresh）
+  // 离线期间心跳轮询暂停（见下方心跳 effect 的 !offline 守卫）。
+  const offlineRef = useRef(offline);
+  useEffect(() => { offlineRef.current = offline; }, [offline]);
+  const doRefreshRef = useRef(() => {});
+  useEffect(() => {
+    const cleanup = initNetworkWatch();
+    const onNet = (e) => {
+      const { online } = e.detail || {};
+      if (online === undefined) return;
+      const was = offlineRef.current;
+      if (online && was) {
+        // 离线 → 在线：恢复瞬间提示 + 自动刷新当前 tab 数据。
+        setOffline(false);
+        toast('网络已恢复');
+        haptic.success();
+        // 略微延后让 SSE 先重连握手，再触发页面级重拉。
+        setTimeout(() => { if (!refreshingRef.current) doRefreshRef.current(); }, 400);
+        // 通知 Chat 等业务页：可以重放 pending 消息了。
+        try { window.dispatchEvent(new Event('huanyu-online')); } catch { /* */ }
+      } else if (!online && !was) {
+        // 在线 → 离线：断网瞬间提示。
+        setOffline(true);
+        toast('网络已断开，已为你暂存操作', 'warn');
+        haptic.warn();
+      }
     };
+    window.addEventListener('huanyu-network', onNet);
+    return () => { cleanup?.(); window.removeEventListener('huanyu-network', onNet); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Cold start lands on the 今日 launcher home (not the discover feed). Only the
@@ -134,7 +173,7 @@ export default function AppLayout({ children }) {
   }, []);
 
   // Close the create sheet on navigation.
-  useEffect(() => { setSheet(false); }, [loc.pathname]);
+  useEffect(() => { setSheet(false); setNotiOpen(false); }, [loc.pathname]);
 
   // —— 四路一级 tab KeepAlive ——
   // 切 tab 不再卸载整页重建（旧行为让 DOM 重建 + 接口重拉正好压在过渡动画帧
@@ -228,6 +267,12 @@ export default function AppLayout({ children }) {
         }
       }
     }
+    // 切回某个 tab pane 时派发 huanyu-<path>-focus 事件，让 KeepAlive 页面
+    // 有机会刷新本地态（如 AppHome 的「最近浏览」rail —— 用户在 CharacterView
+    // 浏览过新角色后切回今日 tab，应即时刷新列表，无需重新进入页面）。
+    if (cur) {
+      try { window.dispatchEvent(new Event('huanyu-' + cur.replace(/^\//, '') + '-focus')); } catch { /* */ }
+    }
     prevTab.current = cur;
   }, [loc.pathname]);
 
@@ -239,11 +284,14 @@ export default function AppLayout({ children }) {
 
   // Notification / DM counts + online heartbeat。
   // SSE 已秒级推送 dm/notification 事件（见下方 useRealtimeEvent），轮询只作兜底：
-  // 间隔放宽到 45s 减少电耗/流量；app 切后台时暂停，回前台立即刷新一次再恢复。
+  // 间隔放宽到 45s 减少电耗/流量；app 切后台时暂停，回前台立即刷新一次再恢复；
+  // 离线期间暂停（避免每 45s 跑一次注定失败的请求耗电）—— 恢复时由网络监听
+  // effect 触发 doRefresh，间接重启轮询。
   useEffect(() => {
     let alive = true;
     let timer = null;
     const load = () => {
+      if (offlineRef.current) return; // 离线跳过本轮
       api('/social/notifications').then(d => alive && setUnread(d.unread)).catch(() => {});
       api('/dm').then(d => alive && setDmUnread(d.unread_total || 0)).catch(() => {});
       api('/social/heartbeat', { method: 'POST' }).catch(() => {});
@@ -263,8 +311,18 @@ export default function AppLayout({ children }) {
   useEffect(() => {
     const clear = () => setUnread(0);
     window.addEventListener('huanyu-noti-read', clear);
-    return () => window.removeEventListener('huanyu-noti-read', clear);
+    // 抽屉内单条标记已读 → 角标 -1（不会归零，保持与未读条数一致）
+    const dec = () => setUnread(u => Math.max(0, u - 1));
+    window.addEventListener('huanyu-noti-read-dec', dec);
+    return () => {
+      window.removeEventListener('huanyu-noti-read', clear);
+      window.removeEventListener('huanyu-noti-read-dec', dec);
+    };
   }, []);
+  // 抽屉打开期间 SSE 推送新通知 → 通知抽屉刷新列表（事件由本 effect 派发）。
+  useRealtimeEvent('notification', () => {
+    if (notiOpen) { try { window.dispatchEvent(new Event('huanyu-noti-new')); } catch { /* */ } }
+  });
 
   // Gestures: swipe between top tabs, left-edge swipe-back, pull-to-refresh.
   const go = useNav();
@@ -273,12 +331,12 @@ export default function AppLayout({ children }) {
     if (i < 0) return;                 // only the swipeable top-levels respond
     const n = i + dir;
     if (n < 0 || n >= SWIPE_TABS.length) return;
-    tick(); go(SWIPE_TABS[n]);
+    haptic.tap(); go(SWIPE_TABS[n]);
   };
   const refreshStart = useRef(0);
   const doRefresh = () => {
     if (refreshing) return;
-    tick(12); setRefreshing(true);
+    haptic.confirm(); setRefreshing(true);
     refreshStart.current = performance.now();
     // tab 页：驱逐当前 pane 缓存（key 变 → 仅该 pane 重挂载重拉），其余 pane 保活
     if (SWIPE_TABS.includes(loc.pathname)) {
@@ -288,10 +346,13 @@ export default function AppLayout({ children }) {
     // 复位由 refreshKey 的 commit 信号驱动（见上方 useLayoutEffect）——
     // 此前固定 720ms 是拍脑袋值，新页早已挂载 spinner 还在空转。
   };
+  // 把 doRefresh 暴露给网络监听 effect（恢复时自动调用）—— 用 ref 解开「effect
+  // 只跑一次」与「doRefresh 闭包每渲染都新」的循环依赖。
+  doRefreshRef.current = doRefresh;
   useAppGestures(mainRef, {
     onNext: () => swipeGo(1),
     onPrev: () => swipeGo(-1),
-    onBack: () => { if (window.history.length > 1) { tick(); appBack(); } },
+    onBack: () => { if (window.history.length > 1) { haptic.tap(); appBack(); } },
     onPullMove: (px) => { if (!refreshing) setPull(px); },
     onPullEnd: (ok) => { if (ok) doRefresh(); else setPull(0); }
   });
@@ -331,14 +392,35 @@ export default function AppLayout({ children }) {
       <nav className="app-tabbar" ref={tabbarRef}>
         <span className="dock-ink" ref={inkRef} aria-hidden="true" />
         {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-        <button className={'app-fab' + (sheet ? ' open' : '')} onClick={() => setSheet(s => !s)} aria-label={sheet ? '关闭' : '创建'}>
+        <button className={'app-fab' + (sheet ? ' open' : '')} onClick={() => { haptic.tap(); setSheet(s => !s); }} aria-label={sheet ? '关闭' : '创建'}>
           <Plus size={20} strokeWidth={2.8} />
           <i className="app-fab-ai" aria-hidden="true">AI</i>
         </button>
         {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
       </nav>
 
-      {sheet && <CreateSheet onClose={() => setSheet(false)} />}
+      <CreateSheet open={sheet} onClose={() => setSheet(false)} />
+
+      {/* 通知抽屉（包 C）：顶部下拉手势 + 浮动铃铛按钮双向唤起 */}
+      <NotificationDrawer
+        open={notiOpen}
+        onClose={() => setNotiOpen(false)}
+        onOpen={() => setNotiOpen(true)}
+        unreadCount={unread}
+      />
+      {/* 浮动铃铛：tap 开抽屉、长按跳 /notifications 整页 */}
+      <button
+        className={'app-bell-fab' + (notiOpen ? ' hidden' : '') + (unread > 0 ? ' has-unread' : '')}
+        onClick={() => { haptic.tap(); setNotiOpen(true); }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          haptic.confirm(); go('/notifications');
+        }}
+        aria-label="通知"
+      >
+        <Bell size={18} />
+        {unread > 0 && <i className="app-bell-badge">{unread > 99 ? '99+' : unread}</i>}
+      </button>
 
       <CommandPalette />
       <WelcomePopup />
@@ -364,8 +446,8 @@ function Tab({ t, unread, dmUnread, curPath }) {
   // NavLink 按路由位置计算，不受影响）。
   const onClick = (e) => {
     e.preventDefault();
-    if (curPath !== t.to) { go(t.to); return; }
-    tick();
+    if (curPath !== t.to) { haptic.tap(); go(t.to); return; }
+    haptic.tap();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     try {
       // KeepAlive 后其它 tab 的 pane 也在 DOM 里，滚动容器必须在活跃 pane 内找
@@ -378,30 +460,31 @@ function Tab({ t, unread, dmUnread, curPath }) {
     <NavLink to={t.to} end={t.end} onClick={onClick} className={({ isActive }) => 'app-tab' + (isActive ? ' active' : '')}>
       <span className="app-tab-ic">
         <t.ic size={23} />
-        {t.badge === 'noti' && unread > 0 && <i className="app-dot" />}
-        {t.badge === 'dm' && dmUnread > 0 && <i className="app-dot" />}
-        {t.badge === 'msg' && unread + dmUnread > 0 && <i className="app-dot" />}
+        {/* 角标：count>0 → 数字胶囊；否则回退到红点（向后兼容） */}
+        {(() => {
+          const cnt = t.badge === 'msg' ? (unread + dmUnread)
+                    : t.badge === 'dm' ? dmUnread
+                    : t.badge === 'noti' ? unread : 0;
+          if (cnt > 0) return <i className="app-tab-badge">{cnt > 99 ? '99+' : cnt}</i>;
+          return null;
+        })()}
       </span>
       <span>{t.label}</span>
     </NavLink>
   );
 }
 
-function CreateSheet({ onClose }) {
+function CreateSheet({ open, onClose }) {
   const navTo = useNav();
   const go = (to) => { navTo(to); onClose(); };
   return (
-    <div className="app-sheet-mask" onClick={onClose}>
-      <div className="app-sheet" onClick={e => e.stopPropagation()}>
-        <div className="app-sheet-grip" />
-        <h3 className="app-sheet-title">想创作点什么？</h3>
-        {CREATE.map((c, i) => (
-          <button key={c.to} className="app-create-row" style={{ '--i': i }} onClick={() => go(c.to)}>
-            <span className="ac-ic"><c.ic size={20} /></span>
-            <span className="ac-tx"><b>{c.label}</b><small>{c.hint}</small></span>
-          </button>
-        ))}
-      </div>
-    </div>
+    <AppSheet open={open} onClose={onClose} title="想创作点什么？">
+      {CREATE.map((c, i) => (
+        <button key={c.to} className="app-create-row" style={{ '--i': i }} onClick={() => go(c.to)}>
+          <span className="ac-ic"><c.ic size={20} /></span>
+          <span className="ac-tx"><b>{c.label}</b><small>{c.hint}</small></span>
+        </button>
+      ))}
+    </AppSheet>
   );
 }

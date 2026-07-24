@@ -8,6 +8,8 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { resolveTheme } from './theme.js';
 import { appBack } from './nav.js';
 import { preparePlayIntegrity } from './playIntegrity.js';
+import { prepareHaptics } from './haptics.js';
+import { prepareNetwork } from './netquality.js';
 
 // 页面语境覆盖：沉浸页（深色聊天/剧场等）可临时把状态栏刷成自己的底色，
 // 否则 App 浅色主题下状态栏恒为奶白，压在深色聊天页顶部就是一条刺眼的白带
@@ -42,6 +44,12 @@ export async function initNative() {
   // Failure is intentionally non-fatal: invited/whitelisted users remain able
   // to register, while the backend still refuses an unverified public signup.
   preparePlayIntegrity().catch(() => {});
+  // 预热触觉引擎：首次 haptic.tap() 不必再等动态 import('@capacitor/haptics')。
+  // 失败静默 —— haptics.js 会降级到 web vibrate，不影响功能。
+  prepareHaptics();
+  // 预热网络插件：让后续 Network.getStatus / 状态变化监听立即可用。
+  // 失败静默 —— netquality.js 会降级到 navigator.onLine + effectiveType。
+  prepareNetwork();
   // 设备标识（Android = ANDROID_ID，iOS = identifierForVendor）：挂到全局供
   // api.jsx 附加 X-Device-Id 头，服务端用于注册配额（限单设备开小号）。
   // 本文件只在原生壳加载（main.jsx 动态 import），Web 端永远不带此头。
