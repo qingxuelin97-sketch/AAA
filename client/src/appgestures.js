@@ -9,8 +9,8 @@ export function tick(ms = 8) { try { navigator.vibrate?.(ms); } catch { /* */ } 
 
 // Elements that own horizontal scrolling / their own touch semantics — swiping
 // inside them must NOT trigger tab navigation.
-const NO_TAB_SWIPE = '.ah-rail, .ah-shortcuts, .ah-picks, .pf-quick, .pf-content-grid, .cvx-rail, .vm-plans, .chat-scroll, .chat-input-bar, input, textarea, [data-noswipe], [data-no-tab-swipe], [data-horizontal-scroll], .app-launcher, .app-sheet, .sp-stage, .feed-root';
-const NO_PULL = '.ah-rail, .ah-shortcuts, .ah-picks, .pf-quick, .pf-content-grid, .cvx-rail, .vm-plans, .chat-scroll, .chat-input-bar, input, textarea, select, [contenteditable="true"], [data-no-pull], [data-horizontal-scroll], .app-launcher, .app-sheet, .sp-stage, .feed-root';
+const NO_TAB_SWIPE = '.ah-rail, .ah-shortcuts, .ah-picks, .pf-quick, .pf-content-grid, .cvx-rail, .vm-plans, .chat-scroll, .chat-input-bar, input, textarea, [data-noswipe], [data-no-tab-swipe], [data-horizontal-scroll], .app-launcher, .app-sheet, .sp-stage, .feed-root, .qa-onboard, .qa-cal, .qa-share-sheet, .qa-press-menu, .qa-ach-wall';
+const NO_PULL = '.ah-rail, .ah-shortcuts, .ah-picks, .pf-quick, .pf-content-grid, .cvx-rail, .vm-plans, .chat-scroll, .chat-input-bar, input, textarea, select, [contenteditable="true"], [data-no-pull], [data-horizontal-scroll], .app-launcher, .app-sheet, .sp-stage, .feed-root, .qa-onboard, .qa-cal, .qa-share-sheet, .qa-press-menu, .qa-ach-wall';
 
 export function useAppGestures(scrollRef, handlers) {
   const cb = useRef(handlers);

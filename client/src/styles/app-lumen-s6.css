@@ -659,6 +659,64 @@ html[data-app="1"] .qa-ach-share.qa-button {
   padding-inline: 10px; /* 触区仍由 --qa-control-min 保 44 */
 }
 
+/* ── S7-G7 · 长按上下文菜单 ── */
+html[data-app="1"] .qa-press-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 470;
+  background: color-mix(in srgb, var(--qa-scrim) 55%, transparent);
+}
+
+html[data-app="1"] .qa-press-menu {
+  position: fixed;
+  width: 232px;
+  overflow: hidden;
+  border-radius: var(--lg-r-card);
+  background: var(--lg-glass-2);
+  box-shadow: var(--lg-glass-shadow-2);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  animation: qaPressIn 220ms var(--lg-ease) both;
+}
+
+@keyframes qaPressIn {
+  from { transform: scale(0.94); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+html[data-app="1"] .qa-press-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  background: none;
+  color: var(--lg-ink);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-press-item + .qa-press-item {
+  box-shadow: inset 0 1px 0 var(--lg-hairline);
+}
+
+html[data-app="1"] .qa-press-item:active {
+  background: var(--lg-glass-sel);
+}
+
+html[data-app="1"] .qa-press-item.is-danger {
+  color: var(--lg-coral);
+}
+
+html[data-app="1"][data-perf="lite"] .qa-press-menu {
+  background: var(--qa-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* ── S7-G4 · 今日任务行内领取 ── */
 html[data-app="1"] .ah-task.qa-task-claimable {
   display: flex;
@@ -685,6 +743,10 @@ html[data-app="1"] .qa-task-claim.qa-button {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .qa-press-menu {
+    animation: none !important;
+  }
+
   html[data-app="1"] .qa-ach-claimfx,
   html[data-app="1"] .qa-ach-claimfx::after {
     animation: none !important;

@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNav } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
-import { useToast, Avatar, CoinIcon, DiamondIcon, IdentityBadges } from '../ui.jsx';
+import { useToast, Avatar, CoinIcon, DiamondIcon, IdentityBadges, CountUp } from '../ui.jsx';
 import { fmtNum } from '../util.js';
 import { CoverArt, EmptyArt, QuietAquaCharacterArt, isLegacyMonogramCover } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
@@ -216,7 +216,7 @@ export default function AppProfile() {
       <div className="pf-stats">
         {ST.map(s => (
           <button key={s.label} onClick={() => nav(s.to)}>
-            <b>{s.n == null ? '—' : fmtNum(s.n)}</b><span>{s.label}</span>
+            <b>{s.n == null ? '—' : <CountUp value={s.n} />}</b><span>{s.label}</span>
           </button>
         ))}
       </div>

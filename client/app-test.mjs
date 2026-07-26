@@ -231,6 +231,17 @@ assert.match(shareSheetSource, /canShare[\s\S]*download/, 'sharing must probe na
 assert.match(shareSheetSource, /import\('\.\.\/sharecard\.js'\)/, 'the compositor must load lazily outside the first-screen bundle');
 assert.match(characterViewSource, /ShareCardSheet/, 'the character view must expose the share-card entry');
 assert.match(e2eSourceForS7, /shareCardAssertions/, 'the e2e suite must keep exercising the share-card flow');
+/* ---- S7-G7 微交互契约 ---- */
+const messagesSource = await readFile(new URL('./src/pages/Messages.jsx', import.meta.url), 'utf8');
+assert.match(messagesSource, /AppPressMenu[\s\S]*useLongPress/, 'conversation rows must offer the long-press context menu');
+const pressMenuSource = await readFile(new URL('./src/components/AppPressMenu.jsx', import.meta.url), 'utf8');
+assert.match(pressMenuSource, /isolate:\s*appPortal[\s\S]*createPortal\(menu/, 'the press menu must keep the App overlay isolation contract');
+assert.match(pressMenuSource, /role="menu"/, 'the press menu must expose menu semantics');
+const gesturesSource = await readFile(new URL('./src/appgestures.js', import.meta.url), 'utf8');
+assert.match(gesturesSource, /qa-onboard[\s\S]*qa-cal[\s\S]*qa-share-sheet/, 'new self-owned gesture surfaces must opt out of tab-swipe and pull-to-refresh');
+const appProfileSource = await readFile(new URL('./src/pages/AppProfile.jsx', import.meta.url), 'utf8');
+assert.match(appProfileSource, /CountUp value=\{s\.n\}/, 'profile stats must animate with the shared CountUp');
+assert.match(e2eSourceForS7, /pressMenuAssertions/, 'the e2e suite must keep exercising the press-menu flow');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(

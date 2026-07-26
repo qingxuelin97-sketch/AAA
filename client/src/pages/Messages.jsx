@@ -15,6 +15,10 @@ import { msgPreview } from '../util.js';
 import { Logo } from '../assets.jsx';
 import { isAppMode } from '../appmode.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import AppPressMenu from '../components/AppPressMenu.jsx';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import { useLongPress } from '../chat/hooks.js';
+import { tick } from '../appgestures.js';
 import { useAppOverlay } from '../overlay.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
 import {
@@ -46,12 +50,26 @@ const conversationTime = (conversation) => {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 };
 
-function AppConversationRow({ cv, nav, onDelete }) {
+function AppConversationRow({ cv, nav, onDelete, onPress }) {
   const time = conversationTime(cv);
   const open = () => nav('/chats/' + cv.id);
+  const rowRef = useRef(null);
+  const firedRef = useRef(false);
+  const pressAt = () => {
+    const r = rowRef.current?.getBoundingClientRect?.();
+    return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  };
+  const bindPress = useLongPress(() => { firedRef.current = true; tick(8); onPress?.({ cv, at: pressAt() }); });
+  // 长按触发后浏览器仍会补发一次 click：吞掉它，防止菜单刚开就被导航冲走
+  const onRowClick = () => {
+    if (firedRef.current) { firedRef.current = false; return; }
+    open();
+  };
   return (
     <div className="msgs-conv msgs-conv--app">
-      <button type="button" className="msgs-conv-main" onClick={open}>
+      <button type="button" ref={rowRef} className="msgs-conv-main" onClick={onRowClick}
+        {...bindPress(cv)}
+        onContextMenu={(e) => { e.preventDefault(); onPress?.({ cv, at: { x: e.clientX, y: e.clientY } }); }}>
         {isLegacyMonogramCover(cv.character_avatar)
           ? <span className="msgs-fav-ph"><AppPortraitFallback name={cv.character_name} /></span>
           : <Avatar src={cv.character_avatar} name={cv.character_name} size={50} />}
@@ -103,6 +121,8 @@ export default function Messages() {
   const [favError, setFavError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [pressMenu, setPressMenu] = useState(null); // { cv, at }
+  const [shareCv, setShareCv] = useState(null);
   const deleteDialogRef = useRef(null);
   const deleteTriggerRef = useRef(null);
   const closeDeleteDialog = () => {
@@ -268,7 +288,7 @@ export default function Messages() {
             )}
             {convs && convs.map(cv => (
               appMode ? (
-                <AppConversationRow key={cv.id} cv={cv} nav={nav} onDelete={delConv} />
+                <AppConversationRow key={cv.id} cv={cv} nav={nav} onDelete={delConv} onPress={setPressMenu} />
               ) : (
               <div key={cv.id} className="msgs-conv" role="button" tabIndex={0}
                 onClick={() => nav('/chats/' + cv.id)}
@@ -332,6 +352,28 @@ export default function Messages() {
         </>
       )}
 
+      {appMode && pressMenu && (
+        <AppPressMenu
+          at={pressMenu.at}
+          onClose={() => setPressMenu(null)}
+          items={[
+            { label: '打开对话', onSelect: () => nav('/chats/' + pressMenu.cv.id) },
+            ...(pressMenu.cv.character_id
+              ? [{ label: '查看角色', onSelect: () => nav('/character/' + pressMenu.cv.character_id) }]
+              : []),
+            { label: '生成分享卡', onSelect: () => setShareCv(pressMenu.cv) },
+            { label: '删除对话', danger: true, onSelect: () => setDeleteTarget(pressMenu.cv) },
+          ]}
+        />
+      )}
+      {appMode && shareCv && (
+        <ShareCardSheet
+          kind="character"
+          payload={{ name: shareCv.character_name, tagline: shareCv.title !== shareCv.character_name ? shareCv.title : '',
+            avatar: shareCv.character_avatar || '', path: shareCv.character_id ? '/character/' + shareCv.character_id : '/' }}
+          onClose={() => setShareCv(null)}
+        />
+      )}
       {appMode && deleteTarget && typeof document !== 'undefined' && createPortal(
         <div className="app-sheet-mask msgs-delete-mask" onClick={closeDeleteDialog}>
           <section ref={deleteDialogRef} className="msgs-delete-sheet" role="alertdialog" aria-modal="true"

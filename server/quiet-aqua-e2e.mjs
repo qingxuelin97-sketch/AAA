@@ -1136,6 +1136,63 @@ async function detailErrorStateAssertions(browser, base) {
   await page.close();
 }
 
+// S7-G7 · 长按上下文菜单：550ms 触压弹出（隔离契约）→ Escape 关闭回焦；
+// 450ms 内位移 >10px 不触发（负例）。
+async function pressMenuAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/messages', '.msgs-conv--app .msgs-conv-main');
+  const row = await page.$('.msgs-conv--app .msgs-conv-main');
+  const box = await row.boundingBox();
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+
+  // 长按 550ms → 菜单弹出
+  await page.touchscreen.touchStart(cx, cy);
+  await new Promise((resolve) => setTimeout(resolve, 550));
+  await page.touchscreen.touchEnd();
+  // 菜单语义是 role=menu（非 dialog）：按自身契约验收——可见、聚焦、根隔离
+  await page.waitForSelector('.qa-press-menu', { visible: true, timeout: 5000 });
+  await page.waitForFunction(() => {
+    const menu = document.querySelector('.qa-press-menu');
+    const root = document.getElementById('root');
+    return Boolean(menu && menu.contains(document.activeElement)
+      && (root?.inert || root?.getAttribute('aria-hidden') === 'true'));
+  }, { timeout: 5000 });
+  const menu = await page.evaluate(() => ({
+    role: document.querySelector('.qa-press-menu')?.getAttribute('role'),
+    portal: document.querySelector('.qa-press-mask')?.parentElement === document.body,
+    items: [...document.querySelectorAll('.qa-press-item')].map((b) => b.textContent.trim()),
+    danger: Boolean(document.querySelector('.qa-press-item.is-danger')),
+  }));
+  assert(menu.role === 'menu' && menu.portal, '长按菜单缺少 menu 语义或未 portal', JSON.stringify(menu));
+  assert(menu.items.some((t) => t.includes('打开对话')) && menu.items.some((t) => t.includes('生成分享卡')) && menu.danger,
+    '长按菜单条目不完整', JSON.stringify(menu));
+  await saveScreenshot(page, 'press-menu-390x844-light.png');
+
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.qa-press-menu'), { timeout: 5000 });
+
+  // 负例：450ms 内位移超容差不得触发
+  await page.touchscreen.touchStart(cx, cy);
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  await page.touchscreen.touchMove(cx + 40, cy);
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  await page.touchscreen.touchEnd();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert(await page.evaluate(() => !document.querySelector('.qa-press-menu')),
+    '滑动位移后仍误触长按菜单');
+
+  assert(page.__qaErrors.length === 0, '长按菜单流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
 // S7-G6 · 分享卡：角色页菜单入口 → canvas 合成 1080×1440 预览 → 出口可用
 // → 关闭回焦。canvas 文字反锯齿跨环境不稳，不建像素基线，只验尺寸与无错。
 async function shareCardAssertions(browser, base) {
@@ -1538,6 +1595,7 @@ async function run() {
     await todayRitualAssertions(browser, base);
     await achievementsAssertions(browser, base);
     await shareCardAssertions(browser, base);
+    await pressMenuAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);

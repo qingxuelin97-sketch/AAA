@@ -10,6 +10,7 @@ import AppErrorState from '../components/AppErrorState.jsx';
 import { burst } from '../fx.js';
 import { tick } from '../appgestures.js';
 import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import { useLongPress } from '../chat/hooks.js';
 import {
   Trophy, Award, Check, ChevronRight, Lock,
   MessageCircle, MessagesSquare, Send, Heart, Sparkles, UserPlus, Drama, Globe, ScrollText,
@@ -272,12 +273,15 @@ function AppAchievementsLoading() {
 function AppAchievementCard({ achievement, busy, celebrating, onClaim, onGo, onShare }) {
   const Icon = ICONS[achievement.icon] || Award;
   const progress = Math.min(100, Math.round((achievement.value / achievement.goal) * 100));
+  // 长按已解锁卡 = 直达分享（与卡脚分享钮同一出口；单一长按语义来源）
+  const bindPress = useLongPress(() => { if (achievement.unlocked) { tick(8); onShare?.(achievement); } });
 
   return (
     <article
       className={`qa-achievements-card${achievement.unlocked ? ' is-unlocked' : ''}${achievement.claimed ? ' is-claimed' : ''}${celebrating ? ' qa-ach-claimfx' : ''}`}
       data-medal={medalOf(achievement.reward)}
       data-honor={achievement.honor || undefined}
+      {...bindPress(achievement)}
     >
       <span className="qa-achievements-card-icon" aria-hidden="true"><Icon size={21} />{achievement.unlocked && <i><Check size={11} /></i>}</span>
       <div className="qa-achievements-card-copy">
