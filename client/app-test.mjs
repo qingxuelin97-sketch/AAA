@@ -256,6 +256,11 @@ assert.match(shareCardSource, /renderQuoteCard/, 'the compositor must offer the 
 assert.match(shareSheetSource, /kind === 'quote'[\s\S]*renderQuoteCard/, 'the share sheet must route the quote kind to its template');
 assert.match(chatSource, /app && m\.role === 'assistant'[\s\S]*生成台词卡/, 'the quote-card entry must stay App-only and character-line-only');
 assert.match(chatSource, /kind="quote"[\s\S]*speaker: character\.name/, 'quote cards must attribute the line to the speaking character');
+/* ---- S7-G10 星轨年鉴卡契约 ---- */
+assert.match(shareCardSource, /renderInsightsCard/, 'the compositor must offer the insights annual-card template');
+assert.match(shareSheetSource, /kind === 'insights'[\s\S]*renderInsightsCard/, 'the share sheet must route the insights kind to its template');
+assert.match(insightsSource, /appMode && \([\s\S]*生成星轨卡/, 'the insights share entry must stay App-only');
+assert.match(insightsSource, /kind="insights"[\s\S]*companion: d\.companions\[0\]/, 'the insights card must carry the deepest-bond companion');
 /* ---- S7-G7 微交互契约 ---- */
 const messagesSource = await readFile(new URL('./src/pages/Messages.jsx', import.meta.url), 'utf8');
 assert.match(messagesSource, /AppPressMenu[\s\S]*useLongPress/, 'conversation rows must offer the long-press context menu');

@@ -125,6 +125,11 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 星轨页 · 年鉴卡入口（仅 App 分支渲染该节点） ---- */
+html[data-app="1"] .qa-ins-share {
+  margin-top: 12px;
+}
+
 /* ---- Controls Gallery · S7 展区 ---- */
 html[data-app="1"] .qa-gallery__art-row {
   align-items: flex-start;

@@ -375,6 +375,75 @@ export async function renderQuoteCard({ text, speaker, avatar, date, path }) {
   return canvas;
 }
 
+// 星轨年鉴卡：轨道环 + 旅程大数 + 羁绊署名。全部由 /me/insights 活数据合成。
+export async function renderInsightsCard({ since, streak, conversations, messages, activeDays, companion, path }) {
+  await fontsReady();
+  const canvas = makeCanvas();
+  const ctx = canvas.getContext('2d');
+  const panel = paintFrame(ctx, 'iris');
+
+  // 轨道环（静态内容图形：三圈椭圆 + 若干星点）
+  const cx = CARD_W / 2;
+  const cy = panel.y + 300;
+  ctx.save();
+  ctx.strokeStyle = P.blueMist;
+  ctx.lineWidth = 3;
+  for (const [rx, ry, rot] of [[300, 104, -0.16], [222, 76, 0.12], [150, 50, -0.05]]) {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, rot, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.fillStyle = P.blue;
+  for (const [sx, sy, r] of [[cx - 264, cy - 46, 7], [cx + 210, cy + 62, 9], [cx + 96, cy - 84, 6], [cx - 60, cy + 96, 5]]) {
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = P.gold;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = P.ink;
+  ctx.font = `700 68px ${UI_FONT}`;
+  ctx.fillText('我的幻域星轨', cx, panel.y + 520);
+  if (since) {
+    ctx.fillStyle = P.ink3;
+    ctx.font = `32px ${UI_FONT}`;
+    ctx.fillText(`自 ${since} 启程`, cx, panel.y + 578);
+  }
+
+  // 2×2 旅程数字
+  const stats = [
+    [String(conversations || 0), '段对话'],
+    [String(messages || 0), '条消息'],
+    [String(activeDays || 0), '个活跃日'],
+    [String(streak || 0), '天连签'],
+  ];
+  const gridTop = panel.y + 650;
+  stats.forEach(([num, label], i) => {
+    const gx = cx + (i % 2 === 0 ? -190 : 190);
+    const gy = gridTop + Math.floor(i / 2) * 150;
+    ctx.fillStyle = P.blueDeep;
+    ctx.font = `700 64px ${UI_FONT}`;
+    ctx.fillText(num, gx, gy);
+    ctx.fillStyle = P.ink2;
+    ctx.font = `30px ${UI_FONT}`;
+    ctx.fillText(label, gx, gy + 46);
+  });
+
+  if (companion) {
+    ctx.fillStyle = P.ink2;
+    ctx.font = `600 34px ${UI_FONT}`;
+    ctx.fillText(`羁绊最深 · ${String(companion).slice(0, 12)}`, cx, panel.y + panel.h - 60);
+  }
+
+  await paintFooter(ctx, path);
+  return canvas;
+}
+
 function starPath(ctx, cx, cy, outer, inner) {
   ctx.beginPath();
   for (let i = 0; i < 10; i += 1) {

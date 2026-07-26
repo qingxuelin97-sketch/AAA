@@ -6,6 +6,8 @@ import { fmtNum } from '../util.js';
 import { isAppMode } from '../appmode.js';
 import { AppEmptyArt } from '../art.jsx';
 import AppErrorState from '../components/AppErrorState.jsx';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import { AppButton } from '../components/AppControls.jsx';
 import {
   Orbit, MessageCircle, MessagesSquare, CalendarDays, Flame, Sparkles,
   BookOpen, ScrollText, Feather, Wand2, Heart, Users, UserRound, TrendingUp, TrendingDown
@@ -17,6 +19,7 @@ export default function Insights() {
   const appMode = isAppMode();
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
+  const [shareOpen, setShareOpen] = useState(false); // App 星轨年鉴卡
   const toast = useToast();
   const nav = useNavigate();
 
@@ -65,6 +68,13 @@ export default function Insights() {
             与 {d.chat.conversations} 段对话、{d.creations.characters} 个角色一同生长
           </div>
           {d.streak > 0 && <span className="ins-streak"><Flame size={14} /> 连续签到 {d.streak} 天</span>}
+          {appMode && (
+            <div className="qa-ins-share">
+              <AppButton variant="secondary" size="sm" onClick={() => setShareOpen(true)}>
+                <Orbit size={15} /> 生成星轨卡
+              </AppButton>
+            </div>
+          )}
         </div>
 
         <div className="ins-kpis">
@@ -163,6 +173,21 @@ export default function Insights() {
           </div>
         </div>
       </div>
+      {shareOpen && (
+        <ShareCardSheet
+          kind="insights"
+          payload={{
+            since: d.since,
+            streak: d.streak,
+            conversations: d.chat.conversations,
+            messages: d.chat.messages,
+            activeDays: d.chat.active_days,
+            companion: d.companions[0]?.name || '',
+            path: '/insights',
+          }}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </>
   );
 }

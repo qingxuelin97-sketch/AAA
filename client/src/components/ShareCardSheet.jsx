@@ -31,7 +31,9 @@ export default function ShareCardSheet({ kind, payload, onClose, returnFocusRef 
             ? await mod.renderStreakCard(payload)
             : kind === 'quote'
               ? await mod.renderQuoteCard(payload)
-              : await mod.renderCharacterCard(payload);
+              : kind === 'insights'
+                ? await mod.renderInsightsCard(payload)
+                : await mod.renderCharacterCard(payload);
         const nextBlob = await mod.canvasToBlob(canvas);
         if (!alive) return;
         url = URL.createObjectURL(nextBlob);
