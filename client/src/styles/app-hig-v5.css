@@ -371,9 +371,10 @@ html[data-app="1"][data-theme="dark"] :where(.input, .textarea, .select, textare
   border-color: var(--qa-hairline);
 }
 html[data-app="1"][data-theme="dark"] .qa-settings-root { background: var(--qa-canvas); }
+/* 组容器两主题一致透明：面材质只属于组内列表卡，标题后不留亮条 */
 html[data-app="1"][data-theme="dark"] .qa-settings-group {
-  background: var(--qa-surface);
-  border-color: var(--qa-hairline);
+  background: none;
+  border-color: transparent;
 }
 html[data-app="1"][data-theme="dark"] .qa-settings-row:active { background: var(--qa-grouped); }
 

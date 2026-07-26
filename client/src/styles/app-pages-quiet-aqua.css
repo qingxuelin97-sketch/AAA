@@ -2962,6 +2962,9 @@ html[data-app="1"] .qa-settings-loading {
 
 html[data-app="1"] .qa-settings-root {
   display: grid;
+  /* hig 给根容器 min-height:100dvh；内容不足一屏时隐式行会被拉伸，
+     通知卡与分组标题被灌入空白 —— 行从顶部自然堆叠，不拉伸 */
+  align-content: start;
   gap: 18px;
 }
 
