@@ -9,6 +9,7 @@ import { useAutoGrow } from '../util.js';
 import { mergeMessages, messageId } from '../groupMessages.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
 import { Send, ArrowLeft, Users, LogOut, MessageCircle, X } from 'lucide-react';
 
 // 曜光玻璃 s09：发言人名固定内容语义色 —— 按成员 id 稳定散列到
@@ -218,8 +219,9 @@ export default function GroupRoom() {
         )}
         <div className={app ? 'chat-scroll qa-group-room-scroll' : 'chat-scroll'} ref={scrollRef} onScroll={trackScroll} role={app ? 'log' : undefined} aria-live={app ? 'polite' : undefined} aria-label={app ? `${group.name}的群聊消息` : undefined}>
           <div className="chat-thread group-thread">
-          {messages.length === 0 && (
-            <div className={app ? 'empty qa-group-room-empty' : 'empty'} style={{ margin: 'auto' }}><div className="big"><MessageCircle size={42} /></div>还没有人发言，来打个招呼吧～</div>
+          {messages.length === 0 && (app
+            ? <div className="empty qa-group-room-empty" style={{ margin: 'auto' }}><AppEmptyArt kind="group" size={104} />还没有人发言，来打个招呼吧～</div>
+            : <div className="empty" style={{ margin: 'auto' }}><div className="big"><MessageCircle size={42} /></div>还没有人发言，来打个招呼吧～</div>
           )}
           {messages.map((m) => {
             const mine = String(m.user_id) === String(user?.id);

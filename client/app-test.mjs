@@ -189,6 +189,12 @@ assert.deepEqual(achIdsOf(serverAchievementsSource), achIdsOf(mockBackendSource)
 assert.ok(achIdsOf(serverAchievementsSource).length >= 30, 'the achievement catalogue must keep the parliament and friendship tiers');
 assert.match(mockBackendSource, /honor: !!a\.honor/, 'the mock must surface the honor flag with server semantics');
 assert.match(characterViewSource, /loadError[\s\S]*EmptyArt[\s\S]*nav\('\/library'\)/, 'character load failures must offer a real recovery empty state');
+const insightsSource = await readFile(new URL('./src/pages/Insights.jsx', import.meta.url), 'utf8');
+assert.match(insightsSource, /AppErrorState[\s\S]*onRetry=\{load\}/, 'Insights first-load failure must offer the unified App recovery state');
+const errorStateSource = await readFile(new URL('./src/components/AppErrorState.jsx', import.meta.url), 'utf8');
+assert.match(errorStateSource, /role="alert"[\s\S]*AppEmptyArt[\s\S]*onRetry/, 'AppErrorState must pair alert semantics with art and a retry action');
+const e2eSourceForS7 = await readFile(new URL('../server/quiet-aqua-e2e.mjs', import.meta.url), 'utf8');
+assert.match(e2eSourceForS7, /insightsRecoveryAssertions/, 'the e2e suite must keep exercising the Insights offline-retry recovery');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(

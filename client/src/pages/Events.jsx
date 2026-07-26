@@ -4,6 +4,8 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 import { PartyPopper, Gift, Check, ArrowRight, Copy, Users, ListChecks, ArrowLeft } from 'lucide-react';
 
 // Event accents are semantic and stable. They are deliberately independent
@@ -20,13 +22,14 @@ const eventTone = (event, index) => {
 export default function Events() {
   const app = isAppMode();
   const [events, setEvents] = useState(null);
+  const [err, setErr] = useState(false);
   const [tasks, setTasks] = useState(null);
   const [busy, setBusy] = useState('');
   const nav = useNavigate();
   const toast = useToast();
   const { refreshUser } = useAuth();
 
-  const load = () => api('/engage/events').then(d => setEvents(d.events)).catch(e => toast(e.message, 'err'));
+  const load = () => api('/engage/events').then(d => setEvents(d.events)).catch(e => { toast(e.message, 'err'); setErr(true); });
   const loadTasks = () => api('/engage/tasks').then(d => setTasks(d.tasks)).catch(() => {});
   useEffect(() => { load(); loadTasks(); /* eslint-disable-next-line */ }, []);
 
@@ -77,8 +80,8 @@ export default function Events() {
             ))}
           </TasksRoot>
         )}
-        {!events ? (app ? <div className="qa-events-loading" role="status" aria-label="正在载入活动"><i className="skel" /><i className="skel" /><i className="skel" /></div> : <div className="empty">载入中…</div>) : events.length === 0 && app ? (
-          <div className="empty qa-events-empty"><div className="big"><PartyPopper size={44} /></div>当前暂无活动</div>
+        {!events ? (app ? (err ? <AppErrorState kind="events" onRetry={() => { setErr(false); load(); }} /> : <div className="qa-events-loading" role="status" aria-label="正在载入活动"><i className="skel" /><i className="skel" /><i className="skel" /></div>) : <div className="empty">载入中…</div>) : events.length === 0 && app ? (
+          <div className="empty qa-events-empty"><AppEmptyArt kind="events" size={104} />当前暂无活动</div>
         ) : (
           <>
             {app && events.length > 0 && (

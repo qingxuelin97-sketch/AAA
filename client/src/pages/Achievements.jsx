@@ -5,6 +5,8 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 import {
   Trophy, Award, Check, ChevronRight, Lock,
   MessageCircle, MessagesSquare, Send, Heart, Sparkles, UserPlus, Drama, Globe, ScrollText,
@@ -30,6 +32,7 @@ export default function Achievements() {
   const [list, setList] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(false);
   const [busy, setBusy] = useState('');
   const [appCat, setAppCat] = useState('全部');
   // Ceremonial opening animation — plays once per session.
@@ -41,7 +44,7 @@ export default function Achievements() {
     return () => clearTimeout(t);
   }, [intro]);
 
-  const load = () => api('/achievements').then(d => { setList(d.achievements || []); setSummary(d.summary); }).catch(e => toast(e.message, 'err')).finally(() => setLoading(false));
+  const load = () => api('/achievements').then(d => { setList(d.achievements || []); setSummary(d.summary); }).catch(e => { toast(e.message, 'err'); setErr(true); }).finally(() => setLoading(false));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const claim = async (a) => {
@@ -106,8 +109,10 @@ export default function Achievements() {
 
           {loading ? (
             <AppAchievementsLoading />
+          ) : err && list.length === 0 ? (
+            <AppErrorState kind="achievements" onRetry={() => { setErr(false); setLoading(true); load(); }} />
           ) : visible.length === 0 ? (
-            <section className="qa-achievements-empty"><Award size={34} /><h2>此分类暂无成就</h2><p>去其他板块留下新的足迹吧。</p></section>
+            <section className="qa-achievements-empty"><AppEmptyArt kind="achievements" size={104} /><h2>此分类暂无成就</h2><p>去其他板块留下新的足迹吧。</p></section>
           ) : (
             <section className="qa-achievements-list" aria-label={appCat === '全部' ? '全部成就' : `${appCat}成就`}>
               {visible.map(achievement => (

@@ -4,6 +4,8 @@ import { api, assetUrl, useAuth } from '../api.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 import { Heart, Play, Flame, ScrollText, Trophy, Crown, ArrowLeft, ChevronRight } from 'lucide-react';
 
 export default function Leaderboard() {
@@ -14,14 +16,17 @@ export default function Leaderboard() {
   const [tab, setTab] = useState('characters');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setErr(false);
     api('/engage/leaderboard')
       .then(setData)
-      .catch(e => toast(e.message, 'err'))
+      .catch(e => { toast(e.message, 'err'); setErr(true); })
       .finally(() => setLoading(false));
-    /* eslint-disable-next-line */
-  }, []);
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const characters = data?.characters || [];
   const scripts = data?.scripts || [];
@@ -85,8 +90,10 @@ export default function Leaderboard() {
             <section className="qa-leaderboard-loading" role="status" aria-label="正在载入排行榜">
               {[0, 1, 2, 3, 4].map(index => <span className="skel" key={index} aria-hidden="true" />)}
             </section>
+          ) : err ? (
+            <AppErrorState kind="leaderboard" onRetry={load} />
           ) : rows.length === 0 ? (
-            <section className="qa-leaderboard-empty"><Trophy size={34} /><h2>{emptyText}</h2><p>榜单正在等待新的名字。</p></section>
+            <section className="qa-leaderboard-empty"><AppEmptyArt kind="leaderboard" size={104} /><h2>{emptyText}</h2><p>榜单正在等待新的名字。</p></section>
           ) : (
             <>
               {/* 领奖台：2 · 1 · 3 排列，冠军居中最高（S5 曜光玻璃 · s26） */}

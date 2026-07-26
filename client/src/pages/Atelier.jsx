@@ -4,6 +4,8 @@ import { api, assetUrl } from '../api.jsx';
 import { useToast, Modal, CountUp } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 import {
   PenTool, Plus, Sparkles, BookText, Library, Layers, Feather,
   Trash2, Pin, Wand2, Loader2, ArrowLeft, ArrowRight, ScrollText, BookOpen, Globe, User, X,
@@ -234,6 +236,8 @@ export default function Atelier() {
 }
 
 function AtelierLoadError({ message, onRetry, appMode = false }) {
+  // App 壳：统一错误态（含重试）；Web 分支保持原状，零视觉差。
+  if (appMode) return <AppErrorState kind="atelier" title="书架暂时无法加载" message={message} onRetry={onRetry} retryLabel="重新加载" />;
   return (
     <section className={appMode ? 'qa-atelier-empty' : 'atl-empty'} role="alert" aria-live="assertive">
       <div className={appMode ? 'qa-atelier-empty-icon' : 'atl-empty-ic'} aria-hidden="true"><BookOpen size={34} /></div>
@@ -266,9 +270,7 @@ function AppAtelierLoading() {
 function AppAtelierEmpty({ showcase, onCreate }) {
   return (
     <section className="qa-atelier-empty" aria-labelledby="qa-atelier-empty-title">
-      <span className="qa-atelier-empty-icon" aria-hidden="true">
-        {showcase ? <BookOpen size={34} /> : <BookText size={34} />}
-      </span>
+      <AppEmptyArt kind="atelier" size={104} />
       <h2 id="qa-atelier-empty-title">{showcase ? '精选书架还很空' : '还没有作品'}</h2>
       <p>{showcase ? '把你的作品发布出来，让它成为第一本被人翻开的书。' : '从一句创意或一个开场开始，与你的 AI 搭档共同写下第一章。'}</p>
       {!showcase && (

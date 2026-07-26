@@ -1131,6 +1131,65 @@ async function detailErrorStateAssertions(browser, base) {
   await page.close();
 }
 
+// S7-G2 · Insights 首载失败 → AppErrorState 恢复出口（ORACLE §7.2）。
+// 静态构建的 /api 由页内 mock fetch 直接合成响应，CDP 拦截看不到——
+// 用访问器包装 mock 安装的 fetch，按开关注入 /me/insights 断网。
+async function insightsRecoveryAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+  await page.evaluateOnNewDocument(() => {
+    window.__qaFailInsights = true;
+    let real = window.fetch;
+    const wrapped = (...args) => {
+      const url = String(args[0] || '');
+      if (window.__qaFailInsights && url.includes('/me/insights')) {
+        return Promise.reject(new TypeError('模拟星轨服务中断'));
+      }
+      return real(...args);
+    };
+    Object.defineProperty(window, 'fetch', {
+      configurable: true,
+      get() { return wrapped; },
+      set(fn) { real = fn; },
+    });
+  });
+
+  await visit(page, '/insights', '.qa-error-state');
+  const errorState = await page.evaluate(() => ({
+    role: document.querySelector('.qa-error-state')?.getAttribute('role'),
+    title: document.querySelector('.qa-error-state__title')?.textContent || '',
+    art: Boolean(document.querySelector('.qa-error-state .qa5-empty-art')),
+    retry: [...document.querySelectorAll('.qa-error-state .qa-button')]
+      .some((button) => button.textContent.includes('重试')),
+  }));
+  assert(errorState.role === 'alert' && errorState.retry && errorState.art
+    && errorState.title.includes('星轨'),
+  'Insights 首载失败未给出带插画的可恢复错误态', JSON.stringify(errorState));
+  await saveScreenshot(page, 'insights-error-390x844-light.png');
+
+  await page.evaluate(() => { window.__qaFailInsights = false; });
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.qa-error-state .qa-button')]
+      .find((button) => button.textContent.includes('重试'))?.click();
+  });
+  await page.waitForSelector('.ins-kpis', { visible: true, timeout: 20000 });
+  const recovered = await page.evaluate(() => ({
+    error: Boolean(document.querySelector('.qa-error-state')),
+    kpis: document.querySelectorAll('.ins-kpi').length,
+  }));
+  assert(!recovered.error && recovered.kpis > 0,
+    'Insights 重试后未恢复正常内容', JSON.stringify(recovered));
+  await saveScreenshot(page, 'insights-recovered-390x844-light.png');
+  const unexpected = page.__qaErrors.filter((message) => !message.includes('星轨') && !message.includes('insights'));
+  assert(unexpected.length === 0, 'Insights 恢复流产生了预期外的浏览器错误', unexpected.join('\n'));
+  await page.close();
+}
+
 async function run() {
   fs.mkdirSync(OUT, { recursive: true });
   const { server, base } = await startStaticServer();
@@ -1155,6 +1214,7 @@ async function run() {
       await scriptRouteAssertions(browser, base);
       await worldbookEditorAssertions(browser, base);
       await detailErrorStateAssertions(browser, base);
+      await insightsRecoveryAssertions(browser, base);
       console.log(`✓ detail routes and error states: ${OUT}`);
       return;
     }
@@ -1192,6 +1252,7 @@ async function run() {
     await scriptRouteAssertions(browser, base);
     await worldbookEditorAssertions(browser, base);
     await detailErrorStateAssertions(browser, base);
+    await insightsRecoveryAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);

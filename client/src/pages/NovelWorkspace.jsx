@@ -10,6 +10,7 @@ import { useUnsavedChanges } from '../appNavigation.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { isAppMode } from '../appmode.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { AppEmptyArt } from '../art.jsx';
 import {
   ArrowLeft, Feather, Sparkles, Wand2, Loader2, Send, Square, Palette, Layers,
   BookLock, BookOpen, GitBranch, Trash2, Pin, RefreshCw, Lock, Unlock, Network,
@@ -285,7 +286,7 @@ export default function NovelWorkspace() {
 
             {beats.length === 0 && (
               <div className={app ? 'atl-ms-empty qa-novel-empty' : 'atl-ms-empty'}>
-                <Feather size={30} />
+                {app ? <AppEmptyArt kind="atelier" size={104} /> : <Feather size={30} />}
                 {novel.synopsis ? (
                   <>
                     <div className="atl-premise"><span>故事起点</span>{novel.synopsis}</div>
@@ -726,7 +727,7 @@ function RunsPanel({ novel, run, onSwitchRun, refreshRuns, toast, loadRun }) {
         {app && loadingRuns ? (
           <div className="qa-novel-runs-loading" role="status" aria-label="正在载入剧情线"><i className="skel" /><i className="skel" /><i className="skel" /></div>
         ) : app && runs.length === 0 ? (
-          <div className="qa-novel-runs-empty"><GitBranch size={24} /><b>还没有剧情线</b><span>创建一条新线后即可开始独立创作。</span></div>
+          <div className="qa-novel-runs-empty"><AppEmptyArt kind="atelier" size={84} /><b>还没有剧情线</b><span>创建一条新线后即可开始独立创作。</span></div>
         ) : runs.map(r => {
           const RunMain = app ? 'button' : 'div';
           return (
@@ -1002,7 +1003,7 @@ function EntryEditor({ entries, onChange, allowLock, showSource }) {
   const del = (i) => onChange(entries.filter((_, j) => j !== i));
   return (
     <div className="atl-entries">
-      {entries.length === 0 && <div className="atl-entries-empty"><Layers size={15} /> 还没有设定条目，添加几条让世界立起来。</div>}
+      {entries.length === 0 && <div className="atl-entries-empty">{app ? <AppEmptyArt kind="atelier" size={84} /> : <Layers size={15} />} 还没有设定条目，添加几条让世界立起来。</div>}
       {entries.map((e, i) => {
         const badge = showSource && SOURCE_BADGE[e.source];
         return (

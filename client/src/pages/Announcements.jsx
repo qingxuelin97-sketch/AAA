@@ -4,6 +4,8 @@ import { useNav as useNavigate } from '../nav.js';
 import { useToast, Modal } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 import { Megaphone, Plus, Trash2, Pin, ShieldCheck, ArrowLeft, X } from 'lucide-react';
 
 export default function Announcements() {
@@ -11,12 +13,13 @@ export default function Announcements() {
   const [list, setList] = useState([]);
   const [isGm, setIsGm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(false);
   const [form, setForm] = useState(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const nav = useNavigate();
 
-  const load = () => api('/announcements').then(d => { setList(d.announcements); setIsGm(d.is_gm); }).catch(e => toast(e.message, 'err')).finally(() => setLoading(false));
+  const load = () => api('/announcements').then(d => { setList(d.announcements); setIsGm(d.is_gm); }).catch(e => { toast(e.message, 'err'); setErr(true); }).finally(() => setLoading(false));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const publish = async () => {
@@ -46,7 +49,10 @@ export default function Announcements() {
           </div>
         )}
         {loading ? (app ? <div className="qa-announcements-loading" role="status" aria-label="正在载入公告"><i className="skel" /><i className="skel" /><i className="skel" /></div> : <div className="empty">载入中…</div>) :
-          list.length === 0 ? <div className={app ? 'empty qa-announcements-empty' : 'empty'}><div className="big"><Megaphone size={44} /></div>暂无公告</div> : (
+          app && err && list.length === 0 ? <AppErrorState kind="notifications" onRetry={() => { setErr(false); setLoading(true); load(); }} /> :
+          list.length === 0 ? (app
+            ? <div className="empty qa-announcements-empty"><AppEmptyArt kind="notifications" size={104} />暂无公告</div>
+            : <div className="empty"><div className="big"><Megaphone size={44} /></div>暂无公告</div>) : (
             list.map(a => {
               const ItemRoot = app ? 'article' : 'div';
               return (
