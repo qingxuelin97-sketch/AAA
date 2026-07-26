@@ -125,6 +125,97 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 角色页 · 与 TA 的足迹 ---- */
+html[data-app="1"] .qa-bond {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--lg-rose) 8%, transparent);
+}
+
+html[data-app="1"] .qa-bond-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lg-rose);
+}
+
+html[data-app="1"] .qa-bond-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12.5px;
+  color: var(--lg-ink-2);
+}
+
+html[data-app="1"] .qa-bond-row b {
+  font-weight: 700;
+  color: var(--lg-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-bond-cta {
+  justify-self: start;
+}
+
+/* ---- 我的页 · 相伴一览三格 ---- */
+html[data-app="1"] .qa-glance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+html[data-app="1"] .qa-glance-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--qa-control-min);
+  padding: 8px 6px;
+  border: 0;
+  border-radius: calc(var(--lg-r-card) - 6px);
+  background: var(--lg-glass-1);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-glance-cell span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+  color: var(--lg-ink-3);
+  text-align: center;
+}
+
+html[data-app="1"] .qa-glance-cell b {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--lg-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 静态 conic 完成环（--p 百分比，无动画，与成就墙同语言） */
+html[data-app="1"] .qa-glance-ring {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: var(--lg-r-pill);
+  background:
+    radial-gradient(closest-side, var(--qa-surface) 68%, transparent 69%),
+    conic-gradient(var(--lg-act) var(--p, 0%), color-mix(in srgb, var(--lg-act) 14%, transparent) 0);
+}
+
+html[data-app="1"][data-perf="lite"] .qa-glance-cell {
+  background: var(--lg-grouped);
+}
+
 /* ---- 我的页 · 新功能 Sheet ---- */
 html[data-app="1"] .qa-whatsnew {
   max-height: min(78dvh, 640px);
