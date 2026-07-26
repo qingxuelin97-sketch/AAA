@@ -1,0 +1,753 @@
+/* ============================================================================
+   曜光玻璃 Lumen Glass · Web 壳 chrome 换装层（web-lumen-shell.css）
+   ----------------------------------------------------------------------------
+   范围：Web 壳的「常驻 chrome」——
+     · 桌面侧栏（expanded / collapsed / hidden / peek 四态）＋左缘唤出把手
+     · 移动顶栏（.mobile-topbar）/ 全量导航抽屉（.mnav-*）/ 底部悬浮 dock
+       （.bottom-nav + .bn-ink 墨迹滑块）
+     · 命令面板（CommandPalette.jsx 的真实类名是 .cmdk-*，计划稿里写作
+       cps-* 的即此层）
+     · Modal（ui.jsx: .modal-backdrop + .card.modal）/ Toast / Skeleton
+     · 滚动进度条（.scroll-progress）/ 回到顶部（.to-top）/ 路由过渡
+       （.route-fade）
+   页面内容层不在本文件（各页另有专属任务）。
+   ----------------------------------------------------------------------------
+   铁律执行说明（对照 LUMEN_GLASS_SPEC 与本次编排指令）：
+   1. 围栏：每一条选择器都从 html:not([data-app="1"]) 开始，与 App 的
+      html[data-app="1"] 围栏在 DOM 上互斥。级联上 (0,2,1)+ 的特异性恰好
+      压过存量 (0,1,0)/(0,2,0) 基线与散落的 [data-theme="dark"] 补丁 ——
+      不删旧文件、不依赖 import 顺序，纯靠特异性取胜。
+   2. backdrop-filter 只落在 chrome：侧栏 / 移动顶栏 / 底部 dock / 命令面板 /
+      模态遮罩与面板 / 移动抽屉（本文件全部命中允许名单）。Toast、to-top、
+      骨架、用户位等一律「半透明底 + var(--lg-glass-shadow-*) 三件套」，
+      零实时模糊（D8 红线）。
+   3. 深色 / lite 档 / data-glass=off / reduced-motion 全部由
+      web-lumen-tokens.css 的令牌变体承担：本文件不写 [data-theme="dark"]
+      专块（经逐条排查，所有存量深色补丁的特异性都低于本文件围栏规则，
+      无需点名覆盖；lite/glass=off 下玻璃令牌自动落回不透明分组底，
+      --lgw-chrome-blur/--lg-blur 自动置 none）。
+   4. 新 @keyframes 仅 1 个：lgwSkelShimmer（骨架 shimmer，属规范豁免项，
+      且在 prefers-reduced-motion 下静止）。其余动画一律沿用存量 keyframes
+      名，只把时长/缓动改到 --lg-dur-* / --lg-ease —— reduced-motion 下
+      时长令牌归零，动画自然瞬时完成，无需重复声明。
+   5. 颜色零新增字面量：全部 var(--lg-*) / 桥接变量（--panel 等，材质层
+      先例）/ color-mix(令牌, #fff/#000/transparent)；白系玻璃
+      rgb(255 255 255 / x%) 与黑系遮罩 rgb(0 0 0 / x%) 为规范豁免（本文件
+      实际未用到裸值，全走令牌）。
+   6. 触控目标 ≥44px（--lg-control-min）；图标按钮的可访问名称已在 JSX 侧
+      逐一核对（sb-toggle / mt-menu / mt-act / mt-bell / mnav-x / to-top /
+      sb-edge-trigger 均带 aria-label）；:focus-visible 统一 --lg-focus 外环。
+   ----------------------------------------------------------------------------
+   接线提醒：本文件需在 main.jsx 的 Lumen Web 三件套之后引入
+   （import './styles/web-lumen-shell.css';）—— 本任务禁改 JSX，由编排者统一
+   接线。因规则全靠特异性取胜，接线位置只需晚于 tokens（变量就位）即可。
+   ========================================================================== */
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §0 · 可达性基线：统一键盘聚焦环（--lg-focus 外环）
+   ---------------------------------------------------------------------------
+   base.css(266) 与 web-super.css(689) 各有一条 :focus-visible
+   { outline: 2px solid var(--accent) }（特异性 0,1,0）。这里以围栏特异性
+   统一改为 Lumen 焦点令牌。旧规则附带的 border-radius:4px 不冲突、保留。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) :focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: 2px;
+}
+
+/* chrome 交互件逐一点名（旧文件里 .btn/.nav-item 等有 offset 微调，特异性
+   (0,2,0)，会盖过上面的通配围栏 —— 点名重申保证外环颜色/偏移一致） */
+html:not([data-app="1"]) .nav-item:focus-visible,
+html:not([data-app="1"]) .sb-toggle:focus-visible,
+html:not([data-app="1"]) .sb-search:focus-visible,
+html:not([data-app="1"]) .user-chip:focus-visible,
+html:not([data-app="1"]) .mt-menu:focus-visible,
+html:not([data-app="1"]) .mt-act:focus-visible,
+html:not([data-app="1"]) .mt-bell:focus-visible,
+html:not([data-app="1"]) .mnav-x:focus-visible,
+html:not([data-app="1"]) .bottom-nav a:focus-visible,
+html:not([data-app="1"]) .to-top:focus-visible,
+html:not([data-app="1"]) .cmdk-row:focus-visible,
+html:not([data-app="1"]) .sb-edge-trigger:focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: 2px;
+}
+/* 药丸类目标的外环稍收一点，避免环与药丸圆角之间出现大空隙 */
+html:not([data-app="1"]) .nav-item:focus-visible,
+html:not([data-app="1"]) .cmdk-row:focus-visible {
+  outline-offset: -2px;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §1 · 桌面侧栏 = L3 玻璃 chrome 纵列
+   ---------------------------------------------------------------------------
+   配方与 .lgw-glass-chrome 同源：--lg-glass-3 底 + --lgw-chrome-blur 薄玻璃
+   + --lg-glass-shadow-3（发丝内环与顶部内高光都封装在 shadow 令牌里），
+   外加任务点名的右缘 hairline。
+   压过的存量：
+     · base.css 76：暖纸渐变底 + var(--border) 右边框
+     · web-modules 526：#f6f4ed 平涂
+     · web-modules 918：[data-theme="dark"] .sidebar 深灰渐变（0,2,0）
+     · web-super 1540：[data-glass="on"] .sidebar 半透明 blur（0,2,0）
+   宽度切到 Web 扩展令牌 --lgw-sidebar-w（248px）——【重要】因此 §2 必须以
+   本文件的特异性重述 collapsed/hidden/peek 的全部冲突几何，否则基态
+   (0,2,1) 会压过存量状态规则的 (0,2,0)。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .sidebar {
+  width: var(--lgw-sidebar-w);
+  background: var(--lg-glass-3);
+  -webkit-backdrop-filter: var(--lgw-chrome-blur);
+  backdrop-filter: var(--lgw-chrome-blur);
+  box-shadow: var(--lg-glass-shadow-3);
+  border-right: 1px solid var(--lg-hairline);
+  transition:
+    width var(--lg-dur-push) var(--lg-ease),
+    padding var(--lg-dur-push) var(--lg-ease);
+}
+
+/* 侧栏内滚动区的滚动条降噪：chrome 上不要出现高对比滚动条 */
+html:not([data-app="1"]) .sb-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--lg-ink) 16%, transparent) transparent;
+}
+html:not([data-app="1"]) .sb-scroll::-webkit-scrollbar { width: 8px; }
+html:not([data-app="1"]) .sb-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--lg-ink) 16%, transparent);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: var(--lg-r-pill);
+}
+
+/* ── 品牌区：衬线字保持（Web 独有优势），只做副标校色 ─────────────────── */
+html:not([data-app="1"]) .brand b { color: var(--lg-ink); }
+html:not([data-app="1"]) .brand small { color: var(--lg-ink-3); }
+
+/* ── 侧栏收放钮：≥44px 触控目标 + 安静 hover（撤掉旧版 scale(1.08) 弹跳）── */
+html:not([data-app="1"]) .sb-toggle {
+  min-width: var(--lg-control-min);
+  min-height: var(--lg-control-min);
+  padding: 10px;
+  border-radius: var(--lg-r-control);
+  color: var(--lg-ink-3);
+  transition:
+    background var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease),
+    transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .sb-toggle:hover {
+  background: color-mix(in srgb, var(--lg-ink) 7%, transparent);
+  color: var(--lg-ink);
+  transform: none;
+}
+html:not([data-app="1"]) .sb-toggle:active { transform: scale(0.96); }
+
+/* ── 分组小标题与分隔线 ──────────────────────────────────────────────── */
+html:not([data-app="1"]) .nav-section { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .nav-divider { background: var(--lg-hairline); }
+
+/* ── 导航项：幽灵行 → hover 墨色浮起 → 激活 act-soft 药丸 ──────────────
+   注意 .nav-item 同时服务于桌面侧栏与移动抽屉（.mnav-scroll .nav-item），
+   这套状态机在两处一体生效。 */
+html:not([data-app="1"]) .nav-item {
+  min-height: var(--lg-control-min);          /* 触控目标 ≥44 */
+  border-radius: var(--lg-r-control);
+  color: var(--lg-ink-2);
+  transition:
+    background var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease),
+    transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .nav-item:hover {
+  background: color-mix(in srgb, var(--lg-ink) 6%, transparent);
+  color: var(--lg-ink);
+}
+html:not([data-app="1"]) .nav-item:active { transform: scale(0.985); }
+/* active 写在 hover 之后：同特异性下后写获胜，悬停激活项时保持药丸态 */
+html:not([data-app="1"]) .nav-item.active {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  font-weight: 600;
+}
+html:not([data-app="1"]) .nav-item.active:hover {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+/* 旧的左缘 3px 指示条（web-modules 263）与药丸语言冲突，收掉 */
+html:not([data-app="1"]) .nav-item.active::before { content: none; }
+
+/* 图标插槽：lucide 走 currentColor，无需另调色；hover 弹跳从旧版
+   scale(1.18) rotate(-3deg) 收敛为轻微放大 —— Lumen 是安静的 */
+html:not([data-app="1"]) .nav-item .ic {
+  transition: transform var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .nav-item:hover .ic { transform: scale(1.06); }
+html:not([data-app="1"]) .nav-item.active .ic { transform: scale(1.04); }
+
+/* ── 未读角标 = 珊瑚（内容语义，不随强调色漂移）─────────────────────────
+   旧 badgePulse 无限呼吸描边（web-modules 846）会以 act 色晕染珊瑚角标，
+   静音处理（与「禁无限装饰动画」同一精神：存量的也不再续命）。
+   前景用 --lg-canvas：浅色近白 / 深色近黑，两态对比度天然达标。 */
+html:not([data-app="1"]) .nav-badge {
+  background: var(--lg-coral);
+  color: var(--lg-canvas);
+  animation: none;
+  box-shadow: none;
+}
+
+/* ── 侧栏搜索触发：玻璃内嵌位（recessed slot，非浮起面）────────────────── */
+html:not([data-app="1"]) .sb-search {
+  min-height: var(--lg-control-min);
+  border: 0;
+  border-radius: var(--lg-r-control);
+  background: color-mix(in srgb, var(--lg-ink) 5%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-3);
+  transition:
+    background var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .sb-search:hover {
+  background: color-mix(in srgb, var(--lg-ink) 8%, transparent);
+  color: var(--lg-ink-2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-ink) 16%, transparent);
+}
+html:not([data-app="1"]) .sb-search kbd {
+  border: 0;
+  border-radius: var(--lg-r-xs);
+  background: var(--lg-glass-sel);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-3);
+}
+
+/* ── 侧栏底部用户位：lgw-card 配方（半透明面 + shadow-1 三件套，零 blur）── */
+html:not([data-app="1"]) .user-chip {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  transition:
+    box-shadow var(--lg-dur-state) var(--lg-ease),
+    transform var(--lg-dur-state) var(--lg-ease);
+}
+/* 桌面指针设备才表演 hover 升起（触屏不表演 —— 与 .lgw-hoverable 同约） */
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .user-chip:hover {
+    box-shadow: var(--lg-glass-shadow-1), var(--lgw-hover-lift);
+    transform: var(--lgw-hover-raise);
+  }
+}
+html:not([data-app="1"]) .user-chip:active { transform: scale(0.985); }
+/* 抽屉头部的 user-chip 沿用「无底透明」旧约（web-modules 1063），
+   别被上面的卡面配方盖掉 */
+html:not([data-app="1"]) .mnav-head .user-chip {
+  background: none;
+  box-shadow: none;
+}
+html:not([data-app="1"]) .mnav-head .user-chip:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §2 · 侧栏四态几何（expanded / collapsed / hidden / peek）
+   ---------------------------------------------------------------------------
+   基态 width/border/shadow 已抬到 (0,2,1)，存量状态规则（web-modules
+   587/603/604，特异性 0,2,0～0,4,0）中与之冲突的属性必须在此以同等或更高
+   特异性重述，否则出现「hidden 态仍占 248px 宽」这类级联事故。
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── ② collapsed：76px 图标栏（几何走 Web 扩展令牌）───────────────────── */
+html:not([data-app="1"]) .sidebar.collapsed {
+  width: var(--lgw-sidebar-w-collapsed);
+  padding: 18px 11px;
+}
+/* 收起态角标绝对定位沿用存量（0,3,0 定位属性与本文件不冲突），
+   只补边距复位保险 + 珊瑚配色已由 §1 接管 */
+html:not([data-app="1"]) .sidebar.collapsed .nav-badge { margin: 0; }
+/* 收起态图标项保持居中（存量 0,3,0 的 padding 居中规则与 §1 的 min-height
+   不冲突，无需重述），hover 弹跳同样收敛 */
+html:not([data-app="1"]) .sidebar.collapsed .nav-item:hover { transform: none; }
+
+/* ── ③ hidden：完全离场（必须重述：基态 width/border/shadow 会压过存量）── */
+html:not([data-app="1"]) .sidebar.hidden {
+  width: 0;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-right: 0;
+  box-shadow: none;
+  overflow: hidden;
+  /* 宽度为 0 时模糊毫无意义，明确关掉省一层合成 */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── ④ peek：左缘悬停唤出的浮层抽屉 = 浮起玻璃 ─────────────────────────
+   与 hidden 的重述规则 (0,3,1) 竞争，故本块 (0,4,1) 把几何再抬回来；
+   形态换成「满血 blur + shadow-2 + 右缘大圆角」—— 它是悬浮层不是常驻列，
+   用浮起层的材质语言。 */
+html:not([data-app="1"]) .sidebar.hidden.peek {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: var(--lgw-sidebar-w);
+  min-width: var(--lgw-sidebar-w);
+  padding: 20px 14px;
+  gap: 4px;
+  overflow: visible;
+  z-index: 60;
+  background: var(--lg-glass-3);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  border-right: 1px solid var(--lg-hairline);
+  border-radius: 0 var(--lg-r-sheet) var(--lg-r-sheet) 0;
+  box-shadow: var(--lg-glass-shadow-2);
+}
+/* peek 进出场节奏切到 Lumen 令牌（keyframes 沿用存量 sbSlideIn/Out/FadeIn，
+   reduced-motion 下时长令牌归零 → 瞬时完成，存量 animation:none 兜底仍在） */
+html:not([data-app="1"]) .sidebar.hidden.peek-open {
+  animation-duration: var(--lg-dur-sheet);
+  animation-timing-function: var(--lg-ease);
+}
+html:not([data-app="1"]) .sidebar.hidden.peek-closing {
+  animation-duration: var(--lg-dur-state);
+}
+html:not([data-app="1"]) .sidebar.hidden.peek-open .sb-scroll,
+html:not([data-app="1"]) .sidebar.hidden.peek-open .wallet-mini {
+  animation-duration: var(--lg-dur-sheet);
+  animation-timing-function: var(--lg-ease);
+}
+
+/* peek 捕获层的左界随侧栏宽令牌走（旧值硬编码 244px，会在 248px 侧栏下
+   留出 4px 的「点不到缝」） */
+html:not([data-app="1"]) .sb-peek-backdrop { left: var(--lgw-sidebar-w); }
+
+/* ── 左缘唤出把手：act 实体钮 ──────────────────────────────────────────
+   保留存量 edgeBreathe 呼吸（不新增动画，§13 在 reduced-motion 下静掉）。
+   24px 宽是桌面 hover 唤出的刻意窄条（≤860px 隐藏，不承担触控），
+   不适用 44px 触控目标条款。 */
+html:not([data-app="1"]) .sb-edge-trigger {
+  background: linear-gradient(180deg, var(--lg-act), color-mix(in srgb, var(--lg-act) 82%, #000));
+  color: var(--lg-act-ink);
+  border-radius: 0 var(--lg-r-row) var(--lg-r-row) 0;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--lg-act) 40%, transparent);
+}
+html:not([data-app="1"]) .sb-edge-trigger:hover {
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--lg-act) 52%, transparent);
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §3 · 资产与身份徽记（wallet-mini / coin / VIP / SVIP / 认证）
+   ---------------------------------------------------------------------------
+   金币走 --lg-gold、钻石走 --lg-dia（内容语义，深浅由令牌自动翻转，
+   一并压过 web-modules 601/602 的 [data-theme="dark"] .coin.* 补丁，
+   特异性 0,3,1 > 0,3,0）。徽记前景统一用 --lg-canvas：浅色下近白、
+   深色下近黑（深色令牌把 gold/violet 提亮），对比度两态自洽。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .coin.gold { --c-fg: var(--lg-gold); }
+html:not([data-app="1"]) .coin.diamond { --c-fg: var(--lg-dia); }
+
+/* VIP：金语义实体小胶囊（撤掉旧金色渐变字面量） */
+html:not([data-app="1"]) .vip-badge {
+  background: var(--lg-gold);
+  color: var(--lg-canvas);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--lg-gold) 35%, transparent);
+}
+/* SVIP：violet 语义实体（存量 svipShine 扫光 overlay 继续在其上运行，
+   ::before 是白色高光带，与新底色兼容；lite 档由 perf-atelier 静掉） */
+html:not([data-app="1"]) .svip-badge {
+  background: var(--lg-violet);
+  color: var(--lg-canvas);
+  box-shadow: 0 2px 9px color-mix(in srgb, var(--lg-violet) 42%, transparent);
+}
+/* 官方认证蓝 V → azure 语义 */
+html:not([data-app="1"]) .v-badge { color: var(--lg-azure); }
+html:not([data-app="1"]) .v-badge svg {
+  filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--lg-azure) 25%, transparent));
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §4 · 移动顶栏 = 薄玻璃 chrome
+   ---------------------------------------------------------------------------
+   压过 web-modules 移动块（29：rgba 暖纸底 + saturate blur）与 530/922
+   浅深两条补丁。safe-area / sticky / z-index 沿用现状（standalone 媒体块、
+   display 切换一概不碰）。
+   说明：perf-atelier 在 ≤860px 对旧 chrome 一刀切关 blur 属旧设计的权衡；
+   Lumen 的 --lgw-chrome-blur 本就是给窄条准备的廉价薄玻璃（18px 单层），
+   弱机型仍由 data-perf="lite" / data-glass="off" 令牌把 blur 归零并回退
+   不透明分组底 —— 分层降级取代一刀切。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .mobile-topbar {
+  background: var(--lg-glass-3);
+  -webkit-backdrop-filter: var(--lgw-chrome-blur);
+  backdrop-filter: var(--lgw-chrome-blur);
+}
+/* 下缘发丝线重着色（旧版用 --border-2 渐变，偏暖偏重） */
+html:not([data-app="1"]) .mobile-topbar::after {
+  background: linear-gradient(90deg, transparent, var(--lg-hairline) 18%, var(--lg-hairline) 82%, transparent);
+}
+html:not([data-app="1"]) .mobile-topbar b { color: var(--lg-ink); }
+
+/* ── 顶栏图标动作：≥44px 触控热区 + 按压反馈 ───────────────────────────
+   （负 margin 布局补偿沿用存量；min-width/height 只把热区补足到 44） */
+html:not([data-app="1"]) .mt-menu,
+html:not([data-app="1"]) .mt-act {
+  min-width: var(--lg-control-min);
+  min-height: var(--lg-control-min);
+  border-radius: var(--lg-r-control);
+  color: var(--lg-ink);
+  transition: background var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .mt-menu:active,
+html:not([data-app="1"]) .mt-act:active {
+  background: color-mix(in srgb, var(--lg-ink) 8%, transparent);
+}
+/* 铃铛未读点：珊瑚（前景 canvas，两态自适） */
+html:not([data-app="1"]) .mt-bell .nb {
+  background: var(--lg-coral);
+  color: var(--lg-canvas);
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §5 · 移动全量导航抽屉 = 玻璃 chrome 面板
+   ---------------------------------------------------------------------------
+   遮罩 = --lg-scrim（黑系遮罩由令牌承载，深色变体自动加深）；
+   面板 = L3 玻璃 + 满血 --lg-blur（抽屉是大面积 chrome，薄 blur 会让
+   底下文字穿透）。右缘大圆角与 peek 侧栏同形状语言。
+   nav-item 的药丸状态机由 §1 同名类自动继承（.mnav-scroll .nav-item）。
+   safe-area（head 顶部 / scroll 底部）沿用存量。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .mnav-mask { background: var(--lg-scrim); }
+/* 遮罩淡入节奏切令牌（keyframes 沿用存量 fadeIn） */
+html:not([data-app="1"]) .mnav-mask {
+  animation-duration: var(--lg-dur-state);
+  animation-timing-function: var(--lg-ease);
+}
+html:not([data-app="1"]) .mnav {
+  background: var(--lg-glass-3);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  border-right: 1px solid var(--lg-hairline);
+  border-radius: 0 var(--lg-r-sheet) var(--lg-r-sheet) 0;
+  box-shadow: var(--lg-glass-shadow-2);
+  /* 滑入节奏切令牌（keyframes 沿用存量 mnavIn） */
+  animation-duration: var(--lg-dur-sheet);
+  animation-timing-function: var(--lg-ease);
+}
+/* 抽屉滚动区滚动条降噪（与侧栏一致） */
+html:not([data-app="1"]) .mnav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--lg-ink) 16%, transparent) transparent;
+}
+
+/* 关闭钮：≥44px 触控 + 幽灵 hover */
+html:not([data-app="1"]) .mnav-x {
+  min-width: var(--lg-control-min);
+  min-height: var(--lg-control-min);
+  display: grid;
+  place-items: center;
+  border-radius: var(--lg-r-control);
+  color: var(--lg-ink-2);
+  transition:
+    background var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .mnav-x:hover {
+  background: color-mix(in srgb, var(--lg-ink) 7%, transparent);
+  color: var(--lg-ink);
+}
+
+/* 安装 CTA：主动作色（存量规则带 !important —— web-modules 1155，
+   这里以更高特异性 + !important 接管；act-ink 深浅两态自洽） */
+html:not([data-app="1"]) .mnav-install {
+  background: var(--lg-act) !important;
+  color: var(--lg-act-ink) !important;
+}
+html:not([data-app="1"]) .mnav-install .ic { color: var(--lg-act-ink); }
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §6 · 底部导航 = 悬浮玻璃 dock
+   ---------------------------------------------------------------------------
+   圆角从胶囊 999px 收到 --lg-r-sheet（26px 大圆角矩形，与 App dock 同族）；
+   壳体 = glass-3 + 薄 blur + shadow-3（发丝环由 shadow 令牌内建，border
+   归零）。.bn-ink 滑块 = act-soft 底 + act 内环；激活 tab 前景 act。
+   fixed 定位 / 底部 safe-area（calc(10px + env(safe-area-inset-bottom))）/
+   标高 / display 切换全部沿用存量移动块，不在此重复。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .bottom-nav {
+  border: 0;
+  border-radius: var(--lg-r-sheet);
+  background: var(--lg-glass-3);
+  -webkit-backdrop-filter: var(--lgw-chrome-blur);
+  backdrop-filter: var(--lgw-chrome-blur);
+  box-shadow: var(--lg-glass-shadow-3);
+}
+html:not([data-app="1"]) .bottom-nav a {
+  color: var(--lg-ink-3);
+  border-radius: var(--lg-r-panel);
+  transition: color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .bottom-nav a:active { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .bottom-nav a.active {
+  color: var(--lg-act);
+  background: transparent;      /* 高亮交给 .bn-ink 滑块，避免双重底 */
+}
+
+/* 墨迹滑块（app-shell.css 714 的未围栏基线在此接管配色与节奏；
+   位移/宽度由 Layout.jsx 直写 style，这里只管观感与过渡） */
+html:not([data-app="1"]) .bn-ink {
+  background: var(--lg-act-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 16%, transparent);
+  border-radius: var(--lg-r-panel);
+  transition:
+    transform var(--lg-dur-push) var(--lg-ease),
+    width var(--lg-dur-push) var(--lg-ease),
+    opacity var(--lg-dur-state) var(--lg-ease);
+}
+
+/* dock 未读角标：珊瑚 + 静音（同 §1 的 badgePulse 处理） */
+html:not([data-app="1"]) .bottom-nav .nb {
+  background: var(--lg-coral);
+  color: var(--lg-canvas);
+  animation: none;
+  box-shadow: none;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §7 · 命令面板（.cmdk-*）= L2 浮起玻璃
+   ---------------------------------------------------------------------------
+   遮罩 --lg-scrim（web-super 136 的 [data-theme="dark"] 补丁 0,2,0 一并
+   压过）；面板 glass-2 + 满血 blur + shadow-2 + --lg-r-panel。
+   结果行：hover 墨色 / 激活 act-soft / 行高 ≥44。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .cmdk-backdrop {
+  background: var(--lg-scrim);
+  animation-duration: var(--lg-dur-state);
+}
+html:not([data-app="1"]) .cmdk {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background: var(--lg-glass-2);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  box-shadow: var(--lg-glass-shadow-2);
+  /* 弹出节奏切令牌（keyframes 沿用存量 cmdkPop） */
+  animation-duration: var(--lg-dur-state);
+  animation-timing-function: var(--lg-ease);
+}
+html:not([data-app="1"]) .cmdk-input {
+  border-bottom: 1px solid var(--lg-hairline);
+}
+html:not([data-app="1"]) .cmdk-input input { color: var(--lg-ink); }
+html:not([data-app="1"]) .cmdk-esc {
+  border: 0;
+  border-radius: var(--lg-r-xs);
+  background: color-mix(in srgb, var(--lg-ink) 6%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-3);
+}
+html:not([data-app="1"]) .cmdk-group { color: var(--lg-ink-3); }
+/* 列表滚动条降噪 */
+html:not([data-app="1"]) .cmdk-list {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--lg-ink) 16%, transparent) transparent;
+}
+html:not([data-app="1"]) .cmdk-row {
+  min-height: var(--lg-control-min);
+  border-radius: var(--lg-r-control);
+  color: var(--lg-ink);
+  transition: background var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .cmdk-row:hover {
+  background: color-mix(in srgb, var(--lg-ink) 5%, transparent);
+}
+html:not([data-app="1"]) .cmdk-row.active { background: var(--lg-act-soft); }
+html:not([data-app="1"]) .cmdk-ic {
+  border-radius: var(--lg-r-sm);
+  background: color-mix(in srgb, var(--lg-ink) 6%, transparent);
+  color: var(--lg-ink-2);
+  transition:
+    background var(--lg-dur-press) var(--lg-ease),
+    color var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .cmdk-row.active .cmdk-ic {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+html:not([data-app="1"]) .cmdk-enter { color: var(--lg-act); }
+html:not([data-app="1"]) .cmdk-empty { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .cmdk-foot {
+  border-top: 1px solid var(--lg-hairline);
+  background: color-mix(in srgb, var(--lg-ink) 3%, transparent);
+  color: var(--lg-ink-3);
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §8 · Modal（ui.jsx: .modal-backdrop + .card.modal）
+   ---------------------------------------------------------------------------
+   遮罩 = --lg-scrim（附带的轻 blur 沿用 base —— 模态遮罩在允许名单内）；
+   面板 = L2 玻璃。背景必须 !important：web-super 存量
+     · [data-glass="on"] .modal  { background … !important }   (0,2,0)
+     · [data-theme="dark"][data-glass="on"] .card { … !important } (0,3,0)
+   本条以 (0,3,1) + !important 的 .card.modal 稳压两者。lite / glass=off
+   下 --lg-glass-2 自动落回不透明分组底，可读性不降（perf-atelier 的
+   lite+glass-on 双保险 !important 不透明底仍然更高，两者殊途同归）。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .modal-backdrop {
+  background: var(--lg-scrim);
+  animation-duration: var(--lg-dur-state);
+}
+html:not([data-app="1"]) .card.modal {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background: var(--lg-glass-2) !important;
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  box-shadow: var(--lg-glass-shadow-2);
+  /* 弹入节奏切令牌（keyframes 沿用存量 popIn） */
+  animation-duration: var(--lg-dur-state);
+  animation-timing-function: var(--lg-ease);
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §9 · Toast = 玻璃胶囊（零 blur —— Toast 不在 backdrop 允许名单）
+   ---------------------------------------------------------------------------
+   旧版是深棕玻璃胶囊 + 错误态整体染红。新版：接近不透明的内容面胶囊 +
+   shadow-2 三件套（观感是玻璃、代价是零 —— lgw-card 的同一思路），
+   成败语义只落在图标（jade / coral / azure），不整体染色。
+   进出场动画（toastIn / toastOut）沿用存量 keyframes 与时序（自动消失的
+   延时 2.42s 与 JS 移除节拍耦合，不动）。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .toast {
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-2);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+/* 错误态：不再整体染红，仅图标珊瑚（覆盖 base 192 的深红整体底） */
+html:not([data-app="1"]) .toast-err {
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  color: var(--lg-ink);
+}
+html:not([data-app="1"]) .toast-ok .toast-ic { color: var(--lg-jade); }
+html:not([data-app="1"]) .toast-err .toast-ic { color: var(--lg-coral); }
+html:not([data-app="1"]) .toast-info .toast-ic { color: var(--lg-azure); }
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §10 · Skeleton：--lg-skeleton 波形
+   ---------------------------------------------------------------------------
+   本文件唯一的新 @keyframes（lgw 前缀，骨架 shimmer 属无限动画豁免项）。
+   旧实现是「实底 + ::after 白色扫光」双层；换成单层令牌渐变位移，深浅由
+   令牌自动翻转（一并压过 web-modules 909 的 [data-theme="dark"] .skel）。
+   覆盖对象含 GridSkeleton（.skel-card/.sk-*）与 chat-skel 变体（同用 .skel）。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .skel {
+  background-color: color-mix(in srgb, var(--lg-ink) 5%, transparent);
+  background-image: var(--lg-skeleton);
+  background-size: 200% 100%;
+  border-radius: var(--lg-r-xs);
+  animation: lgwSkelShimmer 1.4s ease-in-out infinite;
+}
+/* 旧扫光伪元素退役 */
+html:not([data-app="1"]) .skel::after { content: none; }
+
+@keyframes lgwSkelShimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* 骨架卡壳体：lgw-card 配方（半透明面 + shadow-1，零 blur） */
+html:not([data-app="1"]) .skel-card {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §11 · 滚动 chrome：进度条 act 渐变 + 回到顶部玻璃圆钮
+   ---------------------------------------------------------------------------
+   进度条：act → act/violet 掺混的渐变（随 data-accent 漂移，紫尾是 Lumen
+   的环境色呼应）。to-top 是悬浮钮不是 chrome 条 —— 零 blur，半透明面 +
+   shadow-1；hover 翻转为 act 实体。尺寸 = --lg-control-min（44px，与存量
+   一致）；显隐机制（.show + JS 阈值）沿用存量。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .scroll-progress {
+  background: linear-gradient(90deg, var(--lg-act), color-mix(in srgb, var(--lg-act) 45%, var(--lg-violet)));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--lg-act) 45%, transparent);
+}
+
+html:not([data-app="1"]) .to-top {
+  width: var(--lg-control-min);
+  height: var(--lg-control-min);
+  border: 0;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink);
+  transition:
+    opacity var(--lg-dur-state) var(--lg-ease),
+    transform var(--lg-dur-push) var(--lg-ease),
+    background var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .to-top:hover {
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--lg-act) 36%, transparent);
+  transform: var(--lgw-hover-raise);
+}
+html:not([data-app="1"]) .to-top:active { transform: scale(0.94); }
+/* 隐藏态的位移沿用存量（0,1,0 的 .to-top 初始 transform 已被本条 (0,2,1)
+   的 transition 接管节奏；.show 复位规则 (0,2,0) 的 transform:none 会输给
+   本条吗？—— 不会：本条不声明 transform，.show 正常生效 */
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §12 · 路由过渡：节奏切到 Lumen 令牌
+   ---------------------------------------------------------------------------
+   只改时长/缓动、不改 keyframes 名 —— routeIn 与 @supports
+   (view-transition-name) 分支切换的 routeFadeSoft 同样吃到这两条 longhand；
+   议会沉浸页的 plFadeOnly !important 特例不受影响（animation-name 层面）。
+   reduced-motion 下 --lg-dur-push 由令牌归零，动画自然瞬时完成。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .route-fade {
+  animation-duration: var(--lg-dur-push);
+  animation-timing-function: var(--lg-ease);
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §13 · reduced-motion 补遗
+   ---------------------------------------------------------------------------
+   时长类令牌已在 tokens 层归零（transition/animation-duration 全部瞬时），
+   这里只需处理「本文件特异性高于存量 reduced-motion 兜底」的三处：
+     · 骨架 shimmer（本文件唯一无限动画）
+     · 左缘把手的存量 edgeBreathe 呼吸（本文件抬高了它的配色规则，顺手在
+       降噪偏好下彻底静止）
+     · nav-item 图标的 hover 微缩放（存量降噪规则 0,3,0 输给本文件 0,3,2）
+   ════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-app="1"]) .skel { animation: none; }
+  html:not([data-app="1"]) .sb-edge-trigger { animation: none; }
+  html:not([data-app="1"]) .nav-item:hover .ic,
+  html:not([data-app="1"]) .nav-item.active .ic { transform: none; }
+  html:not([data-app="1"]) .user-chip:hover { transform: none; }
+}

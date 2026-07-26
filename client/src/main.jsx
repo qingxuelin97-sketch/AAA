@@ -22,6 +22,7 @@ import './styles.css';
 import './styles/web-lumen-tokens.css';
 import './styles/web-lumen-bridge.css';
 import './styles/web-lumen-materials.css';
+import './styles/web-lumen-shell.css';
 // APP 端沉浸对话皮肤（白+青玻璃深度进化）—— 在 styles.css 之后引入，import 顺序即级联
 // 顺序，故此文件为 app 对话皮肤的唯一权威来源（覆盖 styles.css 里历史层叠的 chat 规则）。
 import './chat/chat-app.css';

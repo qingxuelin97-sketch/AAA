@@ -12,7 +12,7 @@ import QuickCreate from './QuickCreate.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark, UserRound, Wand2, Medal, Tags as TagsIcon, BookOpen, Feather, Orbit
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark, UserRound, Wand2, Medal, Tags as TagsIcon, BookOpen, Feather, Orbit, Telescope, MessagesSquare
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -20,6 +20,7 @@ const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); }
 const GROUPS = [
   { title: '探索', items: [
     { to: '/', ic: Compass, label: '发现广场', end: true },
+    { to: '/discover', ic: Telescope, label: '沉浸发现' },
     { to: '/events', ic: PartyPopper, label: '活动' },
     { to: '/gacha', ic: Dices, label: '扭蛋机' },
     { to: '/scripts', ic: ScrollText, label: '剧本' },
@@ -31,6 +32,7 @@ const GROUPS = [
     { to: '/tags', ic: TagsIcon, label: '标签广场' }
   ] },
   { title: '互动', items: [
+    { to: '/messages', ic: MessagesSquare, label: '消息中心', badge: 'dm' },
     { to: '/chats', ic: MessageCircle, label: '对话' },
     { to: '/atelier', ic: Feather, label: '小说创作' },
     { to: '/draw', ic: Wand2, label: 'AI 绘图' },
@@ -46,6 +48,7 @@ const GROUPS = [
     { to: '/achievements', ic: Medal, label: '成就' },
     { to: '/favorites', ic: Heart, label: '收藏' },
     { to: '/wallet', ic: Wallet, label: '钱包 / 充值' },
+    { to: '/vip', ic: Crown, label: '会员中心' },
     { to: '/notifications', ic: Bell, label: '通知', badge: 'noti' },
     { to: '/settings', ic: Settings, label: '设置' }
   ] }
