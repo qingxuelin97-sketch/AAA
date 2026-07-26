@@ -50,3 +50,6 @@ jobs:
 
       - name: App invariants
         run: npm run test:app
+
+      - name: Web invariants
+        run: npm run test:web
