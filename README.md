@@ -90,6 +90,12 @@ npm install        # 安装依赖
 npm run build      # 构建前端
 npm run seed       # 写入演示数据（账号 demo/123456、剧本、剧场、群聊、动态、美术资源）
 npm start          # 启动，访问 http://localhost:4000
+
+# 质量门禁（App 壳）
+npm run test:app        # 源码契约断言（271 条）
+npm run test:app:e2e    # 浏览器端到端（S7 全场景）
+npm run smoke           # 服务端接口体检
+npm run test:server:s7  # 北京时区界 / 排序语义七组验值
 ```
 
 开发模式：终端 1 `npm run dev:server`，终端 2 `npm run dev:client`（访问 5173）。

@@ -192,3 +192,30 @@ Lumen P 调色板，零文字零按钮，单张 <300KB，tmp+rename 原子写。
 - 台词卡双侧署名（用户台词 = 昵称与头像）；消息面板遮罩获得与
   AppPressMenu 同源的 350ms 挂载守卫（居中气泡「开即被关」修复）。
 - 静态参考页 `lumen-s7-ui-kit.html` 收录以上全部状态样板。
+
+## 12. 本机数据键清单（App 壳 localStorage）
+
+| 键 | 语义 | 界限 |
+|---|---|---|
+| `huanyu_app` / `huanyu_theme` / `huanyu_perf` / `huanyu_accent` | 壳模式与外观偏好 | 既有 |
+| `huanyu_token` | 会话令牌 | 既有 |
+| `huanyu_db_v7` | 静态 mock 全库（350ms 防抖 + pagehide flush） | 既有 |
+| `huanyu_welcome_seen` | 每日欢迎已见（日期串） | 每日 |
+| `huanyu_onboard_done` | 首启引导完成（日期串；e2e 默认预置） | 一次性 |
+| `huanyu_whatsnew_seen` | 新功能 Sheet 已读（版本串 'S7'） | 每版本 |
+| `huanyu_haptics` | 触感开关（'0' 关；缺省开） | 布尔 |
+| `huanyu_draft_<convId>` | 会话草稿（300ms 防抖；空即删） | 每会话 |
+| `huanyu_dmdraft_<peerId>` | 私信草稿（同上） | 每好友 |
+| `huanyu_read_<novelId>` | 阅读进度 `{ratio, at}`（<1%/>99.9% 复位） | 每作品 |
+| `huanyu_read_size` | 阅读字号（14–28，域外回默认） | 单值 |
+| `huanyu_ann_seen` | 公告已读 id 账本（钳 100） | 有界数组 |
+| `huanyu_recent_search` | 最近搜索（钳 8） | 有界数组 |
+
+原则：**全部是本机偏好或缓存**——删除任意键都只回到默认行为，不丢
+服务器数据；新键必须入表并声明界限（防无限膨胀）。
+
+## 13. 勘误（G10 终态）
+
+- §10 验证矩阵：`test:server:s7` 现为**七组**验值（+名次公式/单调、
+  +周报未来天恒 0、+API 层置顶排序端到端）；e2e 场景 **15 个**
+  （+g10Surface 两轮巡检）。

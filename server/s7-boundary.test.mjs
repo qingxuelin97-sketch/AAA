@@ -149,6 +149,19 @@ try {
   assert.ok(futureDays.every((d) => d.n === 0), `未来天必须为 0（got ${JSON.stringify(futureDays)})`);
   console.log('  ✅ 周报：未来天恒 0');
 
+  /* ── 7. 列表排序端到端（API 层）：置顶旧会话在新会话出现后仍居首 ── */
+  const pubChars = (await j('/characters/public')).characters;
+  const convsNow = (await j('/chat/conversations')).conversations;
+  const usedChars = new Set(convsNow.map((c) => c.character_id));
+  const freshChar = pubChars.find((c) => !usedChars.has(c.id));
+  assert.ok(freshChar, '需要一个未开聊的公开角色');
+  const made = await j('/chat/conversations', { method: 'POST', body: JSON.stringify({ character_id: freshChar.id }) });
+  assert.ok(made.conversation?.id, '新会话创建失败');
+  const ordered = (await j('/chat/conversations')).conversations;
+  assert.equal(ordered[0].id, convId, '置顶会话必须压住 updated_at 更新的新会话');
+  assert.equal(ordered[0].pinned, 1, '首位必须是置顶态');
+  console.log('  ✅ 排序：置顶权重高于新鲜度（API 层端到端）');
+
   db.close();
   console.log('\n✅ S7 边界回归：全部通过');
 } catch (e) {
