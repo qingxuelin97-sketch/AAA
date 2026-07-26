@@ -1136,6 +1136,52 @@ async function detailErrorStateAssertions(browser, base) {
   await page.close();
 }
 
+// S7-G6 · 分享卡：角色页菜单入口 → canvas 合成 1080×1440 预览 → 出口可用
+// → 关闭回焦。canvas 文字反锯齿跨环境不稳，不建像素基线，只验尺寸与无错。
+async function shareCardAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/character/1', '.cvx-top');
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.cvx-top .qa-icon-button')]
+      .find((b) => b.getAttribute('aria-label') === '更多' || b.getAttribute('aria-controls') === 'cvx-action-menu')
+      ?.click();
+  });
+  await page.waitForSelector('#cvx-action-menu', { visible: true, timeout: 5000 });
+  await page.evaluate(() => {
+    [...document.querySelectorAll('#cvx-action-menu .qa-button')]
+      .find((b) => b.textContent.includes('生成分享卡'))?.click();
+  });
+  await page.waitForSelector('.qa-share-sheet', { visible: true, timeout: 8000 });
+  await page.waitForSelector('.qa-share-preview', { visible: true, timeout: 15000 });
+  const card = await page.evaluate(() => {
+    const img = document.querySelector('.qa-share-preview');
+    const acts = [...document.querySelectorAll('.qa-share-acts .qa-button')];
+    return {
+      w: img?.naturalWidth,
+      h: img?.naturalHeight,
+      blobSrc: (img?.src || '').startsWith('blob:'),
+      shareEnabled: acts.some((b) => b.textContent.includes('系统分享') && !b.disabled),
+      saveEnabled: acts.some((b) => b.textContent.includes('保存图片') && !b.disabled),
+    };
+  });
+  assert(card.w === 1080 && card.h === 1440 && card.blobSrc && card.shareEnabled && card.saveEnabled,
+    '分享卡合成或出口异常', JSON.stringify(card));
+  await saveScreenshot(page, 'share-card-390x844-light.png');
+
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.qa-share-sheet'), { timeout: 5000 });
+
+  assert(page.__qaErrors.length === 0, '分享卡流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
 // S7-G5 · 成就 2.0：徽章墙五环数值一致 → 稀有度三档并存 → 荣誉条目无领取钮
 // → 领取一次性庆祝后金币上涨 → reduced-motion 下庆祝归零。
 async function achievementsAssertions(browser, base) {
@@ -1491,6 +1537,7 @@ async function run() {
     await onboardingAssertions(browser, base);
     await todayRitualAssertions(browser, base);
     await achievementsAssertions(browser, base);
+    await shareCardAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);

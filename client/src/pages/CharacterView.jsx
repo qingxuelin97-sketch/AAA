@@ -10,11 +10,12 @@ import ReportButton from '../components/ReportButton.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { CoverArt, EmptyArt, QuietAquaCharacterArt, isLegacyMonogramCover, resolveCharacterMedia } from '../art.jsx';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
 import {
   MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye,
   ChevronRight, ChevronDown, Drama, BadgeCheck, Download, X, MoreHorizontal,
   Share2, Plus, Check, Quote, MessagesSquare, Puzzle, AudioLines
-} from 'lucide-react';
+, Image as ImageIcon } from 'lucide-react';
 import { shareUrl } from '../util.js';
 
 function recordRecent(c) {
@@ -118,6 +119,7 @@ export default function CharacterView() {
    ============================================================ */
 function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related, startChat, toggleFav, exportCard, share }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [shareCardOpen, setShareCardOpen] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [greetOpen, setGreetOpen] = useState(false);
@@ -188,12 +190,23 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
               <div ref={menuRef} className="cvx-menu" id="cvx-action-menu" role="menu" tabIndex={-1}>
                 {isOwner && <AppButton variant="tertiary" onClick={() => nav('/character/' + c.id + '/edit')}><Pencil size={15} /> 编辑角色</AppButton>}
                 <AppButton variant="tertiary" onClick={() => { exportCard(); setMenuOpen(false); }}><Download size={15} /> 导出角色卡</AppButton>
+                <AppButton variant="tertiary" onClick={() => { setShareCardOpen(true); setMenuOpen(false); }}><ImageIcon size={15} /> 生成分享卡</AppButton>
                 {!isOwner && <div className="cvx-menu-report"><ReportButton type="character" id={c.id} /></div>}
                 <span className="cvx-menu-pid">{pid('character', c.id)}</span>
               </div>
             </>
           )}
         </div>
+
+        {shareCardOpen && (
+          <ShareCardSheet
+            kind="character"
+            payload={{ name: c.name, tagline: c.tagline || c.intro, category: c.category,
+              avatar: c.avatar ? assetUrl(c.avatar) : '', cover: resolveCharacterMedia(c).src ? assetUrl(resolveCharacterMedia(c).src) : '',
+              path: '/character/' + c.id }}
+            onClose={() => setShareCardOpen(false)}
+          />
+        )}
 
         {/* —— 作者行 + 关注 —— */}
         <div className="cvx-body">

@@ -221,6 +221,16 @@ assert.match(achievementsSource, /achievement\.honor[\s\S]*已铭刻/, 'unlocked
 assert.match(achievementsSource, /qa-ach-wall[\s\S]*aria-valuenow/, 'the badge wall must expose per-category completion as progressbars');
 assert.match(achievementsSource, /setCelebrating[\s\S]*setTimeout/, 'the claim celebration must be one-shot and self-clearing');
 assert.match(e2eSourceForS7, /achievementsAssertions/, 'the e2e suite must keep exercising achievements 2.0');
+/* ---- S7-G6 分享卡契约 ---- */
+const shareCardSource = await readFile(new URL('./src/sharecard.js', import.meta.url), 'utf8');
+assert.doesNotMatch(runtimeSource, /html2canvas|dom-to-image/, 'share cards must stay hand-composited without raster dependencies');
+assert.match(shareCardSource, /document\.fonts/, 'the compositor must wait for fonts before painting text');
+assert.match(shareCardSource, /CARD_W = 1080[\s\S]*CARD_H = 1440/, 'export resolution must stay fixed and DPR-decoupled');
+const shareSheetSource = await readFile(new URL('./src/components/ShareCardSheet.jsx', import.meta.url), 'utf8');
+assert.match(shareSheetSource, /canShare[\s\S]*download/, 'sharing must probe navigator.canShare and keep a download fallback');
+assert.match(shareSheetSource, /import\('\.\.\/sharecard\.js'\)/, 'the compositor must load lazily outside the first-screen bundle');
+assert.match(characterViewSource, /ShareCardSheet/, 'the character view must expose the share-card entry');
+assert.match(e2eSourceForS7, /shareCardAssertions/, 'the e2e suite must keep exercising the share-card flow');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(

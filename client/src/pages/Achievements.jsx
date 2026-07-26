@@ -9,11 +9,12 @@ import { AppEmptyArt } from '../art.jsx';
 import AppErrorState from '../components/AppErrorState.jsx';
 import { burst } from '../fx.js';
 import { tick } from '../appgestures.js';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
 import {
   Trophy, Award, Check, ChevronRight, Lock,
   MessageCircle, MessagesSquare, Send, Heart, Sparkles, UserPlus, Drama, Globe, ScrollText,
   BadgeCheck, Crown, Star, Bookmark, PenLine, Users, UserCheck, Scale, Gavel, CheckSquare,
-  Landmark, CalendarCheck, Dices, ArrowLeft,
+  Landmark, CalendarCheck, Dices, ArrowLeft, Share2,
 } from 'lucide-react';
 
 const ICONS = {
@@ -38,6 +39,7 @@ export default function Achievements() {
   const [busy, setBusy] = useState('');
   const [appCat, setAppCat] = useState('全部');
   const [celebrating, setCelebrating] = useState('');
+  const [shareFor, setShareFor] = useState(null);
   // Ceremonial opening animation — plays once per session.
   const [intro, setIntro] = useState(() => { try { return !sessionStorage.getItem(INTRO_KEY); } catch { return true; } });
   useEffect(() => {
@@ -157,11 +159,19 @@ export default function Achievements() {
             <section className="qa-achievements-list" aria-label={appCat === '全部' ? '全部成就' : `${appCat}成就`}>
               {visible.map(achievement => (
                 <AppAchievementCard key={achievement.id} achievement={achievement} busy={busy === achievement.id}
-                  celebrating={celebrating === achievement.id} onClaim={claim} onGo={(link) => nav(link)} />
+                  celebrating={celebrating === achievement.id} onClaim={claim} onGo={(link) => nav(link)}
+                  onShare={(a) => setShareFor(a)} />
               ))}
             </section>
           )}
         </div>
+        {shareFor && (
+          <ShareCardSheet
+            kind="achievement"
+            payload={{ name: shareFor.name, desc: shareFor.desc, medal: medalOf(shareFor.reward), path: '/achievements' }}
+            onClose={() => setShareFor(null)}
+          />
+        )}
       </main>
     );
   }
@@ -259,7 +269,7 @@ function AppAchievementsLoading() {
   );
 }
 
-function AppAchievementCard({ achievement, busy, celebrating, onClaim, onGo }) {
+function AppAchievementCard({ achievement, busy, celebrating, onClaim, onGo, onShare }) {
   const Icon = ICONS[achievement.icon] || Award;
   const progress = Math.min(100, Math.round((achievement.value / achievement.goal) * 100));
 
@@ -287,6 +297,10 @@ function AppAchievementCard({ achievement, busy, celebrating, onClaim, onGo }) {
           {achievement.honor
             ? <span className="qa-achievements-reward is-honor"><Crown size={14} /> 荣誉徽章 · 不计奖金</span>
             : <span className="qa-achievements-reward"><CoinIcon size={14} /> {achievement.reward} 金币</span>}
+          {achievement.unlocked && (
+            <AppButton className="qa-ach-share" variant="tertiary" size="sm" aria-label={`分享成就 ${achievement.name}`}
+              onClick={() => onShare?.(achievement)}><Share2 size={14} /> 分享</AppButton>
+          )}
           {achievement.honor ? (
             achievement.unlocked
               ? <span className="qa-achievements-claimed"><Check size={14} /> 已铭刻</span>

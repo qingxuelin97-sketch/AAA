@@ -12,6 +12,7 @@ import { cnToday, fmtNum } from '../util.js';
 import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import CheckinCalendarSheet from '../components/CheckinCalendarSheet.jsx';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppTabActive } from '../appTabActivity.js';
 import { burst } from '../fx.js';
@@ -69,6 +70,8 @@ export default function AppHome() {
   const [streak, setStreak] = useState(user?.checkin_streak || 0);
   const [busy, setBusy] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
+  const [milestone, setMilestone] = useState(0);
+  const [streakShare, setStreakShare] = useState(false);
   const [claiming, setClaiming] = useState('');
   const streakRef = useRef(null);
   const checkinBtnRef = useRef(null);
@@ -127,6 +130,9 @@ export default function AppHome() {
       refreshUser?.(); // 顶部金币余额立即更新，不留旧值
       // 「完成每日签到」任务随签到即时转可领，行内领取钮同步出现
       api('/engage/tasks').then(x => setTasks((x.tasks || []).filter(k => !k.claimed).slice(0, 3))).catch(() => {});
+      // 连签里程碑（7 的倍数或 30/100）：亮一次性纪念卡横幅
+      const s2 = d.streak || 0;
+      if (s2 >= 7 && (s2 % 7 === 0 || s2 === 30 || s2 === 100)) setMilestone(s2);
     } catch (e) {
       // Only the server's explicit idempotent verdict may settle the CTA as
       // complete. Offline, timeout and 5xx failures keep it retryable.
@@ -239,6 +245,13 @@ export default function AppHome() {
           </span>
           <span className="qa-streak-cal"><CalendarCheck size={14} aria-hidden="true" /> 日历</span>
         </button>
+        {milestone > 0 && (
+          <div className="qa-milestone" role="status">
+            <span className="qa-milestone-copy">连签 {milestone} 天达成！</span>
+            <AppButton variant="secondary" size="sm" onClick={() => setStreakShare(true)}>生成纪念卡</AppButton>
+            <AppIconButton label="收起" onClick={() => setMilestone(0)}><Check size={14} /></AppIconButton>
+          </div>
+        )}
       </section>
 
       {/* Six stable destinations; creation remains the Dock accessory. */}
@@ -377,6 +390,10 @@ export default function AppHome() {
         </section>
       )}
       {calOpen && <CheckinCalendarSheet onClose={() => setCalOpen(false)} returnFocusRef={streakRef} />}
+      {streakShare && (
+        <ShareCardSheet kind="streak" payload={{ streak: milestone || streak, date: cnToday(), path: '/today' }}
+          onClose={() => setStreakShare(false)} />
+      )}
     </div>
   );
 }
