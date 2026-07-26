@@ -22,17 +22,21 @@ import './chat/chat-app.css';
 // PR4 native material and balanced-performance overrides. Quiet Aqua loads
 // immediately after it and preserves the same balanced/lite performance gate.
 import './styles/app-runtime.css';
-// Quiet Aqua is the final App-only authority for tokens and control chrome.
-// Both files are scoped to html[data-app="1"], preserving Web visuals.
+// Lumen Glass v1.0 token authority (verbatim from docs/design, values frozen),
+// followed by the --qa-* compatibility shim that maps the legacy namespace.
+import './styles/lumen-glass-tokens.css';
 import './styles/app-quiet-aqua-tokens.css';
 import './styles/app-controls.css';
 import './styles/app-pages-quiet-aqua.css';
 // V3 experience layer: page composition and motion only. It is App-scoped and
 // intentionally loads last so legacy page rules cannot flatten the new shell.
 import './styles/app-experience-v3.css';
-// Liuli v5 HIG re-skin: the FINAL App authority — typography, grouped lists,
-// segmented controls, sheets, causal motion and dark parity. App-fenced only.
+// Liuli v5 HIG re-skin: typography, grouped lists, segmented controls, sheets,
+// causal motion and dark parity. App-fenced only.
 import './styles/app-hig-v5.css';
+// Lumen Glass material composition layer: glass classes, ambient washes and
+// legacy accent-id aliasing. Loads last as the final App authority.
+import './styles/app-lumen-materials.css';
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {

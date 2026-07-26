@@ -1,9 +1,9 @@
 /* Native App final material/performance layer. Never affects the web UI. */
 html[data-app="1"] {
-  --app-ink: #1d5fdb;
-  --app-cyan: #3b74e8;
-  --app-coral: #d15748;
-  --app-gold: #b08a2e;
+  --app-ink: var(--lg-act);
+  --app-cyan: color-mix(in oklab, var(--lg-act) 82%, #ffffff);
+  --app-coral: var(--lg-coral);
+  --app-gold: var(--lg-gold);
   --app-depth-border: color-mix(in srgb, var(--text) 10%, var(--border));
   --app-depth-shadow: 0 1px 0 rgba(255,255,255,0.72) inset,
     0 5px 14px rgba(15,18,26,0.06), 0 18px 42px rgba(15,18,26,0.06);

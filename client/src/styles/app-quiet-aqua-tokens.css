@@ -1,266 +1,139 @@
 /*
- * Liuli v5 / 琉璃 — App-shell design tokens.
- * Components live in app-controls.css. This file only defines App-scoped
- * colour, typography, surface, geometry, depth, glass-material and timing
- * values. Token NAMES keep the legacy `--qa-` namespace (Quiet Aqua era) so
- * 1700+ existing selectors stay valid; the VALUES are the Liuli palette:
- * neutral porcelain/ink greys with an ultramarine action colour.
+ * 兼容 shim — `--qa-*` → `--lg-*`（曜光玻璃 Lumen Glass v1.0 迁移期）。
+ * 颜色/材质/几何的唯一权威是 lumen-glass-tokens.css（禁改值）；本文件只把
+ * 遗留 `--qa-*` 命名空间逐名映射过去，让 1700+ 既有选择器即刻换装。
+ * S6（别名退役）会把全部 var(--qa-*) 引用迁移为 var(--lg-*) 后删除本文件。
+ * 注：--qa-control-min/--qa-control-submit 保持字面值（app-test.mjs 契约）。
  */
 html[data-app="1"] {
   color-scheme: light;
 
-  --qa-canvas: #f6f7f9;
-  --qa-grouped: #edeff3;
+  --qa-canvas: var(--lg-canvas);
+  --qa-grouped: var(--lg-grouped);
+  /* 迁移期内容面暂保持不透明（L1 玻璃化在 S2–S6 逐屏落地，避免一次性大爆炸） */
   --qa-surface: #ffffff;
   --qa-surface-raised: #ffffff;
-  --qa-ink: #16181d;
-  --qa-ink-secondary: #5b6470;
-  --qa-ink-tertiary: #7a828e;
-  --qa-hairline: #e2e5ea;
+  --qa-ink: var(--lg-ink);
+  --qa-ink-secondary: var(--lg-ink-2);
+  --qa-ink-tertiary: var(--lg-ink-3);
+  --qa-hairline: var(--lg-hairline);
 
-  --qa-brand-fill: #1d5fdb;
-  --qa-brand-pressed: #174dbb;
-  --qa-brand-soft: #e7eefc;
-  --qa-brand-ink: #ffffff;
+  --qa-brand-fill: var(--lg-act);
+  --qa-brand-pressed: color-mix(in oklab, var(--lg-act) 86%, #000000);
+  --qa-brand-soft: var(--lg-act-soft);
+  --qa-brand-ink: var(--lg-act-ink);
 
-  /* Clay remains the explicit user option and the Web-compatible baseline. */
-  --qa-action-fill: #a94f32;
-  --qa-action-pressed: #883d28;
-  --qa-action-soft: #f4e3dd;
-  --qa-action-ink: #ffffff;
-  --qa-focus: #a94f32;
+  --qa-action-fill: var(--lg-act);
+  --qa-action-pressed: color-mix(in oklab, var(--lg-act) 86%, #000000);
+  --qa-action-soft: var(--lg-act-soft);
+  --qa-action-ink: var(--lg-act-ink);
+  --qa-focus: var(--lg-focus);
 
-  --qa-danger: #b42318;
-  --qa-danger-soft: #fbe5e2;
+  --qa-danger: var(--lg-coral);
+  --qa-danger-soft: color-mix(in srgb, var(--lg-coral) 13%, transparent);
   --qa-danger-ink: #ffffff;
-  --qa-success: #1e7a50;
-  --qa-success-soft: #e0f0e8;
+  --qa-success: var(--lg-jade);
+  --qa-success-soft: color-mix(in srgb, var(--lg-jade) 13%, transparent);
   --qa-success-ink: #ffffff;
-  --qa-reward: #8a6200;
-  --qa-reward-soft: #f6edd6;
+  --qa-reward: var(--lg-gold);
+  --qa-reward-soft: color-mix(in srgb, var(--lg-gold) 14%, transparent);
   --qa-reward-ink: #ffffff;
-  --qa-unread: #c6483c;
+  --qa-unread: var(--lg-coral);
   --qa-unread-ink: #ffffff;
 
-  /* Stable content semantics. These do not follow the user accent choice. */
-  --qa-semantic-gold: #96690e;
-  --qa-semantic-gold-soft: #f6edd6;
-  --qa-semantic-coral: #c6483c;
-  --qa-semantic-coral-soft: #f9e3e0;
-  --qa-semantic-indigo: #4e5d9d;
-  --qa-semantic-indigo-soft: #e8eaf7;
-  --qa-semantic-blue: #33758f;
-  --qa-semantic-blue-soft: #e1eef4;
-  --qa-semantic-graphite: #5c6168;
-  --qa-semantic-graphite-soft: #e8eaee;
-  --qa-semantic-rose: #a8546e;
-  --qa-semantic-rose-soft: #f3e3e9;
-  --qa-finance-surface: #23272e;
-  --qa-finance-surface-mid: #2f343c;
-  --qa-finance-ink: #f5f7fa;
-  --qa-finance-muted: rgb(240 244 250 / 72%);
+  /* 内容语义（不随强调色漂移） */
+  --qa-semantic-gold: var(--lg-gold);
+  --qa-semantic-gold-soft: color-mix(in srgb, var(--lg-gold) 14%, transparent);
+  --qa-semantic-coral: var(--lg-coral);
+  --qa-semantic-coral-soft: color-mix(in srgb, var(--lg-coral) 13%, transparent);
+  --qa-semantic-indigo: var(--lg-violet);
+  --qa-semantic-indigo-soft: color-mix(in srgb, var(--lg-violet) 13%, transparent);
+  --qa-semantic-blue: var(--lg-azure);
+  --qa-semantic-blue-soft: color-mix(in srgb, var(--lg-azure) 13%, transparent);
+  --qa-semantic-graphite: var(--lg-ink-2);
+  --qa-semantic-graphite-soft: color-mix(in srgb, var(--lg-ink-2) 12%, transparent);
+  --qa-semantic-rose: var(--lg-rose);
+  --qa-semantic-rose-soft: color-mix(in srgb, var(--lg-rose) 13%, transparent);
+  --qa-finance-surface: var(--lg-finance);
+  --qa-finance-surface-mid: color-mix(in srgb, var(--lg-finance) 84%, #ffffff);
+  --qa-finance-ink: var(--lg-finance-ink);
+  --qa-finance-muted: color-mix(in srgb, var(--lg-finance-ink) 72%, transparent);
 
-  --qa-font-ui: var(--sans, Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
-  --qa-type-large-title: 34px;
-  --qa-type-display: 28px;
-  --qa-type-title: 22px;
-  --qa-type-section: 17px;
-  --qa-type-body: 15px;
-  --qa-type-meta: 13px;
+  --qa-font-ui: var(--lg-font-ui);
+  --qa-type-large-title: var(--lg-type-hero);
+  --qa-type-display: var(--lg-type-display);
+  --qa-type-title: var(--lg-type-title);
+  --qa-type-section: var(--lg-type-section);
+  --qa-type-body: var(--lg-type-body);
+  --qa-type-meta: var(--lg-type-meta);
 
-  --qa-chrome: color-mix(in srgb, var(--qa-surface) 92%, transparent);
-  --qa-overlay: color-mix(in srgb, var(--qa-surface) 96%, transparent);
-  --qa-scrim: rgb(10 12 16 / 38%);
-  --qa-shadow-1: 0 1px 2px rgb(15 18 26 / 6%), 0 6px 18px rgb(15 18 26 / 6%);
-  --qa-shadow-2: inset 0 1px rgb(255 255 255 / 70%), 0 10px 24px rgb(15 18 26 / 10%);
-  --qa-shadow-3: 0 18px 48px rgb(12 16 24 / 16%);
+  --qa-chrome: var(--lg-glass-3);
+  --qa-overlay: var(--lg-glass-2);
+  --qa-scrim: var(--lg-scrim);
+  --qa-shadow-1: var(--lg-glass-shadow-1);
+  --qa-shadow-2: var(--lg-glass-shadow-2);
+  --qa-shadow-3: var(--lg-glass-shadow-2);
 
-  /* Liuli glass material. Chrome = navigation/temporal layers (Dock, top
-     bars, input island, FAB); sheet = raised overlays; thin = small floating
-     chips. Content surfaces stay opaque — glass is a chrome privilege. */
-  --qa-glass-chrome-bg: rgb(252 253 255 / 72%);
-  --qa-glass-chrome-blur: blur(20px) saturate(180%);
-  --qa-glass-sheet-bg: rgb(255 255 255 / 66%);
-  --qa-glass-sheet-blur: blur(28px) saturate(180%);
-  --qa-glass-thin-bg: rgb(255 255 255 / 52%);
-  --qa-glass-thin-blur: blur(14px) saturate(160%);
-  --qa-glass-hairline: rgb(22 24 29 / 10%);
-  --qa-glass-specular: inset 0 1px 0 rgb(255 255 255 / 60%);
-  --qa-glass-shadow: 0 10px 30px rgb(12 16 24 / 12%);
+  --qa-glass-chrome-bg: var(--lg-glass-3);
+  --qa-glass-chrome-blur: var(--lg-blur);
+  --qa-glass-sheet-bg: var(--lg-glass-2);
+  --qa-glass-sheet-blur: var(--lg-blur);
+  --qa-glass-thin-bg: var(--lg-glass-1);
+  --qa-glass-thin-blur: var(--lg-blur-s);
+  --qa-glass-hairline: var(--lg-hairline);
+  --qa-glass-specular: inset 0 1px 0 rgb(255 255 255 / 88%);
+  --qa-glass-shadow: 0 10px 30px rgb(18 24 44 / 12%);
 
-  --qa-space-1: 4px;
-  --qa-space-2: 8px;
-  --qa-space-3: 12px;
-  --qa-space-4: 16px;
-  --qa-space-5: 20px;
-  --qa-space-6: 24px;
-  --qa-radius-xs: 8px;
-  --qa-radius-sm: 10px;
-  --qa-radius-control: 12px;
-  --qa-radius-row: 14px;
-  --qa-radius-card: 18px;
-  --qa-radius-panel: 20px;
-  --qa-radius-sheet: 24px;
-  --qa-radius-pill: 999px;
+  --qa-space-1: var(--lg-space-1);
+  --qa-space-2: var(--lg-space-2);
+  --qa-space-3: var(--lg-space-3);
+  --qa-space-4: var(--lg-space-4);
+  --qa-space-5: var(--lg-space-5);
+  --qa-space-6: var(--lg-space-6);
+  --qa-radius-xs: var(--lg-r-xs);
+  --qa-radius-sm: var(--lg-r-sm);
+  --qa-radius-control: var(--lg-r-control);
+  --qa-radius-row: var(--lg-r-row);
+  --qa-radius-card: var(--lg-r-card);
+  --qa-radius-panel: var(--lg-r-panel);
+  --qa-radius-sheet: var(--lg-r-sheet);
+  --qa-radius-pill: var(--lg-r-pill);
 
   --qa-control-min: 44px;
   --qa-control-submit: 48px;
-  --qa-dock-height: 66px;
-  --qa-dock-bottom: max(8px, env(safe-area-inset-bottom));
+  --qa-dock-height: var(--lg-dock-height);
+  --qa-dock-bottom: var(--lg-dock-bottom);
   --qa-editor-chrome: calc(72px + env(safe-area-inset-top));
-  --qa-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --qa-ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
-  --qa-duration-press: 80ms;
-  --qa-duration-state: 180ms;
-  --qa-duration-nav: 260ms;
-  --qa-duration-sheet: 320ms;
-}
-
-html[data-app="1"][data-accent="dusk"] {
-  --qa-action-fill: #565d9e;
-  --qa-action-pressed: #464c85;
-  --qa-action-soft: #e9eaf6;
-  --qa-focus: #565d9e;
-}
-
-/* App default accent. The historical id is "teal"; under Liuli it maps to the
-   ultramarine brand action so the default App accent IS the brand colour. */
-html[data-app="1"][data-accent="teal"] {
-  --qa-action-fill: #1d5fdb;
-  --qa-action-pressed: #174dbb;
-  --qa-action-soft: #e7eefc;
-  --qa-focus: #1d5fdb;
-}
-
-html[data-app="1"][data-accent="forest"] {
-  --qa-action-fill: #3f6f47;
-  --qa-action-pressed: #315738;
-  --qa-action-soft: #e1ecdf;
-  --qa-focus: #3f6f47;
-}
-
-html[data-app="1"][data-accent="rose"] {
-  --qa-action-fill: #a33d5d;
-  --qa-action-pressed: #803049;
-  --qa-action-soft: #f4e0e7;
-  --qa-focus: #a33d5d;
-}
-
-html[data-app="1"][data-accent="amber"] {
-  --qa-action-fill: #7a5b16;
-  --qa-action-pressed: #604711;
-  --qa-action-soft: #f1ead8;
-  --qa-focus: #7a5b16;
+  --qa-ease-out: var(--lg-ease);
+  --qa-ease-spring: var(--lg-ease);
+  --qa-duration-press: var(--lg-dur-press);
+  --qa-duration-state: var(--lg-dur-state);
+  --qa-duration-nav: var(--lg-dur-push);
+  --qa-duration-sheet: var(--lg-dur-sheet);
 }
 
 html[data-app="1"][data-theme="dark"] {
   color-scheme: dark;
-  --qa-canvas: #0a0c10;
-  --qa-grouped: #11141a;
-  --qa-surface: #161a20;
-  --qa-surface-raised: #1d222a;
-  --qa-ink: #f2f4f7;
-  --qa-ink-secondary: #a6aeb9;
-  --qa-ink-tertiary: #828b98;
-  --qa-hairline: #2c313a;
-  --qa-brand-fill: #7aa5ff;
-  --qa-brand-pressed: #5e8ef5;
-  --qa-brand-soft: #1a2540;
-  --qa-brand-ink: #0a1730;
-  --qa-action-fill: #d88468;
-  --qa-action-pressed: #c06d52;
-  --qa-action-soft: #472b23;
-  --qa-action-ink: #24110c;
-  --qa-focus: #e09b84;
-  --qa-danger: #ff8b83;
-  --qa-danger-soft: #48211f;
-  --qa-danger-ink: #25100f;
-  --qa-success: #69c79d;
-  --qa-success-soft: #17392c;
-  --qa-success-ink: #0b2118;
-  --qa-reward: #e0b95c;
-  --qa-reward-soft: #403319;
-  --qa-reward-ink: #211906;
-  --qa-unread: #ff8077;
-  --qa-unread-ink: #2a0e0c;
-  --qa-semantic-gold: #e0b95c;
-  --qa-semantic-gold-soft: #403319;
-  --qa-semantic-coral: #ff8b83;
-  --qa-semantic-coral-soft: #48211f;
-  --qa-semantic-indigo: #a8b4e8;
-  --qa-semantic-indigo-soft: #262c42;
-  --qa-semantic-blue: #86c4db;
-  --qa-semantic-blue-soft: #1b3440;
-  --qa-semantic-graphite: #c3c9d2;
-  --qa-semantic-graphite-soft: #262b33;
-  --qa-semantic-rose: #e2a0b8;
-  --qa-semantic-rose-soft: #432631;
-  --qa-finance-surface: #1a1e26;
-  --qa-finance-surface-mid: #242a34;
-  --qa-finance-ink: #f2f5fa;
-  --qa-finance-muted: rgb(232 238 248 / 70%);
-  --qa-chrome: color-mix(in srgb, var(--qa-surface) 92%, transparent);
-  --qa-overlay: color-mix(in srgb, var(--qa-surface-raised) 96%, transparent);
-  --qa-scrim: rgb(0 0 0 / 56%);
-  --qa-shadow-1: 0 1px 2px rgb(0 0 0 / 20%), 0 8px 22px rgb(0 0 0 / 20%);
-  --qa-shadow-2: inset 0 1px rgb(255 255 255 / 5%), 0 12px 28px rgb(0 0 0 / 28%);
-  --qa-shadow-3: 0 20px 52px rgb(0 0 0 / 42%);
-  --qa-glass-chrome-bg: rgb(20 24 31 / 66%);
-  --qa-glass-sheet-bg: rgb(23 27 34 / 70%);
-  --qa-glass-thin-bg: rgb(26 30 38 / 55%);
-  --qa-glass-hairline: rgb(255 255 255 / 9%);
-  --qa-glass-specular: inset 0 1px 0 rgb(255 255 255 / 10%);
+  /* 迁移期不透明内容面（深） */
+  --qa-surface: #12161F;
+  --qa-surface-raised: #1A1F2B;
+  --qa-brand-pressed: color-mix(in oklab, var(--lg-act) 86%, #ffffff);
+  --qa-action-pressed: color-mix(in oklab, var(--lg-act) 86%, #ffffff);
+  --qa-danger-ink: #1A0908;
+  --qa-success-ink: #06140D;
+  --qa-reward-ink: #1A1204;
+  --qa-unread-ink: #1A0908;
+  --qa-finance-surface-mid: color-mix(in srgb, var(--lg-finance) 78%, #ffffff);
+  --qa-glass-specular: inset 0 1px 0 rgb(255 255 255 / 14%);
   --qa-glass-shadow: 0 12px 34px rgb(0 0 0 / 40%);
 }
 
-html[data-app="1"][data-theme="dark"][data-accent="dusk"] {
-  --qa-action-fill: #9ba3e8;
-  --qa-action-pressed: #838cda;
-  --qa-action-soft: #272b47;
-  --qa-action-ink: #131630;
-  --qa-focus: #adb4ee;
-}
-
-html[data-app="1"][data-theme="dark"][data-accent="teal"] {
-  --qa-action-fill: #7aa5ff;
-  --qa-action-pressed: #5e8ef5;
-  --qa-action-soft: #1a2540;
-  --qa-action-ink: #0a1730;
-  --qa-focus: #93b6ff;
-}
-
-html[data-app="1"][data-theme="dark"][data-accent="forest"] {
-  --qa-action-fill: #8bc58f;
-  --qa-action-pressed: #73ad78;
-  --qa-action-soft: #223b27;
-  --qa-action-ink: #102313;
-  --qa-focus: #9bd49f;
-}
-
-html[data-app="1"][data-theme="dark"][data-accent="rose"] {
-  --qa-action-fill: #e58baa;
-  --qa-action-pressed: #d17394;
-  --qa-action-soft: #462735;
-  --qa-action-ink: #2a111a;
-  --qa-focus: #efa2bc;
-}
-
-html[data-app="1"][data-theme="dark"][data-accent="amber"] {
-  --qa-action-fill: #d4b35f;
-  --qa-action-pressed: #bea04f;
-  --qa-action-soft: #403519;
-  --qa-action-ink: #241b08;
-  --qa-focus: #e1c573;
-}
-
+/* lite：blur/光晕由 lumen 令牌置 none；此处只兜住迁移期的不透明回落面 */
 html[data-app="1"][data-perf="lite"] {
-  --qa-chrome: var(--qa-surface);
-  --qa-overlay: var(--qa-surface-raised);
-  --qa-glass-chrome-bg: var(--qa-surface);
-  --qa-glass-chrome-blur: none;
-  --qa-glass-sheet-bg: var(--qa-surface-raised);
-  --qa-glass-sheet-blur: none;
-  --qa-glass-thin-bg: var(--qa-surface);
-  --qa-glass-thin-blur: none;
-  --qa-glass-shadow: 0 4px 14px rgb(12 16 24 / 12%);
+  --qa-chrome: var(--lg-grouped);
+  --qa-overlay: var(--lg-grouped);
+  --qa-glass-chrome-bg: var(--lg-grouped);
+  --qa-glass-sheet-bg: var(--lg-grouped);
+  --qa-glass-thin-bg: var(--lg-grouped);
+  --qa-glass-shadow: 0 4px 14px rgb(18 24 44 / 12%);
 }

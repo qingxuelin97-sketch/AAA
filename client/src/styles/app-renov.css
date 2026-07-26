@@ -1663,35 +1663,35 @@ html[data-app="1"] .feed-card:not(.cur) .fd2-call { background: rgba(255,255,255
    注意：html[data-app="1"] 特异性 (0,1,1) 恒压过全站 [data-accent] (0,1,0)，
    因此 App 内的遗留 --accent 家族始终由本块钉住（qa-* 控件走 --qa-action-*）。 */
 html[data-app="1"] {
-  --accent: #1d5fdb;
-  --accent-2: #3b74e8;
-  --accent-soft: #e7eefc;
-  --accent-ring: rgba(29, 95, 219, 0.22);
-  --grad: linear-gradient(135deg, #3b74e8, #1d5fdb);
-  --dusk: #565d9e;
-  /* 中性墨字与瓷白底 */
-  --text: #16181d;
-  --muted: #5b6470;
-  --faint: #8a919d;
-  --bg: #f6f7f9;
-  --bg-2: #edeff3;
-  --border: rgba(22, 24, 29, 0.10);
-  --border-2: rgba(22, 24, 29, 0.16);
+  --accent: var(--lg-act);
+  --accent-2: color-mix(in oklab, var(--lg-act) 82%, #ffffff);
+  --accent-soft: var(--lg-act-soft);
+  --accent-ring: var(--lg-act-soft);
+  --grad: linear-gradient(135deg, color-mix(in oklab, var(--lg-act) 82%, #ffffff), var(--lg-act));
+  --dusk: var(--lg-violet);
+  /* 中性墨字与光晕画布底 */
+  --text: var(--lg-ink);
+  --muted: var(--lg-ink-2);
+  --faint: var(--lg-ink-3);
+  --bg: var(--lg-canvas);
+  --bg-2: var(--lg-grouped);
+  --border: var(--lg-hairline);
+  --border-2: color-mix(in srgb, var(--lg-ink) 16%, transparent);
   /* 标题优先真衬线（已在 main.jsx 加载 500/600/700） */
   --serif: "Noto Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
   /* —— 设计玻璃配方变量（--hyd- 前缀，避开既有 --hy-glass-*）—— */
-  --hyd-mist: linear-gradient(135deg, #e7eefc, #d8e4fb);
-  --hyd-chip: #e7eefc;
-  --hyd-coral: #d15748;
+  --hyd-mist: linear-gradient(135deg, var(--lg-act-soft), var(--lg-act-soft));
+  --hyd-chip: var(--lg-act-soft);
+  --hyd-coral: var(--lg-coral);
   --hyd-gold-a: #F0D488; --hyd-gold-b: #D2A64A; --hyd-gold-ink: #7A5A16;
   --hyd-r-card: 22px;
-  --hyd-btn-sh: 0 1px 2px rgba(15, 18, 26, 0.08), 0 6px 16px rgba(29, 95, 219, 0.20);
-  --hyd-badge-sh: 0 2px 8px rgba(29, 95, 219, 0.18);
+  --hyd-btn-sh: 0 1px 2px rgb(18 24 44 / 8%), 0 6px 16px color-mix(in srgb, var(--lg-act) 22%, transparent);
+  --hyd-badge-sh: 0 2px 8px color-mix(in srgb, var(--lg-act) 18%, transparent);
 }
 
 /* —— 2. 页面底：瓷白（浅色屏），沉浸页各自覆盖 —— */
-html[data-app="1"] body { background: #edeff3; }
-html[data-app="1"] .app-root { background: linear-gradient(180deg, #f6f7f9, #edeff3); }
+html[data-app="1"] body { background: var(--lg-canvas); }
+html[data-app="1"] .app-root { background-color: var(--lg-canvas); background-image: var(--lg-ambient); background-attachment: fixed; }
 
 /* —— 3. 标准玻璃卡：列表 / 信息卡 / 面板 / 弹层 ——
    玻璃分两级（对话页气泡早已走过同样的收敛，列表页这次补课）：

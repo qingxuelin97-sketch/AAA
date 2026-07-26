@@ -16,10 +16,10 @@
 
 /* ── 0. 对话作用域令牌（集中青色，收敛历史硬编码 #22d3ee/#0e9cb8/#2BD0BF/#0e7490）── */
 html[data-app="1"] .chat-main {
-  --chat-accent: #3b74e8;          /* 主群青（高光/描边/用户气泡上缘） */
-  --chat-accent-2: #1d5fdb;        /* 深群青（落点/阴影） */
-  --chat-accent-ink: #174dbb;      /* 更深（用户气泡底/文字对比） */
-  --chat-accent-soft: rgba(59, 116, 232, 0.16);
+  --chat-accent: color-mix(in oklab, var(--lg-act) 84%, #ffffff); /* 主动作亮端 */
+  --chat-accent-2: var(--lg-act);                                  /* 主动作 */
+  --chat-accent-ink: color-mix(in oklab, var(--lg-act) 84%, #000000);
+  --chat-accent-soft: var(--lg-act-soft);
   --chat-glass-radius: 22px;
   --chat-anchor-radius: 9px;       /* run-start 锚角 */
   --chat-ease: cubic-bezier(.22, .61, .36, 1);

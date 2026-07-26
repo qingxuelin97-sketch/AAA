@@ -16,7 +16,9 @@ export const ACCENTS = [
 export function getAccent() {
   const v = localStorage.getItem(KEY);
   if (ACCENTS.some(a => a.id === v)) return v;
-  return isAppMode() ? 'teal' : 'clay';
+  // Lumen Glass：App 默认走 clay（= 无 data-accent 属性 → 令牌基线 iris 主动作色）；
+  // Web 默认不变。用户显式选择的 id 仍按 App 端别名映射到 Lumen 五色。
+  return 'clay';
 }
 
 export function applyAccent(id = getAccent()) {

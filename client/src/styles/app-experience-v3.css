@@ -11,41 +11,37 @@
    neutral/ultramarine palette; the historical `--qa3-teal` name now carries
    the brand action colour (kept to avoid a 1000-line mechanical rename). */
 html[data-app="1"] {
-  --qa3-canvas: #f6f7f9;
-  --qa3-canvas-deep: #edeff3;
-  --qa3-ink: #16181d;
-  --qa3-muted: #5b6470;
-  --qa3-teal: #1d5fdb;
-  --qa3-teal-deep: #174dbb;
-  --qa3-teal-soft: #e7eefc;
-  --qa3-coral: #d15748;
-  --qa3-gold: #96690e;
-  --qa3-line: rgb(22 24 29 / 10%);
-  --qa3-material: rgb(251 252 253 / 76%);
-  --qa3-shadow-short: 0 1px 0 rgb(255 255 255 / 76%) inset,
-    0 5px 16px rgb(15 18 26 / 7%);
-  --qa3-shadow-float: 0 1px 0 rgb(255 255 255 / 70%) inset,
-    0 14px 38px rgb(12 16 24 / 14%);
+  --qa3-canvas: var(--lg-canvas);
+  --qa3-canvas-deep: var(--lg-grouped);
+  --qa3-ink: var(--lg-ink);
+  --qa3-muted: var(--lg-ink-2);
+  --qa3-teal: var(--lg-act);
+  --qa3-teal-deep: color-mix(in oklab, var(--lg-act) 86%, #000000);
+  --qa3-teal-soft: var(--lg-act-soft);
+  --qa3-coral: var(--lg-coral);
+  --qa3-gold: var(--lg-gold);
+  --qa3-line: var(--lg-hairline);
+  --qa3-material: var(--lg-glass-2);
+  --qa3-shadow-short: var(--lg-glass-shadow-1);
+  --qa3-shadow-float: var(--lg-glass-shadow-2);
   --qa3-spring: cubic-bezier(.2, .9, .22, 1.16);
   --qa3-spring-soft: cubic-bezier(.22, .78, .2, 1);
 }
 
 html[data-app="1"][data-theme="dark"] {
-  --qa3-canvas: #0a0c10;
-  --qa3-canvas-deep: #10131a;
-  --qa3-ink: #f2f4f7;
-  --qa3-muted: #9aa4b0;
-  --qa3-teal: #7aa5ff;
-  --qa3-teal-deep: #5e8ef5;
-  --qa3-teal-soft: #1a2540;
-  --qa3-coral: #ff8a7e;
-  --qa3-gold: #d6b264;
-  --qa3-line: rgb(240 244 250 / 11%);
-  --qa3-material: rgb(20 24 30 / 78%);
-  --qa3-shadow-short: 0 1px 0 rgb(255 255 255 / 5%) inset,
-    0 7px 20px rgb(0 0 0 / 24%);
-  --qa3-shadow-float: 0 1px 0 rgb(255 255 255 / 7%) inset,
-    0 18px 44px rgb(0 0 0 / 36%);
+  --qa3-canvas: var(--lg-canvas);
+  --qa3-canvas-deep: var(--lg-grouped);
+  --qa3-ink: var(--lg-ink);
+  --qa3-muted: var(--lg-ink-2);
+  --qa3-teal: var(--lg-act);
+  --qa3-teal-deep: color-mix(in oklab, var(--lg-act) 86%, #ffffff);
+  --qa3-teal-soft: var(--lg-act-soft);
+  --qa3-coral: var(--lg-coral);
+  --qa3-gold: var(--lg-gold);
+  --qa3-line: var(--lg-hairline);
+  --qa3-material: var(--lg-glass-2);
+  --qa3-shadow-short: var(--lg-glass-shadow-1);
+  --qa3-shadow-float: var(--lg-glass-shadow-2);
 }
 
 html[data-app="1"] :where(.qa3-today, .qa3-messages, .qa3-profile) {

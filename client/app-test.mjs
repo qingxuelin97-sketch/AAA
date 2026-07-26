@@ -184,13 +184,25 @@ assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--qa-glass-chrome-blur\)/, 'Ap
 assert.match(runtimeCss, /\[data-perf="lite"\]\s*\.app-tabbar\s*\{[^}]*backdrop-filter:\s*none/s, 'lite tier must drop the Dock blur and fall back to an opaque surface');
 
 assert.ok(
-  mainSource.indexOf('app-runtime.css') < mainSource.indexOf('app-quiet-aqua-tokens.css')
+  mainSource.indexOf('app-runtime.css') < mainSource.indexOf('lumen-glass-tokens.css')
+    && mainSource.indexOf('lumen-glass-tokens.css') < mainSource.indexOf('app-quiet-aqua-tokens.css')
     && mainSource.indexOf('app-quiet-aqua-tokens.css') < mainSource.indexOf('app-controls.css')
     && mainSource.indexOf('app-controls.css') < mainSource.indexOf('app-pages-quiet-aqua.css')
     && mainSource.indexOf('app-pages-quiet-aqua.css') < mainSource.indexOf('app-experience-v3.css')
-    && mainSource.indexOf('app-experience-v3.css') < mainSource.indexOf('app-hig-v5.css'),
-  'Quiet Aqua token, control, page, v3 and Liuli HIG authorities must load after the PR4 runtime layer',
+    && mainSource.indexOf('app-experience-v3.css') < mainSource.indexOf('app-hig-v5.css')
+    && mainSource.indexOf('app-hig-v5.css') < mainSource.indexOf('app-lumen-materials.css'),
+  'Lumen tokens, qa shim, control, page, v3, HIG and Lumen materials must load in cascade order after the runtime layer',
 );
+/* ---- Lumen Glass token authority guards ---- */
+const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
+const lumenHandoff = await readFile(new URL('../docs/design/lumen-glass-tokens.css', import.meta.url), 'utf8');
+assert.equal(lumenTokens, lumenHandoff, 'the runtime Lumen token file must stay byte-identical to the design handoff (values are frozen)');
+const lumenMaterials = await readFile(new URL('./src/styles/app-lumen-materials.css', import.meta.url), 'utf8');
+assert.match(lumenMaterials, /html\[data-app="1"\]/, 'Lumen materials must remain App-scoped');
+assert.doesNotMatch(lumenMaterials.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.lg-[^{,]+/m, 'Lumen material classes must never escape the data-app fence');
+const lgDefinitions = new Set([...(lumenTokens + lumenMaterials).matchAll(/(--lg-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+const lgUses = new Set([...(quietTokens + quietControls + quietPages + quietExperience + lumenMaterials).matchAll(/var\((--lg-[a-z0-9-]+)/g)].map((m) => m[1]));
+assert.deepEqual([...lgUses].filter((name) => !lgDefinitions.has(name)), [], 'every Lumen token reference must resolve in the frozen token authority');
 const higCss = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
 const higNoComments = higCss.replace(/\/\*[\s\S]*?\*\//g, '');
 assert.match(higCss, /html\[data-app="1"\]/, 'the Liuli HIG layer must remain App-scoped');
@@ -201,9 +213,11 @@ assert.doesNotMatch(higNoComments, /backdrop-filter:[^;]*blur\([^;]*!important/,
 assert.doesNotMatch(higNoComments.replaceAll('sans-serif', ''), /serif|Fraunces|Songti/i, 'App headings must never return to display serifs');
 assert.match(quietTokens, /--qa-control-min:\s*44px/, 'ordinary App controls must keep a 44px minimum target');
 assert.match(quietTokens, /--qa-control-submit:\s*48px/, 'authentication submit controls must remain 48px tall');
-assert.match(quietTokens, /--qa-glass-chrome-blur:\s*blur\(/, 'the Liuli glass token authority must define the chrome material');
-assert.match(quietTokens, /--qa-glass-sheet-blur:\s*blur\(/, 'the Liuli glass token authority must define the sheet material');
-assert.match(quietTokens, /\[data-perf="lite"\][\s\S]*--qa-glass-chrome-blur:\s*none/, 'lite tier must resolve every glass blur to none at the token layer');
+const lumenTokensForGlass = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
+assert.match(lumenTokensForGlass, /--lg-blur:\s*blur\(/, 'the Lumen glass token authority must define the primary blur material');
+assert.match(lumenTokensForGlass, /--lg-blur-s:\s*blur\(/, 'the Lumen glass token authority must define the small blur material');
+assert.match(lumenTokensForGlass, /\[data-perf="lite"\][\s\S]*--lg-blur:\s*none/, 'lite tier must resolve every glass blur to none at the token layer');
+assert.match(quietTokens, /--qa-glass-chrome-blur:\s*var\(--lg-blur\)/, 'the qa shim must route legacy chrome glass through the Lumen authority');
 const elevatedCss = await readFile(new URL('./src/styles/app-elevated.css', import.meta.url), 'utf8');
 assert.doesNotMatch(elevatedCss, /--gl-halo/, 'glass cards must not restore accent/dusk halo washes');
 assert.doesNotMatch(elevatedCss, /#22d3ee/i, 'the Liuli glass system must not reintroduce the cyan neon edge');
