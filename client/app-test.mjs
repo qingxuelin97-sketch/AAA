@@ -333,6 +333,12 @@ assert.match(characterViewSource, /bond && \([\s\S]*qa-bond[\s\S]*继续这段�
 assert.match(characterViewSource, /\(b\.affinity \|\| 0\) > \(a\.affinity \|\| 0\)/, 'the bond CTA must resume the highest-affinity conversation');
 assert.match(appProfileSource, /qa-glance" role="group"[\s\S]*相伴一览/, 'the profile must expose the companion glance group');
 assert.match(appProfileSource, /Promise\.allSettled\(\[api\('\/achievements'\), api\('\/me\/weekly'\)\]\)/, 'the glance must degrade gracefully per data source');
+/* ---- S7-G10 私信长按/草稿与群聊提及高亮 ---- */
+const friendsSource = await readFile(new URL('./src/pages/Friends.jsx', import.meta.url), 'utf8');
+assert.match(friendsSource, /appMode \? bindDmPress\(pressPayload\) : \{\}/, 'DM bubbles must bind long-press only inside the App shell');
+assert.match(friendsSource, /huanyu_dmdraft_' \+ sel, text\)[\s\S]*localStorage\.removeItem\('huanyu_dmdraft_' \+ sel\)/, 'an emptied DM composer must delete its stored draft');
+assert.match(friendsSource, /if \(!appMode \|\| !sel\) return;[\s\S]*huanyu_dmdraft_/, 'DM drafts must stay App-gated');
+assert.match(groupRoomSource, /if \(!app\) return content;[\s\S]*gr-mention/, 'mention highlighting must never leak into the Web bubble DOM');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(

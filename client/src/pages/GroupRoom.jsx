@@ -43,6 +43,13 @@ export default function GroupRoom() {
   const [pressMsg, setPressMsg] = useState(null); // App 群消息长按 { m, nm, at }
   // 长按群消息 → 复制 / @提及（binder 挂在气泡上，坐标取气泡中心）
   const bindMsgPress = useLongPress((payload) => { tick(8); setPressMsg(payload()); });
+  // S7-G10 @提及高亮（仅 App 落 DOM；Web 保持纯文本零差异）
+  const renderBubbleContent = (content) => {
+    if (!app) return content;
+    const parts = String(content || '').split(/(@[^\s@，。,！？!?]+)/g);
+    if (parts.length === 1) return content;
+    return parts.map((part, i) => (part.startsWith('@') ? <i key={i} className="gr-mention">{part}</i> : part));
+  };
   const scrollRef = useRef();
   const lastId = useRef(0);
   const sendingRef = useRef(false);
@@ -254,7 +261,7 @@ export default function GroupRoom() {
                     {...(app ? bindMsgPress(pressPayload) : {})}
                     onContextMenu={app ? (e) => { e.preventDefault(); setPressMsg({ m, nm, at: { x: e.clientX, y: e.clientY } }); } : undefined}
                   >
-                    {m.content}
+                    {renderBubbleContent(m.content)}
                   </div>
                 </div>
               </div>

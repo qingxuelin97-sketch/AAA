@@ -6,6 +6,9 @@ import { useToast, Avatar, CreatorV, CouncilorBadge } from '../ui.jsx';
 import { EmptyArt } from '../art.jsx';
 import { useAutoGrow } from '../util.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import AppPressMenu from '../components/AppPressMenu.jsx';
+import { useLongPress } from '../chat/hooks.js';
+import { tick } from '../appgestures.js';
 import { isAppMode } from '../appmode.js';
 import { t } from '../appCopy.js';
 import { useNav } from '../nav.js';
@@ -40,6 +43,26 @@ export default function Friends() {
   useAppOverlay(appMode && menu, () => setMenu(false), { rootRef: menuRef, returnFocusRef: menuButtonRef });
   // 私信输入框随内容自动增高（与对话页一致），封顶后转内部滚动
   useAutoGrow(dmInputRef, text, 130);
+
+  // S7-G10 私信草稿（仅 App 壳）：按好友持久，切人各自恢复，发送/清空即删
+  useEffect(() => {
+    if (!appMode || !sel) return;
+    try { setText(localStorage.getItem('huanyu_dmdraft_' + sel) || ''); } catch { /* */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel]);
+  useEffect(() => {
+    if (!appMode || !sel) return;
+    const t = setTimeout(() => {
+      try {
+        if (text.trim()) localStorage.setItem('huanyu_dmdraft_' + sel, text);
+        else localStorage.removeItem('huanyu_dmdraft_' + sel);
+      } catch { /* */ }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [appMode, sel, text]);
+  // S7-G10 私信气泡长按（仅 App）：复制原文
+  const [dmPress, setDmPress] = useState(null); // { text, at }
+  const bindDmPress = useLongPress((payload) => { tick(8); setDmPress(payload()); });
 
   const loadFriends = () => api('/friends').then(d => setFriends(d.friends || [])).catch(() => {});
   const loadRequests = () => api('/friends/requests').then(setRequests).catch(() => {});
@@ -219,12 +242,26 @@ export default function Friends() {
 
             <div className="fr-dm-scroll" ref={scrollRef}>
               {dm.messages.length === 0 && <div className="fr-dm-tip">还没有聊天记录，发条消息打个招呼吧～</div>}
-              {dm.messages.map(mm => (
-                <div key={mm.id} className={'dm-msg ' + (mm.mine ? 'mine' : 'theirs')}>
-                  {!mm.mine && <Avatar src={dm.peer.avatar} name={dm.peer.display_name} size={30} />}
-                  <div className="dm-bubble">{mm.text}<span className="dm-time">{(mm.created_at || '').slice(11, 16)}</span></div>
-                </div>
-              ))}
+              {dm.messages.map(mm => {
+                const pressPayload = () => {
+                  const el = document.getElementById('dmb-' + mm.id);
+                  const rect = el?.getBoundingClientRect();
+                  return { text: mm.text, at: rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : { x: 195, y: 420 } };
+                };
+                return (
+                  <div key={mm.id} className={'dm-msg ' + (mm.mine ? 'mine' : 'theirs')}>
+                    {!mm.mine && <Avatar src={dm.peer.avatar} name={dm.peer.display_name} size={30} />}
+                    <div
+                      className="dm-bubble"
+                      id={appMode ? 'dmb-' + mm.id : undefined}
+                      {...(appMode ? bindDmPress(pressPayload) : {})}
+                      onContextMenu={appMode ? (e) => { e.preventDefault(); setDmPress({ text: mm.text, at: { x: e.clientX, y: e.clientY } }); } : undefined}
+                    >
+                      {mm.text}<span className="dm-time">{(mm.created_at || '').slice(11, 16)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="fr-dm-input">
@@ -236,6 +273,19 @@ export default function Friends() {
           </>
         )}
       </section>
+      {appMode && dmPress && (
+        <AppPressMenu
+          at={dmPress.at}
+          onClose={() => setDmPress(null)}
+          items={[{
+            label: '复制',
+            onSelect: async () => {
+              try { await navigator.clipboard.writeText(dmPress.text || ''); toast('已复制'); }
+              catch { toast('复制失败', 'err'); }
+            },
+          }]}
+        />
+      )}
     </div>
   );
 }
