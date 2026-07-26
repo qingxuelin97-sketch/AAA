@@ -286,7 +286,7 @@ assert.match(messagesSource, /toggleConvMark[\s\S]*取消置顶[\s\S]*免打扰/
 assert.match(messagesSource, /msgs-draft[\s\S]*草稿/, 'the conversation row must surface an unsent draft first');
 assert.match(chatSource, /if \(!app \|\| !id \|\| loc\.state\?\.draft\) return;/, 'draft restore must stay App-gated and yield to one-shot prefills');
 assert.match(chatSource, /localStorage\.setItem\('huanyu_draft_' \+ id, input\);[\s\S]*localStorage\.removeItem\('huanyu_draft_' \+ id\);/, 'an emptied composer must delete its stored draft');
-for (const scenario of ['weeklyRecapAssertions', 'walletCalendarAssertions', 'quoteCardAssertions', 'galleryS7Assertions', 'conversationMarksAssertions', 'draftAssertions']) {
+for (const scenario of ['weeklyRecapAssertions', 'walletCalendarAssertions', 'quoteCardAssertions', 'galleryS7Assertions', 'conversationMarksAssertions', 'draftAssertions', 's7DarkTierAssertions']) {
   assert.ok(new RegExp(`await ${scenario}\\(browser, base\\)`).test(e2eSourceForS7), `the e2e suite must keep running ${scenario}`);
 }
 /* ---- S7-G10 剧场台词卡与群聊长按 ---- */

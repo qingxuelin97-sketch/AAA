@@ -1468,6 +1468,49 @@ async function draftAssertions(browser, base) {
   await page.close();
 }
 
+// S7-G10 · 深色与 lite 巡检：S7 新面在暗色下渲染、lite 下守住去 blur 契约。
+async function s7DarkTierAssertions(browser, base) {
+  const dark = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'dark',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+  await visit(dark, '/today', '.qa-weekly');
+  const darkState = await dark.evaluate(() => ({
+    theme: document.documentElement.dataset.theme,
+    bars: document.querySelectorAll('.qa-weekly-bar').length,
+    streak: Boolean(document.querySelector('.qa-streak')),
+  }));
+  assert(darkState.theme === 'dark' && darkState.bars === 7 && darkState.streak,
+    '深色今日页 S7 面渲染异常', JSON.stringify(darkState));
+  await dark.evaluate(() => { document.querySelector('.qa-weekly').scrollIntoView({ block: 'center' }); });
+  await saveScreenshot(dark, 'weekly-recap-390x844-dark.png');
+  await visit(dark, '/achievements', '.qa-ach-wall');
+  assert(await dark.evaluate(() => document.querySelectorAll('.qa-ach-ring').length === 5),
+    '深色成就徽章墙五环缺失');
+  assert(dark.__qaErrors.length === 0, '深色巡检产生了预期外的浏览器错误', dark.__qaErrors.join('\n'));
+  await dark.close();
+
+  const lite = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'lite',
+    viewport: { width: 390, height: 844 },
+  });
+  await visit(lite, '/today', '.qa-weekly');
+  const liteBlur = await lite.evaluate(() => {
+    const card = document.querySelector('.qa-weekly-card');
+    const style = getComputedStyle(card);
+    return style.backdropFilter || style.webkitBackdropFilter || '';
+  });
+  assert(liteBlur === 'none' || liteBlur === '', 'lite 档周报卡必须去 blur 回落实底', liteBlur);
+  assert(lite.__qaErrors.length === 0, 'lite 巡检产生了预期外的浏览器错误', lite.__qaErrors.join('\n'));
+  await lite.close();
+}
+
 // S7-G6 · 分享卡：角色页菜单入口 → canvas 合成 1080×1440 预览 → 出口可用
 // → 关闭回焦。canvas 文字反锯齿跨环境不稳，不建像素基线，只验尺寸与无错。
 async function shareCardAssertions(browser, base) {
@@ -1877,6 +1920,7 @@ async function run() {
     await galleryS7Assertions(browser, base);
     await conversationMarksAssertions(browser, base);
     await draftAssertions(browser, base);
+    await s7DarkTierAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);

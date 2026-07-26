@@ -109,6 +109,24 @@ try {
   assert.notEqual(afterTitle, before, '改名等实质编辑仍应刷新排序时间戳');
   console.log('  ✅ 会话整理：mark-only 语义与置顶排序正确');
 
+  /* ── 4. 经济与成就语义：410 旧口 / 荣誉拒领 / 兴趣白名单钳制 ── */
+  const gone = await fetch(BASE + '/economy/recharge', { method: 'POST', headers: H, body: JSON.stringify({ amount: 100 }) });
+  assert.equal(gone.status, 410, '旧充值接口必须返回 410');
+  assert.equal((await gone.json()).code, 'PAYMENT_ORDER_REQUIRED', '410 必须携带稳定的语义码');
+
+  const honor = await fetch(BASE + '/achievements/creator_hall/claim', { method: 'POST', headers: H });
+  assert.equal(honor.status, 400, '荣誉成就的领取请求必须被拒绝');
+
+  const cats = (await j('/meta/categories')).categories.map((c) => c.slug);
+  const mixed = [...cats.slice(0, 7), 'not_a_slug', '__evil__', cats[0]].join(',');
+  await j('/settings', { method: 'PUT', body: JSON.stringify({ interests: mixed }) });
+  const savedInterests = String((await j('/settings')).settings?.interests
+    ?? (await j('/settings')).interests ?? '').split(',').filter(Boolean);
+  assert.ok(savedInterests.length <= 6, `兴趣至多 6 个（got ${savedInterests.length}）`);
+  assert.ok(savedInterests.every((slug) => cats.includes(slug)), `兴趣必须全部落在分类白名单内（got ${savedInterests.join(',')}）`);
+  assert.equal(new Set(savedInterests).size, savedInterests.length, '兴趣必须去重');
+  console.log('  ✅ 语义：旧充值 410 / 荣誉拒领 / 兴趣白名单去重钳 6');
+
   db.close();
   console.log('\n✅ S7 边界回归：全部通过');
 } catch (e) {
