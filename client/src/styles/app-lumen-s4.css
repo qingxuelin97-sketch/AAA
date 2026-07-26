@@ -473,3 +473,26 @@ html[data-app="1"] .qa-novel-aa-sheet .qa-novel-aa-preview {
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] .qa-novel-read .atl-read-bar { transition: none; }
 }
+
+/* ── 修复：输入岛内的 textarea 被通用表单规则涂成不透明白（hig §10 的
+   --qa-surface）。岛内输入位 = 透明内嵌，玻璃只属于外层岛（单层原则）：
+   文字/占位符按沉浸与主题语境取色。 ── */
+html[data-app="1"] .chat-main .chat-input-bar .box :where(textarea, input, .qa-chat-textarea),
+html[data-app="1"] .qa-chat-main .qa-chat-input-island.box :where(textarea, input, .qa-chat-textarea) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--lg-ink);
+}
+html[data-app="1"] .chat-main .chat-input-bar .box :where(textarea, .qa-chat-textarea)::placeholder {
+  color: var(--lg-ink-3);
+}
+/* 沉浸立绘语境：白字 + 半透明白占位；岛内辅助图标同步提亮 */
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box :where(textarea, input, .qa-chat-textarea),
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-input-island.box :where(textarea, input, .qa-chat-textarea) {
+  color: rgb(255 255 255 / 94%);
+}
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box :where(textarea, .qa-chat-textarea)::placeholder {
+  color: rgb(255 255 255 / 55%);
+}
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { color: rgb(255 255 255 / 88%); }
