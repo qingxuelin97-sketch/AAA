@@ -125,6 +125,14 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 收藏 · 分类筛选 chips ---- */
+html[data-app="1"] .qa-fav-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
 /* ---- 阅读页 · 顶部进度条 ---- */
 html[data-app="1"] .qa-read-progress {
   position: fixed;

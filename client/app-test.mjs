@@ -266,6 +266,13 @@ assert.match(shareSheetSource, /kind === 'quote'[\s\S]*renderQuoteCard/, 'the sh
 assert.match(chatSource, /app && !!m\.content && \([\s\S]*生成台词卡/, 'the quote-card entry must stay App-only');
 assert.match(chatSource, /speaker: quoteShare\.role === 'user' \? \(user\?\.display_name[\s\S]*: character\.name/, 'quote cards must attribute the line to its real speaker on both sides');
 assert.match(chatSource, /sheetOpenedAtRef\.current = performance\.now\(\);[\s\S]*msg-sheet-mask" onClick=\{\(\) => \{ if \(performance\.now\(\) - sheetOpenedAtRef\.current < 350\) return;/, 'the message sheet mask must swallow the trailing long-press click');
+/* ---- S7-G10 抽卡晒卡与收藏筛选 ---- */
+const gachaSource = await readFile(new URL('./src/pages/Gacha.jsx', import.meta.url), 'utf8');
+assert.match(gachaSource, /isAppMode\(\) && \([\s\S]*晒出这张卡/, 'the gacha share entry must stay App-only');
+assert.match(gachaSource, /isAppMode\(\) && shareOpen && result &&[\s\S]*kind="character"/, 'gacha results must share through the character template');
+const favoritesSource = await readFile(new URL('./src/pages/Favorites.jsx', import.meta.url), 'utf8');
+assert.match(favoritesSource, /app && !loading && cats\.length >= 2[\s\S]*qa-fav-cats/, 'favorite category chips must stay App-only and need two categories');
+assert.match(favoritesSource, /该分类下暂无收藏/, 'an emptied favorite filter must explain itself');
 /* ---- S7-G10 星轨年鉴卡契约 ---- */
 assert.match(shareCardSource, /renderInsightsCard/, 'the compositor must offer the insights annual-card template');
 assert.match(shareSheetSource, /kind === 'insights'[\s\S]*renderInsightsCard/, 'the share sheet must route the insights kind to its template');
@@ -523,4 +530,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 259/259 passed');
+console.log('app invariants: 263/263 passed');
