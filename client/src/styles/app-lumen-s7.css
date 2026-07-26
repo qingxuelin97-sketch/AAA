@@ -125,6 +125,41 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 排行榜 · 我的名次常驻行 ---- */
+html[data-app="1"] .qa-lb-mine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--qa-control-min);
+  padding: 8px 14px;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--lg-act) 9%, transparent);
+  color: var(--lg-ink);
+}
+
+html[data-app="1"] .qa-lb-mine svg {
+  color: var(--lg-act);
+  flex-shrink: 0;
+}
+
+html[data-app="1"] .qa-lb-mine-copy {
+  flex: 1;
+  font-size: 13px;
+  color: var(--lg-ink-2);
+}
+
+html[data-app="1"] .qa-lb-mine b {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-lb-mine small {
+  font-size: 12px;
+  color: var(--lg-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- 今日 · 里程碑分档印章 ---- */
 html[data-app="1"] .qa-milestone-seal {
   width: 34px;

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl, useAuth } from '../api.jsx';
+import { fmtNum } from '../util.js';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
@@ -86,6 +87,15 @@ export default function Leaderboard() {
             <AppButton variant="tertiary" selected={tab === 'authors'} role="tab" aria-selected={tab === 'authors'} onClick={() => setTab('authors')}>创作者榜</AppButton>
           </div>
 
+          {/* S7-G10 我的名次：创作者榜下常驻自己的排位（榜外也看得到自己） */}
+          {!loading && !err && tab === 'authors' && data?.me && (
+            <section className="qa-lb-mine" aria-label={`我的创作声望排名第 ${data.me.rank} 名`}>
+              <Trophy size={16} aria-hidden="true" />
+              <span className="qa-lb-mine-copy">我的创作声望</span>
+              <b>第 {data.me.rank} 名</b>
+              <small>{fmtNum(data.me.score)} 声望</small>
+            </section>
+          )}
           {loading ? (
             <section className="qa-leaderboard-loading" role="status" aria-label="正在载入排行榜">
               {[0, 1, 2, 3, 4].map(index => <span className="skel" key={index} aria-hidden="true" />)}

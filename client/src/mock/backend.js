@@ -2362,7 +2362,14 @@ async function route(method, path, search, body, headers) {
       chars: filter('characters', c => c.owner_id === u.id && c.is_public).length,
       scripts: filter('scripts', x => x.author_id === u.id).length }))
       .sort((a, b) => b.score - a.score).slice(0, 20);
-    return J({ characters, scripts, authors });
+    // S7-G10 我的名次孪生：与服务端同构（非封禁全员参与排位，榜外也可见）
+    let mine = null;
+    if (me) {
+      const myScore = creatorScore(me.id);
+      const higher = filter('users', u => !u.is_banned && u.id !== me.id && creatorScore(u.id) > myScore).length;
+      mine = { rank: higher + 1, score: myScore };
+    }
+    return J({ characters, scripts, authors, me: mine });
   }
   if (method === 'POST' && path === '/engage/gacha') {
     need(); const pool = filter('characters', c => c.is_public); if (!pool.length) return E('暂无可抽取的角色');
