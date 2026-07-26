@@ -9,7 +9,7 @@ import { api, useAuth, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday, fmtNum } from '../util.js';
-import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from '../art.jsx';
+import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia, streakSealForTier } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import CheckinCalendarSheet from '../components/CheckinCalendarSheet.jsx';
 import ShareCardSheet from '../components/ShareCardSheet.jsx';
@@ -250,6 +250,7 @@ export default function AppHome() {
         </button>
         {milestone > 0 && (
           <div className="qa-milestone" role="status">
+            <img className="qa-milestone-seal" src={streakSealForTier(milestone)} alt="" width={34} height={34} draggable="false" />
             <span className="qa-milestone-copy">连签 {milestone} 天达成！</span>
             <AppButton variant="secondary" size="sm" onClick={() => setStreakShare(true)}>生成纪念卡</AppButton>
             <AppIconButton label="收起" onClick={() => setMilestone(0)}><Check size={14} /></AppIconButton>

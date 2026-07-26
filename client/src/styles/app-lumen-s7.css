@@ -125,6 +125,13 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 今日 · 里程碑分档印章 ---- */
+html[data-app="1"] .qa-milestone-seal {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+}
+
 /* ---- 钱包 · 流水筛选 chips ---- */
 html[data-app="1"] .qa-wallet-v4__tx-filter {
   display: flex;

@@ -5,7 +5,7 @@
 // 分辨率固定 1080×1440（3:4），与 devicePixelRatio 解耦——同一数据在任何
 // 设备导出同一张图；预览 <img> 由 CSS 缩放。
 import bootMarkUrl from './assets/app/qa5-boot-mark@2x.png?url';
-import { streakSealUrl } from './art.jsx';
+import { streakSealUrl, streakSealForTier } from './art.jsx';
 import { shareUrl } from './util.js';
 
 export const CARD_W = 1080;
@@ -283,7 +283,8 @@ export async function renderStreakCard({ streak, date, path }) {
   const ctx = canvas.getContext('2d');
   const panel = paintFrame(ctx, 'gold');
 
-  const seal = await loadImage(streakSealUrl);
+  // 里程碑分档印章：30/100 天有专属环饰，普通连签用基础焰章
+  const seal = await loadImage(streakSealForTier(Number(streak) || 0) || streakSealUrl);
   if (seal) ctx.drawImage(seal, CARD_W / 2 - 210, panel.y + 90, 420, 420);
 
   ctx.textAlign = 'center';

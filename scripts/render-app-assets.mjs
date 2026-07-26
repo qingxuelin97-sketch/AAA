@@ -202,12 +202,36 @@ const ONBOARD = {
 };
 
 // 连签印章（320×320 = 160 逻辑 @2x，透明底）：环形玺 + 火种，零文字。
-const STREAK_SEAL = `
-  <circle cx="160" cy="160" r="120" fill="none" stroke="${P.gold}" stroke-width="14" stroke-opacity="0.85"/>
+const SEAL_FLAME = `
   <circle cx="160" cy="160" r="96" fill="${P.goldSoft}" opacity="0.5"/>
   <path d="M 160 92 C 190 128 202 152 202 182 C 202 212 184 232 160 232 C 136 232 118 212 118 182 C 118 164 126 148 138 132 C 138 152 146 162 156 164 C 150 140 152 116 160 92 Z"
     fill="${P.gold}" opacity="0.9"/>
   <circle cx="160" cy="196" r="16" fill="#ffffff" opacity="0.5"/>`;
+
+const STREAK_SEAL = `
+  <circle cx="160" cy="160" r="120" fill="none" stroke="${P.gold}" stroke-width="14" stroke-opacity="0.85"/>
+  ${SEAL_FLAME}`;
+
+// 30 天：玉环 + 两侧月桂叶（同焰形母题，环色换 success 玉调）
+const STREAK_SEAL_30 = `
+  <circle cx="160" cy="160" r="120" fill="none" stroke="${P.success}" stroke-width="14" stroke-opacity="0.8"/>
+  ${SEAL_FLAME}
+  ${[-1, 1].map((s) => `
+    <g transform="translate(160 160) scale(${s} 1)">
+      <path d="M -132 34 C -120 6 -108 -18 -88 -40" fill="none" stroke="${P.success}" stroke-width="7" stroke-opacity="0.75" stroke-linecap="round"/>
+      ${[0, 1, 2, 3].map((i) => `<ellipse cx="${-124 + i * 13}" cy="${20 - i * 22}" rx="10" ry="4.6"
+        transform="rotate(${-52 + i * 8} ${-124 + i * 13} ${20 - i * 22})" fill="${P.success}" opacity="0.75"/>`).join('')}
+    </g>`).join('')}`;
+
+// 100 天：金冠双环 + 顶部三星（一生一次的档位感）
+const STREAK_SEAL_100 = `
+  <circle cx="160" cy="160" r="136" fill="none" stroke="${P.gold}" stroke-width="6" stroke-opacity="0.5"/>
+  <circle cx="160" cy="160" r="120" fill="none" stroke="${P.gold}" stroke-width="14" stroke-opacity="0.9"/>
+  ${SEAL_FLAME}
+  ${[[110, 52, 9], [160, 30, 13], [210, 52, 9]].map(([cx, cy, r]) => `
+    <path d="M ${cx} ${cy - r} L ${cx + r * 0.28} ${cy - r * 0.28} L ${cx + r} ${cy} L ${cx + r * 0.28} ${cy + r * 0.28}
+      L ${cx} ${cy + r} L ${cx - r * 0.28} ${cy + r * 0.28} L ${cx - r} ${cy} L ${cx - r * 0.28} ${cy - r * 0.28} Z"
+      fill="${P.gold}" opacity="0.9"/>`).join('')}`;
 
 // 开机徽记：月门 + 上弦月（320×320 = 160 逻辑 @2x，透明底）。
 const BOOT_MARK = `
@@ -262,6 +286,8 @@ const JOBS = [
   ...Object.entries(SCENES).map(([kind, body]) => ({ id: `qa5-empty-${kind}@2x`, w: 720, h: 480, body })),
   ...Object.entries(ONBOARD).map(([kind, body]) => ({ id: `qa5-onboard-${kind}@2x`, w: 720, h: 480, body })),
   { id: 'qa5-streak-seal@2x', w: 320, h: 320, body: STREAK_SEAL },
+  { id: 'qa5-streak-seal-30@2x', w: 320, h: 320, body: STREAK_SEAL_30 },
+  { id: 'qa5-streak-seal-100@2x', w: 320, h: 320, body: STREAK_SEAL_100 },
   { id: 'qa5-boot-mark@2x', w: 320, h: 320, body: BOOT_MARK },
   { id: 'qa5-boot-mark@3x', w: 480, h: 480, body: `<g transform="scale(1.5)">${BOOT_MARK}</g>` },
   { id: 'qa5-vip-weave@2x', w: 1372, h: 800, body: weave() },

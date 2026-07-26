@@ -301,6 +301,13 @@ const walletSource = await readFile(new URL('./src/pages/Wallet.jsx', import.met
 assert.match(walletSource, /qa-wallet-v4__tx-filter" role="group"/, 'the App ledger filter must expose group semantics');
 assert.match(walletSource, /txFilter === 'checkin' \? t\.kind === 'checkin'/, 'the checkin filter must select by transaction kind, not sign');
 assert.match(walletSource, /该类别暂无记录/, 'an emptied filter view must explain itself instead of collapsing');
+/* ---- S7-G10 里程碑印章分档 ---- */
+const artSourceForSeals = await readFile(new URL('./src/art.jsx', import.meta.url), 'utf8');
+assert.match(artSourceForSeals, /streakSealForTier = \(streak\) => \(streak >= 100[\s\S]*streak >= 30/, 'milestone seals must tier at 100 and 30 days');
+const renderScriptSource = await readFile(new URL('../scripts/render-app-assets.mjs', import.meta.url), 'utf8');
+assert.match(renderScriptSource, /qa5-streak-seal-30@2x[\s\S]*qa5-streak-seal-100@2x/, 'the asset pipeline must produce both milestone seal variants');
+assert.match(shareCardSource, /streakSealForTier\(Number\(streak\)/, 'the streak card must pick its seal by milestone tier');
+assert.match(appHomeSource, /qa-milestone-seal[\s\S]*streakSealForTier\(milestone\)/, 'the milestone banner must show the tiered seal');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(

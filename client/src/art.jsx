@@ -34,6 +34,8 @@ import onboardWorldUrl from './assets/app/qa5-onboard-world@2x.png?url';
 import onboardCraftUrl from './assets/app/qa5-onboard-craft@2x.png?url';
 import onboardTuneUrl from './assets/app/qa5-onboard-tune@2x.png?url';
 import streakSealAssetUrl from './assets/app/qa5-streak-seal@2x.png?url';
+import streakSeal30AssetUrl from './assets/app/qa5-streak-seal-30@2x.png?url';
+import streakSeal100AssetUrl from './assets/app/qa5-streak-seal-100@2x.png?url';
 
 const APP_EMPTY_ART = {
   chat: emptyChatUrl,
@@ -57,6 +59,8 @@ const APP_EMPTY_ART = {
 // S7 内容媒体出口：引导三屏与连签印章（消费方：AppOnboarding / 签到日历 / 分享卡）。
 export const onboardArtUrls = { world: onboardWorldUrl, craft: onboardCraftUrl, tune: onboardTuneUrl };
 export const streakSealUrl = streakSealAssetUrl;
+// 里程碑印章分档：≥100 金冠双环，≥30 玉桂环，其余基础焰章。
+export const streakSealForTier = (streak) => (streak >= 100 ? streakSeal100AssetUrl : streak >= 30 ? streakSeal30AssetUrl : streakSealAssetUrl);
 
 // App 空态：审阅过的 PNG 内容媒体（懒加载、无文字、说明与 CTA 保持活 DOM）。
 export function AppEmptyArt({ kind = 'generic', size = 132, className }) {
