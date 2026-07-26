@@ -1484,6 +1484,48 @@ async function route(method, path, search, body, headers) {
         friends: filter('friendships', f => f.a_id === me.id || f.b_id === me.id).length },
     });
   }
+  // 本周回顾（与服务端 /me/weekly 同构）——北京周界（周一起始），只读聚合
+  if (method === 'GET' && path === '/me/weekly') {
+    need();
+    const today = todayStr();
+    const t = new Date(today + 'T00:00:00Z');
+    const dow = (t.getUTCDay() + 6) % 7;
+    const weekStartMs = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - dow);
+    const weekStart = new Date(weekStartMs).toISOString().slice(0, 10);
+    const sqliteUtc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+    const utcStart = sqliteUtc(weekStartMs - 8 * 3600e3);
+    const utcEnd = sqliteUtc(weekStartMs + 7 * 86400000 - 8 * 3600e3);
+    const inWeek = (ts) => { const s = String(ts || ''); return s >= utcStart && s < utcEnd; };
+    const cnDay = (ts) => new Date(new Date(String(ts).replace(' ', 'T') + 'Z').getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+    const myConvs = filter('conversations', c => c.user_id === me.id);
+    const convIds = new Set(myConvs.map(c => c.id));
+    const wkMsgs = filter('messages', m => convIds.has(m.conversation_id) && inWeek(m.created_at));
+    const perDay = {};
+    for (const m of wkMsgs) { const d = cnDay(m.created_at); perDay[d] = (perDay[d] || 0) + 1; }
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStartMs + i * 86400000).toISOString().slice(0, 10);
+      days.push({ date: d.slice(5), n: perDay[d] || 0 });
+    }
+    const byChar = {};
+    for (const c of myConvs) {
+      const n = wkMsgs.filter(m => m.conversation_id === c.id).length;
+      if (n) byChar[c.character_id] = (byChar[c.character_id] || 0) + n;
+    }
+    const topEntry = Object.entries(byChar).sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]))[0];
+    const topCh = topEntry ? find('characters', x => x.id === Number(topEntry[0])) : null;
+    const wkTx = filter('transactions', x => x.user_id === me.id && inWeek(x.created_at));
+    return J({
+      week_start: weekStart, today, days,
+      messages: wkMsgs.length, sent: wkMsgs.filter(m => m.role === 'user').length,
+      active_days: days.filter(d => d.n > 0).length,
+      checkins: wkTx.filter(x => x.kind === 'checkin').length, streak: me.checkin_streak || 0,
+      gold_earned: wkTx.filter(x => x.gold > 0).reduce((a, x) => a + x.gold, 0),
+      gold_spent: -wkTx.filter(x => x.gold < 0).reduce((a, x) => a + x.gold, 0),
+      new_friends: filter('friendships', f => (f.a_id === me.id || f.b_id === me.id) && inWeek(f.created_at)).length,
+      companion: topCh ? { id: topCh.id, name: topCh.name, avatar: topCh.avatar, n: topEntry[1] } : null,
+    });
+  }
   if (method === 'GET' && path === '/me/revenue-plan') { need(); return J({ plan: revenuePlan(me) }); }
   if (method === 'POST' && path === '/me/revenue-plan/claim') {
     need(); const plan = revenuePlan(me);

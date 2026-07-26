@@ -1,0 +1,133 @@
+/*
+ * Lumen S7-G10「相伴加深」层 —— 周报卡、台词卡入口、Gallery S7 展区。
+ * 规则全部围栏在 html[data-app="1"] 内；只消费 --lg-* 权威与残余 --qa-*；
+ * 无 infinite 装饰动画；lite/reduced-motion 逐条降级。
+ */
+
+/* ---- 今日页 · 本周与你相伴 ---- */
+html[data-app="1"] .qa-weekly-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--lg-r-card);
+  background: var(--lg-glass-1);
+  box-shadow: var(--lg-glass-shadow-1);
+  -webkit-backdrop-filter: var(--lg-blur-s);
+  backdrop-filter: var(--lg-blur-s);
+}
+
+html[data-app="1"] .qa-weekly-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+  height: 72px;
+  padding: 2px 2px 0;
+}
+
+html[data-app="1"] .qa-weekly-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  height: 100%;
+  min-width: 0;
+}
+
+html[data-app="1"] .qa-weekly-bar i {
+  width: 12px;
+  min-height: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lg-act) 32%, transparent);
+}
+
+html[data-app="1"] .qa-weekly-bar.today i {
+  background: var(--lg-act);
+}
+
+html[data-app="1"] .qa-weekly-bar span {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--lg-ink-3);
+}
+
+html[data-app="1"] .qa-weekly-bar.today span {
+  color: var(--lg-act);
+  font-weight: 600;
+}
+
+html[data-app="1"] .qa-weekly-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 12px;
+  color: var(--lg-ink-2);
+}
+
+html[data-app="1"] .qa-weekly-stats b {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--lg-ink);
+  font-variant-numeric: tabular-nums;
+  margin-right: 2px;
+}
+
+html[data-app="1"] .qa-weekly-gold b {
+  color: var(--lg-gold);
+}
+
+html[data-app="1"] .qa-weekly-comp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--qa-control-min);
+  padding: 8px 10px;
+  border: 0;
+  border-radius: calc(var(--lg-r-card) - 6px);
+  background: color-mix(in srgb, var(--lg-act) 8%, transparent);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-weekly-comp:active {
+  background: color-mix(in srgb, var(--lg-act) 14%, transparent);
+}
+
+html[data-app="1"] .qa-weekly-comp-tx {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+html[data-app="1"] .qa-weekly-comp-tx span {
+  font-size: 11px;
+  color: var(--lg-ink-3);
+}
+
+html[data-app="1"] .qa-weekly-comp-tx b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lg-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-app="1"] .qa-weekly-comp em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--lg-ink-2);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* lite：玻璃卡回落不透明 grouped 面（与全局 lite 材质策略一致） */
+html[data-app="1"][data-perf="lite"] .qa-weekly-card {
+  background: var(--lg-grouped);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}

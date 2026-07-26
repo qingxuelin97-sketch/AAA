@@ -4,6 +4,7 @@ import { authRequired } from '../auth.js';
 import { applyTx, assertEconomicAccess, notify } from '../wallet.js';
 import { creatorWorks } from '../creator.js';
 import { log } from '../logger.js';
+import { cnToday } from '../daily.js';
 
 const router = Router();
 
@@ -178,6 +179,66 @@ router.get('/insights', authRequired, (req, res) => {
     streak: u.checkin_streak || 0,
     chat: { conversations: convCount, messages: msg.n || 0, sent: msg.sent || 0, received: msg.received || 0, active_days: activeDays },
     days, companions, creations, economy, social,
+  });
+});
+
+// 本周回顾（今日页「本周与你相伴」卡）——北京周界（周一为一周之始），只读聚合。
+// 与 /economy/checkin/calendar 同口径：created_at 是 sqlite datetime('now') 的
+// 'YYYY-MM-DD HH:MM:SS' UTC 串，北京周界折 -8h 成同构边界串后字典序比较。
+router.get('/weekly', authRequired, (req, res) => {
+  const uid = req.user.id;
+  const one = (sql, ...args) => { try { return db.prepare(sql).get(...args) || {}; } catch { return {}; } };
+  const all = (sql, ...args) => { try { return db.prepare(sql).all(...args); } catch { return []; } };
+
+  const today = cnToday();
+  const t = new Date(today + 'T00:00:00Z');
+  const dow = (t.getUTCDay() + 6) % 7; // 0 = 周一
+  const weekStartMs = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - dow);
+  const weekStart = new Date(weekStartMs).toISOString().slice(0, 10);
+  const sqliteUtc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+  const utcStart = sqliteUtc(weekStartMs - 8 * 3600e3);
+  const utcEnd = sqliteUtc(weekStartMs + 7 * 86400000 - 8 * 3600e3);
+
+  // 逐日消息量（自己会话内双向消息都算「相伴」），按北京日归桶；未来天保持 0。
+  const msgRows = all(`SELECT m.created_at, m.role FROM messages m
+    JOIN conversations c ON c.id = m.conversation_id
+    WHERE c.user_id = ? AND m.created_at >= ? AND m.created_at < ?`, uid, utcStart, utcEnd);
+  const perDay = {};
+  let sent = 0;
+  for (const r of msgRows) {
+    const d = cnToday(new Date(String(r.created_at).replace(' ', 'T') + 'Z'));
+    perDay[d] = (perDay[d] || 0) + 1;
+    if (r.role === 'user') sent += 1;
+  }
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStartMs + i * 86400000).toISOString().slice(0, 10);
+    days.push({ date: d.slice(5), n: perDay[d] || 0 });
+  }
+
+  // 本周最相伴的角色（消息量第一名；并列取先创建的会话侧）。
+  const companion = one(`SELECT ch.id, ch.name, ch.avatar, COUNT(m.id) n FROM messages m
+    JOIN conversations c ON c.id = m.conversation_id
+    JOIN characters ch ON ch.id = c.character_id
+    WHERE c.user_id = ? AND m.created_at >= ? AND m.created_at < ?
+    GROUP BY ch.id ORDER BY n DESC, ch.id ASC LIMIT 1`, uid, utcStart, utcEnd);
+
+  const tx = one(`SELECT
+      COALESCE(SUM(CASE WHEN gold > 0 THEN gold ELSE 0 END), 0) earned,
+      COALESCE(SUM(CASE WHEN gold < 0 THEN -gold ELSE 0 END), 0) spent,
+      COALESCE(SUM(CASE WHEN kind = 'checkin' THEN 1 ELSE 0 END), 0) checkins
+    FROM transactions WHERE user_id = ? AND created_at >= ? AND created_at < ?`, uid, utcStart, utcEnd);
+  const newFriends = one(`SELECT COUNT(*) n FROM friendships
+    WHERE (a_id = ? OR b_id = ?) AND created_at >= ? AND created_at < ?`, uid, uid, utcStart, utcEnd).n || 0;
+  const u = one('SELECT checkin_streak FROM users WHERE id = ?', uid);
+
+  res.json({
+    week_start: weekStart, today, days,
+    messages: msgRows.length, sent, active_days: days.filter((d) => d.n > 0).length,
+    checkins: tx.checkins || 0, streak: u.checkin_streak || 0,
+    gold_earned: tx.earned || 0, gold_spent: tx.spent || 0,
+    new_friends: newFriends,
+    companion: companion.id ? companion : null,
   });
 });
 

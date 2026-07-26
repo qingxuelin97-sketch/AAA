@@ -20,7 +20,7 @@ import { tick } from '../appgestures.js';
 import {
   Check, Flame, MessagesSquare, ChevronRight, ThumbsUp,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell,
-  ScrollText, Users, Trophy, CalendarCheck
+  ScrollText, Users, Trophy, CalendarCheck, Sparkles
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -73,6 +73,7 @@ export default function AppHome() {
   const [milestone, setMilestone] = useState(0);
   const [streakShare, setStreakShare] = useState(false);
   const [claiming, setClaiming] = useState('');
+  const [weekly, setWeekly] = useState(null);
   const streakRef = useRef(null);
   const checkinBtnRef = useRef(null);
   // 顶栏已随 app 壳移除，通知铃移到页面自己的顶部行；SSE 秒级刷角标。
@@ -108,6 +109,8 @@ export default function AppHome() {
       .then(d => { const cs = d.characters || []; if (cs.length) setPick(cs.slice(0, 6)); })
       .catch(() => {});
     api('/engage/tasks').then(d => setTasks((d.tasks || []).filter(t => !t.claimed).slice(0, 3))).catch(() => {});
+    // 本周回顾（周报卡）：静默失败即隐藏，不给首页添失败态。
+    api('/me/weekly').then(d => setWeekly(d && Array.isArray(d.days) ? d : null)).catch(() => setWeekly(null));
   }, []);
   useEffect(() => { loadHome(); }, [loadHome]);
   useAppTabActive('/today', () => {
@@ -356,6 +359,53 @@ export default function AppHome() {
                 )}
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* weekly recap —— 本周与你相伴（有故事才出现，静默失败即隐藏） */}
+      {weekly && weekly.messages > 0 && (
+        <section className="ah-sec qa-weekly" aria-labelledby="today-weekly-title">
+          <div className="ah-sec-head">
+            <h2 id="today-weekly-title"><Sparkles size={16} /> 本周与你相伴</h2>
+            <AppButton className="ah-more" variant="tertiary" size="sm" onClick={() => nav('/insights')}>
+              星轨 <ChevronRight size={14} />
+            </AppButton>
+          </div>
+          <div className="qa-weekly-card">
+            <div
+              className="qa-weekly-bars"
+              role="img"
+              aria-label={`本周逐日消息：${weekly.days.map(d => `${d.date} ${d.n} 条`).join('，')}`}
+            >
+              {weekly.days.map((d, i) => {
+                const max = Math.max(...weekly.days.map(x => x.n), 1);
+                return (
+                  <div key={d.date} className={'qa-weekly-bar' + (d.date === weekly.today.slice(5) ? ' today' : '')}>
+                    <i style={{ height: (d.n ? Math.max(14, Math.round(d.n / max * 100)) : 5) + '%' }} />
+                    <span aria-hidden="true">{'一二三四五六日'[i]}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="qa-weekly-stats">
+              <span><b>{fmtNum(weekly.messages)}</b> 条消息</span>
+              <span><b>{weekly.active_days}</b> 天相伴</span>
+              <span><b>{weekly.checkins}</b> 次签到</span>
+              <span className="qa-weekly-gold"><b>+{fmtNum(weekly.gold_earned)}</b> 金币</span>
+            </div>
+            {weekly.companion && (
+              <button
+                type="button"
+                className="qa-weekly-comp"
+                onClick={() => nav('/character/' + weekly.companion.id)}
+                aria-label={`本周最相伴：${weekly.companion.name}，${weekly.companion.n} 条消息，查看角色`}
+              >
+                <Avatar src={weekly.companion.avatar} name={weekly.companion.name} size={40} />
+                <div className="qa-weekly-comp-tx"><span>本周最相伴</span><b>{weekly.companion.name}</b></div>
+                <em>{fmtNum(weekly.companion.n)} 条</em>
+              </button>
+            )}
           </div>
         </section>
       )}

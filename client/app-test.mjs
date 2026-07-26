@@ -188,6 +188,14 @@ const serverAchievementsSource = await readFile(new URL('../server/routes/achiev
 assert.deepEqual(achIdsOf(serverAchievementsSource), achIdsOf(mockBackendSource), 'server and mock achievement catalogues must stay the same set');
 assert.ok(achIdsOf(serverAchievementsSource).length >= 30, 'the achievement catalogue must keep the parliament and friendship tiers');
 assert.match(mockBackendSource, /honor: !!a\.honor/, 'the mock must surface the honor flag with server semantics');
+/* ---- S7-G10 周报双轨配对 ---- */
+const meRouteSource = await readFile(new URL('../server/routes/me.js', import.meta.url), 'utf8');
+assert.match(meRouteSource, /router\.get\('\/weekly'[\s\S]*cnToday/, 'the weekly recap must be derived server-side on the Beijing week boundary');
+assert.match(meRouteSource, /\(t\.getUTCDay\(\) \+ 6\) % 7/, 'the weekly recap week must start on Monday, not the JS Sunday default');
+assert.match(mockBackendSource, /path === '\/me\/weekly'[\s\S]*week_start/, 'the static mock must mirror the weekly recap endpoint and shape');
+for (const key of ['week_start', 'active_days', 'gold_earned', 'gold_spent', 'new_friends', 'companion']) {
+  assert.ok(meRouteSource.includes(key) && mockBackendSource.includes(key), `weekly recap field "${key}" must exist on both backends`);
+}
 assert.match(characterViewSource, /loadError[\s\S]*EmptyArt[\s\S]*nav\('\/library'\)/, 'character load failures must offer a real recovery empty state');
 const insightsSource = await readFile(new URL('./src/pages/Insights.jsx', import.meta.url), 'utf8');
 assert.match(insightsSource, /AppErrorState[\s\S]*onRetry=\{load\}/, 'Insights first-load failure must offer the unified App recovery state');
@@ -213,6 +221,13 @@ const calendarSheetSource = await readFile(new URL('./src/components/CheckinCale
 assert.match(calendarSheetSource, /checkin\/calendar[\s\S]*role="grid"/, 'the calendar sheet must render the server-derived history as an accessible grid');
 assert.match(calendarSheetSource, /isolate:\s*appPortal[\s\S]*createPortal\(sheet/, 'the calendar sheet must keep the App overlay isolation contract');
 assert.match(e2eSourceForS7, /todayRitualAssertions/, 'the e2e suite must keep exercising the check-in ritual');
+/* ---- S7-G10 周报卡契约 ---- */
+assert.match(appHomeSource, /\/me\/weekly'\)[\s\S]*catch\(\(\) => setWeekly\(null\)\)/, 'the weekly recap must hide silently on failure, never error the home');
+assert.match(appHomeSource, /weekly && weekly\.messages > 0 &&/, 'the weekly recap must only appear once there is a story to tell');
+assert.match(appHomeSource, /qa-weekly-bars"[\s\S]*role="img"[\s\S]*aria-label/, 'the weekly bars must expose a text alternative for the whole chart');
+const s7StageSource = await readFile(new URL('./src/styles/app-lumen-s7.css', import.meta.url), 'utf8');
+assert.match(s7StageSource, /\.qa-weekly-card/, 'the weekly recap card must land in the S7 stage layer');
+assert.match(s7StageSource, /\[data-perf="lite"\][\s\S]*\.qa-weekly-card[\s\S]*backdrop-filter:\s*none/, 'the weekly card must drop its blur on the lite tier');
 /* ---- S7-G5 成就 2.0 契约 ---- */
 const achievementsSource = await readFile(new URL('./src/pages/Achievements.jsx', import.meta.url), 'utf8');
 assert.match(achievementsSource, /data-medal=\{medalOf\(achievement\.reward\)\}/, 'App achievement rarity must derive from the shared reward formula');
@@ -262,7 +277,8 @@ assert.ok(
     && mainSource.indexOf('app-pages-quiet-aqua.css') < mainSource.indexOf('app-experience-v3.css')
     && mainSource.indexOf('app-experience-v3.css') < mainSource.indexOf('app-hig-v5.css')
     && mainSource.indexOf('app-hig-v5.css') < mainSource.indexOf('app-lumen-s6.css')
-    && mainSource.indexOf('app-lumen-s6.css') < mainSource.indexOf('app-lumen-materials.css'),
+    && mainSource.indexOf('app-lumen-s6.css') < mainSource.indexOf('app-lumen-s7.css')
+    && mainSource.indexOf('app-lumen-s7.css') < mainSource.indexOf('app-lumen-materials.css'),
   'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer and Lumen materials must load in cascade order after the runtime layer',
 );
 /* ---- Lumen Glass token authority guards ---- */
@@ -273,7 +289,7 @@ const lumenMaterials = await readFile(new URL('./src/styles/app-lumen-materials.
 assert.match(lumenMaterials, /html\[data-app="1"\]/, 'Lumen materials must remain App-scoped');
 assert.doesNotMatch(lumenMaterials.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.lg-[^{,]+/m, 'Lumen material classes must never escape the data-app fence');
 const lgDefinitions = new Set([...(lumenTokens + lumenMaterials).matchAll(/(--lg-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
-const lumenStageCss = (await Promise.all(['s3', 's4', 's5', 's6'].map((n) => readFile(new URL(`./src/styles/app-lumen-${n}.css`, import.meta.url), 'utf8')))).join('\n');
+const lumenStageCss = (await Promise.all(['s3', 's4', 's5', 's6', 's7'].map((n) => readFile(new URL(`./src/styles/app-lumen-${n}.css`, import.meta.url), 'utf8')))).join('\n');
 const higForLg = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
 assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.(?:qa|lg)-[^{,]+/m, 'Lumen stage layers must never escape the data-app fence');
 assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /nth-(?:child|of-type)/, 'Lumen stage layers must not style by position');
