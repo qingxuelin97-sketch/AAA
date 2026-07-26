@@ -59,3 +59,7 @@ Do not treat a single screenshot as release evidence. Store regenerated images w
   `client/dist/quiet-aqua-e2e/`（e2e 每次构建重生成），不以落地帧入库。
 - 生成条件同 v7：build:static + mock 登录（huanyu_token=tok.1）+ perf=high，
   另预置 `huanyu_onboard_done` 抑制首启引导。
+- G10 终态注：today/wallet/insights/app-controls 帧包含 G10 全部新面
+  （周报卡 / 流水筛选 / 年鉴卡入口 / 六展区 Gallery）；交互态新增面
+  （足迹卡 / 相伴一览 / 新功能 Sheet / 长按家族）证据见
+  `client/dist/quiet-aqua-e2e/` 与 `docs/design/lumen-s7-ui-kit.html`。

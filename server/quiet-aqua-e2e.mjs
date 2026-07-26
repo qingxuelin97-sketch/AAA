@@ -1822,9 +1822,11 @@ async function todayRitualAssertions(browser, base) {
     month: document.querySelector('.qa-cal-month')?.textContent || '',
     nextDisabled: [...document.querySelectorAll('.qa-cal-nav .qa-icon-button')]
       .some((button) => button.disabled && button.getAttribute('aria-label') === '下一月'),
+    horizon: document.querySelector('.qa-cal-horizon')?.textContent || '',
   }));
   assert(calendar.headers === 7 && calendar.todayOn && /^\d{4}-\d{2}$/.test(calendar.month) && calendar.nextDisabled,
     '签到日历网格状态异常', JSON.stringify(calendar));
+  assert(/距 \d+ 天里程碑还差 \d+ 天/.test(calendar.horizon), '里程碑地平线缺失或格式异常', calendar.horizon);
   await saveScreenshot(page, 'checkin-calendar-390x844-light.png');
 
   await page.keyboard.press('Escape');
