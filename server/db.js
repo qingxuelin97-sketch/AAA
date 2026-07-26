@@ -412,6 +412,11 @@ for (const sql of [
   'ALTER TABLE settings ADD COLUMN leaderboard_visible INTEGER DEFAULT 1',
   'ALTER TABLE settings ADD COLUMN read_receipts INTEGER DEFAULT 1',
   'ALTER TABLE settings ADD COLUMN personalize INTEGER DEFAULT 1',
+  // S7 兴趣画像：分类 slug 逗号串，仅在 personalize 开启时参与推荐加权
+  "ALTER TABLE settings ADD COLUMN interests TEXT DEFAULT ''",
+  // S7-G10 会话整理：置顶（列表排序优先）与免打扰（角标降噪），皆为用户侧标记
+  'ALTER TABLE conversations ADD COLUMN pinned INTEGER DEFAULT 0',
+  'ALTER TABLE conversations ADD COLUMN muted INTEGER DEFAULT 0',
   "ALTER TABLE characters ADD COLUMN bgm TEXT DEFAULT ''",
   'ALTER TABLE characters ADD COLUMN voice_speed REAL DEFAULT 1',
   'ALTER TABLE characters ADD COLUMN voice_pitch REAL DEFAULT 1',

@@ -5,12 +5,17 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { EmptyArt } from '../art.jsx';
+import { EmptyArt, AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
+import { burst } from '../fx.js';
+import { tick } from '../appgestures.js';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import { useLongPress } from '../chat/hooks.js';
 import {
   Trophy, Award, Check, ChevronRight, Lock,
   MessageCircle, MessagesSquare, Send, Heart, Sparkles, UserPlus, Drama, Globe, ScrollText,
   BadgeCheck, Crown, Star, Bookmark, PenLine, Users, UserCheck, Scale, Gavel, CheckSquare,
-  Landmark, CalendarCheck, Dices, ArrowLeft, RefreshCw,
+  Landmark, CalendarCheck, Dices, ArrowLeft, RefreshCw, Share2,
 } from 'lucide-react';
 
 const ICONS = {
@@ -32,8 +37,11 @@ export default function Achievements() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [err, setErr] = useState(false);
   const [busy, setBusy] = useState('');
   const [appCat, setAppCat] = useState('全部');
+  const [celebrating, setCelebrating] = useState('');
+  const [shareFor, setShareFor] = useState(null);
   // Ceremonial opening animation — plays once per session.
   const [intro, setIntro] = useState(() => { try { return !sessionStorage.getItem(INTRO_KEY); } catch { return true; } });
   useEffect(() => {
@@ -46,14 +54,25 @@ export default function Achievements() {
   const load = () => {
     if (!appMode) setLoadError('');
     return api('/achievements').then(d => { setList(d.achievements || []); setSummary(d.summary); })
-      .catch(e => { if (!appMode) setLoadError(e.message || '成就载入失败，请稍后重试'); toast(e.message, 'err'); })
+      .catch(e => { if (!appMode) setLoadError(e.message || '成就载入失败，请稍后重试'); setErr(true); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
-  const claim = async (a) => {
+  const claim = async (a, at) => {
     setBusy(a.id);
-    try { const d = await api(`/achievements/${a.id}/claim`, { method: 'POST' }); toast(`已领取 ${d.reward} 金币`); refreshUser?.(); load(); }
+    try {
+      const d = await api(`/achievements/${a.id}/claim`, { method: 'POST' });
+      toast(`已领取 ${d.reward} 金币`); refreshUser?.();
+      if (appMode) {
+        // 一次性领取庆祝：印章闪落 + 粒子 + 触感（reduced-motion 由 fx/CSS 各自降级）
+        tick(12);
+        if (at) burst(at.x, at.y);
+        setCelebrating(a.id);
+        setTimeout(() => setCelebrating(''), 700);
+      }
+      load();
+    }
     catch (e) { toast(e.message, 'err'); } finally { setBusy(''); }
   };
   const claimAll = async () => {
@@ -66,6 +85,7 @@ export default function Achievements() {
       claimables.map(a => api(`/achievements/${a.id}/claim`, { method: 'POST' }))
     );
     const total = results.reduce((s, r) => s + (r.status === 'fulfilled' ? (r.value.reward || 0) : 0), 0);
+    if (appMode) tick(12);
     toast(`一键领取完成，共 +${total} 金币`); refreshUser?.(); await load(); setBusy('');
   };
 
@@ -99,6 +119,31 @@ export default function Achievements() {
             </div>
           </section>
 
+          {/* S7 徽章墙：五分类完成环（静态 conic 百分比）+ 金银铜计数 */}
+          {!loading && list.length > 0 && (
+            <section className="qa-ach-wall" aria-label="分类完成度与奖章">
+              <div className="qa-ach-wall-rings">
+                {CATS.map(cat => {
+                  const rows = byCat[cat] || [];
+                  const done = rows.filter(a => a.unlocked).length;
+                  const p = rows.length ? Math.round((done / rows.length) * 100) : 0;
+                  return (
+                    <div key={cat} className="qa-ach-ring" role="progressbar" aria-label={`${cat}成就完成度`}
+                      aria-valuemin="0" aria-valuemax="100" aria-valuenow={p} style={{ '--p': p }}>
+                      <b>{done}<small>/{rows.length}</small></b>
+                      <span>{cat}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="qa-ach-medals" aria-label="奖章统计">
+                <span data-medal="gold"><Award size={13} /> 金 {list.filter(a => a.unlocked && medalOf(a.reward) === 'gold').length}</span>
+                <span data-medal="silver"><Award size={13} /> 银 {list.filter(a => a.unlocked && medalOf(a.reward) === 'silver').length}</span>
+                <span data-medal="bronze"><Award size={13} /> 铜 {list.filter(a => a.unlocked && medalOf(a.reward) === 'bronze').length}</span>
+              </div>
+            </section>
+          )}
+
           {summary?.claimable > 0 && (
             <AppButton className="qa-achievements-claim-all" variant="primary" size="lg" loading={busy === 'all'} onClick={claimAll}>
               <CoinIcon size={18} /> 一键领取 {summary.gold_pending} 金币
@@ -113,16 +158,27 @@ export default function Achievements() {
 
           {loading ? (
             <AppAchievementsLoading />
+          ) : err && list.length === 0 ? (
+            <AppErrorState kind="achievements" onRetry={() => { setErr(false); setLoading(true); load(); }} />
           ) : visible.length === 0 ? (
-            <section className="qa-achievements-empty"><Award size={34} /><h2>此分类暂无成就</h2><p>去其他板块留下新的足迹吧。</p></section>
+            <section className="qa-achievements-empty"><AppEmptyArt kind="achievements" size={104} /><h2>此分类暂无成就</h2><p>去其他板块留下新的足迹吧。</p></section>
           ) : (
             <section className="qa-achievements-list" aria-label={appCat === '全部' ? '全部成就' : `${appCat}成就`}>
               {visible.map(achievement => (
-                <AppAchievementCard key={achievement.id} achievement={achievement} busy={busy === achievement.id} onClaim={claim} onGo={(link) => nav(link)} />
+                <AppAchievementCard key={achievement.id} achievement={achievement} busy={busy === achievement.id}
+                  celebrating={celebrating === achievement.id} onClaim={claim} onGo={(link) => nav(link)}
+                  onShare={(a) => setShareFor(a)} />
               ))}
             </section>
           )}
         </div>
+        {shareFor && (
+          <ShareCardSheet
+            kind="achievement"
+            payload={{ name: shareFor.name, desc: shareFor.desc, medal: medalOf(shareFor.reward), path: '/achievements' }}
+            onClose={() => setShareFor(null)}
+          />
+        )}
       </main>
     );
   }
@@ -236,15 +292,26 @@ function AppAchievementsLoading() {
   );
 }
 
-function AppAchievementCard({ achievement, busy, onClaim, onGo }) {
+function AppAchievementCard({ achievement, busy, celebrating, onClaim, onGo, onShare }) {
   const Icon = ICONS[achievement.icon] || Award;
   const progress = Math.min(100, Math.round((achievement.value / achievement.goal) * 100));
+  // 长按已解锁卡 = 直达分享（与卡脚分享钮同一出口；单一长按语义来源）
+  const bindPress = useLongPress(() => { if (achievement.unlocked) { tick(8); onShare?.(achievement); } });
 
   return (
-    <article className={`qa-achievements-card${achievement.unlocked ? ' is-unlocked' : ''}${achievement.claimed ? ' is-claimed' : ''}`}>
+    <article
+      className={`qa-achievements-card${achievement.unlocked ? ' is-unlocked' : ''}${achievement.claimed ? ' is-claimed' : ''}${celebrating ? ' qa-ach-claimfx' : ''}`}
+      data-medal={medalOf(achievement.reward)}
+      data-honor={achievement.honor || undefined}
+      {...bindPress(achievement)}
+    >
       <span className="qa-achievements-card-icon" aria-hidden="true"><Icon size={21} />{achievement.unlocked && <i><Check size={11} /></i>}</span>
       <div className="qa-achievements-card-copy">
-        <div className="qa-achievements-card-title"><h2>{achievement.name}</h2>{!achievement.unlocked && <Lock size={13} />}</div>
+        <div className="qa-achievements-card-title">
+          <h2>{achievement.name}</h2>
+          {achievement.honor && <span className="qa-ach-honor-badge"><Crown size={11} /> 荣誉</span>}
+          {!achievement.unlocked && <Lock size={13} />}
+        </div>
         <p>{achievement.desc}</p>
         {!achievement.unlocked && (
           <div className="qa-achievements-card-progress">
@@ -253,11 +320,22 @@ function AppAchievementCard({ achievement, busy, onClaim, onGo }) {
           </div>
         )}
         <div className="qa-achievements-card-foot">
-          <span className="qa-achievements-reward"><CoinIcon size={14} /> {achievement.reward} 金币</span>
-          {achievement.claimed ? (
+          {achievement.honor
+            ? <span className="qa-achievements-reward is-honor"><Crown size={14} /> 荣誉徽章 · 不计奖金</span>
+            : <span className="qa-achievements-reward"><CoinIcon size={14} /> {achievement.reward} 金币</span>}
+          {achievement.unlocked && (
+            <AppButton className="qa-ach-share" variant="tertiary" size="sm" aria-label={`分享成就 ${achievement.name}`}
+              onClick={() => onShare?.(achievement)}><Share2 size={14} /> 分享</AppButton>
+          )}
+          {achievement.honor ? (
+            achievement.unlocked
+              ? <span className="qa-achievements-claimed"><Check size={14} /> 已铭刻</span>
+              : <AppButton variant="secondary" onClick={() => onGo(achievement.link)}>去完成 <ChevronRight size={16} /></AppButton>
+          ) : achievement.claimed ? (
             <span className="qa-achievements-claimed"><Check size={14} /> 已领取</span>
           ) : achievement.claimable ? (
-            <AppButton variant="primary" loading={busy} onClick={() => onClaim(achievement)}>领取奖励</AppButton>
+            <AppButton variant="primary" loading={busy}
+              onClick={(e) => onClaim(achievement, { x: e.clientX, y: e.clientY })}>领取奖励</AppButton>
           ) : (
             <AppButton variant="secondary" onClick={() => onGo(achievement.link)}>去完成 <ChevronRight size={16} /></AppButton>
           )}

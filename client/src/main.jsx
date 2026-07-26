@@ -28,9 +28,9 @@ import './styles/web-lumen-pages.css';
 import './styles/web-lumen-states.css';
 import './styles/web-lumen-misc.css';
 import './styles/web-lumen-longtail.css';
-// App 层 CSS（chat-app + runtime + Lumen 全家）自 W6 起按模式分包：静态 import
-// 整体搬入 styles/app-entry.js（顺序逐行保持，顺序即级联权威），isAppMode()
-// 时在 render 前 await 动态加载 —— Web 用户不再下载 ~700KB App CSS。
+// App 层 CSS（chat-app + runtime + Lumen 全家，含 S7 的 s6/s7 层）自 W6 起按模式
+// 分包：静态 import 整体搬入 styles/app-entry.js（顺序逐行保持，顺序即级联权威），
+// isAppMode() 时在 render 前 await 动态加载 —— Web 用户不再下载 App 层 CSS。
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {

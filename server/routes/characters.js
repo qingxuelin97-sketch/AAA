@@ -90,6 +90,11 @@ router.get('/recommended', authRequired, (req, res) => {
   const bump = (cat, w) => { if (cat) weight[cat] = (weight[cat] || 0) + w; };
   db.prepare(`SELECT c.category FROM favorites f JOIN characters c ON c.id = f.character_id WHERE f.user_id = ?`).all(uid).forEach(r => bump(r.category, 2));
   db.prepare(`SELECT c.category FROM conversations cv JOIN characters c ON c.id = cv.character_id WHERE cv.user_id = ?`).all(uid).forEach(r => bump(r.category, 1));
+  // S7 兴趣画像：用户显式选择的分类各 +2（与收藏同权），仅在 personalize 开启时生效。
+  const st = db.prepare('SELECT interests, personalize FROM settings WHERE user_id = ?').get(uid);
+  if (st && st.personalize !== 0 && st.interests) {
+    String(st.interests).split(',').filter(Boolean).forEach((slug) => bump(slug, 2));
+  }
   const personalized = Object.keys(weight).length > 0;
   const pool = db.prepare(`SELECT c.*, u.display_name AS owner_name FROM characters c
     JOIN users u ON u.id = c.owner_id

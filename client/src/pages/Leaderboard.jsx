@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl, useAuth } from '../api.jsx';
+import { fmtNum } from '../util.js';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { EmptyArt } from '../art.jsx';
+import { EmptyArt, AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 import { Heart, Play, Flame, ScrollText, Trophy, Crown, ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
 export default function Leaderboard() {
@@ -16,13 +18,15 @@ export default function Leaderboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [err, setErr] = useState(false);
 
   const load = () => {
     setLoading(true);
     setLoadError('');
+    setErr(false);
     api('/engage/leaderboard')
       .then(setData)
-      .catch(e => { setLoadError(e.message || '排行榜载入失败，请稍后重试'); toast(e.message, 'err'); })
+      .catch(e => { setLoadError(e.message || '排行榜载入失败，请稍后重试'); setErr(true); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -85,12 +89,23 @@ export default function Leaderboard() {
             <AppButton variant="tertiary" selected={tab === 'authors'} role="tab" aria-selected={tab === 'authors'} onClick={() => setTab('authors')}>创作者榜</AppButton>
           </div>
 
+          {/* S7-G10 我的名次：创作者榜下常驻自己的排位（榜外也看得到自己） */}
+          {!loading && !err && tab === 'authors' && data?.me && (
+            <section className="qa-lb-mine" aria-label={`我的创作声望排名第 ${data.me.rank} 名`}>
+              <Trophy size={16} aria-hidden="true" />
+              <span className="qa-lb-mine-copy">我的创作声望</span>
+              <b>第 {data.me.rank} 名</b>
+              <small>{fmtNum(data.me.score)} 声望</small>
+            </section>
+          )}
           {loading ? (
             <section className="qa-leaderboard-loading" role="status" aria-label="正在载入排行榜">
               {[0, 1, 2, 3, 4].map(index => <span className="skel" key={index} aria-hidden="true" />)}
             </section>
+          ) : err ? (
+            <AppErrorState kind="leaderboard" onRetry={load} />
           ) : rows.length === 0 ? (
-            <section className="qa-leaderboard-empty"><Trophy size={34} /><h2>{emptyText}</h2><p>榜单正在等待新的名字。</p></section>
+            <section className="qa-leaderboard-empty"><AppEmptyArt kind="leaderboard" size={104} /><h2>{emptyText}</h2><p>榜单正在等待新的名字。</p></section>
           ) : (
             <>
               {/* 领奖台：2 · 1 · 3 排列，冠军居中最高（S5 曜光玻璃 · s26） */}

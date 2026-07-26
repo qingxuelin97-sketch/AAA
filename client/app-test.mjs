@@ -170,7 +170,208 @@ assert.match(welcomeSource, /nav\('\/events'\) !== false[\s\S]*close\(\)/, 'welc
 assert.match(appHomeSource, /e\?\.code === 'ALREADY_CHECKED_IN'[\s\S]*签到失败，请稍后重试/, 'check-in UI must only mark an explicit duplicate as complete');
 assert.match(economySource, /status\(409\)[\s\S]*code:\s*'ALREADY_CHECKED_IN'/, 'real backend must return a stable duplicate check-in code');
 assert.match(mockBackendSource, /E\('今天已经签到过啦', 409, 'ALREADY_CHECKED_IN'\)/, 'HTTP static mock must mirror duplicate check-in semantics');
+/* ---- S7 backend/mock 双轨配对守卫 ---- */
+assert.match(economySource, /checkin\/calendar/, 'the check-in calendar must be derived server-side');
+assert.match(mockBackendSource, /economy\/checkin\/calendar/, 'the static mock must mirror the check-in calendar endpoint');
+assert.match(mockBackendSource, /PAYMENT_ORDER_REQUIRED/, 'the static mock must never mint currency from a bare recharge call');
+assert.match(mockBackendSource, /\/economy\/packages/, 'the static mock must serve the read-only wallet package list');
+assert.match(mockBackendSource, /\/economy\/transactions/, 'the static mock must serve the read-only transaction ledger');
+assert.match(mockBackendSource, /engage\\\/tasks\\\/\(\[\\w-\]\+\)/, 'the mock daily-task claim route must accept every real task id');
+const settingsSourceForInterests = await readFile(new URL('../server/routes/settings.js', import.meta.url), 'utf8');
+assert.match(settingsSourceForInterests, /sanitizeInterests/, 'interest tags must be whitelisted server-side');
+assert.match(mockBackendSource, /body\.interests/, 'interest tags must have a static-mock twin');
+const achIdsOf = (src) => {
+  const block = src.match(/const ACHIEVEMENTS = \[[\s\S]*?\n\];/)?.[0] || '';
+  return [...block.matchAll(/\{ id: '([a-z0-9_]+)'/g)].map((match) => match[1]).sort();
+};
+const serverAchievementsSource = await readFile(new URL('../server/routes/achievements.js', import.meta.url), 'utf8');
+assert.deepEqual(achIdsOf(serverAchievementsSource), achIdsOf(mockBackendSource), 'server and mock achievement catalogues must stay the same set');
+assert.ok(achIdsOf(serverAchievementsSource).length >= 30, 'the achievement catalogue must keep the parliament and friendship tiers');
+assert.match(mockBackendSource, /honor: !!a\.honor/, 'the mock must surface the honor flag with server semantics');
+/* ---- S7-G10 周报双轨配对 ---- */
+const meRouteSource = await readFile(new URL('../server/routes/me.js', import.meta.url), 'utf8');
+assert.match(meRouteSource, /router\.get\('\/weekly'[\s\S]*cnToday/, 'the weekly recap must be derived server-side on the Beijing week boundary');
+assert.match(meRouteSource, /\(t\.getUTCDay\(\) \+ 6\) % 7/, 'the weekly recap week must start on Monday, not the JS Sunday default');
+assert.match(mockBackendSource, /path === '\/me\/weekly'[\s\S]*week_start/, 'the static mock must mirror the weekly recap endpoint and shape');
+for (const key of ['week_start', 'active_days', 'gold_earned', 'gold_spent', 'new_friends', 'companion']) {
+  assert.ok(meRouteSource.includes(key) && mockBackendSource.includes(key), `weekly recap field "${key}" must exist on both backends`);
+}
+/* ---- S7-G10 会话整理双轨配对 ---- */
+const chatRouteSource = await readFile(new URL('../server/routes/chat.js', import.meta.url), 'utf8');
+assert.match(chatRouteSource, /ORDER BY cv\.pinned DESC, cv\.updated_at DESC/, 'pinned conversations must sort first server-side');
+assert.match(chatRouteSource, /markOnly[\s\S]*if \(!markOnly\) db\.prepare\("UPDATE conversations SET updated_at/, 'pin/mute toggles must never bump the conversation sort timestamp');
+assert.match(mockBackendSource, /\(b\.pinned \|\| 0\) - \(a\.pinned \|\| 0\)/, 'the static mock must mirror pinned-first ordering');
+assert.match(mockBackendSource, /if \(!markOnly\) conv\.updated_at = now\(\)/, 'the static mock must mirror mark-only PATCH semantics');
+const dbSource = await readFile(new URL('../server/db.js', import.meta.url), 'utf8');
+assert.match(dbSource, /ALTER TABLE conversations ADD COLUMN pinned INTEGER DEFAULT 0/, 'the pinned column must ship as a migration');
+assert.match(dbSource, /ALTER TABLE conversations ADD COLUMN muted INTEGER DEFAULT 0/, 'the muted column must ship as a migration');
 assert.match(characterViewSource, /loadError[\s\S]*EmptyArt[\s\S]*nav\('\/library'\)/, 'character load failures must offer a real recovery empty state');
+const insightsSource = await readFile(new URL('./src/pages/Insights.jsx', import.meta.url), 'utf8');
+assert.match(insightsSource, /AppErrorState[\s\S]*onRetry=\{load\}/, 'Insights first-load failure must offer the unified App recovery state');
+const errorStateSource = await readFile(new URL('./src/components/AppErrorState.jsx', import.meta.url), 'utf8');
+assert.match(errorStateSource, /role="alert"[\s\S]*AppEmptyArt[\s\S]*onRetry/, 'AppErrorState must pair alert semantics with art and a retry action');
+const e2eSourceForS7 = await readFile(new URL('../server/quiet-aqua-e2e.mjs', import.meta.url), 'utf8');
+assert.match(e2eSourceForS7, /insightsRecoveryAssertions/, 'the e2e suite must keep exercising the Insights offline-retry recovery');
+/* ---- S7-G3 首启引导契约 ---- */
+const onboardingSource = await readFile(new URL('./src/components/AppOnboarding.jsx', import.meta.url), 'utf8');
+assert.match(onboardingSource, /huanyu_onboard_done[\s\S]*accountIsFresh/, 'onboarding must gate on both the stored key and account freshness');
+assert.match(onboardingSource, /localStorage\.setItem\(ONBOARD_KEY[\s\S]*return;/, 'veteran accounts must be silently marked instead of interrupted');
+assert.match(onboardingSource, /isolate:\s*appPortal[\s\S]*createPortal\(popup/, 'onboarding must keep the App overlay isolation contract');
+assert.match(onboardingSource, /personalize[\s\S]*interests/, 'the interest picker must honour the personalize consent switch');
+assert.match(layoutSource, /<AppOnboarding \/>[\s\S]*<WelcomePopup \/>/, 'onboarding must mount inside the App shell ahead of the daily welcome');
+assert.match(e2eSourceForS7, /onboard = true[\s\S]*huanyu_onboard_done/, 'the e2e harness must pre-seed the onboarding key so baselines stay onboarding-blind');
+assert.match(e2eSourceForS7, /onboardingAssertions/, 'the e2e suite must keep exercising the first-run onboarding flow');
+/* ---- S7-G4 签到仪式契约 ---- */
+assert.match(appHomeSource, /CheckinCalendarSheet[\s\S]*qa-streak/, 'the Today page must surface the streak week view with a calendar entry');
+assert.match(appHomeSource, /burst\(/, 'a successful check-in must fire the one-shot celebration');
+assert.doesNotMatch(appHomeSource, /setInterval\(\s*\(\)\s*=>\s*burst/, 'celebrations must stay one-shot, never looping');
+assert.match(appHomeSource, /engage\/tasks\/\$\{t\.id\}\/claim/, 'daily tasks must be claimable inline on the Today page');
+const calendarSheetSource = await readFile(new URL('./src/components/CheckinCalendarSheet.jsx', import.meta.url), 'utf8');
+assert.match(calendarSheetSource, /checkin\/calendar[\s\S]*role="grid"/, 'the calendar sheet must render the server-derived history as an accessible grid');
+assert.match(calendarSheetSource, /isolate:\s*appPortal[\s\S]*createPortal\(sheet/, 'the calendar sheet must keep the App overlay isolation contract');
+assert.match(e2eSourceForS7, /todayRitualAssertions/, 'the e2e suite must keep exercising the check-in ritual');
+/* ---- S7-G10 周报卡契约 ---- */
+assert.match(appHomeSource, /\/me\/weekly'\)[\s\S]*catch\(\(\) => setWeekly\(null\)\)/, 'the weekly recap must hide silently on failure, never error the home');
+assert.match(appHomeSource, /weekly && weekly\.messages > 0 &&/, 'the weekly recap must only appear once there is a story to tell');
+assert.match(appHomeSource, /qa-weekly-bars"[\s\S]*role="img"[\s\S]*aria-label/, 'the weekly bars must expose a text alternative for the whole chart');
+const s7StageSource = await readFile(new URL('./src/styles/app-lumen-s7.css', import.meta.url), 'utf8');
+assert.match(s7StageSource, /\.qa-weekly-card/, 'the weekly recap card must land in the S7 stage layer');
+assert.match(s7StageSource, /\[data-perf="lite"\][\s\S]*\.qa-weekly-card[\s\S]*backdrop-filter:\s*none/, 'the weekly card must drop its blur on the lite tier');
+/* ---- S7-G10 Gallery 展区契约 ---- */
+const gallerySource = await readFile(new URL('./src/pages/AppControlsGallery.jsx', import.meta.url), 'utf8');
+assert.match(gallerySource, /gallery-s7-empty[\s\S]*gallery-s7-streak[\s\S]*gallery-s7-medal[\s\S]*gallery-s7-weekly[\s\S]*gallery-s7-press/, 'the controls gallery must exhibit the full S7 component family');
+assert.match(gallerySource, /<AppErrorState[\s\S]*onRetry=\{demoRetry\}/, 'the gallery error-state demo must exercise a real retry affordance');
+assert.match(gallerySource, /<AppPressMenu[\s\S]*returnFocusRef=\{pressAnchorRef\}/, 'the gallery press-menu demo must return focus to its anchor');
+/* ---- S7-G5 成就 2.0 契约 ---- */
+const achievementsSource = await readFile(new URL('./src/pages/Achievements.jsx', import.meta.url), 'utf8');
+assert.match(achievementsSource, /data-medal=\{medalOf\(achievement\.reward\)\}/, 'App achievement rarity must derive from the shared reward formula');
+assert.match(achievementsSource, /data-honor[\s\S]*荣誉/, 'honor achievements must surface the badge semantics');
+assert.match(achievementsSource, /achievement\.honor[\s\S]*已铭刻/, 'unlocked honor achievements must never expose a claim button');
+assert.match(achievementsSource, /qa-ach-wall[\s\S]*aria-valuenow/, 'the badge wall must expose per-category completion as progressbars');
+assert.match(achievementsSource, /setCelebrating[\s\S]*setTimeout/, 'the claim celebration must be one-shot and self-clearing');
+assert.match(e2eSourceForS7, /achievementsAssertions/, 'the e2e suite must keep exercising achievements 2.0');
+/* ---- S7-G6 分享卡契约 ---- */
+const shareCardSource = await readFile(new URL('./src/sharecard.js', import.meta.url), 'utf8');
+assert.doesNotMatch(runtimeSource, /html2canvas|dom-to-image/, 'share cards must stay hand-composited without raster dependencies');
+assert.match(shareCardSource, /document\.fonts/, 'the compositor must wait for fonts before painting text');
+assert.match(shareCardSource, /CARD_W = 1080[\s\S]*CARD_H = 1440/, 'export resolution must stay fixed and DPR-decoupled');
+const shareSheetSource = await readFile(new URL('./src/components/ShareCardSheet.jsx', import.meta.url), 'utf8');
+assert.match(shareSheetSource, /canShare[\s\S]*download/, 'sharing must probe navigator.canShare and keep a download fallback');
+assert.match(shareSheetSource, /import\('\.\.\/sharecard\.js'\)/, 'the compositor must load lazily outside the first-screen bundle');
+assert.match(characterViewSource, /ShareCardSheet/, 'the character view must expose the share-card entry');
+assert.match(e2eSourceForS7, /shareCardAssertions/, 'the e2e suite must keep exercising the share-card flow');
+/* ---- S7-G10 台词卡契约 ---- */
+assert.match(shareCardSource, /renderQuoteCard/, 'the compositor must offer the quote-card template');
+assert.match(shareSheetSource, /kind === 'quote'[\s\S]*renderQuoteCard/, 'the share sheet must route the quote kind to its template');
+assert.match(chatSource, /app && !!m\.content && \([\s\S]*生成台词卡/, 'the quote-card entry must stay App-only');
+assert.match(chatSource, /speaker: quoteShare\.role === 'user' \? \(user\?\.display_name[\s\S]*: character\.name/, 'quote cards must attribute the line to its real speaker on both sides');
+assert.match(chatSource, /sheetOpenedAtRef\.current = performance\.now\(\);[\s\S]*msg-sheet-mask" onClick=\{\(\) => \{ if \(performance\.now\(\) - sheetOpenedAtRef\.current < 350\) return;/, 'the message sheet mask must swallow the trailing long-press click');
+/* ---- S7-G10 抽卡晒卡与收藏筛选 ---- */
+const gachaSource = await readFile(new URL('./src/pages/Gacha.jsx', import.meta.url), 'utf8');
+assert.match(gachaSource, /isAppMode\(\) && \([\s\S]*晒出这张卡/, 'the gacha share entry must stay App-only');
+assert.match(gachaSource, /isAppMode\(\) && shareOpen && result &&[\s\S]*kind="character"/, 'gacha results must share through the character template');
+const favoritesSource = await readFile(new URL('./src/pages/Favorites.jsx', import.meta.url), 'utf8');
+assert.match(favoritesSource, /app && !loading && cats\.length >= 2[\s\S]*qa-fav-cats/, 'favorite category chips must stay App-only and need two categories');
+assert.match(favoritesSource, /该分类下暂无收藏/, 'an emptied favorite filter must explain itself');
+/* ---- S7-G10 公告已读记忆 ---- */
+const announcementsSource = await readFile(new URL('./src/pages/Announcements.jsx', import.meta.url), 'utf8');
+assert.match(announcementsSource, /if \(app\) \{[\s\S]*huanyu_ann_seen/, 'announcement read-memory must stay App-gated');
+assert.match(announcementsSource, /setNewIds\(new Set\(\(d\.announcements \|\| \[\]\)\.filter/, 'NEW badges must be computed in lockstep with the fetched data, not a trailing effect');
+assert.match(announcementsSource, /\.slice\(-100\)/, 'the seen-id ledger must stay bounded');
+assert.match(announcementsSource, /app && newIds\.has\(a\.id\) && <span className="qa-ann-new"/, 'unseen announcements must badge only inside the App shell');
+/* ---- S7-G10 群聊分段 ---- */
+const groupsSource = await readFile(new URL('./src/pages/Groups.jsx', import.meta.url), 'utf8');
+assert.match(groupsSource, /groups\.some\(g => g\.joined\) && groups\.some\(g => !g\.joined\)[\s\S]*qa-groups-seg/, 'the join-state segment must appear only when both sides exist');
+assert.match(groupsSource, /seg === 'joined' \? g\.joined : !g\.joined/, 'segment filtering must partition by joined state');
+/* ---- S7-G10 画廊长按 ---- */
+const drawSource = await readFile(new URL('./src/pages/Draw.jsx', import.meta.url), 'utf8');
+assert.match(drawSource, /app \? bindTilePress\(/, 'gallery tiles must bind long-press only inside the App shell');
+assert.match(drawSource, /label: '删除作品', danger: true/, 'the gallery press menu must mark deletion as destructive');
+/* ---- S7-G10 星轨年鉴卡契约 ---- */
+assert.match(shareCardSource, /renderInsightsCard/, 'the compositor must offer the insights annual-card template');
+assert.match(shareSheetSource, /kind === 'insights'[\s\S]*renderInsightsCard/, 'the share sheet must route the insights kind to its template');
+assert.match(insightsSource, /appMode && \([\s\S]*生成星轨卡/, 'the insights share entry must stay App-only');
+assert.match(insightsSource, /kind="insights"[\s\S]*companion: d\.companions\[0\]/, 'the insights card must carry the deepest-bond companion');
+/* ---- S7-G7 微交互契约 ---- */
+const messagesSource = await readFile(new URL('./src/pages/Messages.jsx', import.meta.url), 'utf8');
+assert.match(messagesSource, /AppPressMenu[\s\S]*useLongPress/, 'conversation rows must offer the long-press context menu');
+const pressMenuSource = await readFile(new URL('./src/components/AppPressMenu.jsx', import.meta.url), 'utf8');
+assert.match(pressMenuSource, /isolate:\s*appPortal[\s\S]*createPortal\(menu/, 'the press menu must keep the App overlay isolation contract');
+assert.match(pressMenuSource, /role="menu"/, 'the press menu must expose menu semantics');
+const gesturesSource = await readFile(new URL('./src/appgestures.js', import.meta.url), 'utf8');
+assert.match(gesturesSource, /qa-onboard[\s\S]*qa-cal[\s\S]*qa-share-sheet/, 'new self-owned gesture surfaces must opt out of tab-swipe and pull-to-refresh');
+const appProfileSource = await readFile(new URL('./src/pages/AppProfile.jsx', import.meta.url), 'utf8');
+assert.match(appProfileSource, /CountUp value=\{s\.n\}/, 'profile stats must animate with the shared CountUp');
+assert.match(e2eSourceForS7, /pressMenuAssertions/, 'the e2e suite must keep exercising the press-menu flow');
+/* ---- S7-G10 会话整理与草稿契约 ---- */
+assert.match(messagesSource, /toggleConvMark[\s\S]*取消置顶[\s\S]*免打扰/, 'the press menu must toggle pin and mute marks');
+assert.match(messagesSource, /msgs-draft[\s\S]*草稿/, 'the conversation row must surface an unsent draft first');
+assert.match(chatSource, /if \(!app \|\| !id \|\| loc\.state\?\.draft\) return;/, 'draft restore must stay App-gated and yield to one-shot prefills');
+assert.match(chatSource, /localStorage\.setItem\('huanyu_draft_' \+ id, input\);[\s\S]*localStorage\.removeItem\('huanyu_draft_' \+ id\);/, 'an emptied composer must delete its stored draft');
+for (const scenario of ['weeklyRecapAssertions', 'walletCalendarAssertions', 'quoteCardAssertions', 'galleryS7Assertions', 'conversationMarksAssertions', 'draftAssertions', 's7DarkTierAssertions', 'g10SurfaceAssertions', 'g10SurfaceBAssertions']) {
+  assert.ok(new RegExp(`await ${scenario}\\(browser, base\\)`).test(e2eSourceForS7), `the e2e suite must keep running ${scenario}`);
+}
+/* ---- S7-G10 剧场台词卡与群聊长按 ---- */
+const theaterRoomSource = await readFile(new URL('./src/pages/TheaterRoom.jsx', import.meta.url), 'utf8');
+assert.match(theaterRoomSource, /台词卡<\/AppButton>/, 'theater passages must offer the quote-card export');
+assert.match(theaterRoomSource, /appMode && quoteShare[\s\S]*kind="quote"[\s\S]*'旁白'/, 'theater quote cards must stay App-only and attribute narrator lines');
+const groupRoomSource = await readFile(new URL('./src/pages/GroupRoom.jsx', import.meta.url), 'utf8');
+assert.match(groupRoomSource, /app \? bindMsgPress\(pressPayload\) : \{\}/, 'group bubbles must bind long-press only inside the App shell');
+assert.match(groupRoomSource, /label: `@\$\{pressMsg\.nm\}`/, 'the group press menu must offer an @-mention insert');
+/* ---- S7-G10 钱包流水筛选 ---- */
+const walletSource = await readFile(new URL('./src/pages/Wallet.jsx', import.meta.url), 'utf8');
+assert.match(walletSource, /qa-wallet-v4__tx-filter" role="group"/, 'the App ledger filter must expose group semantics');
+assert.match(walletSource, /txFilter === 'checkin' \? t\.kind === 'checkin'/, 'the checkin filter must select by transaction kind, not sign');
+assert.match(walletSource, /该类别暂无记录/, 'an emptied filter view must explain itself instead of collapsing');
+/* ---- S7-G10 里程碑印章分档 ---- */
+const artSourceForSeals = await readFile(new URL('./src/art.jsx', import.meta.url), 'utf8');
+assert.match(artSourceForSeals, /streakSealForTier = \(streak\) => \(streak >= 100[\s\S]*streak >= 30/, 'milestone seals must tier at 100 and 30 days');
+const renderScriptSource = await readFile(new URL('../scripts/render-app-assets.mjs', import.meta.url), 'utf8');
+assert.match(renderScriptSource, /qa5-streak-seal-30@2x[\s\S]*qa5-streak-seal-100@2x/, 'the asset pipeline must produce both milestone seal variants');
+assert.match(shareCardSource, /streakSealForTier\(Number\(streak\)/, 'the streak card must pick its seal by milestone tier');
+assert.match(appHomeSource, /qa-milestone-seal[\s\S]*streakSealForTier\(milestone\)/, 'the milestone banner must show the tiered seal');
+/* ---- S7-G10 排行榜我的名次双轨 ---- */
+const engageSource = await readFile(new URL('../server/routes/engage.js', import.meta.url), 'utf8');
+assert.match(engageSource, /mine = \{ rank: higher \+ 1, score: myScore \}/, 'the leaderboard must rank the caller server-side');
+assert.match(mockBackendSource, /mine = \{ rank: higher \+ 1, score: myScore \}/, 'the static mock must mirror caller ranking');
+const leaderboardSource = await readFile(new URL('./src/pages/Leaderboard.jsx', import.meta.url), 'utf8');
+assert.match(leaderboardSource, /tab === 'authors' && data\?\.me &&[\s\S]*qa-lb-mine/, 'the App creators tab must pin the caller rank row');
+/* ---- S7-G10 触感开关 ---- */
+assert.match(gesturesSource, /huanyu_haptics'\) === '0'\) return;/, 'tick() must honour the haptics opt-out before vibrating');
+const settingsPageSource = await readFile(new URL('./src/pages/Settings.jsx', import.meta.url), 'utf8');
+assert.match(settingsPageSource, /app && \([\s\S]*qa-haptics-row/, 'the haptics switch must stay App-only');
+/* ---- S7-G10 搜索分类 / 任务全领 / 新功能 Sheet ---- */
+const searchSource = await readFile(new URL('./src/pages/Search.jsx', import.meta.url), 'utf8');
+assert.match(searchSource, /app && !res && !loading && cats\.length > 0[\s\S]*qa-search-cats/, 'hot category chips must stay App-only on the empty panel');
+assert.match(searchSource, /tabOverride: 'character'/, 'category chips must search as characters regardless of the active tab');
+const eventsSource = await readFile(new URL('./src/pages/Events.jsx', import.meta.url), 'utf8');
+assert.match(eventsSource, /claimAllTasks[\s\S]*单条失败不拦后续|单条失败不拦后续[\s\S]*claimAllTasks/, 'claim-all must tolerate per-task races');
+assert.match(eventsSource, /app && tasks\.filter\(t => t\.done && !t\.claimed\)\.length >= 2/, 'the claim-all button must stay App-only and appear from two claimables');
+const whatsNewSource = await readFile(new URL('./src/components/WhatsNewSheet.jsx', import.meta.url), 'utf8');
+assert.match(whatsNewSource, /isolate: appPortal[\s\S]*createPortal\(sheet/, 'the whats-new sheet must keep the App overlay isolation contract');
+assert.match(appProfileSource, /WhatsNewSheet onClose/, 'the profile footer must open the whats-new sheet');
+/* ---- S7-G10 相伴档案与相伴一览 ---- */
+assert.match(characterViewSource, /bond && \([\s\S]*qa-bond[\s\S]*继续这段故事/, 'the character page must surface the bond dossier with a resume CTA');
+assert.match(characterViewSource, /\(b\.affinity \|\| 0\) > \(a\.affinity \|\| 0\)/, 'the bond CTA must resume the highest-affinity conversation');
+assert.match(appProfileSource, /qa-glance" role="group"[\s\S]*相伴一览/, 'the profile must expose the companion glance group');
+assert.match(appProfileSource, /Promise\.allSettled\(\[api\('\/achievements'\), api\('\/me\/weekly'\)\]\)/, 'the glance must degrade gracefully per data source');
+/* ---- S7-G10 私信长按/草稿与群聊提及高亮 ---- */
+const friendsSource = await readFile(new URL('./src/pages/Friends.jsx', import.meta.url), 'utf8');
+assert.match(friendsSource, /appMode \? bindDmPress\(pressPayload\) : \{\}/, 'DM bubbles must bind long-press only inside the App shell');
+assert.match(friendsSource, /huanyu_dmdraft_' \+ sel, text\)[\s\S]*localStorage\.removeItem\('huanyu_dmdraft_' \+ sel\)/, 'an emptied DM composer must delete its stored draft');
+assert.match(friendsSource, /if \(!appMode \|\| !sel\) return;[\s\S]*huanyu_dmdraft_/, 'DM drafts must stay App-gated');
+assert.match(groupRoomSource, /if \(!app\) return content;[\s\S]*gr-mention/, 'mention highlighting must never leak into the Web bubble DOM');
+/* ---- S7-G10 里程碑地平线 / 新功能未读点 / 分档印章沿用 ---- */
+assert.match(calendarSheetSource, /\[Math\.ceil\(\(s \+ 1\) \/ 7\) \* 7, 30, 100\]\.filter\(\(t\) => t > s\)/, 'the milestone horizon must target the nearest 7-multiple, 30 or 100');
+assert.match(calendarSheetSource, /streakSealForTier\(data\?\.streak \|\| 0\)/, 'the calendar seal must follow the milestone tier');
+assert.match(appProfileSource, /huanyu_whatsnew_seen'\) === 'S7'/, 'the whats-new dot must key on the current version');
+assert.match(appProfileSource, /pf-whatsnew-dot/, 'the unread dot must sit on the whats-new entry');
+assert.match(gallerySource, /gallery-s7-companion[\s\S]*qa-gallery__lbmine/, 'the gallery must exhibit the companion dossier family');
+/* ---- S7-G10 阅读进度记忆 ---- */
+const novelReaderSource = await readFile(new URL('./src/pages/NovelReader.jsx', import.meta.url), 'utf8');
+assert.match(novelReaderSource, /if \(!app \|\| !data\) return;[\s\S]*huanyu_read_' \+ id/, 'reading progress must stay App-gated');
+assert.match(novelReaderSource, /saved > 0\.01 && saved < 0\.999/, 'near-start and finished runs must reopen from the top');
+assert.match(novelReaderSource, /if \(!isAppMode\(\)\) return 18;/, 'font-size memory must never change the Web reader');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(
@@ -180,7 +381,7 @@ assert.ok(
 assert.match(runtimeCss, /\.topbar h1,[\s\S]*word-break:\s*keep-all/, 'narrow App topbar titles must not stack vertically');
 assert.match(runtimeCss, /\.topbar\s*\{[^}]*flex-wrap:\s*wrap;[^}]*row-gap:\s*10px;/, 'dense narrow App topbars must wrap whole controls without horizontal overflow');
 assert.match(runtimeCss, /\.vm-plans\s*\{\s*padding-top:\s*12px/, 'VIP plans must reserve space for the raised badge');
-assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--qa-glass-chrome-blur\)/, 'App Dock must use the Liuli chrome glass material on high and balanced tiers');
+assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--lg-blur\)/, 'App Dock must use the Lumen chrome blur authority directly on high and balanced tiers');
 assert.match(runtimeCss, /\[data-perf="lite"\]\s*\.app-tabbar\s*\{[^}]*backdrop-filter:\s*none/s, 'lite tier must drop the Dock blur and fall back to an opaque surface');
 
 // W6 CSS 按模式分包：App 层样式的静态 import 与级联顺序整体迁入
@@ -194,8 +395,10 @@ assert.ok(
     && appEntrySource.indexOf('app-controls.css') < appEntrySource.indexOf('app-pages-quiet-aqua.css')
     && appEntrySource.indexOf('app-pages-quiet-aqua.css') < appEntrySource.indexOf('app-experience-v3.css')
     && appEntrySource.indexOf('app-experience-v3.css') < appEntrySource.indexOf('app-hig-v5.css')
-    && appEntrySource.indexOf('app-hig-v5.css') < appEntrySource.indexOf('app-lumen-materials.css'),
-  'Lumen tokens, qa shim, control, page, v3, HIG and Lumen materials must load in cascade order after the runtime layer',
+    && appEntrySource.indexOf('app-hig-v5.css') < appEntrySource.indexOf('app-lumen-s6.css')
+    && appEntrySource.indexOf('app-lumen-s6.css') < appEntrySource.indexOf('app-lumen-s7.css')
+    && appEntrySource.indexOf('app-lumen-s7.css') < appEntrySource.indexOf('app-lumen-materials.css'),
+  'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer and Lumen materials must load in cascade order after the runtime layer',
 );
 assert.doesNotMatch(mainSource, /import '\.\/styles\/app-[a-z0-9-]+\.css'|import '\.\/chat\/chat-app\.css'|import '\.\/styles\/lumen-glass-tokens\.css'/, 'App-layer CSS must not be statically imported by main.jsx (web users must not download it)');
 assert.match(mainSource, /isAppMode\(\)[\s\S]*import\('\.\/styles\/app-entry\.js'\)/, 'the App style bundle must load behind the isAppMode gate');
@@ -208,7 +411,7 @@ const lumenMaterials = await readFile(new URL('./src/styles/app-lumen-materials.
 assert.match(lumenMaterials, /html\[data-app="1"\]/, 'Lumen materials must remain App-scoped');
 assert.doesNotMatch(lumenMaterials.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.lg-[^{,]+/m, 'Lumen material classes must never escape the data-app fence');
 const lgDefinitions = new Set([...(lumenTokens + lumenMaterials).matchAll(/(--lg-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
-const lumenStageCss = (await Promise.all(['s3', 's4', 's5'].map((n) => readFile(new URL(`./src/styles/app-lumen-${n}.css`, import.meta.url), 'utf8')))).join('\n');
+const lumenStageCss = (await Promise.all(['s3', 's4', 's5', 's6', 's7'].map((n) => readFile(new URL(`./src/styles/app-lumen-${n}.css`, import.meta.url), 'utf8')))).join('\n');
 const higForLg = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
 assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.(?:qa|lg)-[^{,]+/m, 'Lumen stage layers must never escape the data-app fence');
 assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /nth-(?:child|of-type)/, 'Lumen stage layers must not style by position');
@@ -228,7 +431,23 @@ const lumenTokensForGlass = await readFile(new URL('./src/styles/lumen-glass-tok
 assert.match(lumenTokensForGlass, /--lg-blur:\s*blur\(/, 'the Lumen glass token authority must define the primary blur material');
 assert.match(lumenTokensForGlass, /--lg-blur-s:\s*blur\(/, 'the Lumen glass token authority must define the small blur material');
 assert.match(lumenTokensForGlass, /\[data-perf="lite"\][\s\S]*--lg-blur:\s*none/, 'lite tier must resolve every glass blur to none at the token layer');
-assert.match(quietTokens, /--qa-glass-chrome-blur:\s*var\(--lg-blur\)/, 'the qa shim must route legacy chrome glass through the Lumen authority');
+assert.doesNotMatch(quietTokens, /--qa-glass-chrome-blur\s*:/, 'pure aliases must never flow back into the residual shim (blur is lg-authority-direct now)');
+/* S7-G8：全 App 层 var(--qa-*) 引用必须 ⊆ 残余 shim 定义集（迁移不许半途） */
+{
+  const residualDefs = new Set([...quietTokens.matchAll(/(--qa-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+  const s7LayerCss = [quietControls, quietPages, quietExperience, higForLg, runtimeCss,
+    await readFile(new URL('./src/styles/app-elevated.css', import.meta.url), 'utf8'),
+    await readFile(new URL('./src/styles/app-shell.css', import.meta.url), 'utf8'),
+    await readFile(new URL('./src/styles/app-renov.css', import.meta.url), 'utf8'),
+    await readFile(new URL('./src/chat/chat-app.css', import.meta.url), 'utf8'),
+    lumenStageCss,
+    await readFile(new URL('./src/styles/app-lumen-s6.css', import.meta.url), 'utf8'),
+    await readFile(new URL('./src/ui.jsx', import.meta.url), 'utf8'),
+  ].join('\n');
+  const qaRefs = new Set([...s7LayerCss.matchAll(/var\((--qa-[a-z0-9-]+)/g)].map((m) => m[1]));
+  assert.deepEqual([...qaRefs].filter((name) => !residualDefs.has(name)), [],
+    'every remaining --qa-* reference must resolve in the residual shim — pure aliases live as --lg-* only');
+}
 const elevatedCss = await readFile(new URL('./src/styles/app-elevated.css', import.meta.url), 'utf8');
 assert.doesNotMatch(elevatedCss, /--gl-halo/, 'glass cards must not restore accent/dusk halo washes');
 assert.doesNotMatch(elevatedCss, /#22d3ee/i, 'the Liuli glass system must not reintroduce the cyan neon edge');
@@ -319,16 +538,20 @@ assert.match(quietPages, /\.qa-vip \.vm-card,[\s\S]*background:\s*#23272e/, 'mem
 /* ---- Liuli v5 generated content-media assets ---- */
 const appAssetNames = (await readdir(new URL('./src/assets/app/', import.meta.url)))
   .filter((name) => name.endsWith('.png'));
-assert.ok(appAssetNames.length >= 10, 'the Liuli asset catalog must stay generated (run scripts/render-app-assets.mjs)');
+assert.ok(appAssetNames.length >= 20, 'the S7 asset catalog must stay fully generated (run scripts/render-app-assets.mjs)');
 for (const name of appAssetNames) {
   const png = await readFile(new URL(`./src/assets/app/${name}`, import.meta.url));
   assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${name} must be a valid PNG`);
   assert.ok(png.length <= 300 * 1024, `${name} must stay under the 300KB content-media ceiling`);
 }
 assert.match(artSource, /qa5-empty-generic[\s\S]*AppEmptyArt/, 'the App empty states must ship the generated content media with a generic fallback');
+for (const kind of ['achievements', 'theater', 'atelier', 'leaderboard', 'events', 'worldbooks', 'insights', 'noresult', 'group']) {
+  assert.match(artSource, new RegExp(`qa5-empty-${kind}@2x`), `the S7 empty-art kind "${kind}" must stay wired into the App art map`);
+}
+assert.match(artSource, /onboardArtUrls[\s\S]*streakSealUrl/, 'the onboarding screens and streak seal must export reviewed content media');
 const capacitorConfig = await readFile(new URL('../capacitor.config.json', import.meta.url), 'utf8');
 assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must not return to the purple-navy splash');
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 100/100 passed');
+console.log('app invariants: 271/271 passed');

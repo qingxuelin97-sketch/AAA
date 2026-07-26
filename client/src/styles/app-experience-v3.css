@@ -100,7 +100,7 @@ html[data-app="1"] .qa3-today .aht-brand {
   display: block;
   margin: 0;
   color: var(--qa3-ink) !important;
-  font-family: var(--qa-font-ui) !important;
+  font-family: var(--lg-font-ui) !important;
   font-size: clamp(25px, 7.1vw, 30px) !important;
   font-weight: 790 !important;
   line-height: 1.12;
@@ -134,8 +134,8 @@ html[data-app="1"] .qa3-today .ah-hero {
   border-radius: 22px !important;
   background:
     linear-gradient(118deg, rgb(255 255 255 / 8%), transparent 42%),
-    linear-gradient(135deg, var(--qa-finance-surface), var(--qa-finance-surface-mid) 62%, var(--qa-finance-surface)) !important;
-  color: var(--qa-finance-ink);
+    linear-gradient(135deg, var(--lg-finance), var(--qa-finance-surface-mid) 62%, var(--lg-finance)) !important;
+  color: var(--lg-finance-ink);
   box-shadow: 0 14px 34px rgb(22 34 33 / 17%) !important;
   isolation: isolate;
 }
@@ -210,7 +210,7 @@ html[data-app="1"] .qa3-today .ah-member-copy {
 html[data-app="1"] .qa3-today .ah-name {
   margin: 0 !important;
   overflow: hidden;
-  color: var(--qa-finance-ink) !important;
+  color: var(--lg-finance-ink) !important;
   font-size: 15.5px !important;
   font-weight: 760 !important;
   line-height: 1.2;
@@ -336,29 +336,29 @@ html[data-app="1"] .qa3-today .ah-sc:active .ah-sc-ic {
    action; content categories carry their own stable semantic colour. */
 html[data-app="1"] .qa3-today .ah-sc[data-tone="reward"] .ah-sc-ic,
 html[data-app="1"] .qa3-profile .pf-quick button[data-tone="reward"] .pf-quick-ic {
-  color: var(--qa-semantic-gold) !important;
+  color: var(--lg-gold) !important;
   background: var(--qa-semantic-gold-soft) !important;
 }
 html[data-app="1"] .qa3-today .ah-sc[data-tone="coral"] .ah-sc-ic,
 html[data-app="1"] .qa3-profile .pf-quick button[data-tone="coral"] .pf-quick-ic {
-  color: var(--qa-semantic-coral) !important;
+  color: var(--lg-coral) !important;
   background: var(--qa-semantic-coral-soft) !important;
 }
 html[data-app="1"] .qa3-today .ah-sc[data-tone="indigo"] .ah-sc-ic,
 html[data-app="1"] .qa3-profile .pf-quick button[data-tone="indigo"] .pf-quick-ic {
-  color: var(--qa-semantic-indigo) !important;
+  color: var(--lg-violet) !important;
   background: var(--qa-semantic-indigo-soft) !important;
 }
 html[data-app="1"] .qa3-today .ah-sc[data-tone="blue"] .ah-sc-ic {
-  color: var(--qa-semantic-blue) !important;
+  color: var(--lg-azure) !important;
   background: var(--qa-semantic-blue-soft) !important;
 }
 html[data-app="1"] .qa3-today .ah-sc[data-tone="graphite"] .ah-sc-ic {
-  color: var(--qa-semantic-graphite) !important;
+  color: var(--lg-ink-2) !important;
   background: var(--qa-semantic-graphite-soft) !important;
 }
 html[data-app="1"] .qa3-profile .pf-quick button[data-tone="rose"] .pf-quick-ic {
-  color: var(--qa-semantic-rose) !important;
+  color: var(--lg-rose) !important;
   background: var(--qa-semantic-rose-soft) !important;
 }
 
@@ -644,7 +644,7 @@ html[data-app="1"] .qa3-messages.msgs {
   width: min(100%, 430px);
   min-height: 100%;
   margin: 0 auto;
-  padding: 13px 16px calc(var(--qa-dock-height) + var(--qa-dock-bottom) + 28px) !important;
+  padding: 13px 16px calc(var(--lg-dock-height) + var(--lg-dock-bottom) + 28px) !important;
   overflow: visible !important;
 }
 
@@ -663,7 +663,7 @@ html[data-app="1"] .qa3-messages .msgs-head {
 html[data-app="1"] .qa3-messages .msgs-head h1 {
   margin: 0 !important;
   color: var(--qa3-ink) !important;
-  font-family: var(--qa-font-ui) !important;
+  font-family: var(--lg-font-ui) !important;
   font-size: clamp(31px, 8.7vw, 38px) !important;
   font-weight: 810 !important;
   letter-spacing: -.055em !important;
@@ -772,18 +772,18 @@ html[data-app="1"] .qa3-messages .msgs-entry-ic {
   place-items: center;
   border-radius: 14px !important;
   background: var(--qa-semantic-blue-soft) !important;
-  color: var(--qa-semantic-blue) !important;
+  color: var(--lg-azure) !important;
   box-shadow: inset 0 1px rgb(255 255 255 / 56%);
 }
 
 html[data-app="1"] .qa3-messages .msgs-entry-ic.noti {
   background: var(--qa-semantic-coral-soft) !important;
-  color: var(--qa-semantic-coral) !important;
+  color: var(--lg-coral) !important;
 }
 
 html[data-app="1"] .qa3-messages .msgs-entry-ic.grp {
   background: var(--qa-semantic-indigo-soft) !important;
-  color: var(--qa-semantic-indigo) !important;
+  color: var(--lg-violet) !important;
 }
 
 html[data-app="1"] .qa3-messages .msgs-entry-tx b {
@@ -966,7 +966,7 @@ html[data-app="1"] .qa3-profile.pf {
   width: min(100%, 430px);
   min-height: 100%;
   margin: 0 auto;
-  padding: 10px 16px calc(var(--qa-dock-height) + var(--qa-dock-bottom) + 28px) !important;
+  padding: 10px 16px calc(var(--lg-dock-height) + var(--lg-dock-bottom) + 28px) !important;
   gap: 13px !important;
 }
 
@@ -1505,7 +1505,7 @@ html[data-app="1"] .qa3-discover .fd2-stack {
   position: absolute !important;
   z-index: 7 !important;
   right: 68px !important;
-  bottom: calc(var(--qa-dock-height) + var(--qa-dock-bottom) + 8px) !important;
+  bottom: calc(var(--lg-dock-height) + var(--lg-dock-bottom) + 8px) !important;
   left: 18px !important;
   width: auto !important;
   min-width: 0;
@@ -2009,7 +2009,7 @@ html[data-app="1"] .qa-chat-header .qa-chat-identity .nm {
 html[data-app="1"] .qa-chat-header .qa-chat-identity .nm b {
   overflow: hidden;
   color: var(--qa3-ink) !important;
-  font-family: var(--qa-font-ui) !important;
+  font-family: var(--lg-font-ui) !important;
   font-size: 14px;
   font-weight: 750;
   line-height: 1.2;
@@ -2802,7 +2802,7 @@ html[data-app="1"] .qa-wallet-v4__balance {
     radial-gradient(circle at 92% 3%, rgb(145 200 220 / 24%), transparent 34%),
     radial-gradient(circle at 7% 108%, rgb(219 181 93 / 15%), transparent 42%),
     linear-gradient(145deg, rgb(31 62 133 / 92%), rgb(38 53 94 / 88%) 58%, rgb(26 34 58 / 92%));
-  color: var(--qa-finance-ink);
+  color: var(--lg-finance-ink);
   box-shadow: 0 1px 0 rgb(255 255 255 / 34%) inset, 0 18px 38px rgb(18 28 58 / 20%);
   isolation: isolate;
   -webkit-backdrop-filter: blur(26px) saturate(1.28);
@@ -2934,7 +2934,7 @@ html[data-app="1"] .qa-wallet-v4__quick .qa-button {
 }
 
 html[data-app="1"] .qa-wallet-v4__quick .qa-button[data-selected="true"] {
-  border-color: color-mix(in srgb, var(--qa-semantic-indigo) 28%, var(--wallet-glass-edge)) !important;
+  border-color: color-mix(in srgb, var(--lg-violet) 28%, var(--wallet-glass-edge)) !important;
   background: color-mix(in srgb, var(--qa-semantic-indigo-soft) 58%, var(--wallet-glass-strong)) !important;
 }
 
@@ -2950,10 +2950,10 @@ html[data-app="1"] .qa-wallet-v4__quick-icon {
   color: var(--qa3-teal);
 }
 
-html[data-app="1"] .qa-wallet-v4__quick-icon.warm { background: var(--qa-semantic-gold-soft); color: var(--qa-semantic-gold); }
-html[data-app="1"] .qa-wallet-v4__quick-icon.coral { background: var(--qa-semantic-coral-soft); color: var(--qa-semantic-coral); }
-html[data-app="1"] .qa-wallet-v4__quick-icon.blue { background: var(--qa-semantic-blue-soft); color: var(--qa-semantic-blue); }
-html[data-app="1"] .qa-wallet-v4__quick-icon.indigo { background: var(--qa-semantic-indigo-soft); color: var(--qa-semantic-indigo); }
+html[data-app="1"] .qa-wallet-v4__quick-icon.warm { background: var(--qa-semantic-gold-soft); color: var(--lg-gold); }
+html[data-app="1"] .qa-wallet-v4__quick-icon.coral { background: var(--qa-semantic-coral-soft); color: var(--lg-coral); }
+html[data-app="1"] .qa-wallet-v4__quick-icon.blue { background: var(--qa-semantic-blue-soft); color: var(--lg-azure); }
+html[data-app="1"] .qa-wallet-v4__quick-icon.indigo { background: var(--qa-semantic-indigo-soft); color: var(--lg-violet); }
 
 html[data-app="1"] .qa-wallet-v4__notice.qa-button,
 html[data-app="1"] .qa-wallet-v4__checkin.qa-button {
@@ -2989,7 +2989,7 @@ html[data-app="1"] .qa-wallet-v4__checkin-icon {
   color: var(--qa3-gold);
 }
 
-html[data-app="1"] .qa-wallet-v4__checkin-icon { background: var(--qa-semantic-blue-soft); color: var(--qa-semantic-blue); }
+html[data-app="1"] .qa-wallet-v4__checkin-icon { background: var(--qa-semantic-blue-soft); color: var(--lg-azure); }
 html[data-app="1"] .qa-wallet-v4__notice-copy,
 html[data-app="1"] .qa-wallet-v4__checkin-copy { display: grid; gap: 2px; min-width: 0; }
 html[data-app="1"] .qa-wallet-v4__notice b,
@@ -3062,7 +3062,7 @@ html[data-app="1"] .qa-wallet-v4__exchange-result {
   font-size: 12px;
 }
 
-html[data-app="1"] .qa-wallet-v4__exchange-result strong { color: var(--qa-semantic-indigo); font-size: 15px; }
+html[data-app="1"] .qa-wallet-v4__exchange-result strong { color: var(--lg-violet); font-size: 15px; }
 html[data-app="1"] .qa-wallet-v4__panel > .qa-button { width: 100%; min-height: 50px; border-radius: var(--lg-r-pill) !important; }
 
 html[data-app="1"] .qa-wallet-v4__ledger { padding-block: 16px 4px; }
@@ -3096,10 +3096,10 @@ html[data-app="1"] .qa-wallet-v4__recharge-balance {
   align-items: center;
   justify-content: space-between;
   padding: 14px 17px;
-  border: 1px solid color-mix(in srgb, var(--qa-semantic-blue) 22%, var(--wallet-glass-edge));
+  border: 1px solid color-mix(in srgb, var(--lg-azure) 22%, var(--wallet-glass-edge));
   border-radius: 21px;
   background: color-mix(in srgb, var(--qa-semantic-blue-soft) 50%, var(--wallet-glass-strong));
-  color: var(--qa-semantic-blue);
+  color: var(--lg-azure);
   box-shadow: var(--wallet-glass-shadow);
   -webkit-backdrop-filter: blur(22px) saturate(1.2);
   backdrop-filter: blur(22px) saturate(1.2);
@@ -3107,7 +3107,7 @@ html[data-app="1"] .qa-wallet-v4__recharge-balance {
 
 html[data-app="1"] .qa-wallet-v4__recharge-balance > div { display: grid; gap: 4px; }
 html[data-app="1"] .qa-wallet-v4__recharge-balance span { color: var(--qa3-muted); font-size: 11px; }
-html[data-app="1"] .qa-wallet-v4__recharge-balance strong { display: flex; align-items: center; gap: 7px; color: var(--qa-semantic-blue); font-size: 27px; letter-spacing: -.04em; }
+html[data-app="1"] .qa-wallet-v4__recharge-balance strong { display: flex; align-items: center; gap: 7px; color: var(--lg-azure); font-size: 27px; letter-spacing: -.04em; }
 html[data-app="1"] .qa-wallet-v4__recharge-balance strong img { display: block; width: 30px; height: 30px; object-fit: contain; }
 
 html[data-app="1"] .qa-wallet-v4__packages {
@@ -3151,18 +3151,18 @@ html[data-app="1"] .qa-wallet-v4__packages em {
   padding: 3px 6px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--qa-semantic-coral-soft) 86%, var(--qa3-canvas));
-  color: var(--qa-semantic-coral);
+  color: var(--lg-coral);
   font-size: 9px;
   font-style: normal;
   font-weight: 750;
 }
 
-html[data-app="1"] .qa-wallet-v4__gem { display: grid; width: 72px; height: 52px; place-items: center; overflow: hidden; color: var(--qa-semantic-blue); }
+html[data-app="1"] .qa-wallet-v4__gem { display: grid; width: 72px; height: 52px; place-items: center; overflow: hidden; color: var(--lg-azure); }
 html[data-app="1"] .qa-wallet-v4__gem img { display: block; width: 70px; height: 52px; object-fit: contain; pointer-events: none; }
 html[data-app="1"] .qa-wallet-v4__packages strong { font-size: 18px; line-height: 1.1; white-space: nowrap; }
 html[data-app="1"] .qa-wallet-v4__packages strong small { margin-left: 4px; color: var(--qa3-muted); font-size: 10px; font-weight: 550; }
 html[data-app="1"] .qa-wallet-v4__packages > button > span:not(.qa-wallet-v4__gem) { color: var(--qa3-muted); font-size: 10px; }
-html[data-app="1"] .qa-wallet-v4__packages > button > span.reward { color: var(--qa-semantic-gold); font-weight: 700; }
+html[data-app="1"] .qa-wallet-v4__packages > button > span.reward { color: var(--lg-gold); font-weight: 700; }
 html[data-app="1"] .qa-wallet-v4__packages > button > b { margin-top: 3px; color: var(--qa3-ink); font-size: 13px; line-height: 1.15; white-space: nowrap; }
 html[data-app="1"] .qa-wallet-v4__packages > button.selected::after { content: '✓'; position: absolute; top: 8px; left: 8px; display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; background: var(--lg-act); color: var(--lg-act-ink); font-size: 12px; font-weight: 800; }
 html[data-app="1"] .qa-wallet-v4__packages-empty { display: grid; min-height: 112px; grid-column: 1 / -1; place-items: center; align-content: center; gap: 8px; border: 1px dashed var(--qa3-line); border-radius: 16px; color: var(--qa3-muted); font-size: 12px; }
@@ -3170,8 +3170,8 @@ html[data-app="1"] .qa-wallet-v4__packages-empty { display: grid; min-height: 11
 html[data-app="1"] .qa-wallet-v4__payment-list { margin-top: 12px; overflow: hidden; border: 1px solid var(--wallet-glass-edge); border-radius: 15px; background: var(--wallet-glass); box-shadow: var(--wallet-glass-shadow); -webkit-backdrop-filter: blur(20px) saturate(1.16); backdrop-filter: blur(20px) saturate(1.16); }
 html[data-app="1"] .qa-wallet-v4__payment-list > div { display: grid; min-height: 58px; grid-template-columns: 36px minmax(0, 1fr) 44px; align-items: center; gap: 9px; padding: 7px 8px 7px 11px; border-bottom: 1px solid var(--qa3-line); }
 html[data-app="1"] .qa-wallet-v4__payment-list > div:last-child { border-bottom: 0; }
-html[data-app="1"] .qa-wallet-v4__pay-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: var(--qa-semantic-blue-soft); color: var(--qa-semantic-blue); }
-html[data-app="1"] .qa-wallet-v4__pay-icon.support { background: var(--qa-semantic-gold-soft); color: var(--qa-semantic-gold); }
+html[data-app="1"] .qa-wallet-v4__pay-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: var(--qa-semantic-blue-soft); color: var(--lg-azure); }
+html[data-app="1"] .qa-wallet-v4__pay-icon.support { background: var(--qa-semantic-gold-soft); color: var(--lg-gold); }
 html[data-app="1"] .qa-wallet-v4__payment-copy { display: grid; gap: 1px; min-width: 0; }
 html[data-app="1"] .qa-wallet-v4__payment-list b { color: var(--qa3-ink); font-size: 13px; }
 html[data-app="1"] .qa-wallet-v4__payment-list small { color: var(--qa3-muted); font-size: 10.5px; }
@@ -4731,7 +4731,7 @@ html[data-app="1"] .qa-script-detail-v4__access {
 }
 
 html[data-app="1"] .qa-script-detail-v4__access.is-locked { background: var(--script-gold-soft); color: var(--script-gold); }
-html[data-app="1"] .qa-script-detail-v4__access.is-open { background: var(--qa-success-soft); color: var(--qa-success); }
+html[data-app="1"] .qa-script-detail-v4__access.is-open { background: var(--qa-success-soft); color: var(--lg-jade); }
 
 html[data-app="1"] .qa-script-detail-v4__hero-copy {
   position: relative;
@@ -4908,7 +4908,7 @@ html[data-app="1"] .qa-script-detail-v4__open-mark {
   gap: 5px;
   border-radius: 999px;
   background: var(--qa-success-soft);
-  color: var(--qa-success);
+  color: var(--lg-jade);
   font-size: 10.5px;
   font-weight: 720;
 }
@@ -5020,7 +5020,7 @@ html[data-app="1"] .qa-script-editor-v4__draft-state {
   white-space: nowrap;
 }
 
-html[data-app="1"] .qa-script-editor-v4__draft-state[data-ready] { border-color: color-mix(in srgb, var(--qa-success) 26%, var(--qa3-line)); background: var(--qa-success-soft); color: var(--qa-success); }
+html[data-app="1"] .qa-script-editor-v4__draft-state[data-ready] { border-color: color-mix(in srgb, var(--lg-jade) 26%, var(--qa3-line)); background: var(--qa-success-soft); color: var(--lg-jade); }
 
 html[data-app="1"] .qa-script-editor-v4__tabs {
   position: sticky;
@@ -5182,7 +5182,7 @@ html[data-app="1"] .qa-script-editor-v4__price-input { display: grid; grid-templ
 html[data-app="1"] .qa-script-editor-v4__price-input .input { min-width: 0; height: 46px; padding: 0; border: 0; background: transparent; color: var(--qa3-ink); box-shadow: none; font-size: 20px; font-weight: 750; }
 html[data-app="1"] .qa-script-editor-v4__price-input > span { font-size: 11px; font-weight: 700; }
 html[data-app="1"] .qa-script-editor-v4__price-field > p { display: flex; margin: 8px 2px 0; align-items: flex-start; gap: 6px; color: var(--qa3-muted); font-size: 10.5px; line-height: 1.5; }
-html[data-app="1"] .qa-script-editor-v4__price-field > p svg { flex: 0 0 auto; margin-top: 1px; color: var(--qa-success); }
+html[data-app="1"] .qa-script-editor-v4__price-field > p svg { flex: 0 0 auto; margin-top: 1px; color: var(--lg-jade); }
 
 html[data-app="1"] .qa-script-editor-v4__safety.switch {
   display: grid;
@@ -5292,21 +5292,21 @@ html[data-app="1"][data-perf="lite"] :where(.qa-script-detail-v4__topbar, .qa-sc
    hue → 语义映射：通话=成功绿 · 插图/旁白=创作靛 · 骰子/事件/朗读=奖励金 ·
    礼物=互动珊瑚 · 档案/重掷=社交蓝 · 开场白=成功绿 · 音乐=收藏玫瑰 · 字号=石墨。
    -------------------------------------------------------------------------- */
-html[data-app="1"] .chat-main .cps-item.hue-call    { --cps-a: var(--qa-success); --cps-b: var(--qa-success); }
-html[data-app="1"] .chat-main .cps-item.hue-illus   { --cps-a: var(--qa-semantic-indigo); --cps-b: var(--qa-semantic-indigo); }
-html[data-app="1"] .chat-main .cps-item.hue-dice    { --cps-a: var(--qa-semantic-gold); --cps-b: var(--qa-semantic-gold); }
-html[data-app="1"] .chat-main .cps-item.hue-gift    { --cps-a: var(--qa-semantic-coral); --cps-b: var(--qa-semantic-coral); }
-html[data-app="1"] .chat-main .cps-item.hue-narr    { --cps-a: var(--qa-semantic-indigo); --cps-b: var(--qa-semantic-indigo); }
-html[data-app="1"] .chat-main .cps-item.hue-event   { --cps-a: var(--qa-semantic-gold); --cps-b: var(--qa-semantic-gold); }
-html[data-app="1"] .chat-main .cps-item.hue-profile { --cps-a: var(--qa-semantic-blue); --cps-b: var(--qa-semantic-blue); }
-html[data-app="1"] .chat-main .cps-item.hue-greet   { --cps-a: var(--qa-success); --cps-b: var(--qa-success); }
-html[data-app="1"] .chat-main .cps-item.hue-regen   { --cps-a: var(--qa-semantic-blue); --cps-b: var(--qa-semantic-blue); }
-html[data-app="1"] .chat-main .cps-item.hue-read    { --cps-a: var(--qa-semantic-gold); --cps-b: var(--qa-semantic-gold); }
-html[data-app="1"] .chat-main .cps-item.hue-bgm     { --cps-a: var(--qa-semantic-rose); --cps-b: var(--qa-semantic-rose); }
-html[data-app="1"] .chat-main .cps-item.hue-font    { --cps-a: var(--qa-semantic-graphite); --cps-b: var(--qa-semantic-graphite); }
+html[data-app="1"] .chat-main .cps-item.hue-call    { --cps-a: var(--lg-jade); --cps-b: var(--lg-jade); }
+html[data-app="1"] .chat-main .cps-item.hue-illus   { --cps-a: var(--lg-violet); --cps-b: var(--lg-violet); }
+html[data-app="1"] .chat-main .cps-item.hue-dice    { --cps-a: var(--lg-gold); --cps-b: var(--lg-gold); }
+html[data-app="1"] .chat-main .cps-item.hue-gift    { --cps-a: var(--lg-coral); --cps-b: var(--lg-coral); }
+html[data-app="1"] .chat-main .cps-item.hue-narr    { --cps-a: var(--lg-violet); --cps-b: var(--lg-violet); }
+html[data-app="1"] .chat-main .cps-item.hue-event   { --cps-a: var(--lg-gold); --cps-b: var(--lg-gold); }
+html[data-app="1"] .chat-main .cps-item.hue-profile { --cps-a: var(--lg-azure); --cps-b: var(--lg-azure); }
+html[data-app="1"] .chat-main .cps-item.hue-greet   { --cps-a: var(--lg-jade); --cps-b: var(--lg-jade); }
+html[data-app="1"] .chat-main .cps-item.hue-regen   { --cps-a: var(--lg-azure); --cps-b: var(--lg-azure); }
+html[data-app="1"] .chat-main .cps-item.hue-read    { --cps-a: var(--lg-gold); --cps-b: var(--lg-gold); }
+html[data-app="1"] .chat-main .cps-item.hue-bgm     { --cps-a: var(--lg-rose); --cps-b: var(--lg-rose); }
+html[data-app="1"] .chat-main .cps-item.hue-font    { --cps-a: var(--lg-ink-2); --cps-b: var(--lg-ink-2); }
 html[data-app="1"] .chat-main .cps-ic {
-  background: color-mix(in srgb, var(--cps-b, var(--qa-brand-fill)) 12%, var(--qa-surface));
-  color: var(--cps-b, var(--qa-brand-fill));
+  background: color-mix(in srgb, var(--cps-b, var(--lg-act)) 12%, var(--qa-surface));
+  color: var(--cps-b, var(--lg-act));
   box-shadow: none;
 }
 html[data-app="1"] .chat-main .cps-ic svg { filter: none; }
@@ -5314,7 +5314,7 @@ html[data-app="1"] .chat-main.has-bg .cps-ic {
   background: color-mix(in srgb, var(--cps-a, #ffffff) 24%, rgb(255 255 255 / 10%));
   color: #ffffff;
 }
-html[data-app="1"] .chat-main .cps-badge { background: var(--qa-unread); }
+html[data-app="1"] .chat-main .cps-badge { background: var(--lg-coral); }
 html[data-app="1"] .vm-go::before { animation: none; content: none; }
 
 /* Liuli v5 · 共享页面的装饰动画在 App 围栏内归零（Web 原样保留）。 */
@@ -5323,15 +5323,15 @@ html[data-app="1"] .ring-track,
 html[data-app="1"] .ring-row.rev .ring-track { animation: none; }
 html[data-app="1"] .ins-hero {
   background: var(--qa-surface);
-  border: 1px solid var(--qa-hairline);
-  box-shadow: var(--qa-shadow-1);
+  border: 1px solid var(--lg-hairline);
+  box-shadow: var(--lg-glass-shadow-1);
 }
 
 /* Liuli v5 · 身份徽章语义化：SVIP 在 App 内走会员金实体（Web 的紫红渐变不变）。 */
 html[data-app="1"] .idb-svip {
-  background: var(--qa-finance-surface);
-  color: var(--qa-semantic-gold);
-  border-color: color-mix(in srgb, var(--qa-semantic-gold) 40%, transparent);
+  background: var(--lg-finance);
+  color: var(--lg-gold);
+  border-color: color-mix(in srgb, var(--lg-gold) 40%, transparent);
   box-shadow: none;
 }
 html[data-app="1"] .idb-vip { box-shadow: none; }

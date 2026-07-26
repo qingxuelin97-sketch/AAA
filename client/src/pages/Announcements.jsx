@@ -4,7 +4,8 @@ import { useNav as useNavigate } from '../nav.js';
 import { useToast, Modal } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { EmptyArt } from '../art.jsx';
+import { EmptyArt, AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 import { Megaphone, Plus, Trash2, Pin, ShieldCheck, ArrowLeft, X, RefreshCw } from 'lucide-react';
 
 export default function Announcements() {
@@ -13,15 +14,31 @@ export default function Announcements() {
   const [isGm, setIsGm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [err, setErr] = useState(false);
   const [form, setForm] = useState(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const nav = useNavigate();
 
+  // S7-G10 已读记忆（仅 App）：首次见到的公告标 NEW；本次浏览即记为已读，
+  // 徽标只活一屏——下次进来不再打扰。与数据同步计算（不依赖 effect 时序），
+  // id 账本钳 100 防无限膨胀。
+  const [newIds, setNewIds] = useState(() => new Set());
   const load = () => {
     if (!app) setLoadError('');
-    return api('/announcements').then(d => { setList(d.announcements); setIsGm(d.is_gm); })
-      .catch(e => { if (!app) setLoadError(e.message || '公告载入失败，请稍后重试'); toast(e.message, 'err'); })
+    return api('/announcements').then(d => {
+      setList(d.announcements);
+      setIsGm(d.is_gm);
+      if (app) {
+        let seen = [];
+        try { seen = JSON.parse(localStorage.getItem('huanyu_ann_seen') || '[]'); } catch { /* */ }
+        const seenSet = new Set(seen);
+        setNewIds(new Set((d.announcements || []).filter(a => !seenSet.has(a.id)).map(a => a.id)));
+        try {
+          localStorage.setItem('huanyu_ann_seen', JSON.stringify([...new Set([...seen, ...(d.announcements || []).map(a => a.id)])].slice(-100)));
+        } catch { /* */ }
+      }
+    }).catch(e => { if (!app) setLoadError(e.message || '公告载入失败，请稍后重试'); setErr(true); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -54,7 +71,9 @@ export default function Announcements() {
         )}
         {loading ? (app ? <div className="qa-announcements-loading" role="status" aria-label="正在载入公告"><i className="skel" /><i className="skel" /><i className="skel" /></div> : (
           <div className="lgw-skel-list" aria-hidden="true">{[0, 1, 2].map(i => <div key={i} className="skel lgw-skel-lg" />)}</div>
-        )) : !app && loadError && list.length === 0 ? (
+        )) :
+          app && err && list.length === 0 ? <AppErrorState kind="notifications" onRetry={() => { setErr(false); setLoading(true); load(); }} /> :
+          !app && loadError && list.length === 0 ? (
           <div className="empty lgw-error" role="alert">
             <span className="lgw-error-ic"><Megaphone size={22} /></span>
             <h2 className="lgw-error-title">公告暂时无法载入</h2>
@@ -63,7 +82,7 @@ export default function Announcements() {
           </div>
         ) :
           list.length === 0 ? (app
-            ? <div className="empty qa-announcements-empty"><div className="big"><Megaphone size={44} /></div>暂无公告</div>
+            ? <div className="empty qa-announcements-empty"><AppEmptyArt kind="notifications" size={104} />暂无公告</div>
             : (
               <div className="empty lgw-empty">
                 <EmptyArt kind="notifications" />
@@ -77,7 +96,11 @@ export default function Announcements() {
               const ItemRoot = app ? 'article' : 'div';
               return (
               <ItemRoot key={a.id} className={'ann-item' + (app ? ' qa-announcements-item' : '') + (a.pinned ? ' pinned' : '')}>
-                <h3>{a.pinned ? <span className="pin"><Pin size={11} style={{ verticalAlign: -1 }} /> 置顶</span> : null}{a.title}</h3>
+                <h3>
+                  {a.pinned ? <span className="pin"><Pin size={11} style={{ verticalAlign: -1 }} /> 置顶</span> : null}
+                  {a.title}
+                  {app && newIds.has(a.id) && <span className="qa-ann-new" aria-label="新公告">NEW</span>}
+                </h3>
                 <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, margin: 0, color: 'var(--text)' }}>{a.body}</p>
                 <div className="meta" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span>{a.author_name || '官方'} · {String(a.created_at || '').slice(0, 16)}</span>

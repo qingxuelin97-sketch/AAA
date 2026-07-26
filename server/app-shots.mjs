@@ -66,6 +66,7 @@ const run = async () => {
     localStorage.setItem('huanyu_token', t);
     localStorage.setItem('huanyu_app', '1');
     localStorage.setItem('huanyu_welcome_seen', new Date().toISOString().slice(0, 10));
+      localStorage.setItem('huanyu_onboard_done', new Date().toISOString().slice(0, 10));
   }, tk);
   const shot = async (urlPath, name, { wait = 1300, before } = {}) => {
     await m.goto(BASE + urlPath, { waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});

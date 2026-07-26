@@ -15,10 +15,14 @@ import { msgPreview } from '../util.js';
 import { Logo } from '../assets.jsx';
 import { isAppMode } from '../appmode.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import AppPressMenu from '../components/AppPressMenu.jsx';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import { useLongPress } from '../chat/hooks.js';
+import { tick } from '../appgestures.js';
 import { useAppOverlay } from '../overlay.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
 import {
-  Bell, ChevronRight, Heart, MessageCircle, Search, UserRound, Users, X, Flame, Ellipsis
+  Bell, BellOff, ChevronRight, Heart, MessageCircle, Pin, Search, UserRound, Users, X, Flame, Ellipsis
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -46,22 +50,50 @@ const conversationTime = (conversation) => {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 };
 
-function AppConversationRow({ cv, nav, onDelete }) {
+function AppConversationRow({ cv, nav, onDelete, onPress }) {
   const time = conversationTime(cv);
   const open = () => nav('/chats/' + cv.id);
+  const rowRef = useRef(null);
+  const firedRef = useRef(false);
+  const pressAt = () => {
+    const r = rowRef.current?.getBoundingClientRect?.();
+    return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  };
+  const bindPress = useLongPress(() => { firedRef.current = true; tick(8); onPress?.({ cv, at: pressAt() }); });
+  // 长按触发后浏览器仍会补发一次 click：吞掉它，防止菜单刚开就被导航冲走
+  const onRowClick = () => {
+    if (firedRef.current) { firedRef.current = false; return; }
+    open();
+  };
   return (
     <div className="msgs-conv msgs-conv--app">
-      <button type="button" className="msgs-conv-main" onClick={open}>
+      <button type="button" ref={rowRef} className="msgs-conv-main" onClick={onRowClick}
+        {...bindPress(cv)}
+        onContextMenu={(e) => { e.preventDefault(); onPress?.({ cv, at: { x: e.clientX, y: e.clientY } }); }}>
         {isLegacyMonogramCover(cv.character_avatar)
           ? <span className="msgs-fav-ph"><AppPortraitFallback name={cv.character_name} /></span>
           : <Avatar src={cv.character_avatar} name={cv.character_name} size={50} />}
         <span className="msgs-conv-tx">
           <b>{cv.character_name}</b>
-          <span>{msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话')}</span>
+          <span>
+            {(() => {
+              // S7-G10 草稿优先：有未发送草稿时明示，回来即续写
+              let draft = '';
+              try { draft = (localStorage.getItem('huanyu_draft_' + cv.id) || '').trim(); } catch { /* */ }
+              if (draft) return <><i className="msgs-draft">[草稿]</i>{draft.slice(0, 40)}</>;
+              return msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话');
+            })()}
+          </span>
         </span>
         <span className="msgs-conv-meta">
           {time && <time dateTime={cv.updated_at || cv.last_message_at || cv.last_at}>{time}</time>}
           {cv.affinity ? <span className="msgs-aff"><Flame size={11} /> {cv.affinity}</span> : null}
+          {(cv.pinned || cv.muted) ? (
+            <span className="msgs-marks">
+              {cv.pinned ? <Pin size={11} aria-label="已置顶" /> : null}
+              {cv.muted ? <BellOff size={11} aria-label="已免打扰" /> : null}
+            </span>
+          ) : null}
         </span>
       </button>
       <AppIconButton className="msgs-del" onClick={event => onDelete(event, cv)} label={`管理与${cv.character_name || '角色'}的对话`}>
@@ -103,6 +135,8 @@ export default function Messages() {
   const [favError, setFavError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [pressMenu, setPressMenu] = useState(null); // { cv, at }
+  const [shareCv, setShareCv] = useState(null);
   const deleteDialogRef = useRef(null);
   const deleteTriggerRef = useRef(null);
   const closeDeleteDialog = () => {
@@ -119,6 +153,12 @@ export default function Messages() {
     return api('/chat/conversations')
       .then(d => setConvs(d.conversations || []))
       .catch((error) => { setConvs([]); setConvError(error.message || '暂时无法载入对话'); });
+  };
+  // S7-G10 会话整理：置顶 / 免打扰标记翻转（PATCH 只改标记不 bump 排序时间）
+  const toggleConvMark = (cv, key) => {
+    api('/chat/conversations/' + cv.id, { method: 'PATCH', body: { [key]: cv[key] ? 0 : 1 } })
+      .then(() => { tick(6); loadConvs(); })
+      .catch((error) => toast(error.message || '操作失败，请稍后重试', 'err'));
   };
   useEffect(() => {
     loadConvs();
@@ -275,7 +315,7 @@ export default function Messages() {
             )}
             {convs && convs.map(cv => (
               appMode ? (
-                <AppConversationRow key={cv.id} cv={cv} nav={nav} onDelete={delConv} />
+                <AppConversationRow key={cv.id} cv={cv} nav={nav} onDelete={delConv} onPress={setPressMenu} />
               ) : (
               <div key={cv.id} className="msgs-conv" role="button" tabIndex={0}
                 onClick={() => nav('/chats/' + cv.id)}
@@ -346,6 +386,30 @@ export default function Messages() {
         </>
       )}
 
+      {appMode && pressMenu && (
+        <AppPressMenu
+          at={pressMenu.at}
+          onClose={() => setPressMenu(null)}
+          items={[
+            { label: '打开对话', onSelect: () => nav('/chats/' + pressMenu.cv.id) },
+            ...(pressMenu.cv.character_id
+              ? [{ label: '查看角色', onSelect: () => nav('/character/' + pressMenu.cv.character_id) }]
+              : []),
+            { label: pressMenu.cv.pinned ? '取消置顶' : '置顶对话', onSelect: () => toggleConvMark(pressMenu.cv, 'pinned') },
+            { label: pressMenu.cv.muted ? '取消免打扰' : '免打扰', onSelect: () => toggleConvMark(pressMenu.cv, 'muted') },
+            { label: '生成分享卡', onSelect: () => setShareCv(pressMenu.cv) },
+            { label: '删除对话', danger: true, onSelect: () => setDeleteTarget(pressMenu.cv) },
+          ]}
+        />
+      )}
+      {appMode && shareCv && (
+        <ShareCardSheet
+          kind="character"
+          payload={{ name: shareCv.character_name, tagline: shareCv.title !== shareCv.character_name ? shareCv.title : '',
+            avatar: shareCv.character_avatar || '', path: shareCv.character_id ? '/character/' + shareCv.character_id : '/' }}
+          onClose={() => setShareCv(null)}
+        />
+      )}
       {appMode && deleteTarget && typeof document !== 'undefined' && createPortal(
         <div className="app-sheet-mask msgs-delete-mask" onClick={closeDeleteDialog}>
           <section ref={deleteDialogRef} className="msgs-delete-sheet" role="alertdialog" aria-modal="true"

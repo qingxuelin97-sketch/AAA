@@ -13,6 +13,7 @@ server/mobile-test.tmp.sqlite*
 .DS_Store
 *.log
 server/smoke.tmp.sqlite*
+server/s7test.tmp.sqlite*
 server/.jwt-secret
 .env
 # 安卓原生工程 —— 本地生成，不进仓库，避免 pull/push 冲突
@@ -27,3 +28,4 @@ server/sec-test.tmp.sqlite*
 server/sec-test.interceptor.mjs
 server/diagnostic.tmp.sqlite*
 client/*-smoke.png
+client/appdiff.tmp/

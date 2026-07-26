@@ -11,10 +11,12 @@ import CallScreen from '../components/CallScreen.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { CoverArt, EmptyArt, QuietAquaCharacterArt, isLegacyMonogramCover, resolveCharacterMedia } from '../art.jsx';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
 import {
   MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye,
   ChevronRight, ChevronDown, Drama, BadgeCheck, Download, X, MoreHorizontal,
-  Share2, Plus, Check, Quote, MessagesSquare, Puzzle, AudioLines, Phone
+  Share2, Plus, Check, Quote, MessagesSquare, Puzzle, AudioLines, Phone, Flame,
+  Image as ImageIcon
 } from 'lucide-react';
 import { shareUrl } from '../util.js';
 
@@ -119,11 +121,29 @@ export default function CharacterView() {
    ============================================================ */
 function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related, startChat, toggleFav, exportCard, share }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [shareCardOpen, setShareCardOpen] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [greetOpen, setGreetOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [following, setFollowing] = useState(false);
+  // S7-G10 与 TA 的足迹：从自己会话推导羁绊摘要（好感度最高的一段 + 相遇日）
+  const [bond, setBond] = useState(null);
+  useEffect(() => {
+    if (!c?.id) { setBond(null); return; }
+    api('/chat/conversations').then(d => {
+      const mine = (d.conversations || []).filter(x => x.character_id === c.id);
+      if (!mine.length) { setBond(null); return; }
+      const first = mine.reduce((a, b) => (String(a.created_at || '') <= String(b.created_at || '') ? a : b));
+      const best = mine.reduce((a, b) => ((b.affinity || 0) > (a.affinity || 0) ? b : a));
+      setBond({
+        affinity: best.affinity || 0,
+        since: String(first.created_at || '').slice(0, 10),
+        count: mine.length,
+        convId: best.id,
+      });
+    }).catch(() => setBond(null));
+  }, [c?.id]);
   const menuRef = useRef(null);
   const menuTriggerRef = useRef(null);
   useAppOverlay(menuOpen, () => setMenuOpen(false), { rootRef: menuRef, returnFocusRef: menuTriggerRef });
@@ -189,12 +209,23 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
               <div ref={menuRef} className="cvx-menu" id="cvx-action-menu" role="menu" tabIndex={-1}>
                 {isOwner && <AppButton variant="tertiary" onClick={() => nav('/character/' + c.id + '/edit')}><Pencil size={15} /> 编辑角色</AppButton>}
                 <AppButton variant="tertiary" onClick={() => { exportCard(); setMenuOpen(false); }}><Download size={15} /> 导出角色卡</AppButton>
+                <AppButton variant="tertiary" onClick={() => { setShareCardOpen(true); setMenuOpen(false); }}><ImageIcon size={15} /> 生成分享卡</AppButton>
                 {!isOwner && <div className="cvx-menu-report"><ReportButton type="character" id={c.id} /></div>}
                 <span className="cvx-menu-pid">{pid('character', c.id)}</span>
               </div>
             </>
           )}
         </div>
+
+        {shareCardOpen && (
+          <ShareCardSheet
+            kind="character"
+            payload={{ name: c.name, tagline: c.tagline || c.intro, category: c.category,
+              avatar: c.avatar ? assetUrl(c.avatar) : '', cover: resolveCharacterMedia(c).src ? assetUrl(resolveCharacterMedia(c).src) : '',
+              path: '/character/' + c.id }}
+            onClose={() => setShareCardOpen(false)}
+          />
+        )}
 
         {/* —— 作者行 + 关注 —— */}
         <div className="cvx-body">
@@ -245,6 +276,21 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
           </div>
           {tags.length > 0 && (
             <div className="cvx-tags">{tags.map(t => <span key={t}>{t}</span>)}</div>
+          )}
+
+          {/* —— S7-G10 与 TA 的足迹：有过对话才出现，一眼看到这段关系 —— */}
+          {bond && (
+            <section className="qa-bond" aria-label={`与${c.name}的相伴足迹`}>
+              <div className="qa-bond-head"><Flame size={14} aria-hidden="true" /> 与 TA 的足迹</div>
+              <div className="qa-bond-row">
+                <span>好感度 <b>{bond.affinity}</b></span>
+                {bond.since && <span>相遇于 <b>{bond.since}</b></span>}
+                <span>共 <b>{bond.count}</b> 段对话</span>
+              </div>
+              <AppButton className="qa-bond-cta" variant="secondary" size="sm" onClick={() => nav('/chats/' + bond.convId)}>
+                继续这段故事 <ChevronRight size={14} />
+              </AppButton>
+            </section>
           )}
 
           {/* —— 能力磁贴：对话模式 / 语音音色 / 世界书 —— */}

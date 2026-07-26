@@ -274,6 +274,7 @@ npm run build
 npm run build:static
 npm run test:app
 npm run test:app:e2e
+node scripts/appdiff.mjs   # 样式/令牌重构时：改前 --baseline 录基线，改后对比须 0 changed pixels
 ```
 
 `test:app:e2e` 会先重建 static 包。截图输出位于 `client/dist/quiet-aqua-e2e`，而后续 Vite build 会清空 `client/dist`，因此评审或归档必须在下一次构建前完成。
@@ -305,3 +306,105 @@ npm run test:app:e2e
 - Web 对所有受影响路由执行同数据基线；任何 App-only DOM、文案或行为泄漏都阻断。
 
 只有当代码、状态、无障碍、动效、SVG、截图和 Web 守卫同时通过，PR5 才能声明完成。Figma 是否同步不构成发布门槛，也不能替代上述证据。
+
+## 10. S7「仪式与相伴」附录（阶段三收口记录）
+
+本节记录阶段三（Lumen S7）新增的组件契约、素材账目与令牌迁移终局，与 §0–§9 同级生效；冲突时以红线（§0、§8）优先。
+
+### 10.1 新组件契约
+
+- **AppErrorState**（`.qa-error-state`）：首载失败的唯一合法出口。`role="alert"`；art 必须来自 `APP_EMPTY_ART` 目录 kind；重试为主按钮（≥44px，busy 态防重入），可选次级导航退路。禁止裸文字失败或死路空屏。
+- **AppOnboarding**（`.qa-onboard`）：三屏首启引导。弹出条件 = App 模式 ∧ 已登录 ∧ 无 `huanyu_onboard_done` ∧ `user.created_at` 距今 ≤7 天；老账号静默写键不弹。完成/跳过同时写 `huanyu_welcome_seen` 防双弹。兴趣 chips 上限 6，落 `PUT /settings {interests}` 且尊重 personalize 开关。非当前屏 `inert`；reduced-motion 直切无位移。e2e `preparePage` 默认预置该键，专测用 `onboard:false` 退出。
+- **CheckinCalendarSheet**（`.qa-cal`）：签到月历。`role="grid"` + 星期表头；数据唯一来源 `GET /economy/checkin/calendar`；月导航钳最近 12 个月；今日描环、已签实心、未来置灰；失败必须给出重试。
+- **ShareCardSheet**（`.qa-share-sheet`）：分享卡出口。`sharecard.js` 动态 import，不入首屏 chunk；`document.fonts.ready` 后绘制；出口顺序 = `navigator.canShare({files})` 系统分享 → `<a download>` 保存 → 复制链接兜底；用户取消（AbortError）静默。
+- **AppPressMenu**（`.qa-press-menu`）：长按上下文菜单。`useLongPress` 450ms/10px；portal + isolate + `role="menu"`；挂载 350ms 内忽略 mask 点击（吞长按尾随合成 click，行级同样抑制）；Escape/mask 关闭并把焦点还给触发行。
+
+以上浮层全部登记进 `appgestures.js` 的 NO_TAB_SWIPE/NO_PULL（含 `.qa-ach-wall`），与 Tab 横滑、下拉刷新互斥。
+
+### 10.2 空态/错误态落账表（§7.2 补全）
+
+19 处 icon-only/裸空态已全部接入 art 空态，首载错误接 AppErrorState 带重试：Achievements、Theater、Atelier、NovelWorkspace（列表/角色/世界书三面）、Leaderboard、Events、Announcements、GroupRoom、Worldbooks 与 WorldbookView、Search 无结果、Insights（含错误态补重试）、Parliament、Community、Tags、Draw。既有已达标页（Messages/Friends/Library/Favorites 等）维持原契约不动。
+
+### 10.3 素材目录与许可
+
+- `client/src/assets/app/` 共 23 张 PNG，全部由 `scripts/render-app-assets.mjs` 确定性本地生成（SVG→Chromium 截图，Lumen P 调色板，零文字零按钮，单张 <300KB），原子写入（tmp 目录 + rename，杜绝半成品目录）。
+- 本轮未引入任何外部位图：环境网关封锁全部图床（实测 CONNECT 403），改道本地管线为主路径；无第三方许可负担，版权随项目。
+- 目录：empty ×16（generic/chat/favorites/friends/library/notifications/search/achievements/theater/atelier/leaderboard/events/worldbooks/insights/noresult/group）、onboard ×3（world/craft/tune）、streak-seal、vip-weave、boot-mark @2x/@3x。
+
+### 10.4 分享卡媒体边界
+
+- 分享卡是**运行时 canvas 合成的用户导出内容**（character/achievement/streak 三模板，固定 1080×1440 与 DPR 解耦），允许出现活数据文字——这不违反「入库 PNG 零文字」红线，因为它不入库、不进素材目录。
+- 不建 canvas 像素基线（文本反走样跨环境不稳定）；e2e 只验预览 naturalWidth/Height、出口可用与无 console error。
+
+### 10.5 qa→lg 令牌迁移终局（G8）
+
+- 62 条纯别名（全部定义恒等于同一 `var(--lg-X)`）由 `scripts/migrate-qa-tokens.mjs` 批量改写 **1,821 处**引用为直连 `--lg-*` 权威：pages 1490 / controls 119 / hig 107 / v3 75 / runtime 9 / elevated 6 / s5 6 / renov 3 / shell 2 / s6 2 / chat-app 1 / ui.jsx 1。
+- `app-quiet-aqua-tokens.css` 降级为**残余 shim**，仅存三类非纯定义：① 迁移期字面值（--qa-surface 系不透明内容面、44/48px 触控契约、语义 ink 黑白字面、玻璃 specular/阴影字面、编辑器 chrome 高度）；② color-mix 派生（pressed 与各 -soft 软底）；③ lite 条件回落面（chrome/overlay/玻璃底 → --lg-grouped）。纯别名禁止回填（app-test 反向断言）。
+- 证据链：`scripts/appdiff.mjs`（9 路由 × light/dark/lite、冻结时钟、头像掩膜、2px AA 噪声阈）迁移前后 **0 changed pixels**；app-test 闭包断言「全 App 层 `var(--qa-*)` 引用 ⊆ 残余 shim 定义集」。令牌重构类改动此后一律先录 `--baseline` 再过 appdiff 0px 门。
+
+### 10.6 后端契约同步（G1）
+
+- `GET /economy/checkin/calendar?month=YYYY-MM`：由 `transactions(kind='checkin')` 推导（不建新表），北京日界 `cnToday`，月参数钳最近 12 个月；server 与 mock 双端同构（app-test 配对断言）。
+- `settings.interests`：slug 白名单 = meta CATEGORIES、上限 6、逗号串存储；`/characters/recommended` 在 personalize 开启时对 interests 命中各 +2 权重（双端孪生）。
+- 成就目录双端 30 条集合等值断言（matchAll id 提取 deepEqual）；honor 成就（creator_hall）reward 0、只铭刻不可领取，领取请求双端一致拒绝。
+- 旧 `POST /economy/recharge` 双端一致返回 410 `PAYMENT_ORDER_REQUIRED`；充值走订单两端点，mock 入账一次性幂等（credited 标记）。支付路由本阶段零改动。
+
+### 10.7 G10「相伴加深」增补（阶段三后半）
+
+- **新端点/新列**：`GET /me/weekly`（北京周界周一起始）；
+  `conversations.pinned/muted` 迁移列 + mark-only PATCH（不 bump
+  `updated_at`，置顶不得伪造新鲜度）；`/engage/leaderboard` 登录附
+  `me:{rank,score}`。三者均有 mock 孪生 + app-test 配对断言 +
+  `server/s7-boundary.test.mjs` 验值（含旧充值 410、荣誉拒领、
+  兴趣白名单钳制）。
+- **新组件**：周报卡 `.qa-weekly-card`（role=img 全文替代、lite 去
+  blur 实测）；`WhatsNewSheet`（S7 特性清单，我的页页脚入口）；
+  分享卡新增 quote（聊天/剧场长按导出，旁白段署名「旁白」）与
+  insights（星轨年鉴）两模板 —— 媒体边界同 §10.4。
+- **会话草稿**：`huanyu_draft_<id>` 仅 App 壳生效（Web 行为零变化
+  红线）；清空/发送即删；列表「[草稿]」优先预览。
+- **触感闸门**：全部触感调用统一 `tick()`；`huanyu_haptics='0'`
+  一处关断（设置 → 偏好 App 专属行）。
+- **里程碑印章分档**：`streakSealForTier`（≥100 金冠双环 / ≥30
+  玉桂环 / 基础焰章），素材目录 23→25，管线与许可同 §10.3。
+- **Gallery S7 展区**：空态/错误演示、连签与月历状态样板、奖章
+  三档、周报条形、长按菜单与示例台词卡活演示 —— 新组件家族的
+  评审面（e2e galleryS7Assertions 锁定）。
+- **e2e 增量**：weeklyRecap / walletCalendar（含流水筛选）/
+  quoteCard / galleryS7 / conversationMarks / draft / s7DarkTier
+  七场景；app-test 以场景名清单守卫接线。
+- 阶段规格详见 `docs/design/LUMEN_S7_SPEC.md`；用户可见变更见
+  根目录 `CHANGELOG.md`。
+
+### 10.8 G10 追溯表（功能 → 契约 → 验证）
+
+| 功能 | 关键实现 | 机器契约（app-test） | 行为验证 |
+|---|---|---|---|
+| 周报卡 | AppHome `.qa-weekly` + `GET /me/weekly` | 双轨字段配对 / 静默失败 / role=img 全文替代 | e2e weeklyRecap + boundary 周界/未来天 0 |
+| 台词卡 | sharecard `renderQuoteCard` + Chat/Theater 入口 | App-only / 双侧署名 / 旁白署名 | e2e quoteCard + 手测用户侧 1080×1440 |
+| 星轨卡 | `renderInsightsCard` + Insights hero 入口 | App-only / 羁绊载荷 | 手测合成 + e2e shareCard 家族 |
+| 会话整理 | conversations.pinned/muted + PATCH mark-only | 排序 / mark-only 双端 / 迁移列 | e2e conversationMarks + boundary 组 3 |
+| 会话草稿 | `huanyu_draft_<id>`（App 门控） | 门控 / 清空即删 / 行预览优先 | e2e draft 全环 |
+| 私信草稿+长按 | `huanyu_dmdraft_<id>` + AppPressMenu 复制 | 门控 / 清空即删 / App-only 绑定 | 手测三步全环 |
+| 群聊 @提及 | 长按插入 + `.gr-mention` 高亮 | Web 零泄漏 | 手测菜单 + 插入 |
+| 触感开关 | tick() 闸门 + 设置行 | 闸门语义 / App-only 行 | e2e g10Surface 默认开 |
+| 我的名次 | leaderboard `me:{rank,score}` 双端 | 公式双端配对 / UI 常驻行 | boundary 组 5（公式一致+单调） |
+| 热门分类 | Search cats chips + tabOverride | App-only / 角色搜索直达 | e2e g10Surface 点击直达 |
+| 一键全领 | Events claimAllTasks | 容错语义 / ≥2 才现 | 手测 + 行内领取 e2e（today） |
+| 新功能 Sheet | WhatsNewSheet + 未读点 | 隔离契约 / 版本键 | e2e g10Surface（≥8 行 + Escape） |
+| 相伴一览/足迹 | `.qa-glance` / `.qa-bond` | allSettled 降级 / 最高好感续聊 | e2e g10Surface 真实导航链 |
+| 里程碑分档 | streakSealForTier + 三档印章 | 阈值 / 管线双变体 / 双消费点 | 视觉审阅（印章成图） |
+| 阅读进度 | `huanyu_read_<id>` + 2px 进度条 | 门控 / 端点复位 / 字号域校验 | 手测 0.50 往返恢复 |
+| 长按开即关修复 | msg-sheet 遮罩 350ms 挂载守卫 | 守卫源码断言 | 手测居中气泡开-留-关全环 |
+
+每行的 e2e 场景名都在 app-test 的场景守卫清单里锁死；boundary 指
+`server/s7-boundary.test.mjs`（七组验值）。
+
+（10.8 表补行）| 抽卡晒卡 | Gacha 结果第三动作 → character 模板 | App-only / 模板路由 | 手测 + 分享卡族 e2e |
+| 收藏筛选 | Favorites `.qa-fav-cats`（分类自推导） | App-only / ≥2 类 / 空档说明 | 手测切换 |
+| 公告 NEW | `huanyu_ann_seen` 账本（钳 100） | App 门控 / 有界 / 徽标 App-only | 手测两次进入 |
+| 阅读进度 | NovelReader `huanyu_read_<id>` + 2px 条 | 门控 / 端点复位 / 字号域 | 手测 0.50 往返 |
+
+（10.8 表再补行）| 画廊长按 | Draw 瓦片 → 下载/复用/删除 | App-only 绑定 / 删除 danger | 手测菜单三项 |
+| 群聊分段 | Groups 全部/我加入的/可加入 | 两侧并存才现 / joined 划分 | 手测切换 |
+| 排序端到端 | 置顶 > 新鲜度 | —— | e2e 浏览器层 + boundary 第 7 组 API 层双镜像 |

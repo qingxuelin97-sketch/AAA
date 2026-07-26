@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
@@ -16,13 +16,48 @@ export default function NovelReader() {
   const toast = useToast();
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
-  const [size, setSize] = useState(18);
+  // S7-G10 字号记忆（仅 App，Web 行为零变化）：14–28 合法域外回默认
+  const [size, setSize] = useState(() => {
+    if (!isAppMode()) return 18;
+    try { const v = parseInt(localStorage.getItem('huanyu_read_size'), 10); return v >= 14 && v <= 28 ? v : 18; } catch { return 18; }
+  });
   const [aaOpen, setAaOpen] = useState(false);
   const [chromeHidden, setChromeHidden] = useState(false);
+  const scrollerRef = useRef(null);
+  const [prog, setProg] = useState(0);
 
   useEffect(() => {
     api(`/novels/${id}/read`).then(setData).catch(e => { setErr(e.message); toast(e.message, 'err'); });
   }, [id]);
+
+  useEffect(() => {
+    if (app) try { localStorage.setItem('huanyu_read_size', String(size)); } catch { /* */ }
+  }, [app, size]);
+
+  // S7-G10 阅读进度记忆（仅 App）：按作品存滚动比例，回来接着读；
+  // 顶部 2px 进度条随滚动即时反馈，落库 300ms 防抖。
+  useEffect(() => {
+    if (!app || !data) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    let saved = 0;
+    try { saved = JSON.parse(localStorage.getItem('huanyu_read_' + id) || '{}').ratio || 0; } catch { /* */ }
+    if (saved > 0.01 && saved < 0.999) {
+      requestAnimationFrame(() => { el.scrollTop = saved * (el.scrollHeight - el.clientHeight); });
+    }
+    let t = 0;
+    const onScroll = () => {
+      const max = el.scrollHeight - el.clientHeight;
+      const ratio = max > 0 ? Math.min(1, el.scrollTop / max) : 0;
+      setProg(ratio);
+      clearTimeout(t);
+      t = setTimeout(() => {
+        try { localStorage.setItem('huanyu_read_' + id, JSON.stringify({ ratio: Math.round(ratio * 1000) / 1000, at: Date.now() })); } catch { /* */ }
+      }, 300);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => { clearTimeout(t); el.removeEventListener('scroll', onScroll); };
+  }, [app, data, id]);
 
   if (err) return <div className="empty" style={{ paddingTop: 140 }}>{err}<div style={{ marginTop: 16 }}><button className="btn" onClick={() => nav('/atelier')}>返回工坊</button></div></div>;
   if (!data) return <div className="empty" style={{ paddingTop: 160 }}>载入中…</div>;
@@ -45,7 +80,8 @@ export default function NovelReader() {
           </div>
         )}
       </div>
-      <div className="atl-read-scroll"
+      {app && <i className="qa-read-progress" style={{ transform: `scaleX(${prog})` }} aria-hidden="true" />}
+      <div className="atl-read-scroll" ref={scrollerRef}
         onClick={app ? (e) => {
           // 点正文空白处隐藏/唤回工具条；命中链接/按钮/作者行/插图时不拦截
           if (e.target.closest('button, a, .atl-read-author, img')) return;

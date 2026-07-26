@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Uploader } from '../ui.jsx';
-import { EmptyArt } from '../art.jsx';
+import { EmptyArt, AppEmptyArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
 import ReportButton from '../components/ReportButton.jsx';
-import { Heart, MessageCircle, Send, Trash2, Inbox, UserPlus, Check, Sparkles, RefreshCw, PenLine } from 'lucide-react';
+import { Heart, MessageCircle, Send, Trash2, UserPlus, Check, Sparkles, RefreshCw, PenLine } from 'lucide-react';
 
 function SuggestedPeople() {
   const nav = useNavigate();
@@ -194,7 +194,7 @@ export default function Community() {
             </div>
           ) :
           moments.length === 0 ? (
-            app ? <div className="empty"><div className="big"><Inbox size={46} /></div>这里还没有动态，来发布第一条吧</div> : (
+            app ? <div className="empty"><div className="big"><AppEmptyArt kind="group" size={104} /></div>这里还没有动态，来发布第一条吧</div> : (
               <div className="empty lgw-empty">
                 <EmptyArt kind="generic" />
                 <h2 className="lgw-empty-title">{scope === 'following' ? '关注的人还没有发过动态' : '这里还没有动态'}</h2>

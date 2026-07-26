@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>幻域 · Lumen S7「仪式与相伴」组件参考</title>
+<style>
+/*
+ * S7 组件家族的静态评审参考（承接 lumen-glass-ui-kit.html 的角色）。
+ * 权威关系：实现契约在 client/app-test.mjs 与 APP_UI_ORACLE.md §10；
+ * 本页只负责「长什么样、有哪些状态」的并排对照，色值取自
+ * lumen-glass-tokens.css 的浅色档（评审深色请以真机/e2e 深色截图为准）。
+ * 本页零依赖、可直接双击打开；不被运行时引用。
+ */
+:root {
+  --canvas: #F6F7F9; --grouped: #EDEFF3; --surface: #FFFFFF;
+  --ink: #16181D; --ink2: #5B6470; --ink3: #8A93A0;
+  --act: #1D5FDB; --gold: #8A6200; --coral: #C6483C; --rose: #A8546E;
+  --jade: #1E7A50; --hairline: #E2E5EA;
+  --glass1: rgb(255 255 255 / 72%);
+  --gs1: 0 10px 30px rgb(18 24 44 / 10%);
+  --r-card: 18px; --r-row: 14px; --r-pill: 999px;
+  --f: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--canvas); color: var(--ink); font-family: var(--f); padding: 32px 20px 80px; }
+h1 { font-size: 24px; margin-bottom: 4px; }
+.sub { color: var(--ink2); font-size: 13px; margin-bottom: 28px; }
+h2 { font-size: 16px; margin: 34px 0 4px; }
+.note { color: var(--ink3); font-size: 12px; margin-bottom: 12px; }
+.rack { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.spec { max-width: 390px; width: 100%; }
+.chip-note { font-size: 11px; color: var(--ink3); margin-top: 6px; font-family: ui-monospace, monospace; }
+
+/* —— 周报卡 —— */
+.weekly { display: grid; gap: 12px; padding: 14px; border-radius: var(--r-card); background: var(--glass1); box-shadow: var(--gs1); }
+.weekly.lite { background: var(--grouped); box-shadow: none; }
+.wk-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; align-items: end; height: 72px; }
+.wk-bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; height: 100%; }
+.wk-bar i { width: 12px; border-radius: 6px; background: color-mix(in srgb, var(--act) 32%, transparent); }
+.wk-bar.today i { background: var(--act); }
+.wk-bar span { font-size: 11px; color: var(--ink3); }
+.wk-bar.today span { color: var(--act); font-weight: 600; }
+.wk-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink2); }
+.wk-stats b { font-size: 15px; color: var(--ink); margin-right: 2px; font-variant-numeric: tabular-nums; }
+.wk-gold b { color: var(--gold); }
+.wk-comp { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 10px; border-radius: 12px; background: color-mix(in srgb, var(--act) 8%, transparent); }
+.wk-comp .av { width: 40px; height: 40px; border-radius: 50%; background: #1d7a53; color: #fff; display: grid; place-items: center; font-weight: 700; }
+.wk-comp-tx { flex: 1; display: flex; flex-direction: column; }
+.wk-comp-tx span { font-size: 11px; color: var(--ink3); }
+.wk-comp-tx b { font-size: 14px; }
+.wk-comp em { font-style: normal; font-size: 12px; color: var(--ink2); }
+
+/* —— 连签行 + 月历 —— */
+.streak { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 5px 12px; border-radius: var(--r-row); background: var(--glass1); box-shadow: var(--gs1); }
+.streak .dots { display: inline-flex; gap: 6px; }
+.streak .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--hairline); }
+.streak .dot.on { background: var(--gold); transform: scale(1.12); }
+.streak .copy { flex: 1; font-size: 12.5px; font-weight: 600; }
+.streak .cal { font-size: 12px; opacity: .85; }
+.calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; max-width: 340px; margin-top: 10px; }
+.cal-wd { font-size: 11px; color: var(--ink3); text-align: center; padding: 4px 0; }
+.cal-cell { display: grid; place-items: center; height: 40px; border-radius: 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.cal-cell.on { background: color-mix(in srgb, var(--act) 12%, transparent); color: var(--act); font-weight: 700; }
+.cal-cell.today { box-shadow: inset 0 0 0 1.6px var(--act); }
+.cal-cell.future { color: var(--ink3); opacity: .55; }
+
+/* —— 里程碑横幅与印章 —— */
+.milestone { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-row); background: color-mix(in srgb, var(--gold) 10%, transparent); }
+.milestone b { flex: 1; font-size: 13px; }
+.seal { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; }
+.seal.base { box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--gold) 80%, transparent); background: #f0e9d3; }
+.seal.t30 { box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--jade) 75%, transparent); background: #f0e9d3; }
+.seal.t100 { box-shadow: inset 0 0 0 4px var(--gold), 0 0 0 3px color-mix(in srgb, var(--gold) 45%, transparent); background: #f0e9d3; }
+
+/* —— 奖章 / 荣誉 —— */
+.medals { display: flex; gap: 8px; align-items: center; }
+.medal { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: var(--r-pill); }
+.medal.gold { background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--gold); }
+.medal.silver { background: var(--grouped); color: var(--ink2); }
+.medal.bronze { background: color-mix(in srgb, #8a6b2f 14%, transparent); color: #8a6b2f; }
+.honor { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 9px; border-radius: var(--r-pill); border: 1px solid var(--gold); color: var(--gold); }
+
+/* —— 足迹卡 / 相伴一览 —— */
+.bond { display: grid; gap: 8px; padding: 12px 14px; border-radius: var(--r-card); background: color-mix(in srgb, var(--rose) 8%, transparent); }
+.bond-head { font-size: 13px; font-weight: 600; color: var(--rose); }
+.bond-row { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink2); }
+.bond-row b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.bond-cta { justify-self: start; font-size: 12.5px; padding: 8px 14px; border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--gs1); border: 0; font-family: inherit; }
+.glance { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.glance-cell { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border-radius: 12px; background: var(--glass1); box-shadow: var(--gs1); }
+.glance-cell span { display: flex; flex-direction: column; font-size: 11px; color: var(--ink3); text-align: center; }
+.glance-cell b { font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.glance-ring { width: 26px; height: 26px; border-radius: 50%;
+  background: radial-gradient(closest-side, var(--surface) 68%, transparent 69%),
+    conic-gradient(var(--act) 40%, color-mix(in srgb, var(--act) 14%, transparent) 0); }
+
+/* —— 长按菜单 —— */
+.pressmenu { width: 232px; padding: 6px; border-radius: 16px; background: var(--surface); box-shadow: 0 18px 50px rgb(18 24 44 / 22%); }
+.press-item { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; border-radius: 10px; font-size: 14px; }
+.press-item.focus { background: var(--grouped); }
+.press-item.danger { color: var(--coral); }
+
+/* —— 消息行标记 / 草稿 —— */
+.convrow { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: var(--r-row); background: var(--surface); box-shadow: var(--gs1); }
+.convrow .av { width: 50px; height: 50px; border-radius: 50%; background: #1d7a53; color: #fff; display: grid; place-items: center; font-weight: 700; }
+.convrow .tx { flex: 1; min-width: 0; }
+.convrow .tx b { display: block; font-size: 14.5px; }
+.convrow .tx span { display: block; font-size: 12.5px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.draftmark { color: var(--coral); font-weight: 600; font-style: normal; margin-right: 4px; }
+.marks { display: inline-flex; gap: 4px; font-size: 11px; }
+.marks .pin { color: var(--act); }
+.marks .mute { color: var(--ink3); }
+.mention { color: var(--act); font-weight: 600; font-style: normal; }
+
+/* —— 我的名次 / 热门分类 / 全领 —— */
+.lbmine { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border-radius: var(--r-row); background: color-mix(in srgb, var(--act) 9%, transparent); font-size: 13px; }
+.lbmine b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.lbmine small { color: var(--ink3); font-variant-numeric: tabular-nums; }
+.lbmine .lab { flex: 1; color: var(--ink2); }
+.cats { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cats .lab { font-size: 12.5px; color: var(--ink3); }
+.tagchip { font-size: 12.5px; padding: 6px 12px; border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--gs1); }
+.claimall { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 8px 14px; border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--gs1); }
+
+/* —— 新功能行 —— */
+.wn-row { display: flex; gap: 10px; padding: 8px 6px; }
+.wn-ic { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--act) 10%, transparent); color: var(--act); font-size: 15px; }
+.wn-tx b { display: block; font-size: 14px; }
+.wn-tx span { font-size: 12.5px; color: var(--ink2); }
+
+/* —— 错误态 —— */
+.errstate { display: grid; justify-items: center; gap: 8px; padding: 22px; border-radius: var(--r-card); background: var(--surface); text-align: center; }
+.err-art { width: 108px; height: 76px; border-radius: 14px; background: #e2f0f3; }
+.errstate b { font-size: 15px; }
+.errstate p { font-size: 12.5px; color: var(--ink2); }
+.retry { padding: 10px 20px; border-radius: var(--r-pill); background: var(--act); color: #fff; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Lumen S7「仪式与相伴」组件参考</h1>
+<div class="sub">静态评审样板 · 契约权威在 client/app-test.mjs 与 APP_UI_ORACLE.md §10 · 活样板见 /app-controls?app=1 的 S7 展区</div>
+
+<h2>周报卡 · .qa-weekly-card</h2>
+<div class="note">7 条形（今日 act 实色）· role=img 全文替代 · 统计行 tabular-nums · 最相伴行 act 8% 软底 · lite 回落 grouped 实底</div>
+<div class="rack">
+  <div class="spec">
+    <div class="weekly">
+      <div class="wk-bars">
+        <div class="wk-bar"><i style="height:46%"></i><span>一</span></div>
+        <div class="wk-bar"><i style="height:5%"></i><span>二</span></div>
+        <div class="wk-bar"><i style="height:100%"></i><span>三</span></div>
+        <div class="wk-bar"><i style="height:30%"></i><span>四</span></div>
+        <div class="wk-bar"><i style="height:5%"></i><span>五</span></div>
+        <div class="wk-bar today"><i style="height:64%"></i><span>六</span></div>
+        <div class="wk-bar"><i style="height:14%"></i><span>日</span></div>
+      </div>
+      <div class="wk-stats"><span><b>16</b>条消息</span><span><b>4</b>天相伴</span><span><b>3</b>次签到</span><span class="wk-gold"><b>+320</b>金币</span></div>
+      <div class="wk-comp"><span class="av">薇</span><span class="wk-comp-tx"><span>本周最相伴</span><b>森灵 · 薇尔</b></span><em>9 条</em></div>
+    </div>
+    <div class="chip-note">balanced：glass-1 + blur-s + shadow-1</div>
+  </div>
+  <div class="spec">
+    <div class="weekly lite">
+      <div class="wk-bars">
+        <div class="wk-bar"><i style="height:46%"></i><span>一</span></div>
+        <div class="wk-bar today"><i style="height:80%"></i><span>二</span></div>
+        <div class="wk-bar"><i style="height:5%"></i><span>三</span></div>
+        <div class="wk-bar"><i style="height:5%"></i><span>四</span></div>
+        <div class="wk-bar"><i style="height:5%"></i><span>五</span></div>
+        <div class="wk-bar"><i style="height:5%"></i><span>六</span></div>
+        <div class="wk-bar"><i style="height:5%"></i><span>日</span></div>
+      </div>
+      <div class="wk-stats"><span><b>5</b>条消息</span><span><b>1</b>天相伴</span><span><b>1</b>次签到</span><span class="wk-gold"><b>+100</b>金币</span></div>
+    </div>
+    <div class="chip-note">lite：backdrop-filter none · grouped 实底 · 无 companion 时该行整体消失</div>
+  </div>
+</div>
+
+<h2>连签行与签到月历 · .qa-streak / .qa-cal-grid</h2>
+<div class="note">7 粒周点（(streak−1)%7+1 亮起）· 月历实心已签 / 描环今日 / 置灰未来 · 月导航钳 12 个月</div>
+<div class="rack">
+  <div class="spec">
+    <div class="streak"><span class="dots"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></span><span class="copy">连签 5 天</span><span class="cal">🗓 日历</span></div>
+    <div class="calgrid">
+      <span class="cal-wd">一</span><span class="cal-wd">二</span><span class="cal-wd">三</span><span class="cal-wd">四</span><span class="cal-wd">五</span><span class="cal-wd">六</span><span class="cal-wd">日</span>
+      <span class="cal-cell">1</span><span class="cal-cell on">2</span><span class="cal-cell on">3</span><span class="cal-cell on">4</span><span class="cal-cell">5</span><span class="cal-cell">6</span><span class="cal-cell">7</span>
+      <span class="cal-cell on">8</span><span class="cal-cell on">9</span><span class="cal-cell">10</span><span class="cal-cell">11</span><span class="cal-cell">12</span><span class="cal-cell">13</span><span class="cal-cell">14</span>
+      <span class="cal-cell on">15</span><span class="cal-cell on">16</span><span class="cal-cell on">17</span><span class="cal-cell on today">18</span><span class="cal-cell future">19</span><span class="cal-cell future">20</span><span class="cal-cell future">21</span>
+    </div>
+  </div>
+  <div class="spec">
+    <div class="milestone"><span class="seal base">🔥</span><b>连签 7 天达成！</b><span class="tagchip">生成纪念卡</span></div>
+    <div style="height:8px"></div>
+    <div class="medals">
+      <span class="seal base" title="1–29 天">🔥</span>
+      <span class="seal t30" title="30–99 天：玉桂环">🔥</span>
+      <span class="seal t100" title="≥100 天：金冠双环">🔥</span>
+    </div>
+    <div class="chip-note">印章分档 streakSealForTier：base / 30 玉桂 / 100 金冠双环（真图见 client/src/assets/app/qa5-streak-seal*）</div>
+  </div>
+</div>
+
+<h2>奖章 · 荣誉 · 相伴档案</h2>
+<div class="rack">
+  <div class="spec">
+    <div class="medals"><span class="medal gold">🏅 金 3</span><span class="medal silver">🏅 银 7</span><span class="medal bronze">🏅 铜 12</span><span class="honor">👑 荣誉</span></div>
+    <div class="chip-note">档位由奖励额推导（与 Web 同公式）；荣誉 reward 0 只铭刻</div>
+    <div style="height:12px"></div>
+    <div class="bond">
+      <div class="bond-head">🔥 与 TA 的足迹</div>
+      <div class="bond-row"><span>好感度 <b>42</b></span><span>相遇于 <b>2026-06-30</b></span><span>共 <b>3</b> 段对话</span></div>
+      <button class="bond-cta">继续这段故事 ›</button>
+    </div>
+    <div class="chip-note">.qa-bond：rose 8% 软底；CTA 直达好感度最高的一段会话；无会话不出现</div>
+  </div>
+  <div class="spec">
+    <div class="glance">
+      <div class="glance-cell"><i class="glance-ring"></i><span><b>12/30</b>成就</span></div>
+      <div class="glance-cell"><span><b>5 天</b>连签</span></div>
+      <div class="glance-cell"><span><b>16 条</b>本周相伴</span></div>
+    </div>
+    <div class="chip-note">.qa-glance：静态 conic 完成环（--p 百分比，无动画）；三格分别跳成就殿堂 / 钱包日历 / 星轨；数据 allSettled 各自降级</div>
+  </div>
+</div>
+
+<h2>长按菜单 · 消息行状态</h2>
+<div class="rack">
+  <div class="spec">
+    <div class="pressmenu">
+      <div class="press-item focus">打开对话</div>
+      <div class="press-item">查看角色</div>
+      <div class="press-item">置顶对话</div>
+      <div class="press-item">免打扰</div>
+      <div class="press-item">生成分享卡</div>
+      <div class="press-item danger">删除对话</div>
+    </div>
+    <div class="chip-note">232×(48·n)；portal + role=menu + 根 inert；挂载 350ms 内忽略遮罩点击；Escape/遮罩关闭回焦</div>
+  </div>
+  <div class="spec">
+    <div class="convrow"><span class="av">薇</span><span class="tx"><b>森灵 · 薇尔</b><span><i class="draftmark">[草稿]</i>这句还没说完的话…</span></span><span class="marks"><span class="pin">📌</span><span class="mute">🔕</span></span></div>
+    <div class="chip-note">草稿（coral 600）优先于最后一条消息；置顶 act 色 / 免打扰 ink-3；置顶排序在前且不改 updated_at</div>
+    <div style="height:10px"></div>
+    <div class="convrow"><span class="av" style="background:#4547ad">剑</span><span class="tx"><b>剑持</b><span>群聊里 <i class="mention">@旅人</i> 提到了你</span></span></div>
+    <div class="chip-note">.gr-mention：@token act 色 600（仅 App 落 DOM）</div>
+  </div>
+</div>
+
+<h2>我的名次 · 热门分类 · 一键全领</h2>
+<div class="rack">
+  <div class="spec">
+    <div class="lbmine">🏆 <span class="lab">我的创作声望</span><b>第 1 名</b><small>8,276 声望</small></div>
+    <div class="chip-note">.qa-lb-mine：创作者榜常驻；榜外也可见自己（全站排位服务端计算）</div>
+    <div style="height:10px"></div>
+    <div class="cats"><span class="lab">✨ 热门分类</span><span class="tagchip">🧝 奇幻</span><span class="tagchip">🤖 科幻</span><span class="tagchip">💞 恋爱</span><span class="tagchip">🍵 治愈</span></div>
+    <div class="chip-note">.qa-search-cats：空面板起跑线；点即按角色卡搜该分类</div>
+    <div style="height:10px"></div>
+    <span class="claimall">🎁 一键领取全部（3 项）</span>
+    <div class="chip-note">可领任务 ≥2 才出现；顺序领取，单条失败不拦后续</div>
+  </div>
+  <div class="spec">
+    <div class="wn-row"><span class="wn-ic">✦</span><span class="wn-tx"><b>首启引导与兴趣画像</b><span>三屏世界观引导，选好兴趣后推荐立刻贴合口味</span></span></div>
+    <div class="wn-row"><span class="wn-ic">🗓</span><span class="wn-tx"><b>签到仪式与月历</b><span>连签周点、月历回看、里程碑纪念印章</span></span></div>
+    <div class="wn-row"><span class="wn-ic">🖼</span><span class="wn-tx"><b>分享卡工坊</b><span>五种卡面本机合成，一键分享</span></span></div>
+    <div class="chip-note">WhatsNewSheet 行：32px act 圆标 + 标题/描述两行；清单随版本手工维护</div>
+  </div>
+</div>
+
+<h2>G10 后半补充 · 阅读进度 / 里程碑地平线 / NEW 徽标 / 收藏筛选</h2>
+<div class="rack">
+  <div class="spec">
+    <div style="position:relative;height:2px;background:var(--hairline);border-radius:2px;overflow:hidden;margin-bottom:6px"><i style="position:absolute;inset:0;width:46%;background:var(--act)"></i></div>
+    <div class="chip-note">.qa-read-progress：顶部 2px act 条 = 滚动位置直接映射；进度按作品持久（&lt;1% 与 &gt;99.9% 从头开）</div>
+    <div style="height:10px"></div>
+    <div class="streak" style="align-items:flex-start;flex-direction:column;gap:2px">
+      <span class="copy">🗓 签到日历 · 连续 5 天 · 本月 9 次</span>
+      <span style="font-size:11px;color:var(--ink3)">距 7 天里程碑还差 2 天</span>
+    </div>
+    <div class="chip-note">.qa-cal-horizon：最近的 7 倍数 / 30 / 100；月历头印章随档位换章</div>
+  </div>
+  <div class="spec">
+    <div style="font-size:15px;font-weight:700">v2.4 更新说明 <span style="display:inline-block;padding:1px 7px;border-radius:999px;background:color-mix(in srgb, var(--coral) 14%, transparent);color:var(--coral);font-size:10.5px;font-weight:700">NEW</span></div>
+    <div class="chip-note">.qa-ann-new：首次见到的公告标 NEW，本次浏览即记已读（id 账本钳 100）</div>
+    <div style="height:10px"></div>
+    <div class="cats"><span class="tagchip" style="box-shadow:inset 0 0 0 1.6px var(--act)">全部</span><span class="tagchip">奇幻</span><span class="tagchip">科幻</span><span class="tagchip">治愈</span></div>
+    <div class="chip-note">.qa-fav-cats / 钱包 .qa-wallet-v4__tx-filter：分类/账目筛选 chips，空档必须给出说明</div>
+  </div>
+</div>
+
+<h2>错误态 · .qa-error-state</h2>
+<div class="rack">
+  <div class="spec">
+    <div class="errstate">
+      <div class="err-art"></div>
+      <b>星轨暂时无法点亮</b>
+      <p>网络似乎开小差了，稍后再试一次</p>
+      <span class="retry">↻ 重试</span>
+    </div>
+    <div class="chip-note">role=alert · art 来自 APP_EMPTY_ART kind · 重试 ≥44px 防重入 · 可选次级导航退路 · 禁止裸文字失败</div>
+  </div>
+</div>
+</body>
+</html>

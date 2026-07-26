@@ -147,7 +147,20 @@ router.get('/leaderboard', authOptional, (req, res) => {
       (SELECT COUNT(*) FROM scripts WHERE author_id=u.id AND deleted_at IS NULL) AS scripts
     FROM users u WHERE u.is_banned=0 ORDER BY score DESC LIMIT 20`)
     .all().map(a => ({ ...a, creator_tier: creatorTier(a.id) }));
-  res.json({ characters, scripts, authors });
+  // S7-G10 我的名次：登录用户附带自己的创作声望与全站排位（榜外也可见）
+  let mine = null;
+  if (req.user) {
+    const myScore = db.prepare(`SELECT
+        (SELECT COALESCE(SUM(likes),0) FROM characters WHERE owner_id=?) +
+        (SELECT COALESCE(SUM(likes),0) FROM scripts WHERE author_id=? AND deleted_at IS NULL) AS score`)
+      .get(req.user.id, req.user.id).score || 0;
+    const higher = db.prepare(`SELECT COUNT(*) n FROM users u WHERE u.is_banned=0 AND u.id != ? AND (
+        (SELECT COALESCE(SUM(likes),0) FROM characters WHERE owner_id=u.id) +
+        (SELECT COALESCE(SUM(likes),0) FROM scripts WHERE author_id=u.id AND deleted_at IS NULL)) > ?`)
+      .get(req.user.id, myScore).n;
+    mine = { rank: higher + 1, score: myScore };
+  }
+  res.json({ characters, scripts, authors, me: mine });
 });
 
 // ---- gacha (spend diamonds to draw a public character into favorites) ----

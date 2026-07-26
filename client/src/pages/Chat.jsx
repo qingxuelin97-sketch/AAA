@@ -5,7 +5,8 @@ import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { useKeyboardInsetBar } from '../mobile.js';
-import { useAutoGrow, msgPreview } from '../util.js';
+import { useAutoGrow, msgPreview, cnToday } from '../util.js';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import CallScreen from '../components/CallScreen.jsx';
 import { AppIconButton } from '../components/AppControls.jsx';
@@ -86,7 +87,7 @@ export default function Chat() {
   const nav = useNav();
   const loc = useLocation();
   const toast = useToast();
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [convs, setConvs] = useState([]);
   const [conv, setConv] = useState(null);
   const [character, setCharacter] = useState(null);
@@ -143,6 +144,7 @@ export default function Chat() {
   const [searchOpen, setSearchOpen] = useState(false);
   // 长按操作面板（触屏取代 hover 操作行）：sheetFor = 目标消息或 null。
   const [sheetFor, setSheetFor] = useState(null);
+  const [quoteShare, setQuoteShare] = useState(null); // App 台词分享卡（长按面板入口）
   // 引用回复：replyTo = 被引用的消息或 null；发送时以 markdown 引用块前置。
   const [replyTo, setReplyTo] = useState(null);
   // 消息书签：本地存储（三端通用、不依赖服务端），按会话隔离。
@@ -190,6 +192,25 @@ export default function Chat() {
     if (draft) { setInput(draft); nav(loc.pathname, { replace: true, state: null }); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // S7-G10 会话草稿（仅 App 壳，Web 行为零变化）：输入按会话持久化
+  //（300ms 防抖，清空/发送即删），换会话或杀进程回来草稿仍在；
+  // 发现流带入的一次性预填优先。
+  useEffect(() => {
+    if (!app || !id || loc.state?.draft) return;
+    try { setInput(localStorage.getItem('huanyu_draft_' + id) || ''); } catch { /* */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+  useEffect(() => {
+    if (!app || !id) return;
+    const t = setTimeout(() => {
+      try {
+        if (input.trim()) localStorage.setItem('huanyu_draft_' + id, input);
+        else localStorage.removeItem('huanyu_draft_' + id);
+      } catch { /* */ }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [app, id, input]);
 
   // 移动端软键盘适配：把 fixed 输入栏始终顶在键盘上方（稳健跨浏览器实现见 mobile.js）。
   useKeyboardInsetBar(inputBarRef, [conv]);
@@ -551,7 +572,15 @@ export default function Chat() {
   };
 
   // 触屏长按消息 → 打开操作面板（hover 操作行在触屏不可用，已由 CSS 在 coarse pointer 隐藏）。
-  const bindLongPress = useLongPress((m) => { if (m.content) setSheetFor(m); });
+  // 长按抬指后浏览器会补发一次 click：若落在刚展开的遮罩上会「开即被关」
+  //（与 AppPressMenu 同源问题；居中气泡必现，贴底气泡恰好点进面板所以偶发）。
+  // 记录展开时刻，350ms 内忽略遮罩点击。
+  const sheetOpenedAtRef = useRef(0);
+  const bindLongPress = useLongPress((m) => {
+    if (!m.content) return;
+    sheetOpenedAtRef.current = performance.now();
+    setSheetFor(m);
+  });
 
   // 消息书签（收藏段落随时跳回，纯本地存储、按会话隔离）—— 逻辑收敛到 chat/hooks.js。
   const { marks, toggleMark, jumpToMark: jumpToMarkRaw } = useBookmarks(id, () => toast('未找到该消息（可能已被删除）', 'err'));
@@ -1085,7 +1114,7 @@ export default function Chat() {
       {/* 长按操作面板（触屏）：承载原 hover 操作行的全部能力 */}
       {sheetFor && (() => { const m = sheetFor; const isLast = messages[messages.length - 1]?.id === m.id || messages[messages.length - 1] === m; const close = () => setSheetFor(null); return (
         <>
-          <div className="msg-sheet-mask" onClick={close} />
+          <div className="msg-sheet-mask" onClick={() => { if (performance.now() - sheetOpenedAtRef.current < 350) return; close(); }} />
           <div className="msg-sheet" role="menu">
             <div className="ms-preview">{(m.content || '').replace(/^>\s.*\n+/, '').slice(0, 120)}</div>
             {/* 表情反应行已按真机反馈移除（面板保持纯操作列表）；
@@ -1095,6 +1124,9 @@ export default function Chat() {
               : <button className="ms-row" onClick={() => { toggleSpeak(m); close(); }}><Volume2 size={18} /> {voicedIds.has(m.id) ? '再听一遍' : '朗读'}</button>)}
             <button className="ms-row" onClick={() => { copyMsg(m.content); close(); }}><Copy size={18} /> 复制</button>
             <button className="ms-row" onClick={() => { setReplyTo(m); close(); inputRef.current?.focus(); }}><CornerUpLeft size={18} /> 引用回复</button>
+            {app && !!m.content && (
+              <button className="ms-row" onClick={() => { setQuoteShare(m); close(); }}><ImagePlus size={18} /> 生成台词卡</button>
+            )}
             {m.role === 'assistant' && isLast && <button className="ms-row" onClick={() => { close(); regenerate(); }} disabled={streaming}><RotateCcw size={18} /> 重新生成</button>}
             {m.role === 'user' && <button className="ms-row" onClick={() => { startEdit(m); close(); }} disabled={streaming}><Pencil size={18} /> 编辑</button>}
             {m.id && <button className={'ms-row' + (marks.has(m.id) ? ' on' : '')} onClick={() => { toggleMark(m); close(); }}><Bookmark size={18} /> {marks.has(m.id) ? '取消书签' : '加入书签'}</button>}
@@ -1102,6 +1134,21 @@ export default function Chat() {
           </div>
         </>
       ); })()}
+      {quoteShare && character && (
+        <ShareCardSheet
+          kind="quote"
+          payload={{
+            text: (quoteShare.content || '').replace(/^>\s.*\n+/, '').replace(/\*+/g, '').trim(),
+            speaker: quoteShare.role === 'user' ? (user?.display_name || user?.username || '我') : character.name,
+            avatar: quoteShare.role === 'user'
+              ? (user?.avatar ? assetUrl(user.avatar) : '')
+              : (character.avatar ? assetUrl(character.avatar) : ''),
+            date: cnToday(),
+            path: '/character/' + character.id,
+          }}
+          onClose={() => setQuoteShare(null)}
+        />
+      )}
       {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
       {callOpen && character && <CallScreen character={character} onClose={() => setCallOpen(false)} />}
       {previewImg && (

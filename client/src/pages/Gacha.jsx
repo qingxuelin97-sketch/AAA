@@ -5,7 +5,8 @@ import { useToast, Modal } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { randomAnimeAvatar, randomBg } from '../faces.js';
-import { Dices, Sparkles, MessageCircle, Save, ArrowLeft, X, ShieldCheck, Eye, RefreshCw } from 'lucide-react';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import { Dices, Sparkles, MessageCircle, Save, ArrowLeft, X, ShieldCheck, Eye, ImagePlus, RefreshCw } from 'lucide-react';
 
 // Rarity tiers (draw weights). Higher tiers are rarer and glow stronger.
 const TIERS = {
@@ -47,6 +48,7 @@ export default function Gacha() {
   const appMode = isAppMode();
   const [result, setResult] = useState(null);
   const [showResult, setShowResult] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false); // S7-G10 抽卡晒卡（App）
   const [rolling, setRolling] = useState(false);
   const [busy, setBusy] = useState(false);
   const [count, setCount] = useState(0);
@@ -162,8 +164,25 @@ export default function Gacha() {
             <footer className="qa-gacha-result-actions">
               <AppButton variant="primary" size="lg" loading={busy} onClick={() => create(true)}><MessageCircle size={18} /> 收下并开聊</AppButton>
               <AppButton variant="secondary" size="lg" disabled={busy} onClick={() => create(false)}><Save size={18} /> 存入我的角色</AppButton>
+              {isAppMode() && (
+                <AppButton variant="tertiary" disabled={busy} onClick={() => setShareOpen(true)}><ImagePlus size={16} /> 晒出这张卡</AppButton>
+              )}
             </footer>
           </Modal>
+        )}
+        {isAppMode() && shareOpen && result && (
+          <ShareCardSheet
+            kind="character"
+            payload={{
+              name: result.name,
+              tagline: result.tagline,
+              category: result.cat,
+              avatar: result.avatar ? assetUrl(result.avatar) : '',
+              cover: result.background ? assetUrl(result.background) : '',
+              path: '/gacha',
+            }}
+            onClose={() => setShareOpen(false)}
+          />
         )}
       </main>
     );

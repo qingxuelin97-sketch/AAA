@@ -3,8 +3,11 @@ import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast, Avatar, CountUp } from '../ui.jsx';
 import { fmtNum } from '../util.js';
-import { EmptyArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
+import { EmptyArt, AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import { AppButton } from '../components/AppControls.jsx';
 import {
   Orbit, MessageCircle, MessagesSquare, CalendarDays, Flame, Sparkles,
   BookOpen, ScrollText, Feather, Wand2, Heart, Users, UserRound, TrendingUp, TrendingDown, RefreshCw
@@ -13,9 +16,10 @@ import {
 // 星轨 — 个人幻域旅程数据页。全部只读聚合；单系列条形图用 CSS 画，
 // 深浅色的图表用色已按对比度校验（--chart-fill）。
 export default function Insights() {
-  const app = isAppMode();
+  const appMode = isAppMode();
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
+  const [shareOpen, setShareOpen] = useState(false); // App 星轨年鉴卡
   const toast = useToast();
   const nav = useNavigate();
 
@@ -29,8 +33,8 @@ export default function Insights() {
   }, []);
 
   if (err) {
-    return app
-      ? <div className="empty" style={{ paddingTop: 120 }}>星轨暂时无法点亮：{err}</div>
+    return appMode
+      ? <AppErrorState kind="insights" title="星轨暂时无法点亮" message={err} onRetry={load} />
       : (
         <div className="page" style={{ maxWidth: 980 }}>
           <div className="empty lgw-error" role="alert">
@@ -43,8 +47,8 @@ export default function Insights() {
       );
   }
   if (!d) {
-    return app
-      ? <div className="empty" style={{ paddingTop: 120 }}>正在点亮你的星轨…</div>
+    return appMode
+      ? <div className="empty" style={{ paddingTop: 120 }}><AppEmptyArt kind="insights" size={104} />正在点亮你的星轨…</div>
       : (
         <div className="page" style={{ maxWidth: 980 }}>
           <div className="lgw-skel-list" aria-hidden="true">
@@ -86,6 +90,13 @@ export default function Insights() {
             与 {d.chat.conversations} 段对话、{d.creations.characters} 个角色一同生长
           </div>
           {d.streak > 0 && <span className="ins-streak"><Flame size={14} /> 连续签到 {d.streak} 天</span>}
+          {appMode && (
+            <div className="qa-ins-share">
+              <AppButton variant="secondary" size="sm" onClick={() => setShareOpen(true)}>
+                <Orbit size={15} /> 生成星轨卡
+              </AppButton>
+            </div>
+          )}
         </div>
 
         <div className="ins-kpis">
@@ -146,8 +157,8 @@ export default function Insights() {
               <h3>羁绊最深</h3>
               <div className="c-sub">按消息往来排序的角色 Top {Math.max(d.companions.length, 1)}</div>
               {d.companions.length === 0
-                ? (app
-                  ? <div className="empty" style={{ padding: '18px 0' }}><UserRound size={28} style={{ opacity: 0.4 }} /><br />还没有羁绊，去发现广场邂逅一个角色吧</div>
+                ? (appMode
+                  ? <div className="empty" style={{ padding: '18px 0' }}><AppEmptyArt kind="insights" size={84} /><br />还没有羁绊，去发现广场邂逅一个角色吧</div>
                   : (
                     <div className="empty lgw-empty lgw-empty-compact">
                       <EmptyArt kind="chat" size={96} />
@@ -192,6 +203,21 @@ export default function Insights() {
           </div>
         </div>
       </div>
+      {shareOpen && (
+        <ShareCardSheet
+          kind="insights"
+          payload={{
+            since: d.since,
+            streak: d.streak,
+            conversations: d.chat.conversations,
+            messages: d.chat.messages,
+            activeDays: d.chat.active_days,
+            companion: d.companions[0]?.name || '',
+            path: '/insights',
+          }}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </>
   );
 }

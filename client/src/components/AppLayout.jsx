@@ -15,6 +15,7 @@ import { useRealtimeEvent } from '../realtime.jsx';
 import bootMarkUrl from '../assets/app/qa5-boot-mark@2x.png?url';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
+import AppOnboarding from './AppOnboarding.jsx';
 import RouteErrorBoundary from './RouteErrorBoundary.jsx';
 import { AppButton, AppIconButton, AppTabButton } from './AppControls.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
@@ -388,6 +389,7 @@ export default function AppLayout({ children }) {
       {sheet && <CreateSheet onClose={() => setSheet(false)} returnFocusRef={fabRef} />}
 
       <CommandPalette />
+      <AppOnboarding />
       <WelcomePopup />
       {boot && (
         <div className="app-boot" aria-hidden="true">

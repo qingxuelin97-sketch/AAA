@@ -7,12 +7,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNav } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, IdentityBadges } from '../ui.jsx';
+import { useToast, Avatar, IdentityBadges, CountUp } from '../ui.jsx';
 import { fmtNum } from '../util.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import MembershipBanner from '../components/profile/MembershipBanner.jsx';
 import AssetCard from '../components/profile/AssetCard.jsx';
 import ProfileContentTabs from '../components/profile/ProfileContentTabs.jsx';
+import WhatsNewSheet from '../components/WhatsNewSheet.jsx';
 import { isAppMode } from '../appmode.js';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
@@ -74,6 +75,31 @@ export default function AppProfile() {
   const appMode = isAppMode();
   const [stats, setStats] = useState(null);
   const [unread, setUnread] = useState(0);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false); // S7-G10 新功能 Sheet
+  // 未读点：本版本未看过「新功能」就亮，打开即熄（本机记忆）
+  const [whatsNewSeen, setWhatsNewSeen] = useState(() => {
+    try { return localStorage.getItem('huanyu_whatsnew_seen') === 'S7'; } catch { return true; }
+  });
+  const openWhatsNew = () => {
+    setWhatsNewOpen(true);
+    setWhatsNewSeen(true);
+    try { localStorage.setItem('huanyu_whatsnew_seen', 'S7'); } catch { /* */ }
+  };
+  // S7-G10 相伴一览：成就完成度 + 连签 + 本周消息（失败静默隐藏）
+  const [glance, setGlance] = useState(null);
+  useEffect(() => {
+    Promise.allSettled([api('/achievements'), api('/me/weekly')]).then(([ach, wk]) => {
+      const summary = ach.status === 'fulfilled' ? ach.value.summary : null;
+      const weekly = wk.status === 'fulfilled' ? wk.value : null;
+      if (!summary && !weekly) { setGlance(null); return; }
+      setGlance({
+        unlocked: summary?.unlocked ?? null,
+        total: summary?.total ?? null,
+        streak: weekly?.streak ?? null,
+        weekMsgs: weekly?.messages ?? null,
+      });
+    });
+  }, []);
   const [tab, setTab] = useState('chars'); // chars | favs
   const [chars, setChars] = useState(null);
   const [favs, setFavs] = useState(null);
@@ -191,10 +217,34 @@ export default function AppProfile() {
       <div className="pf-stats">
         {ST.map(s => (
           <button key={s.label} onClick={() => nav(s.to)}>
-            <b>{s.n == null ? '—' : fmtNum(s.n)}</b><span>{s.label}</span>
+            <b>{s.n == null ? '—' : <CountUp value={s.n} />}</b><span>{s.label}</span>
           </button>
         ))}
       </div>
+      {/* S7-G10 相伴一览：三格速览，各自跳到详情面 */}
+      {glance && (glance.total != null || glance.weekMsgs != null) && (
+        <div className="qa-glance" role="group" aria-label="相伴一览">
+          {glance.total != null && (
+            <button type="button" className="qa-glance-cell" onClick={() => nav('/achievements')}
+              aria-label={`成就 ${glance.unlocked} / ${glance.total}，查看成就殿堂`}>
+              <i className="qa-glance-ring" style={{ '--p': Math.round((glance.unlocked / Math.max(glance.total, 1)) * 100) + '%' }} aria-hidden="true" />
+              <span><b>{glance.unlocked}/{glance.total}</b>成就</span>
+            </button>
+          )}
+          {glance.streak != null && (
+            <button type="button" className="qa-glance-cell" onClick={() => nav('/wallet')}
+              aria-label={`连续签到 ${glance.streak} 天，查看签到日历`}>
+              <span><b>{glance.streak} 天</b>连签</span>
+            </button>
+          )}
+          {glance.weekMsgs != null && (
+            <button type="button" className="qa-glance-cell" onClick={() => nav('/insights')}
+              aria-label={`本周 ${glance.weekMsgs} 条消息，查看星轨`}>
+              <span><b>{fmtNum(glance.weekMsgs)} 条</b>本周相伴</span>
+            </button>
+          )}
+        </div>
+      )}
     </>
   );
 
@@ -265,10 +315,14 @@ export default function AppProfile() {
 
       <div className="pf-foot">
         {user?.is_gm && <AppButton className="pf-foot-btn" variant="secondary" onClick={() => nav('/admin')}><Shield size={15} /> 管理后台</AppButton>}
+        <AppButton className="pf-foot-btn" variant="secondary" onClick={openWhatsNew}>
+          <Megaphone size={15} /> 新功能{!whatsNewSeen && <i className="pf-whatsnew-dot" aria-label="有未读的新功能介绍" />}
+        </AppButton>
         <AppButton className="pf-foot-btn" variant="secondary" onClick={() => nav('/help')}><LifeBuoy size={15} /> 帮助中心</AppButton>
         {installReady && <AppButton className="pf-foot-btn" variant="secondary" onClick={install}><Download size={15} /> 安装到桌面</AppButton>}
         <AppButton className="pf-foot-btn danger" variant="danger" tone="danger" onClick={logout}><LogOut size={15} /> 退出登录</AppButton>
       </div>
+      {whatsNewOpen && <WhatsNewSheet onClose={() => setWhatsNewOpen(false)} />}
     </div>
   );
 }

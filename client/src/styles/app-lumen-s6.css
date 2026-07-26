@@ -1,0 +1,771 @@
+/* ============================================================================
+   曜光玻璃 · S7「仪式与相伴」新组件层（app-lumen-s6.css）
+   ----------------------------------------------------------------------------
+   本层承载 S7 全部新组件样式：错误态 / 首启引导 / 签到日历与连签 /
+   成就 2.0 / 分享卡 / 长按菜单。载入位置：app-lumen-s5.css 之后、
+   app-lumen-materials.css 之前（materials 保持末位权威）。
+   纪律：全部选择器 html[data-app="1"] 围栏；只消费 --lg-* 与残余 --qa-* 令牌；
+   动画一律一次性入场 / 状态动画（无 infinite 装饰循环）；无发光无彩虹。
+   ========================================================================== */
+
+/* ── S7-G2 · 统一错误态（ORACLE §7.2 恢复出口） ── */
+html[data-app="1"] .qa-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--lg-ink-2);
+}
+
+html[data-app="1"] .qa-error-state__title {
+  margin-top: 6px;
+  color: var(--lg-ink);
+  font-size: var(--lg-type-section);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+html[data-app="1"] .qa-error-state__copy {
+  margin: 0;
+  max-width: 30ch;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+  line-height: 1.6;
+}
+
+html[data-app="1"] .qa-error-state__acts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* ── S7-G3 · 首启引导（三屏 pager；一次性位移，无循环动画） ── */
+html[data-app="1"] .qa-onboard-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 480;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--lg-scrim);
+}
+
+html[data-app="1"] .qa-onboard {
+  width: 100%;
+  max-width: 430px;
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 0 calc(14px + env(safe-area-inset-bottom));
+  border-radius: var(--lg-r-sheet) var(--lg-r-sheet) 0 0;
+  background: var(--lg-glass-2);
+  box-shadow: var(--lg-glass-shadow-2);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  animation: qaOnboardRise var(--lg-dur-sheet) var(--lg-ease) both;
+}
+
+@keyframes qaOnboardRise {
+  from { transform: translateY(26px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+html[data-app="1"] .qa-onboard-track {
+  display: flex;
+  width: 100%;
+  transition: transform 380ms var(--lg-ease);
+}
+
+html[data-app="1"] .qa-onboard-screen {
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 26px 8px;
+  text-align: center;
+}
+
+html[data-app="1"] .qa-onboard-screen[aria-hidden="true"] {
+  visibility: hidden;
+}
+
+html[data-app="1"] .qa-onboard-art {
+  width: min(290px, 72vw);
+  height: auto;
+  margin-bottom: 4px;
+}
+
+html[data-app="1"] .qa-onboard-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+html[data-app="1"] .qa-onboard-screen h2 {
+  margin: 2px 0 0;
+  color: var(--lg-ink);
+  font-size: var(--lg-type-title);
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+html[data-app="1"] .qa-onboard-screen > p {
+  margin: 0;
+  max-width: 32ch;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+  line-height: 1.65;
+}
+
+html[data-app="1"] .qa-onboard-feats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+html[data-app="1"] .qa-onboard-feats li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--lg-r-row);
+  background: var(--lg-glass-1);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+
+html[data-app="1"] .qa-onboard-feat-ic {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+
+html[data-app="1"] .qa-onboard-feats b {
+  display: block;
+  color: var(--lg-ink);
+  font-size: 14px;
+}
+
+html[data-app="1"] .qa-onboard-feats small {
+  display: block;
+  margin-top: 2px;
+  color: var(--lg-ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+html[data-app="1"] .qa-onboard-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+html[data-app="1"] .qa-onboard-chip.qa-button {
+  min-height: 38px;
+  padding-inline: 14px;
+  background: var(--lg-glass-1);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-2);
+  font-size: 13px;
+}
+
+html[data-app="1"] .qa-onboard-chip.qa-button[data-selected] {
+  background: var(--lg-act-soft);
+  box-shadow: inset 0 0 0 1px var(--lg-act);
+  color: var(--lg-act);
+  font-weight: 600;
+}
+
+html[data-app="1"] .qa-onboard-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin: 14px 0 4px;
+}
+
+html[data-app="1"] .qa-onboard-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-hairline);
+  transition: background var(--lg-dur-state) var(--lg-ease), width var(--lg-dur-state) var(--lg-ease);
+}
+
+html[data-app="1"] .qa-onboard-dot.on {
+  width: 20px;
+  background: var(--lg-act);
+}
+
+html[data-app="1"] .qa-onboard-acts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 20px 0;
+}
+
+html[data-app="1"] .qa-onboard-acts .qa-button--lg {
+  flex: 1;
+  max-width: 230px;
+}
+
+/* lite：令牌层已把 blur 归零；玻璃底回落不透明面 */
+html[data-app="1"][data-perf="lite"] .qa-onboard {
+  background: var(--qa-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── S7-G4 · 连签周视图（今日 hero 行下 + 钱包） ── */
+html[data-app="1"] .qa-streak {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: rgb(255 255 255 / 10%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 14%);
+  color: rgb(255 255 255 / 88%);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 首屏垂直预算：streak 行加入后，精选卡与快捷入口各让出一档，
+   保证 390×844 首屏故事卡 CTA 完整浮在 Dock 之上（e2e 几何闸）。 */
+html[data-app="1"] .qa3-today .ah-hero-card {
+  height: 186px;
+  min-height: 186px !important;
+}
+
+html[data-app="1"] .qa3-today .ah-shortcuts {
+  grid-template-rows: repeat(2, minmax(58px, auto));
+}
+
+html[data-app="1"] .qa3-today .ah-sc.qa-button {
+  min-height: 58px !important;
+}
+
+/* 360 级窄屏：垂直预算更紧，逐档再收 */
+@media (max-width: 374px) {
+  html[data-app="1"] .qa3-today .ah-hero-card {
+    height: 168px;
+    min-height: 168px !important;
+  }
+
+  html[data-app="1"] .qa3-today .ah-shortcuts {
+    grid-template-rows: repeat(2, minmax(52px, auto));
+  }
+
+  html[data-app="1"] .qa3-today .ah-sc.qa-button {
+    min-height: 52px !important;
+  }
+
+  html[data-app="1"] .qa-streak {
+    min-height: 32px;
+    margin-top: 6px;
+    padding: 4px 10px;
+  }
+}
+
+/* 钱包语境不在深色 hero 上：换 L1 玻璃与墨色令牌 */
+html[data-app="1"] .qa-streak--wallet {
+  margin-top: 0;
+  background: var(--lg-glass-1);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink);
+}
+
+html[data-app="1"] .qa-streak-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+html[data-app="1"] .qa-streak-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--lg-r-pill);
+  background: rgb(255 255 255 / 22%);
+  transition: background var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-state) var(--lg-ease);
+}
+
+html[data-app="1"] .qa-streak--wallet .qa-streak-dot {
+  background: var(--lg-hairline);
+}
+
+html[data-app="1"] .qa-streak-dot.on {
+  background: var(--lg-gold);
+  transform: scale(1.12);
+}
+
+html[data-app="1"] .qa-streak-copy {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+html[data-app="1"] .qa-streak-cal {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* ── S7-G4 · 签到日历 Sheet ── */
+html[data-app="1"] .qa-cal {
+  max-height: min(72dvh, 560px);
+  overflow-y: auto;
+}
+
+html[data-app="1"] .qa-cal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 4px 12px;
+}
+
+html[data-app="1"] .qa-cal-seal {
+  flex: none;
+}
+
+html[data-app="1"] .qa-cal-head-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+html[data-app="1"] .qa-cal-head-copy b {
+  display: block;
+  color: var(--lg-ink);
+  font-size: var(--lg-type-section);
+  letter-spacing: -0.01em;
+}
+
+html[data-app="1"] .qa-cal-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+}
+
+html[data-app="1"] .qa-cal-streak svg {
+  color: var(--lg-gold);
+}
+
+html[data-app="1"] .qa-cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+html[data-app="1"] .qa-cal-month {
+  min-width: 74px;
+  color: var(--lg-ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+html[data-app="1"] .qa-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px 2px;
+  padding: 4px 2px 8px;
+}
+
+html[data-app="1"] .qa-cal-wd {
+  padding: 4px 0;
+  color: var(--lg-ink-3);
+  font-size: 11px;
+  text-align: center;
+}
+
+html[data-app="1"] .qa-cal-cell {
+  display: grid;
+  place-items: center;
+  min-height: 40px;
+  border-radius: var(--lg-r-control);
+  color: var(--lg-ink-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-cal-cell.on {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  font-weight: 700;
+}
+
+html[data-app="1"] .qa-cal-cell.today {
+  box-shadow: inset 0 0 0 1.6px var(--lg-act);
+  color: var(--lg-ink);
+}
+
+html[data-app="1"] .qa-cal-cell.on.today {
+  color: var(--lg-act);
+}
+
+html[data-app="1"] .qa-cal-cell.future {
+  opacity: 0.38;
+}
+
+html[data-app="1"] .qa-cal-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  padding: 26px 0 30px;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+}
+
+html[data-app="1"] .qa-cal-error button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── S7-G5 · 成就 2.0：徽章墙 / 稀有度 / 荣誉 / 领取庆祝 ── */
+html[data-app="1"] .qa-ach-wall {
+  padding: 14px;
+  border-radius: var(--lg-r-card);
+  background: var(--lg-glass-1);
+  box-shadow: var(--lg-glass-shadow-1);
+  -webkit-backdrop-filter: var(--lg-blur-s);
+  backdrop-filter: var(--lg-blur-s);
+}
+
+html[data-app="1"] .qa-ach-wall-rings {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+/* 静态 conic 完成环：--p 为百分比，无动画（数值变化即状态变化） */
+html[data-app="1"] .qa-ach-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px 6px;
+}
+
+html[data-app="1"] .qa-ach-ring b {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--lg-r-pill);
+  background:
+    radial-gradient(closest-side, var(--qa-surface) 74%, transparent 75% 100%),
+    conic-gradient(var(--lg-act) calc(var(--p) * 1%), var(--lg-hairline) 0);
+  color: var(--lg-ink);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-ach-ring b small {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--lg-ink-3);
+}
+
+html[data-app="1"] .qa-ach-ring > span {
+  color: var(--lg-ink-2);
+  font-size: 11px;
+}
+
+html[data-app="1"] .qa-ach-medals {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  box-shadow: inset 0 1px 0 var(--lg-hairline);
+}
+
+html[data-app="1"] .qa-ach-medals span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lg-ink-2);
+}
+
+html[data-app="1"] .qa-ach-medals span[data-medal="gold"] svg { color: var(--lg-gold); }
+html[data-app="1"] .qa-ach-medals span[data-medal="silver"] svg { color: var(--lg-ink-3); }
+html[data-app="1"] .qa-ach-medals span[data-medal="bronze"] svg { color: color-mix(in srgb, var(--lg-gold) 55%, var(--lg-ink-3)); }
+
+/* 稀有度：奖章色只作左缘细带 + 图标染色（无发光、无渐变字） */
+html[data-app="1"] .qa-achievements-card[data-medal="gold"].is-unlocked {
+  box-shadow: inset 3px 0 0 var(--lg-gold), var(--lg-glass-shadow-1);
+}
+
+html[data-app="1"] .qa-achievements-card[data-medal="gold"].is-unlocked .qa-achievements-card-icon {
+  color: var(--lg-gold);
+}
+
+html[data-app="1"] .qa-achievements-card[data-medal="silver"].is-unlocked {
+  box-shadow: inset 3px 0 0 var(--lg-ink-3), var(--lg-glass-shadow-1);
+}
+
+html[data-app="1"] .qa-achievements-card[data-medal="bronze"].is-unlocked {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--lg-gold) 55%, var(--lg-ink-3)), var(--lg-glass-shadow-1);
+}
+
+html[data-app="1"] .qa-ach-honor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--lg-gold) 18%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-gold);
+  color: var(--lg-gold);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+html[data-app="1"] .qa-achievements-reward.is-honor {
+  color: var(--lg-gold);
+}
+
+/* 一次性领取庆祝：卡片轻抬 + 印章闪落（700ms 自净，无循环） */
+html[data-app="1"] .qa-ach-claimfx {
+  position: relative;
+  animation: qaAchClaimLift 480ms var(--lg-ease);
+}
+
+html[data-app="1"] .qa-ach-claimfx::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--lg-gold) 16%, transparent);
+  animation: qaAchClaimStamp 620ms var(--lg-ease) both;
+  pointer-events: none;
+}
+
+@keyframes qaAchClaimLift {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes qaAchClaimStamp {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── S7-G6 · 分享卡 Sheet 与里程碑横幅 ── */
+html[data-app="1"] .qa-share-sheet {
+  max-height: min(78dvh, 620px);
+  overflow-y: auto;
+}
+
+html[data-app="1"] .qa-share-stage {
+  display: grid;
+  place-items: center;
+  padding: 8px 0 14px;
+}
+
+html[data-app="1"] .qa-share-preview {
+  width: min(252px, 62vw);
+  aspect-ratio: 3 / 4;
+  height: auto;
+  border-radius: var(--lg-r-card);
+  box-shadow: var(--lg-glass-shadow-2);
+}
+
+html[data-app="1"] .qa-share-skel {
+  width: min(252px, 62vw);
+  aspect-ratio: 3 / 4;
+  border-radius: var(--lg-r-card);
+}
+
+html[data-app="1"] .qa-share-failed {
+  margin: 26px 0;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+}
+
+html[data-app="1"] .qa-share-acts {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 0 6px 4px;
+}
+
+html[data-app="1"] .qa-milestone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--lg-gold) 20%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-gold);
+  color: rgb(255 255 255 / 92%);
+}
+
+html[data-app="1"] .qa-milestone-copy {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+html[data-app="1"] .qa-ach-share.qa-button {
+  padding-inline: 10px; /* 触区仍由 --qa-control-min 保 44 */
+}
+
+/* ── S7-G7 · 长按上下文菜单 ── */
+html[data-app="1"] .qa-press-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 470;
+  background: color-mix(in srgb, var(--lg-scrim) 55%, transparent);
+}
+
+html[data-app="1"] .qa-press-menu {
+  position: fixed;
+  width: 232px;
+  overflow: hidden;
+  border-radius: var(--lg-r-card);
+  background: var(--lg-glass-2);
+  box-shadow: var(--lg-glass-shadow-2);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  animation: qaPressIn 220ms var(--lg-ease) both;
+}
+
+@keyframes qaPressIn {
+  from { transform: scale(0.94); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+html[data-app="1"] .qa-press-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  background: none;
+  color: var(--lg-ink);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-press-item + .qa-press-item {
+  box-shadow: inset 0 1px 0 var(--lg-hairline);
+}
+
+html[data-app="1"] .qa-press-item:active {
+  background: var(--lg-glass-sel);
+}
+
+html[data-app="1"] .qa-press-item.is-danger {
+  color: var(--lg-coral);
+}
+
+html[data-app="1"][data-perf="lite"] .qa-press-menu {
+  background: var(--qa-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── S7-G4 · 今日任务行内领取 ── */
+html[data-app="1"] .ah-task.qa-task-claimable {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+html[data-app="1"] .qa-task-main {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-task-claim.qa-button {
+  flex: none;
+  min-width: 64px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .qa-press-menu {
+    animation: none !important;
+  }
+
+  html[data-app="1"] .qa-ach-claimfx,
+  html[data-app="1"] .qa-ach-claimfx::after {
+    animation: none !important;
+  }
+
+  html[data-app="1"] .qa-error-state {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  html[data-app="1"] .qa-onboard {
+    animation: none !important;
+  }
+
+  html[data-app="1"] .qa-onboard-track {
+    transition: none !important;
+  }
+
+  html[data-app="1"] .qa-onboard-dot {
+    transition: none !important;
+  }
+}

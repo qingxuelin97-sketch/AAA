@@ -507,7 +507,8 @@ const ACHIEVEMENTS = [
   { id: 'novel_words_5k', name: '初成卷帙', desc: 'AI 协作累计写下 5000 字小说', icon: 'BookText', cat: '创作', goal: 5000, reward: 260, metric: 'novel_words', link: '/atelier' },
   { id: 'novel_words_50k', name: '著作等身', desc: 'AI 协作累计写下 5 万字小说', icon: 'Library', cat: '创作', goal: 50000, reward: 900, metric: 'novel_words', link: '/atelier' },
   { id: 'creator_v', name: '创作者认证', desc: '获得创作者 V 认证', icon: 'BadgeCheck', cat: '创作', goal: 1, reward: 120, metric: 'creator_bronze', link: '/studio' },
-  { id: 'creator_hall', name: '殿堂创作者', desc: '登顶创作者榜成为 TOP 1', icon: 'Crown', cat: '创作', goal: 1, reward: 1000, metric: 'creator_gold', link: '/leaderboard' },
+  // Ranking remains a visible honor, but has no real-time currency payout（与服务端同一安全决策）.
+  { id: 'creator_hall', name: '殿堂创作者', desc: '登顶创作者榜成为 TOP 1', icon: 'Crown', cat: '创作', goal: 1, reward: 0, honor: true, metric: 'creator_gold', link: '/leaderboard' },
   // 社交
   { id: 'first_friend', name: '初识好友', desc: '结交你的第一位好友', icon: 'UserPlus', cat: '社交', goal: 1, reward: 60, metric: 'friends', link: '/friends' },
   { id: 'friends_5', name: '高朋满座', desc: '结交 5 位好友', icon: 'Users', cat: '社交', goal: 5, reward: 180, metric: 'friends', link: '/friends' },
@@ -1240,6 +1241,12 @@ async function route(method, path, search, body, headers) {
       // privacy
       ['privacy_profile', 'allow_dm'].forEach(k => { if (typeof body[k] === 'string') s[k] = body[k]; });
       ['show_online', 'discoverable', 'activity_visible', 'leaderboard_visible', 'read_receipts', 'personalize'].forEach(k => { if (body[k] !== undefined) s[k] = body[k] ? 1 : 0; });
+      // S7 兴趣画像：slug 白名单 = 分类目录，去重上限 6，存逗号串（与服务端 sanitizeInterests 同构）
+      if (body.interests !== undefined) {
+        const slugs = new Set(CATEGORIES.map(([slug]) => slug));
+        const list = Array.isArray(body.interests) ? body.interests : String(body.interests || '').split(',');
+        s.interests = [...new Set(list.map(x => String(x).trim()).filter(x => slugs.has(x)))].slice(0, 6).join(',');
+      }
       save(); return J({ settings: pubSettings(s, me) });
     }
   }
@@ -1477,6 +1484,48 @@ async function route(method, path, search, body, headers) {
         friends: filter('friendships', f => f.a_id === me.id || f.b_id === me.id).length },
     });
   }
+  // 本周回顾（与服务端 /me/weekly 同构）——北京周界（周一起始），只读聚合
+  if (method === 'GET' && path === '/me/weekly') {
+    need();
+    const today = todayStr();
+    const t = new Date(today + 'T00:00:00Z');
+    const dow = (t.getUTCDay() + 6) % 7;
+    const weekStartMs = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - dow);
+    const weekStart = new Date(weekStartMs).toISOString().slice(0, 10);
+    const sqliteUtc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+    const utcStart = sqliteUtc(weekStartMs - 8 * 3600e3);
+    const utcEnd = sqliteUtc(weekStartMs + 7 * 86400000 - 8 * 3600e3);
+    const inWeek = (ts) => { const s = String(ts || ''); return s >= utcStart && s < utcEnd; };
+    const cnDay = (ts) => new Date(new Date(String(ts).replace(' ', 'T') + 'Z').getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+    const myConvs = filter('conversations', c => c.user_id === me.id);
+    const convIds = new Set(myConvs.map(c => c.id));
+    const wkMsgs = filter('messages', m => convIds.has(m.conversation_id) && inWeek(m.created_at));
+    const perDay = {};
+    for (const m of wkMsgs) { const d = cnDay(m.created_at); perDay[d] = (perDay[d] || 0) + 1; }
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStartMs + i * 86400000).toISOString().slice(0, 10);
+      days.push({ date: d.slice(5), n: perDay[d] || 0 });
+    }
+    const byChar = {};
+    for (const c of myConvs) {
+      const n = wkMsgs.filter(m => m.conversation_id === c.id).length;
+      if (n) byChar[c.character_id] = (byChar[c.character_id] || 0) + n;
+    }
+    const topEntry = Object.entries(byChar).sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]))[0];
+    const topCh = topEntry ? find('characters', x => x.id === Number(topEntry[0])) : null;
+    const wkTx = filter('transactions', x => x.user_id === me.id && inWeek(x.created_at));
+    return J({
+      week_start: weekStart, today, days,
+      messages: wkMsgs.length, sent: wkMsgs.filter(m => m.role === 'user').length,
+      active_days: days.filter(d => d.n > 0).length,
+      checkins: wkTx.filter(x => x.kind === 'checkin').length, streak: me.checkin_streak || 0,
+      gold_earned: wkTx.filter(x => x.gold > 0).reduce((a, x) => a + x.gold, 0),
+      gold_spent: -wkTx.filter(x => x.gold < 0).reduce((a, x) => a + x.gold, 0),
+      new_friends: filter('friendships', f => (f.a_id === me.id || f.b_id === me.id) && inWeek(f.created_at)).length,
+      companion: topCh ? { id: topCh.id, name: topCh.name, avatar: topCh.avatar, n: topEntry[1] } : null,
+    });
+  }
   if (method === 'GET' && path === '/me/revenue-plan') { need(); return J({ plan: revenuePlan(me) }); }
   if (method === 'POST' && path === '/me/revenue-plan/claim') {
     need(); const plan = revenuePlan(me);
@@ -1508,6 +1557,9 @@ async function route(method, path, search, body, headers) {
     const bump = (cat, w) => { if (cat) weight[cat] = (weight[cat] || 0) + w; };
     favRows.forEach(f => bump(find('characters', x => x.id === f.character_id)?.category, 2));
     myConvs.forEach(cv => bump(find('characters', x => x.id === cv.character_id)?.category, 1));
+    // S7 兴趣画像：显式兴趣各 +2（与收藏同权），仅 personalize 开启时生效（与服务端同构）
+    const st = find('settings', x => x.user_id === me.id);
+    if (st && st.personalize !== 0 && st.interests) String(st.interests).split(',').filter(Boolean).forEach(slug => bump(slug, 2));
     const personalized = Object.keys(weight).length > 0;
     const pool = filter('characters', c => c.is_public && c.owner_id !== me.id && !favIds.has(c.id) && !c.from_script);
     const rows = pool
@@ -1551,7 +1603,7 @@ async function route(method, path, search, body, headers) {
   }
 
   // ---------- chat ----------
-  if (method === 'GET' && path === '/chat/conversations') { need(); const rows = filter('conversations', c => c.user_id === me.id).map(c => { const ch = find('characters', x => x.id === c.character_id); const msgs = filter('messages', x => x.conversation_id === c.id); return { ...c, character_name: ch?.name, character_avatar: ch?.avatar, last_message: msgs.length ? msgs[msgs.length - 1].content : '' }; }).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')); return J({ conversations: rows }); }
+  if (method === 'GET' && path === '/chat/conversations') { need(); const rows = filter('conversations', c => c.user_id === me.id).map(c => { const ch = find('characters', x => x.id === c.character_id); const msgs = filter('messages', x => x.conversation_id === c.id); return { ...c, character_name: ch?.name, character_avatar: ch?.avatar, last_message: msgs.length ? msgs[msgs.length - 1].content : '' }; }).sort((a, b) => ((b.pinned || 0) - (a.pinned || 0)) || (b.updated_at || '').localeCompare(a.updated_at || '')); return J({ conversations: rows }); }
   if (method === 'POST' && path === '/chat/conversations') {
     need(); const ch = find('characters', x => x.id === body.character_id); if (!ch) return E('角色不存在', 404);
     const conv = insert('conversations', { user_id: me.id, character_id: ch.id, title: ch.name, updated_at: now() }); ch.uses++;
@@ -1577,7 +1629,13 @@ async function route(method, path, search, body, headers) {
         if (greeting) insert('messages', { conversation_id: conv.id, role: 'assistant', content: greeting });
         conv.affinity = 0;
       }
-      conv.updated_at = now(); save();
+      // S7-G10 会话整理（与服务端同构）：置顶/免打扰只改标记，不 bump updated_at
+      if (body.pinned !== undefined) conv.pinned = body.pinned ? 1 : 0;
+      if (body.muted !== undefined) conv.muted = body.muted ? 1 : 0;
+      const markOnly = (body.pinned !== undefined || body.muted !== undefined)
+        && !(typeof body.title === 'string' && body.title.trim()) && !body.clear;
+      if (!markOnly) conv.updated_at = now();
+      save();
       return J({ conversation: conv, messages: filter('messages', x => x.conversation_id === conv.id) });
     }
     if (method === 'DELETE') { db.conversations = filter('conversations', c => c.id !== conv.id); db.messages = filter('messages', x => x.conversation_id !== conv.id); save(); return J({ ok: true }); }
@@ -1845,7 +1903,41 @@ async function route(method, path, search, body, headers) {
 
   // ---------- economy ----------
   if (method === 'GET' && path === '/economy/wallet') { need(); return J({ wallet: publicUser(me), transactions: filter('transactions', t => t.user_id === me.id).sort((a, b) => b.id - a.id).slice(0, 50), packages: PACKAGES, rates: { gold_per_diamond: GOLD_PER_DIAMOND, vip_cost: VIP_COST_GOLD, vip_days: VIP_DAYS, vip_plans: Object.values(VIP_PLANS) } }); }
-  if (method === 'POST' && path === '/economy/recharge') { need(); const p = PACKAGES.find(x => x.id === body.package_id); if (!p) return E('套餐不存在'); const w = applyTx(me.id, { kind: 'recharge', diamond: p.diamond + p.bonus, memo: `充值 ¥${p.cny} 获得 ${p.diamond + p.bonus} 钻石` }); return J({ wallet: w }); }
+  // 与服务端同构：客户端请求永不直接铸币，旧接口一律 410，充值走订单流。
+  if (method === 'POST' && path === '/economy/recharge') { need(); return E('旧充值接口已停用，请创建充值订单', 410, 'PAYMENT_ORDER_REQUIRED'); }
+  if (method === 'GET' && path === '/economy/packages') { return J({ packages: PACKAGES, payment: { available: false, provider: null, reason: 'not_configured' } }); }
+  if (method === 'GET' && path === '/economy/transactions') { need(); return J({ transactions: filter('transactions', t => t.user_id === me.id).sort((a, b) => b.id - a.id).slice(0, 100) }); }
+  if (method === 'POST' && path === '/economy/recharge/orders') {
+    need(); const p = PACKAGES.find(x => x.id === body.package_id); if (!p) return E('套餐不存在');
+    const order = insert('payment_orders', { user_id: me.id, package_id: p.id, amount_cents: p.cny * 100, diamond: p.diamond + p.bonus, status: 'pending', credited: 0 });
+    return J({ order: { id: 'mock_ord_' + order.id, package_id: order.package_id, amount_cents: order.amount_cents, status: order.status } }, 201);
+  }
+  if ((m = P(/^\/economy\/recharge\/orders\/([\w-]+)$/)) && method === 'GET') {
+    need(); const oid = parseInt(String(m[1]).replace('mock_ord_', ''), 10);
+    const order = find('payment_orders', o => o.id === oid && o.user_id === me.id);
+    if (!order) return E('充值订单不存在', 404);
+    // 静态演示：首次查询视作「回调已验证」，一次性入账（幂等标记防重复铸币）。
+    if (order.status === 'pending' && !order.credited) {
+      order.status = 'paid'; order.credited = 1;
+      applyTx(me.id, { kind: 'recharge', diamond: order.diamond, memo: `充值订单 mock_ord_${order.id} 到账 ${order.diamond} 钻石` });
+      save();
+    }
+    return J({ order: { id: 'mock_ord_' + order.id, package_id: order.package_id, amount_cents: order.amount_cents, status: order.status } });
+  }
+  if (method === 'GET' && path === '/economy/checkin/calendar') {
+    need(); const today = todayStr(); const month = String(search.get('month') || today.slice(0, 7));
+    if (!/^\d{4}-\d{2}$/.test(month)) return E('月份格式应为 YYYY-MM');
+    const [yy, mm] = month.split('-').map(Number);
+    if (!(mm >= 1 && mm <= 12)) return E('月份格式应为 YYYY-MM');
+    const monthIndex = yy * 12 + (mm - 1); const [ty, tm] = today.slice(0, 7).split('-').map(Number);
+    const todayIndex = ty * 12 + (tm - 1);
+    if (monthIndex > todayIndex || todayIndex - monthIndex > 11) return E('仅支持查询近 12 个月');
+    // created_at（'YYYY-MM-DD HH:MM:SS' UTC）→ 北京日，与服务端同构推导
+    const cnDay = (ts) => new Date(new Date(String(ts).replace(' ', 'T') + 'Z').getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+    const days = [...new Set(filter('transactions', t => t.user_id === me.id && t.kind === 'checkin').map(t => cnDay(t.created_at)))]
+      .filter(d => d.startsWith(month)).map(d => Number(d.slice(8))).sort((a, b) => a - b);
+    return J({ month, days, today, last_checkin: me.last_checkin || null, streak: me.checkin_streak || 0, month_total: days.length });
+  }
   if (method === 'POST' && path === '/economy/exchange') { need(); const n = parseInt(body.diamond, 10); if (!n || n <= 0) return E('请输入有效的钻石数量'); try { return J({ wallet: applyTx(me.id, { kind: 'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo: `${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` }) }); } catch (e) { return E(e.message); } }
   if (method === 'POST' && path === '/economy/vip') { need(); const plan = VIP_PLANS[body.plan] || VIP_PLANS.month; try { applyTx(me.id, { kind: 'vip', gold: -plan.gold, memo: `购买 ${plan.days} 天 VIP（${plan.label}）` }); } catch (e) { return E(e.message); } const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + plan.days * 86400000).toISOString(); save(); return J({ wallet: publicUser(me) }); }
   if (method === 'POST' && path === '/economy/checkin') {
@@ -2194,7 +2286,7 @@ async function route(method, path, search, body, headers) {
     const tasks = DAILY_TASKS.map(t => { const cnt = d.counts[t.key] || 0; return { id: t.id, name: t.name, target: t.target, reward: t.reward, progress: Math.min(cnt, t.target), done: cnt >= t.target, claimed: d.claimed.includes(t.id) }; });
     return J({ tasks, all_claimed: tasks.every(t => t.claimed), claimable: tasks.filter(t => t.done && !t.claimed).length });
   }
-  if ((m = P(/^\/engage\/tasks\/([a-z]+)\/claim$/)) && method === 'POST') {
+  if ((m = P(/^\/engage\/tasks\/([\w-]+)\/claim$/)) && method === 'POST') {
     need(); const t = DAILY_TASKS.find(x => x.id === m[1]); if (!t) return E('任务不存在', 404);
     const d = dailyOf(me.id); const cnt = d.counts[t.key] || 0;
     if (cnt < t.target) return E('任务尚未完成'); if (d.claimed.includes(t.id)) return E('该奖励已领取');
@@ -2204,11 +2296,12 @@ async function route(method, path, search, body, headers) {
   // ---------- achievements (成就) ----------
   if (path === '/achievements' && method === 'GET') {
     need(); const claimed = me.ach_claimed || [];
-    const list = ACHIEVEMENTS.map(a => { const raw = achMetric(me, a.metric); const unlocked = raw >= a.goal; return { id: a.id, name: a.name, desc: a.desc, icon: a.icon, cat: a.cat, goal: a.goal, reward: a.reward, link: a.link, value: Math.min(raw, a.goal), unlocked, claimed: claimed.includes(a.id), claimable: unlocked && !claimed.includes(a.id) }; });
+    const list = ACHIEVEMENTS.map(a => { const raw = achMetric(me, a.metric); const unlocked = raw >= a.goal; const isClaimed = a.honor ? unlocked : claimed.includes(a.id); return { id: a.id, name: a.name, desc: a.desc, icon: a.icon, cat: a.cat, goal: a.goal, reward: a.reward, honor: !!a.honor, link: a.link, value: Math.min(raw, a.goal), unlocked, claimed: isClaimed, claimable: !a.honor && unlocked && !isClaimed }; });
     return J({ achievements: list, summary: { unlocked: list.filter(x => x.unlocked).length, total: list.length, claimable: list.filter(x => x.claimable).length, gold_pending: list.filter(x => x.claimable).reduce((s, x) => s + x.reward, 0) } });
   }
   if ((m = P(/^\/achievements\/([\w-]+)\/claim$/)) && method === 'POST') {
     need(); const a = ACHIEVEMENTS.find(x => x.id === m[1]); if (!a) return E('成就不存在', 404);
+    if (a.honor) return E('该成就是荣誉徽章，不发放实时排名奖金');
     me.ach_claimed = me.ach_claimed || [];
     if (me.ach_claimed.includes(a.id)) return E('该成就奖励已领取');
     if (achMetric(me, a.metric) < a.goal) return E('成就尚未达成');
@@ -2269,7 +2362,14 @@ async function route(method, path, search, body, headers) {
       chars: filter('characters', c => c.owner_id === u.id && c.is_public).length,
       scripts: filter('scripts', x => x.author_id === u.id).length }))
       .sort((a, b) => b.score - a.score).slice(0, 20);
-    return J({ characters, scripts, authors });
+    // S7-G10 我的名次孪生：与服务端同构（非封禁全员参与排位，榜外也可见）
+    let mine = null;
+    if (me) {
+      const myScore = creatorScore(me.id);
+      const higher = filter('users', u => !u.is_banned && u.id !== me.id && creatorScore(u.id) > myScore).length;
+      mine = { rank: higher + 1, score: myScore };
+    }
+    return J({ characters, scripts, authors, me: mine });
   }
   if (method === 'POST' && path === '/engage/gacha') {
     need(); const pool = filter('characters', c => c.is_public); if (!pool.length) return E('暂无可抽取的角色');
@@ -3080,6 +3180,7 @@ function pubSettings(s, me) {
     show_online: s.show_online === undefined ? 1 : s.show_online, discoverable: s.discoverable === undefined ? 1 : s.discoverable,
     activity_visible: s.activity_visible === undefined ? 1 : s.activity_visible, leaderboard_visible: s.leaderboard_visible === undefined ? 1 : s.leaderboard_visible,
     read_receipts: s.read_receipts === undefined ? 1 : s.read_receipts, personalize: s.personalize === undefined ? 1 : s.personalize,
+    interests: s.interests || '',
     // Platform service status — surfaced to the UI, but never the credentials.
     // Pricing is always exposed (full + member-discounted) so the UI can label
     // the cost and the VIP/SVIP discount regardless of which service is active.

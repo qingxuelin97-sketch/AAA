@@ -4,10 +4,10 @@ import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid, parsePid } from '../assets.jsx';
-import { EmptyArt, CoverArt } from '../art.jsx';
+import { AppEmptyArt, EmptyArt, CoverArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { Search as SearchIcon, Drama, ScrollText, Play, User, X, History, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Search as SearchIcon, Drama, ScrollText, Play, User, X, History, ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
 
 const TABS = [
   { k: 'user', label: '用户', ph: '用户 ID（如 U3）或用户名 / 昵称' },
@@ -31,6 +31,7 @@ export default function Search() {
   const [loading, setLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [recent, setRecent] = useState(loadRecent);
+  const [cats, setCats] = useState([]); // S7-G10 热门分类 chips（App 空面板）
   const nav = useNavigate();
   const toast = useToast();
   const inputRef = useRef(null);
@@ -40,10 +41,14 @@ export default function Search() {
     setRecent(prev => { const next = [query, ...prev.filter(x => x !== query)].slice(0, 8); saveRecent(next); return next; });
   };
 
-  const run = async (query = q.trim(), { manual = false } = {}) => {
+  useEffect(() => {
+    if (app) api('/meta/categories').then(d => setCats((d.categories || []).slice(0, 8))).catch(() => {});
+  }, [app]);
+
+  const run = async (query = q.trim(), { manual = false, tabOverride } = {}) => {
     if (!query) { if (manual) toast('请输入搜索内容', 'err'); return; }
     const parsed = parsePid(query);
-    const useTab = parsed?.type || tab;     // prefixed id (U/C/S) auto-selects the tab
+    const useTab = parsed?.type || tabOverride || tab; // prefixed id (U/C/S) auto-selects the tab
     const eff = parsed?.type ? parsed.n : query;
     const numeric = /^\d+$/.test(eff);
     if (parsed?.type && parsed.type !== tab) setTab(parsed.type);
@@ -138,6 +143,18 @@ export default function Search() {
           </div>
         )}
 
+        {/* S7-G10 热门分类：空面板给零输入的人一条起跑线（App 专属，点即按角色搜该分类） */}
+        {app && !res && !loading && cats.length > 0 && (
+          <div className="stagger-in qa-search-cats" aria-label="热门分类">
+            <span className="muted qa-search-cats-label"><Sparkles size={13} /> 热门分类</span>
+            {cats.map(c => (
+              <AppButton key={c.slug} className="tag-chip pressable" onClick={() => { setTab('character'); setQ(c.name); run(c.name, { manual: true, tabOverride: 'character' }); }}>
+                {c.icon ? `${c.icon} ` : ''}{c.name}
+              </AppButton>
+            ))}
+          </div>
+        )}
+
         {loading ? (
           <div className={app ? 'qa-search-loading' : undefined} aria-hidden="true">
             {[72, 72, 72].map((h, i) => <div key={i} className="skel" style={{ height: h, marginBottom: 10 }} />)}
@@ -153,7 +170,7 @@ export default function Search() {
           <div className={app ? 'empty qa-search-empty' : 'empty'}><EmptyArt kind="search" />输入上方关键词或 ID 开始搜索</div>
         ) : res.tab === 'user' ? (
           res.users.length === 0 ? (
-            app ? <div className="empty qa-search-empty"><div className="big"><User size={44} /></div>没有找到匹配的用户</div> : (
+            app ? <div className="empty qa-search-empty"><div className="big"><AppEmptyArt kind="noresult" size={96} /></div>没有找到匹配的用户</div> : (
               <div className="empty lgw-empty">
                 <EmptyArt kind="search" />
                 <h2 className="lgw-empty-title">没有找到匹配的用户</h2>
@@ -178,7 +195,7 @@ export default function Search() {
           )
         ) : res.tab === 'character' ? (
           res.characters.length === 0 ? (
-            app ? <div className="empty qa-search-empty"><div className="big"><Drama size={44} /></div>没有找到该角色（可能非公开）</div> : (
+            app ? <div className="empty qa-search-empty"><div className="big"><AppEmptyArt kind="noresult" size={96} /></div>没有找到该角色（可能非公开）</div> : (
               <div className="empty lgw-empty">
                 <EmptyArt kind="search" />
                 <h2 className="lgw-empty-title">没有找到该角色</h2>
@@ -203,7 +220,7 @@ export default function Search() {
           )
         ) : (
           res.scripts.length === 0 ? (
-            app ? <div className="empty qa-search-empty"><div className="big"><ScrollText size={44} /></div>没有找到该剧本</div> : (
+            app ? <div className="empty qa-search-empty"><div className="big"><AppEmptyArt kind="noresult" size={96} /></div>没有找到该剧本</div> : (
               <div className="empty lgw-empty">
                 <EmptyArt kind="search" />
                 <h2 className="lgw-empty-title">没有找到该剧本</h2>

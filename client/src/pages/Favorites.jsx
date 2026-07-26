@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
+import { AppButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { Heart, RefreshCw } from 'lucide-react';
 
@@ -11,8 +12,12 @@ export default function Favorites() {
   const [chars, setChars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [cat, setCat] = useState('all'); // S7-G10 App 分类筛选（Web 零变化）
   const toast = useToast();
   const nav = useNavigate();
+  // 从收藏本身推导出现过的分类（≥2 类才展示筛选行，避免单类噪音）
+  const cats = useMemo(() => [...new Set(chars.map(c => c.category).filter(Boolean))], [chars]);
+  const shown = useMemo(() => (app && cat !== 'all' ? chars.filter(c => c.category === cat) : chars), [app, cat, chars]);
 
   const load = () => {
     if (!app) setLoading(true); // App 侧维持原刷新行为（不回骨架）
@@ -51,6 +56,15 @@ export default function Favorites() {
       </div>
 
       <div className="page">
+        {app && !loading && cats.length >= 2 && (
+          <div className="qa-fav-cats" role="group" aria-label="按分类筛选收藏">
+            {[['all', '全部'], ...cats.map(k => [k, k])].map(([key, label]) => (
+              <AppButton key={key} size="sm" variant="tertiary" selected={cat === key} pressed={cat === key} onClick={() => setCat(key)}>
+                {label}
+              </AppButton>
+            ))}
+          </div>
+        )}
         {loading ? (
           <GridSkeleton n={4} />
         ) : !app && loadError && chars.length === 0 ? (
@@ -73,9 +87,11 @@ export default function Favorites() {
                 </div>
               </div>
             )
+        ) : shown.length === 0 ? (
+          <div className="empty"><EmptyArt kind="noresult" size={96} />该分类下暂无收藏</div>
         ) : (
           <div className="grid">
-            {chars.map(c => (
+            {shown.map(c => (
               <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id)}>
                 <div className="cover">
                   {c.avatar ? <img src={assetUrl(c.avatar)} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}

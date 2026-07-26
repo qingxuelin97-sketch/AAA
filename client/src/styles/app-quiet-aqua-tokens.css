@@ -1,115 +1,54 @@
 /*
- * 兼容 shim — `--qa-*` → `--lg-*`（曜光玻璃 Lumen Glass v1.0 迁移期）。
- * 颜色/材质/几何的唯一权威是 lumen-glass-tokens.css（禁改值）；本文件只把
- * 遗留 `--qa-*` 命名空间逐名映射过去，让 1700+ 既有选择器即刻换装。
- * S6（别名退役）会把全部 var(--qa-*) 引用迁移为 var(--lg-*) 后删除本文件。
- * 注：--qa-control-min/--qa-control-submit 保持字面值（app-test.mjs 契约）。
+ * 残余 shim —— 非纯 `--qa-*` 定义层（S7-G8 起）。
+ * 纯别名（--qa-X: var(--lg-Y) 恒等映射）已由 scripts/migrate-qa-tokens.mjs
+ * 全量改写为直连 --lg-* 权威并从本文件删除，禁止回填。
+ * 仍留在这里的只有三类，删除任何一条都会改变渲染：
+ *   1) 迁移期字面值：不透明内容面（--qa-surface 系）、触控契约
+ *      （--qa-control-min 44 / --qa-control-submit 48，app-test 断言）、
+ *      各语义 ink 的黑白字面、玻璃 specular/阴影字面、编辑器 chrome 高度；
+ *   2) color-mix 派生：pressed 与各 -soft 软底（--lg-* 无对应令牌）；
+ *   3) 条件重映射：lite 档把 chrome/overlay/玻璃底回落到不透明 grouped
+ *      （直连 --lg-glass-* 会丢掉这层回落），及深色下的字面翻转。
  */
 html[data-app="1"] {
   color-scheme: light;
 
-  --qa-canvas: var(--lg-canvas);
-  --qa-grouped: var(--lg-grouped);
-  /* 迁移期内容面暂保持不透明（L1 玻璃化在 S2–S6 逐屏落地，避免一次性大爆炸） */
+  /* 迁移期内容面暂保持不透明（内容面玻璃化语义迁移完成后随本文件退役） */
   --qa-surface: #ffffff;
   --qa-surface-raised: #ffffff;
-  --qa-ink: var(--lg-ink);
-  --qa-ink-secondary: var(--lg-ink-2);
-  --qa-ink-tertiary: var(--lg-ink-3);
-  --qa-hairline: var(--lg-hairline);
 
-  --qa-brand-fill: var(--lg-act);
   --qa-brand-pressed: color-mix(in oklab, var(--lg-act) 86%, #000000);
-  --qa-brand-soft: var(--lg-act-soft);
-  --qa-brand-ink: var(--lg-act-ink);
-
-  --qa-action-fill: var(--lg-act);
   --qa-action-pressed: color-mix(in oklab, var(--lg-act) 86%, #000000);
-  --qa-action-soft: var(--lg-act-soft);
-  --qa-action-ink: var(--lg-act-ink);
-  --qa-focus: var(--lg-focus);
 
-  --qa-danger: var(--lg-coral);
   --qa-danger-soft: color-mix(in srgb, var(--lg-coral) 13%, transparent);
   --qa-danger-ink: #ffffff;
-  --qa-success: var(--lg-jade);
   --qa-success-soft: color-mix(in srgb, var(--lg-jade) 13%, transparent);
   --qa-success-ink: #ffffff;
-  --qa-reward: var(--lg-gold);
   --qa-reward-soft: color-mix(in srgb, var(--lg-gold) 14%, transparent);
   --qa-reward-ink: #ffffff;
-  --qa-unread: var(--lg-coral);
   --qa-unread-ink: #ffffff;
 
-  /* 内容语义（不随强调色漂移） */
-  --qa-semantic-gold: var(--lg-gold);
   --qa-semantic-gold-soft: color-mix(in srgb, var(--lg-gold) 14%, transparent);
-  --qa-semantic-coral: var(--lg-coral);
   --qa-semantic-coral-soft: color-mix(in srgb, var(--lg-coral) 13%, transparent);
-  --qa-semantic-indigo: var(--lg-violet);
   --qa-semantic-indigo-soft: color-mix(in srgb, var(--lg-violet) 13%, transparent);
-  --qa-semantic-blue: var(--lg-azure);
   --qa-semantic-blue-soft: color-mix(in srgb, var(--lg-azure) 13%, transparent);
-  --qa-semantic-graphite: var(--lg-ink-2);
   --qa-semantic-graphite-soft: color-mix(in srgb, var(--lg-ink-2) 12%, transparent);
-  --qa-semantic-rose: var(--lg-rose);
   --qa-semantic-rose-soft: color-mix(in srgb, var(--lg-rose) 13%, transparent);
-  --qa-finance-surface: var(--lg-finance);
   --qa-finance-surface-mid: color-mix(in srgb, var(--lg-finance) 84%, #ffffff);
-  --qa-finance-ink: var(--lg-finance-ink);
   --qa-finance-muted: color-mix(in srgb, var(--lg-finance-ink) 72%, transparent);
 
-  --qa-font-ui: var(--lg-font-ui);
-  --qa-type-large-title: var(--lg-type-hero);
-  --qa-type-display: var(--lg-type-display);
-  --qa-type-title: var(--lg-type-title);
-  --qa-type-section: var(--lg-type-section);
-  --qa-type-body: var(--lg-type-body);
-  --qa-type-meta: var(--lg-type-meta);
-
+  /* lite 条件回落面（见文件头第 3 类；base 定义 + 下方 lite 块重映射） */
   --qa-chrome: var(--lg-glass-3);
   --qa-overlay: var(--lg-glass-2);
-  --qa-scrim: var(--lg-scrim);
-  --qa-shadow-1: var(--lg-glass-shadow-1);
-  --qa-shadow-2: var(--lg-glass-shadow-2);
-  --qa-shadow-3: var(--lg-glass-shadow-2);
-
   --qa-glass-chrome-bg: var(--lg-glass-3);
-  --qa-glass-chrome-blur: var(--lg-blur);
   --qa-glass-sheet-bg: var(--lg-glass-2);
-  --qa-glass-sheet-blur: var(--lg-blur);
   --qa-glass-thin-bg: var(--lg-glass-1);
-  --qa-glass-thin-blur: var(--lg-blur-s);
-  --qa-glass-hairline: var(--lg-hairline);
   --qa-glass-specular: inset 0 1px 0 rgb(255 255 255 / 88%);
   --qa-glass-shadow: 0 10px 30px rgb(18 24 44 / 12%);
 
-  --qa-space-1: var(--lg-space-1);
-  --qa-space-2: var(--lg-space-2);
-  --qa-space-3: var(--lg-space-3);
-  --qa-space-4: var(--lg-space-4);
-  --qa-space-5: var(--lg-space-5);
-  --qa-space-6: var(--lg-space-6);
-  --qa-radius-xs: var(--lg-r-xs);
-  --qa-radius-sm: var(--lg-r-sm);
-  --qa-radius-control: var(--lg-r-control);
-  --qa-radius-row: var(--lg-r-row);
-  --qa-radius-card: var(--lg-r-card);
-  --qa-radius-panel: var(--lg-r-panel);
-  --qa-radius-sheet: var(--lg-r-sheet);
-  --qa-radius-pill: var(--lg-r-pill);
-
   --qa-control-min: 44px;
   --qa-control-submit: 48px;
-  --qa-dock-height: var(--lg-dock-height);
-  --qa-dock-bottom: var(--lg-dock-bottom);
   --qa-editor-chrome: calc(72px + env(safe-area-inset-top));
-  --qa-ease-out: var(--lg-ease);
-  --qa-ease-spring: var(--lg-ease);
-  --qa-duration-press: var(--lg-dur-press);
-  --qa-duration-state: var(--lg-dur-state);
-  --qa-duration-nav: var(--lg-dur-push);
-  --qa-duration-sheet: var(--lg-dur-sheet);
 }
 
 html[data-app="1"][data-theme="dark"] {

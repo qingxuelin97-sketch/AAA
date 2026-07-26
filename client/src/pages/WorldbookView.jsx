@@ -5,8 +5,9 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { shareUrl } from '../util.js';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
-import { BookOpen, ArrowLeft, Pencil, GitFork, Link2, Globe, BookLock, BookCheck, ChevronDown, ChevronUp,
+import { ArrowLeft, Pencil, GitFork, Link2, Globe, BookLock, BookCheck, ChevronDown, ChevronUp,
   Users, Folder, Sparkles, Image as ImageIcon, Layout, Sliders, Layers, Variable, GitBranch, Plug, Check, BadgeCheck } from 'lucide-react';
 
 // 世界书详情页：面向「使用者」的展示视角（编辑器面向作者）。
@@ -95,7 +96,7 @@ export default function WorldbookView() {
   };
 
   if (!wb) return appMode
-    ? <div className="empty qa-worldbooks-view-loading" style={{ paddingTop: 120 }}><BookOpen size={32} />展开卷轴…</div>
+    ? <div className="empty qa-worldbooks-view-loading" style={{ paddingTop: 120 }}><AppEmptyArt kind="worldbooks" size={84} />展开卷轴…</div>
     : <div className="empty" style={{ paddingTop: 120 }}>展开卷轴…</div>;
   const shownFolders = showAll ? folders : folders.map(([f, es]) => [f, es]).slice(0, 50);
   const totalEntries = (wb.entries || []).length;
@@ -159,7 +160,7 @@ export default function WorldbookView() {
 
         {/* —— 条目总览 —— */}
         <div className="wbv-sec-title"><BookCheck size={14} /> 设定条目 <span className="muted">（{totalEntries} 条）</span></div>
-        {totalEntries === 0 && <div className={appMode ? 'empty qa-worldbooks-view-empty' : 'empty'} style={{ padding: 30 }}>这本书还没有条目</div>}
+        {totalEntries === 0 && <div className={appMode ? 'empty qa-worldbooks-view-empty' : 'empty'} style={{ padding: 30 }}>{appMode && <AppEmptyArt kind="worldbooks" size={84} />}这本书还没有条目</div>}
         {shownFolders.map(([folder, es]) => (
           <div key={folder || '_root'} className="wbv-folder">
             {folder && <div className="wbv-folder-hd"><Folder size={13} /> {folder} <span className="muted">{es.length} 条</span></div>}

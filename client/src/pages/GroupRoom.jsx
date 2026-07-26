@@ -8,7 +8,11 @@ import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow } from '../util.js';
 import { mergeMessages, messageId } from '../groupMessages.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import AppPressMenu from '../components/AppPressMenu.jsx';
+import { useLongPress } from '../chat/hooks.js';
+import { tick } from '../appgestures.js';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
 import { Send, ArrowLeft, Users, LogOut, MessageCircle, X } from 'lucide-react';
 
 // 曜光玻璃 s09：发言人名固定内容语义色 —— 按成员 id 稳定散列到
@@ -36,6 +40,16 @@ export default function GroupRoom() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [pressMsg, setPressMsg] = useState(null); // App 群消息长按 { m, nm, at }
+  // 长按群消息 → 复制 / @提及（binder 挂在气泡上，坐标取气泡中心）
+  const bindMsgPress = useLongPress((payload) => { tick(8); setPressMsg(payload()); });
+  // S7-G10 @提及高亮（仅 App 落 DOM；Web 保持纯文本零差异）
+  const renderBubbleContent = (content) => {
+    if (!app) return content;
+    const parts = String(content || '').split(/(@[^\s@，。,！？!?]+)/g);
+    if (parts.length === 1) return content;
+    return parts.map((part, i) => (part.startsWith('@') ? <i key={i} className="gr-mention">{part}</i> : part));
+  };
   const scrollRef = useRef();
   const lastId = useRef(0);
   const sendingRef = useRef(false);
@@ -218,8 +232,9 @@ export default function GroupRoom() {
         )}
         <div className={app ? 'chat-scroll qa-group-room-scroll' : 'chat-scroll'} ref={scrollRef} onScroll={trackScroll} role={app ? 'log' : undefined} aria-live={app ? 'polite' : undefined} aria-label={app ? `${group.name}的群聊消息` : undefined}>
           <div className="chat-thread group-thread">
-          {messages.length === 0 && (
-            <div className={app ? 'empty qa-group-room-empty' : 'empty'} style={{ margin: 'auto' }}><div className="big"><MessageCircle size={42} /></div>还没有人发言，来打个招呼吧～</div>
+          {messages.length === 0 && (app
+            ? <div className="empty qa-group-room-empty" style={{ margin: 'auto' }}><AppEmptyArt kind="group" size={104} />还没有人发言，来打个招呼吧～</div>
+            : <div className="empty" style={{ margin: 'auto' }}><div className="big"><MessageCircle size={42} /></div>还没有人发言，来打个招呼吧～</div>
           )}
           {messages.map((m) => {
             const mine = String(m.user_id) === String(user?.id);
@@ -228,13 +243,26 @@ export default function GroupRoom() {
             // 自己这侧优先用当前账号资料 —— 轮询消息里的快照可能滞后。
             const av = mine ? (user.avatar ?? m.avatar) : m.avatar;
             const nm = (mine ? (user.display_name || user.username) : m.display_name) || '匿名';
+            const key = m.id ?? `${m.user_id}:${m.created_at}:${m.content}`;
+            const pressPayload = () => {
+              const el = document.getElementById('grm-' + key);
+              const rect = el?.getBoundingClientRect();
+              return { m, nm, at: rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : { x: 195, y: 420 } };
+            };
             return (
-              <div key={m.id ?? `${m.user_id}:${m.created_at}:${m.content}`} className={'msg group-message ' + (mine ? 'user' : 'assistant')}>
+              <div key={key} className={'msg group-message ' + (mine ? 'user' : 'assistant')}>
                 <Avatar src={av} name={nm} size={36} />
                 <div className="group-message-body">
                   {/* data-lg-tone 仅 App 壳落 DOM：Web（?app=0）保持零差异 */}
                   <div className="who" data-lg-tone={app ? lgNameTone(m.user_id) : undefined}>{nm}</div>
-                  <div className="bubble">{m.content}</div>
+                  <div
+                    className="bubble"
+                    id={app ? 'grm-' + key : undefined}
+                    {...(app ? bindMsgPress(pressPayload) : {})}
+                    onContextMenu={app ? (e) => { e.preventDefault(); setPressMsg({ m, nm, at: { x: e.clientX, y: e.clientY } }); } : undefined}
+                  >
+                    {renderBubbleContent(m.content)}
+                  </div>
                 </div>
               </div>
             );
@@ -251,6 +279,28 @@ export default function GroupRoom() {
           </div>
         </Composer>
       </div>
+      {app && pressMsg && (
+        <AppPressMenu
+          at={pressMsg.at}
+          onClose={() => setPressMsg(null)}
+          items={[
+            {
+              label: '复制',
+              onSelect: async () => {
+                try { await navigator.clipboard.writeText(pressMsg.m.content || ''); toast('已复制'); }
+                catch { toast('复制失败', 'err'); }
+              },
+            },
+            {
+              label: `@${pressMsg.nm}`,
+              onSelect: () => {
+                setInput((value) => (value ? value.replace(/\s*$/, ' ') : '') + `@${pressMsg.nm} `);
+                inputRef.current?.focus();
+              },
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }

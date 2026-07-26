@@ -6,6 +6,8 @@ import StageEditor from '../components/StageEditor.jsx';
 import NovelWorldEditor from '../components/NovelWorldEditor.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 import { BookOpen, Users, Plus, Check, Feather, Sparkles, ChevronRight, ChevronDown, ChevronUp,
   Image as ImageIcon, Search, Flag, Clock3, AlignLeft, ArrowLeft, X } from 'lucide-react';
 
@@ -32,6 +34,7 @@ export default function Theater() {
   const [theaters, setTheaters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [err, setErr] = useState(false);
   const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState('all');   // all | mine | reading
   const [q, setQ] = useState('');
@@ -41,9 +44,10 @@ export default function Theater() {
   const load = () => {
     setLoading(true);
     setLoadError('');
+    setErr(false);
     return api('/theater')
       .then(d => setTheaters(d.theaters))
-      .catch(e => { setLoadError(e.message || '故事书架载入失败，请稍后重试'); toast(e.message, 'err'); })
+      .catch(e => { setLoadError(e.message || '故事书架载入失败，请稍后重试'); setErr(true); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -99,6 +103,8 @@ export default function Theater() {
 
           {loading ? (
             <AppTheaterLoading />
+          ) : err ? (
+            <AppErrorState kind="theater" onRetry={load} />
           ) : shown.length === 0 ? (
             <AppTheaterEmpty query={q} tab={tab} onCreate={() => setCreating(true)} />
           ) : (
@@ -212,7 +218,7 @@ function AppTheaterEmpty({ query, tab, onCreate }) {
 
   return (
     <section className="qa-theater-empty" aria-labelledby="qa-theater-empty-title">
-      <span className="qa-theater-empty-icon" aria-hidden="true"><BookOpen size={34} /></span>
+      <AppEmptyArt kind="theater" size={104} />
       <h2 id="qa-theater-empty-title">{title}</h2>
       <p>{body}</p>
       {!query && (

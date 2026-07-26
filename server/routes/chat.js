@@ -564,7 +564,7 @@ router.get('/conversations', authRequired, (req, res) => {
     SELECT cv.*, c.name AS character_name, c.avatar AS character_avatar,
       (SELECT content FROM messages WHERE conversation_id = cv.id ORDER BY id DESC LIMIT 1) AS last_message
     FROM conversations cv JOIN characters c ON c.id = cv.character_id
-    WHERE cv.user_id = ? ORDER BY cv.updated_at DESC`).all(req.user.id);
+    WHERE cv.user_id = ? ORDER BY cv.pinned DESC, cv.updated_at DESC`).all(req.user.id);
   res.json({ conversations: rows });
 });
 
@@ -637,7 +637,12 @@ router.patch('/conversations/:id', authRequired, (req, res) => {
     if (greeting) db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', greeting);
     db.prepare('UPDATE conversations SET affinity = 0 WHERE id = ?').run(conv.id);
   }
-  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  // S7-G10 会话整理：置顶/免打扰只改标记，不 bump updated_at（否则列表会被误排序）
+  if (req.body?.pinned !== undefined) db.prepare('UPDATE conversations SET pinned = ? WHERE id = ?').run(req.body.pinned ? 1 : 0, conv.id);
+  if (req.body?.muted !== undefined) db.prepare('UPDATE conversations SET muted = ? WHERE id = ?').run(req.body.muted ? 1 : 0, conv.id);
+  const markOnly = (req.body?.pinned !== undefined || req.body?.muted !== undefined)
+    && !(typeof req.body?.title === 'string' && req.body.title.trim()) && !req.body?.clear;
+  if (!markOnly) db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   const updated = parseMem(db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id));
   res.json({ conversation: updated, messages: db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id) });
 });

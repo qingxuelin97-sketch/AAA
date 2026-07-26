@@ -143,6 +143,38 @@ router.get('/transactions', authRequired, (req, res) => {
   res.json({ transactions: txs });
 });
 
+// 签到日历：从 transactions(kind='checkin') 推导（每天恰一行，条件 UPDATE 保证），
+// 不另建表。日界 = 北京时间（cnToday 同口径）；month 缺省当月，钳制在近 12 个月内。
+router.get('/checkin/calendar', authRequired, (req, res) => {
+  const today = cnToday();
+  const month = String(req.query.month || today.slice(0, 7));
+  if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: '月份格式应为 YYYY-MM' });
+  const [y, m] = month.split('-').map(Number);
+  if (!(m >= 1 && m <= 12)) return res.status(400).json({ error: '月份格式应为 YYYY-MM' });
+  const monthIndex = y * 12 + (m - 1);
+  const [ty, tm] = today.slice(0, 7).split('-').map(Number);
+  const todayIndex = ty * 12 + (tm - 1);
+  if (monthIndex > todayIndex || todayIndex - monthIndex > 11) {
+    return res.status(400).json({ error: '仅支持查询近 12 个月' });
+  }
+  // 北京月界折回 UTC 存储时间：北京 [1 日 00:00, 次月 1 日 00:00) = UTC 各 -8h。
+  // created_at 由 sqlite datetime('now') 写入（'YYYY-MM-DD HH:MM:SS' UTC），
+  // 边界字符串必须同构才能字典序比较。
+  const sqliteUtc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+  const utcStart = sqliteUtc(Date.UTC(y, m - 1, 1) - 8 * 3600e3);
+  const utcEnd = sqliteUtc(Date.UTC(y, m, 1) - 8 * 3600e3);
+  const rows = db.prepare(`SELECT created_at FROM transactions
+    WHERE user_id = ? AND kind = 'checkin' AND created_at >= ? AND created_at < ?`)
+    .all(req.user.id, utcStart, utcEnd);
+  const days = [...new Set(rows.map((r) => cnToday(new Date(String(r.created_at).replace(' ', 'T') + 'Z'))))]
+    .filter((d) => d.startsWith(month))
+    .map((d) => Number(d.slice(8)))
+    .sort((a, b) => a - b);
+  const u = db.prepare('SELECT last_checkin, checkin_streak FROM users WHERE id = ?').get(req.user.id);
+  res.json({ month, days, today, last_checkin: u.last_checkin || null,
+    streak: u.checkin_streak || 0, month_total: days.length });
+});
+
 // Redeem a gift / invite code for an existing user. 用条件 UPDATE 原子扣减，防并发超额。
 router.post('/redeem', authRequired, redeemLimiter, (req, res) => {
   const code = String((req.body || {}).code ||'').trim();

@@ -4,7 +4,9 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { EmptyArt } from '../art.jsx';
+import { EmptyArt, AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
+import { tick } from '../appgestures.js';
 import { PartyPopper, Gift, Check, ArrowRight, Copy, Users, ListChecks, ArrowLeft, RefreshCw } from 'lucide-react';
 
 // Event accents are semantic and stable. They are deliberately independent
@@ -21,7 +23,8 @@ const eventTone = (event, index) => {
 export default function Events() {
   const app = isAppMode();
   const [events, setEvents] = useState(null);
-  const [eventsError, setEventsError] = useState('');
+  const [eventsError, setEventsError] = useState(''); // Web：lgw 三态错误文案
+  const [err, setErr] = useState(false);               // App：AppErrorState 恢复态
   const [tasks, setTasks] = useState(null);
   const [busy, setBusy] = useState('');
   const nav = useNavigate();
@@ -32,7 +35,7 @@ export default function Events() {
     setEventsError('');
     return api('/engage/events')
       .then(d => setEvents(d.events))
-      .catch(e => { setEventsError(e.message || '活动载入失败，请稍后重试'); toast(e.message, 'err'); });
+      .catch(e => { setEventsError(e.message || '活动载入失败，请稍后重试'); setErr(true); toast(e.message, 'err'); });
   };
   const loadTasks = () => api('/engage/tasks').then(d => setTasks(d.tasks)).catch(() => {});
   useEffect(() => { load(); loadTasks(); /* eslint-disable-next-line */ }, []);
@@ -41,6 +44,22 @@ export default function Events() {
     setBusy('t-' + t.id);
     try { const d = await api(`/engage/tasks/${t.id}/claim`, { method: 'POST' }); toast(`领取成功！+${d.reward} 金币`); await refreshUser(); await loadTasks(); }
     catch (e) { toast(e.message, 'err'); } finally { setBusy(''); }
+  };
+  // S7-G10 一键全领：顺序领取全部可领任务，单条失败不拦后续
+  const claimAllTasks = async () => {
+    const claimable = (tasks || []).filter(t => t.done && !t.claimed);
+    if (claimable.length === 0) return;
+    setBusy('all');
+    let total = 0;
+    for (const t of claimable) {
+      try { const d = await api(`/engage/tasks/${t.id}/claim`, { method: 'POST' }); total += d.reward || 0; }
+      catch { /* 已领/竞态失败跳过 */ }
+    }
+    toast(total > 0 ? `已领取全部任务奖励 +${total} 金币` : '暂无可领取奖励');
+    tick(10);
+    await refreshUser();
+    await loadTasks();
+    setBusy('');
   };
 
   const claim = (ev) => async () => {
@@ -70,6 +89,12 @@ export default function Events() {
           <TasksRoot className={app ? 'card daily-tasks qa-events-tasks' : 'card daily-tasks'}>
             <div className="section-title"><h2><ListChecks size={17} style={{ verticalAlign: -3, marginRight: 6 }} />每日任务</h2>
               <span className="muted" style={{ fontSize: 12.5 }}>每日 0 点刷新</span></div>
+            {app && tasks.filter(t => t.done && !t.claimed).length >= 2 && (
+              <AppButton className="qa-events-claimall" variant="secondary" size="sm" loading={busy === 'all'} disabled={!!busy}
+                onClick={claimAllTasks}>
+                <Gift size={14} /> 一键领取全部（{tasks.filter(t => t.done && !t.claimed).length} 项）
+              </AppButton>
+            )}
             {tasks.map(t => (
               <div key={t.id} className={'task-row' + (app ? ' qa-events-task' : '') + (t.claimed ? ' claimed' : '')}>
                 <div className="tk-tx">
@@ -91,12 +116,14 @@ export default function Events() {
             <p className="lgw-error-msg">{eventsError}</p>
             <button className="btn primary lgw-error-retry" onClick={() => void load()}><RefreshCw size={15} /> 重新载入</button>
           </div>
-        ) : !events ? (app ? <div className="qa-events-loading" role="status" aria-label="正在载入活动"><i className="skel" /><i className="skel" /><i className="skel" /></div> : (
+        ) : !events ? (app ? (err
+          ? <AppErrorState kind="events" onRetry={() => { setErr(false); load(); }} />
+          : <div className="qa-events-loading" role="status" aria-label="正在载入活动"><i className="skel" /><i className="skel" /><i className="skel" /></div>) : (
           <div className="lgw-skel-list" aria-hidden="true">
             {[0, 1, 2].map(i => <div key={i} className="skel lgw-skel-lg" />)}
           </div>
         )) : events.length === 0 && app ? (
-          <div className="empty qa-events-empty"><div className="big"><PartyPopper size={44} /></div>当前暂无活动</div>
+          <div className="empty qa-events-empty"><AppEmptyArt kind="events" size={104} />当前暂无活动</div>
         ) : events.length === 0 && !app ? (
           <div className="empty lgw-empty">
             <EmptyArt kind="generic" />

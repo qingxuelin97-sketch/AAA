@@ -3,23 +3,28 @@
 // the web discover page: instead it greets the user, surfaces the daily check-in,
 // a "continue your story" rail, daily tasks and a personalised pick — the things
 // you reach for when you open the app, not a browse-everything grid.
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
-import { fmtNum } from '../util.js';
-import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from '../art.jsx';
+import { cnToday, fmtNum } from '../util.js';
+import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia, streakSealForTier } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import CheckinCalendarSheet from '../components/CheckinCalendarSheet.jsx';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppTabActive } from '../appTabActivity.js';
-// 数据层（问候/天光、签到闭环、续读轨/任务/精选加载）抽到 home/shared.js，
-// 与 Web 端合体首页（WebHome.jsx）共用；本文件只保留 App 壳的渲染与交互。
-import { greeting, skyClass, useCheckin, loadResumeRail, loadHeroAndPicks, loadTodayTasks } from './home/shared.js';
+// 数据层（问候/天光、续读轨/任务/精选加载）抽到 home/shared.js，与 Web 端
+// 合体首页（WebHome.jsx）共用；S7 签到仪式（粒子/触感/里程碑/任务联动）是
+// App 专属交互，签到提交因此留在页内（幂等契约与 shared.js 的 useCheckin 一致）。
+import { greeting, skyClass, loadResumeRail, loadHeroAndPicks, loadTodayTasks } from './home/shared.js';
+import { burst } from '../fx.js';
+import { tick } from '../appgestures.js';
 import {
   Check, Flame, MessagesSquare, ChevronRight, ThumbsUp,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell,
-  ScrollText, Users, Trophy
+  ScrollText, Users, Trophy, CalendarCheck, Sparkles
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -43,10 +48,18 @@ export default function AppHome() {
   const [pick, setPick] = useState(null);
   const [hero, setHero] = useState(null);
   const [tasks, setTasks] = useState([]);
-  // 签到闭环在 home/shared.js 的 useCheckin 里（与 Web 首页共用）。契约不变：
-  // 仅服务端幂等裁决 e?.code === 'ALREADY_CHECKED_IN' 会把 CTA 落定为已签；
-  // 离线/超时/5xx 仍 toast「签到失败，请稍后重试」并保持可重试。
-  const { checked, streak, busy, checkin } = useCheckin();
+  // 用 /auth/me 带回的 last_checkin 初始化，已签到就直接呈现「已签到」态，
+  // 而不是等到用户点了按钮吃 400 才知道。
+  const [checked, setChecked] = useState(() => !!user?.last_checkin && user.last_checkin === cnToday());
+  const [streak, setStreak] = useState(user?.checkin_streak || 0);
+  const [busy, setBusy] = useState(false);
+  const [calOpen, setCalOpen] = useState(false);
+  const [milestone, setMilestone] = useState(0);
+  const [streakShare, setStreakShare] = useState(false);
+  const [claiming, setClaiming] = useState('');
+  const [weekly, setWeekly] = useState(null);
+  const streakRef = useRef(null);
+  const checkinBtnRef = useRef(null);
   // 顶栏已随 app 壳移除，通知铃移到页面自己的顶部行；SSE 秒级刷角标。
   const [unread, setUnread] = useState(0);
   const displayName = user?.display_name || user?.username || '旅人';
@@ -64,6 +77,8 @@ export default function AppHome() {
     loadResumeRail(setResume);
     loadHeroAndPicks(setHero, setPick);
     loadTodayTasks(setTasks);
+    // 本周回顾（周报卡）：App 专属页内数据，静默失败即隐藏，不给首页添失败态。
+    api('/me/weekly').then(d => setWeekly(d && Array.isArray(d.days) ? d : null)).catch(() => setWeekly(null));
   }, []);
   useEffect(() => { loadHome(); }, [loadHome]);
   useAppTabActive('/today', () => {
@@ -71,6 +86,48 @@ export default function AppHome() {
     loadUnread();
     refreshUser?.();
   });
+
+  const checkin = async () => {
+    if (busy || checked) return;
+    setBusy(true);
+    try {
+      const d = await api('/economy/checkin', { method: 'POST' });
+      setChecked(true); setStreak(d.streak || 0);
+      toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
+      // 仪式感：一次性粒子 + 触感（burst 自带 reduced-motion 降级为无）
+      tick(12);
+      const rect = checkinBtnRef.current?.getBoundingClientRect?.();
+      if (rect) burst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      refreshUser?.(); // 顶部金币余额立即更新，不留旧值
+      // 「完成每日签到」任务随签到即时转可领，行内领取钮同步出现
+      api('/engage/tasks').then(x => setTasks((x.tasks || []).filter(k => !k.claimed).slice(0, 3))).catch(() => {});
+      // 连签里程碑（7 的倍数或 30/100）：亮一次性纪念卡横幅
+      const s2 = d.streak || 0;
+      if (s2 >= 7 && (s2 % 7 === 0 || s2 === 30 || s2 === 100)) setMilestone(s2);
+    } catch (e) {
+      // Only the server's explicit idempotent verdict may settle the CTA as
+      // complete. Offline, timeout and 5xx failures keep it retryable.
+      if (e?.code === 'ALREADY_CHECKED_IN') {
+        setChecked(true);
+        toast('今天已签到');
+      } else {
+        toast(e?.message || '签到失败，请稍后重试', 'err');
+      }
+    } finally { setBusy(false); }
+  };
+
+  const claimTask = async (t) => {
+    if (claiming) return;
+    setClaiming(t.id);
+    try {
+      const d = await api(`/engage/tasks/${t.id}/claim`, { method: 'POST' });
+      tick(10);
+      toast(`任务完成 · +${d.reward} 金币`);
+      refreshUser?.();
+      api('/engage/tasks').then(x => setTasks((x.tasks || []).filter(k => !k.claimed).slice(0, 3))).catch(() => {});
+    } catch (e) { toast(e?.message || '领取失败，请稍后重试', 'err'); }
+    finally { setClaiming(''); }
+  };
 
   const openChat = async (c) => {
     try { const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } }); nav('/chats/' + d.conversation.id); }
@@ -127,6 +184,7 @@ export default function AppHome() {
               <DiamondIcon size={15} /> <span className="ah-balance-value">{fmtNum(user?.diamond)}</span>
             </AppButton>
             <AppButton
+              ref={checkinBtnRef}
               className={'ah-checkin' + (checked ? ' done' : '')}
               variant="primary"
               onClick={checkin}
@@ -140,6 +198,32 @@ export default function AppHome() {
             </AppButton>
           </div>
         </div>
+        {/* S7 连签周视图：七粒周点 + 日历入口（点亮数 = (streak-1)%7+1） */}
+        <button
+          type="button"
+          ref={streakRef}
+          className="qa-streak"
+          onClick={() => setCalOpen(true)}
+          aria-label={`连续签到 ${streak} 天，查看签到日历`}
+        >
+          <span className="qa-streak-dots" aria-hidden="true">
+            {Array.from({ length: 7 }, (_, i) => (
+              <i key={i} className={'qa-streak-dot' + (streak > 0 && i < ((streak - 1) % 7) + 1 ? ' on' : '')} />
+            ))}
+          </span>
+          <span className="qa-streak-copy">
+            {streak > 0 ? `连签 ${streak} 天` : '开始你的连签'}
+          </span>
+          <span className="qa-streak-cal"><CalendarCheck size={14} aria-hidden="true" /> 日历</span>
+        </button>
+        {milestone > 0 && (
+          <div className="qa-milestone" role="status">
+            <img className="qa-milestone-seal" src={streakSealForTier(milestone)} alt="" width={34} height={34} draggable="false" />
+            <span className="qa-milestone-copy">连签 {milestone} 天达成！</span>
+            <AppButton variant="secondary" size="sm" onClick={() => setStreakShare(true)}>生成纪念卡</AppButton>
+            <AppIconButton label="收起" onClick={() => setMilestone(0)}><Check size={14} /></AppIconButton>
+          </div>
+        )}
       </section>
 
       {/* Six stable destinations; creation remains the Dock accessory. */}
@@ -225,11 +309,72 @@ export default function AppHome() {
           <div className="ah-sec-head"><h2><Flame size={16} /> 今日任务</h2></div>
           <div className="ah-tasks">
             {tasks.map(t => (
-              <button key={t.id} type="button" className="ah-task" onClick={() => nav('/events')}>
-                <div className="ah-task-tx"><b>{t.name}</b><span>{t.done ? '可领取 · ' : ''}+{t.reward} 金币</span></div>
-                <div className="ah-task-bar"><i style={{ width: Math.min(100, Math.round((t.progress || 0) / (t.target || 1) * 100)) + '%' }} /></div>
-              </button>
+              <div key={t.id} className={'ah-task' + (t.done && !t.claimed ? ' qa-task-claimable' : '')}>
+                <button type="button" className="qa-task-main" onClick={() => nav('/events')} aria-label={`${t.name}，前往活动页`}>
+                  <div className="ah-task-tx"><b>{t.name}</b><span>{t.done ? '可领取 · ' : ''}+{t.reward} 金币</span></div>
+                  <div className="ah-task-bar"><i style={{ width: Math.min(100, Math.round((t.progress || 0) / (t.target || 1) * 100)) + '%' }} /></div>
+                </button>
+                {t.done && !t.claimed && (
+                  <AppButton
+                    className="qa-task-claim"
+                    variant="primary"
+                    size="sm"
+                    loading={claiming === t.id}
+                    disabled={Boolean(claiming)}
+                    onClick={() => claimTask(t)}
+                  >
+                    领取
+                  </AppButton>
+                )}
+              </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* weekly recap —— 本周与你相伴（有故事才出现，静默失败即隐藏） */}
+      {weekly && weekly.messages > 0 && (
+        <section className="ah-sec qa-weekly" aria-labelledby="today-weekly-title">
+          <div className="ah-sec-head">
+            <h2 id="today-weekly-title"><Sparkles size={16} /> 本周与你相伴</h2>
+            <AppButton className="ah-more" variant="tertiary" size="sm" onClick={() => nav('/insights')}>
+              星轨 <ChevronRight size={14} />
+            </AppButton>
+          </div>
+          <div className="qa-weekly-card">
+            <div
+              className="qa-weekly-bars"
+              role="img"
+              aria-label={`本周逐日消息：${weekly.days.map(d => `${d.date} ${d.n} 条`).join('，')}`}
+            >
+              {weekly.days.map((d, i) => {
+                const max = Math.max(...weekly.days.map(x => x.n), 1);
+                return (
+                  <div key={d.date} className={'qa-weekly-bar' + (d.date === weekly.today.slice(5) ? ' today' : '')}>
+                    <i style={{ height: (d.n ? Math.max(14, Math.round(d.n / max * 100)) : 5) + '%' }} />
+                    <span aria-hidden="true">{'一二三四五六日'[i]}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="qa-weekly-stats">
+              <span><b>{fmtNum(weekly.messages)}</b> 条消息</span>
+              <span><b>{weekly.active_days}</b> 天相伴</span>
+              <span><b>{weekly.checkins}</b> 次签到</span>
+              <span className="qa-weekly-gold"><b>+{fmtNum(weekly.gold_earned)}</b> 金币</span>
+            </div>
+            {weekly.companion && (
+              <button
+                type="button"
+                className="qa-weekly-comp"
+                onClick={() => nav('/character/' + weekly.companion.id)}
+                aria-label={`本周最相伴：${weekly.companion.name}，${weekly.companion.n} 条消息，查看角色`}
+              >
+                <Avatar src={weekly.companion.avatar} name={weekly.companion.name} size={40} />
+                <div className="qa-weekly-comp-tx"><span>本周最相伴</span><b>{weekly.companion.name}</b></div>
+                <em>{fmtNum(weekly.companion.n)} 条</em>
+              </button>
+            )}
           </div>
         </section>
       )}
@@ -262,6 +407,11 @@ export default function AppHome() {
             ))}
           </div>
         </section>
+      )}
+      {calOpen && <CheckinCalendarSheet onClose={() => setCalOpen(false)} returnFocusRef={streakRef} />}
+      {streakShare && (
+        <ShareCardSheet kind="streak" payload={{ streak: milestone || streak, date: cnToday(), path: '/today' }}
+          onClose={() => setStreakShare(false)} />
       )}
     </div>
   );

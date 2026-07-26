@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
-import { EmptyArt } from '../art.jsx';
+import { EmptyArt, AppEmptyArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
 import { Tags as TagsIcon, RefreshCw } from 'lucide-react';
 
@@ -51,7 +51,7 @@ export default function Tags() {
         ) : tags.length === 0 ? (
             app ? (
               <div className="empty" style={{ padding: 60 }}>
-                <div className="big"><TagsIcon size={42} /></div>
+                <div className="big"><AppEmptyArt kind="noresult" size={104} /></div>
                 还没有足够的标签数据<br />
                 <span className="muted" style={{ fontSize: 13 }}>为角色和剧本添加标签后，这里会聚合成标签云</span>
               </div>
