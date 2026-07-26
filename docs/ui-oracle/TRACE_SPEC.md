@@ -1,5 +1,7 @@
 # Quiet Aqua vector trace specification
 
+> Liuli v5 注：本文几何测量仍然有效；色值列已按琉璃调色板同步（权威顺序见 APP_UI_ORACLE.md v5 修订总纲与 app-quiet-aqua-tokens.css）。
+
 These traces translate the four generated design masters into measurable UI geometry. They are implementation references, not flattened production artwork.
 
 - Master input: `853 × 1844` raster mockup.
@@ -22,7 +24,7 @@ These traces translate the four generated design masters into measurable UI geom
 | Main card radius | `15–16` |
 | Nested control radius | `11–14` |
 | Pill radius | half of control height |
-| Hairline | `1`, Quiet Aqua border `#D6E2DF` |
+| Hairline | `1`, Quiet Aqua border `#E2E5EA` |
 | Short shadow | `y 5`, blur approximately `16`, black-green at `9–10%` |
 | Dock frame | `x 18`, width `354`, height `62–64`, radius `24` |
 | Create accessory | `50` visual disc inside a `64` halo; centre `x 195` |
@@ -37,15 +39,15 @@ The visible icon plate may be `40–42` while its actual button wrapper remains 
 
 | Role | Value | Use |
 |---|---|---|
-| Page | `#F4F7F6` / `#F8FAF9` | App background |
-| Group | `#ECF2F1` | Recessed groups and icon wells |
+| Page | `#F6F7F9` / `#FAFBFC` | App background |
+| Group | `#EDEFF3` | Recessed groups and icon wells |
 | Surface | `#FFFFFF` | Opaque content cards |
-| Primary ink | `#102B29` | Titles, values, primary copy |
+| Primary ink | `#16181D` | Titles, values, primary copy |
 | Secondary ink | `#607875` / `#6B7E7C` | Supporting copy and metadata |
-| Primary action | `#087F79` | Selection, focus, CTA, active tab |
+| Primary action | `#1D5FDB` | Selection, focus, CTA, active tab |
 | Pressed action | `#066A66` | Code interaction state |
-| Weak selection | `#DDEDEA` | Selected backgrounds, avatar wells |
-| Border | `#D6E2DF` | Hairlines |
+| Weak selection | `#E7EEFC` | Selected backgrounds, avatar wells |
+| Border | `#E2E5EA` | Hairlines |
 | Unread | `#EF5A3E` | Badges only |
 | Reward | `#EFB73E` | Coin and SVIP semantics only |
 

@@ -336,10 +336,10 @@ html[data-app="1"] .route-fade.tab-pane .pane-enter {
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] :where(.btn, button.primary, .qa-button, .chip, .tag, .switch .track, .switch .track::after) {
-    transition-duration: 0.00001s !important;
+    transition-duration: 0s !important;
   }
   html[data-app="1"] :where(.route-fade, .pane-enter, .stagger-in > *) {
-    animation-duration: 0.00001s !important;
+    animation-duration: 0s !important;
   }
 }
 

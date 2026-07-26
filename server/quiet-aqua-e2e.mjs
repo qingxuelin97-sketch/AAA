@@ -135,6 +135,15 @@ async function preparePage(browser, base, {
   });
   await page.setViewport({ ...viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   if (reducedMotion) await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+  // 本套件验证的是分档「契约」而非宿主机硬件：小核数 CI 容器会让 perf.js 的
+  // deviceIsWeak() 把 auto 判成 lite，导致 balanced 契约根本测不到。统一伪装
+  // 一台常规 8 核 / 8GiB 设备，auto 始终按产品语义解析（lite 档用显式 perf 配置测）。
+  await page.evaluateOnNewDocument(() => {
+    try {
+      Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+      Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+    } catch { /* 保守失败：维持宿主机真实值 */ }
+  });
   await page.evaluateOnNewDocument((config) => {
     localStorage.setItem('huanyu_welcome_seen', new Date().toISOString().slice(0, 10));
     localStorage.setItem('huanyu_theme', config.theme);
@@ -430,6 +439,16 @@ async function dockAndOverlayAssertions(page, expectedPerf) {
       dockTop: navRect?.top || null,
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       backdrop: style?.backdropFilter || style?.webkitBackdropFilter || '',
+      tabbarBackdrop: (() => {
+        const bar = document.querySelector('.app-tabbar');
+        if (!bar) return '';
+        const cs = getComputedStyle(bar);
+        return cs.backdropFilter || cs.webkitBackdropFilter || '';
+      })(),
+      headingFont: (() => {
+        const h = document.querySelector('.aht-brand, .apphome h2, .apphome h1');
+        return h ? getComputedStyle(h).fontFamily : '';
+      })(),
       perf: document.documentElement.dataset.perf,
     };
   });
@@ -437,8 +456,13 @@ async function dockAndOverlayAssertions(page, expectedPerf) {
   assert(dock.storyClearsDock, 'Today 首屏故事卡片被 Dock 遮挡', JSON.stringify(dock));
   assert(dock.overflow <= 1, 'Today 存在横向溢出', JSON.stringify(dock));
   assert(dock.perf === expectedPerf, 'Today 性能档不一致', JSON.stringify(dock));
+  assert(!/Fraunces|Songti|Noto Serif/i.test(dock.headingFont), 'App 标题不得回落到展示衬线字体', dock.headingFont);
   if (expectedPerf === 'lite') {
     assert(!dock.backdrop || dock.backdrop === 'none', '极简性能档仍启用了 Dock 模糊', dock.backdrop);
+  }
+  if (expectedPerf === 'balanced') {
+    // Liuli v5 契约：chrome 层玻璃在 balanced 常开（内容卡仍不透明）。
+    assert(/blur\(/.test(dock.tabbarBackdrop), 'balanced 档 Dock 必须保有 chrome 玻璃', dock.tabbarBackdrop);
   }
 
   await page.click('.app-fab');

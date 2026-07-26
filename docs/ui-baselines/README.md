@@ -28,8 +28,12 @@ For every affected route, capture the same data and viewport with `?app=0`. Comp
 - Focus rings are visible and not clipped.
 - Disabled anchors cannot navigate and are absent from the Tab order.
 - The message badge exposes a numeric accessible name and visually caps at `99+`.
-- `balanced` keeps restrained navigation/control material; `lite` reports `backdrop-filter: none` on Dock, Create Sheet, and chat input.
+- Liuli v5 contract: Dock / top bars / chat input island report real chrome glass (`backdrop-filter: blur(…)`) on **high and balanced**; content cards stay opaque on balanced; `lite` reports `backdrop-filter: none` on Dock, Create Sheet, and chat input.
 - Reduced-motion removes positional motion.
 - The Dock and software keyboard do not cover the final actionable control.
 
 Do not treat a single screenshot as release evidence. Store regenerated images with descriptive names such as `controls-390x844-light-balanced-teal.png` only after the matrix passes.
+
+## manual-v6（琉璃 Liuli v5）
+- 由重构会话生成：390×844 浅色/深色/lite ×（today/discover/messages/me/wallet/vip/settings/chat），另 360×800 与 412×915 的 today 帧。
+- 生成条件：build:static + mock 登录（huanyu_token=tok.1）+ perf=high（lite 组除外）。
