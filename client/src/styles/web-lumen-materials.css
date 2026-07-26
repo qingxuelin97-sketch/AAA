@@ -1,0 +1,82 @@
+/* ============================================================================
+   Lumen Web 材质组合类（.lgw-*）—— 镜像 app-lumen-materials.css，Web 围栏版
+   ----------------------------------------------------------------------------
+   · 类名用 .lgw- 前缀而非 .lg-：app-test 断言 .lg-* 不得逃出 data-app 围栏，
+     两个壳的类名分家让 grep 一眼分清归属。
+   · 硬规则（SPEC §1）：同一对象只允许 一层玻璃 + 一层发丝边 + 一道内高光
+     （三者都封装在 shadow 令牌里，因此这些类一律 border: 0 的写法）。
+   · 性能红线（计划 D8）：真正的 backdrop-filter 只允许出现在 chrome ——
+     .lgw-glass-chrome 是唯一入口；内容卡用 .lgw-card（半透明白 + 三件套
+     shadow，零实时模糊）。web-test.mjs 对此有允许清单断言。
+   ========================================================================== */
+
+/* ── 1. 玻璃三层（浮层与 chrome 才允许挂，见 D8；L1 保留给 Modal 内容分组） ── */
+html:not([data-app="1"]) .lgw-glass-1 {
+  background: var(--lg-glass-1);
+  box-shadow: var(--lg-glass-shadow-1);
+  border-radius: var(--lg-r-card);
+}
+html:not([data-app="1"]) .lgw-glass-2 {
+  background: var(--lg-glass-2);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  box-shadow: var(--lg-glass-shadow-2);
+  border-radius: var(--lg-r-panel);
+}
+html:not([data-app="1"]) .lgw-glass-3 {
+  background: var(--lg-glass-3);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  box-shadow: var(--lg-glass-shadow-3);
+  border-radius: var(--lg-r-sheet);
+}
+
+/* ── 2. chrome 薄玻璃（侧栏/顶栏/底栏/命令面板/输入岛专用；窄条用薄 blur） ── */
+html:not([data-app="1"]) .lgw-glass-chrome {
+  background: var(--lg-glass-3);
+  -webkit-backdrop-filter: var(--lgw-chrome-blur);
+  backdrop-filter: var(--lgw-chrome-blur);
+  box-shadow: var(--lg-glass-shadow-3);
+}
+
+/* ── 3. 内容卡：玻璃观感、零实时模糊（in-flow 卡片背后只有静态光晕，
+   blur 是视觉无操作但 GPU 每帧全价 —— app-renov 已验证过的教训） ── */
+html:not([data-app="1"]) .lgw-card {
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  border-radius: var(--lg-r-card);
+}
+
+/* ── 4. 实体面（绝对可读/重量处：资产仪表、SVIP、稿纸） ── */
+html:not([data-app="1"]) .lgw-entity {
+  background: var(--lg-finance);
+  color: var(--lg-finance-ink);
+  border-radius: var(--lg-r-panel);
+}
+
+/* ── 5. 环境光晕（页面最底层；lite / data-glass=off 时令牌自动置 none） ── */
+html:not([data-app="1"]) .lgw-ambient {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient);
+  background-attachment: fixed;
+}
+html:not([data-app="1"]) .lgw-ambient-warm { background-image: var(--lg-ambient-warm); }
+html:not([data-app="1"]) .lgw-ambient-cool { background-image: var(--lg-ambient-cool); }
+html:not([data-app="1"]) .lgw-ambient-rose { background-image: var(--lg-ambient-rose); }
+
+/* ── 6. 分段控件选中片 ── */
+html:not([data-app="1"]) .lgw-seg-sel {
+  background: var(--lg-glass-sel);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+
+/* ── 7. 桌面 hover 升起（仅指针设备；触屏不表演） ── */
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .lgw-hoverable {
+    transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+  }
+  html:not([data-app="1"]) .lgw-hoverable:hover {
+    transform: var(--lgw-hover-raise);
+    box-shadow: var(--lgw-hover-lift);
+  }
+}

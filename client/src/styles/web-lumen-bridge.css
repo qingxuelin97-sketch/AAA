@@ -1,0 +1,73 @@
+/* ============================================================================
+   Lumen Web 桥接层 —— 旧 Web 令牌家族 → --lg-* 重定向（一次性全站换装）
+   ----------------------------------------------------------------------------
+   写法先例：app-renov.css §1（App 内同样把 --accent/--text/--bg 家族钉到
+   --lg-*）。本文件做同一件事，但方向是 Web：base.css / web-modules.css /
+   web-super.css 里 3800+ 行存量规则消费的 ~30 个旧变量在这里整体接线。
+   · 围栏 html:not([data-app="1"]) 特异性 (0,1,1) 压过 base.css 的 :root
+     (0,1,0)；深色块 (0,1,2) 压过 web-modules.css 的 [data-theme="dark"]
+     (0,1,0) —— 靠特异性取胜，不依赖 import 顺序。
+   · 内容面纪律（SPEC §1 / 计划 D8）：--panel 保持不透明 —— 内容卡不玻璃化，
+     玻璃只属于 chrome（侧栏/顶栏/命令面板/模态/输入岛）。
+   · --serif / --sans 刻意不桥接：Fraunces + Noto Serif SC 是 Web 独有优势。
+   ========================================================================== */
+html:not([data-app="1"]) {
+  /* 画布与表面 */
+  --bg: var(--lg-canvas);
+  --bg-2: var(--lg-grouped);
+  --panel: #ffffff;                 /* 内容面：不透明（玻璃只给 chrome） */
+  --panel-2: var(--lg-grouped);
+  --border: var(--lg-hairline);
+  --border-2: color-mix(in srgb, var(--lg-ink) 18%, transparent);
+
+  /* 文字三级 */
+  --text: var(--lg-ink);
+  --muted: var(--lg-ink-2);
+  --faint: var(--lg-ink-3);
+
+  /* 动作与品牌（唯一随 data-accent 漂移的一组） */
+  --accent: var(--lg-act);
+  --accent-2: color-mix(in oklab, var(--lg-act) 84%, #000);   /* hover 深一档 */
+  --accent-soft: var(--lg-act-soft);
+  --accent-ring: color-mix(in srgb, var(--lg-act) 22%, transparent);
+  --grad: linear-gradient(135deg, color-mix(in oklab, var(--lg-act) 78%, #fff), var(--lg-act) 58%, color-mix(in oklab, var(--lg-violet) 62%, var(--lg-act)));
+  --dusk: var(--lg-violet);
+
+  /* 内容语义（不随强调色漂移） */
+  --gold: var(--lg-gold);
+  --diamond: var(--lg-dia);
+  --ok: var(--lg-jade);
+  --danger: var(--lg-coral);
+
+  /* 几何与阴影（冷灰蓝投影替换旧暖棕投影；--shadow 家族 4 处历史重复在此归一） */
+  --radius: var(--lg-r-card);
+  --radius-sm: var(--lg-r-control);
+  --shadow-float: 0 2px 6px rgb(18 24 44 / 7%), 0 14px 38px rgb(18 24 44 / 16%);
+  --shadow-sm: 0 1px 2px rgb(18 24 44 / 5%);
+  --shadow: 0 1px 2px rgb(18 24 44 / 4%), 0 4px 14px rgb(18 24 44 / 6%);
+  --shadow-lg: 0 2px 6px rgb(18 24 44 / 6%), 0 16px 42px rgb(18 24 44 / 10%);
+}
+
+/* ── 深色覆写：仅表面/hover 深浅方向这类无法由令牌自动翻转的值 ── */
+html:not([data-app="1"])[data-theme="dark"] {
+  --panel: #171B26;                 /* 不透明深内容面（--lg-canvas 上一层） */
+  --panel-2: #1D2230;
+  --accent-2: color-mix(in oklab, var(--lg-act) 80%, #fff);   /* 深色 hover 亮一档 */
+  --shadow-float: 0 2px 6px rgb(0 0 0 / 42%), 0 14px 38px rgb(0 0 0 / 55%);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 50%);
+  --shadow: 0 2px 8px rgb(0 0 0 / 46%), 0 12px 28px rgb(0 0 0 / 50%);
+  --shadow-lg: 0 8px 18px rgb(0 0 0 / 50%), 0 24px 56px rgb(0 0 0 / 64%);
+}
+
+/* ── 页面底：Lumen 环境光晕接管 body（压过 base.css 的暖橙径向与
+   web-modules.css [data-theme="dark"] body 的旧深色底，特异性 (0,1,2)） ── */
+html:not([data-app="1"]) body {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient);
+  background-attachment: fixed;
+}
+
+/* ── 文本选区与滚动条（base.css 里是硬编码暖色，无变量可桥，在此覆写） ── */
+html:not([data-app="1"]) ::selection { background: color-mix(in srgb, var(--lg-act) 20%, transparent); }
+html:not([data-app="1"]) ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--lg-ink) 22%, transparent); background-clip: padding-box; }
+html:not([data-app="1"]) ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--lg-ink) 34%, transparent); background-clip: padding-box; }
