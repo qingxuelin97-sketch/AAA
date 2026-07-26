@@ -59,7 +59,7 @@ html[data-app="1"] .qa3-today.apphome {
   width: min(100%, 430px);
   min-height: 100%;
   margin: 0 auto;
-  padding: 9px 16px calc(112px + env(safe-area-inset-bottom, 0px)) !important;
+  padding: 9px 16px calc(var(--lg-dock-height, 66px) + var(--lg-dock-bottom, 12px) + 40px + env(safe-area-inset-bottom, 0px)) !important;
   gap: 10px !important;
   overflow: visible;
 }

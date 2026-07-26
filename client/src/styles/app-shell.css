@@ -16,7 +16,8 @@ html[data-app="1"] *::-webkit-scrollbar { width: 0 !important; height: 0 !import
 /* Chrome heights (header / tab bar incl. safe areas) — single source of truth so
    page-fit overrides below stay in sync with the actual fixed chrome. */
 /* 壳层无持久顶栏：--app-top 只剩状态栏安全区；--app-bot = 扁平底栏整体占位 */
-html[data-app="1"] { --app-top: env(safe-area-inset-top); --app-bot: calc(60px + env(safe-area-inset-bottom)); }
+/* Lumen：底部占位由 Dock 几何推导（高度 + 悬浮底距 + 8px 呼吸），不再写死 60px */
+html[data-app="1"] { --app-top: env(safe-area-inset-top); --app-bot: calc(var(--lg-dock-height, 66px) + var(--lg-dock-bottom, 12px) + 8px); }
 
 /* Phone frame: full-bleed on phones, a centered device column on wide screens
    (handy for the ?app=1 browser preview). Fixed chrome aligns to this column. */

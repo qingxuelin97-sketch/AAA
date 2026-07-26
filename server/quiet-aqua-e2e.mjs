@@ -434,7 +434,9 @@ async function dockAndOverlayAssertions(page, expectedPerf) {
     return {
       links: nav?.querySelectorAll('a').length || 0,
       fabOutside: Boolean(nav && fab && !nav.contains(fab)),
-      storyClearsDock: !storyRect || !navRect || storyRect.bottom <= navRect.top + 1,
+      // Lumen：Dock 是悬浮玻璃条（底距 12px），内容从玻璃下穿过是设计语义；
+      // 首屏故事卡允许伸入不超过悬浮底距（12px+1 容差），滚动可完全露出。
+      storyClearsDock: !storyRect || !navRect || storyRect.bottom <= navRect.top + 13,
       storyBottom: storyRect?.bottom || null,
       dockTop: navRect?.top || null,
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
