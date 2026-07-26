@@ -34,6 +34,11 @@ import './styles/app-experience-v3.css';
 // Liuli v5 HIG re-skin: typography, grouped lists, segmented controls, sheets,
 // causal motion and dark parity. App-fenced only.
 import './styles/app-hig-v5.css';
+// Lumen Glass per-stage screen layers (S3 primary tabs / S4 immersive+chat /
+// S5 identity+creation), then the material composition layer as final authority.
+import './styles/app-lumen-s3.css';
+import './styles/app-lumen-s4.css';
+import './styles/app-lumen-s5.css';
 // Lumen Glass material composition layer: glass classes, ambient washes and
 // legacy accent-id aliasing. Loads last as the final App authority.
 import './styles/app-lumen-materials.css';
