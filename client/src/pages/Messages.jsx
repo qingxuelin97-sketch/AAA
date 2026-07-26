@@ -22,7 +22,7 @@ import { tick } from '../appgestures.js';
 import { useAppOverlay } from '../overlay.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
 import {
-  Bell, ChevronRight, Heart, MessageCircle, Search, UserRound, Users, X, Flame, Ellipsis
+  Bell, BellOff, ChevronRight, Heart, MessageCircle, Pin, Search, UserRound, Users, X, Flame, Ellipsis
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -80,6 +80,12 @@ function AppConversationRow({ cv, nav, onDelete, onPress }) {
         <span className="msgs-conv-meta">
           {time && <time dateTime={cv.updated_at || cv.last_message_at || cv.last_at}>{time}</time>}
           {cv.affinity ? <span className="msgs-aff"><Flame size={11} /> {cv.affinity}</span> : null}
+          {(cv.pinned || cv.muted) ? (
+            <span className="msgs-marks">
+              {cv.pinned ? <Pin size={11} aria-label="已置顶" /> : null}
+              {cv.muted ? <BellOff size={11} aria-label="已免打扰" /> : null}
+            </span>
+          ) : null}
         </span>
       </button>
       <AppIconButton className="msgs-del" onClick={event => onDelete(event, cv)} label={`管理与${cv.character_name || '角色'}的对话`}>
@@ -139,6 +145,12 @@ export default function Messages() {
     return api('/chat/conversations')
       .then(d => setConvs(d.conversations || []))
       .catch((error) => { setConvs([]); setConvError(error.message || '暂时无法载入对话'); });
+  };
+  // S7-G10 会话整理：置顶 / 免打扰标记翻转（PATCH 只改标记不 bump 排序时间）
+  const toggleConvMark = (cv, key) => {
+    api('/chat/conversations/' + cv.id, { method: 'PATCH', body: { [key]: cv[key] ? 0 : 1 } })
+      .then(() => { tick(6); loadConvs(); })
+      .catch((error) => toast(error.message || '操作失败，请稍后重试', 'err'));
   };
   useEffect(() => {
     loadConvs();
@@ -361,6 +373,8 @@ export default function Messages() {
             ...(pressMenu.cv.character_id
               ? [{ label: '查看角色', onSelect: () => nav('/character/' + pressMenu.cv.character_id) }]
               : []),
+            { label: pressMenu.cv.pinned ? '取消置顶' : '置顶对话', onSelect: () => toggleConvMark(pressMenu.cv, 'pinned') },
+            { label: pressMenu.cv.muted ? '取消免打扰' : '免打扰', onSelect: () => toggleConvMark(pressMenu.cv, 'muted') },
             { label: '生成分享卡', onSelect: () => setShareCv(pressMenu.cv) },
             { label: '删除对话', danger: true, onSelect: () => setDeleteTarget(pressMenu.cv) },
           ]}

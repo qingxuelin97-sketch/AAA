@@ -196,6 +196,15 @@ assert.match(mockBackendSource, /path === '\/me\/weekly'[\s\S]*week_start/, 'the
 for (const key of ['week_start', 'active_days', 'gold_earned', 'gold_spent', 'new_friends', 'companion']) {
   assert.ok(meRouteSource.includes(key) && mockBackendSource.includes(key), `weekly recap field "${key}" must exist on both backends`);
 }
+/* ---- S7-G10 会话整理双轨配对 ---- */
+const chatRouteSource = await readFile(new URL('../server/routes/chat.js', import.meta.url), 'utf8');
+assert.match(chatRouteSource, /ORDER BY cv\.pinned DESC, cv\.updated_at DESC/, 'pinned conversations must sort first server-side');
+assert.match(chatRouteSource, /markOnly[\s\S]*if \(!markOnly\) db\.prepare\("UPDATE conversations SET updated_at/, 'pin/mute toggles must never bump the conversation sort timestamp');
+assert.match(mockBackendSource, /\(b\.pinned \|\| 0\) - \(a\.pinned \|\| 0\)/, 'the static mock must mirror pinned-first ordering');
+assert.match(mockBackendSource, /if \(!markOnly\) conv\.updated_at = now\(\)/, 'the static mock must mirror mark-only PATCH semantics');
+const dbSource = await readFile(new URL('../server/db.js', import.meta.url), 'utf8');
+assert.match(dbSource, /ALTER TABLE conversations ADD COLUMN pinned INTEGER DEFAULT 0/, 'the pinned column must ship as a migration');
+assert.match(dbSource, /ALTER TABLE conversations ADD COLUMN muted INTEGER DEFAULT 0/, 'the muted column must ship as a migration');
 assert.match(characterViewSource, /loadError[\s\S]*EmptyArt[\s\S]*nav\('\/library'\)/, 'character load failures must offer a real recovery empty state');
 const insightsSource = await readFile(new URL('./src/pages/Insights.jsx', import.meta.url), 'utf8');
 assert.match(insightsSource, /AppErrorState[\s\S]*onRetry=\{load\}/, 'Insights first-load failure must offer the unified App recovery state');
