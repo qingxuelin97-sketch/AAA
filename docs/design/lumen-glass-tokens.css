@@ -1,0 +1,163 @@
+/*
+ * 曜光玻璃 Lumen Glass v1.0 — App 壳设计令牌（替代 app-quiet-aqua-tokens.css 的角色）
+ * 仅 App 壳生效：所有选择器从 html[data-app="1"] 开始，Web 零影响。
+ * 主动作色（--lg-act*）是唯一随用户强调色漂移的语义；金/钻/珊瑚/玉/蓝/紫/玫瑰是内容语义，永不漂移。
+ * 材质规则：同一对象只允许 一层玻璃 + 一层发丝边 + 一道内高光；正文不叠两层玻璃。
+ */
+html[data-app="1"] {
+  color-scheme: light;
+
+  /* 基面（浅色） */
+  --lg-canvas: #EDEFF6;
+  --lg-grouped: #E3E7F0;
+  --lg-ink: #12151E;
+  --lg-ink-2: #525A6E;
+  --lg-ink-3: #7C8497;
+  --lg-hairline: rgb(16 22 40 / 10%);
+  --lg-finance: #1B2233;          /* 资产仪表实体，深浅主题共用深面 */
+  --lg-finance-ink: #F7FAFF;
+
+  /* 玻璃三层 + 选中 */
+  --lg-glass-1: rgb(255 255 255 / 58%);   /* L1 承载层：列表/表单/正文面 */
+  --lg-glass-2: rgb(255 255 255 / 78%);   /* L2 浮起层：Sheet/Modal/菜单/选中卡 */
+  --lg-glass-3: rgb(250 251 255 / 60%);   /* L3 系统层：Dock/导航条/输入岛/保存条 */
+  --lg-glass-sel: rgb(255 255 255 / 92%); /* 分段控件选中片 */
+  --lg-blur: blur(26px) saturate(170%);
+  --lg-blur-s: blur(14px) saturate(150%);
+  --lg-glass-shadow-1: inset 0 0 0 1px rgb(255 255 255 / 70%), inset 0 1px 0 rgb(255 255 255 / 90%), 0 6px 18px rgb(18 24 44 / 10%);
+  --lg-glass-shadow-2: inset 0 0 0 1px rgb(255 255 255 / 82%), inset 0 1px 0 rgb(255 255 255 / 95%), 0 14px 34px rgb(18 24 44 / 14%);
+  --lg-glass-shadow-3: inset 0 0 0 1px rgb(255 255 255 / 78%), inset 0 1px 0 rgb(255 255 255 / 92%), 0 -1px 24px rgb(18 24 44 / 12%);
+
+  /* 环境光晕（页面最底层，媒体页除外） */
+  --lg-ambient: radial-gradient(120% 82% at 10% -10%, oklch(.72 .13 278 / 45%), transparent 62%), radial-gradient(96% 66% at 96% 4%, oklch(.80 .10 205 / 38%), transparent 60%), radial-gradient(130% 74% at 46% 112%, oklch(.78 .10 322 / 32%), transparent 62%);
+  --lg-ambient-warm: radial-gradient(120% 82% at 8% -10%, oklch(.85 .11 82 / 48%), transparent 62%), radial-gradient(100% 70% at 98% 10%, oklch(.78 .11 32 / 32%), transparent 60%), radial-gradient(130% 74% at 50% 114%, oklch(.78 .09 300 / 26%), transparent 62%);
+  --lg-ambient-cool: radial-gradient(120% 82% at 12% -8%, oklch(.80 .10 215 / 44%), transparent 62%), radial-gradient(100% 70% at 96% 6%, oklch(.76 .11 258 / 32%), transparent 60%), radial-gradient(130% 74% at 44% 112%, oklch(.82 .09 178 / 26%), transparent 62%);
+  --lg-ambient-rose: radial-gradient(120% 82% at 10% -10%, oklch(.78 .11 348 / 42%), transparent 62%), radial-gradient(100% 70% at 96% 8%, oklch(.78 .11 300 / 30%), transparent 60%), radial-gradient(130% 74% at 48% 112%, oklch(.80 .10 26 / 26%), transparent 62%);
+
+  /* 主动作（默认 iris；仅此组随 data-accent 变化） */
+  --lg-act: oklch(.52 .17 278);
+  --lg-act-ink: #ffffff;
+  --lg-act-soft: oklch(.52 .17 278 / 12%);
+  --lg-focus: oklch(.52 .17 278);
+
+  /* 内容语义（不随强调色漂移） */
+  --lg-gold: oklch(.58 .13 82);      /* 金币/会员/稀有/奖励 */
+  --lg-dia: oklch(.55 .12 215);      /* 钻石/充值 */
+  --lg-coral: oklch(.55 .19 25);     /* 未读/危险/重要 */
+  --lg-jade: oklch(.52 .12 158);     /* 成功/在线/签到/免费 */
+  --lg-azure: oklch(.53 .13 240);    /* 私信/关系/世界书 */
+  --lg-violet: oklch(.52 .16 305);   /* 创作/编辑/AI 生成 */
+  --lg-rose: oklch(.53 .14 350);     /* 喜欢/收藏 */
+
+  /* 占位与骨架 */
+  --lg-ph: repeating-linear-gradient(135deg, rgb(16 22 40 / 4%) 0 7px, rgb(16 22 40 / 9%) 7px 14px);
+  --lg-skeleton: linear-gradient(90deg, rgb(16 22 40 / 5%) 0%, rgb(16 22 40 / 10%) 50%, rgb(16 22 40 / 5%) 100%);
+  --lg-scrim: rgb(6 8 14 / 44%);
+
+  /* 字体与字阶（不使用/分发 SF 字体） */
+  --lg-font-ui: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+  --lg-font-serif: "Songti SC", "SimSun", "Noto Serif SC", serif; /* 仅小说/剧场正文 */
+  --lg-type-hero: 34px;      /* 一级页大标题 700 / -2% 字距 */
+  --lg-type-display: 28px;
+  --lg-type-title: 22px;
+  --lg-type-section: 17px;
+  --lg-type-body: 15px;
+  --lg-type-meta: 13px;
+
+  /* 几何 */
+  --lg-space-1: 4px; --lg-space-2: 8px; --lg-space-3: 12px;
+  --lg-space-4: 16px; --lg-space-5: 20px; --lg-space-6: 24px;
+  --lg-r-xs: 8px; --lg-r-sm: 10px; --lg-r-control: 12px; --lg-r-row: 14px;
+  --lg-r-card: 18px; --lg-r-panel: 20px; --lg-r-sheet: 26px; --lg-r-pill: 999px;
+  --lg-control-min: 44px;
+  --lg-control-submit: 48px;
+  --lg-dock-height: 66px;
+  --lg-dock-bottom: max(12px, env(safe-area-inset-bottom));
+
+  /* 动效 */
+  --lg-ease: cubic-bezier(.2, .8, .2, 1);
+  --lg-dur-press: 80ms;
+  --lg-dur-state: 240ms;
+  --lg-dur-push: 320ms;
+  --lg-dur-sheet: 380ms;
+  --lg-dur-shared: 560ms;   /* 发现→详情 共享媒体转场，一次性 */
+  --lg-dur-entity: 680ms;   /* 资产/SVIP 实体入场光线，一次性 */
+}
+
+/* ── 深色 ──────────────────────────────────── */
+html[data-app="1"][data-theme="dark"] {
+  color-scheme: dark;
+  --lg-canvas: #0A0C12;
+  --lg-grouped: #10131B;
+  --lg-ink: #F2F4F9;
+  --lg-ink-2: #A8B0C2;
+  --lg-ink-3: #767E92;
+  --lg-hairline: rgb(255 255 255 / 10%);
+  --lg-finance: #141926;
+
+  --lg-glass-1: rgb(255 255 255 / 5.5%);
+  --lg-glass-2: rgb(255 255 255 / 9%);
+  --lg-glass-3: rgb(14 17 25 / 52%);
+  --lg-glass-sel: rgb(255 255 255 / 14%);
+  --lg-blur: blur(28px) saturate(150%);
+  --lg-blur-s: blur(16px) saturate(140%);
+  --lg-glass-shadow-1: inset 0 0 0 1px rgb(255 255 255 / 10%), inset 0 1px 0 rgb(255 255 255 / 13%), 0 8px 24px rgb(0 0 0 / 34%);
+  --lg-glass-shadow-2: inset 0 0 0 1px rgb(255 255 255 / 14%), inset 0 1px 0 rgb(255 255 255 / 18%), 0 16px 40px rgb(0 0 0 / 46%);
+  --lg-glass-shadow-3: inset 0 0 0 1px rgb(255 255 255 / 12%), inset 0 1px 0 rgb(255 255 255 / 16%), 0 -1px 30px rgb(0 0 0 / 50%);
+
+  --lg-ambient: radial-gradient(120% 82% at 10% -10%, oklch(.58 .16 278 / 38%), transparent 62%), radial-gradient(96% 66% at 96% 4%, oklch(.62 .13 205 / 22%), transparent 60%), radial-gradient(130% 74% at 46% 112%, oklch(.56 .13 322 / 24%), transparent 62%);
+  --lg-ambient-warm: radial-gradient(120% 82% at 8% -10%, oklch(.62 .14 78 / 34%), transparent 62%), radial-gradient(100% 70% at 98% 10%, oklch(.55 .14 30 / 22%), transparent 60%), radial-gradient(130% 74% at 50% 114%, oklch(.55 .12 300 / 18%), transparent 62%);
+  --lg-ambient-cool: radial-gradient(120% 82% at 12% -8%, oklch(.60 .13 215 / 34%), transparent 62%), radial-gradient(100% 70% at 96% 6%, oklch(.58 .14 258 / 24%), transparent 60%), radial-gradient(130% 74% at 44% 112%, oklch(.58 .11 178 / 18%), transparent 62%);
+  --lg-ambient-rose: radial-gradient(120% 82% at 10% -10%, oklch(.58 .14 348 / 34%), transparent 62%), radial-gradient(100% 70% at 96% 8%, oklch(.58 .14 300 / 22%), transparent 60%), radial-gradient(130% 74% at 48% 112%, oklch(.58 .12 26 / 18%), transparent 62%);
+
+  --lg-act: oklch(.78 .13 278);
+  --lg-act-ink: #0B0C18;
+  --lg-act-soft: oklch(.78 .13 278 / 18%);
+  --lg-focus: oklch(.84 .11 278);
+
+  --lg-gold: oklch(.83 .12 85);
+  --lg-dia: oklch(.82 .10 215);
+  --lg-coral: oklch(.76 .15 25);
+  --lg-jade: oklch(.80 .11 158);
+  --lg-azure: oklch(.80 .11 240);
+  --lg-violet: oklch(.78 .12 305);
+  --lg-rose: oklch(.79 .11 350);
+
+  --lg-ph: repeating-linear-gradient(135deg, rgb(255 255 255 / 3%) 0 7px, rgb(255 255 255 / 7%) 7px 14px);
+  --lg-skeleton: linear-gradient(90deg, rgb(255 255 255 / 5%) 0%, rgb(255 255 255 / 11%) 50%, rgb(255 255 255 / 5%) 100%);
+  --lg-scrim: rgb(0 0 0 / 52%);
+}
+
+/* ── 用户强调色（只改 act/focus，浅色） ───────── */
+html[data-app="1"][data-accent="azure"]  { --lg-act: oklch(.52 .14 238); --lg-act-soft: oklch(.52 .14 238 / 12%); --lg-focus: oklch(.52 .14 238); }
+html[data-app="1"][data-accent="violet"] { --lg-act: oklch(.50 .17 312); --lg-act-soft: oklch(.50 .17 312 / 12%); --lg-focus: oklch(.50 .17 312); }
+html[data-app="1"][data-accent="jade"]   { --lg-act: oklch(.50 .12 158); --lg-act-soft: oklch(.50 .12 158 / 12%); --lg-focus: oklch(.50 .12 158); }
+html[data-app="1"][data-accent="clay"]   { --lg-act: oklch(.53 .14 44);  --lg-act-soft: oklch(.53 .14 44 / 12%);  --lg-focus: oklch(.53 .14 44); }
+
+/* ── 用户强调色（深色） ─────────────────────── */
+html[data-app="1"][data-theme="dark"][data-accent="azure"]  { --lg-act: oklch(.80 .11 238); --lg-act-ink: #06121C; --lg-act-soft: oklch(.80 .11 238 / 18%); --lg-focus: oklch(.86 .09 238); }
+html[data-app="1"][data-theme="dark"][data-accent="violet"] { --lg-act: oklch(.78 .12 312); --lg-act-ink: #150A18; --lg-act-soft: oklch(.78 .12 312 / 18%); --lg-focus: oklch(.84 .10 312); }
+html[data-app="1"][data-theme="dark"][data-accent="jade"]   { --lg-act: oklch(.80 .11 158); --lg-act-ink: #04140D; --lg-act-soft: oklch(.80 .11 158 / 18%); --lg-focus: oklch(.86 .09 158); }
+html[data-app="1"][data-theme="dark"][data-accent="clay"]   { --lg-act: oklch(.79 .12 44);  --lg-act-ink: #1A0C05; --lg-act-soft: oklch(.79 .12 44 / 18%);  --lg-focus: oklch(.85 .10 44); }
+
+/* ── lite 性能档：零 blur，玻璃回落为不透明分组底；层级/对比度/语义不变 ── */
+html[data-app="1"][data-perf="lite"] {
+  --lg-blur: none;
+  --lg-blur-s: none;
+  --lg-glass-1: var(--lg-grouped);
+  --lg-glass-2: var(--lg-grouped);
+  --lg-glass-3: var(--lg-grouped);
+  --lg-glass-sel: var(--lg-canvas);
+  --lg-ambient: none;
+  --lg-ambient-warm: none;
+  --lg-ambient-cool: none;
+  --lg-ambient-rose: none;
+}
+
+/* ── reduced-motion：非必要运动清零（骨架 shimmer 与 loading 旋转保留最简形态） ── */
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] {
+    --lg-dur-press: 0ms; --lg-dur-state: 0ms; --lg-dur-push: 0ms;
+    --lg-dur-sheet: 0ms; --lg-dur-shared: 0ms; --lg-dur-entity: 0ms;
+  }
+}
