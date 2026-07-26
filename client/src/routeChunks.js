@@ -45,7 +45,9 @@ export function preheat() {
 // —— 注册表本体（与 App.jsx 路由一一对应）——
 // hot = APP 壳高频页：四路一级 tab + 高频二级页（沿用原 AppLayout 预热清单）。
 export const loaders = {
-  Home:            chunk(/^\/$/, () => import('./pages/Home.jsx')),
+  // Home 已退出 '/' 路由（Web 壳由 WebHome 接管）：不再进 warm/预热注册表，
+  // 但保留裸 loader —— App.jsx 仍 lazyRetry(L.Home)，删键会直接崩构建。
+  Home:            () => import('./pages/Home.jsx'),
   WebHome:         chunk(/^\/$/, () => import('./pages/WebHome.jsx')),
   DiscoverFeed:    chunk(/^\/$/, () => import('./pages/DiscoverFeed.jsx'), { hot: true }),
   AppHome:         chunk(/^\/today$/, () => import('./pages/AppHome.jsx'), { hot: true }),
