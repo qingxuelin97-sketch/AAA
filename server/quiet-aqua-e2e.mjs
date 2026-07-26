@@ -1193,6 +1193,264 @@ async function pressMenuAssertions(browser, base) {
   await page.close();
 }
 
+// S7-G10 · 周报卡：有故事即出现，7 根条形 + 整图文字替代 + 统计行 +
+// 最相伴角色入口（点击应落到角色页）。
+async function weeklyRecapAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/today', '.qa-weekly');
+  const recap = await page.evaluate(() => ({
+    bars: document.querySelectorAll('.qa-weekly-bar').length,
+    todayBar: document.querySelectorAll('.qa-weekly-bar.today').length,
+    alt: document.querySelector('.qa-weekly-bars')?.getAttribute('aria-label') || '',
+    stats: document.querySelectorAll('.qa-weekly-stats span').length,
+    companion: Boolean(document.querySelector('.qa-weekly-comp')),
+  }));
+  assert(recap.bars === 7 && recap.todayBar === 1, '周报条形数量异常', JSON.stringify(recap));
+  assert(recap.alt.includes('本周逐日消息') && recap.stats >= 4, '周报统计行或文字替代缺失', JSON.stringify(recap));
+  assert(recap.companion, '演示数据下最相伴角色行应存在');
+  await page.evaluate(() => { document.querySelector('.qa-weekly').scrollIntoView({ block: 'center' }); });
+  await saveScreenshot(page, 'weekly-recap-390x844-light.png');
+
+  await page.evaluate(() => document.querySelector('.qa-weekly-comp').click());
+  await page.waitForFunction(() => location.hash.startsWith('#/character/'), { timeout: 8000 });
+
+  assert(page.__qaErrors.length === 0, '周报卡流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
+// S7-G10 · 钱包日历入口：wallet 光语境 streak 行 → 日历 Sheet，
+// 月导航往返后回到当月且今日格仍在。
+async function walletCalendarAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/wallet', '.qa-streak--wallet');
+  await page.click('.qa-streak--wallet');
+  await appModalAssertions(page, '.qa-cal', 'wallet check-in calendar sheet');
+  const startMonth = await page.$eval('.qa-cal-month', (el) => el.textContent);
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.qa-cal-nav .qa-icon-button')]
+      .find((b) => b.getAttribute('aria-label') === '上一月')?.click();
+  });
+  await page.waitForFunction((prev) => {
+    const label = document.querySelector('.qa-cal-month')?.textContent;
+    return label && label !== prev && label !== '…';
+  }, { timeout: 8000 }, startMonth);
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.qa-cal-nav .qa-icon-button')]
+      .find((b) => b.getAttribute('aria-label') === '下一月')?.click();
+  });
+  await page.waitForFunction((prev) => document.querySelector('.qa-cal-month')?.textContent === prev, { timeout: 8000 }, startMonth);
+  const back = await page.evaluate(() => ({
+    headers: document.querySelectorAll('.qa-cal-wd').length,
+    nextDisabled: [...document.querySelectorAll('.qa-cal-nav .qa-icon-button')]
+      .some((b) => b.disabled && b.getAttribute('aria-label') === '下一月'),
+  }));
+  assert(back.headers === 7 && back.nextDisabled, '钱包日历月导航往返状态异常', JSON.stringify(back));
+
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.qa-cal'), { timeout: 5000 });
+
+  assert(page.__qaErrors.length === 0, '钱包日历流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
+// S7-G10 · 台词卡：聊天气泡长按面板 App 分支入口 → 1080×1440 预览。
+async function quoteCardAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/messages', '.msgs-conv--app .msgs-conv-main');
+  await page.evaluate(() => document.querySelector('.msgs-conv--app .msgs-conv-main').click());
+  await page.waitForSelector('.bubble', { visible: true, timeout: 10000 });
+  const box = await page.evaluate(() => {
+    const bubbles = [...document.querySelectorAll('.bubble')];
+    const el = bubbles[bubbles.length - 1];
+    el.scrollIntoView({ block: 'center' });
+    const rect = el.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  });
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  await page.touchscreen.touchStart(box.x, box.y);
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  await page.touchscreen.touchEnd();
+  await page.waitForSelector('.msg-sheet', { visible: true, timeout: 5000 });
+  const hasEntry = await page.evaluate(() => {
+    const btn = [...document.querySelectorAll('.ms-row')].find((b) => b.textContent.includes('生成台词卡'));
+    if (btn) btn.click();
+    return Boolean(btn);
+  });
+  assert(hasEntry, '长按面板缺少台词卡入口');
+  await page.waitForSelector('.qa-share-preview', { visible: true, timeout: 15000 });
+  await page.waitForFunction(() => {
+    const img = document.querySelector('.qa-share-preview');
+    return img && img.naturalWidth === 1080 && img.naturalHeight === 1440;
+  }, { timeout: 10000 });
+  await saveScreenshot(page, 'quote-card-390x844-light.png');
+
+  assert(page.__qaErrors.length === 0, '台词卡流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
+// S7-G10 · Gallery S7 展区：五展区在位；错误演示真 busy 循环；
+// 长按演示弹 role=menu；示例台词卡合成 1080×1440。
+async function galleryS7Assertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/app-controls', '.qa-gallery');
+  const sections = await page.evaluate(() =>
+    ['gallery-s7-empty', 'gallery-s7-streak', 'gallery-s7-medal', 'gallery-s7-weekly', 'gallery-s7-press']
+      .filter((id) => !document.getElementById(id)));
+  assert(sections.length === 0, 'Gallery S7 展区缺失', JSON.stringify(sections));
+
+  // 错误演示：重试 → busy → 1.2s 后归位
+  await page.evaluate(() => {
+    document.getElementById('gallery-s7-empty').scrollIntoView({ block: 'center' });
+    [...document.querySelectorAll('.qa-error-state .qa-button')].at(-1)?.click();
+  });
+  await page.waitForFunction(() => document.querySelector('.qa-error-state .qa-button[disabled], .qa-error-state .qa-button[data-loading="true"], .qa-error-state .qa-button[aria-busy="true"]'), { timeout: 5000 });
+  await page.waitForFunction(() => !document.querySelector('.qa-error-state .qa-button[disabled], .qa-error-state .qa-button[data-loading="true"], .qa-error-state .qa-button[aria-busy="true"]'), { timeout: 8000 });
+
+  // 长按演示 → role=menu 三条目。先等图片装载完（上方空态 PNG 异步
+  // 落位会推移版面），再在触摸前的最后一刻取坐标，避免测完即漂移。
+  await page.evaluate(() => Promise.all(
+    [...document.images].filter((img) => !img.complete)
+      .map((img) => new Promise((resolve) => { img.onload = img.onerror = resolve; })),
+  ));
+  await page.evaluate(() => {
+    document.querySelector('section[aria-labelledby="gallery-s7-press"] .qa-button')
+      .scrollIntoView({ block: 'center', behavior: 'instant' });
+  });
+  await page.waitForFunction(() => {
+    const rect = document.querySelector('section[aria-labelledby="gallery-s7-press"] .qa-button').getBoundingClientRect();
+    return rect.top > 0 && rect.bottom < window.innerHeight;
+  }, { timeout: 5000 });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const anchor = await page.evaluate(() => {
+    const rect = document.querySelector('section[aria-labelledby="gallery-s7-press"] .qa-button').getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  });
+  await page.touchscreen.touchStart(anchor.x, anchor.y);
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  await page.touchscreen.touchEnd();
+  await page.waitForSelector('.qa-press-menu', { visible: true, timeout: 5000 });
+  const items = await page.evaluate(() => [...document.querySelectorAll('.qa-press-item')].map((b) => b.textContent.trim()));
+  assert(items.length === 3 && items.some((t) => t.includes('删除')), 'Gallery 长按演示菜单条目异常', JSON.stringify(items));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.qa-press-menu'), { timeout: 5000 });
+
+  // 示例台词卡
+  await page.evaluate(() => {
+    [...document.querySelectorAll('section[aria-labelledby="gallery-s7-press"] .qa-button')]
+      .find((b) => b.textContent.includes('生成示例台词卡'))?.click();
+  });
+  await page.waitForFunction(() => document.querySelector('.qa-share-preview')?.naturalWidth === 1080, { timeout: 15000 });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.qa-share-sheet'), { timeout: 5000 });
+
+  assert(page.__qaErrors.length === 0, 'Gallery S7 展区流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
+// S7-G10 · 会话整理：长按置顶 → 行标记与列表首位；免打扰标记；标签随态翻转。
+async function conversationMarksAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/messages', '.msgs-conv--app .msgs-conv-main');
+  const pressRow = async () => {
+    const row = await page.$('.msgs-conv--app .msgs-conv-main');
+    const rect = await row.boundingBox();
+    await page.touchscreen.touchStart(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await page.touchscreen.touchEnd();
+    await page.waitForSelector('.qa-press-menu', { visible: true, timeout: 5000 });
+  };
+
+  await pressRow();
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.qa-press-item')].find((b) => b.textContent.includes('置顶对话'))?.click();
+  });
+  await page.waitForSelector('.msgs-marks [aria-label="已置顶"]', { timeout: 8000 });
+
+  await pressRow();
+  const flipped = await page.evaluate(() => {
+    const labels = [...document.querySelectorAll('.qa-press-item')].map((b) => b.textContent.trim());
+    [...document.querySelectorAll('.qa-press-item')].find((b) => b.textContent.includes('免打扰'))?.click();
+    return labels;
+  });
+  assert(flipped.some((t) => t.includes('取消置顶')), '置顶后菜单标签未翻转', JSON.stringify(flipped));
+  await page.waitForSelector('.msgs-marks [aria-label="已免打扰"]', { timeout: 8000 });
+  await saveScreenshot(page, 'conversation-marks-390x844-light.png');
+
+  assert(page.__qaErrors.length === 0, '会话整理流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
+// S7-G10 · 会话草稿：输入落库（300ms 防抖）→ 列表「[草稿]」优先预览 →
+// 回会话恢复 → 清空即删。
+async function draftAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/messages', '.msgs-conv--app .msgs-conv-main');
+  await page.evaluate(() => document.querySelector('.msgs-conv--app .msgs-conv-main').click());
+  await page.waitForSelector('textarea', { visible: true, timeout: 10000 });
+  await page.type('textarea', 'E2E 草稿样本');
+  await page.waitForFunction(() => Object.keys(localStorage).some((k) => k.startsWith('huanyu_draft_')), { timeout: 5000 });
+
+  await page.goto(`${base}/?app=1#/messages`);
+  await page.waitForSelector('.msgs-draft', { timeout: 10000 });
+  const preview = await page.$eval('.msgs-conv-tx span', (el) => el.textContent);
+  assert(preview.includes('草稿') && preview.includes('E2E 草稿样本'), '会话行草稿预览异常', preview);
+
+  await page.evaluate(() => document.querySelector('.msgs-conv--app .msgs-conv-main').click());
+  await page.waitForFunction(() => document.querySelector('textarea')?.value.includes('E2E 草稿样本'), { timeout: 8000 });
+  await page.evaluate(() => {
+    const ta = document.querySelector('textarea');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+    setter.call(ta, '');
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForFunction(() => !Object.keys(localStorage).some((k) => k.startsWith('huanyu_draft_')), { timeout: 5000 });
+
+  assert(page.__qaErrors.length === 0, '会话草稿流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
 // S7-G6 · 分享卡：角色页菜单入口 → canvas 合成 1080×1440 预览 → 出口可用
 // → 关闭回焦。canvas 文字反锯齿跨环境不稳，不建像素基线，只验尺寸与无错。
 async function shareCardAssertions(browser, base) {
@@ -1596,6 +1854,12 @@ async function run() {
     await achievementsAssertions(browser, base);
     await shareCardAssertions(browser, base);
     await pressMenuAssertions(browser, base);
+    await weeklyRecapAssertions(browser, base);
+    await walletCalendarAssertions(browser, base);
+    await quoteCardAssertions(browser, base);
+    await galleryS7Assertions(browser, base);
+    await conversationMarksAssertions(browser, base);
+    await draftAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);
