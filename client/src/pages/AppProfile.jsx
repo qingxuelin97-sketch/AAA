@@ -92,6 +92,15 @@ export default function AppProfile() {
   const [stats, setStats] = useState(null);
   const [unread, setUnread] = useState(0);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false); // S7-G10 新功能 Sheet
+  // 未读点：本版本未看过「新功能」就亮，打开即熄（本机记忆）
+  const [whatsNewSeen, setWhatsNewSeen] = useState(() => {
+    try { return localStorage.getItem('huanyu_whatsnew_seen') === 'S7'; } catch { return true; }
+  });
+  const openWhatsNew = () => {
+    setWhatsNewOpen(true);
+    setWhatsNewSeen(true);
+    try { localStorage.setItem('huanyu_whatsnew_seen', 'S7'); } catch { /* */ }
+  };
   // S7-G10 相伴一览：成就完成度 + 连签 + 本周消息（失败静默隐藏）
   const [glance, setGlance] = useState(null);
   useEffect(() => {
@@ -395,7 +404,9 @@ export default function AppProfile() {
 
       <div className="pf-foot">
         {user?.is_gm && <AppButton className="pf-foot-btn" variant="secondary" onClick={() => nav('/admin')}><Shield size={15} /> 管理后台</AppButton>}
-        <AppButton className="pf-foot-btn" variant="secondary" onClick={() => setWhatsNewOpen(true)}><Megaphone size={15} /> 新功能</AppButton>
+        <AppButton className="pf-foot-btn" variant="secondary" onClick={openWhatsNew}>
+          <Megaphone size={15} /> 新功能{!whatsNewSeen && <i className="pf-whatsnew-dot" aria-label="有未读的新功能介绍" />}
+        </AppButton>
         <AppButton className="pf-foot-btn" variant="secondary" onClick={() => nav('/help')}><LifeBuoy size={15} /> 帮助中心</AppButton>
         {installReady && <AppButton className="pf-foot-btn" variant="secondary" onClick={install}><Download size={15} /> 安装到桌面</AppButton>}
         <AppButton className="pf-foot-btn danger" variant="danger" tone="danger" onClick={logout}><LogOut size={15} /> 退出登录</AppButton>

@@ -251,6 +251,29 @@ export default function AppControlsGallery() {
           </div>
         </section>
 
+        <section className="qa-gallery__section" aria-labelledby="gallery-s7-companion">
+          <h2 id="gallery-s7-companion">相伴档案与名次</h2>
+          <div className="qa-bond qa-gallery__bond" aria-label="足迹卡示例">
+            <div className="qa-bond-head"><Sparkles size={14} aria-hidden="true" /> 与 TA 的足迹</div>
+            <div className="qa-bond-row">
+              <span>好感度 <b>42</b></span>
+              <span>相遇于 <b>2026-06-30</b></span>
+              <span>共 <b>3</b> 段对话</span>
+            </div>
+          </div>
+          <div className="qa-glance" role="group" aria-label="相伴一览示例">
+            <span className="qa-glance-cell"><i className="qa-glance-ring" style={{ '--p': '40%' }} aria-hidden="true" /><span><b>12/30</b>成就</span></span>
+            <span className="qa-glance-cell"><span><b>5 天</b>连签</span></span>
+            <span className="qa-glance-cell"><span><b>16 条</b>本周相伴</span></span>
+          </div>
+          <div className="qa-lb-mine qa-gallery__lbmine" aria-label="我的名次示例">
+            <Award size={16} aria-hidden="true" />
+            <span className="qa-lb-mine-copy">我的创作声望</span>
+            <b>第 1 名</b>
+            <small>8,276 声望</small>
+          </div>
+        </section>
+
         <section className="qa-gallery__section" aria-labelledby="gallery-s7-press">
           <h2 id="gallery-s7-press">长按菜单与分享卡</h2>
           <div className="qa-gallery__row">

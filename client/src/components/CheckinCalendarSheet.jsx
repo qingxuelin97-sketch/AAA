@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { api } from '../api.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { isAppMode } from '../appmode.js';
-import { streakSealUrl } from '../art.jsx';
+import { streakSealForTier } from '../art.jsx';
 import { AppIconButton } from './AppControls.jsx';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -75,12 +75,18 @@ export default function CheckinCalendarSheet({ onClose, returnFocusRef }) {
       >
         <div className="app-sheet-grip" aria-hidden="true" />
         <header className="qa-cal-head">
-          <img className="qa-cal-seal" src={streakSealUrl} width={54} height={54} alt="" draggable="false" />
+          <img className="qa-cal-seal" src={streakSealForTier(data?.streak || 0)} width={54} height={54} alt="" draggable="false" />
           <div className="qa-cal-head-copy">
             <b>签到日历</b>
             <span className="qa-cal-streak">
               <Flame size={13} aria-hidden="true" /> 连续 {data?.streak ?? '—'} 天 · 本月 {data?.month_total ?? '—'} 次
             </span>
+            {/* S7-G10 里程碑地平线：下一档（7 的倍数 / 30 / 100）还差几天 */}
+            {Number.isFinite(data?.streak) && (() => {
+              const s = data.streak;
+              const target = Math.min(...[Math.ceil((s + 1) / 7) * 7, 30, 100].filter((t) => t > s));
+              return <span className="qa-cal-horizon">距 {target} 天里程碑还差 {target - s} 天</span>;
+            })()}
           </div>
           <div className="qa-cal-nav">
             <AppIconButton label="上一月" disabled={!canPrev} onClick={() => canPrev && load(ymOf(idx - 1))}>

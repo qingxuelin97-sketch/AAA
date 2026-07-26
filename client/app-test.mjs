@@ -339,6 +339,12 @@ assert.match(friendsSource, /appMode \? bindDmPress\(pressPayload\) : \{\}/, 'DM
 assert.match(friendsSource, /huanyu_dmdraft_' \+ sel, text\)[\s\S]*localStorage\.removeItem\('huanyu_dmdraft_' \+ sel\)/, 'an emptied DM composer must delete its stored draft');
 assert.match(friendsSource, /if \(!appMode \|\| !sel\) return;[\s\S]*huanyu_dmdraft_/, 'DM drafts must stay App-gated');
 assert.match(groupRoomSource, /if \(!app\) return content;[\s\S]*gr-mention/, 'mention highlighting must never leak into the Web bubble DOM');
+/* ---- S7-G10 里程碑地平线 / 新功能未读点 / 分档印章沿用 ---- */
+assert.match(calendarSheetSource, /\[Math\.ceil\(\(s \+ 1\) \/ 7\) \* 7, 30, 100\]\.filter\(\(t\) => t > s\)/, 'the milestone horizon must target the nearest 7-multiple, 30 or 100');
+assert.match(calendarSheetSource, /streakSealForTier\(data\?\.streak \|\| 0\)/, 'the calendar seal must follow the milestone tier');
+assert.match(appProfileSource, /huanyu_whatsnew_seen'\) === 'S7'/, 'the whats-new dot must key on the current version');
+assert.match(appProfileSource, /pf-whatsnew-dot/, 'the unread dot must sit on the whats-new entry');
+assert.match(gallerySource, /gallery-s7-companion[\s\S]*qa-gallery__lbmine/, 'the gallery must exhibit the companion dossier family');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(
@@ -511,4 +517,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 250/250 passed');
+console.log('app invariants: 255/255 passed');

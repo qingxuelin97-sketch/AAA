@@ -1341,7 +1341,7 @@ async function galleryS7Assertions(browser, base) {
 
   await visit(page, '/app-controls', '.qa-gallery');
   const sections = await page.evaluate(() =>
-    ['gallery-s7-empty', 'gallery-s7-streak', 'gallery-s7-medal', 'gallery-s7-weekly', 'gallery-s7-press']
+    ['gallery-s7-empty', 'gallery-s7-streak', 'gallery-s7-medal', 'gallery-s7-weekly', 'gallery-s7-companion', 'gallery-s7-press']
       .filter((id) => !document.getElementById(id)));
   assert(sections.length === 0, 'Gallery S7 展区缺失', JSON.stringify(sections));
 

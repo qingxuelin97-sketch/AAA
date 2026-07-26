@@ -125,6 +125,24 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 签到月历 · 里程碑地平线 ---- */
+html[data-app="1"] .qa-cal-horizon {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--lg-ink-3);
+}
+
+/* ---- 我的页 · 新功能未读点 ---- */
+html[data-app="1"] .pf-whatsnew-dot {
+  width: 7px;
+  height: 7px;
+  margin-left: 2px;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-coral);
+  flex-shrink: 0;
+}
+
 /* ---- 群聊 · @提及高亮 ---- */
 html[data-app="1"] .gr-mention {
   color: var(--lg-act);
@@ -430,6 +448,17 @@ html[data-app="1"] .qa-gallery__medals {
 
 html[data-app="1"] .qa-gallery__weekly {
   max-width: 420px;
+}
+
+html[data-app="1"] .qa-gallery__bond,
+html[data-app="1"] .qa-gallery__lbmine {
+  margin-bottom: 12px;
+  max-width: 420px;
+}
+
+html[data-app="1"] .qa-gallery__lbmine {
+  margin-top: 12px;
+  margin-bottom: 0;
 }
 
 /* lite：玻璃卡回落不透明 grouped 面（与全局 lite 材质策略一致） */
