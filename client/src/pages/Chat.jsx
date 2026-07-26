@@ -30,6 +30,53 @@ function AffinityIcon({ level, size }) {
   return <Ic size={size} aria-hidden="true" />;
 }
 
+// D3 桌面三栏：角色档案正文（.cd-head + .cd-body）抽成本地组件，App 抽屉与
+// Web ≥1280px 常驻侧列共用同一份 JSX —— 类名/结构/文案零改动，纯代码搬家，
+// App 端抽屉渲染输出与抽取前逐字节等价。
+function CharPanelBody({ app, character, affinity, memories, newMem, setNewMem, addMemory, delMemory, onClose }) {
+  const af = affinityInfo(affinity);
+  return (
+    <>
+      <div className="cd-head">
+        <Avatar src={character?.avatar} name={character?.name} size={36} />
+        <b style={{ flex: 1 }}>{character?.name} · 档案</b>
+        <button className="speak" onClick={onClose}><X size={16} /></button>
+      </div>
+      <div className="cd-body">
+        <section>
+          <h4><Heart size={14} /> 好感度</h4>
+          <div className="af-big">{app ? <AffinityIcon level={af.level} size={16} /> : af.icon} Lv.{af.level} · {af.name}</div>
+          <div className="af-bar"><span style={{ width: af.pct + '%' }} /></div>
+          <p className="muted">好感值 {af.value}{af.nextAt ? ` · 距「${AFFINITY_LEVELS[af.level]?.name}」还需 ${af.nextAt - af.value}` : ' · 已是最高羁绊'}</p>
+        </section>
+        <section>
+          <h4><Brain size={14} /> 对话记忆 <span className="muted">角色会始终记住</span></h4>
+          {memories.length === 0 && <p className="muted" style={{ fontSize: 13 }}>还没有记忆。添加后会注入到每次对话，角色将牢记。</p>}
+          {memories.map(mm => (
+            <div className="mem-item" key={mm.id}><span>{mm.content}</span><button onClick={() => delMemory(mm.id)} title="删除"><X size={13} /></button></div>
+          ))}
+          <div className="mem-add">
+            <input className="input" value={newMem} placeholder="如：我叫小明，养了一只叫奶糖的猫" enterKeyHint="done"
+              onChange={e => setNewMem(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMemory(); } }} />
+            <button className="btn sm primary" onClick={addMemory}><Plus size={14} /> 记住</button>
+          </div>
+        </section>
+        <section>
+          <h4><BookOpen size={14} /> 世界书 / 设定</h4>
+          {(!character?.world || character.world.length === 0)
+            ? <p className="muted" style={{ fontSize: 13 }}>该角色未设置世界书条目。</p>
+            : character.world.map((w, i) => (
+              <div className="wb-item" key={i}>
+                <div className="wb-keys">{(w.keys || '常驻').split(',').map(k => k.trim()).filter(Boolean).map((k, j) => <span key={j}>{k}</span>)}</div>
+                <p>{w.content}</p>
+              </div>
+            ))}
+        </section>
+      </div>
+    </>
+  );
+}
+
 export default function Chat() {
   const app = isAppMode();
   const withAppClass = (base, hook) => app ? [base, hook].filter(Boolean).join(' ') : base;
@@ -78,6 +125,19 @@ export default function Chat() {
   const [affinity, setAffinity] = useState(0);
   const [memories, setMemories] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // D3 桌面三栏：≥1280px 时角色档案常驻右列（Web 壳专属，全部 !app 短路；
+  // 常驻列不是浮层，不纳入 anyOverlayOpen / 滚动锁 / Esc 逻辑）。
+  const [panelPinned, setPanelPinned] = useState(() => { try { return localStorage.getItem('huanyu_chat_panel') !== '0'; } catch { return true; } });
+  const [wide, setWide] = useState(() => !app && typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches);
+  useEffect(() => {
+    if (app || typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 1280px)');
+    const onChange = (e) => setWide(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const docked = !app && wide && panelPinned;
   const [newMem, setNewMem] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -575,7 +635,7 @@ export default function Chat() {
   const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
 
   return (
-    <div className={withAppClass('chat-layout' + (conv ? ' immersive' : ''), 'qa-chat-page')}>
+    <div className={withAppClass('chat-layout' + (conv ? ' immersive' : '') + (docked && conv ? ' has-side' : ''), 'qa-chat-page')}>
       <div className={'chat-list' + (conv ? ' hide-mobile' : '') + (listMini ? ' mini' : '')}>
         <div className="hd">
           {!listMini && <span style={{ flex: 1 }}>对话</span>}
@@ -629,7 +689,11 @@ export default function Chat() {
                 </div>
               </div>
               {!app && (() => { const af = affinityInfo(affinity); return (
-                <button className={'affinity-badge' + (afPulse ? ' pulse' : '')} onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
+                <button className={'affinity-badge' + (afPulse ? ' pulse' : '')} onClick={() => {
+                  // 宽屏 Web：徽章切换常驻侧列的钉住态；窄屏 Web / App：原样开抽屉。
+                  if (!app && wide) setPanelPinned(p => { const n = !p; try { localStorage.setItem('huanyu_chat_panel', n ? '1' : '0'); } catch { /* */ } return n; });
+                  else setDrawerOpen(true);
+                }} title="角色档案 · 好感度 / 记忆 / 世界书">
                   <span className="af-ic">{app ? <AffinityIcon level={af.level} size={12} /> : af.icon}</span>
                   <span className="af-tx"><b>{af.name}</b><i><em style={{ width: af.pct + '%' }} /></i></span>
                 </button>
@@ -984,52 +1048,27 @@ export default function Chat() {
               })()}
             </ChatComposer>
 
-          {drawerOpen && (() => { const af = affinityInfo(affinity); return (
+          {drawerOpen && !docked && (
             <>
               <div className="chat-drawer-mask" onClick={() => setDrawerOpen(false)} />
               <aside className="chat-drawer">
-                <div className="cd-head">
-                  <Avatar src={character?.avatar} name={character?.name} size={36} />
-                  <b style={{ flex: 1 }}>{character?.name} · 档案</b>
-                  <button className="speak" onClick={() => setDrawerOpen(false)}><X size={16} /></button>
-                </div>
-                <div className="cd-body">
-                  <section>
-                    <h4><Heart size={14} /> 好感度</h4>
-                    <div className="af-big">{app ? <AffinityIcon level={af.level} size={16} /> : af.icon} Lv.{af.level} · {af.name}</div>
-                    <div className="af-bar"><span style={{ width: af.pct + '%' }} /></div>
-                    <p className="muted">好感值 {af.value}{af.nextAt ? ` · 距「${AFFINITY_LEVELS[af.level]?.name}」还需 ${af.nextAt - af.value}` : ' · 已是最高羁绊'}</p>
-                  </section>
-                  <section>
-                    <h4><Brain size={14} /> 对话记忆 <span className="muted">角色会始终记住</span></h4>
-                    {memories.length === 0 && <p className="muted" style={{ fontSize: 13 }}>还没有记忆。添加后会注入到每次对话，角色将牢记。</p>}
-                    {memories.map(mm => (
-                      <div className="mem-item" key={mm.id}><span>{mm.content}</span><button onClick={() => delMemory(mm.id)} title="删除"><X size={13} /></button></div>
-                    ))}
-                    <div className="mem-add">
-                      <input className="input" value={newMem} placeholder="如：我叫小明，养了一只叫奶糖的猫" enterKeyHint="done"
-                        onChange={e => setNewMem(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMemory(); } }} />
-                      <button className="btn sm primary" onClick={addMemory}><Plus size={14} /> 记住</button>
-                    </div>
-                  </section>
-                  <section>
-                    <h4><BookOpen size={14} /> 世界书 / 设定</h4>
-                    {(!character?.world || character.world.length === 0)
-                      ? <p className="muted" style={{ fontSize: 13 }}>该角色未设置世界书条目。</p>
-                      : character.world.map((w, i) => (
-                        <div className="wb-item" key={i}>
-                          <div className="wb-keys">{(w.keys || '常驻').split(',').map(k => k.trim()).filter(Boolean).map((k, j) => <span key={j}>{k}</span>)}</div>
-                          <p>{w.content}</p>
-                        </div>
-                      ))}
-                  </section>
-                </div>
+                <CharPanelBody app={app} character={character} affinity={affinity} memories={memories}
+                  newMem={newMem} setNewMem={setNewMem} addMemory={addMemory} delMemory={delMemory}
+                  onClose={() => setDrawerOpen(false)} />
               </aside>
             </>
-          ); })()}
+          )}
         </>
       )}
       </div>
+      {/* D3 桌面三栏：≥1280px 且钉住时，角色档案常驻为第三列（非浮层）。 */}
+      {docked && conv && (
+        <aside className="chat-side">
+          <CharPanelBody app={app} character={character} affinity={affinity} memories={memories}
+            newMem={newMem} setNewMem={setNewMem} addMemory={addMemory} delMemory={delMemory}
+            onClose={() => { setPanelPinned(false); try { localStorage.setItem('huanyu_chat_panel', '0'); } catch { /* */ } }} />
+        </aside>
+      )}
       {marksOpen && (
         <Modal onClose={() => setMarksOpen(false)}>
           <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Bookmark size={18} /> 消息书签</h2>

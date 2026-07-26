@@ -1477,3 +1477,22 @@ html:not([data-app="1"]) .chat-skel {
     transform: none;
   }
 }
+
+/* ── 10. D3 桌面三栏：≥1280px 聊天页角色档案常驻右列（Web 壳围栏段） ──
+   .cd-head/.cd-body 等档案正文规则（web-modules.css）本就独立于 .chat-drawer
+   选择器，absolute/drawerIn 动画只挂在抽屉壳上，不会波及 .chat-side 内正文；
+   仅补正文占满剩余高度。列宽走 --lgw-chat-side-w 令牌（web-lumen-tokens.css）。 */
+html:not([data-app="1"]) .chat-side {
+  flex: 0 0 var(--lgw-chat-side-w);
+  width: var(--lgw-chat-side-w);
+  border-left: 1px solid var(--lg-hairline);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+html:not([data-app="1"]) .chat-side .cd-body { flex: 1; }
+/* 窄档兜底：1280–1439.98px 三栏并存时收窄会话列，保住消息区可读宽度 */
+@media (min-width: 1280px) and (max-width: 1439.98px) {
+  html:not([data-app="1"]) .chat-layout.has-side .chat-list:not(.mini) { width: 240px; }
+}
