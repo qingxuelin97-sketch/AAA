@@ -198,6 +198,42 @@ assert.match(quietTokens, /\[data-perf="lite"\][\s\S]*--qa-glass-chrome-blur:\s*
 const elevatedCss = await readFile(new URL('./src/styles/app-elevated.css', import.meta.url), 'utf8');
 assert.doesNotMatch(elevatedCss, /--gl-halo/, 'glass cards must not restore accent/dusk halo washes');
 assert.doesNotMatch(elevatedCss, /#22d3ee/i, 'the Liuli glass system must not reintroduce the cyan neon edge');
+
+/* ---- Liuli v5 anti-AI-residue guards over the legacy App layers ---- */
+const shellCss = await readFile(new URL('./src/styles/app-shell.css', import.meta.url), 'utf8');
+const renovCss = await readFile(new URL('./src/styles/app-renov.css', import.meta.url), 'utf8');
+const motionCss = await readFile(new URL('./src/styles/app-motion.css', import.meta.url), 'utf8');
+const legacyAppCss = [shellCss, elevatedCss, renovCss]
+  .map((css) => css.replace(/\/\*[\s\S]*?\*\//g, '')).join('\n');
+assert.doesNotMatch(
+  legacyAppCss,
+  /nth-(?:child|of-type)\([^)]*\)[^{]*\{[^}]*(?:linear-gradient|color-mix\(in srgb, var\(--(?:diamond|gold|dusk)\))/,
+  'legacy App layers must not reintroduce position-driven rainbow tinting',
+);
+const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls, quietPages, quietExperience,
+  await readFile(new URL('./src/chat/chat-app.css', import.meta.url), 'utf8'),
+].map((css) => css.replace(/\/\*[\s\S]*?\*\//g, '')).join('\n');
+assert.doesNotMatch(appLayerCss, /background-clip:\s*text/, 'App layers must not restore gradient text');
+// The unfenced `.cps-item.hue-*` palette block is Web-owned (the App fence
+// overrides it with semantic tones); exclude only those lines from the ban.
+const appLayerCssSansWebHue = appLayerCss.split('\n').filter((line) => !/^\.cps-item\.hue-/.test(line.trim())).join('\n');
+assert.doesNotMatch(appLayerCssSansWebHue, /#a78bfa|#7c3aed|#e11d48|#a21caf|#0e7490/i, 'the dead Tailwind rainbow hexes must stay dead in App-owned styling');
+const INFINITE_ALLOWLIST = new Set([
+  // status/loading loops — the only necessary cycles, they stop with their state
+  'appRouteSpin', 'call-pulse', 'caretBlink', 'caretBreath', 'chatCaret', 'chatTyping',
+  'gachaShake', 'liveRing', 'motionSkel', 'qa-spin', 'qa3RefreshSpin', 'qa3Skeleton',
+  'skel-shimmer', 'skel-spin', 'spin360',
+  // Web-owned legacy loops living unfenced in shared files; the App fence neutralises them
+  'chatKenburns', 'emptyFloat', 'insDrift', 'ringSlide', 'vmGoShine', 'vmShine', 'vmSpark',
+]);
+const infiniteNames = [...appLayerCss.matchAll(/animation:\s*([a-zA-Z][\w-]*)[^;]*\binfinite\b/g)].map((m) => m[1]);
+assert.deepEqual(
+  [...new Set(infiniteNames)].filter((name) => !INFINITE_ALLOWLIST.has(name)),
+  [],
+  'no new perpetual decorative animation may enter the App layers (extend the allowlist only for status loops)',
+);
+assert.match(quietExperience, /html\[data-app="1"\] \.chat-main \.cps-item\.hue-call/, 'the chat plus-panel must keep its App-fenced semantic-tone override');
+assert.match(quietExperience, /html\[data-app="1"\] \.ins-star \{ display: none/, 'shared decorative star drift must stay hidden inside the App shell');
 const quietTokenDefinitions = new Set([...quietTokens.matchAll(/(--qa-[a-z0-9-]+)\s*:/g)].map((match) => match[1]));
 const quietTokenUses = new Set([...(quietControls + quietPages + quietExperience).matchAll(/var\((--qa-[a-z0-9-]+)/g)].map((match) => match[1]));
 assert.deepEqual([...quietTokenUses].filter((name) => !quietTokenDefinitions.has(name)), [], 'every Quiet Aqua token reference must resolve in the single token authority');

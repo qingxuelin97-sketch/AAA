@@ -369,20 +369,20 @@ html[data-app="1"] .app-dock .app-fab {
   min-width: 52px;
   min-height: 52px;
   margin: 0 !important;
-  border: 1.5px solid var(--qa-semantic-blue) !important;
+  border: 1.5px solid var(--qa-brand-fill) !important;
   border-radius: 50% !important;
   background:
     radial-gradient(circle at 34% 22%, rgb(255 255 255 / 92%), transparent 38%),
     rgb(255 255 255 / 92%) !important;
-  color: var(--qa-semantic-blue) !important;
-  box-shadow: 0 0 0 7px var(--qa-canvas), 0 8px 20px rgb(30 80 104 / 18%) !important;
+  color: var(--qa-brand-fill) !important;
+  box-shadow: 0 0 0 7px var(--qa-canvas), 0 8px 20px rgb(21 52 120 / 18%) !important;
   transform: translateX(-50%) !important;
   pointer-events: auto;
 }
 
 html[data-app="1"] .app-dock .app-fab:active {
-  background: var(--qa-semantic-blue-soft) !important;
-  color: var(--qa-semantic-blue) !important;
+  background: var(--qa-brand-soft) !important;
+  color: var(--qa-brand-fill) !important;
   transform: translateX(-50%) scale(0.97) !important;
 }
 

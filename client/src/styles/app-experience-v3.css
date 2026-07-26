@@ -5288,3 +5288,53 @@ html[data-app="1"][data-perf="lite"] :where(.qa-script-detail-v4__topbar, .qa-sc
     transition-duration: .01ms !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Liuli v5 · 聊天 + 面板（.cps-*）App 围栏中和 —— Web 保留原 hue 渐变磁贴，
+   App 端按 ORACLE 语义色降噪：软色底 + 语义色图标，无渐变、无投影光。
+   hue → 语义映射：通话=成功绿 · 插图/旁白=创作靛 · 骰子/事件/朗读=奖励金 ·
+   礼物=互动珊瑚 · 档案/重掷=社交蓝 · 开场白=成功绿 · 音乐=收藏玫瑰 · 字号=石墨。
+   -------------------------------------------------------------------------- */
+html[data-app="1"] .chat-main .cps-item.hue-call    { --cps-a: var(--qa-success); --cps-b: var(--qa-success); }
+html[data-app="1"] .chat-main .cps-item.hue-illus   { --cps-a: var(--qa-semantic-indigo); --cps-b: var(--qa-semantic-indigo); }
+html[data-app="1"] .chat-main .cps-item.hue-dice    { --cps-a: var(--qa-semantic-gold); --cps-b: var(--qa-semantic-gold); }
+html[data-app="1"] .chat-main .cps-item.hue-gift    { --cps-a: var(--qa-semantic-coral); --cps-b: var(--qa-semantic-coral); }
+html[data-app="1"] .chat-main .cps-item.hue-narr    { --cps-a: var(--qa-semantic-indigo); --cps-b: var(--qa-semantic-indigo); }
+html[data-app="1"] .chat-main .cps-item.hue-event   { --cps-a: var(--qa-semantic-gold); --cps-b: var(--qa-semantic-gold); }
+html[data-app="1"] .chat-main .cps-item.hue-profile { --cps-a: var(--qa-semantic-blue); --cps-b: var(--qa-semantic-blue); }
+html[data-app="1"] .chat-main .cps-item.hue-greet   { --cps-a: var(--qa-success); --cps-b: var(--qa-success); }
+html[data-app="1"] .chat-main .cps-item.hue-regen   { --cps-a: var(--qa-semantic-blue); --cps-b: var(--qa-semantic-blue); }
+html[data-app="1"] .chat-main .cps-item.hue-read    { --cps-a: var(--qa-semantic-gold); --cps-b: var(--qa-semantic-gold); }
+html[data-app="1"] .chat-main .cps-item.hue-bgm     { --cps-a: var(--qa-semantic-rose); --cps-b: var(--qa-semantic-rose); }
+html[data-app="1"] .chat-main .cps-item.hue-font    { --cps-a: var(--qa-semantic-graphite); --cps-b: var(--qa-semantic-graphite); }
+html[data-app="1"] .chat-main .cps-ic {
+  background: color-mix(in srgb, var(--cps-b, var(--qa-brand-fill)) 12%, var(--qa-surface));
+  color: var(--cps-b, var(--qa-brand-fill));
+  box-shadow: none;
+}
+html[data-app="1"] .chat-main .cps-ic svg { filter: none; }
+html[data-app="1"] .chat-main.has-bg .cps-ic {
+  background: color-mix(in srgb, var(--cps-a, #ffffff) 24%, rgb(255 255 255 / 10%));
+  color: #ffffff;
+}
+html[data-app="1"] .chat-main .cps-badge { background: var(--qa-unread); }
+html[data-app="1"] .vm-go::before { animation: none; content: none; }
+
+/* Liuli v5 · 共享页面的装饰动画在 App 围栏内归零（Web 原样保留）。 */
+html[data-app="1"] .ins-star { display: none; }
+html[data-app="1"] .ring-track,
+html[data-app="1"] .ring-row.rev .ring-track { animation: none; }
+html[data-app="1"] .ins-hero {
+  background: var(--qa-surface);
+  border: 1px solid var(--qa-hairline);
+  box-shadow: var(--qa-shadow-1);
+}
+
+/* Liuli v5 · 身份徽章语义化：SVIP 在 App 内走会员金实体（Web 的紫红渐变不变）。 */
+html[data-app="1"] .idb-svip {
+  background: var(--qa-finance-surface);
+  color: var(--qa-semantic-gold);
+  border-color: color-mix(in srgb, var(--qa-semantic-gold) 40%, transparent);
+  box-shadow: none;
+}
+html[data-app="1"] .idb-vip { box-shadow: none; }

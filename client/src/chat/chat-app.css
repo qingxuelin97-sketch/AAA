@@ -63,12 +63,6 @@ html[data-app="1"] .chat-head .ch-av .avatar { border: 2px solid rgba(255, 255, 
 html[data-app="1"] .chat-head .ch-dot {
   position: relative; background: #34d399; box-shadow: none; animation: none;
 }
-html[data-app="1"] .chat-head .ch-dot::after {
-  content: ''; position: absolute; inset: -2px; border-radius: 50%;
-  border: 2px solid rgba(52, 211, 153, 0.55); pointer-events: none;
-  animation: chatDotRing 2.4s var(--chat-ease) infinite;
-}
-@keyframes chatDotRing { 0% { transform: scale(0.6); opacity: 0.9; } 70%, 100% { transform: scale(1.9); opacity: 0; } }
 /* 好感徽章进度条上色为品牌青（原为 accent），与头像环呼应 */
 html[data-app="1"] .chat-main .affinity-badge .af-tx i > em {
   background: linear-gradient(90deg, var(--chat-accent), var(--chat-accent-2));
@@ -134,7 +128,7 @@ html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name {
 }
 html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name::before {
   content: ''; width: 6px; height: 6px; border-radius: 50%; flex: none;
-  background: var(--chat-accent); box-shadow: 0 0 8px var(--chat-accent);
+  background: var(--chat-accent);
 }
 html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name .msg-time { color: rgba(255, 255, 255, 0.55); }
 
@@ -291,20 +285,8 @@ html[data-app="1"] .chat-main .chat-input-bar .send-btn {
   color: #fff; transition: transform 0.16s var(--chat-ease);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 14px color-mix(in srgb, var(--chat-accent-2) 42%, transparent);
 }
-html[data-app="1"] .chat-main .chat-input-bar .send-btn::before {
-  content: ''; position: absolute; inset: -6px; border-radius: 50%; z-index: -1;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--chat-accent) 55%, transparent), transparent);
-  opacity: 0; pointer-events: none;
-}
-html[data-app="1"] .chat-main .chat-input-bar .send-btn:not(:disabled):not(.stop)::before {
-  animation: chatSendGlow 2.6s var(--chat-ease) infinite;
-}
-@keyframes chatSendGlow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.85; } }
 html[data-app="1"] .chat-main .chat-input-bar .send-btn:active { transform: scale(0.9); }
 html[data-app="1"] .chat-main .chat-input-bar .send-btn.stop { background: rgba(120, 120, 130, 0.9); }
-/* 头像轻呼吸（存在感）——与 .live 流式描边互不干扰 */
-html[data-app="1"] .chat-main .ch-av .avatar { animation: chatBreath 3.6s var(--chat-ease) infinite; }
-@keyframes chatBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 
 /* ── 8b. 头部/工具 chrome 深玻璃（自 styles.css Glass 3.0 迁入，材质不变）── */
 html[data-app="1"] .chat-main.has-bg .ch-idpill,
