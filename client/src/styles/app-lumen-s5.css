@@ -953,3 +953,37 @@ html[data-app="1"] .qa-wallet-v4__asset strong {
   text-overflow: clip;
   letter-spacing: -0.01em;
 }
+
+/* ============================================================================
+   S6 · 长尾屏（s13–s19 / s35–s46）快速对齐：组容器 L1、语义光晕、状态复位
+   ========================================================================== */
+/* 通知/好友/群组/世界书：cool 光晕（消息族语义） */
+html[data-app="1"] :where(.noti-page, .friends-layout, .rooms-page, .wb-page) {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient-cool);
+  background-attachment: fixed;
+}
+/* 活动/公告：warm；社区/资料库/搜索：默认 iris 由壳层提供 */
+html[data-app="1"] :where(.events-page, .ann-page) {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient-warm);
+  background-attachment: fixed;
+}
+/* 长尾内容卡统一 L1 玻璃（组容器一层玻璃原则；行内不再套卡） */
+html[data-app="1"] :where(.noti-item, .friend-card, .room-row, .wb-card, .script-card,
+  .ev-card, .ann-card, .cm-post, .gx-card, .lb-row) {
+  background: var(--lg-glass-1);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  border: 0;
+  box-shadow: var(--lg-glass-shadow-1);
+  border-radius: var(--lg-r-card);
+}
+/* s47 骨架：统一 Lumen 占位纹理 */
+html[data-app="1"] :where(.skel, .msgs-skel-row, .ah-hero-skel, .ah-pick-skel, .ah-rail-skel, .pf-cc-skel) {
+  background: var(--lg-skeleton);
+  background-size: 200% 100%;
+}
+/* s49 危险确认：警示卡珊瑚语义（默认焦点在取消由 overlay 逻辑保证） */
+html[data-app="1"] .modal [role="alertdialog"] .btn.danger,
+html[data-app="1"] .app-sheet .btn.danger { background: var(--lg-coral); color: #ffffff; }

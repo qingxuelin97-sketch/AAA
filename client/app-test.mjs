@@ -201,7 +201,11 @@ const lumenMaterials = await readFile(new URL('./src/styles/app-lumen-materials.
 assert.match(lumenMaterials, /html\[data-app="1"\]/, 'Lumen materials must remain App-scoped');
 assert.doesNotMatch(lumenMaterials.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.lg-[^{,]+/m, 'Lumen material classes must never escape the data-app fence');
 const lgDefinitions = new Set([...(lumenTokens + lumenMaterials).matchAll(/(--lg-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
-const lgUses = new Set([...(quietTokens + quietControls + quietPages + quietExperience + lumenMaterials).matchAll(/var\((--lg-[a-z0-9-]+)/g)].map((m) => m[1]));
+const lumenStageCss = (await Promise.all(['s3', 's4', 's5'].map((n) => readFile(new URL(`./src/styles/app-lumen-${n}.css`, import.meta.url), 'utf8')))).join('\n');
+const higForLg = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
+assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.(?:qa|lg)-[^{,]+/m, 'Lumen stage layers must never escape the data-app fence');
+assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /nth-(?:child|of-type)/, 'Lumen stage layers must not style by position');
+const lgUses = new Set([...(quietTokens + quietControls + quietPages + quietExperience + lumenMaterials + lumenStageCss + higForLg).matchAll(/var\((--lg-[a-z0-9-]+)/g)].map((m) => m[1]));
 assert.deepEqual([...lgUses].filter((name) => !lgDefinitions.has(name)), [], 'every Lumen token reference must resolve in the frozen token authority');
 const higCss = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
 const higNoComments = higCss.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -314,7 +318,7 @@ for (const name of appAssetNames) {
 assert.match(artSource, /qa5-empty-generic[\s\S]*AppEmptyArt/, 'the App empty states must ship the generated content media with a generic fallback');
 const capacitorConfig = await readFile(new URL('../capacitor.config.json', import.meta.url), 'utf8');
 assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must not return to the purple-navy splash');
-assert.match(capacitorConfig, /"backgroundColor":\s*"#f6f7f9"/, 'native launch colours must match the Liuli canvas');
+assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
 console.log('app invariants: 100/100 passed');

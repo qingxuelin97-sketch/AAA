@@ -13,11 +13,12 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const OUT = join(ROOT, 'client/src/assets/app');
 
 // ── 琉璃调色板（与 app-quiet-aqua-tokens.css 对齐；此处按内容媒体允许渐变） ──
+// Lumen Glass v1.0 内容媒体近似色（UI 层禁新增颜色；PNG 媒体按令牌 oklch 栅格化取近似 hex）
 const P = {
-  canvas: '#f6f7f9', grouped: '#edeff3', ink: '#16181d',
-  blue: '#1d5fdb', blueDeep: '#174dbb', blueSoft: '#e7eefc', blueMist: '#c9d9f8',
-  graphite: '#5c6168', gold: '#c9a24a', goldSoft: '#f6edd6',
-  coral: '#d15748', rose: '#a8546e', indigo: '#4e5d9d', success: '#1e7a50',
+  canvas: '#EDEFF6', grouped: '#E3E7F0', ink: '#12151E',
+  blue: '#5658c8', blueDeep: '#4547ad', blueSoft: '#e9eafb', blueMist: '#c9cdf7',
+  graphite: '#525A6E', gold: '#a07100', goldSoft: '#f0e9d3',
+  coral: '#c65238', rose: '#b04a76', indigo: '#7b5cc2', success: '#1d7a53',
 };
 
 // 共用 defs：细噪点（固定 seed）、玻璃渐变、柔和投影。

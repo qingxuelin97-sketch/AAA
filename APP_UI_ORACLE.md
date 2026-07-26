@@ -1,5 +1,10 @@
 # 琉璃 Liuli v5 — App 前端设计先知稿（承接静水青 Quiet Aqua v4.2）
 
+> **视觉权威变更（Lumen Glass v1.0）**：App 壳的视觉/材质/色彩层现由
+> `docs/design/LUMEN_GLASS_SPEC.md` 与 `docs/design/lumen-glass-tokens.css`（--lg-*，值冻结）接管；
+> 本稿的产品结构、路由注册、状态矩阵、无障碍与 Web 零差异边界继续有效。
+> 迁移记录见 `docs/design/LUMEN_MIGRATION_PLAN.md`。
+
 文档状态：`v5 / Liuli authority / HTTP App-shell preview`  
 适用边界：通过 `http(s)://<host>/?app=1` 启用的 Capacitor App 壳与 HTTP 内测壳。  
 非适用边界：普通 Web（`?app=0` 或未进入 App 模式）不得被本稿改变。
