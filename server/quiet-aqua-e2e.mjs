@@ -545,11 +545,14 @@ async function integrationAssertions(browser, base) {
     app: document.documentElement.dataset.app,
     qaClasses: document.querySelectorAll('[class*="qa-"]').length,
     wrappers: document.querySelectorAll('.qa-button__content, .qa-icon-button__content').length,
-    injectedStates: document.querySelectorAll('[data-selected], [data-loading], [aria-busy="true"]').length,
+    // web: W4 起 Web 壳自有 Lumen 控件（.lgw-*）合法携带 loading/selected 状态
+    // 属性；守卫改为「状态属性只允许出现在 lgw 控件上」—— qa-* 泄漏仍零容忍。
+    strayStates: [...document.querySelectorAll('[data-selected], [data-loading], [aria-busy="true"]')]
+      .filter((el) => !((el.getAttribute('class') || '').includes('lgw-'))).length,
     copy: document.querySelector('.auth-card .muted')?.textContent || '',
   }));
   assert(webResult.app === '0', 'Web guard 未退出 App 模式', JSON.stringify(webResult));
-  assert(webResult.qaClasses === 0 && webResult.wrappers === 0 && webResult.injectedStates === 0, 'Web 被 Quiet Aqua DOM 污染', JSON.stringify(webResult));
+  assert(webResult.qaClasses === 0 && webResult.wrappers === 0 && webResult.strayStates === 0, 'Web 被 Quiet Aqua DOM 污染', JSON.stringify(webResult));
   assert(webResult.copy.includes('正式 Play App 可注册'), 'Web 既有文案被 App 内测文案覆盖', webResult.copy);
   await web.close();
 
