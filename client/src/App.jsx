@@ -134,7 +134,8 @@ export default function App() {
             <Route path="/" element={P(isAppMode() ? <DiscoverFeed /> : <WebHome />)} />
             <Route path="/today" element={isAppMode() ? P(<AppHome />) : <Navigate to="/" replace />} />
             <Route path="/discover" element={isAppMode() ? <Navigate to="/" replace /> : P(<DiscoverFeed />)} />
-            <Route path="/app-controls" element={isAppMode() ? P(<AppControlsGallery />) : <Navigate to="/" replace />} />
+            {/* 控件画廊：双壳可达（W4 起 Web 也渲染真实 .lgw-* 控件，画廊即 Web 验收页） */}
+            <Route path="/app-controls" element={P(<AppControlsGallery />)} />
             <Route path="/scripts" element={P(<Scripts />)} />
             <Route path="/script/new" element={P(<ScriptEditor />)} />
             <Route path="/script/:id" element={P(<ScriptDetail />)} />

@@ -34,5 +34,9 @@ export function initAppMode() {
   const on = isAppMode();
   document.documentElement.dataset.app = on ? '1' : '0';
   if (isNativeShell()) document.documentElement.dataset.native = '1';
+  // Lumen Web 控件开闸旗标：Web 壳下 AppButton/AppIconButton/AppTabButton 渲染
+  // 真实 .lgw-* 控件（W4 起）。独立于 data-app，删掉这一行即可整体回落
+  // LegacyControl 透传（紧急逃生阀，见 AppControls.jsx isWebChrome）。
+  if (!on) document.documentElement.dataset.lumenWeb = '1';
   return on;
 }

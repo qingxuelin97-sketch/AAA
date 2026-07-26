@@ -75,6 +75,8 @@ export function initFx() {
     // Quiet Aqua owns App control feedback. Do not inject the legacy ripple DOM
     // into its primitives (including legacy classes retained for Web parity).
     if (document.documentElement.dataset.app === '1' && t.closest('.qa-button, .qa-icon-button, .qa-tab-button, .app-fab')) return;
+    // Lumen Web 控件同理：.lgw-* 自带按压态（--lg-dur-press），不叠涟漪 DOM。
+    if (t.closest('.lgw-button, .lgw-icon-button, .lgw-tab-button')) return;
     if (getComputedStyle(t).position === 'static') t.style.position = 'relative';
     if (!t.style.overflow) t.style.overflow = 'hidden';
     if (!reduce) spawnRipple(t, e.clientX, e.clientY);
