@@ -5,7 +5,8 @@ import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { useKeyboardInsetBar } from '../mobile.js';
-import { useAutoGrow, msgPreview } from '../util.js';
+import { useAutoGrow, msgPreview, cnToday } from '../util.js';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import CallScreen from '../components/CallScreen.jsx';
 import { AppIconButton } from '../components/AppControls.jsx';
@@ -83,6 +84,7 @@ export default function Chat() {
   const [searchOpen, setSearchOpen] = useState(false);
   // 长按操作面板（触屏取代 hover 操作行）：sheetFor = 目标消息或 null。
   const [sheetFor, setSheetFor] = useState(null);
+  const [quoteShare, setQuoteShare] = useState(null); // App 台词分享卡（长按面板入口）
   // 引用回复：replyTo = 被引用的消息或 null；发送时以 markdown 引用块前置。
   const [replyTo, setReplyTo] = useState(null);
   // 消息书签：本地存储（三端通用、不依赖服务端），按会话隔离。
@@ -1056,6 +1058,9 @@ export default function Chat() {
               : <button className="ms-row" onClick={() => { toggleSpeak(m); close(); }}><Volume2 size={18} /> {voicedIds.has(m.id) ? '再听一遍' : '朗读'}</button>)}
             <button className="ms-row" onClick={() => { copyMsg(m.content); close(); }}><Copy size={18} /> 复制</button>
             <button className="ms-row" onClick={() => { setReplyTo(m); close(); inputRef.current?.focus(); }}><CornerUpLeft size={18} /> 引用回复</button>
+            {app && m.role === 'assistant' && !!m.content && (
+              <button className="ms-row" onClick={() => { setQuoteShare(m); close(); }}><ImagePlus size={18} /> 生成台词卡</button>
+            )}
             {m.role === 'assistant' && isLast && <button className="ms-row" onClick={() => { close(); regenerate(); }} disabled={streaming}><RotateCcw size={18} /> 重新生成</button>}
             {m.role === 'user' && <button className="ms-row" onClick={() => { startEdit(m); close(); }} disabled={streaming}><Pencil size={18} /> 编辑</button>}
             {m.id && <button className={'ms-row' + (marks.has(m.id) ? ' on' : '')} onClick={() => { toggleMark(m); close(); }}><Bookmark size={18} /> {marks.has(m.id) ? '取消书签' : '加入书签'}</button>}
@@ -1063,6 +1068,19 @@ export default function Chat() {
           </div>
         </>
       ); })()}
+      {quoteShare && character && (
+        <ShareCardSheet
+          kind="quote"
+          payload={{
+            text: (quoteShare.content || '').replace(/^>\s.*\n+/, '').replace(/\*+/g, '').trim(),
+            speaker: character.name,
+            avatar: character.avatar ? assetUrl(character.avatar) : '',
+            date: cnToday(),
+            path: '/character/' + character.id,
+          }}
+          onClose={() => setQuoteShare(null)}
+        />
+      )}
       {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
       {callOpen && character && <CallScreen character={character} onClose={() => setCallOpen(false)} />}
       {previewImg && (

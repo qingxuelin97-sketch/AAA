@@ -246,6 +246,11 @@ assert.match(shareSheetSource, /canShare[\s\S]*download/, 'sharing must probe na
 assert.match(shareSheetSource, /import\('\.\.\/sharecard\.js'\)/, 'the compositor must load lazily outside the first-screen bundle');
 assert.match(characterViewSource, /ShareCardSheet/, 'the character view must expose the share-card entry');
 assert.match(e2eSourceForS7, /shareCardAssertions/, 'the e2e suite must keep exercising the share-card flow');
+/* ---- S7-G10 台词卡契约 ---- */
+assert.match(shareCardSource, /renderQuoteCard/, 'the compositor must offer the quote-card template');
+assert.match(shareSheetSource, /kind === 'quote'[\s\S]*renderQuoteCard/, 'the share sheet must route the quote kind to its template');
+assert.match(chatSource, /app && m\.role === 'assistant'[\s\S]*生成台词卡/, 'the quote-card entry must stay App-only and character-line-only');
+assert.match(chatSource, /kind="quote"[\s\S]*speaker: character\.name/, 'quote cards must attribute the line to the speaking character');
 /* ---- S7-G7 微交互契约 ---- */
 const messagesSource = await readFile(new URL('./src/pages/Messages.jsx', import.meta.url), 'utf8');
 assert.match(messagesSource, /AppPressMenu[\s\S]*useLongPress/, 'conversation rows must offer the long-press context menu');

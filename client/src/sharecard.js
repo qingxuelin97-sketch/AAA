@@ -306,6 +306,75 @@ export async function renderStreakCard({ streak, date, path }) {
   return canvas;
 }
 
+// 台词卡：引号 + 自适应字号的台词正文 + 出场角色署名行
+// text 是会话现场的活台词（用户导出内容）；长文降字号多行，超限截 …。
+export async function renderQuoteCard({ text, speaker, avatar, date, path }) {
+  await fontsReady();
+  const canvas = makeCanvas();
+  const ctx = canvas.getContext('2d');
+  const panel = paintFrame(ctx, 'iris');
+
+  // 装饰引号（字形即内容，不属于 UI 控件）
+  ctx.textAlign = 'left';
+  ctx.fillStyle = P.blueMist;
+  ctx.font = `700 220px Georgia, ${UI_FONT}`;
+  ctx.fillText('“', panel.x + 60, panel.y + 260);
+
+  // 台词正文：短句大字居中，长文降档多行
+  const body = String(text || '').replace(/\s+/g, ' ').trim();
+  const tiers = [
+    { size: 72, lines: 5, lh: 108 },
+    { size: 56, lines: 7, lh: 86 },
+    { size: 44, lines: 9, lh: 68 },
+  ];
+  let picked = tiers[tiers.length - 1];
+  let lines = [];
+  for (const tier of tiers) {
+    ctx.font = `600 ${tier.size}px ${UI_FONT}`;
+    const wrapped = wrapText(ctx, body, panel.w - 200, tier.lines);
+    const consumed = wrapped.join('').replace(/…$/, '');
+    if (body.startsWith(consumed) && consumed.length >= body.length) {
+      picked = tier;
+      lines = wrapped;
+      break;
+    }
+    picked = tier;
+    lines = wrapped;
+  }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = P.ink;
+  ctx.font = `600 ${picked.size}px ${UI_FONT}`;
+  const blockH = lines.length * picked.lh;
+  let y = panel.y + 330 + Math.max(0, (620 - blockH) / 2) + picked.size / 2;
+  for (const line of lines) {
+    ctx.fillText(line, CARD_W / 2, y);
+    y += picked.lh;
+  }
+
+  // 署名行：小头像 + 「—— 角色名」
+  const avatarImg = avatar ? await loadImage(avatar) : null;
+  const sigY = panel.y + panel.h - 130;
+  const sig = `—— ${String(speaker || '').slice(0, 14)}`;
+  ctx.font = `600 40px ${UI_FONT}`;
+  const sigW = ctx.measureText(sig).width;
+  const avR = 44;
+  const total = avR * 2 + 24 + sigW;
+  paintAvatar(ctx, avatarImg, CARD_W / 2 - total / 2 + avR, sigY, avR);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = P.ink2;
+  ctx.fillText(sig, CARD_W / 2 - total / 2 + avR * 2 + 24, sigY + 14);
+
+  if (date) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = P.ink3;
+    ctx.font = `30px ${UI_FONT}`;
+    ctx.fillText(`拾于 ${date}`, CARD_W / 2, panel.y + panel.h - 44);
+  }
+
+  await paintFooter(ctx, path);
+  return canvas;
+}
+
 function starPath(ctx, cx, cy, outer, inner) {
   ctx.beginPath();
   for (let i = 0; i < 10; i += 1) {

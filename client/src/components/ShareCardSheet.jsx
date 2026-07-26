@@ -29,7 +29,9 @@ export default function ShareCardSheet({ kind, payload, onClose, returnFocusRef 
           ? await mod.renderAchievementCard(payload)
           : kind === 'streak'
             ? await mod.renderStreakCard(payload)
-            : await mod.renderCharacterCard(payload);
+            : kind === 'quote'
+              ? await mod.renderQuoteCard(payload)
+              : await mod.renderCharacterCard(payload);
         const nextBlob = await mod.canvasToBlob(canvas);
         if (!alive) return;
         url = URL.createObjectURL(nextBlob);
@@ -45,7 +47,7 @@ export default function ShareCardSheet({ kind, payload, onClose, returnFocusRef 
     };
   }, [kind, payload]);
 
-  const fileName = `huanyu-${kind || 'card'}-${(payload?.name || payload?.streak || 'share')}.png`.replace(/\s+/g, '');
+  const fileName = `huanyu-${kind || 'card'}-${(payload?.name || payload?.speaker || payload?.streak || 'share')}.png`.replace(/\s+/g, '');
 
   const systemShare = async () => {
     if (!blob) return;
