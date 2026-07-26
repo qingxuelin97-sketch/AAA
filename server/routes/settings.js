@@ -5,6 +5,7 @@ import { isVip } from '../wallet.js';
 import { getPlatform, voiceReady, imageReady, featureFee, platformFee, memberDiscount, VOICE_FEE, IMAGE_FEE, PLATFORM_FEE } from '../platform.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
+import { CATEGORIES } from './meta.js';
 
 const router = Router();
 
@@ -12,7 +13,17 @@ const PUBLIC_FIELDS = [
   'llm_provider', 'llm_protocol', 'llm_base_url', 'llm_model', 'llm_temperature', 'llm_max_tokens',
   'voice_provider', 'voice_protocol', 'voice_base_url', 'voice_model', 'voice_name', 'theme', 'nsfw', 'notify_email',
   'privacy_profile', 'allow_dm', 'show_online', 'discoverable', 'activity_visible', 'leaderboard_visible', 'read_receipts', 'personalize',
+  'interests',
 ];
+
+// 兴趣画像：slug 白名单 = 分类目录；接受数组或逗号串，去重、上限 6，存逗号串。
+const CATEGORY_SLUGS = new Set(CATEGORIES.map((c) => c.slug));
+export function sanitizeInterests(input, fallback = '') {
+  if (input === undefined) return fallback;
+  const list = Array.isArray(input) ? input : String(input || '').split(',');
+  const clean = [...new Set(list.map((s) => String(s).trim()).filter((s) => CATEGORY_SLUGS.has(s)))];
+  return clean.slice(0, 6).join(',');
+}
 
 function publicSettings(row, me) {
   const out = {};
@@ -62,6 +73,7 @@ router.put('/', authRequired, (req, res) => {
     allow_dm: typeof b.allow_dm === 'string' ? b.allow_dm : cur.allow_dm,
     show_online: bool('show_online'), discoverable: bool('discoverable'), activity_visible: bool('activity_visible'),
     leaderboard_visible: bool('leaderboard_visible'), read_receipts: bool('read_receipts'), personalize: bool('personalize'),
+    interests: sanitizeInterests(b.interests, cur.interests || ''),
   };
   db.prepare(`UPDATE settings SET
     llm_provider=@llm_provider, llm_protocol=@llm_protocol, llm_base_url=@llm_base_url, llm_api_key=@llm_api_key, llm_model=@llm_model,
@@ -69,7 +81,8 @@ router.put('/', authRequired, (req, res) => {
     voice_provider=@voice_provider, voice_protocol=@voice_protocol, voice_base_url=@voice_base_url, voice_api_key=@voice_api_key,
     voice_model=@voice_model, voice_name=@voice_name, theme=@theme, nsfw=@nsfw, notify_email=@notify_email,
     privacy_profile=@privacy_profile, allow_dm=@allow_dm, show_online=@show_online, discoverable=@discoverable,
-    activity_visible=@activity_visible, leaderboard_visible=@leaderboard_visible, read_receipts=@read_receipts, personalize=@personalize
+    activity_visible=@activity_visible, leaderboard_visible=@leaderboard_visible, read_receipts=@read_receipts, personalize=@personalize,
+    interests=@interests
     WHERE user_id=@user_id`).run(next);
   res.json({ settings: publicSettings(db.prepare('SELECT * FROM settings WHERE user_id=?').get(req.user.id), req.user) });
 });

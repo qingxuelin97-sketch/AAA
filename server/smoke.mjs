@@ -37,6 +37,7 @@ try {
 
   const endpoints = [
     '/auth/me', '/meta/categories', '/settings', '/economy/wallet', '/economy/packages', '/economy/transactions',
+    '/economy/checkin/calendar',
     '/characters/public', '/characters/mine', '/characters/recommended', '/characters/favorites/list', cid && `/characters/${cid}`,
     '/scripts', '/scripts/mine', sid && `/scripts/${sid}`, '/chat/conversations', convId && `/chat/conversations/${convId}`,
     '/community/feed', '/community/inbox', '/social/moments', '/social/suggested', '/social/notifications',

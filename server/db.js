@@ -412,6 +412,8 @@ for (const sql of [
   'ALTER TABLE settings ADD COLUMN leaderboard_visible INTEGER DEFAULT 1',
   'ALTER TABLE settings ADD COLUMN read_receipts INTEGER DEFAULT 1',
   'ALTER TABLE settings ADD COLUMN personalize INTEGER DEFAULT 1',
+  // S7 兴趣画像：分类 slug 逗号串，仅在 personalize 开启时参与推荐加权
+  "ALTER TABLE settings ADD COLUMN interests TEXT DEFAULT ''",
   "ALTER TABLE characters ADD COLUMN bgm TEXT DEFAULT ''",
   'ALTER TABLE characters ADD COLUMN voice_speed REAL DEFAULT 1',
   'ALTER TABLE characters ADD COLUMN voice_pitch REAL DEFAULT 1',

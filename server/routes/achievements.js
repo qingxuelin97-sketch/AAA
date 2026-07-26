@@ -23,12 +23,18 @@ const ACHIEVEMENTS = [
   // Ranking remains a visible honor, but has no real-time currency payout.
   // Mutable likes/plays are not a safe server-authoritative money source.
   { id: 'creator_hall', name: '殿堂创作者', desc: '登顶创作者榜成为 TOP 1', icon: 'Crown', cat: '创作', goal: 1, reward: 0, honor: true, metric: 'creator_gold', link: '/leaderboard' },
+  { id: 'first_friend', name: '初识好友', desc: '结交你的第一位好友', icon: 'UserPlus', cat: '社交', goal: 1, reward: 60, metric: 'friends', link: '/friends' },
+  { id: 'friends_5', name: '高朋满座', desc: '结交 5 位好友', icon: 'Users', cat: '社交', goal: 5, reward: 180, metric: 'friends', link: '/friends' },
   { id: 'first_fav', name: '一见倾心', desc: '收藏 1 个喜欢的角色', icon: 'Star', cat: '社交', goal: 1, reward: 20, metric: 'favorites', link: '/' },
   { id: 'fav_10', name: '收藏家', desc: '收藏 10 个角色', icon: 'Bookmark', cat: '社交', goal: 10, reward: 120, metric: 'favorites', link: '/favorites' },
   { id: 'first_moment', name: '初次发声', desc: '在社区发布 1 条动态', icon: 'PenLine', cat: '社交', goal: 1, reward: 40, metric: 'moments', link: '/community' },
   { id: 'first_group', name: '群英荟萃', desc: '加入 1 个群聊', icon: 'Users', cat: '社交', goal: 1, reward: 50, metric: 'groups', link: '/groups' },
   { id: 'first_theater', name: '登台亮相', desc: '参与 1 次剧场联机', icon: 'Drama', cat: '社交', goal: 1, reward: 60, metric: 'theaters', link: '/theater' },
   { id: 'fans_5', name: '小有名气', desc: '获得 5 位粉丝', icon: 'UserCheck', cat: '社交', goal: 5, reward: 150, metric: 'followers', link: '/profile' },
+  { id: 'councilor', name: '当选议员', desc: '成为幻域议会议员', icon: 'Scale', cat: '议会', goal: 1, reward: 200, metric: 'councilor', link: '/parliament' },
+  { id: 'first_proposal', name: '议政之始', desc: '提交 1 份公共议案', icon: 'Gavel', cat: '议会', goal: 1, reward: 120, metric: 'proposals', link: '/parliament' },
+  { id: 'vote_5', name: '恪尽职守', desc: '参与 5 次议会表决', icon: 'CheckSquare', cat: '议会', goal: 5, reward: 130, metric: 'votes', link: '/parliament' },
+  { id: 'endorse_3', name: '民意所向', desc: '联署 3 份议案', icon: 'Landmark', cat: '议会', goal: 3, reward: 70, metric: 'endorsements', link: '/parliament' },
   { id: 'checkin_7', name: '持之以恒', desc: '连续签到 7 天', icon: 'CalendarCheck', cat: '财富', goal: 7, reward: 200, metric: 'checkin_streak', link: '/wallet' },
   { id: 'gold_10k', name: '腰缠万贯', desc: '累计赚取 10000 金币', icon: 'Coins', cat: '财富', goal: 10000, reward: 300, metric: 'gold_earned', link: '/wallet' },
   { id: 'gacha_10', name: '欧皇之路', desc: '在扭蛋机抽卡 10 次', icon: 'Dices', cat: '财富', goal: 10, reward: 160, metric: 'gacha_pulls', link: '/gacha' },
@@ -72,6 +78,11 @@ function metric(u, m) {
     case 'groups': return count('SELECT COUNT(*) n FROM group_members WHERE user_id=?', uid);
     case 'theaters': return count('SELECT COUNT(*) n FROM theater_members WHERE user_id=?', uid);
     case 'followers': return count('SELECT COUNT(*) n FROM follows WHERE following_id=?', uid);
+    case 'friends': return count('SELECT COUNT(*) n FROM friendships WHERE a_id=? OR b_id=?', uid, uid);
+    case 'councilor': return u.is_councilor ? 1 : 0;
+    case 'proposals': return count('SELECT COUNT(*) n FROM proposals WHERE author_id=?', uid);
+    case 'votes': return count('SELECT COUNT(*) n FROM proposal_votes WHERE user_id=?', uid);
+    case 'endorsements': return count('SELECT COUNT(*) n FROM proposal_endorse WHERE user_id=?', uid);
     case 'checkin_streak': return u.checkin_streak || 0;
     // Count only server-authoritative earnings. Refunds, exchanges, recharges
     // and GM adjustments are explicitly excluded from achievement progress.
