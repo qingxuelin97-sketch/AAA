@@ -133,8 +133,9 @@
   .sp-scrim { background: linear-gradient(0deg, rgba(8,6,4,0.92) 8%, rgba(8,6,4,0.4) 55%, rgba(8,6,4,0.2) 100%); }
   .sp-nav { display: none; }
 }
-[data-theme="dark"] .cmdk-backdrop { background: rgba(0,0,0,0.55); }
-[data-theme="dark"] .sp-stage { background: linear-gradient(135deg, #272832, #1b1c23); }
+/* （深色收拢）.cmdk-backdrop 深色补丁已删：命令面板只在 Web 壳渲染，
+   web-lumen-shell.css §7 已以 (0,2,1) 在两主题接管为 var(--lg-scrim)，旧补丁 (0,2,0) 永不生效 */
+[data-theme="dark"] .sp-stage { background: linear-gradient(135deg, color-mix(in srgb, var(--lg-ink) 13%, var(--lg-canvas)), color-mix(in srgb, var(--lg-ink) 6%, var(--lg-canvas))); }
 
 /* ============================================================
    大更新：登录页 v2 · 议会 · 隐私 · 对话工具 · GM 控制台
@@ -177,7 +178,7 @@
 .auth-demo { display: block; width: 100%; margin-top: 12px; padding: 9px; border: 1px dashed var(--border-2); border-radius: 10px;
   background: none; color: var(--muted); font-size: 12.5px; cursor: pointer; transition: 0.15s; }
 .auth-demo:hover { border-color: var(--accent); color: var(--accent-2); background: var(--accent-soft); }
-[data-theme="dark"] .auth-hero { background: radial-gradient(620px 460px at 26% 18%, rgba(234,140,100,0.14), transparent 62%), linear-gradient(158deg, #1d1d24, #16161c); }
+[data-theme="dark"] .auth-hero { background: radial-gradient(620px 460px at 26% 18%, color-mix(in srgb, var(--lg-act) 14%, transparent), transparent 62%), linear-gradient(158deg, color-mix(in srgb, var(--lg-ink) 8%, var(--lg-canvas)), color-mix(in srgb, var(--lg-ink) 4%, var(--lg-canvas))); }
 [data-theme="dark"] .auth-hero p, [data-theme="dark"] .auth-feat-card small, [data-theme="dark"] .auth-stats > div span { color: var(--muted); }
 [data-theme="dark"] .auth-feat-card { background: rgba(255,255,255,0.04); border-color: var(--border); }
 [data-theme="dark"] .auth-tab-ink { background: var(--panel-2); }
@@ -246,7 +247,7 @@
 .adm-stat b { display: block; font-family: var(--serif); font-size: 28px; line-height: 1.1; }
 .adm-stat span { font-size: 12.5px; color: var(--muted); }
 .councilor-tag { background: #e7ddff; color: #5b3fb0; }
-[data-theme="dark"] .councilor-tag { background: #2a2540; color: #b9a7ee; }
+[data-theme="dark"] .councilor-tag { background: color-mix(in srgb, var(--lg-violet) 16%, var(--lg-canvas)); color: var(--lg-violet); }
 .council-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .council-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 6px 4px 4px; border-radius: 30px;
   border: 1px solid var(--border); background: var(--panel-2); font-size: 13px; }
@@ -353,7 +354,7 @@
   border: 1px solid var(--border); background: var(--panel); color: var(--muted); }
 .pl-role-badge.councilor { border-color: rgba(216,173,78,0.55); color: #8a6a1e; background: linear-gradient(120deg, #faf3e0, #f4ead0); font-weight: 600; }
 .pl-role-badge.gm { border-color: rgba(217,119,87,0.4); color: var(--accent-2); background: var(--accent-soft); }
-[data-theme="dark"] .pl-role-badge.councilor { background: #2a2415; color: #e7c477; }
+[data-theme="dark"] .pl-role-badge.councilor { background: color-mix(in srgb, var(--lg-gold) 14%, var(--lg-canvas)); color: var(--lg-gold); }
 
 /* 标签 */
 .pl-tabs { display: inline-flex; gap: 2px; padding: 4px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--border); margin-bottom: 18px; flex-wrap: wrap; }
@@ -404,11 +405,11 @@
 .pl-status.s { background: linear-gradient(120deg, #f6e6bf, #efd79a); color: #79570f; }
 .pl-status.failed { background: var(--bg-2); color: var(--faint); }
 .pl-status.rejected { background: #f6dcd5; color: #a4432e; }
-[data-theme="dark"] .pl-status.voting { background: #14323a; color: #79d0e4; }
-[data-theme="dark"] .pl-status.pending { background: #352a14; color: #e3c06a; }
-[data-theme="dark"] .pl-status.g { background: #1c3422; color: #86ca95; }
-[data-theme="dark"] .pl-status.s { background: linear-gradient(120deg,#3a2e14,#473813); color: #f0cd78; }
-[data-theme="dark"] .pl-status.rejected { background: #3a201b; color: #f0a08c; }
+[data-theme="dark"] .pl-status.voting { background: color-mix(in srgb, var(--lg-dia) 18%, var(--lg-canvas)); color: var(--lg-dia); }
+[data-theme="dark"] .pl-status.pending { background: color-mix(in srgb, var(--lg-gold) 16%, var(--lg-canvas)); color: var(--lg-gold); }
+[data-theme="dark"] .pl-status.g { background: color-mix(in srgb, var(--lg-jade) 16%, var(--lg-canvas)); color: var(--lg-jade); }
+[data-theme="dark"] .pl-status.s { background: linear-gradient(120deg, color-mix(in srgb, var(--lg-gold) 18%, var(--lg-canvas)), color-mix(in srgb, var(--lg-gold) 26%, var(--lg-canvas))); color: var(--lg-gold); }
+[data-theme="dark"] .pl-status.rejected { background: color-mix(in srgb, var(--lg-coral) 16%, var(--lg-canvas)); color: var(--lg-coral); }
 .pl-title { margin: 0 0 9px; font-family: var(--serif); font-weight: 600; font-size: 19.5px; line-height: 1.38; padding-right: 60px; }
 .pl-author { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text); }
 .pl-author .muted { color: var(--faint); display: inline-flex; align-items: center; gap: 4px; }
@@ -449,7 +450,7 @@
 .pl-endorse:hover:not(:disabled) { border-color: var(--au); color: var(--au-deep); transform: translateY(-1px); }
 .pl-endorse.on { background: linear-gradient(120deg, #faf3e0, #f3e8cd); border-color: var(--au); color: var(--au-deep); font-weight: 600; }
 .pl-endorse:disabled { opacity: 0.5; cursor: not-allowed; }
-[data-theme="dark"] .pl-endorse.on { background: #2a2415; color: #e7c477; }
+[data-theme="dark"] .pl-endorse.on { background: color-mix(in srgb, var(--lg-gold) 14%, var(--lg-canvas)); color: var(--lg-gold); }
 .pl-hint { font-size: 12px; flex: 1; min-width: 150px; }
 .pl-gm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 15px; padding-top: 14px; border-top: 1px dashed var(--border-2); }
 .pl-gm-tag { display: inline-flex; align-items: center; gap: 4px; font-family: var(--serif); font-size: 12px; font-weight: 700; color: var(--accent-2); margin-right: 2px; }
@@ -754,10 +755,10 @@ img[loading="lazy"] { background: var(--panel-2); }
 .noti-item.gift .noti-ic { background: #fdf0db; color: #c4901f; }
 .noti-item.gov .noti-ic { background: #ece7fb; color: #6b4fc0; }
 .noti-item.sys .noti-ic, .noti-item.welcome .noti-ic { background: var(--accent-soft); color: var(--accent-2); }
-[data-theme="dark"] .noti-item.like .noti-ic { background: #3a2230; color: #f0a0bd; }
-[data-theme="dark"] .noti-item.cmt .noti-ic { background: #1c2c3a; color: #8fc0e6; }
-[data-theme="dark"] .noti-item.gift .noti-ic { background: #352a14; color: #e6c46a; }
-[data-theme="dark"] .noti-item.gov .noti-ic { background: #241f36; color: #b9a7ee; }
+[data-theme="dark"] .noti-item.like .noti-ic { background: color-mix(in srgb, var(--lg-rose) 16%, var(--lg-canvas)); color: var(--lg-rose); }
+[data-theme="dark"] .noti-item.cmt .noti-ic { background: color-mix(in srgb, var(--lg-azure) 16%, var(--lg-canvas)); color: var(--lg-azure); }
+[data-theme="dark"] .noti-item.gift .noti-ic { background: color-mix(in srgb, var(--lg-gold) 16%, var(--lg-canvas)); color: var(--lg-gold); }
+[data-theme="dark"] .noti-item.gov .noti-ic { background: color-mix(in srgb, var(--lg-violet) 16%, var(--lg-canvas)); color: var(--lg-violet); }
 .noti-tx { flex: 1; min-width: 0; }
 .noti-body { font-size: 14px; line-height: 1.55; }
 .noti-item.unread .noti-body { font-weight: 600; }
@@ -795,11 +796,8 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   --shadow: 0 1px 2px rgba(38, 31, 22, 0.04), 0 5px 16px rgba(38, 31, 22, 0.06);
   --shadow-lg: 0 2px 5px rgba(38, 31, 22, 0.05), 0 18px 44px rgba(38, 31, 22, 0.11);
 }
-[data-theme="dark"] {
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 14px 32px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.5), 0 28px 60px rgba(0, 0, 0, 0.62);
-}
+/* （深色收拢）旧深色投影令牌块已删：Web 侧由 web-lumen-bridge.css 深色块 (0,1,2)
+   接管 --shadow 家族；App 深色由 app-shell.css (0,2,1) 定义，本块 (0,1,0) 两端均永不生效 */
 
 /* 卡片表面：一抹顶光 + 极淡竖向渐变，带来瓷釉般的深度 */
 .card, .char-card, .poster, .pkg, .ann-item, .adm-row, .lb-row, .studio-card, .noti-item,
@@ -989,7 +987,8 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   padding: 11px 15px; font-size: 14.5px; max-height: 130px; line-height: 1.5; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
 .fr-dm-input textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); background: var(--panel); }
 .fr-dm-input textarea:disabled { opacity: 0.6; }
-[data-theme="dark"] .fr-list { background: #16161c; }
+/* （深色收拢）.fr-list 深色补丁已删：浅色规则的 var(--panel-2) 经桥接层随主题自动翻转；
+   App 侧另由 app-pages-quiet-aqua 的 qa-friends-page (0,2,1) 接管，删除后无回退 */
 @media (max-width: 760px) {
   /* 移动端要同时刨去顶栏与浮动 Dock（含安全区），否则私信输入栏会被压到
      Dock 之下、折叠在首屏之外。 */
@@ -1171,8 +1170,8 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 @keyframes auroraA { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(6vmax, 4vmax, 0) scale(1.12); } }
 @keyframes auroraB { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(-5vmax, -3vmax, 0) scale(1.08); } }
 [data-theme="dark"] .chat-main { background:
-  radial-gradient(1100px 600px at 12% -10%, rgba(226,136,95,0.10), transparent 60%),
-  radial-gradient(900px 600px at 100% 110%, rgba(63,129,149,0.10), transparent 55%),
+  radial-gradient(1100px 600px at 12% -10%, color-mix(in srgb, var(--lg-act) 10%, transparent), transparent 60%),
+  radial-gradient(900px 600px at 100% 110%, color-mix(in srgb, var(--lg-dia) 10%, transparent), transparent 55%),
   var(--bg); }
 [data-theme="dark"] .chat-aura { opacity: 0.6; }
 @media (prefers-reduced-motion: reduce) { .chat-aura span { animation: none !important; } }
@@ -1250,7 +1249,8 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
   box-shadow: 0 2px 10px rgba(40,33,22,0.06), 0 14px 34px rgba(40,33,22,0.05); }
 .chat-input-bar .box:focus-within { border-color: transparent;
   box-shadow: 0 0 0 1.5px var(--accent), 0 0 0 5px var(--accent-ring), 0 14px 34px rgba(217,119,87,0.14); }
-[data-theme="dark"] .chat-input-bar { background: linear-gradient(180deg, transparent 0%, rgba(21,18,14,0.78) 34%, rgba(21,18,14,0.96) 100%); }
+/* （深色收拢）.chat-input-bar 深色渐变补丁已删：base.css 的
+   .chat-input-bar { background:none !important } 在两端两主题恒压过本条非 !important 渐变 */
 /* has-bg 模式：交由前面 .has-bg .chat-input-bar / [data-theme="dark"] .has-bg .chat-input-bar 规则处理。
    此处不再重复声明，避免末尾规则覆盖前置的浅色高不透明渐变（旧版用 rgba(0,0,0,0.18)/0.52 深黑半透明，
    在浅色背景图上会透出背景，视觉上像半屏原色背景被拉出来）。 */
@@ -1283,7 +1283,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
 /* 重点条款徽标 */
 .legal-key-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px;
   font-size: 10.5px; font-weight: 700; color: #b91c1c; background: rgba(220,38,38,0.10); border: 1px solid rgba(220,38,38,0.22); white-space: nowrap; }
-[data-theme="dark"] .legal-key-badge { color: #fca5a5; background: rgba(248,113,113,0.14); border-color: rgba(248,113,113,0.30); }
+[data-theme="dark"] .legal-key-badge { color: var(--lg-coral); background: color-mix(in srgb, var(--lg-coral) 14%, transparent); border-color: color-mix(in srgb, var(--lg-coral) 30%, transparent); }
 
 /* 可折叠目录 */
 .legal-toc { margin: 0 0 12px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel-2, rgba(0,0,0,0.02)); }
@@ -1492,8 +1492,8 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events
     radial-gradient(1000px 560px at 84% -12%, rgba(214,169,58,0.13), transparent 60%),
     radial-gradient(760px 480px at 6% 108%, rgba(217,119,87,0.07), transparent 55%); }
 [data-theme="dark"] .ach-page::before { background:
-  radial-gradient(1000px 560px at 84% -12%, rgba(214,169,58,0.16), transparent 60%),
-  radial-gradient(760px 480px at 6% 108%, rgba(217,119,87,0.10), transparent 55%); }
+  radial-gradient(1000px 560px at 84% -12%, color-mix(in srgb, var(--lg-gold) 16%, transparent), transparent 60%),
+  radial-gradient(760px 480px at 6% 108%, color-mix(in srgb, var(--lg-act) 10%, transparent), transparent 55%); }
 .ach-page > * { position: relative; z-index: 1; }
 
 /* 卡片荣誉感增强：解锁后金/银/铜描边与轻微流光 */

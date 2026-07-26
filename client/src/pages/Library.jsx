@@ -6,12 +6,13 @@ import { useToast, GridSkeleton } from '../ui.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
-import { ArrowLeft, Globe, MessageCircle, Plus, Search, X, Upload } from 'lucide-react';
+import { ArrowLeft, Globe, MessageCircle, Plus, RefreshCw, Search, X, Upload } from 'lucide-react';
 
 export default function Library() {
   const appMode = isAppMode();
   const [chars, setChars] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [importing, setImporting] = useState(false);
   const [q, setQ] = useState('');
   const [visibility, setVisibility] = useState('all');
@@ -43,7 +44,13 @@ export default function Library() {
     } finally { setImporting(false); }
   };
 
-  const load = () => api('/characters/mine').then(d => setChars(d.characters)).catch(e => toast(e.message, 'err')).finally(() => setLoading(false));
+  const load = () => {
+    setLoadError('');
+    return api('/characters/mine')
+      .then(d => setChars(d.characters))
+      .catch(e => { setLoadError(e.message || '角色库载入失败，请稍后重试'); toast(e.message, 'err'); })
+      .finally(() => setLoading(false));
+  };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const startChat = async (e, c) => {
@@ -119,6 +126,14 @@ export default function Library() {
           </div>
         )}
         {loading ? <GridSkeleton n={6} /> :
+          !appMode && loadError && chars.length === 0 ? (
+            <div className="empty lgw-error" role="alert">
+              <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+              <h2 className="lgw-error-title">角色库暂时无法载入</h2>
+              <p className="lgw-error-msg">{loadError}</p>
+              <button className="btn primary lgw-error-retry" onClick={() => { setLoading(true); load(); }}><RefreshCw size={15} /> 重新载入</button>
+            </div>
+          ) :
           visibleChars.length === 0 ? (
             <div className={appMode ? 'empty qa-library-empty' : 'empty'}>
               <EmptyArt kind="library" />{chars.length === 0 ? '还没有角色' : '没有符合条件的角色'}

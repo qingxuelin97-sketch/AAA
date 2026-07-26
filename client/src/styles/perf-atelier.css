@@ -251,8 +251,8 @@ html[data-page-hidden] *, html[data-page-hidden] *::before, html[data-page-hidde
 /* 资产数字配色 + 货币色微光，让金币/钻石一眼可辨 */
 .wallet-hero .col.gold .bal-num { color: #c8932f; text-shadow: 0 0 14px rgba(241,196,82,0.4); }
 .wallet-hero .col.diamond .bal-num { color: #2f87a6; text-shadow: 0 0 14px rgba(102,196,218,0.4); }
-[data-theme="dark"] .wallet-hero .col.gold .bal-num { color: #ecc468; text-shadow: 0 0 14px rgba(236,196,104,0.45); }
-[data-theme="dark"] .wallet-hero .col.diamond .bal-num { color: #79d0e4; text-shadow: 0 0 14px rgba(121,208,228,0.45); }
+[data-theme="dark"] .wallet-hero .col.gold .bal-num { color: var(--lg-gold); text-shadow: 0 0 14px color-mix(in srgb, var(--lg-gold) 45%, transparent); }
+[data-theme="dark"] .wallet-hero .col.diamond .bal-num { color: var(--lg-dia); text-shadow: 0 0 14px color-mix(in srgb, var(--lg-dia) 45%, transparent); }
 /* 大尺寸资产图标 idle 呼吸：金币轻晃、钻石星芒闪烁 */
 .asset-chip > svg { animation: coinBreath 4.2s ease-in-out infinite; transform-origin: 50% 50%; }
 @keyframes coinBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
@@ -268,7 +268,7 @@ html[data-page-hidden] *, html[data-page-hidden] *::before, html[data-page-hidde
 /* —— 成就卡精修：奖励金币药丸、奖牌角标、领取强调、未解锁更克制 —— */
 .ach-card { padding: 15px 16px; gap: 14px; }
 .ach-reward { background: rgba(226,179,88,0.16); color: #b78628; padding: 3px 9px 3px 7px; border-radius: 999px; line-height: 1; }
-[data-theme="dark"] .ach-reward { background: rgba(226,179,88,0.18); color: #e6c06a; }
+[data-theme="dark"] .ach-reward { background: color-mix(in srgb, var(--lg-gold) 18%, transparent); color: var(--lg-gold); }
 /* 奖牌角标：右上角细条，按金/银/铜着色 */
 .ach-card::before { content: ''; position: absolute; top: 0; right: 0; width: 46px; height: 46px; z-index: 1; pointer-events: none;
   background: radial-gradient(120% 120% at 100% 0, var(--medal-c, transparent) 0, transparent 58%); opacity: 0.5; }

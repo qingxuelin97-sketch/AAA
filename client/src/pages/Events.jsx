@@ -4,7 +4,8 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { PartyPopper, Gift, Check, ArrowRight, Copy, Users, ListChecks, ArrowLeft } from 'lucide-react';
+import { EmptyArt } from '../art.jsx';
+import { PartyPopper, Gift, Check, ArrowRight, Copy, Users, ListChecks, ArrowLeft, RefreshCw } from 'lucide-react';
 
 // Event accents are semantic and stable. They are deliberately independent
 // from the user's global accent so the activity feed does not become one teal
@@ -20,13 +21,19 @@ const eventTone = (event, index) => {
 export default function Events() {
   const app = isAppMode();
   const [events, setEvents] = useState(null);
+  const [eventsError, setEventsError] = useState('');
   const [tasks, setTasks] = useState(null);
   const [busy, setBusy] = useState('');
   const nav = useNavigate();
   const toast = useToast();
   const { refreshUser } = useAuth();
 
-  const load = () => api('/engage/events').then(d => setEvents(d.events)).catch(e => toast(e.message, 'err'));
+  const load = () => {
+    setEventsError('');
+    return api('/engage/events')
+      .then(d => setEvents(d.events))
+      .catch(e => { setEventsError(e.message || '活动载入失败，请稍后重试'); toast(e.message, 'err'); });
+  };
   const loadTasks = () => api('/engage/tasks').then(d => setTasks(d.tasks)).catch(() => {});
   useEffect(() => { load(); loadTasks(); /* eslint-disable-next-line */ }, []);
 
@@ -77,8 +84,28 @@ export default function Events() {
             ))}
           </TasksRoot>
         )}
-        {!events ? (app ? <div className="qa-events-loading" role="status" aria-label="正在载入活动"><i className="skel" /><i className="skel" /><i className="skel" /></div> : <div className="empty">载入中…</div>) : events.length === 0 && app ? (
+        {!events && !app && eventsError ? (
+          <div className="empty lgw-error" role="alert">
+            <span className="lgw-error-ic"><PartyPopper size={22} /></span>
+            <h2 className="lgw-error-title">活动暂时无法载入</h2>
+            <p className="lgw-error-msg">{eventsError}</p>
+            <button className="btn primary lgw-error-retry" onClick={() => void load()}><RefreshCw size={15} /> 重新载入</button>
+          </div>
+        ) : !events ? (app ? <div className="qa-events-loading" role="status" aria-label="正在载入活动"><i className="skel" /><i className="skel" /><i className="skel" /></div> : (
+          <div className="lgw-skel-list" aria-hidden="true">
+            {[0, 1, 2].map(i => <div key={i} className="skel lgw-skel-lg" />)}
+          </div>
+        )) : events.length === 0 && app ? (
           <div className="empty qa-events-empty"><div className="big"><PartyPopper size={44} /></div>当前暂无活动</div>
+        ) : events.length === 0 && !app ? (
+          <div className="empty lgw-empty">
+            <EmptyArt kind="generic" />
+            <h2 className="lgw-empty-title">当前暂无活动</h2>
+            <p className="lgw-empty-sub">活动上线时会在这里出现；先把上面的每日任务领了吧。</p>
+            <div className="lgw-empty-cta">
+              <button className="btn primary" onClick={() => nav('/')}>去发现广场逛逛</button>
+            </div>
+          </div>
         ) : (
           <>
             {app && events.length > 0 && (

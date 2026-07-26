@@ -158,9 +158,18 @@ export default function Atelier() {
 
       {tab === 'showcase' ? (
         showcaseError ? <AtelierLoadError message={showcaseError} onRetry={() => void loadShowcase()} /> :
-        showcase === null ? <div className="empty" style={{ paddingTop: 60 }}>载入中…</div> :
+        showcase === null ? (
+          <div className="lgw-skel-list" style={{ paddingTop: 20 }} aria-hidden="true">
+            {[0, 1, 2].map(i => <div key={i} className="skel lgw-skel-lg" />)}
+          </div>
+        ) :
         showcase.length === 0 ? (
-          <div className="atl-empty"><div className="atl-empty-ic"><BookOpen size={40} /></div><h2>书架还很空</h2><p>把你的作品发布出来，让它成为第一本被人翻开的书。</p></div>
+          <div className="atl-empty lgw-empty">
+            <div className="atl-empty-ic"><BookOpen size={40} /></div>
+            <h2>书架还很空</h2>
+            <p>把你的作品发布出来，让它成为第一本被人翻开的书。</p>
+            <div className="lgw-empty-cta"><button className="btn primary" onClick={() => setCreating(true)}><Plus size={15} /> 开新书</button></div>
+          </div>
         ) : (
           <div className="atl-shelf">
             {showcase.map(n => (
@@ -186,7 +195,9 @@ export default function Atelier() {
       ) : novelsError ? (
         <AtelierLoadError message={novelsError} onRetry={() => void load()} />
       ) : novels === null ? (
-        <div className="empty" style={{ paddingTop: 80 }}>载入中…</div>
+        <div className="lgw-skel-list" style={{ paddingTop: 20 }} aria-hidden="true">
+          {[0, 1, 2].map(i => <div key={i} className="skel lgw-skel-lg" />)}
+        </div>
       ) : novels.length === 0 ? (
         <div className="atl-empty">
           <div className="atl-empty-ic"><BookText size={40} /></div>

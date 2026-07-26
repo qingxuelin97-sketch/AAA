@@ -3,19 +3,25 @@ import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
-import { Heart } from 'lucide-react';
+import { isAppMode } from '../appmode.js';
+import { Heart, RefreshCw } from 'lucide-react';
 
 export default function Favorites() {
+  const app = isAppMode();
   const [chars, setChars] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const toast = useToast();
   const nav = useNavigate();
 
-  const load = () =>
-    api('/characters/favorites/list')
+  const load = () => {
+    if (!app) setLoading(true); // App 侧维持原刷新行为（不回骨架）
+    setLoadError('');
+    return api('/characters/favorites/list')
       .then(d => setChars(d.characters || []))
-      .catch(e => toast(e.message, 'err'))
+      .catch(e => { setLoadError(e.message || '收藏载入失败，请稍后重试'); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
+  };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const startChat = async (e, c) => {
@@ -47,8 +53,26 @@ export default function Favorites() {
       <div className="page">
         {loading ? (
           <GridSkeleton n={4} />
+        ) : !app && loadError && chars.length === 0 ? (
+          <div className="empty lgw-error" role="alert">
+            <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+            <h2 className="lgw-error-title">收藏暂时无法载入</h2>
+            <p className="lgw-error-msg">{loadError}</p>
+            <button className="btn primary lgw-error-retry" onClick={() => load()}><RefreshCw size={15} /> 重新载入</button>
+          </div>
         ) : chars.length === 0 ? (
-          <div className="empty"><EmptyArt kind="favorites" />还没有收藏角色<br /><span style={{ fontSize: 13 }}>在发现广场点亮心形，喜欢的角色就会住进这里</span></div>
+          app
+            ? <div className="empty"><EmptyArt kind="favorites" />还没有收藏角色<br /><span style={{ fontSize: 13 }}>在发现广场点亮心形，喜欢的角色就会住进这里</span></div>
+            : (
+              <div className="empty lgw-empty">
+                <EmptyArt kind="favorites" />
+                <h2 className="lgw-empty-title">还没有收藏角色</h2>
+                <p className="lgw-empty-sub">在发现广场点亮心形，喜欢的角色就会住进这里。</p>
+                <div className="lgw-empty-cta">
+                  <button className="btn primary" onClick={() => nav('/')}>去发现广场逛逛</button>
+                </div>
+              </div>
+            )
         ) : (
           <div className="grid">
             {chars.map(c => (

@@ -11,15 +11,17 @@ export default function Groups() {
   const app = isAppMode();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [creating, setCreating] = useState(false);
   const nav = useNavigate();
   const toast = useToast();
 
   const load = () => {
     setLoading(true);
+    setLoadError('');
     return api('/groups')
       .then(d => setGroups(d.groups))
-      .catch(e => toast(e.message, 'err'))
+      .catch(e => { setLoadError(e.message || '群聊列表载入失败，请稍后重试'); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -44,14 +46,27 @@ export default function Groups() {
         </div>
       )}
       <div className={app ? 'page qa-groups-page' : 'page'}>
-        {app && loading ? (
-          <div className="qa-groups-loading" role="status" aria-label="正在加载群聊">
-            {[0, 1, 2].map(i => (
-              <div className="qa-groups-skeleton" key={i} aria-hidden="true">
-                <span className="skel qa-groups-skeleton-avatar" />
-                <span><i className="skel qa-groups-skeleton-name" /><i className="skel qa-groups-skeleton-description" /><i className="skel qa-groups-skeleton-meta" /></span>
-              </div>
-            ))}
+        {loading ? (
+          app ? (
+            <div className="qa-groups-loading" role="status" aria-label="正在加载群聊">
+              {[0, 1, 2].map(i => (
+                <div className="qa-groups-skeleton" key={i} aria-hidden="true">
+                  <span className="skel qa-groups-skeleton-avatar" />
+                  <span><i className="skel qa-groups-skeleton-name" /><i className="skel qa-groups-skeleton-description" /><i className="skel qa-groups-skeleton-meta" /></span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="lgw-skel-list" aria-hidden="true">
+              {[0, 1, 2].map(i => <div key={i} className="skel" style={{ height: 84 }} />)}
+            </div>
+          )
+        ) : !app && loadError && groups.length === 0 ? (
+          <div className="empty lgw-error" role="alert">
+            <span className="lgw-error-ic"><Users size={22} /></span>
+            <h2 className="lgw-error-title">群聊暂时无法载入</h2>
+            <p className="lgw-error-msg">{loadError}</p>
+            <button className="btn primary lgw-error-retry" onClick={() => load()}>重新载入</button>
           </div>
         ) : groups.length === 0 ? (
           app ? (
@@ -61,7 +76,16 @@ export default function Groups() {
               <p>创建一个群聊，和同好讨论角色、剧本与脑洞。</p>
               <AppButton className="qa-groups-empty-create" variant="primary" size="lg" onClick={() => setCreating(true)}><Plus size={17} /> 创建第一个群聊</AppButton>
             </section>
-          ) : <div className="empty"><EmptyArt kind="friends" />还没有群聊，创建一个吧</div>
+          ) : (
+            <div className="empty lgw-empty">
+              <EmptyArt kind="friends" />
+              <h2 className="lgw-empty-title">还没有群聊</h2>
+              <p className="lgw-empty-sub">创建一个群聊，和同好一起讨论角色、剧本与脑洞。</p>
+              <div className="lgw-empty-cta">
+                <button className="btn primary" onClick={() => setCreating(true)}><Plus size={15} /> 创建第一个群聊</button>
+              </div>
+            </div>
+          )
         ) : (
           app ? (
             <section className="qa-groups-list" aria-label="群聊列表">

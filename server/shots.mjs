@@ -66,7 +66,9 @@ const run = async () => {
   await page.evaluate(() => localStorage.clear());
   await shot('/auth', 'd01-auth', { wait: 900, before: async () => { await clickText('.auth-tabs button', '注册'); await sleep(400); } });
 
-  await page.evaluateOnNewDocument((t) => localStorage.setItem('huanyu_token', t), tk);
+  // welcome 弹窗单拍一张后置为已读：SwiftShader（无头软渲染）会把 backdrop 快照
+  // 烧进 fixed 背景层，弹窗若在后续页面反复出现会留下幽灵残影，基线不确定。
+  await page.evaluateOnNewDocument((t) => { localStorage.setItem('huanyu_token', t); localStorage.setItem('huanyu_welcome_seen', new Date().toISOString().slice(0, 10)); }, tk);
   await shot('/', 'd02-home');
   await shot('/discover', 'd02b-discover');
   await shot('/scripts', 'd03-scripts');
@@ -94,10 +96,12 @@ const run = async () => {
   await shot('/wallet', 'd24-wallet-dark', { full: true, theme: 'dark' });
 
   // ---------- Mobile ----------
+  await page.close(); // 释放桌面页（SSE 长连接 + SwiftShader 内存），移动段更稳
   const m = await browser.newPage();
+  m.setDefaultNavigationTimeout(90000);
   await m.setViewport({ width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   await m.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
-  await m.evaluate((t) => localStorage.setItem('huanyu_token', t), tk);
+  await m.evaluate((t) => { localStorage.setItem('huanyu_token', t); localStorage.setItem('huanyu_welcome_seen', new Date().toISOString().slice(0, 10)); }, tk);
   const mshot = async (urlPath, name, { wait = 1400, before } = {}) => {
     await m.goto(BASE + urlPath, { waitUntil: 'domcontentloaded' });
     if (before) { try { await before(m); } catch {} }

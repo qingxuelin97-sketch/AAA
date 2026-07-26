@@ -1,0 +1,934 @@
+/* ============================================================================
+   曜光玻璃 Lumen Glass · Web 控件契约（.lgw-button / .lgw-icon-button /
+   .lgw-tab-button + .lgw-spinner + .lgw-tone--*）
+   ----------------------------------------------------------------------------
+   · 围栏：所有选择器从 html:not([data-app="1"]) 开始，与 App 壳（qa-*）DOM
+     互斥、级联零交互。AppControls.jsx 的三态 dispatch 只在 Web 壳
+     （data-lumen-web="1"）渲染 .lgw-* 类，本文件是它的唯一视觉权威。
+   · 泄漏中和：调用方 className 保留了旧类（btn primary sm / btn block /
+     send-btn / checkin-btn…），base.css / web-modules.css / web-super.css /
+     app-shell.css(未围栏段) / app-elevated.css(未围栏段) 的 .btn 家族与页面
+     皮肤会漏进同一元素。因此 .lgw-* 基块把全部视觉属性写满（display/padding/
+     font/border/radius/background/color/box-shadow/min-height/gap/line-height/
+     transition/transform/animation），围栏特异性 (0,2,1) 天然压过 .btn.primary
+     (0,2,0)；更高特异性的存量组合（(0,3,0)+ 的 :active/:hover/svg 变换、
+     ::before 流光）逐一在 §1/§11 点名中和或在 §12 做语义修复。
+   · 材质红线（SPEC/D8）：控件在内容层，一律「半透明底 + --lg-glass-shadow-1
+     三件套」零 backdrop-filter；本文件不出现任何 blur。
+   · 颜色红线：只用 var(--lg-*) 与 color-mix(令牌, #fff/#000/transparent)，
+     另有唯二例外白玻璃 rgb(255 255 255/x%)。实底语义色上的墨色统一用
+     var(--lg-canvas)：浅色主题 canvas 近白（深色块上白字），深色主题 canvas
+     近黑（亮色块上黑字），对比度两头都成立且零新字面量。
+   · 动效红线：新 @keyframes 一律 lgw 前缀；唯一循环动画是 .lgw-spinner
+     （loading 豁免），reduced-motion 下降级为静态三点。
+   ========================================================================== */
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §1 · 三原语公共重置：中和 .btn 家族与页面皮肤的全部「行为」泄漏
+   ---------------------------------------------------------------------------
+   压过的存量（均低于本块或被 !important 点杀）：
+   · base.css .btn 的 border/box-shadow/font/padding；.btn:hover 的
+     translateY(-2px)；.btn:active 的位移；.btn:hover svg 的 scale(1.12)
+   · web-modules .btn 的 spring transition / will-change；.btn.primary::after
+     流光；.send-btn svg 位移；heartPop / tabPop / floaty 等挂在控件上的动画
+   · app-elevated(未围栏) .vm-go::before 无限流光（内容层禁无限装饰动画）
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button) {
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px solid transparent;
+  background-image: none;
+  font: inherit;
+  text-decoration: none;
+  letter-spacing: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  cursor: pointer;
+  will-change: auto;
+  animation: none !important; /* floaty / tabPop / heartPop 等存量动画点杀 */
+}
+
+/* 存量 ::after（primary 流光 sheen、vm-go 光带、send-btn stop 呼吸）一律移除；
+   ::before 被 §3 征用为 sm 档触控扩展，这里先清空存量内容与动画。 */
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button)::after {
+  content: none !important;
+  animation: none !important;
+}
+html:not([data-app="1"]) :is(.lgw-icon-button, .lgw-tab-button)::before {
+  content: none !important;
+  animation: none !important;
+}
+
+/* 图形子元素不允许被存量 hover 皮肤搬动（.btn:hover svg scale(1.12)、
+   .send-btn:hover svg 位移旋转都是 (0,2,1)~(0,3,1)，必须 !important 点杀） */
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button)
+  :is(svg, .lgw-button__content, .lgw-icon-button__content, .lgw-tab-button__icon) {
+  transform: none !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+/* 焦点契约：--lg-focus 双环（内 2px 实环 + 外 22% 柔环），仅 :focus-visible。
+   与 web-lumen-shell §0 的全局外环同源，这里补第二圈柔环。 */
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button):focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--lg-focus) 22%, transparent);
+}
+
+/* 禁用：整体降权重、不可点；材质保留（与 App 契约一致的 55%） */
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button):disabled,
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button)[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+  transform: none !important;
+}
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button):disabled {
+  pointer-events: none;
+}
+
+/* 按压：统一 0.97 缩放，走 --lg-dur-press（存量 .btn:active:not(:disabled)
+   的 scale(0.96) 是 (0,3,0)，本条 (0,6,1) 稳压） */
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button):active:not(:disabled):not([aria-disabled="true"]) {
+  transform: scale(0.97);
+  transition-duration: var(--lg-dur-press);
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §2 · .lgw-button 基块：写满全部视觉属性（md 档 = 44px 胶囊）
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .lgw-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lg-space-2);
+  min-width: var(--lg-control-min);
+  min-height: var(--lg-control-min);
+  padding: 0 var(--lg-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-glass-1);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+  font-size: var(--lg-type-body);
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  overflow: visible; /* 中和 .btn.primary 的 overflow:hidden，触控扩展需要出界 */
+  transform: none;   /* 中和 .btn:hover translateY(-2px)（特异性低于本块） */
+  transition:
+    transform var(--lg-dur-press) var(--lg-ease),
+    background-color var(--lg-dur-state) var(--lg-ease),
+    border-color var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+
+html:not([data-app="1"]) .lgw-button__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  min-width: 0;
+}
+
+html:not([data-app="1"]) .lgw-button svg {
+  flex-shrink: 0;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §3 · 尺寸档：sm 32（紧凑豁免，触控盒用 ::before 扩回 44）· md 44 · lg 48
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .lgw-button--sm {
+  min-width: 32px;
+  min-height: 32px;
+  padding-inline: var(--lg-space-3);
+  gap: var(--lg-space-1);
+  font-size: var(--lg-type-meta);
+}
+
+/* sm 触控扩展：::before 撑出 ≥44×44 的命中盒（同时覆写存量 .btn 系 ::before
+   的一切内容/动画 —— content 由我们自己声明，旧流光装饰无从渲染） */
+html:not([data-app="1"]) .lgw-button::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: max(100%, var(--lg-control-min)) !important;
+  height: max(100%, var(--lg-control-min)) !important;
+  transform: translate(-50%, -50%) !important;
+  border-radius: inherit;
+  background: none !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  animation: none !important;
+  pointer-events: auto;
+}
+
+html:not([data-app="1"]) .lgw-button--lg {
+  min-height: var(--lg-control-submit);
+  padding-inline: var(--lg-space-5);
+  font-size: var(--lg-type-body);
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §4 · 语义变体（Lumen 语义）：primary=act 实底 · secondary=act-soft 软底 ·
+        tertiary=透明底+发丝边 · danger=珊瑚描边、确认/按压实底
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .lgw-button--primary {
+  border-color: transparent;
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: none;
+}
+html:not([data-app="1"]) .lgw-button--primary:active:not(:disabled):not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--lg-act) 84%, #000);
+}
+
+html:not([data-app="1"]) .lgw-button--secondary {
+  border-color: transparent;
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  box-shadow: none;
+}
+html:not([data-app="1"]) .lgw-button--secondary:active:not(:disabled):not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--lg-act) 22%, transparent);
+}
+
+html:not([data-app="1"]) .lgw-button--tertiary {
+  border-color: transparent;
+  background: transparent;
+  color: var(--lg-ink);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+html:not([data-app="1"]) .lgw-button--tertiary:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+
+/* danger：默认珊瑚 1.6px 描边；确认（data-confirming）或按压时珊瑚实底。
+   实底上的墨色用 --lg-canvas（浅=近白/深=近黑，见文件头）。 */
+html:not([data-app="1"]) .lgw-button--danger,
+html:not([data-app="1"]) .lgw-button.lgw-tone--danger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--lg-coral);
+  box-shadow: inset 0 0 0 1.6px var(--lg-coral);
+}
+html:not([data-app="1"]) .lgw-button--danger[data-confirming],
+html:not([data-app="1"]) .lgw-button.lgw-tone--danger[data-confirming],
+html:not([data-app="1"]) .lgw-button--danger:active:not(:disabled):not([aria-disabled="true"]),
+html:not([data-app="1"]) .lgw-button.lgw-tone--danger:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--lg-coral);
+  color: var(--lg-canvas);
+  box-shadow: none;
+}
+
+/* 选中态（筛选芯片语义）：act 软底 + 1px act 描边 + act 字 */
+html:not([data-app="1"]) .lgw-button[data-selected] {
+  border-color: var(--lg-act);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  box-shadow: none;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §5 · loading：保宽（内容 visibility 隐藏、盒子不塌）+ .lgw-spinner
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button)[data-loading] {
+  cursor: progress;
+}
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button)[data-loading]
+  :is(.lgw-button__content, .lgw-icon-button__content) {
+  visibility: hidden;
+}
+
+/* 唯一允许的循环动画：22px conic 圆环（用 border 实现，成本最低） */
+html:not([data-app="1"]) .lgw-spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border: 2.5px solid color-mix(in srgb, currentcolor 25%, transparent);
+  border-top-color: currentcolor;
+  border-radius: 50%;
+  background: none;
+  animation: lgw-spin 720ms linear infinite !important; /* 压过 §1 的 animation:none */
+}
+html:not([data-app="1"]) .lgw-button--sm .lgw-spinner,
+html:not([data-app="1"]) .lgw-icon-button .lgw-spinner {
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-width: 2px;
+}
+
+@keyframes lgw-spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §6 · .lgw-icon-button：44 圆钮 · ghost / secondary / filled
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .lgw-icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--lg-control-min);
+  height: var(--lg-control-min);
+  min-width: var(--lg-control-min);
+  min-height: var(--lg-control-min);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--lg-r-pill);
+  background: transparent;
+  color: var(--lg-ink-2);
+  box-shadow: none;
+  font-size: var(--lg-type-body);
+  line-height: 1;
+  transform: none;
+  overflow: visible;
+  transition:
+    transform var(--lg-dur-press) var(--lg-ease),
+    background-color var(--lg-dur-state) var(--lg-ease),
+    border-color var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+
+html:not([data-app="1"]) .lgw-icon-button__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html:not([data-app="1"]) .lgw-icon-button svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* secondary：内容层玻璃观感 = 半透明底 + shadow-1 三件套，零 blur（D8） */
+html:not([data-app="1"]) .lgw-icon-button--secondary {
+  background: var(--lg-glass-2);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+
+html:not([data-app="1"]) .lgw-icon-button--filled {
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: none;
+}
+html:not([data-app="1"]) .lgw-icon-button--filled:active:not(:disabled):not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--lg-act) 84%, #000);
+}
+
+html:not([data-app="1"]) .lgw-icon-button[data-selected] {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+
+html:not([data-app="1"]) .lgw-icon-button.lgw-tone--danger {
+  color: var(--lg-coral);
+}
+html:not([data-app="1"]) .lgw-icon-button--filled.lgw-tone--danger {
+  background: var(--lg-coral);
+  color: var(--lg-canvas);
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §7 · 语义色调 .lgw-tone--*：gold/dia/coral/jade/azure/violet/rose
+   ---------------------------------------------------------------------------
+   参考 app-controls 的 qa-tone 做法：tone 只重着色，不改形态。
+   · secondary 按钮 → tone 软底 + tone 字
+   · primary 按钮 / filled 圆钮 → tone 实底 + canvas 墨
+   · ghost / secondary 圆钮、tertiary 按钮 → tone 字
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* —— gold —— */
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--gold { background: color-mix(in srgb, var(--lg-gold) 14%, transparent); color: var(--lg-gold); }
+html:not([data-app="1"]) .lgw-button--primary.lgw-tone--gold,
+html:not([data-app="1"]) .lgw-icon-button--filled.lgw-tone--gold { background: var(--lg-gold); color: var(--lg-canvas); }
+html:not([data-app="1"]) .lgw-button--tertiary.lgw-tone--gold,
+html:not([data-app="1"]) .lgw-icon-button--ghost.lgw-tone--gold,
+html:not([data-app="1"]) .lgw-icon-button--secondary.lgw-tone--gold { color: var(--lg-gold); }
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--gold[data-selected] { border-color: var(--lg-gold); }
+
+/* —— dia —— */
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--dia { background: color-mix(in srgb, var(--lg-dia) 14%, transparent); color: var(--lg-dia); }
+html:not([data-app="1"]) .lgw-button--primary.lgw-tone--dia,
+html:not([data-app="1"]) .lgw-icon-button--filled.lgw-tone--dia { background: var(--lg-dia); color: var(--lg-canvas); }
+html:not([data-app="1"]) .lgw-button--tertiary.lgw-tone--dia,
+html:not([data-app="1"]) .lgw-icon-button--ghost.lgw-tone--dia,
+html:not([data-app="1"]) .lgw-icon-button--secondary.lgw-tone--dia { color: var(--lg-dia); }
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--dia[data-selected] { border-color: var(--lg-dia); }
+
+/* —— coral（内容语义版；行为语义走 --danger / lgw-tone--danger） —— */
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--coral { background: color-mix(in srgb, var(--lg-coral) 14%, transparent); color: var(--lg-coral); }
+html:not([data-app="1"]) .lgw-button--primary.lgw-tone--coral,
+html:not([data-app="1"]) .lgw-icon-button--filled.lgw-tone--coral { background: var(--lg-coral); color: var(--lg-canvas); }
+html:not([data-app="1"]) .lgw-button--tertiary.lgw-tone--coral,
+html:not([data-app="1"]) .lgw-icon-button--ghost.lgw-tone--coral,
+html:not([data-app="1"]) .lgw-icon-button--secondary.lgw-tone--coral { color: var(--lg-coral); }
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--coral[data-selected] { border-color: var(--lg-coral); }
+
+/* —— jade —— */
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--jade { background: color-mix(in srgb, var(--lg-jade) 14%, transparent); color: var(--lg-jade); }
+html:not([data-app="1"]) .lgw-button--primary.lgw-tone--jade,
+html:not([data-app="1"]) .lgw-icon-button--filled.lgw-tone--jade { background: var(--lg-jade); color: var(--lg-canvas); }
+html:not([data-app="1"]) .lgw-button--tertiary.lgw-tone--jade,
+html:not([data-app="1"]) .lgw-icon-button--ghost.lgw-tone--jade,
+html:not([data-app="1"]) .lgw-icon-button--secondary.lgw-tone--jade { color: var(--lg-jade); }
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--jade[data-selected] { border-color: var(--lg-jade); }
+
+/* —— azure —— */
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--azure { background: color-mix(in srgb, var(--lg-azure) 14%, transparent); color: var(--lg-azure); }
+html:not([data-app="1"]) .lgw-button--primary.lgw-tone--azure,
+html:not([data-app="1"]) .lgw-icon-button--filled.lgw-tone--azure { background: var(--lg-azure); color: var(--lg-canvas); }
+html:not([data-app="1"]) .lgw-button--tertiary.lgw-tone--azure,
+html:not([data-app="1"]) .lgw-icon-button--ghost.lgw-tone--azure,
+html:not([data-app="1"]) .lgw-icon-button--secondary.lgw-tone--azure { color: var(--lg-azure); }
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--azure[data-selected] { border-color: var(--lg-azure); }
+
+/* —— violet —— */
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--violet { background: color-mix(in srgb, var(--lg-violet) 14%, transparent); color: var(--lg-violet); }
+html:not([data-app="1"]) .lgw-button--primary.lgw-tone--violet,
+html:not([data-app="1"]) .lgw-icon-button--filled.lgw-tone--violet { background: var(--lg-violet); color: var(--lg-canvas); }
+html:not([data-app="1"]) .lgw-button--tertiary.lgw-tone--violet,
+html:not([data-app="1"]) .lgw-icon-button--ghost.lgw-tone--violet,
+html:not([data-app="1"]) .lgw-icon-button--secondary.lgw-tone--violet { color: var(--lg-violet); }
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--violet[data-selected] { border-color: var(--lg-violet); }
+
+/* —— rose —— */
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--rose { background: color-mix(in srgb, var(--lg-rose) 14%, transparent); color: var(--lg-rose); }
+html:not([data-app="1"]) .lgw-button--primary.lgw-tone--rose,
+html:not([data-app="1"]) .lgw-icon-button--filled.lgw-tone--rose { background: var(--lg-rose); color: var(--lg-canvas); }
+html:not([data-app="1"]) .lgw-button--tertiary.lgw-tone--rose,
+html:not([data-app="1"]) .lgw-icon-button--ghost.lgw-tone--rose,
+html:not([data-app="1"]) .lgw-icon-button--secondary.lgw-tone--rose { color: var(--lg-rose); }
+html:not([data-app="1"]) .lgw-button--secondary.lgw-tone--rose[data-selected] { border-color: var(--lg-rose); }
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §8 · .lgw-tab-button：纵排 icon+label，active=act，badge=珊瑚圆标
+   （Web 侧目前仅画廊与未来复用；基本形态即可）
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .lgw-tab-button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: var(--lg-control-min);
+  min-height: 52px;
+  padding: 3px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--lg-r-control);
+  background: transparent;
+  color: var(--lg-ink-3);
+  box-shadow: none;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.1;
+  transform: none;
+  transition:
+    transform var(--lg-dur-press) var(--lg-ease),
+    background-color var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease);
+}
+
+html:not([data-app="1"]) .lgw-tab-button__icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 26px;
+}
+
+html:not([data-app="1"]) .lgw-tab-button__glyph {
+  display: grid;
+  place-items: center;
+}
+
+html:not([data-app="1"]) .lgw-tab-button__label {
+  white-space: nowrap;
+}
+
+/* 选中片 = 分段语言：--lg-glass-sel + shadow-1 + act 字 */
+html:not([data-app="1"]) .lgw-tab-button.active,
+html:not([data-app="1"]) .lgw-tab-button[data-selected] {
+  background: var(--lg-glass-sel);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-act);
+}
+
+html:not([data-app="1"]) .lgw-tab-button__badge {
+  position: absolute;
+  top: -4px;
+  left: 21px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 2px solid transparent;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-coral);
+  color: var(--lg-canvas);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §9 · hover 层（仅指针设备；触屏不表演）
+   ════════════════════════════════════════════════════════════════════════ */
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .lgw-button:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--lg-glass-2);
+  }
+
+  html:not([data-app="1"]) .lgw-button--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--lg-act) 90%, #000);
+  }
+
+  html:not([data-app="1"]) .lgw-button--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--lg-act) 18%, transparent);
+  }
+
+  html:not([data-app="1"]) .lgw-button--tertiary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--lg-act-soft);
+    color: var(--lg-act);
+    box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  }
+
+  /* danger hover：确认语义 → 珊瑚实底（Lumen「确认后实底」语义前移到 hover） */
+  html:not([data-app="1"]) .lgw-button--danger:hover:not(:disabled):not([aria-disabled="true"]),
+  html:not([data-app="1"]) .lgw-button.lgw-tone--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--lg-coral);
+    color: var(--lg-canvas);
+    box-shadow: none;
+  }
+
+  html:not([data-app="1"]) .lgw-icon-button:hover:not(:disabled):not([aria-disabled="true"]),
+  html:not([data-app="1"]) .lgw-tab-button:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--lg-act-soft);
+    color: var(--lg-act);
+  }
+
+  html:not([data-app="1"]) .lgw-icon-button--filled:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--lg-act) 90%, #000);
+    color: var(--lg-act-ink);
+  }
+
+  html:not([data-app="1"]) .lgw-icon-button--filled.lgw-tone--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--lg-coral) 90%, #000);
+    color: var(--lg-canvas);
+  }
+
+  html:not([data-app="1"]) .lgw-icon-button.lgw-tone--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--lg-coral) 12%, transparent);
+    color: var(--lg-coral);
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §10 · 旧修饰类映射：调用方保留的 btn 家族修饰在 Lumen 语义下的落点
+   ---------------------------------------------------------------------------
+   · .block            → 布局修饰，保留「撑满」意图
+   · .primary          → 有些调用点只给了类没给 variant（如 Messages
+                         「btn primary sm」默认 secondary），按 act 实底兑现
+   · .danger           → 珊瑚描边语义（Friends「danger」/「btn sm danger」）
+   · .ghost            → 静默钮：透明底、无描边（比 tertiary 更轻）
+   · .sm / .lg         → 对齐尺寸档（部分调用点只给类没给 size prop）
+   · .icon             → base.css 无 .btn.icon 定义，无泄漏，不映射
+   本节特异性 (0,3,1) 恰好压过 §4 变体 (0,2,1) 与暗色存量 .btn.danger (0,3,0)。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button).block {
+  width: 100%;
+}
+
+html:not([data-app="1"]) .lgw-button.primary {
+  border-color: transparent;
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: none;
+}
+html:not([data-app="1"]) .lgw-button.primary[data-selected] {
+  border-color: var(--lg-act);
+}
+
+html:not([data-app="1"]) .lgw-button.danger,
+html:not([data-app="1"]) .lgw-icon-button.danger {
+  background: transparent;
+  color: var(--lg-coral);
+  box-shadow: inset 0 0 0 1.6px var(--lg-coral);
+}
+html:not([data-app="1"]) .lgw-button.danger:active:not(:disabled):not([aria-disabled="true"]),
+html:not([data-app="1"]) .lgw-icon-button.danger:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--lg-coral);
+  color: var(--lg-canvas);
+  box-shadow: none;
+}
+
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button).ghost {
+  background: transparent;
+  color: var(--lg-ink-2);
+  box-shadow: none;
+}
+
+html:not([data-app="1"]) .lgw-button.sm {
+  min-width: 32px;
+  min-height: 32px;
+  padding-inline: var(--lg-space-3);
+  gap: var(--lg-space-1);
+  font-size: var(--lg-type-meta);
+}
+html:not([data-app="1"]) .lgw-button.lg {
+  min-height: var(--lg-control-submit);
+  padding-inline: var(--lg-space-5);
+  font-size: var(--lg-type-body);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .lgw-button.primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--lg-act) 90%, #000);
+    color: var(--lg-act-ink);
+  }
+  html:not([data-app="1"]) .lgw-button.danger:hover:not(:disabled):not([aria-disabled="true"]),
+  html:not([data-app="1"]) .lgw-icon-button.danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--lg-coral);
+    color: var(--lg-canvas);
+    box-shadow: none;
+  }
+  html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button).ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--lg-act-soft);
+    color: var(--lg-act);
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §11 · 布局兼容层：会破版的存量组合逐一修复（改 CSS 不改 JSX）
+   ---------------------------------------------------------------------------
+   抽查页：Settings / Wallet / Messages / CharacterEditor / Vip / Chat /
+   Friends / Auth。原则：布局意图（宽度/停靠/隐藏）还给页面，视觉落回 Lumen。
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* —— mobile-only（Chat 返回钮等）：基块的 display:inline-flex 会盖掉
+   base.css .mobile-only { display:none }（0,1,0），这里按原断点还原 —— */
+html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button).mobile-only {
+  display: none;
+}
+@media (max-width: 860px) {
+  html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button).mobile-only {
+    display: inline-flex;
+  }
+}
+
+/* —— Settings 密钥显隐钮：web-modules .secret-toggle 是输入框内的绝对定位
+   36px 小钮（0,1,0），基块的 44px + position:relative + transform 会把它挤出
+   输入框，这里还原停靠并保住按压态的 translateY —— */
+html:not([data-app="1"]) .lgw-icon-button.secret-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: var(--lg-r-xs);
+  background: transparent;
+  color: var(--lg-ink-2);
+  box-shadow: none;
+  transform: translateY(-50%);
+}
+html:not([data-app="1"]) .lgw-icon-button.secret-toggle:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(-50%) scale(0.97);
+}
+
+/* —— CharacterEditor 步骤条：.tabs-bar 里的 AppButton（className 只有
+   active）应保持下划线页签形态，而不是并排一串胶囊 —— */
+html:not([data-app="1"]) .tabs-bar .lgw-button {
+  min-width: 0;
+  min-height: var(--lg-control-min);
+  padding: 10px 15px;
+  border-radius: var(--lg-r-sm) var(--lg-r-sm) 0 0;
+  background: transparent;
+  color: var(--lg-ink-2);
+  box-shadow: none;
+  font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+html:not([data-app="1"]) .tabs-bar .lgw-button.active {
+  color: var(--lg-act);
+  box-shadow: inset 0 -2px 0 0 var(--lg-act);
+}
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .tabs-bar .lgw-button:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--lg-act-soft);
+    color: var(--lg-act);
+  }
+}
+
+/* —— Auth 登录/注册分段：web-super 给 .auth-tabs button 打了 transparent
+   !important（滑动 ink 片负责选中态），这里只校正字色与几何，不与之抢底 —— */
+html:not([data-app="1"]) .auth-tabs .lgw-button {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  border-radius: var(--lg-r-sm);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .auth-tabs .lgw-button[data-selected] {
+  color: var(--lg-ink);
+  border-color: transparent;
+}
+
+/* —— Wallet 签到钮（variant=secondary + .checkin-btn）：原为 accent 实底
+   纵排双行（主文案 + 小字），基块会把它压成单行软底，这里按 Lumen 主动作
+   语义还原为 act 实底纵排 —— */
+html:not([data-app="1"]) .lgw-button.checkin-btn {
+  min-height: 64px;
+  padding: var(--lg-space-3) var(--lg-space-5);
+  border-radius: var(--lg-r-row);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: none;
+}
+html:not([data-app="1"]) .lgw-button.checkin-btn .lgw-button__content {
+  flex-direction: column;
+  gap: 2px;
+}
+html:not([data-app="1"]) .lgw-button.checkin-btn span {
+  font-size: 11px;
+  font-weight: 500;
+}
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .lgw-button.checkin-btn:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--lg-act) 90%, #000);
+    color: var(--lg-act-ink);
+  }
+}
+
+/* —— Wallet → 会员中心入口卡（variant=tertiary + .vip-entry）：原为全宽
+   金调横排卡，基块会压成 44px 居中胶囊，这里还原卡片形态（金 = --lg-gold
+   内容语义；半透明底 + shadow-1，零 blur） —— */
+html:not([data-app="1"]) .lgw-button.vip-entry {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 64px;
+  padding: var(--lg-space-4) var(--lg-space-5);
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--lg-gold) 14%, transparent);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+  text-align: left;
+}
+html:not([data-app="1"]) .lgw-button.vip-entry .lgw-button__content {
+  width: 100%;
+  justify-content: flex-start;
+  gap: var(--lg-space-3);
+}
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .lgw-button.vip-entry:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--lg-gold) 20%, transparent);
+    color: var(--lg-ink);
+  }
+}
+
+/* —— Wallet 成就/公告横条（variant=tertiary + .wallet-ach）：同理还原为
+   全宽横排行卡 —— */
+html:not([data-app="1"]) .lgw-button.wallet-ach {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: var(--lg-control-min);
+  padding: var(--lg-space-3) var(--lg-space-4);
+  border-radius: var(--lg-r-row);
+  background: var(--lg-glass-1);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+  text-align: left;
+}
+html:not([data-app="1"]) .lgw-button.wallet-ach .lgw-button__content {
+  width: 100%;
+  justify-content: flex-start;
+  gap: var(--lg-space-3);
+}
+
+/* —— Chat 发送/停止（variant=filled [+ tone=danger] + .send-btn）：
+   web-modules .send-btn 的暖橙渐变/位移皮肤已被基块+§1 中和；这里只补
+   停靠语义（贴输入框底端）与正圆形态。act 实底与珊瑚停止钮由 §6 承担。 —— */
+html:not([data-app="1"]) .lgw-icon-button.send-btn {
+  align-self: flex-end;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+/* —— Vip 大 CTA（variant=primary size=lg + .vm-go）：app-elevated(未围栏)
+   的金渐变+无限流光被中和后落回 act 实底；只补齐原有的全宽庄重形态 —— */
+html:not([data-app="1"]) .lgw-button.vm-go {
+  width: 100%;
+  min-height: 54px;
+  border-radius: var(--lg-r-panel);
+}
+
+/* —— 会话/收藏列表的快捷开聊小胶囊（size=sm + .msgs-chatgo）：只需防挤压 —— */
+html:not([data-app="1"]) .lgw-button.msgs-chatgo {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §12 · /app-controls 画廊（Web 壳验收页）
+   ---------------------------------------------------------------------------
+   画廊脚手架全部是 qa-* 类（AppControlsGallery.jsx 无 Web 别名）。按任务
+   契约，这是唯一允许触碰 qa- 类名的方式：选择器写在本文件、围栏在 Web
+   （html:not([data-app="1"])），App 端零影响；且只做排版（栅格/间距/标题/
+   字阶），不做视觉皮肤 —— 色板块仅给发丝结构环保证文字可读，底色留给
+   App 壳令牌（Web 下自然为透明）。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .qa-gallery {
+  min-height: 100%;
+  padding: var(--lg-space-6) var(--lg-space-4) 96px;
+  color: var(--lg-ink);
+}
+
+html:not([data-app="1"]) .qa-gallery__frame {
+  width: min(100%, 720px);
+  margin: 0 auto;
+}
+
+html:not([data-app="1"]) .qa-gallery__header {
+  display: grid;
+  grid-template-columns: var(--lg-control-min) 1fr var(--lg-control-min);
+  align-items: center;
+  margin-bottom: var(--lg-space-5);
+}
+
+html:not([data-app="1"]) .qa-gallery__header h1 {
+  margin: 0;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: var(--lg-type-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+html:not([data-app="1"]) .qa-gallery__section {
+  margin: var(--lg-space-4) 0;
+  padding: var(--lg-space-5);
+  border-radius: var(--lg-r-card);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+
+html:not([data-app="1"]) .qa-gallery__section h2 {
+  margin: 0 0 var(--lg-space-3);
+  color: var(--lg-ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html:not([data-app="1"]) .qa-gallery__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lg-space-2);
+}
+
+html:not([data-app="1"]) .qa-gallery__tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: min(100%, 440px);
+  padding: 6px;
+  border-radius: var(--lg-r-pill);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+
+html:not([data-app="1"]) .qa-gallery__note {
+  margin: var(--lg-space-3) 0 0;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+  line-height: 1.6;
+}
+
+html:not([data-app="1"]) .qa-gallery__swatches {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--lg-space-2);
+}
+
+html:not([data-app="1"]) .qa-gallery__swatch {
+  display: flex;
+  align-items: flex-end;
+  min-height: 58px;
+  padding: var(--lg-space-2);
+  border-radius: var(--lg-r-control);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+@media (max-width: 560px) {
+  html:not([data-app="1"]) .qa-gallery__swatches {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §13 · reduced-motion：过渡清零、按压不缩放、spinner 降级为静态三点
+   ════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button) {
+    transition: none !important;
+  }
+
+  html:not([data-app="1"]) :is(.lgw-button, .lgw-icon-button, .lgw-tab-button):active {
+    transform: none !important;
+  }
+
+  html:not([data-app="1"]) .lgw-icon-button.secret-toggle,
+  html:not([data-app="1"]) .lgw-icon-button.secret-toggle:active {
+    transform: translateY(-50%) !important;
+  }
+
+  /* 静态三点：currentcolor 圆点重复渐变，无任何运动 */
+  html:not([data-app="1"]) .lgw-spinner {
+    width: 22px;
+    height: 6px;
+    margin: -3px 0 0 -11px;
+    border: 0;
+    border-radius: 0;
+    background-image: radial-gradient(circle at 50% 50%, currentcolor 2.2px, transparent 2.6px);
+    background-size: 8px 6px;
+    background-repeat: repeat-x;
+    animation: none !important;
+  }
+}

@@ -408,8 +408,8 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .world-entry.wb-flash { animation: wbFlash 1.4s ease; }
 @keyframes wbFlash { 0%, 100% { box-shadow: var(--shadow-sm); } 20%, 60% { box-shadow: 0 0 0 3px var(--accent-ring); border-color: var(--accent); } }
 @media (prefers-reduced-motion: reduce) { .world-entry.wb-flash { animation: none; } }
-[data-theme="dark"] .wb-ov-health.ok { color: #7bc48d; }
-[data-theme="dark"] .wb-ov-health-toggle { color: #e0b257; }
+[data-theme="dark"] .wb-ov-health.ok { color: var(--lg-jade); }
+[data-theme="dark"] .wb-ov-health-toggle { color: var(--lg-gold); }
 .wb-cap-badge .muted { font-weight: 500; }
 .wb-tier-hint { font-size: 12.5px !important; margin-top: -6px !important; margin-bottom: 14px !important; line-height: 1.6; }
 .wb-tier-hint code { background: var(--bg-2); padding: 1px 5px; border-radius: 4px; font-size: 11.5px; border: 1px solid var(--border); }
@@ -598,8 +598,8 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .coin.diamond { --c-fg: #2c6f81; }
 .coin:hover { transform: translateY(-1px); }
 .coin:hover > svg { filter: drop-shadow(0 2px 3px rgba(0,0,0,0.28)); }
-[data-theme="dark"] .coin.gold { --c-fg: #ecc468; }
-[data-theme="dark"] .coin.diamond { --c-fg: #79d0e4; }
+[data-theme="dark"] .coin.gold { --c-fg: var(--lg-gold); }
+[data-theme="dark"] .coin.diamond { --c-fg: var(--lg-dia); }
 .vip-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 800;
   background: linear-gradient(135deg, #e7c879, #c89a3a); color: #463209; }
 
@@ -845,13 +845,15 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 [data-theme="dark"] .inovel .chat-main { background: #14110d; }
 [data-theme="dark"] .inovel-bg::after { background: linear-gradient(180deg, rgba(20,17,13,0.86) 0%, rgba(20,17,13,0.78) 30%, rgba(20,17,13,0.92) 100%); }
 [data-theme="dark"] .inovel-bg-fallback { background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 16%, #14110d), #100d0a 70%); }
-[data-theme="dark"] .inovel-head { background: transparent; }
+/* （深色收拢）原 .inovel-head 深色补丁已删：与浅色规则同为 background: transparent 的纯重述 */
 [data-theme="dark"] .inovel-narr { color: #cdc3b4; }
 [data-theme="dark"] .inovel-who { color: #d8a88f; }
 [data-theme="dark"] .inovel-me p { color: #cdbfae; }
 /* 暗色下玻璃对白略提高不透明度，保证暗背景上的文字对比度 */
 [data-theme="dark"] .inovel-say { background: color-mix(in srgb, var(--panel) 94%, transparent); border-color: color-mix(in srgb, #fff 12%, transparent); box-shadow: 0 6px 22px rgba(0,0,0,0.32); }
-[data-theme="dark"] .inovel-bar { background: none !important; }
+/* （深色收拢）原 [data-theme="dark"] .inovel-bar { background:none !important } 已删：
+   .inovel-bar 必与 .chat-input-bar 同挂（TheaterRoom.jsx），下一条同 !important、
+   同特异性且更后写的规则在两主题下恒生效，该补丁永不胜出。 */
 /* 角色对话同样删掉底部输入栏的白色渐变遮罩与磨砂模糊 —— 输入框自带底色，背景直接透出 */
 .chat-input-bar, [data-theme="dark"] .chat-input-bar, .has-bg .chat-input-bar, [data-theme="dark"] .has-bg .chat-input-bar { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
@@ -903,13 +905,13 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 /* —— 命运抉择 —— */
 .inovel-chip.fate { border-color: color-mix(in srgb, #7c5bd9 45%, transparent); color: #7c5bd9; }
 .inovel-chip.fate:hover, .inovel-chip.fate.on { background: color-mix(in srgb, #7c5bd9 12%, transparent); }
-[data-theme="dark"] .inovel-chip.fate { color: #b7a3f2; border-color: color-mix(in srgb, #b7a3f2 40%, transparent); }
+[data-theme="dark"] .inovel-chip.fate { color: var(--lg-violet); border-color: color-mix(in srgb, var(--lg-violet) 40%, transparent); }
 .inovel-choicepanel { margin: 0 auto 10px; max-width: 620px; background: color-mix(in srgb, var(--panel) 94%, transparent);
   border: 1px solid color-mix(in srgb, #7c5bd9 30%, var(--border)); border-radius: 16px; padding: 12px 12px 10px;
   box-shadow: 0 12px 34px rgba(60, 40, 120, 0.14); animation: popIn 0.24s var(--spring) both; }
 .inovel-choicepanel-hd { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: 0.14em;
   color: #7c5bd9; padding: 0 2px 9px; }
-[data-theme="dark"] .inovel-choicepanel-hd { color: #b7a3f2; }
+[data-theme="dark"] .inovel-choicepanel-hd { color: var(--lg-violet); }
 .inovel-choicepanel-hd .inovel-toc-x { margin-left: auto; }
 .inovel-choice { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
   border: 1px solid var(--border); background: var(--bg-2); border-radius: 12px; padding: 10px 12px; margin-bottom: 7px;

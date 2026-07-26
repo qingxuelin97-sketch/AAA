@@ -12,7 +12,7 @@ import QuickCreate from './QuickCreate.jsx';
 import {
   Compass, ScrollText, Users, MessageCircle, Drama, Library, Heart, Wallet,
   Bell, Settings, Sparkles, LogOut, Crown, User, Search, Megaphone, Trophy, Shield,
-  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark, UserRound, Wand2, Medal, Tags as TagsIcon, BookOpen, Feather, Orbit, Telescope, MessagesSquare
+  BadgeCheck, PartyPopper, PanelLeftClose, PanelLeftOpen, ChevronsLeft, ChevronRight, Dices, Menu, X, TrendingUp, Download, Landmark, UserRound, Wand2, Medal, Tags as TagsIcon, BookOpen, Feather, Orbit, Telescope, MessagesSquare, WifiOff
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -84,6 +84,15 @@ export default function Layout({ children }) {
   const closeTimer = useRef();
   const bnRef = useRef(null);
   const bnInkRef = useRef(null);
+  // Web 离线提示条（对偶 AppLayout 的 .app-offline）：online/offline 事件驱动，
+  // 断网常驻、恢复自动消失。Layout 仅在 !isAppMode() 下渲染，App 壳零波及。
+  const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
+  useEffect(() => {
+    const on = () => setOffline(false), off = () => setOffline(true);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
 
   // 底栏「墨迹」滑块：量出活跃 tab 位置，让指示 pill 弹性滑过去（与 App dock 同款）。
   useEffect(() => {
@@ -200,6 +209,13 @@ export default function Layout({ children }) {
       {mobileNav && <MobileNav user={user} unread={unread} dmUnread={dmUnread} onClose={() => setMobileNav(false)} installEvt={installEvt} doInstall={doInstall} />}
       <main className="main">
         <ScrollChrome />
+        {/* 离线细条：桌面贴 .main 顶（sticky），移动端在顶栏下随流；样式见 web-lumen-misc.css */}
+        {offline && (
+          <div className="lgw-offline" role="status">
+            <WifiOff size={14} aria-hidden="true" />
+            <span>网络已断开，操作会在恢复后重试</span>
+          </div>
+        )}
         <div className="route-fade" key={loc.pathname}>{children}</div>
       </main>
       <CommandPalette />

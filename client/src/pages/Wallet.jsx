@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon, DiamondIcon } from '../ui.jsx';
+import { EmptyArt } from '../art.jsx';
 import { cnToday } from '../util.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
@@ -128,14 +129,23 @@ export default function Wallet() {
     <Root {...rootProps}>
       <Head />
       <div className="page">
-        <section className="empty" role="alert" aria-live="assertive" style={{ paddingTop: 72 }}>
-          <div className="big"><WalletIcon size={42} /></div>
-          <h2 style={{ margin: '10px 0 6px' }}>钱包暂时无法加载</h2>
-          <p className="muted" style={{ margin: '0 0 18px' }}>{loadError}</p>
-          <AppButton variant="primary" className="btn primary" loading={loading} disabled={loading} onClick={() => void load()}>
-            重新加载
-          </AppButton>
-        </section>
+        {appMode ? (
+          <section className="empty" role="alert" aria-live="assertive" style={{ paddingTop: 72 }}>
+            <div className="big"><WalletIcon size={42} /></div>
+            <h2 style={{ margin: '10px 0 6px' }}>钱包暂时无法加载</h2>
+            <p className="muted" style={{ margin: '0 0 18px' }}>{loadError}</p>
+            <AppButton variant="primary" className="btn primary" loading={loading} disabled={loading} onClick={() => void load()}>
+              重新加载
+            </AppButton>
+          </section>
+        ) : (
+          <section className="empty lgw-error" role="alert" aria-live="assertive">
+            <span className="lgw-error-ic"><WalletIcon size={22} /></span>
+            <h2 className="lgw-error-title">钱包暂时无法加载</h2>
+            <p className="lgw-error-msg">{loadError}</p>
+            <button className="btn primary lgw-error-retry" disabled={loading} onClick={() => void load()}>重新加载</button>
+          </section>
+        )}
       </div>
     </Root>
   );
@@ -414,7 +424,17 @@ export default function Wallet() {
 
         {/* ledger */}
         <div className="section-title" style={{ marginTop: 30 }}><h2>交易流水</h2></div>
-        {transactions.length === 0 ? <div className="empty" style={{ padding: 40 }}><div className="big"><WalletIcon size={42} /></div>暂无交易记录</div> : (
+        {transactions.length === 0 ? (
+          <div className="empty lgw-empty" style={{ padding: 40 }}>
+            <EmptyArt kind="generic" size={116} />
+            <h2 className="lgw-empty-title">暂无交易记录</h2>
+            <p className="lgw-empty-sub">签到、兑换与充值的每一笔变动都会记录在这里。</p>
+            <div className="lgw-empty-cta">
+              {!signed && <button className="btn primary" disabled={!!busy} onClick={checkin}><CalendarCheck size={15} /> 先领一份签到金币</button>}
+              {signed && <button className="btn primary" onClick={() => nav('/vip')}>看看会员权益</button>}
+            </div>
+          </div>
+        ) : (
           <div className="card stagger-in" style={{ padding: '4px 22px' }}>
             {transactions.map(t => (
               <div key={t.id} className="tx-row">

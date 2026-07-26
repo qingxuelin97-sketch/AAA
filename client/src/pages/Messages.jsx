@@ -259,7 +259,14 @@ export default function Messages() {
                 <AppButton variant="secondary" size="sm" onClick={() => { setConvs(null); loadConvs(); }}>重新载入</AppButton>
               </div>
             )}
-            {convs && convs.length === 0 && (!appMode || !convError) && (
+            {!appMode && convs && convs.length === 0 && convError && (
+              <div className="msgs-empty msgs-error lgw-error" role="alert">
+                <span className="lgw-error-ic"><MessageCircle size={20} /></span>
+                <p className="lgw-error-msg">{convError}</p>
+                <button className="btn primary lgw-error-retry" onClick={() => { setConvs(null); loadConvs(); }}>重新载入</button>
+              </div>
+            )}
+            {convs && convs.length === 0 && !convError && (
               <div className="msgs-empty">
                 <EmptyArt kind="chat" size={120} />
                 <p>还没有对话 —— 去发现页挑一个角色开聊吧</p>
@@ -299,7 +306,14 @@ export default function Messages() {
               <AppButton variant="secondary" size="sm" onClick={() => setFavs(null)}>重新载入</AppButton>
             </div>
           )}
-          {favs && favs.length === 0 && (!appMode || !favError) && (
+          {!appMode && favs && favs.length === 0 && favError && (
+            <div className="msgs-empty msgs-error lgw-error" role="alert">
+              <span className="lgw-error-ic"><Heart size={20} /></span>
+              <p className="lgw-error-msg">{favError}</p>
+              <button className="btn primary lgw-error-retry" onClick={() => setFavs(null)}>重新载入</button>
+            </div>
+          )}
+          {favs && favs.length === 0 && !favError && (
             <div className="msgs-empty">
               <EmptyArt kind="library" size={120} />
               <p>{appMode

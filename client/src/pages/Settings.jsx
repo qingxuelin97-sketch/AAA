@@ -162,12 +162,21 @@ export default function Settings() {
       )}
       <div className={withAppClass('page', 'qa-settings-page qa-settings-loading')} style={{ maxWidth: 760 }} aria-busy={!settingsError}>
         {settingsError ? (
-          <section className="qa-settings-load-error" role="alert">
-            <span aria-hidden="true"><RefreshCw size={22} /></span>
-            <h2>暂时无法载入设置</h2>
-            <p>{settingsError}</p>
-            <AppButton variant="primary" onClick={loadSettings}><RefreshCw size={16} /> 重试</AppButton>
-          </section>
+          app ? (
+            <section className="qa-settings-load-error" role="alert">
+              <span aria-hidden="true"><RefreshCw size={22} /></span>
+              <h2>暂时无法载入设置</h2>
+              <p>{settingsError}</p>
+              <AppButton variant="primary" onClick={loadSettings}><RefreshCw size={16} /> 重试</AppButton>
+            </section>
+          ) : (
+            <section className="lgw-error" role="alert">
+              <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+              <h2 className="lgw-error-title">暂时无法载入设置</h2>
+              <p className="lgw-error-msg">{settingsError}</p>
+              <button className="btn primary lgw-error-retry" onClick={loadSettings}><RefreshCw size={15} /> 重试</button>
+            </section>
+          )
         ) : (
           <div aria-hidden="true">
             <div className="skel" style={{ height: 40, marginBottom: 16 }} />

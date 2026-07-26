@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
 import { EmptyArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { ArrowLeft, Bell, Heart, MessageCircle, Gift, Megaphone, Landmark, CheckCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, Bell, Heart, MessageCircle, Gift, Megaphone, Landmark, CheckCheck, Sparkles, RefreshCw } from 'lucide-react';
 
 // Infer an icon + accent from the notification text (no schema change needed).
 function iconFor(text) {
@@ -22,22 +22,29 @@ function iconFor(text) {
 export default function Notifications() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [tab, setTab] = useState('all');
   const toast = useToast();
   const nav = useNavigate();
   const appMode = isAppMode();
+  const aliveRef = useRef(true);
+  useEffect(() => () => { aliveRef.current = false; }, []);
+
+  const load = () => {
+    setLoading(true);
+    setLoadError('');
+    api('/social/notifications')
+      .then(d => { if (aliveRef.current) setItems(d.notifications || []); }) // snapshot keeps original read flags this session
+      .catch(e => { if (aliveRef.current) setLoadError(e.message || '通知载入失败，请稍后重试'); toast(e.message, 'err'); })
+      .finally(() => { if (aliveRef.current) setLoading(false); });
+  };
 
   useEffect(() => {
-    let alive = true;
-    api('/social/notifications')
-      .then(d => { if (alive) setItems(d.notifications || []); }) // snapshot keeps original read flags this session
-      .catch(e => toast(e.message, 'err'))
-      .finally(() => { if (alive) setLoading(false); });
+    load();
     api('/social/notifications/read', { method: 'POST' })
       // 通知壳层（Layout / AppLayout）立即清零角标，不用等下一轮轮询
       .then(() => { try { window.dispatchEvent(new Event('huanyu-noti-read')); } catch { /* */ } })
       .catch(() => { /* ignore */ });
-    return () => { alive = false; };
     /* eslint-disable-next-line */
   }, []);
 
@@ -93,8 +100,26 @@ export default function Notifications() {
           <div className="noti-list" aria-hidden="true">
             {[64, 64, 64].map((h, i) => <div key={i} className="skel" style={{ height: h, marginBottom: 10 }} />)}
           </div>
+        ) : !appMode && loadError && items.length === 0 ? (
+          <div className="empty lgw-error" role="alert">
+            <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+            <h2 className="lgw-error-title">通知暂时无法载入</h2>
+            <p className="lgw-error-msg">{loadError}</p>
+            <button className="btn primary lgw-error-retry" onClick={() => load()}><RefreshCw size={15} /> 重新载入</button>
+          </div>
         ) : shown.length === 0 ? (
-          <div className="empty"><EmptyArt kind="notifications" />{tab === 'unread' ? '没有未读通知' : '暂时没有新通知'}</div>
+          appMode
+            ? <div className="empty"><EmptyArt kind="notifications" />{tab === 'unread' ? '没有未读通知' : '暂时没有新通知'}</div>
+            : (
+              <div className="empty lgw-empty">
+                <EmptyArt kind="notifications" />
+                <h2 className="lgw-empty-title">{tab === 'unread' ? '没有未读通知' : '暂时没有新通知'}</h2>
+                <p className="lgw-empty-sub">有人点赞、评论或系统发放奖励时，会第一时间出现在这里。</p>
+                <div className="lgw-empty-cta">
+                  <button className="btn primary" onClick={() => nav('/')}>去发现广场逛逛</button>
+                </div>
+              </div>
+            )
         ) : (
           /* stagger-in：通知行依次浮现（app-motion 层，lite/reduced-motion 自动退化） */
           <div className="noti-list stagger-in">

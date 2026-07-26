@@ -7,13 +7,14 @@ import { pid } from '../assets.jsx';
 import { isAppMode } from '../appmode.js';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
+import CallScreen from '../components/CallScreen.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { CoverArt, EmptyArt, QuietAquaCharacterArt, isLegacyMonogramCover, resolveCharacterMedia } from '../art.jsx';
 import {
   MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye,
   ChevronRight, ChevronDown, Drama, BadgeCheck, Download, X, MoreHorizontal,
-  Share2, Plus, Check, Quote, MessagesSquare, Puzzle, AudioLines
+  Share2, Plus, Check, Quote, MessagesSquare, Puzzle, AudioLines, Phone
 } from 'lucide-react';
 import { shareUrl } from '../util.js';
 
@@ -342,6 +343,9 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
    Web / 移动网页布局（原样保留）
    ============================================================ */
 function WebView({ c, user, nav, faved, busy, wbOpen, setWbOpen, related, startChat, toggleFav, exportCard }) {
+  // 语音通话（Web 专属入口）：WebView 只在 !isAppMode() 下被渲染，App 端
+  // 已有自己的通话入口（沉浸流电话键），此处零波及。CallScreen 双端可用。
+  const [calling, setCalling] = useState(false);
   if (!c) return (
     <><div className="topbar"><button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button><div style={{ flex: 1 }}><h1>角色</h1></div></div>
       <div className="page"><div className="empty">载入中…</div></div></>
@@ -384,6 +388,7 @@ function WebView({ c, user, nav, faved, busy, wbOpen, setWbOpen, related, startC
 
         <div className="row" style={{ margin: '20px 0' }}>
           <button className="btn primary block" onClick={startChat} disabled={busy}><MessageCircle size={16} /> {busy ? '进入中…' : '开始对话'}</button>
+          <button className="btn block lgw-cv-call" onClick={() => setCalling(true)} aria-label="语音通话" title={`给 ${c.name} 打电话`}><Phone size={15} /> 语音通话</button>
           <button className={'btn block' + (faved ? ' danger' : '')} onClick={toggleFav}><Heart size={15} fill={faved ? 'currentColor' : 'none'} /> {faved ? '已收藏' : '收藏'}</button>
         </div>
 
@@ -445,6 +450,9 @@ function WebView({ c, user, nav, faved, busy, wbOpen, setWbOpen, related, startC
 
         <Reviews type="character" id={c.id} />
       </div>
+
+      {/* 通话 —— 给角色打电话（沉浸式全屏，Portal 自隔离，与 DiscoverFeed Web 分支同款拉起方式） */}
+      {calling && <CallScreen character={c} onClose={() => setCalling(false)} />}
     </>
   );
 }

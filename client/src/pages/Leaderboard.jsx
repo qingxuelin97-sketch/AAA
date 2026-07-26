@@ -4,7 +4,8 @@ import { api, assetUrl, useAuth } from '../api.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { Heart, Play, Flame, ScrollText, Trophy, Crown, ArrowLeft, ChevronRight } from 'lucide-react';
+import { EmptyArt } from '../art.jsx';
+import { Heart, Play, Flame, ScrollText, Trophy, Crown, ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
 export default function Leaderboard() {
   const nav = useNavigate();
@@ -14,14 +15,17 @@ export default function Leaderboard() {
   const [tab, setTab] = useState('characters');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setLoadError('');
     api('/engage/leaderboard')
       .then(setData)
-      .catch(e => toast(e.message, 'err'))
+      .catch(e => { setLoadError(e.message || '排行榜载入失败，请稍后重试'); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
-    /* eslint-disable-next-line */
-  }, []);
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const characters = data?.characters || [];
   const scripts = data?.scripts || [];
@@ -154,8 +158,27 @@ export default function Leaderboard() {
           <button className={tab === 'authors' ? 'active' : ''} onClick={() => setTab('authors')}>创作者榜</button>
         </div>
 
-        {loading ? <div className="empty">载入中…</div> : rows.length === 0 ? (
-          <div className="empty"><div className="big"><Trophy size={42} /></div>{emptyText}</div>
+        {loading ? (
+          <div className="lgw-skel-list" aria-hidden="true">
+            <div className="skel lgw-skel-lg" />
+            {[0, 1, 2, 3].map(i => <div key={i} className="skel" />)}
+          </div>
+        ) : loadError && !data ? (
+          <div className="empty lgw-error" role="alert">
+            <span className="lgw-error-ic"><Trophy size={22} /></span>
+            <h2 className="lgw-error-title">排行榜暂时无法载入</h2>
+            <p className="lgw-error-msg">{loadError}</p>
+            <button className="btn primary lgw-error-retry" onClick={() => load()}><RefreshCw size={15} /> 重新载入</button>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="empty lgw-empty">
+            <EmptyArt kind="generic" />
+            <h2 className="lgw-empty-title">{emptyText}</h2>
+            <p className="lgw-empty-sub">榜单每日实时更新，作品被点赞、游玩后就会登上来。</p>
+            <div className="lgw-empty-cta">
+              <button className="btn primary" onClick={() => nav('/')}>去发现广场逛逛</button>
+            </div>
+          </div>
         ) : (
           <>
             {podiumOrder.length > 0 && (

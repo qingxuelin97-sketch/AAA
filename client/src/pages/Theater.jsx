@@ -31,6 +31,7 @@ export default function Theater() {
   const appMode = isAppMode();
   const [theaters, setTheaters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState('all');   // all | mine | reading
   const [q, setQ] = useState('');
@@ -39,9 +40,10 @@ export default function Theater() {
 
   const load = () => {
     setLoading(true);
+    setLoadError('');
     return api('/theater')
       .then(d => setTheaters(d.theaters))
-      .catch(e => toast(e.message, 'err'))
+      .catch(e => { setLoadError(e.message || '故事书架载入失败，请稍后重试'); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -130,11 +132,23 @@ export default function Theater() {
             <input placeholder="搜索书名 / 序章 / 文风" value={q} onChange={e => setQ(e.target.value)} />
           </div>
         </div>
-        {shown.length === 0 ? (
-          <div className="empty">
+        {loading ? (
+          <div className="lgw-skel-list" aria-hidden="true">
+            {[0, 1, 2].map(i => <div key={i} className="skel lgw-skel-lg" />)}
+          </div>
+        ) : loadError && theaters.length === 0 ? (
+          <div className="empty lgw-error" role="alert">
+            <span className="lgw-error-ic"><BookOpen size={22} /></span>
+            <h2 className="lgw-error-title">故事书架暂时无法载入</h2>
+            <p className="lgw-error-msg">{loadError}</p>
+            <button className="btn primary lgw-error-retry" onClick={() => load()}>重新载入</button>
+          </div>
+        ) : shown.length === 0 ? (
+          <div className="empty lgw-empty">
             <div className="big"><BookOpen size={46} /></div>
-            {q ? '没有匹配的故事' : tab === 'mine' ? '你还没有创作过故事' : tab === 'reading' ? '还没有在读的故事' : '还没有故事'}
-            <div style={{ marginTop: 14 }}><button className="btn primary" onClick={() => setCreating(true)}><Feather size={15} /> 开写你的第一部互动小说</button></div>
+            <h2 className="lgw-empty-title">{q ? '没有匹配的故事' : tab === 'mine' ? '你还没有创作过故事' : tab === 'reading' ? '还没有在读的故事' : '还没有故事'}</h2>
+            <p className="lgw-empty-sub">{q ? '换一个关键词试试，或者自己开一个头。' : '写下一个开场，旁白和角色会接住你的每一步。'}</p>
+            <div className="lgw-empty-cta"><button className="btn primary" onClick={() => setCreating(true)}><Feather size={15} /> 开写你的第一部互动小说</button></div>
           </div>
         ) : (
           <div className="inovel-shelf">

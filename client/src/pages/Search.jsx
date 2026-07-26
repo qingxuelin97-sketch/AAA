@@ -7,7 +7,7 @@ import { pid, parsePid } from '../assets.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { Search as SearchIcon, Drama, ScrollText, Play, User, X, History, ArrowLeft } from 'lucide-react';
+import { Search as SearchIcon, Drama, ScrollText, Play, User, X, History, ArrowLeft, RefreshCw } from 'lucide-react';
 
 const TABS = [
   { k: 'user', label: '用户', ph: '用户 ID（如 U3）或用户名 / 昵称' },
@@ -29,6 +29,7 @@ export default function Search() {
   const [q, setQ] = useState(initialQ);
   const [res, setRes] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const [recent, setRecent] = useState(loadRecent);
   const nav = useNavigate();
   const toast = useToast();
@@ -48,6 +49,7 @@ export default function Search() {
     if (parsed?.type && parsed.type !== tab) setTab(parsed.type);
     const seq = ++seqRef.current;
     setLoading(true);
+    setSearchError('');
     try {
       let out;
       if (useTab === 'user') {
@@ -73,7 +75,9 @@ export default function Search() {
       if (seq !== seqRef.current) return; // 已有更新的输入在途，丢弃过期结果
       setRes(out);
       remember(query);
-    } catch (e) { if (seq === seqRef.current) toast(e.message, 'err'); }
+    } catch (e) {
+      if (seq === seqRef.current) { toast(e.message, 'err'); setSearchError(e.message || '搜索失败，请稍后重试'); }
+    }
     finally { if (seq === seqRef.current) setLoading(false); }
   };
 
@@ -138,10 +142,25 @@ export default function Search() {
           <div className={app ? 'qa-search-loading' : undefined} aria-hidden="true">
             {[72, 72, 72].map((h, i) => <div key={i} className="skel" style={{ height: h, marginBottom: 10 }} />)}
           </div>
+        ) : !app && searchError && !res ? (
+          <div className="empty lgw-error" role="alert">
+            <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+            <h2 className="lgw-error-title">搜索暂时不可用</h2>
+            <p className="lgw-error-msg">{searchError}</p>
+            <button className="btn primary lgw-error-retry" onClick={() => run(q.trim(), { manual: true })}><RefreshCw size={15} /> 重新搜索</button>
+          </div>
         ) : !res ? (
           <div className={app ? 'empty qa-search-empty' : 'empty'}><EmptyArt kind="search" />输入上方关键词或 ID 开始搜索</div>
         ) : res.tab === 'user' ? (
-          res.users.length === 0 ? <div className={app ? 'empty qa-search-empty' : 'empty'}><div className="big"><User size={44} /></div>没有找到匹配的用户</div> : (
+          res.users.length === 0 ? (
+            app ? <div className="empty qa-search-empty"><div className="big"><User size={44} /></div>没有找到匹配的用户</div> : (
+              <div className="empty lgw-empty">
+                <EmptyArt kind="search" />
+                <h2 className="lgw-empty-title">没有找到匹配的用户</h2>
+                <p className="lgw-empty-sub">试试完整的用户 ID（如 U3）、用户名或昵称。</p>
+              </div>
+            )
+          ) : (
             <div className={app ? 'stagger-in qa-search-results' : 'stagger-in'}>
               {res.users.map(u => {
                 const ResultRoot = app ? 'button' : 'div';
@@ -158,7 +177,18 @@ export default function Search() {
             </div>
           )
         ) : res.tab === 'character' ? (
-          res.characters.length === 0 ? <div className={app ? 'empty qa-search-empty' : 'empty'}><div className="big"><Drama size={44} /></div>没有找到该角色（可能非公开）</div> : (
+          res.characters.length === 0 ? (
+            app ? <div className="empty qa-search-empty"><div className="big"><Drama size={44} /></div>没有找到该角色（可能非公开）</div> : (
+              <div className="empty lgw-empty">
+                <EmptyArt kind="search" />
+                <h2 className="lgw-empty-title">没有找到该角色</h2>
+                <p className="lgw-empty-sub">对方可能未公开这个角色；也可以换个关键词，或者去发现广场看看。</p>
+                <div className="lgw-empty-cta">
+                  <button className="btn primary" onClick={() => nav('/')}>去发现广场</button>
+                </div>
+              </div>
+            )
+          ) : (
             <div className={app ? 'grid stagger-in qa-search-results qa-search-card-results' : 'grid stagger-in'}>
               {res.characters.map(c => {
                 const ResultRoot = app ? 'button' : 'div';
@@ -172,7 +202,18 @@ export default function Search() {
             </div>
           )
         ) : (
-          res.scripts.length === 0 ? <div className={app ? 'empty qa-search-empty' : 'empty'}><div className="big"><ScrollText size={44} /></div>没有找到该剧本</div> : (
+          res.scripts.length === 0 ? (
+            app ? <div className="empty qa-search-empty"><div className="big"><ScrollText size={44} /></div>没有找到该剧本</div> : (
+              <div className="empty lgw-empty">
+                <EmptyArt kind="search" />
+                <h2 className="lgw-empty-title">没有找到该剧本</h2>
+                <p className="lgw-empty-sub">换个关键词试试，或者去剧本市集按分类浏览。</p>
+                <div className="lgw-empty-cta">
+                  <button className="btn primary" onClick={() => nav('/scripts')}>去剧本市集</button>
+                </div>
+              </div>
+            )
+          ) : (
             <div className={app ? 'grid stagger-in qa-search-results qa-search-card-results' : 'grid stagger-in'}>
               {res.scripts.map(s => {
                 const ResultRoot = app ? 'button' : 'div';

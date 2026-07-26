@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast, GridSkeleton, CoinIcon } from '../ui.jsx';
-import { ScrollText, Play, Plus, Inbox } from 'lucide-react';
+import { ScrollText, Play, Plus, Inbox, RefreshCw } from 'lucide-react';
 import { CategoryIcon } from '../assets.jsx';
+import { EmptyArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
 
 function ScriptCard({ s, nav, extra }) {
@@ -39,27 +40,40 @@ export default function Scripts() {
   const [scripts, setScripts] = useState([]);
   const [mine, setMine] = useState({ created: [], purchased: [] });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     api('/meta/categories').then(d => setCats(d.categories || [])).catch(() => {});
   }, []);
 
-  const loadPlaza = () => {
+  const loadPlaza = (qOverride) => {
     setLoading(true);
-    const params = new URLSearchParams({ category: cat, q, sort });
+    setLoadError('');
+    const params = new URLSearchParams({ category: cat, q: typeof qOverride === 'string' ? qOverride : q, sort });
     api('/scripts?' + params.toString())
       .then(d => setScripts(d.scripts || []))
-      .catch(e => toast(e.message, 'err'))
+      .catch(e => { setLoadError(e.message || '剧本载入失败，请稍后重试'); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
 
   const loadMine = () => {
     setLoading(true);
+    setLoadError('');
     api('/scripts/mine')
       .then(d => setMine({ created: d.created || [], purchased: d.purchased || [] }))
-      .catch(e => toast(e.message, 'err'))
+      .catch(e => { setLoadError(e.message || '剧本载入失败，请稍后重试'); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
+
+  // Web 门控错误卡（App 保持原有 toast 行为与 DOM 不变）
+  const webError = (onRetry) => (
+    <div className="empty lgw-error" role="alert">
+      <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+      <h2 className="lgw-error-title">剧本暂时无法载入</h2>
+      <p className="lgw-error-msg">{loadError}</p>
+      <button className="btn primary lgw-error-retry" onClick={onRetry}><RefreshCw size={15} /> 重新载入</button>
+    </div>
+  );
 
   useEffect(() => {
     if (tab === 'plaza') loadPlaza();
@@ -111,8 +125,19 @@ export default function Scripts() {
             </div>
 
             {loading ? <GridSkeleton n={8} /> :
+              !appMode && loadError && scripts.length === 0 ? webError(loadPlaza) :
               scripts.length === 0 ? (
-                <div className="empty"><div className="big"><ScrollText size={46} /></div>暂无剧本</div>
+                appMode ? <div className="empty"><div className="big"><ScrollText size={46} /></div>暂无剧本</div> : (
+                  <div className="empty lgw-empty">
+                    <EmptyArt kind="library" />
+                    <h2 className="lgw-empty-title">{q || cat !== 'all' ? '没有符合条件的剧本' : '广场还没有剧本'}</h2>
+                    <p className="lgw-empty-sub">{q || cat !== 'all' ? '换个关键词或分类试试，也可以自己写一部。' : '第一部剧本由你来写，发布后会出现在这里。'}</p>
+                    <div className="lgw-empty-cta">
+                      {(q || cat !== 'all') && <button className="btn" onClick={() => { setQ(''); if (cat !== 'all') setCat('all'); else loadPlaza(''); }}>清除筛选</button>}
+                      <button className="btn primary" onClick={() => nav('/script/new')}><Plus size={15} /> 创建剧本</button>
+                    </div>
+                  </div>
+                )
               ) : (
                 <div className="grid">
                   {scripts.map(s => <ScriptCard key={s.id} s={s} nav={nav} />)}
@@ -123,6 +148,7 @@ export default function Scripts() {
 
         {tab === 'created' && (
           loading ? <GridSkeleton n={6} /> :
+            !appMode && loadError && mine.created.length === 0 ? webError(loadMine) :
             mine.created.length === 0 ? (
               <div className="empty">
                 <div className="big"><ScrollText size={46} /></div>你还没有创建剧本
@@ -137,8 +163,18 @@ export default function Scripts() {
 
         {tab === 'purchased' && (
           loading ? <GridSkeleton n={6} /> :
+            !appMode && loadError && mine.purchased.length === 0 ? webError(loadMine) :
             mine.purchased.length === 0 ? (
-              <div className="empty"><div className="big"><Inbox size={46} /></div>你还没有购买剧本</div>
+              appMode ? <div className="empty"><div className="big"><Inbox size={46} /></div>你还没有购买剧本</div> : (
+                <div className="empty lgw-empty">
+                  <EmptyArt kind="library" />
+                  <h2 className="lgw-empty-title">你还没有购买剧本</h2>
+                  <p className="lgw-empty-sub">广场上有免费与付费的沉浸式剧本，买过的会集中在这里。</p>
+                  <div className="lgw-empty-cta">
+                    <button className="btn primary" onClick={() => setTab('plaza')}>去广场逛逛</button>
+                  </div>
+                </div>
+              )
             ) : (
               <div className="grid">
                 {mine.purchased.map(s => (

@@ -1,0 +1,1479 @@
+/* ============================================================================
+   曜光玻璃 Lumen Glass · Web 存量页面重皮（web-lumen-pages.css）
+   ----------------------------------------------------------------------------
+   · 定位：桥接层（web-lumen-bridge.css）已把旧变量整体接到 --lg-*，本文件做
+     「排版与材质升级」—— 逐页段落式覆盖 base.css / web-modules.css /
+     web-super.css / 未围栏 app-*.css 里的存量类。CSS-only，零 JSX 改动。
+   · 围栏：每一条选择器从 html:not([data-app="1"]) 开始，与 App DOM 互斥。
+     围栏本身贡献 (0,1,1) 特异性，天然压过存量的 [data-theme="dark"] 散补丁
+     （同类数下元素位胜出），因此无需写深色专块 —— 深浅靠 --lg-* 令牌翻转。
+   · 材质纪律（SPEC §1 / 计划 D8）：内容卡一律「半透明底 + var(--lg-glass-
+     shadow-1) 三件套」零 blur；本文件唯一新增 backdrop-filter 在对话输入岛
+     （.chat-input-bar .box，chrome 类），用 --lgw-chrome-blur。
+   · 颜色零新增字面量：var(--lg-*)（含桥接家族）/ color-mix(令牌, #fff/#000/
+     transparent)；唯二例外白系玻璃 rgb(255 255 255 / x%) 与黑系遮罩
+     rgb(0 0 0 / x%)。
+   · 动效：本文件不新增 @keyframes（存量入场动画保留）；按压/状态过渡走
+     --lg-dur-* + --lg-ease，reduced-motion 时令牌自动清零。
+   · 触控：主操作 ≥ var(--lg-control-min)；细小 chip 在 coarse 指针下补高。
+   · 焦点：:focus-visible 一律 var(--lg-focus) 外环。
+   ----------------------------------------------------------------------------
+   目录
+     §1  Auth（/auth）—— 品牌板 Lumen 光晕 + 表单卡
+     §2  Settings —— inset group 化 + 控件 Lumen
+     §3  Wallet（Web 分支）+ Vip —— 石墨资产实体（金唯一光点）
+     §4  Chat（Web）—— 输入岛玻璃化 + 气泡双材质
+     §5  Messages / Notifications / Friends / Groups —— 列表行
+     §6  Library / Community / Scripts / Search / Favorites / Tags —— 卡片网格
+     §7  Leaderboard / Events / Gacha / Achievements / Theater —— 玩法页
+     §8  CharacterView / ScriptDetail / WorldbookView —— 详情页
+     §9  跨页收尾（焦点环 / 空态 / 触控补高）
+   ========================================================================== */
+
+/* ============================================================================
+   §1 Auth（/auth）—— 左品牌板从暖橙渐变改为 Lumen 光晕，表单卡玻璃观感
+   （只写 CSS：app-test 有 Auth Web DOM 守卫，DOM 一个字节不动）
+   ========================================================================== */
+
+/* ── 1.1 品牌板：画布底 + warm 环境光晕接管旧暖橙径向 ── */
+html:not([data-app="1"]) .auth-hero {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient-warm);
+}
+html:not([data-app="1"]) .auth-hero h1 {
+  font-size: clamp(var(--lg-type-hero), 5vw, 56px);
+  color: var(--lg-ink);
+  letter-spacing: -0.02em;
+}
+html:not([data-app="1"]) .auth-hero p { color: var(--lg-ink-2); }
+/* 旧 .glow 暖橙光斑 → 主动作柔光 */
+html:not([data-app="1"]) .auth-hero .glow {
+  background: radial-gradient(color-mix(in srgb, var(--lg-act) 34%, transparent), transparent 70%);
+  opacity: 0.6;
+}
+/* 浮动光斑三枚：iris / azure / gold —— 语义光，不再是烘焙暖橙 */
+html:not([data-app="1"]) .auth-orbs i { opacity: 0.42; }
+html:not([data-app="1"]) .auth-orbs i:nth-child(1) {
+  background: radial-gradient(color-mix(in srgb, var(--lg-act) 52%, transparent) 0%, color-mix(in srgb, var(--lg-act) 34%, transparent) 34%, color-mix(in srgb, var(--lg-act) 12%, transparent) 58%, transparent 80%);
+}
+html:not([data-app="1"]) .auth-orbs i:nth-child(2) {
+  background: radial-gradient(color-mix(in srgb, var(--lg-azure) 42%, transparent) 0%, color-mix(in srgb, var(--lg-azure) 28%, transparent) 34%, color-mix(in srgb, var(--lg-azure) 10%, transparent) 58%, transparent 80%);
+}
+html:not([data-app="1"]) .auth-orbs i:nth-child(3) {
+  background: radial-gradient(color-mix(in srgb, var(--lg-gold) 40%, transparent) 0%, color-mix(in srgb, var(--lg-gold) 26%, transparent) 34%, color-mix(in srgb, var(--lg-gold) 10%, transparent) 58%, transparent 80%);
+}
+
+/* ── 1.2 功能特性小卡：白系玻璃观感（零 blur，三件套阴影） ── */
+html:not([data-app="1"]) .auth-feat-card {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: var(--lg-glass-shadow-1);
+  padding: 12px 14px;
+}
+html:not([data-app="1"]) .auth-feat-card .afc-ic {
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  border-radius: var(--lg-r-sm);
+}
+html:not([data-app="1"]) .auth-feat-card b { color: var(--lg-ink); }
+html:not([data-app="1"]) .auth-feat-card small { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .auth-stats > div b {
+  color: var(--lg-act);
+  font-size: var(--lg-type-display);
+}
+html:not([data-app="1"]) .auth-stats > div span { color: var(--lg-ink-2); }
+/* 旧 .auth-feat 胶囊（v1 兜底渲染路径）同步 Lumen */
+html:not([data-app="1"]) .auth-feat span {
+  border: 0;
+  background: color-mix(in srgb, var(--panel) 64%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink-2);
+  border-radius: var(--lg-r-pill);
+}
+
+/* ── 1.3 角色星环：玻璃 chip ── */
+html:not([data-app="1"]) .auth-ring .ring-chip,
+html:not([data-app="1"]) .auth-ring-mobile .ring-chip {
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  border-radius: var(--lg-r-pill);
+}
+html:not([data-app="1"]) .auth-ring .ring-chip em,
+html:not([data-app="1"]) .auth-ring-mobile .ring-chip em { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .arm-cap { color: var(--lg-ink-3); font-size: var(--lg-type-meta); }
+
+/* ── 1.4 表单卡：浮起卡面 + 徽章 + 分段 tabs ── */
+html:not([data-app="1"]) .auth-form-side {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient);
+}
+html:not([data-app="1"]) .card.auth-card {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  box-shadow: var(--lg-glass-shadow-2);
+}
+html:not([data-app="1"]) .auth-card h2 {
+  font-size: var(--lg-type-title);
+  color: var(--lg-ink);
+}
+html:not([data-app="1"]) .auth-card-badge {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  border-radius: var(--lg-r-pill);
+  font-size: 12px;
+}
+html:not([data-app="1"]) .auth-tabs {
+  background: var(--lg-grouped);
+  border-radius: var(--lg-r-control);
+  padding: 4px;
+}
+html:not([data-app="1"]) .auth-tabs button {
+  min-height: 40px;
+  border-radius: var(--lg-r-sm);
+  color: var(--lg-ink-2);
+  transition: color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .auth-tabs button.active { color: var(--lg-ink); }
+html:not([data-app="1"]) .auth-tab-ink {
+  background: var(--lg-glass-sel);
+  box-shadow: var(--lg-glass-shadow-1);
+  border-radius: var(--lg-r-sm);
+  transition: transform var(--lg-dur-state) var(--lg-ease);
+}
+
+/* ── 1.5 输入与提交：焦点环 + 48px 提交钮 ── */
+html:not([data-app="1"]) .auth-card .field label { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .auth-card .input {
+  min-height: var(--lg-control-min);
+  border-radius: var(--lg-r-control);
+  border-color: var(--lg-hairline);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  transition: border-color var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .auth-card .input:focus {
+  border-color: var(--lg-act);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-act) 22%, transparent);
+}
+html:not([data-app="1"]) .auth-card .field .hint { color: var(--lg-ink-3); }
+/* 密码可见切换：触控位补足 44px */
+html:not([data-app="1"]) .auth-card .affix-btn {
+  width: var(--lg-control-min);
+  height: var(--lg-control-min);
+  right: 2px;
+  border-radius: var(--lg-r-sm);
+  color: var(--lg-ink-3);
+}
+html:not([data-app="1"]) .auth-card .affix-btn:hover {
+  color: var(--lg-ink);
+  background: var(--lg-grouped);
+}
+html:not([data-app="1"]) .auth-card .input-affix .input { padding-right: 50px; }
+html:not([data-app="1"]) .btn.primary.auth-submit {
+  min-height: var(--lg-control-submit);
+  border-radius: var(--lg-r-control);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  font-size: var(--lg-type-body);
+  font-weight: 700;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--lg-act) 30%, transparent), inset 0 1px 0 rgb(255 255 255 / 22%);
+  transition: transform var(--lg-dur-press) var(--lg-ease), background var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .btn.primary.auth-submit:hover {
+  background: color-mix(in oklab, var(--lg-act) 86%, #000);
+}
+html:not([data-app="1"]) .btn.primary.auth-submit:active { transform: scale(0.985); }
+html:not([data-app="1"]) .auth-agree { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .auth-demo {
+  min-height: var(--lg-control-min);
+  border: 1px dashed var(--lg-hairline);
+  border-radius: var(--lg-r-control);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .auth-demo:hover {
+  border-color: var(--lg-act);
+  color: var(--lg-act);
+  background: var(--lg-act-soft);
+}
+html:not([data-app="1"]) .auth-foot { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .auth-foot::before { background: var(--lg-hairline); }
+html:not([data-app="1"]) .auth-explore-btn { min-height: var(--lg-control-min); border-radius: var(--lg-r-control); }
+html:not([data-app="1"]) .auth-foot-note { color: var(--lg-ink-3); }
+
+/* ============================================================================
+   §2 Settings —— 设置组 inset group 化：分组底 --lg-grouped、--lg-r-panel、
+   发丝分隔；theme-seg / accent-row / switch 控件 Lumen 化
+   ========================================================================== */
+
+/* ── 2.1 设置卡分组：卡面即 inset group ── */
+html:not([data-app="1"]) .page .card .priv-row,
+html:not([data-app="1"]) .page .card .priv-data-row {
+  border-color: var(--lg-hairline);
+  min-height: var(--lg-control-min);
+}
+html:not([data-app="1"]) .priv-ic {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-grouped);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .priv-danger {
+  border-color: color-mix(in srgb, var(--lg-coral) 32%, transparent);
+}
+
+/* ── 2.2 主题分段（theme-seg）：分组底 + 选中玻璃片 ── */
+html:not([data-app="1"]) .theme-seg {
+  background: var(--lg-grouped);
+  border-radius: var(--lg-r-control);
+  padding: 4px;
+  gap: 4px;
+}
+html:not([data-app="1"]) .theme-seg button {
+  min-height: 38px;
+  border-radius: var(--lg-r-sm);
+  color: var(--lg-ink-2);
+  font-weight: 600;
+  transition: color var(--lg-dur-state) var(--lg-ease), background var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .theme-seg button:hover { color: var(--lg-ink); }
+html:not([data-app="1"]) .theme-seg button.active {
+  background: var(--lg-glass-sel);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .theme-seg button:active { transform: scale(0.97); }
+
+/* 通用 seg（settings 通知分段等复用）同配方 */
+html:not([data-app="1"]) .seg {
+  background: var(--lg-grouped);
+  border-radius: var(--lg-r-control);
+  padding: 4px;
+}
+html:not([data-app="1"]) .seg button {
+  border-radius: var(--lg-r-sm);
+  color: var(--lg-ink-2);
+  min-height: 36px;
+  transition: color var(--lg-dur-state) var(--lg-ease), background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .seg button.active {
+  background: var(--lg-glass-sel);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+
+/* ── 2.3 强调色圆点（accent-row）：选中环走 --lg-focus 语感 ── */
+html:not([data-app="1"]) .accent-row { gap: 12px; }
+html:not([data-app="1"]) .accent-dot {
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .accent-dot:focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: 2px;
+}
+
+/* ── 2.4 开关（switch）：act 轨道 + 白滑块内高光 ── */
+html:not([data-app="1"]) .switch .track {
+  background: color-mix(in srgb, var(--lg-ink) 18%, transparent);
+  transition: background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .switch .track::after {
+  background: var(--lg-glass-sel);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 80%), 0 1px 3px rgb(0 0 0 / 20%);
+  transition: transform var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .switch input:checked + .track { background: var(--lg-act); }
+
+/* ── 2.5 平台声明卡 / 密钥输入 ── */
+html:not([data-app="1"]) .platform-note {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--lg-jade) 8%, var(--panel));
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .platform-note .pn-ic {
+  background: var(--lg-jade);
+  color: var(--lg-finance-ink);
+  border-radius: var(--lg-r-sm);
+}
+html:not([data-app="1"]) .platform-note .pn-tx p b { color: var(--lg-gold); }
+html:not([data-app="1"]) .secret-input .input { padding-right: 50px; }
+html:not([data-app="1"]) .secret-toggle {
+  color: var(--lg-ink-3);
+  border-radius: var(--lg-r-sm);
+}
+html:not([data-app="1"]) .secret-toggle:hover { color: var(--lg-ink); }
+
+/* ── 2.6 tabs-bar（设置/多页复用的下划线页签）：act 指示 ── */
+html:not([data-app="1"]) .tabs-bar { border-bottom-color: var(--lg-hairline); }
+html:not([data-app="1"]) .tabs-bar button {
+  min-height: var(--lg-control-min);
+  color: var(--lg-ink-2);
+  transition: color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .tabs-bar button:hover { color: var(--lg-ink); }
+html:not([data-app="1"]) .tabs-bar button.active {
+  color: var(--lg-act);
+  border-color: var(--lg-act);
+}
+
+/* ============================================================================
+   §3 Wallet（Web 分支）+ Vip —— 资产区石墨实体（--lg-finance），金是唯一光点
+   （App 分支走 qa-wallet-v4 / .vm.immersive，均在围栏之外，零波及）
+   ========================================================================== */
+
+/* ── 3.1 资产仪表：石墨实体面，绝对可读 ── */
+html:not([data-app="1"]) .wallet-hero {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background: var(--lg-finance);
+  color: var(--lg-finance-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%), 0 14px 34px rgb(0 0 0 / 22%);
+}
+html:not([data-app="1"]) .wallet-hero .col:not(:first-child)::before {
+  background: rgb(255 255 255 / 14%);
+}
+html:not([data-app="1"]) .wallet-hero .bal-num {
+  color: var(--lg-finance-ink);
+  font-size: clamp(26px, 3vw, var(--lg-type-hero));
+  font-variant-numeric: tabular-nums;
+}
+html:not([data-app="1"]) .wallet-hero .bal-lbl {
+  color: color-mix(in srgb, var(--lg-finance-ink) 62%, transparent);
+}
+/* 金唯一光点：金币数字着金，钻石/会员走中性亮墨 */
+html:not([data-app="1"]) .wallet-hero .col:first-child .bal-num { color: var(--lg-gold); }
+html:not([data-app="1"]) .wallet-hero .icon-chip.gold > svg,
+html:not([data-app="1"]) .wallet-hero .icon-chip.diamond > svg {
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 30%));
+}
+
+/* ── 3.2 签到钮：主动作实心 48px ── */
+html:not([data-app="1"]) .checkin-btn {
+  min-height: var(--lg-control-submit);
+  border-radius: var(--lg-r-control);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--lg-act) 30%, transparent), inset 0 1px 0 rgb(255 255 255 / 20%);
+  transition: transform var(--lg-dur-press) var(--lg-ease), background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .checkin-btn:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--lg-act) 86%, #000);
+}
+html:not([data-app="1"]) .checkin-btn:disabled {
+  background: var(--lg-grouped);
+  color: var(--lg-ink-3);
+  box-shadow: none;
+}
+
+/* ── 3.3 充值套餐卡：内容卡三件套 + hover 升起，钻石数字着 --lg-dia ── */
+html:not([data-app="1"]) .pkg {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .pkg .d { color: var(--lg-dia); }
+html:not([data-app="1"]) .pkg .b { color: var(--lg-jade); }
+html:not([data-app="1"]) .pkg .pop {
+  background: var(--lg-coral);
+  color: var(--lg-act-ink);
+  border-radius: var(--lg-r-pill);
+}
+html:not([data-app="1"]) .pkg.featured {
+  box-shadow: var(--lg-glass-shadow-1), 0 0 0 2px color-mix(in srgb, var(--lg-act) 45%, transparent);
+}
+html:not([data-app="1"]) .pkg .pkg-pay {
+  min-height: 40px;
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-grouped);
+  color: var(--lg-ink);
+  transition: background var(--lg-dur-state) var(--lg-ease), color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .pkg:hover .pkg-pay {
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .pkg {
+    transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+  }
+  html:not([data-app="1"]) .pkg:hover {
+    transform: var(--lgw-hover-raise);
+    box-shadow: var(--lgw-hover-lift);
+  }
+}
+
+/* ── 3.4 兑换 / 会员入口 ── */
+html:not([data-app="1"]) .exch-out { color: var(--lg-ink); }
+html:not([data-app="1"]) .exch-out .muted { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .vip-entry {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background: var(--lg-finance);
+  color: var(--lg-finance-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%), 0 10px 26px rgb(0 0 0 / 20%);
+  min-height: var(--lg-control-min);
+}
+html:not([data-app="1"]) .vip-entry:hover {
+  transform: var(--lgw-hover-raise);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%), var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .vip-entry b { color: var(--lg-gold); }
+html:not([data-app="1"]) .icon-chip.vip {
+  background: color-mix(in srgb, var(--lg-gold) 20%, transparent);
+  color: var(--lg-gold);
+  border-radius: var(--lg-r-control);
+}
+html:not([data-app="1"]) .wallet-ach {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--lg-gold) 10%, var(--panel));
+  box-shadow: var(--lg-glass-shadow-1);
+  min-height: var(--lg-control-min);
+}
+html:not([data-app="1"]) .wallet-ach:hover { box-shadow: var(--lgw-hover-lift); }
+
+/* ── 3.5 Vip 会员中心（.vm，Web 非 immersive 分支）：
+       画布 + warm 光晕打底，会员卡收敛为石墨实体、金只做光点 ── */
+html:not([data-app="1"]) .vm {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient-warm);
+  color: var(--lg-ink);
+}
+html:not([data-app="1"]) .vm-top h1 { color: var(--lg-ink); }
+html:not([data-app="1"]) .vm-card {
+  border-radius: var(--lg-r-panel);
+  background: var(--lg-finance);
+  color: var(--lg-finance-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 16px 38px rgb(0 0 0 / 26%);
+}
+html:not([data-app="1"]) .vm-card.svip {
+  background: var(--lg-finance);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-gold) 40%, transparent), inset 0 1px 0 rgb(255 255 255 / 10%), 0 16px 38px rgb(0 0 0 / 26%);
+}
+html:not([data-app="1"]) .vm-word { color: var(--lg-gold); }
+html:not([data-app="1"]) .vm-card-sub { color: color-mix(in srgb, var(--lg-finance-ink) 66%, transparent); }
+html:not([data-app="1"]) .vm-card-deco { color: var(--lg-gold); }
+html:not([data-app="1"]) .vm-card-pat { opacity: 0.16; }
+/* 权益格：内容卡三件套 */
+html:not([data-app="1"]) .vm-perk {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .vm-perk-ic {
+  background: color-mix(in srgb, var(--lg-gold) 16%, transparent);
+}
+html:not([data-app="1"]) .vm-perk-ic svg { color: var(--lg-gold); }
+html:not([data-app="1"]) .vm-perk-tx b { color: var(--lg-ink); }
+html:not([data-app="1"]) .vm-perk-tx small { color: var(--lg-ink-3); }
+/* 套餐面板：分组底大圆角，套餐卡白面 + 金选中 */
+html:not([data-app="1"]) .vm-sheet {
+  border-radius: var(--lg-r-sheet);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  box-shadow: var(--lg-glass-shadow-2);
+}
+html:not([data-app="1"]) .vm-tag {
+  background: color-mix(in srgb, var(--lg-gold) 18%, transparent);
+  color: var(--lg-gold);
+}
+html:not([data-app="1"]) .vm-plan {
+  border: 2px solid var(--lg-hairline);
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  color: var(--lg-ink);
+  transition: transform var(--lg-dur-press) var(--lg-ease), border-color var(--lg-dur-state) var(--lg-ease), background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .vm-plan.on {
+  border-color: var(--lg-gold);
+  background: color-mix(in srgb, var(--lg-gold) 10%, var(--panel));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--lg-gold) 24%, transparent);
+}
+html:not([data-app="1"]) .vm-plan-rec {
+  background: var(--lg-gold);
+  color: var(--lg-finance);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--lg-gold) 40%, transparent);
+}
+html:not([data-app="1"]) .vm-plan-name { color: var(--lg-ink); }
+html:not([data-app="1"]) .vm-plan-price { color: var(--lg-ink); }
+html:not([data-app="1"]) .vm-plan-per { color: var(--lg-ink-3); }
+/* 兑换行 / 购买主钮 / 协议 / 账本入口 */
+html:not([data-app="1"]) .vm-redeem {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: var(--lg-grouped);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+html:not([data-app="1"]) .vm-redeem-ic { color: var(--lg-gold); }
+html:not([data-app="1"]) .vm-redeem input { color: var(--lg-ink); }
+html:not([data-app="1"]) .vm-redeem input::placeholder { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .vm-redeem button {
+  min-height: 40px;
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-gold);
+  color: var(--lg-finance);
+}
+html:not([data-app="1"]) .vm-renew { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .vm-go {
+  min-height: var(--lg-control-submit);
+  border-radius: var(--lg-r-control);
+  background: linear-gradient(120deg, color-mix(in oklab, var(--lg-gold) 72%, #fff), var(--lg-gold) 55%, color-mix(in oklab, var(--lg-gold) 82%, #000));
+  color: var(--lg-finance);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--lg-gold) 36%, transparent), inset 0 1px 0 rgb(255 255 255 / 50%);
+  transition: transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .vm-agree { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .vm-agree em { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .vm-check { border-color: var(--lg-hairline); }
+html:not([data-app="1"]) .vm-agree input:checked + .vm-check {
+  background: var(--lg-gold);
+  border-color: var(--lg-gold);
+}
+html:not([data-app="1"]) .vm-ledger {
+  color: var(--lg-ink-3);
+  min-height: var(--lg-control-min);
+}
+html:not([data-app="1"]) .vm-ledger:hover { color: var(--lg-ink); }
+html:not([data-app="1"]) .vm-help { color: var(--lg-ink-3); }
+
+/* ============================================================================
+   §4 Chat（Web）—— 会话列表 / 顶栏 / 输入岛 / 气泡双材质
+   （chat/chat-app.css 是 App 的皮肤，互斥围栏，零交互）
+   ========================================================================== */
+
+/* ── 4.1 会话列表（左栏，chrome 位但不加新 blur，走分组底） ── */
+html:not([data-app="1"]) .chat-list {
+  background: var(--lg-grouped);
+  border-right: 1px solid var(--lg-hairline);
+}
+html:not([data-app="1"]) .chat-list .hd { color: var(--lg-ink); }
+html:not([data-app="1"]) .conv-item {
+  min-height: 56px;
+  border-radius: var(--lg-r-row);
+  transition: background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .conv-item:hover {
+  background: color-mix(in srgb, var(--panel) 62%, transparent);
+}
+html:not([data-app="1"]) .conv-item.active { background: var(--lg-act-soft); }
+html:not([data-app="1"]) .conv-item.active::before { background: var(--lg-act); }
+html:not([data-app="1"]) .conv-item .tx b { color: var(--lg-ink); }
+html:not([data-app="1"]) .conv-item .tx span { color: var(--lg-ink-3); }
+
+/* ── 4.2 对话主区与顶栏 ── */
+html:not([data-app="1"]) .chat-main {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient);
+}
+/* 有背景图时底色回到画布纯色，别让光晕透进立绘 */
+html:not([data-app="1"]) .chat-main.has-bg { background-image: none; }
+html:not([data-app="1"]) .chat-head {
+  background: color-mix(in srgb, var(--lg-canvas) 86%, transparent);
+  border-bottom: 1px solid var(--lg-hairline);
+}
+html:not([data-app="1"]) .chat-head .nm b { color: var(--lg-ink); }
+html:not([data-app="1"]) .chat-head .nm span { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .chat-tool {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-grouped);
+  color: var(--lg-ink-2);
+  transition: background var(--lg-dur-state) var(--lg-ease), color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .chat-tool.on {
+  color: var(--lg-act);
+  background: var(--lg-act-soft);
+}
+html:not([data-app="1"]) .chat-search {
+  background: color-mix(in srgb, var(--lg-canvas) 92%, transparent);
+  border-bottom: 1px solid var(--lg-hairline);
+}
+html:not([data-app="1"]) .chat-search input { color: var(--lg-ink); }
+
+/* ── 4.3 气泡双材质：AI = 内容面三件套；用户 = act 84% + 顶部内高光 ── */
+html:not([data-app="1"]) .msg .bubble {
+  line-height: 1.72;
+  font-size: var(--lg-type-body);
+}
+html:not([data-app="1"]) .msg.assistant .bubble {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+  border-radius: var(--lg-r-card);
+  border-bottom-left-radius: var(--lg-r-xs);
+}
+html:not([data-app="1"]) .msg.user .bubble {
+  background: color-mix(in srgb, var(--lg-act) 84%, transparent);
+  color: var(--lg-act-ink);
+  border-radius: var(--lg-r-card);
+  border-bottom-right-radius: var(--lg-r-xs);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 26%), 0 6px 18px color-mix(in srgb, var(--lg-act) 24%, transparent);
+}
+html:not([data-app="1"]) .msg.user .bubble .quote-embed {
+  border-left-color: rgb(255 255 255 / 65%);
+  background: rgb(255 255 255 / 16%);
+}
+html:not([data-app="1"]) .msg-name { color: var(--lg-ink-2); }
+/* 时间戳胶囊 */
+html:not([data-app="1"]) .msg-time {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 7px;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--lg-ink) 6%, transparent);
+  color: var(--lg-ink-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+html:not([data-app="1"]) .msg-daydivider span {
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink-3);
+}
+html:not([data-app="1"]) .chat-ai-mark { color: var(--lg-ink-3); }
+
+/* ── 4.4 输入岛：本文件唯一新 blur（chrome 类：--lgw-chrome-blur） ── */
+html:not([data-app="1"]) .chat-input-bar {
+  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--lg-canvas) 72%, transparent) 42%, color-mix(in srgb, var(--lg-canvas) 94%, transparent) 100%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html:not([data-app="1"]) .chat-input-bar .box {
+  border-color: transparent;
+  border-radius: var(--lg-r-panel);
+  background: var(--lg-glass-3);
+  -webkit-backdrop-filter: var(--lgw-chrome-blur);
+  backdrop-filter: var(--lgw-chrome-blur);
+  box-shadow: var(--lg-glass-shadow-3);
+  transition: box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .chat-input-bar .box:focus-within {
+  border-color: transparent;
+  box-shadow: var(--lg-glass-shadow-3), 0 0 0 3px color-mix(in srgb, var(--lg-act) 22%, transparent);
+}
+html:not([data-app="1"]) .chat-input-bar textarea {
+  color: var(--lg-ink);
+  min-height: var(--lg-control-min);
+  padding: 11px 4px;
+}
+html:not([data-app="1"]) .chat-input-bar textarea::placeholder { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .send-btn {
+  width: var(--lg-control-min);
+  height: var(--lg-control-min);
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--lg-act) 30%, transparent), inset 0 1px 0 rgb(255 255 255 / 22%);
+}
+html:not([data-app="1"]) .send-btn:hover {
+  background: color-mix(in oklab, var(--lg-act) 86%, #000);
+}
+html:not([data-app="1"]) .plus-btn {
+  min-width: var(--lg-control-min);
+  min-height: var(--lg-control-min);
+  border-radius: var(--lg-r-pill);
+  color: var(--lg-ink-2);
+}
+
+/* ── 4.5 回复条 / 消息菜单 / 表态弹层（对话内浮层，浮起面二件套） ── */
+html:not([data-app="1"]) .reply-bar {
+  border-color: var(--lg-hairline);
+  border-left: 3px solid var(--lg-act);
+  border-radius: var(--lg-r-control);
+  background: var(--lg-grouped);
+}
+html:not([data-app="1"]) .reply-bar .rb-who { color: var(--lg-act); }
+html:not([data-app="1"]) .chat-menu {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: var(--lg-glass-2);
+  box-shadow: var(--lg-glass-shadow-2);
+}
+html:not([data-app="1"]) .chat-menu button { border-radius: var(--lg-r-sm); min-height: 40px; }
+html:not([data-app="1"]) .chat-menu button:hover { background: var(--lg-act-soft); }
+html:not([data-app="1"]) .chat-menu button.danger { color: var(--lg-coral); }
+html:not([data-app="1"]) .chat-menu-sep { background: var(--lg-hairline); }
+html:not([data-app="1"]) .react-pop {
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-glass-2);
+  box-shadow: var(--lg-glass-shadow-2);
+}
+html:not([data-app="1"]) .react-pop button.on { background: var(--lg-act-soft); }
+html:not([data-app="1"]) .msg .speak:hover {
+  color: var(--lg-act);
+  background: var(--lg-act-soft);
+}
+html:not([data-app="1"]) .msg .speak.on { color: var(--lg-act); }
+
+/* ============================================================================
+   §5 Messages / Notifications / Friends / Groups —— 列表行 Lumen：
+   稳定行高、发丝分隔、未读三重编码（珊瑚点 + 数字 + 加粗）
+   ========================================================================== */
+
+/* ── 5.1 消息中心（msgs，共享 DOM 的 Web 侧覆盖） ── */
+html:not([data-app="1"]) .msgs-tabs button { color: var(--lg-ink-3); min-height: var(--lg-control-min); }
+html:not([data-app="1"]) .msgs-tabs button.on { color: var(--lg-ink); }
+html:not([data-app="1"]) .msgs-tabs button.on::after { background: var(--lg-act); }
+html:not([data-app="1"]) .msgs-search { min-width: var(--lg-control-min); min-height: var(--lg-control-min); }
+/* 聚合入口：语义单色实心（不再三色渐变） */
+html:not([data-app="1"]) .msgs-entry {
+  min-height: 68px;
+  border-radius: var(--lg-r-row);
+  transition: background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .msgs-entry:hover { background: color-mix(in srgb, var(--panel) 62%, transparent); }
+html:not([data-app="1"]) .msgs-entry-ic.noti {
+  background: var(--lg-coral);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--lg-coral) 28%, transparent);
+}
+html:not([data-app="1"]) .msgs-entry-ic.dm {
+  background: var(--lg-azure);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--lg-azure) 28%, transparent);
+}
+html:not([data-app="1"]) .msgs-entry-ic.grp {
+  background: var(--lg-violet);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--lg-violet) 28%, transparent);
+}
+html:not([data-app="1"]) .msgs-entry-tx b { color: var(--lg-ink); }
+html:not([data-app="1"]) .msgs-entry-tx small { color: var(--lg-ink-3); }
+/* 未读三重编码 之一：珊瑚数字徽 */
+html:not([data-app="1"]) .msgs-badge {
+  background: var(--lg-coral);
+  color: var(--lg-finance-ink);
+  font-variant-numeric: tabular-nums;
+}
+html:not([data-app="1"]) .msgs-sep span { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .msgs-sep::after { background: var(--lg-hairline); }
+/* 会话行：稳定行高 + 发丝分隔 */
+html:not([data-app="1"]) .msgs-conv {
+  min-height: 64px;
+  border-radius: var(--lg-r-row);
+  transition: background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .msgs-conv:hover,
+html:not([data-app="1"]) .msgs-conv:active {
+  background: color-mix(in srgb, var(--panel) 62%, transparent);
+}
+html:not([data-app="1"]) .msgs-conv + .msgs-conv {
+  box-shadow: 0 -1px 0 0 var(--lg-hairline);
+}
+html:not([data-app="1"]) .msgs-conv-tx b { color: var(--lg-ink); }
+html:not([data-app="1"]) .msgs-conv-tx span { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .msgs-aff { color: var(--lg-gold); }
+html:not([data-app="1"]) .msgs-chatgo {
+  min-height: 36px;
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-act);
+}
+html:not([data-app="1"]) .msgs-fav-heart { color: var(--lg-rose); }
+html:not([data-app="1"]) .msgs-del { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .msgs-del:active,
+html:not([data-app="1"]) .msgs-del:hover { color: var(--lg-coral); background: var(--lg-grouped); }
+html:not([data-app="1"]) .msgs-empty { color: var(--lg-ink-3); }
+
+/* ── 5.2 通知：卡行三件套；未读 = 珊瑚点 + 加粗（数字徽在 tab 上） ── */
+html:not([data-app="1"]) .noti-item {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  min-height: 64px;
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .noti-item:hover {
+  transform: var(--lgw-hover-raise);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .noti-item.unread {
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  box-shadow: var(--lg-glass-shadow-1), inset 3px 0 0 0 var(--lg-coral);
+}
+html:not([data-app="1"]) .noti-item.unread .noti-body { font-weight: 650; color: var(--lg-ink); }
+html:not([data-app="1"]) .noti-dot {
+  background: var(--lg-coral);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-coral) 18%, transparent);
+}
+html:not([data-app="1"]) .noti-ic {
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-grouped);
+  color: var(--lg-ink-2);
+}
+/* 类型语义色：喜欢=rose · 评论=azure · 礼物=gold · 议会=violet · 系统=act */
+html:not([data-app="1"]) .noti-item.like .noti-ic {
+  background: color-mix(in srgb, var(--lg-rose) 14%, transparent);
+  color: var(--lg-rose);
+}
+html:not([data-app="1"]) .noti-item.cmt .noti-ic {
+  background: color-mix(in srgb, var(--lg-azure) 14%, transparent);
+  color: var(--lg-azure);
+}
+html:not([data-app="1"]) .noti-item.gift .noti-ic {
+  background: color-mix(in srgb, var(--lg-gold) 16%, transparent);
+  color: var(--lg-gold);
+}
+html:not([data-app="1"]) .noti-item.gov .noti-ic {
+  background: color-mix(in srgb, var(--lg-violet) 14%, transparent);
+  color: var(--lg-violet);
+}
+html:not([data-app="1"]) .noti-item.sys .noti-ic,
+html:not([data-app="1"]) .noti-item.welcome .noti-ic {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+html:not([data-app="1"]) .noti-time { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .noti-allread { min-height: var(--lg-control-min); }
+
+/* ── 5.3 好友 / 私信 ── */
+html:not([data-app="1"]) .fr-list {
+  background: var(--lg-grouped);
+  border-right: 1px solid var(--lg-hairline);
+}
+html:not([data-app="1"]) .fr-item {
+  min-height: 56px;
+  border-radius: var(--lg-r-row);
+  transition: background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .fr-item:hover { background: color-mix(in srgb, var(--panel) 62%, transparent); }
+html:not([data-app="1"]) .fr-item.active { background: var(--lg-act-soft); }
+html:not([data-app="1"]) .fr-item-tx b { color: var(--lg-ink); }
+html:not([data-app="1"]) .fr-item-tx span { color: var(--lg-ink-3); }
+/* 在线点 = jade（成功/在线语义） */
+html:not([data-app="1"]) .fr-on { background: var(--lg-jade); }
+/* 未读 = 珊瑚 */
+html:not([data-app="1"]) .fr-unread {
+  background: var(--lg-coral);
+  color: var(--lg-finance-ink);
+}
+html:not([data-app="1"]) .fr-item.has-dm .fr-item-tx b { font-weight: 750; }
+html:not([data-app="1"]) .fr-section-t { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .fr-search {
+  border-radius: var(--lg-r-control);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+html:not([data-app="1"]) .fr-add-toggle,
+html:not([data-app="1"]) .fr-menu-btn { min-width: var(--lg-control-min); min-height: 36px; }
+html:not([data-app="1"]) .fr-req-acts .btn { min-height: 36px; }
+html:not([data-app="1"]) .fr-dm {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient);
+}
+html:not([data-app="1"]) .fr-dm-head {
+  background: color-mix(in srgb, var(--lg-canvas) 86%, transparent);
+  border-bottom: 1px solid var(--lg-hairline);
+}
+/* 私信气泡沿用对话双材质 */
+html:not([data-app="1"]) .dm-msg.theirs .dm-bubble {
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+  border-radius: var(--lg-r-card);
+  border-bottom-left-radius: var(--lg-r-xs);
+}
+html:not([data-app="1"]) .dm-msg.mine .dm-bubble {
+  background: color-mix(in srgb, var(--lg-act) 84%, transparent);
+  color: var(--lg-act-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 26%), 0 6px 18px color-mix(in srgb, var(--lg-act) 24%, transparent);
+  border-radius: var(--lg-r-card);
+  border-bottom-right-radius: var(--lg-r-xs);
+}
+html:not([data-app="1"]) .dm-time { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .fr-dm-tip { color: var(--lg-ink-3); }
+
+/* ── 5.4 群聊列表 ── */
+html:not([data-app="1"]) .room-row {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  min-height: 72px;
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .room-row:hover {
+  transform: var(--lgw-hover-raise);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .room-row .ava {
+  border-radius: var(--lg-r-control);
+  color: var(--lg-act);
+}
+
+/* ============================================================================
+   §6 Library / Community / Scripts / Search / Favorites / Tags ——
+   卡片网格统一 .lgw-card 配方 + hover 升起、分类 chip、空态
+   ========================================================================== */
+
+/* ── 6.1 角色卡（全站网格通用） ── */
+html:not([data-app="1"]) .char-card {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .char-card:hover {
+  transform: var(--lgw-hover-raise);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .char-card .cover { background: var(--lg-ph); }
+html:not([data-app="1"]) .char-card .cover .ph { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .char-card .meta h3 {
+  font-size: 16px;
+  color: var(--lg-ink);
+  letter-spacing: -0.005em;
+}
+html:not([data-app="1"]) .char-card .meta p { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .char-card .foot { color: var(--lg-ink-3); }
+/* 封面公开角标：黑系遮罩，去实时 blur（内容卡零 blur 纪律） */
+html:not([data-app="1"]) .pill-pub {
+  background: var(--lg-scrim);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── 6.2 分类 chip 条 ── */
+html:not([data-app="1"]) .cat-chip {
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-2);
+  font-weight: 600;
+  transition: background var(--lg-dur-state) var(--lg-ease), color var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .cat-chip:hover {
+  color: var(--lg-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-ink) 18%, transparent);
+}
+html:not([data-app="1"]) .cat-chip.active {
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--lg-act) 26%, transparent);
+}
+
+/* ── 6.3 价格 / 免费 / 标签语义 ── */
+html:not([data-app="1"]) .price-tag { color: var(--lg-gold); }
+html:not([data-app="1"]) .free-tag { color: var(--lg-jade); }
+html:not([data-app="1"]) .tag {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  border-radius: var(--lg-r-pill);
+}
+
+/* ── 6.4 社区（Community）：动态卡 + 人物栏 ── */
+html:not([data-app="1"]) .moment {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .moment .c-body { color: var(--lg-ink); }
+html:not([data-app="1"]) .moment .comment { border-top: 1px solid var(--lg-hairline); }
+html:not([data-app="1"]) .moment .acts button {
+  min-height: 36px;
+  border-radius: var(--lg-r-sm);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .moment .acts button:hover { color: var(--lg-act); background: var(--lg-act-soft); }
+html:not([data-app="1"]) .moment .acts button.on { color: var(--lg-rose); }
+html:not([data-app="1"]) .person-chip {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  min-height: 56px;
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .person-chip:hover {
+  transform: var(--lgw-hover-raise);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .person-chip.following { background: var(--lg-act-soft); }
+
+/* ── 6.5 标签云（Tags） ── */
+html:not([data-app="1"]) .tag-cloud { gap: 10px 12px; }
+html:not([data-app="1"]) .tag-cloud-item {
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-2);
+  transition: transform var(--lg-dur-state) var(--lg-ease), background var(--lg-dur-state) var(--lg-ease), color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .tag-cloud-item:hover {
+  transform: var(--lgw-hover-raise);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 30%, transparent);
+}
+html:not([data-app="1"]) .tag-cloud-count { color: var(--lg-act); font-weight: 700; }
+
+/* ── 6.6 搜索 / 收藏零散 ── */
+html:not([data-app="1"]) .tag-chip {
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .tag-link { color: var(--lg-act); }
+
+/* ── 6.7 空态：统一节奏 ── */
+html:not([data-app="1"]) .empty { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .empty .big { opacity: 0.6; }
+
+/* ============================================================================
+   §7 Leaderboard / Events / Gacha / Achievements / Theater —— 玩法页
+   ========================================================================== */
+
+/* ── 7.1 排行榜：领奖台金只给第一名，二三名收敛为中性墨 ── */
+html:not([data-app="1"]) .lb-pod-name { color: var(--lg-ink); }
+html:not([data-app="1"]) .lb-pod-sub { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .lb-pod-metric { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .lb-pod .lb-pod-base {
+  border-radius: var(--lg-r-row) var(--lg-r-row) 0 0;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+/* 第一名：唯一的金 */
+html:not([data-app="1"]) .lb-pod.p1 .lb-pod-rank {
+  background: linear-gradient(135deg, color-mix(in oklab, var(--lg-gold) 70%, #fff), var(--lg-gold));
+  color: var(--lg-finance);
+}
+html:not([data-app="1"]) .lb-pod.p1 .lb-pod-base {
+  box-shadow: var(--lg-glass-shadow-1), inset 0 0 30px color-mix(in srgb, var(--lg-gold) 22%, transparent);
+}
+html:not([data-app="1"]) .lb-pod.p1 .lb-pod-av .avatar,
+html:not([data-app="1"]) .lb-pod.p1 .lb-pod-av img {
+  border-color: color-mix(in oklab, var(--lg-gold) 76%, #fff);
+  box-shadow: 0 10px 32px color-mix(in srgb, var(--lg-gold) 36%, transparent);
+}
+html:not([data-app="1"]) .lb-crown { color: var(--lg-gold); }
+/* 二三名：中性银墨，不与金争辉 */
+html:not([data-app="1"]) .lb-pod.p2 .lb-pod-rank,
+html:not([data-app="1"]) .lb-pod.p3 .lb-pod-rank {
+  background: color-mix(in srgb, var(--lg-ink) 56%, transparent);
+  color: var(--lg-canvas);
+}
+html:not([data-app="1"]) .lb-pod.p2 .lb-pod-av .avatar,
+html:not([data-app="1"]) .lb-pod.p2 .lb-pod-av img,
+html:not([data-app="1"]) .lb-pod.p3 .lb-pod-av .avatar,
+html:not([data-app="1"]) .lb-pod.p3 .lb-pod-av img {
+  border-color: var(--panel);
+  box-shadow: 0 8px 26px rgb(0 0 0 / 16%);
+}
+/* 名次行 */
+html:not([data-app="1"]) .lb-row {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  min-height: 56px;
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .lb-row:hover {
+  transform: translateX(3px);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .lb-rank { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .lb-rank.r1 { color: var(--lg-gold); }
+html:not([data-app="1"]) .lb-rank.r2,
+html:not([data-app="1"]) .lb-rank.r3 { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .lb-row.is-you {
+  background: var(--lg-act-soft);
+  box-shadow: var(--lg-glass-shadow-1), inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 30%, transparent);
+}
+html:not([data-app="1"]) .lb-row .lb-num { color: var(--lg-ink-2); }
+
+/* ── 7.2 活动中心：卡三件套 + warm 光晕、顶色条语义保留 ── */
+html:not([data-app="1"]) .event-card {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  background-image: radial-gradient(120% 64% at 18% 0%, color-mix(in srgb, var(--lg-gold) 9%, transparent), transparent 62%);
+  box-shadow: var(--lg-glass-shadow-1);
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .event-card:hover {
+  transform: var(--lgw-hover-raise);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .event-card h3 { color: var(--lg-ink); }
+html:not([data-app="1"]) .event-card p { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .event-card .ev-done { color: var(--lg-jade); }
+html:not([data-app="1"]) .event-card .ev-ic { border-radius: var(--lg-r-control); }
+html:not([data-app="1"]) .event-card .ev-reward span:first-child { color: var(--lg-gold); }
+html:not([data-app="1"]) .event-card .ev-reward span:nth-child(2) { color: var(--lg-dia); }
+html:not([data-app="1"]) .event-card .ev-actions .btn { min-height: var(--lg-control-min); }
+/* 每日任务行 */
+html:not([data-app="1"]) .task-row { min-height: var(--lg-control-min); }
+html:not([data-app="1"]) .task-row .tk-bar {
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-grouped);
+}
+html:not([data-app="1"]) .task-row .tk-bar span {
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act);
+}
+html:not([data-app="1"]) .task-row .tk-reward { color: var(--lg-gold); }
+html:not([data-app="1"]) .task-row .btn.claim { min-height: 36px; }
+html:not([data-app="1"]) .ds-task {
+  border: 0;
+  border-radius: var(--lg-r-control);
+  background: var(--lg-grouped);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+html:not([data-app="1"]) .ds-task:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 40%, transparent); }
+html:not([data-app="1"]) .ds-task.done {
+  background: var(--lg-act-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 40%, transparent);
+}
+html:not([data-app="1"]) .ds-task.claimed .ds-task-meta { color: var(--lg-jade); }
+
+/* ── 7.3 扭蛋机：舞台承载卡 + 券卡 ── */
+html:not([data-app="1"]) .gx-orb {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  background-image: radial-gradient(120% 90% at 50% 0%, var(--lg-act-soft), transparent 70%);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .gx-face { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .gx-hint { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .gx-card {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  box-shadow: var(--lg-glass-shadow-2);
+}
+html:not([data-app="1"]) .gx-cover { background: var(--lg-ph); }
+html:not([data-app="1"]) .gx-rarity {
+  border-radius: var(--lg-r-pill);
+  font-weight: 800;
+}
+/* SSR 稀有度 = 金（内容语义，唯一光点） */
+html:not([data-app="1"]) .gx-rarity.SSR,
+html:not([data-app="1"]) .gx-card .gx-rarity[data-r="SSR"] {
+  background: color-mix(in srgb, var(--lg-gold) 18%, transparent);
+  color: var(--lg-gold);
+}
+html:not([data-app="1"]) .gx-pity-bar { background: var(--lg-grouped); }
+html:not([data-app="1"]) .gx-pity-bar span {
+  background: linear-gradient(90deg, var(--lg-act), var(--lg-gold));
+}
+html:not([data-app="1"]) .gx-pity p { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .gx-actions .btn { min-height: var(--lg-control-min); }
+html:not([data-app="1"]) .gx-spin {
+  min-height: var(--lg-control-submit);
+  border-radius: var(--lg-r-control);
+}
+
+/* ── 7.4 成就殿堂：英雄卡 + 成就行 ── */
+html:not([data-app="1"]) .ach-hero {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .ach-hero-ring {
+  background: conic-gradient(var(--lg-act) calc(var(--p) * 1%), var(--lg-grouped) 0);
+}
+html:not([data-app="1"]) .ach-hero-ring::after { background: var(--panel); }
+html:not([data-app="1"]) .ach-hero-num b { color: var(--lg-act); }
+html:not([data-app="1"]) .ach-hero-num span { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .ach-pending { color: var(--lg-act); }
+html:not([data-app="1"]) .ach-hero-bar { background: var(--lg-grouped); border-radius: var(--lg-r-pill); }
+html:not([data-app="1"]) .ach-hero-bar span {
+  background: linear-gradient(90deg, var(--lg-act), var(--lg-gold));
+  border-radius: var(--lg-r-pill);
+}
+html:not([data-app="1"]) .ach-card {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  min-height: 72px;
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .ach-card:hover {
+  transform: var(--lgw-hover-raise);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .ach-card.unlocked {
+  box-shadow: var(--lg-glass-shadow-1), inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 26%, transparent);
+}
+html:not([data-app="1"]) .ach-card.claimed {
+  background: color-mix(in srgb, var(--lg-act) 6%, var(--panel));
+}
+html:not([data-app="1"]) .ach-ic {
+  border-radius: var(--lg-r-control);
+  background: linear-gradient(140deg, color-mix(in oklab, var(--lg-act) 78%, #fff), var(--lg-act));
+  color: var(--lg-act-ink);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--lg-act) 26%, transparent);
+}
+html:not([data-app="1"]) .ach-card:not(.unlocked) .ach-ic {
+  background: color-mix(in srgb, var(--lg-ink) 26%, transparent);
+  box-shadow: none;
+}
+html:not([data-app="1"]) .ach-ic-check {
+  background: var(--lg-jade);
+  border-color: var(--panel);
+}
+html:not([data-app="1"]) .ach-name { color: var(--lg-ink); }
+html:not([data-app="1"]) .ach-desc { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .ach-lock { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .ach-prog-bar { background: var(--lg-grouped); }
+html:not([data-app="1"]) .ach-prog-bar span { background: var(--lg-act); }
+html:not([data-app="1"]) .ach-reward { color: var(--lg-gold); }
+html:not([data-app="1"]) .ach-state.done { color: var(--lg-jade); }
+html:not([data-app="1"]) .ach-go { min-height: 36px; color: var(--lg-ink-2); }
+html:not([data-app="1"]) .ach-go:hover { color: var(--lg-act); }
+
+/* ── 7.5 剧场书架：舞台卡 ── */
+html:not([data-app="1"]) .inovel-book-card {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .inovel-book-card:hover {
+  transform: var(--lgw-hover-raise);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .inovel-spine {
+  width: 5px;
+  background: linear-gradient(180deg, var(--lg-act), var(--lg-violet));
+  border-radius: 0 3px 3px 0;
+}
+html:not([data-app="1"]) .inovel-bc-cover {
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-ph);
+}
+html:not([data-app="1"]) .inovel-bc-meta b { color: var(--lg-ink); }
+html:not([data-app="1"]) .inovel-bc-meta p { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .inovel-bc-foot { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .inovel-bc-open { color: var(--lg-act); }
+html:not([data-app="1"]) .inovel-bc-status {
+  background: var(--lg-scrim);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html:not([data-app="1"]) .inovel-bc-status.fin {
+  background: color-mix(in srgb, var(--lg-gold) 82%, #000);
+}
+html:not([data-app="1"]) .inovel-style-chip {
+  min-height: 36px;
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .inovel-style-chip:hover { color: var(--lg-act); }
+html:not([data-app="1"]) .inovel-style-chip.on {
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: none;
+}
+html:not([data-app="1"]) .stage-fold {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .stage-fold-head {
+  background: transparent;
+  color: var(--lg-ink);
+  min-height: var(--lg-control-min);
+}
+html:not([data-app="1"]) .stage-fold-badge {
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+}
+html:not([data-app="1"]) .stage-fold-body { border-top: 1px solid var(--lg-hairline); }
+
+/* ============================================================================
+   §8 CharacterView / ScriptDetail / WorldbookView —— 详情页
+   ========================================================================== */
+
+/* ── 8.1 角色详情（cvx，共享 DOM 的 Web 覆盖）：头图遮罩可读性 + 动作条 ── */
+html:not([data-app="1"]) .cvx-hero-scrim {
+  background: linear-gradient(180deg, rgb(0 0 0 / 0%) 0%, rgb(0 0 0 / 12%) 42%, rgb(0 0 0 / 62%) 78%, rgb(0 0 0 / 82%) 100%);
+}
+html:not([data-app="1"]) .cvx-name {
+  color: var(--lg-finance-ink);
+  text-shadow: 0 2px 14px rgb(0 0 0 / 45%);
+}
+html:not([data-app="1"]) .cvx-cta .cvx-go {
+  min-height: var(--lg-control-submit);
+  border-radius: var(--lg-r-control);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--lg-act) 34%, transparent), inset 0 1px 0 rgb(255 255 255 / 22%);
+}
+html:not([data-app="1"]) .cvx-cta .cvx-fav {
+  min-width: var(--lg-control-submit);
+  min-height: var(--lg-control-submit);
+  border: 0;
+  border-radius: var(--lg-r-control);
+  background: rgb(255 255 255 / 10%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 18%);
+}
+html:not([data-app="1"]) .cvx-fav.on { color: var(--lg-rose); }
+html:not([data-app="1"]) .cvx-tile,
+html:not([data-app="1"]) .cvx-row-wrap {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .cvx-row { min-height: var(--lg-control-min); }
+html:not([data-app="1"]) .cvx-row + .cvx-row { box-shadow: 0 -1px 0 0 var(--lg-hairline); }
+html:not([data-app="1"]) .cvx-row-ic {
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-grouped);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .cvx-greet {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink);
+}
+/* 传统 char-hero（旧详情路径）遮罩同步 */
+html:not([data-app="1"]) .char-hero-bg::after {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--lg-canvas) 40%, transparent), color-mix(in srgb, var(--lg-canvas) 94%, transparent));
+}
+
+/* ── 8.2 剧本详情：动作条触控 + 分区标题（页面主体复用 .card/.price-tag，
+       已由 §6 语义与桥接层接管，这里只补层级与触控） ── */
+html:not([data-app="1"]) .page .toolbar .btn { min-height: var(--lg-control-min); }
+html:not([data-app="1"]) .section-title h2 {
+  color: var(--lg-ink);
+  letter-spacing: -0.01em;
+}
+
+/* ── 8.3 世界书详情：hero 极光收敛 + 词条行 ── */
+html:not([data-app="1"]) .wb-hero {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .wb-hero-aurora {
+  background: conic-gradient(from 180deg at 50% 50%, var(--lg-act), var(--lg-violet), var(--lg-rose), var(--lg-gold), var(--lg-act));
+  opacity: 0.14;
+}
+html:not([data-app="1"]) .wb-hero-title { color: var(--lg-ink); font-size: var(--lg-type-section); }
+html:not([data-app="1"]) .wb-hero-pill {
+  border-radius: var(--lg-r-pill);
+  min-height: 36px;
+}
+html:not([data-app="1"]) .wbv-desc { color: var(--lg-ink); }
+html:not([data-app="1"]) .wbv-sec-title { color: var(--lg-ink); font-size: var(--lg-type-body); }
+html:not([data-app="1"]) .wbv-folder-hd { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .wbv-entry {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .wbv-entry-hd { min-height: var(--lg-control-min); }
+html:not([data-app="1"]) .wbv-entry-hd:hover { background: color-mix(in srgb, var(--lg-ink) 4%, transparent); }
+html:not([data-app="1"]) .wbv-key {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+html:not([data-app="1"]) .wbv-key.always {
+  background: color-mix(in srgb, var(--lg-violet) 12%, transparent);
+  color: var(--lg-violet);
+}
+html:not([data-app="1"]) .wbv-entry-body { border-top: 1px dashed var(--lg-hairline); color: var(--lg-ink); }
+html:not([data-app="1"]) .wbv-entry-note { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .wbv-char-row {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  min-height: var(--lg-control-min);
+}
+html:not([data-app="1"]) .wbv-char-row:hover {
+  box-shadow: var(--lg-glass-shadow-1), inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 34%, transparent);
+}
+html:not([data-app="1"]) .wbv-char-row.on {
+  background: var(--lg-act-soft);
+  box-shadow: var(--lg-glass-shadow-1), inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 40%, transparent);
+}
+html:not([data-app="1"]) .wbv-attached { color: var(--lg-act); }
+
+/* ============================================================================
+   §9 跨页收尾 —— 焦点环 / 错误提示 / 触控补高 / 骨架
+   ========================================================================== */
+
+/* ── 9.1 焦点可见性：本文件覆盖到的页面控件统一 --lg-focus 外环 ── */
+html:not([data-app="1"]) :is(
+  .auth-card, .theme-seg, .accent-row, .tabs-bar, .seg, .cat-bar,
+  .wallet-hero, .pkg-grid, .vm, .chat-input-bar, .chat-list,
+  .msgs, .noti-list, .fr-list, .tag-cloud, .event-grid, .ach-grid,
+  .inovel-shelf, .wbv, .lb-list
+) :is(button, a, input, textarea, select, [role="button"]):focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: 2px;
+}
+
+/* ── 9.2 错误/告警行（role="alert" 已由各页 JSX 提供）：珊瑚语义 ── */
+html:not([data-app="1"]) .page [role="alert"],
+html:not([data-app="1"]) .msgs-error {
+  color: var(--lg-coral);
+}
+
+/* ── 9.3 骨架占位统一走令牌（存量 .skel 配色各异，这里对齐） ── */
+html:not([data-app="1"]) .page .skel,
+html:not([data-app="1"]) .msgs-skel-row,
+html:not([data-app="1"]) .chat-skel {
+  background: var(--lg-skeleton);
+  background-size: 200% 100%;
+  border-radius: var(--lg-r-row);
+}
+
+/* ── 9.4 触控补高：coarse 指针下小 chip / 小钮拉到 44px ── */
+@media (pointer: coarse) {
+  html:not([data-app="1"]) :is(
+    .cat-chip, .tag-cloud-item, .inovel-style-chip, .tag-chip,
+    .theme-seg button, .seg button, .msgs-chatgo, .btn.sm,
+    .wb-hero-pill, .fr-add-toggle, .fr-menu-btn, .ach-go
+  ) {
+    min-height: var(--lg-control-min);
+  }
+  html:not([data-app="1"]) :is(.chat-tool, .msgs-del, .affix-btn, .secret-toggle) {
+    min-width: var(--lg-control-min);
+    min-height: var(--lg-control-min);
+  }
+}
+
+/* ── 9.5 reduced-motion：本文件的 hover 位移全部让位（时长令牌已清零，
+       transform 这里显式兜底） ── */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-app="1"]) :is(
+    .pkg, .char-card, .noti-item, .room-row, .person-chip, .tag-cloud-item,
+    .event-card, .ach-card, .inovel-book-card, .lb-row, .vip-entry, .moment
+  ):hover {
+    transform: none;
+  }
+}

@@ -1,0 +1,178 @@
+/* ============================================================================
+   web-lumen-states.css — Lumen Glass Web 层 · 三态（载入/空/错）系统化样式
+   ----------------------------------------------------------------------------
+   · 围栏：每条选择器都从 html:not([data-app="1"]) 开始，App 侧字节零波及。
+   · 配套任务 I（空态/错误态扫荡）：页面 JSX 在既有 .empty / .msgs-empty 容器上
+     附加 .lgw-empty / .lgw-error 等类，本文件负责布局与材质。
+   · 材质纪律：内容卡零 blur —— 半透明底 + var(--lg-glass-shadow-1) 三件套；
+     颜色只用 --lg-* 令牌 / color-mix(令牌, #fff|#000|transparent) 与白玻璃例外。
+   · 本文件需要编排者在 client/src/main.jsx 接线 import。
+   ========================================================================== */
+
+/* ── 1. 空态：插画 + 一句原因 + 一个真实 CTA ─────────────────────────────── */
+html:not([data-app="1"]) .lgw-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lg-space-2);
+  text-align: center;
+  padding: clamp(40px, 8vw, 72px) var(--lg-space-5);
+  color: var(--lg-ink-3);
+  font-size: var(--lg-type-body);
+}
+
+html:not([data-app="1"]) .lgw-empty .empty-art {
+  margin: 0 auto var(--lg-space-1);
+}
+
+/* 主句（为什么为空）：正文墨色，稍重 */
+html:not([data-app="1"]) .lgw-empty-title {
+  margin: 0;
+  font-size: var(--lg-type-section);
+  font-weight: 600;
+  color: var(--lg-ink);
+  font-family: var(--serif, inherit);
+}
+
+/* 副句：说明性的一行，收窄行宽避免顶满 */
+html:not([data-app="1"]) .lgw-empty-sub {
+  margin: 0;
+  font-size: var(--lg-type-meta);
+  color: var(--lg-ink-3);
+  max-width: 34em;
+  line-height: 1.6;
+}
+
+/* CTA 行：与文案留出一档间距；触控高度由 .btn 继承 + 此处兜底 ≥44px */
+html:not([data-app="1"]) .lgw-empty-cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--lg-space-3);
+  margin-top: var(--lg-space-3);
+}
+
+html:not([data-app="1"]) .lgw-empty-cta .btn,
+html:not([data-app="1"]) .lgw-error-retry {
+  min-height: var(--lg-control-min);
+  padding-inline: var(--lg-space-5);
+}
+
+/* ── 2. 错误态：role="alert" 内容卡（零 blur，半透明底 + 三件套阴影） ────── */
+html:not([data-app="1"]) .lgw-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lg-space-2);
+  text-align: center;
+  margin: var(--lg-space-4) auto;
+  padding: var(--lg-space-6) var(--lg-space-5);
+  max-width: 460px;
+  border-radius: var(--lg-r-card);
+  background:
+    linear-gradient(color-mix(in srgb, var(--lg-coral) 6%, transparent),
+      color-mix(in srgb, var(--lg-coral) 6%, transparent)),
+    rgb(255 255 255 / 58%);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-body);
+}
+
+html:not([data-app="1"]) .lgw-error-ic {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--lg-coral) 12%, transparent);
+  color: var(--lg-coral);
+}
+
+html:not([data-app="1"]) .lgw-error-title {
+  margin: 0;
+  font-size: var(--lg-type-section);
+  font-weight: 600;
+  color: var(--lg-ink);
+  font-family: var(--serif, inherit);
+}
+
+html:not([data-app="1"]) .lgw-error-msg {
+  margin: 0;
+  font-size: var(--lg-type-meta);
+  color: var(--lg-coral);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* 原地重试：主动作按钮语义（复用 .btn primary 时此处只补间距/高度） */
+html:not([data-app="1"]) .lgw-error-retry {
+  margin-top: var(--lg-space-2);
+}
+
+/* 行内轻量错误条（列表顶部、面板内）：不打断布局的横排变体 */
+html:not([data-app="1"]) .lgw-error-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--lg-space-3);
+  padding: var(--lg-space-3) var(--lg-space-4);
+  border-radius: var(--lg-r-row);
+  background:
+    linear-gradient(color-mix(in srgb, var(--lg-coral) 7%, transparent),
+      color-mix(in srgb, var(--lg-coral) 7%, transparent)),
+    rgb(255 255 255 / 58%);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+  text-align: left;
+}
+
+html:not([data-app="1"]) .lgw-error-inline > span { flex: 1; min-width: 0; }
+
+html:not([data-app="1"]) .lgw-error-inline .btn {
+  min-height: var(--lg-control-min);
+  flex-shrink: 0;
+}
+
+/* 键盘可达性：错误卡内的重试按钮统一 Lumen 外环 */
+html:not([data-app="1"]) .lgw-error :is(button, .btn):focus-visible,
+html:not([data-app="1"]) .lgw-error-inline :is(button, .btn):focus-visible,
+html:not([data-app="1"]) .lgw-empty-cta :is(button, .btn):focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: 2px;
+}
+
+/* ── 3. 载入骨架：行式列表（.skel 微光动画由既有全局类提供） ─────────────── */
+html:not([data-app="1"]) .lgw-skel-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lg-space-3);
+}
+
+html:not([data-app="1"]) .lgw-skel-list .skel {
+  height: 64px;
+  border-radius: var(--lg-r-row);
+}
+
+html:not([data-app="1"]) .lgw-skel-list .skel.lgw-skel-lg { height: 132px; }
+html:not([data-app="1"]) .lgw-skel-list .skel.lgw-skel-sm { height: 44px; }
+
+/* 深色主题：错误卡玻璃底换黑系遮罩，避免白玻璃在暗色画布上刺眼 */
+@media (prefers-color-scheme: dark) {
+  html:not([data-app="1"]):not([data-theme="light"]) .lgw-error,
+  html:not([data-app="1"]):not([data-theme="light"]) .lgw-error-inline {
+    background:
+      linear-gradient(color-mix(in srgb, var(--lg-coral) 9%, transparent),
+        color-mix(in srgb, var(--lg-coral) 9%, transparent)),
+      rgb(0 0 0 / 28%);
+  }
+}
+
+html:not([data-app="1"])[data-theme="dark"] .lgw-error,
+html:not([data-app="1"])[data-theme="dark"] .lgw-error-inline {
+  background:
+    linear-gradient(color-mix(in srgb, var(--lg-coral) 9%, transparent),
+      color-mix(in srgb, var(--lg-coral) 9%, transparent)),
+    rgb(0 0 0 / 28%);
+}
+
+/* reduced-motion：本文件无自有动画；空态插画的 floaty 已由 base.css 关停 */

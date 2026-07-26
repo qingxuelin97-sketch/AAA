@@ -20,6 +20,8 @@ export default function Friends() {
   const nav = useNav();
   const appMode = isAppMode();
   const [friends, setFriends] = useState([]);
+  const [frLoading, setFrLoading] = useState(true);
+  const [frError, setFrError] = useState('');
   const [requests, setRequests] = useState({ incoming: [], outgoing: [] });
   const [sel, setSel] = useState(null);          // selected friend id
   const [dm, setDm] = useState(null);            // { messages, peer, can_dm, friend }
@@ -41,7 +43,10 @@ export default function Friends() {
   // 私信输入框随内容自动增高（与对话页一致），封顶后转内部滚动
   useAutoGrow(dmInputRef, text, 130);
 
-  const loadFriends = () => api('/friends').then(d => setFriends(d.friends || [])).catch(() => {});
+  const loadFriends = () => api('/friends')
+    .then(d => { setFriends(d.friends || []); setFrError(''); })
+    .catch((e) => setFrError(e.message || '好友列表载入失败，请稍后重试'))
+    .finally(() => setFrLoading(false));
   const loadRequests = () => api('/friends/requests').then(setRequests).catch(() => {});
   useEffect(() => { loadFriends(); loadRequests(); }, []);
   useEffect(() => { const dmId = params.get('dm'); if (dmId) setSel(Number(dmId)); }, [params]);
@@ -169,8 +174,29 @@ export default function Friends() {
             </div>
           )}
 
-          {friends.length === 0 && requests.incoming.length === 0 ? (
-            <div className="fr-empty"><EmptyArt kind="friends" size={116} />还没有好友<br /><span>点击右上角「添加」结识新朋友</span></div>
+          {!appMode && frLoading ? (
+            <div className="lgw-skel-list" style={{ padding: '10px 12px' }} aria-hidden="true">
+              {[0, 1, 2, 3].map(i => <div key={i} className="skel" />)}
+            </div>
+          ) : !appMode && frError && friends.length === 0 ? (
+            <div className="fr-empty lgw-error" role="alert">
+              <span className="lgw-error-ic"><Users size={20} /></span>
+              <p className="lgw-error-msg">{frError}</p>
+              <button className="btn primary lgw-error-retry" onClick={() => { setFrLoading(true); loadFriends(); }}>重新载入</button>
+            </div>
+          ) : friends.length === 0 && requests.incoming.length === 0 ? (
+            appMode
+              ? <div className="fr-empty"><EmptyArt kind="friends" size={116} />还没有好友<br /><span>点击右上角「添加」结识新朋友</span></div>
+              : (
+                <div className="fr-empty lgw-empty">
+                  <EmptyArt kind="friends" size={116} />
+                  <h2 className="lgw-empty-title">还没有好友</h2>
+                  <p className="lgw-empty-sub">添加好友后可以互发私信，聊聊彼此的角色与脑洞。</p>
+                  <div className="lgw-empty-cta">
+                    <button className="btn primary" onClick={() => { setAdding(true); setQ(''); setResults([]); }}><UserPlus size={15} /> 搜索用户添加好友</button>
+                  </div>
+                </div>
+              )
           ) : (
             friends.map(f => (
               <AppButton key={f.id} variant="tertiary" selected={sel === f.id}

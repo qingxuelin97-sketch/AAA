@@ -1,0 +1,90 @@
+/* ============================================================================
+   曜光玻璃 Lumen Glass · Web 杂项体验层（web-lumen-misc.css）— 任务 J
+   ----------------------------------------------------------------------------
+   范围：
+     · .lgw-offline —— Layout.jsx 的 Web 离线提示条（对偶 App 壳 .app-offline）：
+       断网常驻、恢复自动消失；role="status"、珊瑚左缘语义、玻璃底。
+     · .lgw-cv-call —— CharacterView.jsx Web 分支「语音通话」次级按钮的补强
+       （基线仍是存量 .btn，这里只补触控高度与图标语义色）。
+   ----------------------------------------------------------------------------
+   铁律执行说明：
+   1. 围栏：每条选择器都从 html:not([data-app="1"]) 开始（@media 内同样）；
+      App 壳 DOM/样式零波及。
+   2. 零 backdrop-filter：离线条是内容区内的状态条，不在 chrome 允许名单，
+      用「半透明底 + var(--lg-glass-shadow-1) 三件套」拿玻璃观感，零实时模糊。
+   3. 颜色零新增字面量：全部 var(--lg-*) / 桥接令牌（--panel，材质层先例）/
+      color-mix(令牌, transparent)。
+   4. 新 @keyframes 仅 1 个：lgwOfflineIn（一次性入场，非无限循环）；时长走
+      --lg-dur-state —— reduced-motion 下时长令牌归零，动画自然瞬时完成。
+   5. :focus-visible 外环由 web-lumen-shell.css §0 的围栏通配规则统一承担
+      （--lg-focus），此处无需重复声明。
+   ----------------------------------------------------------------------------
+   接线提醒（编排者）：本文件为【新建】，需统一接线 import
+   （import './styles/web-lumen-misc.css';，晚于 web-lumen-tokens.css 即可，
+   规则全靠围栏特异性取胜，不依赖精确顺序）。本任务禁改 main.jsx，未自行接线。
+   ========================================================================== */
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §1 · Web 离线提示条（Layout.jsx · role="status"）
+   ---------------------------------------------------------------------------
+   DOM 落点：.main 首部（ScrollChrome 之后、route-fade 之前）——
+   桌面自然贴 .main 顶（≥861px 再加 sticky 常驻视口）；移动端 DOM 上
+   位于 sticky 顶栏之后，视觉即「顶栏下」，随流不与顶栏抢层级。
+   材质：半透明面板底 + 三件套阴影（零 blur）；珊瑚左缘 = 网络异常语义。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .lgw-offline {
+  display: flex;
+  align-items: center;
+  gap: var(--lg-space-2);
+  min-height: 40px;
+  margin: var(--lg-space-2) var(--lg-space-3) 0;
+  padding: var(--lg-space-2) var(--lg-space-3);
+  border-inline-start: 3px solid var(--lg-coral);
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink);
+  font-size: var(--lg-type-meta);
+  font-weight: 600;
+  animation: lgwOfflineIn var(--lg-dur-state) var(--lg-ease) both;
+}
+/* 断网图标着珊瑚语义色；文字保持正文墨色保证可读 */
+html:not([data-app="1"]) .lgw-offline > svg {
+  flex: none;
+  color: var(--lg-coral);
+}
+/* 桌面（侧栏布局）：sticky 常驻视口顶，滚动中也一眼可见；
+   z-index 低于命令面板/模态（400+）与移动顶栏（30 不同栈），高于内容卡 */
+@media (min-width: 861px) {
+  html:not([data-app="1"]) .lgw-offline {
+    position: sticky;
+    top: var(--lg-space-2);
+    z-index: 40;
+  }
+}
+
+/* 一次性入场（非无限循环）：reduced-motion 下 --lg-dur-state 归零即瞬时呈现 */
+@keyframes lgwOfflineIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §2 · 角色详情页「语音通话」次级按钮（CharacterView.jsx Web 分支）
+   ---------------------------------------------------------------------------
+   基线沿用存量 .btn.block（与旁边「收藏」同族），这里只补：
+   ≥44px 触控高度（--lg-control-min）+ 图标行对齐 + 电话图标着强调色。
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .lgw-cv-call {
+  min-height: var(--lg-control-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+html:not([data-app="1"]) .lgw-cv-call > svg {
+  flex: none;
+  color: var(--lg-act);
+}

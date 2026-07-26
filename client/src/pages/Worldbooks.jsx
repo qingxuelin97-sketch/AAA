@@ -24,21 +24,24 @@ export default function Worldbooks() {
   const [tab, setTab] = useState('mine');
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState('hot');   // hot | new（仅公开广场）
   const toast = useToast();
   const nav = useNavigate();
 
-  const load = () => {
+  const load = (qOverride) => {
     setLoading(true);
     const base = tab === 'mine' ? '/worldbooks/mine' : '/worldbooks/public';
     const params = new URLSearchParams();
-    if (tab === 'public' && q) params.set('q', q);
+    const effQ = typeof qOverride === 'string' ? qOverride : q;
+    if (tab === 'public' && effQ) params.set('q', effQ);
     if (tab === 'public' && sort !== 'hot') params.set('sort', sort);
     const qs = params.toString();
+    setLoadError('');
     api(qs ? `${base}?${qs}` : base)
       .then(d => setList(d.worldbooks || []))
-      .catch(e => toast(e.message, 'err'))
+      .catch(e => { setLoadError(e.message || '世界书载入失败，请稍后重试'); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab, sort]);
@@ -105,13 +108,32 @@ export default function Worldbooks() {
         </div>
 
         {loading ? <GridSkeleton n={4} /> :
+          !appMode && loadError && list.length === 0 ? (
+            <div className="empty wb-empty lgw-error" role="alert">
+              <span className="lgw-error-ic"><BookLock size={22} /></span>
+              <h2 className="lgw-error-title">世界书暂时无法载入</h2>
+              <p className="lgw-error-msg">{loadError}</p>
+              <button className="btn primary lgw-error-retry" onClick={() => load()}>重新载入</button>
+            </div>
+          ) :
           visibleList.length === 0 ? (
-            <div className={appMode ? 'empty wb-empty qa-worldbooks-empty' : 'empty wb-empty'}>
+            <div className={appMode ? 'empty wb-empty qa-worldbooks-empty' : 'empty wb-empty lgw-empty'}>
               <div className="big"><BookLock size={46} /></div>
               {tab === 'mine' ? (list.length === 0
                 ? <>还没有世界书<div style={{ marginTop: 14 }}><AppButton className="btn primary" variant="primary" onClick={() => nav('/worldbook/new/edit')}>创建第一本世界书</AppButton></div></>
                 : <>没有匹配的世界书<div style={{ marginTop: 14 }}><AppButton variant="secondary" onClick={() => setQ('')}>清除搜索</AppButton></div></>)
-                : (q ? '没有匹配的世界书' : '广场还没有公开世界书')}
+                : (appMode
+                  ? (q ? '没有匹配的世界书' : '广场还没有公开世界书')
+                  : (
+                    <>
+                      <h2 className="lgw-empty-title">{q ? '没有匹配的世界书' : '广场还没有公开世界书'}</h2>
+                      <p className="lgw-empty-sub">{q ? '换个关键词试试，或者把你的设定集公开出来。' : '第一本公开世界书由你来写，发布后设定可以跨角色复用。'}</p>
+                      <div className="lgw-empty-cta">
+                        {q ? <button className="btn" onClick={() => { setQ(''); load(''); }}>清除搜索</button> : null}
+                        <button className="btn primary" onClick={() => nav('/worldbook/new/edit')}>新建世界书</button>
+                      </div>
+                    </>
+                  ))}
             </div>
           ) : (
             <div className={appMode ? 'grid wb-grid qa-worldbooks-list' : 'grid wb-grid'}>
