@@ -5,6 +5,7 @@ import { ToastProvider } from './ui.jsx';
 import { RealtimeProvider } from './realtime.jsx';
 import Layout from './components/Layout.jsx';
 import AppLayout from './components/AppLayout.jsx';
+import RouteErrorBoundary from './components/RouteErrorBoundary.jsx';
 import { isAppMode } from './appmode.js';
 import Auth from './pages/Auth.jsx';
 // import 工厂集中在 routeChunks.js 注册表（同时供 warm 追踪与空闲预热消费，
@@ -88,7 +89,9 @@ function Protected({ children }) {
   // Pick the chrome at render time (after initAppMode resolved the flag): the
   // native/app shell or the responsive web shell.
   const Shell = isAppMode() ? AppLayout : Layout;
-  return <Shell>{children}</Shell>;
+  // Web 壳：每条路由包一层错误边界，单页崩溃不再打白整站（App 壳的 KeepAlive
+  // pane 已在 AppLayout 内各自包过，这里不重复）。
+  return <Shell>{isAppMode() ? children : <RouteErrorBoundary>{children}</RouteErrorBoundary>}</Shell>;
 }
 
 const P = (el) => <Protected>{el}</Protected>;
@@ -128,7 +131,8 @@ export default function App() {
             <Route path="/features" element={<Features />} />
             <Route path="/help" element={<Help />} />
             <Route path="/" element={P(isAppMode() ? <DiscoverFeed /> : <Home />)} />
-            <Route path="/today" element={P(<AppHome />)} />
+            <Route path="/today" element={isAppMode() ? P(<AppHome />) : <Navigate to="/" replace />} />
+            <Route path="/discover" element={isAppMode() ? <Navigate to="/" replace /> : P(<DiscoverFeed />)} />
             <Route path="/app-controls" element={isAppMode() ? P(<AppControlsGallery />) : <Navigate to="/" replace />} />
             <Route path="/scripts" element={P(<Scripts />)} />
             <Route path="/script/new" element={P(<ScriptEditor />)} />
@@ -148,7 +152,7 @@ export default function App() {
             <Route path="/friends" element={P(<Friends />)} />
             <Route path="/admin" element={P(<Admin />)} />
             <Route path="/messages" element={P(<Messages />)} />
-            <Route path="/me" element={P(<AppProfile />)} />
+            <Route path="/me" element={isAppMode() ? P(<AppProfile />) : <Navigate to="/profile" replace />} />
             <Route path="/vip" element={P(<Vip />)} />
             <Route path="/chats" element={isAppMode() ? <Navigate to="/messages" replace /> : P(<Chat />)} />
             <Route path="/chats/:id" element={P(<Chat />)} />
