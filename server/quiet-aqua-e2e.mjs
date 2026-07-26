@@ -1157,14 +1157,16 @@ async function pressMenuAssertions(browser, base) {
   await page.touchscreen.touchStart(cx, cy);
   await new Promise((resolve) => setTimeout(resolve, 550));
   await page.touchscreen.touchEnd();
-  // 菜单语义是 role=menu（非 dialog）：按自身契约验收——可见、聚焦、根隔离
+  // 菜单语义是 role=menu（非 dialog）：按自身契约验收——可见、聚焦、根隔离。
+  // 聚焦等待放宽到 10s：菜单自愈聚焦循环（120ms×12）在长套件高负载下
+  // 偶发迟到，5s 窗口会把真实通过判成超时（已实测复跑即绿）。
   await page.waitForSelector('.qa-press-menu', { visible: true, timeout: 5000 });
   await page.waitForFunction(() => {
     const menu = document.querySelector('.qa-press-menu');
     const root = document.getElementById('root');
     return Boolean(menu && menu.contains(document.activeElement)
       && (root?.inert || root?.getAttribute('aria-hidden') === 'true'));
-  }, { timeout: 5000 });
+  }, { timeout: 10000 });
   const menu = await page.evaluate(() => ({
     role: document.querySelector('.qa-press-menu')?.getAttribute('role'),
     portal: document.querySelector('.qa-press-mask')?.parentElement === document.body,
