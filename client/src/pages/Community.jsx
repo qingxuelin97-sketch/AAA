@@ -3,6 +3,8 @@ import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, Uploader } from '../ui.jsx';
 import ReportButton from '../components/ReportButton.jsx';
+import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
 import { Heart, MessageCircle, Send, Trash2, Inbox, UserPlus, Check, Sparkles } from 'lucide-react';
 
 function SuggestedPeople() {
@@ -172,7 +174,7 @@ export default function Community() {
 
         {loading ? <div className="empty">载入中…</div> :
           moments.length === 0 ? (
-            <div className="empty"><div className="big"><Inbox size={46} /></div>这里还没有动态，来发布第一条吧</div>
+            <div className="empty"><div className="big">{isAppMode() ? <AppEmptyArt kind="group" size={104} /> : <Inbox size={46} />}</div>这里还没有动态，来发布第一条吧</div>
           ) : moments.map(m => (
             <div key={m.id} className="moment">
               <span className="ava-link" onClick={() => nav('/user/' + m.user_id)} title="查看主页"><Avatar src={m.author_avatar} name={m.author_name} size={42} /></span>

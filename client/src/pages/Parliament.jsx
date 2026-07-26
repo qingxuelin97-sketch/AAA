@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal, CountUp, CreatorV, CouncilorBadge } from '../ui.jsx';
+import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
 import { startBgm, stopBgm, resume as resumeBgm, setMuted as setBgmMuted } from '../parliamentBgm.js';
 // 议会页专用的装饰性拉丁字体（Cinzel），仅在此 lazy 路由挂载时加载，避免进主入口拖慢首屏。
 import '@fontsource/cinzel/latin-600.css';
@@ -435,7 +437,7 @@ export default function Parliament() {
 
         {loading ? <div className="empty">载入中…</div> :
           shown.length === 0 ? (
-            <div className="empty"><div className="big"><ScrollText size={42} /></div>
+            <div className="empty"><div className="big">{isAppMode() ? <AppEmptyArt kind="generic" size={104} /> : <ScrollText size={42} />}</div>
               {q ? '未检索到相关议案' : filter === 'all' ? '议事殿暂无议案' : '该类目下暂无议案'}
               {ov?.is_councilor && !locked && filter === 'all' && !q && <div style={{ marginTop: 12 }}><button className="btn primary" onClick={() => setCreating(true)}><Feather size={15} /> 起草首份议案</button></div>}
             </div>

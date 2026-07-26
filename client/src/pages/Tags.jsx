@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
+import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
 import { Tags as TagsIcon } from 'lucide-react';
 
 // 标签广场：聚合公开角色与剧本的 tags 字段，按热度排成标签云。
@@ -32,7 +34,7 @@ export default function Tags() {
         {loading ? <div className="empty">载入中…</div> :
           tags.length === 0 ? (
             <div className="empty" style={{ padding: 60 }}>
-              <div className="big"><TagsIcon size={42} /></div>
+              <div className="big">{isAppMode() ? <AppEmptyArt kind="noresult" size={104} /> : <TagsIcon size={42} />}</div>
               还没有足够的标签数据<br />
               <span className="muted" style={{ fontSize: 13 }}>为角色和剧本添加标签后，这里会聚合成标签云</span>
             </div>

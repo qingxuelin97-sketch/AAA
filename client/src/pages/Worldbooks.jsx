@@ -3,6 +3,7 @@ import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
 import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { ArrowLeft, BookOpen, Plus, Globe, BookLock, BookCheck, ArrowRight, Search, Sparkles, X,
   Image as ImageIcon, Layout, Sliders, Layers, Variable, GitBranch } from 'lucide-react';
@@ -107,7 +108,7 @@ export default function Worldbooks() {
         {loading ? <GridSkeleton n={4} /> :
           visibleList.length === 0 ? (
             <div className={appMode ? 'empty wb-empty qa-worldbooks-empty' : 'empty wb-empty'}>
-              <div className="big"><BookLock size={46} /></div>
+              <div className="big">{appMode ? <AppEmptyArt kind="worldbooks" size={104} /> : <BookLock size={46} />}</div>
               {tab === 'mine' ? (list.length === 0
                 ? <>还没有世界书<div style={{ marginTop: 14 }}><AppButton className="btn primary" variant="primary" onClick={() => nav('/worldbook/new/edit')}>创建第一本世界书</AppButton></div></>
                 : <>没有匹配的世界书<div style={{ marginTop: 14 }}><AppButton variant="secondary" onClick={() => setQ('')}>清除搜索</AppButton></div></>)

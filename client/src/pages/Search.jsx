@@ -4,7 +4,7 @@ import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid, parsePid } from '../assets.jsx';
-import { EmptyArt, CoverArt } from '../art.jsx';
+import { AppEmptyArt, EmptyArt, CoverArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { Search as SearchIcon, Drama, ScrollText, Play, User, X, History, ArrowLeft } from 'lucide-react';
@@ -141,7 +141,7 @@ export default function Search() {
         ) : !res ? (
           <div className={app ? 'empty qa-search-empty' : 'empty'}><EmptyArt kind="search" />输入上方关键词或 ID 开始搜索</div>
         ) : res.tab === 'user' ? (
-          res.users.length === 0 ? <div className={app ? 'empty qa-search-empty' : 'empty'}><div className="big"><User size={44} /></div>没有找到匹配的用户</div> : (
+          res.users.length === 0 ? <div className={app ? 'empty qa-search-empty' : 'empty'}><div className="big">{app ? <AppEmptyArt kind="noresult" size={96} /> : <User size={44} />}</div>没有找到匹配的用户</div> : (
             <div className={app ? 'stagger-in qa-search-results' : 'stagger-in'}>
               {res.users.map(u => {
                 const ResultRoot = app ? 'button' : 'div';
@@ -158,7 +158,7 @@ export default function Search() {
             </div>
           )
         ) : res.tab === 'character' ? (
-          res.characters.length === 0 ? <div className={app ? 'empty qa-search-empty' : 'empty'}><div className="big"><Drama size={44} /></div>没有找到该角色（可能非公开）</div> : (
+          res.characters.length === 0 ? <div className={app ? 'empty qa-search-empty' : 'empty'}><div className="big">{app ? <AppEmptyArt kind="noresult" size={96} /> : <Drama size={44} />}</div>没有找到该角色（可能非公开）</div> : (
             <div className={app ? 'grid stagger-in qa-search-results qa-search-card-results' : 'grid stagger-in'}>
               {res.characters.map(c => {
                 const ResultRoot = app ? 'button' : 'div';
@@ -172,7 +172,7 @@ export default function Search() {
             </div>
           )
         ) : (
-          res.scripts.length === 0 ? <div className={app ? 'empty qa-search-empty' : 'empty'}><div className="big"><ScrollText size={44} /></div>没有找到该剧本</div> : (
+          res.scripts.length === 0 ? <div className={app ? 'empty qa-search-empty' : 'empty'}><div className="big">{app ? <AppEmptyArt kind="noresult" size={96} /> : <ScrollText size={44} />}</div>没有找到该剧本</div> : (
             <div className={app ? 'grid stagger-in qa-search-results qa-search-card-results' : 'grid stagger-in'}>
               {res.scripts.map(s => {
                 const ResultRoot = app ? 'button' : 'div';

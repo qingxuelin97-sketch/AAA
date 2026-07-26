@@ -3,6 +3,9 @@ import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast, Avatar, CountUp } from '../ui.jsx';
 import { fmtNum } from '../util.js';
+import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 import {
   Orbit, MessageCircle, MessagesSquare, CalendarDays, Flame, Sparkles,
   BookOpen, ScrollText, Feather, Wand2, Heart, Users, UserRound, TrendingUp, TrendingDown
@@ -11,18 +14,25 @@ import {
 // 星轨 — 个人幻域旅程数据页。全部只读聚合；单系列条形图用 CSS 画，
 // 深浅色的图表用色已按对比度校验（--chart-fill）。
 export default function Insights() {
+  const appMode = isAppMode();
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
   const toast = useToast();
   const nav = useNavigate();
 
-  useEffect(() => {
+  const load = () => {
+    setErr('');
     api('/me/insights').then(setD).catch(e => { setErr(e.message); toast(e.message, 'err'); });
+  };
+  useEffect(() => {
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (err) return <div className="empty" style={{ paddingTop: 120 }}>星轨暂时无法点亮：{err}</div>;
-  if (!d) return <div className="empty" style={{ paddingTop: 120 }}>正在点亮你的星轨…</div>;
+  if (err) return appMode
+    ? <AppErrorState kind="insights" title="星轨暂时无法点亮" message={err} onRetry={load} />
+    : <div className="empty" style={{ paddingTop: 120 }}>星轨暂时无法点亮：{err}</div>;
+  if (!d) return <div className="empty" style={{ paddingTop: 120 }}>{appMode && <AppEmptyArt kind="insights" size={104} />}正在点亮你的星轨…</div>;
 
   const maxDay = Math.max(1, ...d.days.map(x => x.n));
   const peakIdx = d.days.reduce((bi, x, i) => (x.n > d.days[bi].n ? i : bi), 0);
@@ -115,7 +125,7 @@ export default function Insights() {
               <h3>羁绊最深</h3>
               <div className="c-sub">按消息往来排序的角色 Top {Math.max(d.companions.length, 1)}</div>
               {d.companions.length === 0
-                ? <div className="empty" style={{ padding: '18px 0' }}><UserRound size={28} style={{ opacity: 0.4 }} /><br />还没有羁绊，去发现广场邂逅一个角色吧</div>
+                ? <div className="empty" style={{ padding: '18px 0' }}>{appMode ? <AppEmptyArt kind="insights" size={84} /> : <UserRound size={28} style={{ opacity: 0.4 }} />}<br />还没有羁绊，去发现广场邂逅一个角色吧</div>
                 : (
                   <div className="ins-comp">
                     {d.companions.map(c => (

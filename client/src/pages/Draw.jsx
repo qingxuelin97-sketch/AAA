@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Modal, CoinIcon } from '../ui.jsx';
 import { STYLE_PRESETS, SIZE_OPTS, composePrompt, generateImage, downloadImage } from '../imagegen.js';
+import { isAppMode } from '../appmode.js';
+import { AppEmptyArt } from '../art.jsx';
 import { Sparkles, Wand2, Download, Trash2, Copy, ImageIcon, Crown, Info, X } from 'lucide-react';
 
 // AI 绘图 — text-to-image studio. The image API is configured by GM in the admin
@@ -130,7 +132,7 @@ export default function Draw() {
 
         <div className="section-title" style={{ marginTop: 30 }}><h2><ImageIcon size={16} style={{ verticalAlign: -3, marginRight: 6 }} />我的绘廊</h2></div>
         {history.length === 0 ? (
-          <div className="empty" style={{ padding: 36 }}><div className="big"><Wand2 size={40} /></div>还没有作品，去生成你的第一张插画吧</div>
+          <div className="empty" style={{ padding: 36 }}><div className="big">{isAppMode() ? <AppEmptyArt kind="atelier" size={104} /> : <Wand2 size={40} />}</div>还没有作品，去生成你的第一张插画吧</div>
         ) : (
           <div className="draw-gallery">
             {history.map(h => (
