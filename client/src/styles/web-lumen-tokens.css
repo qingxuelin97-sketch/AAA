@@ -190,6 +190,9 @@ html:not([data-app="1"]) {
   --lgw-sidebar-w: 248px;
   --lgw-sidebar-w-collapsed: 76px;
   --lgw-content-max: 1240px;
+  --lgw-content-wide: 1520px;   /* 首页货架满宽档（D2 去 App 化重布局） */
+  --lgw-chat-side-w: 320px;     /* 聊天页 ≥1280px 常驻角色面板列宽（D3） */
+  --lgw-shelf-card-w: clamp(150px, 11.5vw, 196px); /* 首页货架海报卡基宽（D2） */
 
   /* 桌面 hover 升起（移动端规范没有 hover 层；仅指针设备生效的样式引用它） */
   --lgw-hover-lift: 0 2px 6px rgb(18 24 44 / 7%), 0 14px 34px rgb(18 24 44 / 13%);
