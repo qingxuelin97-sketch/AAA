@@ -917,8 +917,8 @@ html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-top) - var(--app
 
 /* ============ 沉浸对话打磨（app 壳 + 背景图时的玻璃层） ============ */
 /* 顶栏：完全透明悬浮，信息直接压在立绘上 */
-/* 深色沉浸底打底：背景图加载中/透明边缘时不闪白，且与状态栏语境色 #12101a 衔接 */
-html[data-app="1"] .chat-main.has-bg { background: #12101a; }
+/* 深色沉浸底打底：背景图加载中/透明边缘时不闪白，且与状态栏语境色 #0e1013 衔接 */
+html[data-app="1"] .chat-main.has-bg { background: #0e1013; }
 html[data-app="1"] .chat-main.has-bg .chat-head { background: linear-gradient(180deg, rgba(10,8,14,0.55), rgba(10,8,14,0)); border-bottom: none; }
 html[data-app="1"] .chat-main.has-bg .chat-head .nm b,
 html[data-app="1"] .chat-main.has-bg .chat-head .ch-status { color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }

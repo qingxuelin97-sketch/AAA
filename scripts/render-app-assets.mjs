@@ -129,6 +129,27 @@ const weave = () => {
 // 低频微噪，其余交给柔和渐变（小值域下 8-bit 色带不可见）。
 const svg = (w, h, body) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs>${DEFS}</defs>${body}</svg>`;
 
+// 原生启动资产（node scripts/render-app-assets.mjs --native 时一并生成）：
+// capacitor-assets 的源图 —— 图标 = 群青底 + 白月门；splash logo = 群青月门。
+const markAt = (scale, stroke, moon) => `
+  <g transform="scale(${scale})">
+    <mask id="crescentN">
+      <rect width="320" height="320" fill="#ffffff"/>
+      <circle cx="222" cy="100" r="46" fill="#000000"/>
+    </mask>
+    <circle cx="160" cy="160" r="118" fill="none" stroke="${stroke}" stroke-width="22"/>
+    <circle cx="188" cy="124" r="54" fill="${moon}" mask="url(#crescentN)"/>
+  </g>`;
+const NATIVE_JOBS = [
+  { id: 'icon-background', out: 'resources', w: 1024, h: 1024, body: `<rect width="1024" height="1024" fill="${P.blue}"/>` },
+  { id: 'icon-foreground', out: 'resources', w: 1024, h: 1024,
+    body: `<g transform="translate(224 224)">${markAt('1.8', '#ffffff', '#ffffff')}</g>` },
+  { id: 'icon-only', out: 'resources', w: 1024, h: 1024,
+    body: `<rect width="1024" height="1024" fill="${P.blue}"/><g transform="translate(224 224)">${markAt('1.8', '#ffffff', '#ffffff')}</g>` },
+  { id: 'logo', out: 'resources', w: 1024, h: 1024,
+    body: `<g transform="translate(224 224)">${markAt('1.8', "url(#deep)", "url(#deep)")}</g>` },
+];
+
 const JOBS = [
   ...Object.entries(SCENES).map(([kind, body]) => ({ id: `qa5-empty-${kind}@2x`, w: 720, h: 480, body })),
   { id: 'qa5-boot-mark@2x', w: 320, h: 320, body: BOOT_MARK },
@@ -136,6 +157,8 @@ const JOBS = [
   { id: 'qa5-vip-weave@2x', w: 1372, h: 800, body: weave() },
 ];
 
+const NATIVE = process.argv.includes('--native');
+if (NATIVE) JOBS.push(...NATIVE_JOBS);
 await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
 const executablePath = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium';
@@ -146,10 +169,12 @@ for (const job of JOBS) {
   await page.setContent(`<!doctype html><html><body style="margin:0;background:transparent"><div id="a" style="width:${job.w}px;height:${job.h}px">${markup}</div></body></html>`);
   const el = await page.$('#a');
   const buf = await el.screenshot({ omitBackground: true });
-  const file = join(OUT, `${job.id}.png`);
+  const file = job.out === 'resources'
+    ? join(ROOT, 'resources', `${job.id}.png`)
+    : join(OUT, `${job.id}.png`);
   await writeFile(file, buf);
   console.log(job.id, `${(buf.length / 1024).toFixed(1)}KB`);
-  if (buf.length > 300 * 1024) throw new Error(`${job.id} exceeds the 300KB asset ceiling`);
+  if (job.out !== 'resources' && buf.length > 300 * 1024) throw new Error(`${job.id} exceeds the 300KB asset ceiling`);
 }
 await browser.close();
 console.log('done →', OUT);

@@ -40,7 +40,7 @@ assert.deepEqual(
   'editor route policy must resolve dynamic parents and dirty confirmation',
 );
 assert.equal(getAppRoute('/future/page').dock, false, 'unknown secondary routes must fail closed without a Dock');
-assert.deepEqual(statusBarContextForTone('immersive'), { color: '#12101a', dark: true }, 'immersive routes must request light system chrome on a dark surface');
+assert.deepEqual(statusBarContextForTone('immersive'), { color: '#0e1013', dark: true }, 'immersive routes must request light system chrome on a dark surface');
 assert.equal(statusBarContextForTone('surface'), null, 'surface routes must restore theme-owned system chrome');
 assert.deepEqual(
   (({ parent, tab, dock, refresh }) => ({ parent, tab, dock, refresh }))(getAppRoute('/app-controls')),
@@ -298,6 +298,9 @@ for (const name of appAssetNames) {
   assert.ok(png.length <= 300 * 1024, `${name} must stay under the 300KB content-media ceiling`);
 }
 assert.match(artSource, /qa5-empty-generic[\s\S]*AppEmptyArt/, 'the App empty states must ship the generated content media with a generic fallback');
+const capacitorConfig = await readFile(new URL('../capacitor.config.json', import.meta.url), 'utf8');
+assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must not return to the purple-navy splash');
+assert.match(capacitorConfig, /"backgroundColor":\s*"#f6f7f9"/, 'native launch colours must match the Liuli canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
 console.log('app invariants: 100/100 passed');

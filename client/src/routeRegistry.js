@@ -114,6 +114,6 @@ export function appDockVisible(path) {
 }
 
 export function statusBarContextForTone(tone) {
-  if (tone === 'immersive') return { color: '#12101a', dark: true };
+  if (tone === 'immersive') return { color: '#0e1013', dark: true };
   return null;
 }
