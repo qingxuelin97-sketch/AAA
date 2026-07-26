@@ -9,6 +9,7 @@ import { browserVoices, playAudioUrl, speakBrowser, stopSpeaking } from '../voic
 import HelpCenter from '../components/HelpCenter.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { tick } from '../appgestures.js';
 import { isAppMode } from '../appmode.js';
 import { useAppNavigationOptional, useUnsavedChanges } from '../appNavigation.jsx';
 import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, Upload, LifeBuoy, LayoutGrid, Scale, Check, ArrowLeft, ChevronRight, Bell } from 'lucide-react';
@@ -70,6 +71,8 @@ export default function Settings() {
   const { user, setUser, refreshUser } = useAuth();
   const [tab, setTab] = useState('model');
   const [appRoot, setAppRoot] = useState(app);
+  // S7-G10 触感反馈开关（App 专属，默认开；'0' 表示关闭）
+  const [haptics, setHapticsOn] = useState(() => { try { return localStorage.getItem('huanyu_haptics') !== '0'; } catch { return true; } });
   const [legal, setLegal] = useState(null);
   const [s, setS] = useState(null);
   const [settingsError, setSettingsError] = useState('');
@@ -683,6 +686,12 @@ export default function Settings() {
               <div><b style={{ fontSize: 14 }}>毛玻璃外观</b><div className="muted" style={{ fontSize: 12.5 }}>为卡片、侧边栏与弹窗启用磨砂玻璃质感，界面更通透灵动</div></div>
               <span><input type="checkbox" checked={glass} onChange={e => { const v = e.target.checked; setGlassOn(v); setGlass(v); }} /><span className="track" /></span>
             </label>
+            {app && (
+              <label className="switch qa-haptics-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                <div><b style={{ fontSize: 14 }}>触感反馈</b><div className="muted" style={{ fontSize: 12.5 }}>签到、领取与长按等关键操作的轻微震动；仅本机生效</div></div>
+                <span><input type="checkbox" checked={haptics} onChange={e => { const v = e.target.checked; setHapticsOn(v); try { localStorage.setItem('huanyu_haptics', v ? '1' : '0'); } catch { /* */ } if (v) tick(10); }} /><span className="track" /></span>
+              </label>
+            )}
             <label className="switch" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
               <div><b style={{ fontSize: 14 }}>显示成人 (NSFW) 内容</b><div className="muted" style={{ fontSize: 12.5 }}>开启后广场将展示标记为成人的角色与剧本</div></div>
               <span><input type="checkbox" checked={!!s.nsfw} onChange={e => set('nsfw', e.target.checked ? 1 : 0)} /><span className="track" /></span>

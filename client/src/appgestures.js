@@ -5,7 +5,13 @@
 import { useEffect, useRef } from 'react';
 
 // Light haptic tick where supported (Android web / native vibrate); silent on iOS.
-export function tick(ms = 8) { try { navigator.vibrate?.(ms); } catch { /* */ } }
+// 触感反馈：设置页可整体关闭（huanyu_haptics='0'，仅本机生效，默认开）
+export function tick(ms = 8) {
+  try {
+    if (localStorage.getItem('huanyu_haptics') === '0') return;
+    navigator.vibrate?.(ms);
+  } catch { /* */ }
+}
 
 // Elements that own horizontal scrolling / their own touch semantics — swiping
 // inside them must NOT trigger tab navigation.

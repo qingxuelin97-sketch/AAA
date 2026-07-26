@@ -314,6 +314,10 @@ assert.match(engageSource, /mine = \{ rank: higher \+ 1, score: myScore \}/, 'th
 assert.match(mockBackendSource, /mine = \{ rank: higher \+ 1, score: myScore \}/, 'the static mock must mirror caller ranking');
 const leaderboardSource = await readFile(new URL('./src/pages/Leaderboard.jsx', import.meta.url), 'utf8');
 assert.match(leaderboardSource, /tab === 'authors' && data\?\.me &&[\s\S]*qa-lb-mine/, 'the App creators tab must pin the caller rank row');
+/* ---- S7-G10 触感开关 ---- */
+assert.match(gesturesSource, /huanyu_haptics'\) === '0'\) return;/, 'tick() must honour the haptics opt-out before vibrating');
+const settingsPageSource = await readFile(new URL('./src/pages/Settings.jsx', import.meta.url), 'utf8');
+assert.match(settingsPageSource, /app && \([\s\S]*qa-haptics-row/, 'the haptics switch must stay App-only');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(
