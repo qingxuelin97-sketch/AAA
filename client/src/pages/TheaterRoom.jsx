@@ -9,6 +9,8 @@ import { speakBrowser, stopSpeaking, onVoiceStateChange, currentVoiceId } from '
 import StageEditor from '../components/StageEditor.jsx';
 import NovelWorldEditor from '../components/NovelWorldEditor.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import { cnToday } from '../util.js';
 import { isAppMode } from '../appmode.js';
 import { Send, Sparkles, ArrowLeft, Feather, Users, LogOut, BookOpen, Zap, ZapOff, ChevronRight,
   Palette, Image as ImageIcon, MoreVertical, RotateCcw, Copy, Download, Type, Shuffle, ArrowDown,
@@ -65,6 +67,7 @@ export default function TheaterRoom() {
   const [choices, setChoices] = useState(null);
   const [tocOpen, setTocOpen] = useState(false);
   const [reactFor, setReactFor] = useState(null);          // 打开 emoji 选择器的段落 id
+  const [quoteShare, setQuoteShare] = useState(null);      // App 台词卡（剧场段落导出）
   const [speakingId, setSpeakingId] = useState(null);
   const [bgmOn, setBgmOn] = useState(false);
   const scrollRef = useRef();
@@ -447,6 +450,7 @@ export default function TheaterRoom() {
       return (
         <div className="inovel-acts qa-theater-passage-actions">
           <AppButton variant="tertiary" size="sm" onClick={() => copyPassage(m.content)}><Copy size={14} /> 复制</AppButton>
+          <AppButton variant="tertiary" size="sm" onClick={() => setQuoteShare(m)}><Clapperboard size={14} /> 台词卡</AppButton>
           <AppButton variant="tertiary" size="sm" onClick={() => speakPassage(m)}>
             {speakingId === 'th-' + m.id ? <><Square size={13} /> 停止</> : <><Volume2 size={14} /> 朗读</>}
           </AppButton>
@@ -971,6 +975,19 @@ export default function TheaterRoom() {
             <button className="btn primary block" onClick={saveStage} disabled={savingStage}>{savingStage ? '保存中…' : '保存设定'}</button>
           </div>
         </Modal>
+      )}
+      {appMode && quoteShare && (
+        <ShareCardSheet
+          kind="quote"
+          payload={{
+            text: (quoteShare.content || '').replace(/\*+/g, '').trim(),
+            speaker: quoteShare.sender_type === 'narrator' ? '旁白' : (quoteShare.name || '角色'),
+            avatar: quoteShare.avatar ? assetUrl(quoteShare.avatar) : '',
+            date: cnToday(),
+            path: '/theater/' + id,
+          }}
+          onClose={() => setQuoteShare(null)}
+        />
       )}
     </div>
   );

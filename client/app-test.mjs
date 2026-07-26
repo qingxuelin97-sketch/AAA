@@ -289,6 +289,13 @@ assert.match(chatSource, /localStorage\.setItem\('huanyu_draft_' \+ id, input\);
 for (const scenario of ['weeklyRecapAssertions', 'walletCalendarAssertions', 'quoteCardAssertions', 'galleryS7Assertions', 'conversationMarksAssertions', 'draftAssertions']) {
   assert.ok(new RegExp(`await ${scenario}\\(browser, base\\)`).test(e2eSourceForS7), `the e2e suite must keep running ${scenario}`);
 }
+/* ---- S7-G10 剧场台词卡与群聊长按 ---- */
+const theaterRoomSource = await readFile(new URL('./src/pages/TheaterRoom.jsx', import.meta.url), 'utf8');
+assert.match(theaterRoomSource, /台词卡<\/AppButton>/, 'theater passages must offer the quote-card export');
+assert.match(theaterRoomSource, /appMode && quoteShare[\s\S]*kind="quote"[\s\S]*'旁白'/, 'theater quote cards must stay App-only and attribute narrator lines');
+const groupRoomSource = await readFile(new URL('./src/pages/GroupRoom.jsx', import.meta.url), 'utf8');
+assert.match(groupRoomSource, /app \? bindMsgPress\(pressPayload\) : \{\}/, 'group bubbles must bind long-press only inside the App shell');
+assert.match(groupRoomSource, /label: `@\$\{pressMsg\.nm\}`/, 'the group press menu must offer an @-mention insert');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(
