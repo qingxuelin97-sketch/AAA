@@ -1,0 +1,50 @@
+/* ============================================================================
+   曜光玻璃 · S7「仪式与相伴」新组件层（app-lumen-s6.css）
+   ----------------------------------------------------------------------------
+   本层承载 S7 全部新组件样式：错误态 / 首启引导 / 签到日历与连签 /
+   成就 2.0 / 分享卡 / 长按菜单。载入位置：app-lumen-s5.css 之后、
+   app-lumen-materials.css 之前（materials 保持末位权威）。
+   纪律：全部选择器 html[data-app="1"] 围栏；只消费 --lg-* 与残余 --qa-* 令牌；
+   动画一律一次性入场 / 状态动画（无 infinite 装饰循环）；无发光无彩虹。
+   ========================================================================== */
+
+/* ── S7-G2 · 统一错误态（ORACLE §7.2 恢复出口） ── */
+html[data-app="1"] .qa-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--lg-ink-2);
+}
+
+html[data-app="1"] .qa-error-state__title {
+  margin-top: 6px;
+  color: var(--lg-ink);
+  font-size: var(--lg-type-section);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+html[data-app="1"] .qa-error-state__copy {
+  margin: 0;
+  max-width: 30ch;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+  line-height: 1.6;
+}
+
+html[data-app="1"] .qa-error-state__acts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .qa-error-state {
+    animation: none !important;
+    transition: none !important;
+  }
+}

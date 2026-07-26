@@ -208,8 +208,9 @@ assert.ok(
     && mainSource.indexOf('app-controls.css') < mainSource.indexOf('app-pages-quiet-aqua.css')
     && mainSource.indexOf('app-pages-quiet-aqua.css') < mainSource.indexOf('app-experience-v3.css')
     && mainSource.indexOf('app-experience-v3.css') < mainSource.indexOf('app-hig-v5.css')
-    && mainSource.indexOf('app-hig-v5.css') < mainSource.indexOf('app-lumen-materials.css'),
-  'Lumen tokens, qa shim, control, page, v3, HIG and Lumen materials must load in cascade order after the runtime layer',
+    && mainSource.indexOf('app-hig-v5.css') < mainSource.indexOf('app-lumen-s6.css')
+    && mainSource.indexOf('app-lumen-s6.css') < mainSource.indexOf('app-lumen-materials.css'),
+  'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer and Lumen materials must load in cascade order after the runtime layer',
 );
 /* ---- Lumen Glass token authority guards ---- */
 const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
@@ -219,7 +220,7 @@ const lumenMaterials = await readFile(new URL('./src/styles/app-lumen-materials.
 assert.match(lumenMaterials, /html\[data-app="1"\]/, 'Lumen materials must remain App-scoped');
 assert.doesNotMatch(lumenMaterials.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.lg-[^{,]+/m, 'Lumen material classes must never escape the data-app fence');
 const lgDefinitions = new Set([...(lumenTokens + lumenMaterials).matchAll(/(--lg-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
-const lumenStageCss = (await Promise.all(['s3', 's4', 's5'].map((n) => readFile(new URL(`./src/styles/app-lumen-${n}.css`, import.meta.url), 'utf8')))).join('\n');
+const lumenStageCss = (await Promise.all(['s3', 's4', 's5', 's6'].map((n) => readFile(new URL(`./src/styles/app-lumen-${n}.css`, import.meta.url), 'utf8')))).join('\n');
 const higForLg = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
 assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.(?:qa|lg)-[^{,]+/m, 'Lumen stage layers must never escape the data-app fence');
 assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /nth-(?:child|of-type)/, 'Lumen stage layers must not style by position');
@@ -327,13 +328,17 @@ assert.match(quietPages, /\.qa-vip \.vm-card,[\s\S]*background:\s*#23272e/, 'mem
 /* ---- Liuli v5 generated content-media assets ---- */
 const appAssetNames = (await readdir(new URL('./src/assets/app/', import.meta.url)))
   .filter((name) => name.endsWith('.png'));
-assert.ok(appAssetNames.length >= 10, 'the Liuli asset catalog must stay generated (run scripts/render-app-assets.mjs)');
+assert.ok(appAssetNames.length >= 20, 'the S7 asset catalog must stay fully generated (run scripts/render-app-assets.mjs)');
 for (const name of appAssetNames) {
   const png = await readFile(new URL(`./src/assets/app/${name}`, import.meta.url));
   assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${name} must be a valid PNG`);
   assert.ok(png.length <= 300 * 1024, `${name} must stay under the 300KB content-media ceiling`);
 }
 assert.match(artSource, /qa5-empty-generic[\s\S]*AppEmptyArt/, 'the App empty states must ship the generated content media with a generic fallback');
+for (const kind of ['achievements', 'theater', 'atelier', 'leaderboard', 'events', 'worldbooks', 'insights', 'noresult', 'group']) {
+  assert.match(artSource, new RegExp(`qa5-empty-${kind}@2x`), `the S7 empty-art kind "${kind}" must stay wired into the App art map`);
+}
+assert.match(artSource, /onboardArtUrls[\s\S]*streakSealUrl/, 'the onboarding screens and streak seal must export reviewed content media');
 const capacitorConfig = await readFile(new URL('../capacitor.config.json', import.meta.url), 'utf8');
 assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must not return to the purple-navy splash');
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');

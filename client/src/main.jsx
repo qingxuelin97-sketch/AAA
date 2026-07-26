@@ -39,6 +39,9 @@ import './styles/app-hig-v5.css';
 import './styles/app-lumen-s3.css';
 import './styles/app-lumen-s4.css';
 import './styles/app-lumen-s5.css';
+// S7「仪式与相伴」new-component layer (error states, onboarding, check-in
+// calendar, achievements 2.0, share cards, press menus).
+import './styles/app-lumen-s6.css';
 // Lumen Glass material composition layer: glass classes, ambient washes and
 // legacy accent-id aliasing. Loads last as the final App authority.
 import './styles/app-lumen-materials.css';
