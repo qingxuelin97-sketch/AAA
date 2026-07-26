@@ -72,7 +72,8 @@ GitHub Pages 只能托管纯浏览器版（静态）。要部署带真实数据�
 - 👑 VIP（金币购买，无等级；签到双倍、专属标识等权益）
 - 🪙 **按量计费 AI 服务**：平台对话（10/15 金币）、平台语音朗读（10 金币/句）、AI 生图（20 金币/张），**VIP 75 折 / SVIP 5 折**，自备 API Key 则免平台扣费
 - 🛠 **GM 平台AI 控制台**：统一配置平台「语言 / 语音 / 生图」服务（服务商、协议、模型、密钥、画幅、全局系统提示词），改后即时对全体无 API 用户生效
-- 每日签到（连续奖励，VIP 双倍）、兑换码
+- 每日签到（连续奖励，VIP 双倍；App 连签周点、月历回看、里程碑纪念卡）、兑换码
+- 🏅 成就殿堂：五分类徽章墙、金银铜三档奖章、荣誉成就；成就 / 连签 / 角色三类分享卡（canvas 本地合成，系统分享或保存）
 - 完整用户中心：资料 / 横幅 / 安全（改密）/ 偏好（NSFW、通知）设置
 - 移动端底部导航 + 响应式布局，桌面端侧边栏
 
@@ -105,6 +106,9 @@ server/
                         users / economy / scripts / social / groups / theater / meta
 client/src/
   components/Layout.jsx  侧边栏 + 移动端底部导航 + 钱包/通知
+  components/App*.jsx    App 壳组件（AppOnboarding 首启引导 / CheckinCalendarSheet 签到日历 /
+                         ShareCardSheet 分享卡 / AppPressMenu 长按菜单 / AppErrorState 错误态）
+  sharecard.js           1080×1440 canvas 分享卡合成（角色 / 成就 / 连签三模板）
   pages/                 Auth / Home(发现) / Library / CharacterEditor / Chat /
                          Scripts / ScriptDetail / ScriptEditor / Community / Groups /
                          GroupRoom / Theater / TheaterRoom / Wallet / Notifications /

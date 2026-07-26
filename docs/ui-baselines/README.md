@@ -49,3 +49,11 @@ Do not treat a single screenshot as release evidence. Store regenerated images w
   设置行 56 / 会话行 72、气泡 20/20/20/6 + 锚角 6、toast 玻璃胶囊、grabber 38×5、
   Dock 创建钮 50 + act 35% 柔影、沉浸 CTA 白胶囊。
 - 路由与生成条件同 v7。
+
+## manual-v9（Lumen S7 仪式与相伴）
+- 定向重录 S7 改动面（390×844 浅/深）：today（连签周点 + 任务行内领取 + 日历入口）、
+  wallet（App 分支 streak 行 + 日历入口）、achievements（五环徽章墙 + 三档奖章 + 荣誉 + 分享钮）。
+- 首启引导、日历 Sheet、分享卡、长按菜单为交互态，证据在 `client/dist/quiet-aqua-e2e/`
+  （e2e 每次构建重生成），不以落地帧入库。
+- 生成条件同 v7：build:static + mock 登录（huanyu_token=tok.1）+ perf=high，
+  另预置 `huanyu_onboard_done` 抑制首启引导。

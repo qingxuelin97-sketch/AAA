@@ -413,4 +413,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 100/100 passed');
+console.log('app invariants: 189/189 passed');

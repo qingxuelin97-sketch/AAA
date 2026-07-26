@@ -274,6 +274,7 @@ npm run build
 npm run build:static
 npm run test:app
 npm run test:app:e2e
+node scripts/appdiff.mjs   # 样式/令牌重构时：改前 --baseline 录基线，改后对比须 0 changed pixels
 ```
 
 `test:app:e2e` 会先重建 static 包。截图输出位于 `client/dist/quiet-aqua-e2e`，而后续 Vite build 会清空 `client/dist`，因此评审或归档必须在下一次构建前完成。
@@ -305,3 +306,45 @@ npm run test:app:e2e
 - Web 对所有受影响路由执行同数据基线；任何 App-only DOM、文案或行为泄漏都阻断。
 
 只有当代码、状态、无障碍、动效、SVG、截图和 Web 守卫同时通过，PR5 才能声明完成。Figma 是否同步不构成发布门槛，也不能替代上述证据。
+
+## 10. S7「仪式与相伴」附录（阶段三收口记录）
+
+本节记录阶段三（Lumen S7）新增的组件契约、素材账目与令牌迁移终局，与 §0–§9 同级生效；冲突时以红线（§0、§8）优先。
+
+### 10.1 新组件契约
+
+- **AppErrorState**（`.qa-error-state`）：首载失败的唯一合法出口。`role="alert"`；art 必须来自 `APP_EMPTY_ART` 目录 kind；重试为主按钮（≥44px，busy 态防重入），可选次级导航退路。禁止裸文字失败或死路空屏。
+- **AppOnboarding**（`.qa-onboard`）：三屏首启引导。弹出条件 = App 模式 ∧ 已登录 ∧ 无 `huanyu_onboard_done` ∧ `user.created_at` 距今 ≤7 天；老账号静默写键不弹。完成/跳过同时写 `huanyu_welcome_seen` 防双弹。兴趣 chips 上限 6，落 `PUT /settings {interests}` 且尊重 personalize 开关。非当前屏 `inert`；reduced-motion 直切无位移。e2e `preparePage` 默认预置该键，专测用 `onboard:false` 退出。
+- **CheckinCalendarSheet**（`.qa-cal`）：签到月历。`role="grid"` + 星期表头；数据唯一来源 `GET /economy/checkin/calendar`；月导航钳最近 12 个月；今日描环、已签实心、未来置灰；失败必须给出重试。
+- **ShareCardSheet**（`.qa-share-sheet`）：分享卡出口。`sharecard.js` 动态 import，不入首屏 chunk；`document.fonts.ready` 后绘制；出口顺序 = `navigator.canShare({files})` 系统分享 → `<a download>` 保存 → 复制链接兜底；用户取消（AbortError）静默。
+- **AppPressMenu**（`.qa-press-menu`）：长按上下文菜单。`useLongPress` 450ms/10px；portal + isolate + `role="menu"`；挂载 350ms 内忽略 mask 点击（吞长按尾随合成 click，行级同样抑制）；Escape/mask 关闭并把焦点还给触发行。
+
+以上浮层全部登记进 `appgestures.js` 的 NO_TAB_SWIPE/NO_PULL（含 `.qa-ach-wall`），与 Tab 横滑、下拉刷新互斥。
+
+### 10.2 空态/错误态落账表（§7.2 补全）
+
+19 处 icon-only/裸空态已全部接入 art 空态，首载错误接 AppErrorState 带重试：Achievements、Theater、Atelier、NovelWorkspace（列表/角色/世界书三面）、Leaderboard、Events、Announcements、GroupRoom、Worldbooks 与 WorldbookView、Search 无结果、Insights（含错误态补重试）、Parliament、Community、Tags、Draw。既有已达标页（Messages/Friends/Library/Favorites 等）维持原契约不动。
+
+### 10.3 素材目录与许可
+
+- `client/src/assets/app/` 共 23 张 PNG，全部由 `scripts/render-app-assets.mjs` 确定性本地生成（SVG→Chromium 截图，Lumen P 调色板，零文字零按钮，单张 <300KB），原子写入（tmp 目录 + rename，杜绝半成品目录）。
+- 本轮未引入任何外部位图：环境网关封锁全部图床（实测 CONNECT 403），改道本地管线为主路径；无第三方许可负担，版权随项目。
+- 目录：empty ×16（generic/chat/favorites/friends/library/notifications/search/achievements/theater/atelier/leaderboard/events/worldbooks/insights/noresult/group）、onboard ×3（world/craft/tune）、streak-seal、vip-weave、boot-mark @2x/@3x。
+
+### 10.4 分享卡媒体边界
+
+- 分享卡是**运行时 canvas 合成的用户导出内容**（character/achievement/streak 三模板，固定 1080×1440 与 DPR 解耦），允许出现活数据文字——这不违反「入库 PNG 零文字」红线，因为它不入库、不进素材目录。
+- 不建 canvas 像素基线（文本反走样跨环境不稳定）；e2e 只验预览 naturalWidth/Height、出口可用与无 console error。
+
+### 10.5 qa→lg 令牌迁移终局（G8）
+
+- 62 条纯别名（全部定义恒等于同一 `var(--lg-X)`）由 `scripts/migrate-qa-tokens.mjs` 批量改写 **1,821 处**引用为直连 `--lg-*` 权威：pages 1490 / controls 119 / hig 107 / v3 75 / runtime 9 / elevated 6 / s5 6 / renov 3 / shell 2 / s6 2 / chat-app 1 / ui.jsx 1。
+- `app-quiet-aqua-tokens.css` 降级为**残余 shim**，仅存三类非纯定义：① 迁移期字面值（--qa-surface 系不透明内容面、44/48px 触控契约、语义 ink 黑白字面、玻璃 specular/阴影字面、编辑器 chrome 高度）；② color-mix 派生（pressed 与各 -soft 软底）；③ lite 条件回落面（chrome/overlay/玻璃底 → --lg-grouped）。纯别名禁止回填（app-test 反向断言）。
+- 证据链：`scripts/appdiff.mjs`（9 路由 × light/dark/lite、冻结时钟、头像掩膜、2px AA 噪声阈）迁移前后 **0 changed pixels**；app-test 闭包断言「全 App 层 `var(--qa-*)` 引用 ⊆ 残余 shim 定义集」。令牌重构类改动此后一律先录 `--baseline` 再过 appdiff 0px 门。
+
+### 10.6 后端契约同步（G1）
+
+- `GET /economy/checkin/calendar?month=YYYY-MM`：由 `transactions(kind='checkin')` 推导（不建新表），北京日界 `cnToday`，月参数钳最近 12 个月；server 与 mock 双端同构（app-test 配对断言）。
+- `settings.interests`：slug 白名单 = meta CATEGORIES、上限 6、逗号串存储；`/characters/recommended` 在 personalize 开启时对 interests 命中各 +2 权重（双端孪生）。
+- 成就目录双端 30 条集合等值断言（matchAll id 提取 deepEqual）；honor 成就（creator_hall）reward 0、只铭刻不可领取，领取请求双端一致拒绝。
+- 旧 `POST /economy/recharge` 双端一致返回 410 `PAYMENT_ORDER_REQUIRED`；充值走订单两端点，mock 入账一次性幂等（credited 标记）。支付路由本阶段零改动。
