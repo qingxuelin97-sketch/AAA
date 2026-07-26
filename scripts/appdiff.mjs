@@ -27,7 +27,8 @@ const serve = () => new Promise((resolve) => {
   srv.listen(4275, () => resolve(srv));
 });
 
-const ROUTES = ['#/today', '#/', '#/messages', '#/me', '#/wallet', '#/achievements', '#/events', '#/settings', '#/app-controls'];
+// S7 终态：insights 纳入自证网（星轨页含 App 年鉴卡入口，属重构敏感面）
+const ROUTES = ['#/today', '#/', '#/messages', '#/me', '#/wallet', '#/achievements', '#/events', '#/insights', '#/settings', '#/app-controls'];
 const MODES = [
   { name: 'light', perf: 'high' },
   { name: 'dark', theme: 'dark', perf: 'high' },

@@ -404,3 +404,7 @@ node scripts/appdiff.mjs   # 样式/令牌重构时：改前 --baseline 录基�
 | 收藏筛选 | Favorites `.qa-fav-cats`（分类自推导） | App-only / ≥2 类 / 空档说明 | 手测切换 |
 | 公告 NEW | `huanyu_ann_seen` 账本（钳 100） | App 门控 / 有界 / 徽标 App-only | 手测两次进入 |
 | 阅读进度 | NovelReader `huanyu_read_<id>` + 2px 条 | 门控 / 端点复位 / 字号域 | 手测 0.50 往返 |
+
+（10.8 表再补行）| 画廊长按 | Draw 瓦片 → 下载/复用/删除 | App-only 绑定 / 删除 danger | 手测菜单三项 |
+| 群聊分段 | Groups 全部/我加入的/可加入 | 两侧并存才现 / joined 划分 | 手测切换 |
+| 排序端到端 | 置顶 > 新鲜度 | —— | e2e 浏览器层 + boundary 第 7 组 API 层双镜像 |
