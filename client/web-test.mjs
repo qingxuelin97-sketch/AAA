@@ -210,6 +210,13 @@ const appProfileSource = await read('./src/pages/AppProfile.jsx');
 ok(/components\/profile\//.test(profileSource) && /components\/profile\//.test(appProfileSource),
   'both shells must consume the shared profile modules (no re-fork)');
 
+/* ---- 13b. 桌面去 App 化重布局契约（D1-D3） ---- */
+match(webHome, /<Spotlight/, 'the web home must lead with the spotlight carousel (community-shelf shape)');
+doesNotMatch(webHome, /lgwh-quick|每日任务/, 'the web home must stay de-gamified — no quick grid or task card creep-back');
+match(layoutSource, /\/chat\/conversations/, 'the web sidebar must surface recent conversations (two-tier layout)');
+const chatSource = await read('./src/pages/Chat.jsx');
+match(chatSource, /chat-side/, 'web chat must dock the character panel at wide widths');
+
 /* ---- 14. CSS 按模式分包 + 性能自适应 ---- */
 const mainSource = await read('./src/main.jsx');
 doesNotMatch(mainSource, /import '\.\/styles\/app-[a-z0-9-]+\.css'/, 'main.jsx must not statically import App-layer CSS');
