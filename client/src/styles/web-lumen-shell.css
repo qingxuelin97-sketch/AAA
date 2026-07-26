@@ -608,7 +608,8 @@ html:not([data-app="1"]) .modal-backdrop {
   background: var(--lg-scrim);
   animation-duration: var(--lg-dur-state);
 }
-html:not([data-app="1"]) .card.modal {
+html:not([data-app="1"]) .card.modal,
+html:not([data-app="1"]) .card.welcome-pop {
   border: 0;
   border-radius: var(--lg-r-panel);
   background: var(--lg-glass-2) !important;
@@ -618,6 +619,34 @@ html:not([data-app="1"]) .card.modal {
   /* 弹入节奏切令牌（keyframes 沿用存量 popIn） */
   animation-duration: var(--lg-dur-state);
   animation-timing-function: var(--lg-ease);
+}
+
+/* ── §8.5 · 内容卡玻璃重定价（毛玻璃开关 data-glass="on" 的存量代价修正） ──
+   web-super 的 [data-glass="on"] .card 家族是「60% 透明 + 全卡 backdrop
+   blur(14px)」：in-flow 内容卡每帧全价 GPU 读回，而 lite 档 blur 被关后只剩
+   60% 透明 —— 卡下内容直接穿透（冒烟实拍：欢迎弹窗成幽灵卡）。按 Lumen
+   D8 纪律重定价为 .lgw-card 配方：高不透明面 + 三件套 shadow，玻璃观感、
+   零 blur、任何性能档不穿透。浮层（modal / welcome-pop / chat-menu）不在
+   此列 —— 它们是真玻璃层，由 §8 与存量成对规则接管。 */
+html:not([data-app="1"])[data-glass="on"] .card,
+html:not([data-app="1"])[data-glass="on"] .studio-card,
+html:not([data-app="1"])[data-glass="on"] .adm-stat,
+html:not([data-app="1"])[data-glass="on"] .ach-card,
+html:not([data-app="1"])[data-glass="on"] .poster .p-info,
+html:not([data-app="1"])[data-glass="on"] .draw-panel,
+html:not([data-app="1"])[data-glass="on"] .draw-stage {
+  background: color-mix(in srgb, var(--panel) 86%, transparent) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-color: var(--lg-hairline);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"])[data-glass="on"] .card.modal,
+html:not([data-app="1"])[data-glass="on"] .card.welcome-pop {
+  background: var(--lg-glass-2) !important;
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  box-shadow: var(--lg-glass-shadow-2);
 }
 
 
