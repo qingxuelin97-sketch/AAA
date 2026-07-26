@@ -133,6 +133,25 @@ export default function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // S7-G10 会话草稿（仅 App 壳，Web 行为零变化）：输入按会话持久化
+  //（300ms 防抖，清空/发送即删），换会话或杀进程回来草稿仍在；
+  // 发现流带入的一次性预填优先。
+  useEffect(() => {
+    if (!app || !id || loc.state?.draft) return;
+    try { setInput(localStorage.getItem('huanyu_draft_' + id) || ''); } catch { /* */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+  useEffect(() => {
+    if (!app || !id) return;
+    const t = setTimeout(() => {
+      try {
+        if (input.trim()) localStorage.setItem('huanyu_draft_' + id, input);
+        else localStorage.removeItem('huanyu_draft_' + id);
+      } catch { /* */ }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [app, id, input]);
+
   // 移动端软键盘适配：把 fixed 输入栏始终顶在键盘上方（稳健跨浏览器实现见 mobile.js）。
   useKeyboardInsetBar(inputBarRef, [conv]);
 

@@ -125,6 +125,14 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 消息页 · 草稿标记 ---- */
+html[data-app="1"] .msgs-draft {
+  margin-right: 4px;
+  color: var(--lg-coral);
+  font-style: normal;
+  font-weight: 600;
+}
+
 /* ---- 消息页 · 会话整理标记（置顶 / 免打扰） ---- */
 html[data-app="1"] .msgs-marks {
   display: inline-flex;

@@ -75,7 +75,15 @@ function AppConversationRow({ cv, nav, onDelete, onPress }) {
           : <Avatar src={cv.character_avatar} name={cv.character_name} size={50} />}
         <span className="msgs-conv-tx">
           <b>{cv.character_name}</b>
-          <span>{msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话')}</span>
+          <span>
+            {(() => {
+              // S7-G10 草稿优先：有未发送草稿时明示，回来即续写
+              let draft = '';
+              try { draft = (localStorage.getItem('huanyu_draft_' + cv.id) || '').trim(); } catch { /* */ }
+              if (draft) return <><i className="msgs-draft">[草稿]</i>{draft.slice(0, 40)}</>;
+              return msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话');
+            })()}
+          </span>
         </span>
         <span className="msgs-conv-meta">
           {time && <time dateTime={cv.updated_at || cv.last_message_at || cv.last_at}>{time}</time>}

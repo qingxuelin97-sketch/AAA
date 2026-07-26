@@ -281,6 +281,11 @@ assert.match(gesturesSource, /qa-onboard[\s\S]*qa-cal[\s\S]*qa-share-sheet/, 'ne
 const appProfileSource = await readFile(new URL('./src/pages/AppProfile.jsx', import.meta.url), 'utf8');
 assert.match(appProfileSource, /CountUp value=\{s\.n\}/, 'profile stats must animate with the shared CountUp');
 assert.match(e2eSourceForS7, /pressMenuAssertions/, 'the e2e suite must keep exercising the press-menu flow');
+/* ---- S7-G10 会话整理与草稿契约 ---- */
+assert.match(messagesSource, /toggleConvMark[\s\S]*取消置顶[\s\S]*免打扰/, 'the press menu must toggle pin and mute marks');
+assert.match(messagesSource, /msgs-draft[\s\S]*草稿/, 'the conversation row must surface an unsent draft first');
+assert.match(chatSource, /if \(!app \|\| !id \|\| loc\.state\?\.draft\) return;/, 'draft restore must stay App-gated and yield to one-shot prefills');
+assert.match(chatSource, /localStorage\.setItem\('huanyu_draft_' \+ id, input\);[\s\S]*localStorage\.removeItem\('huanyu_draft_' \+ id\);/, 'an emptied composer must delete its stored draft');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(
