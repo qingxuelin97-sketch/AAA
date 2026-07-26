@@ -23,7 +23,7 @@ import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppOverlay } from '../overlay.jsx';
 import {
-  Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp,
+  Heart, MessageCircle, Star, Share2, Drama, Loader2, ChevronUp,
   ChevronRight, ScrollText, Maximize2, Phone, Search, History, X
 } from 'lucide-react';
 
@@ -112,7 +112,7 @@ export default function DiscoverFeed() {
   useRealtimeEvent('character_new', (data) => {
     const c = data?.character; if (!c) return;
     setChars(prev => prev.some(x => x.id === c.id) ? prev : [{ ...c, uses: 0, likes: 0 }, ...prev]);
-    toast(`✨ ${c.owner_name || '有人'} 发布了新角色「${c.name}」`);
+    toast(`${c.owner_name || '有人'} 发布了新角色「${c.name}」`);
   });
 
   // 滚动监听：更新当前卡索引。IntersectionObserver 比 scroll 事件在 snap 下更稳。
@@ -370,7 +370,7 @@ export default function DiscoverFeed() {
       </div>
 
       {/* 加载 / 到底提示 —— 悬浮胶囊，不参与 snap 流 */}
-      {loadingMore && <div className="feed-hint"><Sparkles size={14} /> 正在加载更多…</div>}
+      {loadingMore && <div className="feed-hint"><Loader2 size={14} className="qa5-spin" /> 正在加载更多…</div>}
       {pageError && !loadingMore && (
         <div className="feed-hint feed-hint-error" role="alert">
           <span>{pageError}</span>

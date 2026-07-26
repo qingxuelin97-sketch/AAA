@@ -21,7 +21,14 @@ import {
   GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
   REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo, timeDivider,
 } from '../chat/constants.js';
-import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft } from 'lucide-react';
+import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft, ImagePlus, Blend, LayoutTemplate, Sprout, Leaf, Coffee, HeartHandshake, Gem } from 'lucide-react';
+
+// Liuli v5：App 端好感等级用 lucide 图标表达（Web 保留 emoji 徽章）。
+const AFFINITY_APP_ICONS = [Sprout, Leaf, Coffee, Smile, Heart, HeartHandshake, Gem];
+function AffinityIcon({ level, size }) {
+  const Ic = AFFINITY_APP_ICONS[level] || Heart;
+  return <Ic size={size} aria-hidden="true" />;
+}
 
 export default function Chat() {
   const app = isAppMode();
@@ -623,7 +630,7 @@ export default function Chat() {
               </div>
               {!app && (() => { const af = affinityInfo(affinity); return (
                 <button className={'affinity-badge' + (afPulse ? ' pulse' : '')} onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
-                  <span className="af-ic">{af.icon}</span>
+                  <span className="af-ic">{app ? <AffinityIcon level={af.level} size={12} /> : af.icon}</span>
                   <span className="af-tx"><b>{af.name}</b><i><em style={{ width: af.pct + '%' }} /></i></span>
                 </button>
               ); })()}
@@ -732,7 +739,7 @@ export default function Chat() {
                   <div className="wb-front-banner" style={schema.accent ? { ['--wb-accent']: schema.accent } : null}>
                     {banner.src
                       ? <img src={assetUrl(banner.src)} alt="场景横幅" />
-                      : <div className="wb-front-banner-ph"><Sparkles size={14} /> 专家档自构前端 · {schema.layout} 布局</div>}
+                      : <div className="wb-front-banner-ph">{app ? <LayoutTemplate size={14} /> : <Sparkles size={14} />} 专家档自构前端 · {schema.layout} 布局</div>}
                     <div className="wb-front-banner-cap">{banner.id} slot</div>
                   </div>
                 );
@@ -911,7 +918,7 @@ export default function Chat() {
                 // 导出/清空/搜索/书签等低频项收在右上 ⋮ 菜单，不占面板。
                 const P1 = [
                   { ic: Phone, hue: 'call', label: '语音通话', on: () => { setPlusOpen(false); setCallOpen(true); } },
-                  { ic: Wand2, hue: 'illus', label: '生成插图', on: () => { setIllusOpen(true); setPlusOpen(false); } },
+                  { ic: app ? ImagePlus : Wand2, hue: 'illus', label: '生成插图', on: () => { setIllusOpen(true); setPlusOpen(false); } },
                   { ic: Dices, hue: 'dice', label: '掷骰子', dis: streaming, on: () => {
                       setPlusOpen(false);
                       send(`*掷出一枚命运骰子……${1 + Math.floor(Math.random() * 20)} 点（1-20）！*`);
@@ -936,7 +943,7 @@ export default function Chat() {
                       switchGreeting(gi); setPlusOpen(false);
                     } },
                   // 「重新生成」在消息操作行已有，这里换成玻璃化专属的透明度调节
-                  { ic: Sparkles, hue: 'regen', label: `气泡 · ${bubbleAlpha === 'solid' ? '实底' : bubbleAlpha === 'mid' ? '半透' : '极透'}`, on: cycleBubbleAlpha },
+                  { ic: app ? Blend : Sparkles, hue: 'regen', label: `气泡 · ${bubbleAlpha === 'solid' ? '实底' : bubbleAlpha === 'mid' ? '半透' : '极透'}`, on: cycleBubbleAlpha },
                   { ic: Volume2, hue: 'read', label: autoRead ? '自动朗读 开' : '自动朗读 关', on: toggleAutoRead },
                   { ic: bgmOn && character?.bgm ? Music : VolumeX, hue: 'bgm', label: bgmOn ? '背景音乐 开' : '背景音乐 关', dis: !character?.bgm, on: toggleBgm },
                   { ic: Type, hue: 'font', label: `字号 · ${fontSize === 'sm' ? '小' : fontSize === 'md' ? '中' : '大'}`, on: () => setFont(fontSize === 'sm' ? 'md' : fontSize === 'md' ? 'lg' : 'sm') },
@@ -989,7 +996,7 @@ export default function Chat() {
                 <div className="cd-body">
                   <section>
                     <h4><Heart size={14} /> 好感度</h4>
-                    <div className="af-big">{af.icon} Lv.{af.level} · {af.name}</div>
+                    <div className="af-big">{app ? <AffinityIcon level={af.level} size={16} /> : af.icon} Lv.{af.level} · {af.name}</div>
                     <div className="af-bar"><span style={{ width: af.pct + '%' }} /></div>
                     <p className="muted">好感值 {af.value}{af.nextAt ? ` · 距「${AFFINITY_LEVELS[af.level]?.name}」还需 ${af.nextAt - af.value}` : ' · 已是最高羁绊'}</p>
                   </section>

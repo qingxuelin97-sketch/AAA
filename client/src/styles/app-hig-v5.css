@@ -385,3 +385,7 @@ html[data-app="1"][data-theme="dark"] .qa-settings-row:active { background: var(
 html[data-app="1"][data-theme="dark"] .app-sheet-grip {
   background: color-mix(in srgb, #ffffff 28%, transparent);
 }
+
+/* 加载图标旋转（状态循环，随加载态出现与消失） */
+html[data-app="1"] .qa5-spin { animation: qa5Spin 0.9s linear infinite; }
+@keyframes qa5Spin { to { transform: rotate(360deg); } }

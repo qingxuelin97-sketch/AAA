@@ -14,7 +14,7 @@ import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppTabActive } from '../appTabActivity.js';
 import {
-  Check, Flame, MessagesSquare, ChevronRight, Sparkles,
+  Check, Flame, MessagesSquare, ChevronRight, ThumbsUp,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell,
   ScrollText, Users, Trophy
 } from 'lucide-react';
@@ -154,7 +154,6 @@ export default function AppHome() {
 
       {/* Identity is a compact continuous row, not another dashboard card. */}
       <section className={'ah-hero ' + skyClass()} aria-labelledby="today-member-title">
-        <span className="ah-celestial" aria-hidden="true" />
         <div className="ah-hero-row ah-member-row">
           <AppIconButton className="ah-avatar" label="我的" onClick={() => nav('/me')} aria-label="我的">
             <Avatar src={user?.avatar} name={displayName} size={46} />
@@ -292,13 +291,13 @@ export default function AppHome() {
       {/* personalised pick */}
       {pick === null && (
         <section className="ah-sec">
-          <div className="ah-sec-head"><h2><Sparkles size={16} /> 为你挑选</h2></div>
+          <div className="ah-sec-head"><h2><ThumbsUp size={16} /> 为你挑选</h2></div>
           <div className="ah-picks">{[0, 1].map(i => <div key={i} className="ah-pick-skel" aria-hidden="true" />)}</div>
         </section>
       )}
       {pick && pick.length > 0 && (
         <section className="ah-sec">
-          <div className="ah-sec-head"><h2><Sparkles size={16} /> 为你挑选</h2>
+          <div className="ah-sec-head"><h2><ThumbsUp size={16} /> 为你挑选</h2>
             <AppButton className="ah-more" variant="tertiary" size="sm" onClick={() => nav('/')}>
               逛广场 <ChevronRight size={14} />
             </AppButton>

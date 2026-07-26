@@ -9,6 +9,7 @@ import { BG_PRESETS, ONLINE_BG, randomBg, randomAnimeAvatar } from '../faces.js'
 import { playAudioUrl, speakBrowser, stopSpeaking } from '../voice.js';
 import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
 import { isAppMode } from '../appmode.js';
+import { t } from '../appCopy.js';
 import { useUnsavedValue } from '../appNavigation.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Unlink, BookUp, Globe, Search, Sparkles, Upload, ArrowLeft, Save } from 'lucide-react';
@@ -166,7 +167,7 @@ export default function CharacterEditor() {
       if (dur && dur > BGM_MAX_SEC + 0.5) { toast(`背景音乐不能超过 ${BGM_MAX_SEC} 秒（当前 ${Math.round(dur)} 秒）`, 'err'); return; }
       const d = await uploadFile(file);
       set('bgm', d.url);
-      toast('背景音乐已上传 🎵');
+      toast(t('背景音乐已上传 🎵', '背景音乐已上传'));
     } catch (err) { toast(err.message || '上传失败', 'err'); } finally { setBgmBusy(false); }
   };
 
@@ -185,8 +186,8 @@ export default function CharacterEditor() {
   };
 
   // Draw a random scenery background, frozen as a fixed image (never re-randomises).
-  const rollBg = () => { setC(prev => ({ ...prev, background: randomBg(), background_type: 'image' })); toast('已抽到一张并锁定 🎲'); };
-  const rollAvatar = () => { set('avatar', randomAnimeAvatar()); toast('已抽到一个头像 🎲'); };
+  const rollBg = () => { setC(prev => ({ ...prev, background: randomBg(), background_type: 'image' })); toast(t('已抽到一张并锁定 🎲', '已抽到一张并锁定')); };
+  const rollAvatar = () => { set('avatar', randomAnimeAvatar()); toast(t('已抽到一个头像 🎲', '已抽到一个头像')); };
 
   useEffect(() => {
     let alive = true;

@@ -7,6 +7,7 @@ import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, CoinIcon } from '../ui.jsx';
 import { isAppMode } from '../appmode.js';
+import { t } from '../appCopy.js';
 import { fmtNum } from '../util.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import {
@@ -69,7 +70,7 @@ export default function Vip() {
     if (!agree) { toast('请先阅读并同意《会员服务协议》', 'err'); return; }
     purchaseLockRef.current = true;
     setBusy('vip');
-    try { await api('/economy/vip', { method: 'POST', body: { plan } }); toast('🎉 会员已开通，尊享权益即刻生效'); await after(); }
+    try { await api('/economy/vip', { method: 'POST', body: { plan } }); toast(t('🎉 会员已开通，尊享权益即刻生效', '会员已开通，尊享权益即刻生效')); await after(); }
     catch (e) { toast(e.message, 'err'); }
     finally { purchaseLockRef.current = false; setBusy(''); }
   };

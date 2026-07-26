@@ -1,3 +1,4 @@
+import { isAppMode } from './appmode.js';
 // 跨页面小工具集。
 //
 // shareUrl —— 分享链接必须按路由模式拼接：Web 部署（BrowserRouter）用干净路径，
@@ -35,7 +36,7 @@ export function cnToday(d = new Date()) {
 export function msgPreview(raw, max = 34) {
   const s = String(raw || '').trim();
   if (!s) return '';
-  if (/^```html|^<!doctype html|^<html[\s>]/i.test(s) || /```html/i.test(s.slice(0, 200))) return '🎴 交互面板';
+  if (/^```html|^<!doctype html|^<html[\s>]/i.test(s) || /```html/i.test(s.slice(0, 200))) return isAppMode() ? '交互面板' : '🎴 交互面板';
   const flat = s.replace(/\s+/g, ' ');
   return flat.length > max ? flat.slice(0, max) + '…' : flat;
 }

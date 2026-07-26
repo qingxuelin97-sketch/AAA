@@ -1,4 +1,6 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
+import { isAppMode } from '../appmode.js';
 import { logError } from '../logger.js';
 
 // React 错误边界 —— 捕获子树渲染时的同步异常（window.onerror 抓不到 React 渲染崩溃）。
@@ -46,7 +48,7 @@ export default class ErrorBoundary extends React.Component {
           fontFamily: 'system-ui, -apple-system, sans-serif',
           background: 'var(--bg, #0f1115)', color: 'var(--text, #e5e7eb)',
         }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+          <div style={{ fontSize: 48, marginBottom: 16, display: 'grid', placeItems: 'center' }}>{isAppMode() ? <AlertTriangle size={44} aria-hidden="true" /> : '⚠️'}</div>
           <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 600 }}>页面出了点问题</h2>
           <p style={{ margin: '0 0 20px', fontSize: 14, opacity: 0.7, maxWidth: 360 }}>
             应用遇到了一个渲染错误，已自动上报。刷新页面通常可以恢复。
@@ -62,7 +64,7 @@ export default class ErrorBoundary extends React.Component {
           )}
           <button onClick={this.handleReload} style={{
             padding: '10px 24px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            background: 'var(--accent, #6366f1)', color: '#fff', fontSize: 14, fontWeight: 500,
+            background: 'var(--accent, #1d5fdb)', color: '#fff', fontSize: 14, fontWeight: 500,
           }}>
             刷新页面
           </button>

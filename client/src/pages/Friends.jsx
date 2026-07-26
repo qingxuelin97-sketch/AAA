@@ -7,6 +7,7 @@ import { EmptyArt } from '../art.jsx';
 import { useAutoGrow } from '../util.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
+import { t } from '../appCopy.js';
 import { useNav } from '../nav.js';
 import { useAppOverlay } from '../overlay.jsx';
 import {
@@ -73,7 +74,7 @@ export default function Friends() {
   // 实时好友事件：有人发来申请 → 刷新 incoming；对方通过申请 → 刷新好友列表。
   useRealtimeEvent('friend', (data) => {
     if (data?.kind === 'request') { loadRequests(); loadFriends(); }
-    else if (data?.kind === 'accepted') { loadRequests(); loadFriends(); toast(`${data.by?.display_name || '对方'} 通过了你的好友申请 🎉`); }
+    else if (data?.kind === 'accepted') { loadRequests(); loadFriends(); toast(t(`${data.by?.display_name || '对方'} 通过了你的好友申请 🎉`, `${data.by?.display_name || '对方'} 通过了你的好友申请`)); }
   });
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [dm?.messages?.length]);
@@ -90,7 +91,7 @@ export default function Friends() {
   const outSet = useMemo(() => new Set(requests.outgoing.map(r => r.id)), [requests]);
 
   const addFriend = async (id) => {
-    try { const d = await api('/friends/request/' + id, { method: 'POST' }); toast(d.state === 'friends' ? '已成为好友 🎉' : '好友申请已发送'); loadRequests(); loadFriends(); }
+    try { const d = await api('/friends/request/' + id, { method: 'POST' }); toast(d.state === 'friends' ? t('已成为好友 🎉', '已成为好友') : '好友申请已发送'); loadRequests(); loadFriends(); }
     catch (e) { toast(e.message, 'err'); }
   };
   const respond = async (reqId, action) => {

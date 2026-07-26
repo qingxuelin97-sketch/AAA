@@ -3,7 +3,7 @@
 // 对标一线内容 App 的形态：
 //   · 无持久顶栏 —— 每个一级页自带头部（今日=问候区 / 发现=分类浮层 /
 //     消息=双 tab / 我的=个人卡），内容直通状态栏下沿
-//   · 扁平全宽底栏：今日 / 发现 / [+AI] / 消息 / 我的，中央为描边「+AI」创建钮
+//   · 扁平全宽底栏：今日 / 发现 / [+] / 消息 / 我的，中央为描边「+」创建钮
 //   · 白+青清透浅色优先（theme.js 在 app 壳把 system 解析为 light）
 //   · safe-area aware, phone-framed on wide screens for preview
 // Content pages are reused as-is; only the chrome differs.
@@ -26,7 +26,7 @@ import { preheat } from '../routeChunks.js';
 import { statusBarContextForTone } from '../routeRegistry.js';
 import {
   Home, Compass, MessageCircle, Plus, UserRound,
-  Sparkles, Feather, Wand2, Drama, Send, RefreshCw, WifiOff, BatteryLow, X
+  UserRoundPlus, Feather, ImagePlus, Drama, Send, RefreshCw, WifiOff, BatteryLow, X
 } from 'lucide-react';
 
 // Bottom tab bar — 4 destinations split around the center create button.
@@ -39,13 +39,14 @@ const TABS_R = [
   { to: '/me', ic: UserRound, label: '我的' }
 ];
 
-// FAB create-sheet actions.
+// FAB create-sheet actions. Icons are concrete verbs (no sparkle/wand
+// metaphors); tone follows the ORACLE creation-workbench semantics.
 const CREATE = [
-  { to: '/character/new', ic: Sparkles, label: '创建角色', hint: '立绘 · 人设 · 世界书' },
-  { to: '/atelier', ic: Feather, label: '写小说', hint: 'AI 协作长篇创作' },
-  { to: '/draw', ic: Wand2, label: 'AI 绘图', hint: '文生图工作室' },
-  { to: '/theater', ic: Drama, label: '开剧场', hint: '多人多 AI 即兴演出' },
-  { to: '/publish', ic: Send, label: '发布作品', hint: '角色 / 剧本 / 动态' }
+  { to: '/character/new', ic: UserRoundPlus, tone: 'indigo', label: '创建角色', hint: '立绘 · 人设 · 世界书' },
+  { to: '/atelier', ic: Feather, tone: 'coral', label: '写小说', hint: 'AI 协作长篇创作' },
+  { to: '/draw', ic: ImagePlus, tone: 'gold', label: 'AI 绘图', hint: '文生图工作室' },
+  { to: '/theater', ic: Drama, tone: 'blue', label: '开剧场', hint: '多人多 AI 即兴演出' },
+  { to: '/publish', ic: Send, tone: 'success', label: '发布作品', hint: '角色 / 剧本 / 动态' }
 ];
 
 export default function AppLayout({ children }) {
@@ -395,7 +396,6 @@ export default function AppLayout({ children }) {
             <b className="app-boot-name">幻域</b>
             <span className="app-boot-sub">与你创造的角色一同呼吸</span>
           </div>
-          <span className="app-boot-star s1" /><span className="app-boot-star s2" /><span className="app-boot-star s3" />
         </div>
       )}
     </div>
@@ -471,6 +471,7 @@ function CreateSheet({ onClose, returnFocusRef }) {
             className="app-create-row"
             variant="secondary"
             data-sheet-action
+            data-tone={c.tone}
             style={{ '--i': i }}
             onClick={() => go(c.to)}
           >
