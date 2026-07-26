@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, GridSkeleton } from '../ui.jsx';
-import { BookOpen, Plus, Globe, BookLock, BookCheck, ArrowRight, Search, Sparkles,
+import { isAppMode } from '../appmode.js';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { ArrowLeft, BookOpen, Plus, Globe, BookLock, BookCheck, ArrowRight, Search, Sparkles, X,
   Image as ImageIcon, Layout, Sliders, Layers, Variable, GitBranch } from 'lucide-react';
 
 // 能力徽章定义：按字段是否有数据派生，与编辑器一致。
@@ -17,6 +19,7 @@ const CAPS = [
 ];
 
 export default function Worldbooks() {
+  const appMode = isAppMode();
   const { user } = useAuth();
   const [tab, setTab] = useState('mine');
   const [list, setList] = useState([]);
@@ -40,9 +43,19 @@ export default function Worldbooks() {
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab, sort]);
 
+  const visibleList = useMemo(() => {
+    if (!appMode || tab !== 'mine' || !q.trim()) return list;
+    const needle = q.trim().toLocaleLowerCase();
+    return list.filter(w => [w.name, w.description, w.tags].some(value => String(value || '').toLocaleLowerCase().includes(needle)));
+  }, [appMode, list, q, tab]);
+
+  const openWorldbook = (w, owned) => nav(owned ? '/worldbook/' + w.id + '/edit' : '/worldbook/' + w.id);
+  const WorldbooksShell = appMode ? 'div' : React.Fragment;
+
   return (
-    <>
-      <div className="topbar wb-list-topbar">
+    <WorldbooksShell {...(appMode ? { className: 'qa-worldbooks-page' } : {})}>
+      <div className={appMode ? 'topbar wb-list-topbar qa-worldbooks-topbar' : 'topbar wb-list-topbar'}>
+        {appMode && <AppIconButton className="qa-worldbooks-back" onClick={() => nav('/library')} label="返回角色库"><ArrowLeft size={20} /></AppIconButton>}
         <div style={{ flex: 1 }}>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             世界书
@@ -50,12 +63,14 @@ export default function Worldbooks() {
           </h1>
           <div className="sub">独立设定集 · 能力可共存 · 跨角色复用与预注入图片</div>
         </div>
-        <button className="btn primary" onClick={() => nav('/worldbook/new/edit')}><Plus size={16} /> 新建世界书</button>
+        {appMode
+          ? <AppIconButton className="qa-worldbooks-create" variant="filled" onClick={() => nav('/worldbook/new/edit')} label="新建世界书"><Plus size={20} /></AppIconButton>
+          : <button className="btn primary" onClick={() => nav('/worldbook/new/edit')}><Plus size={16} /> 新建世界书</button>}
       </div>
 
-      <div className="page wb-list">
+      <div className={appMode ? 'page wb-list qa-worldbooks-content' : 'page wb-list'}>
         {/* —— 能力说明 hero —— */}
-        <div className="wb-hero">
+        <div className={appMode ? 'wb-hero qa-worldbooks-hero' : 'wb-hero'}>
           <div className="wb-hero-aurora" />
           <div className="wb-hero-content">
             <div className="wb-hero-title">世界书能力体系</div>
@@ -68,41 +83,47 @@ export default function Worldbooks() {
           </div>
         </div>
 
-        <div className="wb-list-controls">
-          <div className="seg" style={{ marginBottom: 0 }}>
-            <button className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>我的世界书</button>
-            <button className={tab === 'public' ? 'active' : ''} onClick={() => setTab('public')}>公开广场</button>
+        <div className={appMode ? 'wb-list-controls qa-worldbooks-controls' : 'wb-list-controls'}>
+          <div className="seg" style={{ marginBottom: 0 }} role={appMode ? 'tablist' : undefined} aria-label={appMode ? '世界书来源' : undefined}>
+            <AppButton className={tab === 'mine' ? 'active' : ''} variant="tertiary" selected={tab === 'mine'}
+              role={appMode ? 'tab' : undefined} aria-selected={appMode ? tab === 'mine' : undefined} onClick={() => setTab('mine')}>我的世界书</AppButton>
+            <AppButton className={tab === 'public' ? 'active' : ''} variant="tertiary" selected={tab === 'public'}
+              role={appMode ? 'tab' : undefined} aria-selected={appMode ? tab === 'public' : undefined} onClick={() => setTab('public')}>公开广场</AppButton>
           </div>
           {tab === 'public' && (
-            <>
-              <div className="seg seg-mini" style={{ marginBottom: 0 }}>
-                <button className={sort === 'hot' ? 'active' : ''} onClick={() => setSort('hot')}>最热</button>
-                <button className={sort === 'new' ? 'active' : ''} onClick={() => setSort('new')}>最新</button>
-              </div>
-              <div className="wb-search">
-                <Search size={14} />
-                <input placeholder="搜索名称/标签/简介" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && load()} />
-              </div>
-            </>
+            <div className="seg seg-mini" style={{ marginBottom: 0 }} role={appMode ? 'group' : undefined} aria-label={appMode ? '排序方式' : undefined}>
+              <AppButton className={sort === 'hot' ? 'active' : ''} variant="tertiary" selected={sort === 'hot'} onClick={() => setSort('hot')}>最热</AppButton>
+              <AppButton className={sort === 'new' ? 'active' : ''} variant="tertiary" selected={sort === 'new'} onClick={() => setSort('new')}>最新</AppButton>
+            </div>
           )}
+          {(appMode || tab === 'public') && <div className={appMode ? 'wb-search qa-worldbooks-search' : 'wb-search'}>
+            <Search size={16} aria-hidden="true" />
+            <input placeholder="搜索名称/标签/简介" aria-label="搜索世界书" inputMode="search" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && (tab === 'public' ? load() : null)} />
+            {appMode && q && <AppIconButton className="qa-worldbooks-search-clear" onClick={() => setQ('')} label="清除搜索"><X size={16} /></AppIconButton>}
+            {appMode && tab === 'public' && <AppIconButton className="qa-worldbooks-search-submit" variant="filled" onClick={load} label="执行搜索"><Search size={17} /></AppIconButton>}
+          </div>}
         </div>
 
         {loading ? <GridSkeleton n={4} /> :
-          list.length === 0 ? (
-            <div className="empty wb-empty">
+          visibleList.length === 0 ? (
+            <div className={appMode ? 'empty wb-empty qa-worldbooks-empty' : 'empty wb-empty'}>
               <div className="big"><BookLock size={46} /></div>
-              {tab === 'mine' ? <>还没有世界书<div style={{ marginTop: 14 }}><button className="btn primary" onClick={() => nav('/worldbook/new/edit')}>创建第一本世界书</button></div></> : (q ? '没有匹配的世界书' : '广场还没有公开世界书')}
+              {tab === 'mine' ? (list.length === 0
+                ? <>还没有世界书<div style={{ marginTop: 14 }}><AppButton className="btn primary" variant="primary" onClick={() => nav('/worldbook/new/edit')}>创建第一本世界书</AppButton></div></>
+                : <>没有匹配的世界书<div style={{ marginTop: 14 }}><AppButton variant="secondary" onClick={() => setQ('')}>清除搜索</AppButton></div></>)
+                : (q ? '没有匹配的世界书' : '广场还没有公开世界书')}
             </div>
           ) : (
-            <div className="grid wb-grid">
-              {list.map((w, i) => {
+            <div className={appMode ? 'grid wb-grid qa-worldbooks-list' : 'grid wb-grid'}>
+              {visibleList.map((w, i) => {
                 const owned = user && w.owner_id === user.id;
                 // 能力徽章：按字段派生
                 const caps = CAPS.filter(c => w[c.key]);
                 return (
-                  <div key={w.id} className="char-card wb-card" style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }}
-                    onClick={() => nav(owned ? '/worldbook/' + w.id + '/edit' : '/worldbook/' + w.id)}>
-                    <div className="cover wb-cover">
+                  <div key={w.id} className={appMode ? 'char-card wb-card qa-worldbooks-card' : 'char-card wb-card'} style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }}
+                    onClick={() => openWorldbook(w, owned)} {...(appMode ? { role: 'link', tabIndex: 0, 'aria-label': `${owned ? '编辑' : '查看'}世界书 ${w.name}`,
+                      onKeyDown: e => { if (!['Enter', ' '].includes(e.key)) return; e.preventDefault(); openWorldbook(w, owned); } } : {})}>
+                    <div className={appMode ? 'cover wb-cover qa-worldbooks-cover' : 'cover wb-cover'}>
                       <div className="wb-cover-aurora" />
                       <div className="wb-cover-icon"><BookOpen size={30} /></div>
                       {caps.length > 0 && <div className="wb-cap-ribbon">{caps.length} 项能力</div>}
@@ -137,6 +158,6 @@ export default function Worldbooks() {
             </div>
           )}
       </div>
-    </>
+    </WorldbooksShell>
   );
 }

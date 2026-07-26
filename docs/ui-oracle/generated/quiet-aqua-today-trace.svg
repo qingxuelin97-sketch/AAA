@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" role="img" aria-labelledby="title desc">
+  <title id="title">Quiet Aqua Today screen vector trace</title>
+  <desc id="desc">390 by 844 layout trace using only SVG geometry. Character areas are replaceable dynamic media slots.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#F8FAF9"/><stop offset="1" stop-color="#F0F5F4"/></linearGradient>
+    <linearGradient id="mist" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F4FAF9"/><stop offset=".58" stop-color="#EDF6F5"/><stop offset="1" stop-color="#D7EDEC"/></linearGradient>
+    <linearGradient id="media" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#92B7C5"/><stop offset=".48" stop-color="#6B96A7"/><stop offset="1" stop-color="#244A57"/></linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#119893"/><stop offset="1" stop-color="#087F79"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#173C3A" flood-opacity=".10"/></filter>
+    <clipPath id="heroClip"><rect x="18" y="383" width="354" height="219" rx="15"/></clipPath>
+    <style>
+      text{font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif}.ink{fill:#102B29}.muted{fill:#607875}.teal{fill:#087F79}.line{stroke:#D6E2DF;stroke-width:1}.icon{fill:none;stroke:#087F79;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.hot{fill:#FFFFFF;stroke:#D6E2DF;stroke-width:1}.label{font-size:10px;letter-spacing:.5px}.body{font-size:12px}.meta{font-size:10px}.tap{fill:none;stroke:#087F79;stroke-width:.75;stroke-dasharray:3 3;opacity:.34}
+    </style>
+  </defs>
+  <rect width="390" height="844" fill="url(#page)"/>
+
+  <!-- Header: y 42-82 -->
+  <text x="20" y="68" class="ink" font-size="24" font-weight="750">幻域</text>
+  <g aria-label="search, 44 point target"><rect x="277" y="40" width="42" height="42" rx="14" class="hot"/><circle cx="295" cy="58" r="8" fill="none" stroke="#102B29" stroke-width="1.8"/><path d="M301 64l6 6" stroke="#102B29" stroke-width="1.8" stroke-linecap="round"/></g>
+  <g aria-label="notifications, 44 point target"><rect x="328" y="40" width="42" height="42" rx="14" class="hot"/><path d="M343 64v-7a6 6 0 0112 0v7l3 4h-18zM347 72h4" fill="none" stroke="#102B29" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g>
+
+  <!-- Greeting card: y 92-212 -->
+  <g filter="url(#shadow)"><rect x="18" y="92" width="354" height="120" rx="15" fill="url(#mist)" stroke="#C7DDDA"/></g>
+  <path d="M246 93c39 8 63 5 126 1M285 94c20 14 28 31 36 53M330 95c-4 20-8 31-27 43M310 110l18 6m-36 8l20 4" fill="none" stroke="#AAD5D2" stroke-width="1.2" opacity=".65"/>
+  <text x="36" y="128" class="ink" font-size="18" font-weight="700">下午好，4.5C Pro</text>
+  <g aria-label="dynamic media avatar"><circle cx="64" cy="171" r="28" fill="#D7E8E7" stroke="#FFFFFF" stroke-width="2"/><path d="M49 184c2-14 8-21 15-21s13 7 15 21M56 157c0-8 4-13 8-13s8 5 8 13c0 5-4 9-8 9s-8-4-8-9z" fill="#7EAAA7"/><text x="64" y="205" text-anchor="middle" class="teal" font-size="6">dynamic media</text></g>
+  <g transform="translate(103 171)"><circle r="7" fill="#EFB73E" stroke="#C99019"/><circle r="4" fill="#FFE69A"/><text x="12" y="4" class="ink" font-size="14" font-weight="650">21,005</text></g>
+  <g transform="translate(181 171)"><path d="M0-7h10l4 5-9 11-9-11z" fill="#C8F0F1" stroke="#149A9A"/><path d="M0-7l5 16 5-16M-4-2h18" fill="none" stroke="#149A9A" stroke-width="1"/><text x="20" y="4" class="ink" font-size="14" font-weight="650">1,390</text></g>
+  <g aria-label="sign in, 44 point target"><rect x="284" y="159" width="69" height="38" rx="19" fill="#FFFFFF" fill-opacity=".78" stroke="#58AFA9"/><rect x="297" y="170" width="11" height="11" rx="1" class="icon"/><path d="M300 168v4m5-4v4m-5 4l2 2 4-5" class="icon"/><text x="314" y="181" class="ink" font-size="12" font-weight="650">签到</text></g>
+
+  <!-- Six shortcuts: y 223-369 -->
+  <rect x="16" y="223" width="358" height="146" rx="16" fill="#FFFFFF" stroke="#D6E2DF" filter="url(#shadow)"/>
+  <g text-anchor="middle">
+    <g transform="translate(80 258)" aria-label="gacha shortcut"><circle r="10" class="icon"/><path d="M-10 0h20M0-10v20M-4 0h8" class="icon"/><text y="32" class="ink body">扭蛋</text></g>
+    <g transform="translate(195 258)" aria-label="events shortcut"><path d="M-8 9l6-18 4 10 10 4-20 4zM6-9l2-4m5 8l4-1m-5 16l3 3" class="icon"/><text y="32" class="ink body">活动</text></g>
+    <g transform="translate(310 258)" aria-label="scripts shortcut"><rect x="-9" y="-12" width="18" height="24" rx="2" class="icon"/><path d="M-4-5h8M-4 0h8M-4 5h5" class="icon"/><text y="32" class="ink body">剧本</text></g>
+    <g transform="translate(80 326)" aria-label="theatre shortcut"><path d="M-11 11V-11h22v22M-11-9c6 2 6 8 11 11 5-3 5-9 11-11" class="icon"/><text y="32" class="ink body">剧场</text></g>
+    <g transform="translate(195 326)" aria-label="community shortcut"><circle cx="-4" cy="-5" r="5" class="icon"/><circle cx="7" cy="-2" r="4" class="icon"/><path d="M-13 11c1-8 5-11 9-11s8 3 9 11M5 4c5 0 8 3 8 8" class="icon"/><text y="32" class="ink body">社区</text></g>
+    <g transform="translate(310 326)" aria-label="ranking shortcut"><path d="M-10-8h20v8c0 7-4 11-10 11S-10 7-10 0zM-10-4h-5c0 6 2 9 7 9M10-4h5c0 6-2 9-7 9M-5 14h10" class="icon"/><text y="32" class="ink body">排行榜</text></g>
+  </g>
+
+  <!-- Editorial hero: y 383-602 -->
+  <g clip-path="url(#heroClip)">
+    <rect x="18" y="383" width="354" height="219" fill="url(#media)"/>
+    <circle cx="290" cy="461" r="70" fill="#BBD3DA" opacity=".40"/>
+    <path d="M246 574c9-54 7-115 38-139 12-10 34-8 46 2 29 24 26 86 33 137z" fill="#D3E4E6" opacity=".78"/>
+    <ellipse cx="305" cy="441" rx="26" ry="33" fill="#DCE9E8"/>
+    <path d="M280 449c-3-25 3-48 25-48 22 0 31 22 26 55-8-12-13-21-24-27-7 12-16 16-27 20z" fill="#173B43"/>
+    <path d="M257 399c49-21 91-7 115 7M259 419c41-14 79-4 111 14" fill="none" stroke="#E5F0F1" opacity=".48"/>
+    <path d="M18 468h354v134H18z" fill="#102B29" opacity=".32"/>
+    <rect x="31" y="398" width="74" height="24" rx="6" fill="#087F79"/><text x="68" y="414" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">★ 今日精选</text>
+    <text x="270" y="398" fill="#FFFFFF" font-size="7" opacity=".82">dynamic media</text>
+    <text x="31" y="506" fill="#FFFFFF" font-size="27" font-weight="750">沈知微</text>
+    <text x="31" y="531" fill="#FFFFFF" font-size="11">云顶 38 层的灯，总是最后一个熄。</text>
+    <text x="31" y="548" fill="#FFFFFF" font-size="11">她说她不信命，却做尽了违命的事。</text>
+    <g aria-label="start chat, 44 point target"><rect x="31" y="559" width="99" height="35" rx="18" fill="#FFFFFF"/><path d="M47 571h13v9h-7l-4 3v-3h-2z" fill="none" stroke="#087F79" stroke-width="1.5"/><text x="68" y="581" class="teal" font-size="12" font-weight="700">开始对话</text></g>
+  </g>
+  <rect x="18" y="383" width="354" height="219" rx="15" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+
+  <!-- Continue rail: y 619-757 -->
+  <text x="20" y="630" class="ink" font-size="15" font-weight="700">继续你的故事</text><text x="347" y="630" class="teal" font-size="12">全部 ›</text>
+  <rect x="14" y="641" width="376" height="116" rx="14" fill="#FFFFFF" stroke="#E1EBE9"/>
+  <g text-anchor="middle" font-size="10">
+    <g transform="translate(53 669)"><circle r="25" fill="#DDEAE8"/><path d="M36 17c-5-16 3-34 17-34s22 18 17 34" transform="translate(-53)" fill="#456E72" opacity=".8"/><text y="37" class="ink">苏宴</text><text y="53" class="muted">未开始</text></g>
+    <g transform="translate(131 669)"><circle r="25" fill="#D8E9E9"/><path d="M-16 17c-4-18 5-34 16-34s20 16 16 34" fill="#6C8F98"/><text y="37" class="ink">沈知微</text><text y="53" class="muted">未开始</text></g>
+    <g transform="translate(209 669)"><circle r="25" fill="#E2E8E6"/><path d="M-17 17c-5-17 4-34 17-34s22 17 17 34" fill="#374F55"/><text y="37" class="ink">陆沉舟</text><text y="53" class="teal" font-weight="700">进行中</text></g>
+    <g transform="translate(287 669)"><circle r="25" fill="#E7E8E0"/><path d="M-16 17c-4-18 5-34 16-34s20 16 16 34" fill="#8A716C"/><text y="37" class="ink">林疏月</text><text y="53" class="muted">已结束</text></g>
+    <g transform="translate(365 669)"><circle r="25" fill="#DDE6E5"/><path d="M-17 17c-5-17 4-34 17-34s22 17 17 34" fill="#3E565A"/></g>
+  </g>
+
+  <!-- Floating navigation: y 760-824, create is accessory not tab -->
+  <g filter="url(#shadow)"><rect x="18" y="760" width="354" height="64" rx="24" fill="#FFFFFF" fill-opacity=".92" stroke="#D6E2DF"/></g>
+  <g text-anchor="middle" font-size="10">
+    <g transform="translate(55 780)"><path d="M-8 0l8-7 8 7v9h-16z" fill="#087F79"/><text y="27" class="teal" font-weight="700">今日</text></g>
+    <g transform="translate(124 780)"><circle r="8" fill="none" stroke="#47615E" stroke-width="1.7"/><path d="M-4 4l2-6 6-2-2 6z" fill="none" stroke="#47615E" stroke-width="1.4"/><text y="27" class="ink">发现</text></g>
+    <g transform="translate(266 780)"><path d="M-8-4h16v10h-9l-5 4V6h-2z" fill="none" stroke="#47615E" stroke-width="1.7"/><circle cx="8" cy="-7" r="7" fill="#EF5A3E"/><text x="8" y="-4" fill="#FFFFFF" font-size="8">3</text><text y="27" class="ink">消息</text></g>
+    <g transform="translate(335 780)"><circle cy="-3" r="5" fill="none" stroke="#47615E" stroke-width="1.7"/><path d="M-8 10c1-7 4-9 8-9s7 2 8 9" fill="none" stroke="#47615E" stroke-width="1.7"/><text y="27" class="ink">我的</text></g>
+  </g>
+  <g aria-label="create accessory, 56 point target"><circle cx="195" cy="779" r="32" fill="#F1F8F7" stroke="#D6E2DF"/><circle cx="195" cy="779" r="25" fill="url(#teal)"/><path d="M195 768v22M184 779h22" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/></g>
+  <rect x="18" y="760" width="354" height="64" rx="24" class="tap"/>
+</svg>

@@ -17,10 +17,15 @@ export function resolveTheme(mode = getThemeMode()) {
 export function applyTheme(mode = getThemeMode()) {
   const resolved = resolveTheme(mode);
   document.documentElement.dataset.theme = resolved;
-  // keep the mobile status-bar / PWA theme color in sync
+  // Keep system chrome in sync with the active shell without changing Web's
+  // established warm palette.
   const meta = document.querySelector('meta[name="theme-color"]');
-  // App 浅色用「白+青」底色同步状态栏；Web 浅色仍用暖白。
-  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#15120e' : (isAppMode() ? '#eefbfd' : '#f4f2ec'));
+  if (meta) {
+    const app = isAppMode();
+    meta.setAttribute('content', resolved === 'dark'
+      ? (app ? '#0d1211' : '#15120e')
+      : (app ? '#f4f7f6' : '#f4f2ec'));
+  }
   try { window.dispatchEvent(new Event('huanyu-theme')); } catch { /* */ }
 }
 export function setThemeMode(mode) { localStorage.setItem(KEY, mode); applyTheme(mode); }

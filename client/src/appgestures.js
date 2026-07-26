@@ -9,7 +9,8 @@ export function tick(ms = 8) { try { navigator.vibrate?.(ms); } catch { /* */ } 
 
 // Elements that own horizontal scrolling / their own touch semantics — swiping
 // inside them must NOT trigger tab navigation.
-const NO_SWIPE = '.ah-rail, .chat-scroll, .chat-input-bar, input, textarea, [data-noswipe], .app-launcher, .app-sheet, .sp-stage, .feed-root';
+const NO_TAB_SWIPE = '.ah-rail, .ah-shortcuts, .ah-picks, .pf-quick, .pf-content-grid, .cvx-rail, .vm-plans, .chat-scroll, .chat-input-bar, input, textarea, [data-noswipe], [data-no-tab-swipe], [data-horizontal-scroll], .app-launcher, .app-sheet, .sp-stage, .feed-root';
+const NO_PULL = '.ah-rail, .ah-shortcuts, .ah-picks, .pf-quick, .pf-content-grid, .cvx-rail, .vm-plans, .chat-scroll, .chat-input-bar, input, textarea, select, [contenteditable="true"], [data-no-pull], [data-horizontal-scroll], .app-launcher, .app-sheet, .sp-stage, .feed-root';
 
 export function useAppGestures(scrollRef, handlers) {
   const cb = useRef(handlers);
@@ -20,6 +21,13 @@ export function useAppGestures(scrollRef, handlers) {
     if (!el || !('ontouchstart' in window || navigator.maxTouchPoints > 0)) return undefined;
 
     let sx = 0, sy = 0, tracking = false, mode = '', fromEdge = false, pull = 0;
+    let allowHorizontal = false, allowPull = false, gestureScrollRoot = null;
+    const scrollTopOf = (root) => {
+      if (!root || root === document.scrollingElement || root === document.documentElement || root === document.body) {
+        return window.scrollY || document.documentElement.scrollTop || 0;
+      }
+      return root.scrollTop || 0;
+    };
     // 非 passive 的 touchmove 只在「本次手势可能变成下拉刷新」（起手时已在页顶）
     // 时临时挂上、touchend 即摘。曾经常驻 { passive: false } —— 全 APP 每一次
     // 滚动的每一帧合成器都要停下来等主线程跑完监听器才敢滚，主线程一忙
@@ -37,8 +45,8 @@ export function useAppGestures(scrollRef, handlers) {
     // 方向判定（h=横滑 / pull=页顶下拉 / v=普通纵滑），两个 move 监听共用。
     const detect = (dx, dy) => {
       if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-      if (Math.abs(dx) > Math.abs(dy) * 1.4) mode = 'h';
-      else if (dy > 0 && (window.scrollY || document.documentElement.scrollTop || 0) <= 0) mode = 'pull';
+      if (allowHorizontal && Math.abs(dx) > Math.abs(dy) * 1.4) mode = 'h';
+      else if (allowPull && dy > Math.abs(dx) * 1.2 && scrollTopOf(gestureScrollRoot) <= 0) mode = 'pull';
       else mode = 'v';
     };
     // 横滑动作：越过阈值立即触发，不等抬手 —— 「滑动切页要等手指离开才有
@@ -81,9 +89,12 @@ export function useAppGestures(scrollRef, handlers) {
       const t = e.touches[0];
       sx = t.clientX; sy = t.clientY; mode = ''; pull = 0; fired = false;
       fromEdge = sx <= 24;
-      tracking = !e.target.closest?.(NO_SWIPE);
-      const atTop = (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
-      if (tracking && atTop && !pullBound) {
+      gestureScrollRoot = e.target.closest?.('[data-scroll-root]') || document.scrollingElement;
+      allowHorizontal = !e.target.closest?.(NO_TAB_SWIPE);
+      allowPull = !e.target.closest?.(NO_PULL);
+      tracking = allowHorizontal || allowPull;
+      const atTop = scrollTopOf(gestureScrollRoot) <= 0;
+      if (tracking && allowPull && atTop && !pullBound) {
         pullBound = true;
         el.addEventListener('touchmove', onMovePull, { passive: false });
       } else if (pullBound && (!tracking || !atTop)) {
@@ -99,18 +110,27 @@ export function useAppGestures(scrollRef, handlers) {
       // 兜底：move 事件采样稀疏、抬手才越过阈值时仍在此触发（fired 防重复）
       if (mode === 'h' && !fired && Math.abs(dx) > H_TRIG && Math.abs(dx) > Math.abs(dy) * 1.4) fireH(dx);
     };
+    const onCancel = () => {
+      unbindPull();
+      cancelAnimationFrame(raf);
+      raf = 0;
+      if (mode === 'pull') cb.current.onPullEnd?.(false);
+      tracking = false;
+      mode = '';
+      pull = 0;
+    };
 
     el.addEventListener('touchstart', onStart, { passive: true });
     el.addEventListener('touchmove', onMovePassive, { passive: true });
     el.addEventListener('touchend', onEnd, { passive: true });
-    el.addEventListener('touchcancel', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onCancel, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
       unbindPull();
       el.removeEventListener('touchstart', onStart);
       el.removeEventListener('touchmove', onMovePassive);
       el.removeEventListener('touchend', onEnd);
-      el.removeEventListener('touchcancel', onEnd);
+      el.removeEventListener('touchcancel', onCancel);
     };
   }, [scrollRef]);
 }

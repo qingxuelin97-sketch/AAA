@@ -6,6 +6,7 @@
 // 仅跳转 + 气泡闪烁（mark-flash，与消息书签同一视觉语言）。
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { AppIconButton } from '../components/AppControls.jsx';
 
 const HL = 'chat-search';
 const HL_CUR = 'chat-search-cur';
@@ -91,6 +92,7 @@ export default function ChatSearchBar({ messages, onClose }) {
       <Search size={15} className="hy-search-ic" />
       <input
         autoFocus value={q} enterKeyHint="search"
+        aria-label="在本对话中搜索"
         autoCapitalize="none" autoCorrect="off" spellCheck={false}
         placeholder="在本对话中搜索…"
         onChange={e => setQ(e.target.value)}
@@ -100,15 +102,18 @@ export default function ChatSearchBar({ messages, onClose }) {
         }}
       />
       {query && (
-        <span className={'hy-search-count' + (hits.length ? '' : ' none')}>
+        <span className={'hy-search-count' + (hits.length ? '' : ' none')} role="status" aria-live="polite">
           {hits.length ? `${cur + 1}/${hits.length}` : '无结果'}
         </span>
       )}
-      <div className="hy-search-nav">
-        <button onClick={() => step(-1)} disabled={!hits.length} aria-label="上一条"><ChevronUp size={16} /></button>
-        <button onClick={() => step(1)} disabled={!hits.length} aria-label="下一条"><ChevronDown size={16} /></button>
+      <div className="hy-search-nav" role="group" aria-label="搜索结果导航">
+        <AppIconButton className="hy-search-prev" label="上一条搜索结果" onClick={() => step(-1)} disabled={!hits.length}
+          style={{ minWidth: 44, minHeight: 44 }}><ChevronUp size={16} /></AppIconButton>
+        <AppIconButton className="hy-search-next" label="下一条搜索结果" onClick={() => step(1)} disabled={!hits.length}
+          style={{ minWidth: 44, minHeight: 44 }}><ChevronDown size={16} /></AppIconButton>
       </div>
-      <button className="hy-search-x" onClick={onClose} aria-label="关闭搜索"><X size={15} /></button>
+      <AppIconButton className="hy-search-x" label="关闭对话内搜索" onClick={onClose}
+        style={{ minWidth: 44, minHeight: 44 }}><X size={15} /></AppIconButton>
     </div>
   );
 }

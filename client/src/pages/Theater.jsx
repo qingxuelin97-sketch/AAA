@@ -4,8 +4,10 @@ import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Uploader, Modal, Avatar } from '../ui.jsx';
 import StageEditor from '../components/StageEditor.jsx';
 import NovelWorldEditor from '../components/NovelWorldEditor.jsx';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { isAppMode } from '../appmode.js';
 import { BookOpen, Users, Plus, Check, Feather, Sparkles, ChevronRight, ChevronDown, ChevronUp,
-  Image as ImageIcon, Search, Flag, Clock3, AlignLeft } from 'lucide-react';
+  Image as ImageIcon, Search, Flag, Clock3, AlignLeft, ArrowLeft, X } from 'lucide-react';
 
 const STYLE_PRESETS = ['古典雅致', '轻快幽默', '悬疑紧张', '热血激昂', '温柔治愈', '黑暗残酷', '武侠古风', '赛博科幻'];
 
@@ -26,14 +28,22 @@ function timeAgo(s) {
 // 进入后写行动 / 台词，旁白续写后果，角色随时接话 —— 一部由你共同写就的小说。
 export default function Theater() {
   const { user } = useAuth();
+  const appMode = isAppMode();
   const [theaters, setTheaters] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState('all');   // all | mine | reading
   const [q, setQ] = useState('');
   const nav = useNavigate();
   const toast = useToast();
 
-  const load = () => api('/theater').then(d => setTheaters(d.theaters)).catch(e => toast(e.message, 'err'));
+  const load = () => {
+    setLoading(true);
+    return api('/theater')
+      .then(d => setTheaters(d.theaters))
+      .catch(e => toast(e.message, 'err'))
+      .finally(() => setLoading(false));
+  };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const shown = useMemo(() => {
@@ -49,6 +59,55 @@ export default function Theater() {
     mine: theaters.filter(t => user && t.owner_id === user.id).length,
     reading: theaters.filter(t => t.joined && (!user || t.owner_id !== user.id)).length,
   }), [theaters, user]);
+
+  if (appMode) {
+    return (
+      <main className="qa-theater-page">
+        <header className="qa-theater-head">
+          <AppIconButton label="返回" onClick={() => nav(-1)}><ArrowLeft size={21} /></AppIconButton>
+          <div className="qa-theater-head-title">
+            <h1>互动小说</h1>
+            <span>故事剧场</span>
+          </div>
+          <AppIconButton label="创作新故事" variant="filled" onClick={() => setCreating(true)}><Plus size={20} /></AppIconButton>
+        </header>
+
+        <div className="qa-theater-body">
+          <section className="qa-theater-intro" aria-labelledby="qa-theater-intro-title">
+            <span className="qa-theater-intro-icon" aria-hidden="true"><Feather size={22} /></span>
+            <div>
+              <span className="qa-theater-kicker"><Sparkles size={12} /> 即兴共写</span>
+              <h2 id="qa-theater-intro-title">你做主角，也决定故事走向</h2>
+              <p>写下行动与台词，旁白和登场角色会接住你的每一步。</p>
+            </div>
+          </section>
+
+          <div className="qa-theater-tabs" role="tablist" aria-label="故事分类">
+            <AppButton className="qa-theater-tab" variant="tertiary" selected={tab === 'all'} role="tab" aria-selected={tab === 'all'} onClick={() => setTab('all')}>全部</AppButton>
+            <AppButton className="qa-theater-tab" variant="tertiary" selected={tab === 'mine'} role="tab" aria-selected={tab === 'mine'} onClick={() => setTab('mine')}>我创作的{counts.mine ? ` ${counts.mine}` : ''}</AppButton>
+            <AppButton className="qa-theater-tab" variant="tertiary" selected={tab === 'reading'} role="tab" aria-selected={tab === 'reading'} onClick={() => setTab('reading')}>在读{counts.reading ? ` ${counts.reading}` : ''}</AppButton>
+          </div>
+
+          <label className="qa-theater-search">
+            <Search size={18} aria-hidden="true" />
+            <span className="sr-only">搜索互动小说</span>
+            <input placeholder="搜索书名、序章或文风" value={q} onChange={e => setQ(e.target.value)} />
+            {q && <AppIconButton className="qa-theater-search-clear" label="清除搜索" onClick={() => setQ('')}><X size={17} /></AppIconButton>}
+          </label>
+
+          {loading ? (
+            <AppTheaterLoading />
+          ) : shown.length === 0 ? (
+            <AppTheaterEmpty query={q} tab={tab} onCreate={() => setCreating(true)} />
+          ) : (
+            <AppTheaterShelf theaters={shown} onOpen={(theater) => nav('/theater/' + theater.id)} />
+          )}
+        </div>
+
+        {creating && <CreateModal appMode onClose={() => setCreating(false)} onDone={(theaterId) => nav('/theater/' + theaterId)} />}
+      </main>
+    );
+  }
 
   return (
     <>
@@ -110,7 +169,83 @@ export default function Theater() {
   );
 }
 
-function CreateModal({ onClose, onDone }) {
+function AppTheaterLoading() {
+  return (
+    <section className="qa-theater-loading" role="status" aria-label="正在载入故事书架">
+      {[0, 1, 2].map(i => (
+        <div className="qa-theater-skeleton" key={i} aria-hidden="true">
+          <span className="skel qa-theater-skeleton-cover" />
+          <span className="qa-theater-skeleton-copy">
+            <i className="skel qa-theater-skeleton-title" />
+            <i className="skel qa-theater-skeleton-summary" />
+            <i className="skel qa-theater-skeleton-action" />
+          </span>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function AppTheaterEmpty({ query, tab, onCreate }) {
+  const title = query
+    ? '没有匹配的故事'
+    : tab === 'mine'
+      ? '还没有创作过故事'
+      : tab === 'reading'
+        ? '还没有在读的故事'
+        : '故事书架还是空的';
+  const body = query ? '换一个关键词试试。' : '从一个开场开始，让角色与你共同把故事写下去。';
+
+  return (
+    <section className="qa-theater-empty" aria-labelledby="qa-theater-empty-title">
+      <span className="qa-theater-empty-icon" aria-hidden="true"><BookOpen size={34} /></span>
+      <h2 id="qa-theater-empty-title">{title}</h2>
+      <p>{body}</p>
+      {!query && (
+        <AppButton variant="primary" size="lg" onClick={onCreate}><Feather size={17} /> 开写第一部故事</AppButton>
+      )}
+    </section>
+  );
+}
+
+function AppTheaterShelf({ theaters, onOpen }) {
+  return (
+    <section className="qa-theater-shelf" aria-label="互动小说书架">
+      {theaters.map(t => (
+        <article className="qa-theater-card" key={t.id}>
+          <div className="qa-theater-cover">
+            {t.cover
+              ? <img src={assetUrl(t.cover)} alt={`${t.name}封面`} loading="lazy" decoding="async" />
+              : <span className="qa-theater-cover-placeholder" aria-hidden="true"><BookOpen size={27} /></span>}
+            <span className={`qa-theater-status${t.status === 'finished' ? ' is-finished' : ''}`}>
+              {t.status === 'finished' ? <Flag size={11} /> : <Clock3 size={11} />}
+              {t.status === 'finished' ? '完结' : '连载'}
+            </span>
+          </div>
+
+          <div className="qa-theater-card-copy">
+            <div className="qa-theater-card-title">
+              <h2>{t.name}</h2>
+              {t.style && <span>{t.style}</span>}
+            </div>
+            <p>{t.scene || '一个等待被写下的故事。'}</p>
+            <div className="qa-theater-meta" aria-label="故事信息">
+              <span><BookOpen size={13} /> {t.cast_count} 位角色</span>
+              <span><Users size={13} /> {t.member_count} 位读者</span>
+              {t.message_count > 0 && <span><AlignLeft size={13} /> {t.message_count} 段</span>}
+              {t.last_at && <span><Clock3 size={13} /> {timeAgo(t.last_at)}更新</span>}
+            </div>
+            <AppButton className="qa-theater-open" variant="primary" onClick={() => onOpen(t)}>
+              {t.joined ? '继续阅读' : '进入故事'} <ChevronRight size={16} />
+            </AppButton>
+          </div>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function CreateModal({ onClose, onDone, appMode = false }) {
   const [form, setForm] = useState({ name: '', scene: '', cover: '', style: '' });
   const [pool, setPool] = useState([]);
   const [picked, setPicked] = useState([]);
@@ -140,6 +275,83 @@ function CreateModal({ onClose, onDone }) {
       onDone(d.theater.id);
     } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
   };
+
+  if (appMode) {
+    return (
+      <Modal onClose={onClose} className="qa-theater-create-modal" backdropClassName="qa-theater-modal-backdrop">
+        <header className="qa-theater-modal-head">
+          <div>
+            <span><Feather size={13} /> 新故事</span>
+            <h2>创作互动小说</h2>
+          </div>
+          <AppIconButton label="关闭创建故事" onClick={onClose}><X size={20} /></AppIconButton>
+        </header>
+
+        <div className="qa-theater-modal-body">
+          <label className="qa-theater-field">
+            <span>作品名称</span>
+            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：永青森林的不速之客" />
+          </label>
+          <label className="qa-theater-field">
+            <span>序章与开场</span>
+            <textarea rows={4} value={form.scene} onChange={e => setForm({ ...form, scene: e.target.value })} placeholder="描述故事发生的舞台与起始情境…" />
+          </label>
+
+          <fieldset className="qa-theater-field qa-theater-style-field">
+            <legend>文风基调 <small>可选</small></legend>
+            <div className="qa-theater-style-grid">
+              {STYLE_PRESETS.map(style => (
+                <AppButton key={style} variant="tertiary" size="sm" selected={form.style === style} pressed={form.style === style}
+                  onClick={() => setForm(current => ({ ...current, style: current.style === style ? '' : style }))}>{style}</AppButton>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="qa-theater-field">
+            <span>故事封面 <small>可选</small></span>
+            <div className="qa-theater-uploader"><Uploader value={form.cover} onChange={url => setForm({ ...form, cover: url })} accept="image/*" /></div>
+          </div>
+
+          <fieldset className="qa-theater-field qa-theater-cast-field">
+            <legend>登场角色 <small>{picked.length} 位已选</small></legend>
+            <div className="qa-theater-cast-list">
+              {pool.length === 0 && <p className="qa-theater-cast-empty">暂无可选角色，先去创建或收藏一些角色吧。</p>}
+              {pool.map(character => {
+                const selected = picked.includes(character.id);
+                return (
+                  <AppButton key={character.id} className="qa-theater-cast-button" variant="tertiary" selected={selected} pressed={selected} onClick={() => toggle(character.id)}>
+                    <Avatar src={character.avatar} name={character.name} size={36} />
+                    <span className="qa-theater-cast-copy"><b>{character.name}</b><small>{character.tagline || '等待登场'}</small></span>
+                    {selected && <Check size={18} />}
+                  </AppButton>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <section className="qa-theater-advanced">
+            <AppButton className="qa-theater-advanced-toggle" variant="secondary" selected={showStage} pressed={showStage} onClick={() => setShowStage(open => !open)}>
+              <ImageIcon size={17} /> 舞台与世界书
+              {(() => { const n = Object.keys(stageCfg.charBg).length + stageCfg.scenes.length + novelWb.length; return n > 0 ? <span>{n} 项</span> : null; })()}
+              {showStage ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+            </AppButton>
+            {showStage && (
+              <div className="qa-theater-advanced-body">
+                <StageEditor cast={pool.filter(c => picked.includes(c.id))} value={stageCfg} onChange={setStageCfg} />
+                <div className="stage-sec-title"><BookOpen size={13} /> 互动小说专属世界书</div>
+                <NovelWorldEditor value={novelWb} onChange={setNovelWb} />
+              </div>
+            )}
+          </section>
+        </div>
+
+        <footer className="qa-theater-modal-actions">
+          <AppButton variant="secondary" onClick={onClose}>取消</AppButton>
+          <AppButton variant="primary" size="lg" loading={busy} onClick={create}><Sparkles size={16} /> 落笔开篇</AppButton>
+        </footer>
+      </Modal>
+    );
+  }
 
   return (
     <Modal onClose={onClose}>

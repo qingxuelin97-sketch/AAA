@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { registrationRequestHash as clientHash } from './src/playIntegrity.js';
 import { registrationRequestHash as serverHash } from '../server/integrity.js';
 import { mergeMessages, messageId } from './src/groupMessages.js';
@@ -42,6 +42,11 @@ assert.deepEqual(
 assert.equal(getAppRoute('/future/page').dock, false, 'unknown secondary routes must fail closed without a Dock');
 assert.deepEqual(statusBarContextForTone('immersive'), { color: '#12101a', dark: true }, 'immersive routes must request light system chrome on a dark surface');
 assert.equal(statusBarContextForTone('surface'), null, 'surface routes must restore theme-owned system chrome');
+assert.deepEqual(
+  (({ parent, tab, dock, refresh }) => ({ parent, tab, dock, refresh }))(getAppRoute('/app-controls')),
+  { parent: '/today', tab: '/today', dock: false, refresh: 'none' },
+  'the App control gallery must be a non-Dock child of Today with refresh disabled',
+);
 
 const call = new CallSession();
 const initialCall = call.token();
@@ -113,6 +118,26 @@ const commandSource = await readFile(new URL('./src/components/CommandPalette.js
 const welcomeSource = await readFile(new URL('./src/components/WelcomePopup.jsx', import.meta.url), 'utf8');
 const characterViewSource = await readFile(new URL('./src/pages/CharacterView.jsx', import.meta.url), 'utf8');
 const appHomeSource = await readFile(new URL('./src/pages/AppHome.jsx', import.meta.url), 'utf8');
+const discoverSource = await readFile(new URL('./src/pages/DiscoverFeed.jsx', import.meta.url), 'utf8');
+const vipSource = await readFile(new URL('./src/pages/Vip.jsx', import.meta.url), 'utf8');
+const artSource = await readFile(new URL('./src/art.jsx', import.meta.url), 'utf8');
+const quietCharacterPng = await readFile(new URL('./src/assets/quiet-aqua-character-v3.png', import.meta.url));
+const quietTokens = await readFile(new URL('./src/styles/app-quiet-aqua-tokens.css', import.meta.url), 'utf8');
+const quietControls = await readFile(new URL('./src/styles/app-controls.css', import.meta.url), 'utf8');
+const quietPages = await readFile(new URL('./src/styles/app-pages-quiet-aqua.css', import.meta.url), 'utf8');
+const quietExperience = await readFile(new URL('./src/styles/app-experience-v3.css', import.meta.url), 'utf8');
+const quietControlsNoComments = quietControls.replace(/\/\*[\s\S]*?\*\//g, '');
+const quietPagesNoComments = quietPages.replace(/\/\*[\s\S]*?\*\//g, '');
+const quietExperienceNoComments = quietExperience.replace(/\/\*[\s\S]*?\*\//g, '');
+const controlsSource = await readFile(new URL('./src/components/AppControls.jsx', import.meta.url), 'utf8');
+const routeChunksSource = await readFile(new URL('./src/routeChunks.js', import.meta.url), 'utf8');
+const fxSource = await readFile(new URL('./src/fx.js', import.meta.url), 'utf8');
+const runtimeSourceRoot = new URL('./src/', import.meta.url);
+const runtimeSourceNames = (await readdir(runtimeSourceRoot, { recursive: true }))
+  .filter((name) => /\.(?:js|jsx|css|html)$/i.test(name));
+const runtimeSource = (await Promise.all(runtimeSourceNames.map((name) => (
+  readFile(new URL(String(name).replaceAll('\\', '/'), runtimeSourceRoot), 'utf8')
+)))).join('\n');
 const economySource = await readFile(new URL('../server/routes/economy.js', import.meta.url), 'utf8');
 const mockBackendSource = await readFile(new URL('./src/mock/backend.js', import.meta.url), 'utf8');
 assert.match(mainSource, /!NATIVE\s*&&\s*'serviceWorker' in navigator/, 'native shell must never register the PWA service worker');
@@ -157,4 +182,54 @@ assert.match(runtimeCss, /\.topbar\s*\{[^}]*flex-wrap:\s*wrap;[^}]*row-gap:\s*10
 assert.match(runtimeCss, /\.vm-plans\s*\{\s*padding-top:\s*12px/, 'VIP plans must reserve space for the raised badge');
 assert.match(runtimeCss, /\.app-tabbar[\s\S]*98%[\s\S]*top:\s*-18px/, 'App Dock must use a solid surface with a top fade');
 
-console.log('app invariants: 66/66 passed');
+assert.ok(
+  mainSource.indexOf('app-runtime.css') < mainSource.indexOf('app-quiet-aqua-tokens.css')
+    && mainSource.indexOf('app-quiet-aqua-tokens.css') < mainSource.indexOf('app-controls.css')
+    && mainSource.indexOf('app-controls.css') < mainSource.indexOf('app-pages-quiet-aqua.css')
+    && mainSource.indexOf('app-pages-quiet-aqua.css') < mainSource.indexOf('app-experience-v3.css'),
+  'Quiet Aqua token, control, page, and v3 experience authorities must load after the PR4 runtime layer',
+);
+assert.match(quietTokens, /--qa-control-min:\s*44px/, 'ordinary App controls must keep a 44px minimum target');
+assert.match(quietTokens, /--qa-control-submit:\s*48px/, 'authentication submit controls must remain 48px tall');
+const quietTokenDefinitions = new Set([...quietTokens.matchAll(/(--qa-[a-z0-9-]+)\s*:/g)].map((match) => match[1]));
+const quietTokenUses = new Set([...(quietControls + quietPages + quietExperience).matchAll(/var\((--qa-[a-z0-9-]+)/g)].map((match) => match[1]));
+assert.deepEqual([...quietTokenUses].filter((name) => !quietTokenDefinitions.has(name)), [], 'every Quiet Aqua token reference must resolve in the single token authority');
+assert.match(quietControls, /html\[data-app="1"\]/, 'Quiet Aqua controls must remain App-scoped');
+assert.doesNotMatch(quietControls + quietPages, /^\s*\.qa-[^{,]+/m, 'Quiet Aqua class selectors must never escape the data-app fence');
+assert.doesNotMatch(quietControlsNoComments, /nth-(?:child|of-type)/, 'Quiet Aqua must not assign rainbow colours by position');
+assert.doesNotMatch(quietPagesNoComments, /nth-(?:child|of-type)/, 'Quiet Aqua page styling must not restore position-driven rainbow colours');
+assert.doesNotMatch(quietExperienceNoComments, /nth-(?:child|of-type)/, 'Quiet Aqua v3 styling must not restore position-driven rainbow colours');
+assert.match(quietExperience, /html\[data-app="1"\]/, 'Quiet Aqua v3 experience rules must remain App-scoped');
+assert.match(quietPages, /html\[data-app="1"\]\s+\.qa-messages-page/, 'Messages composition must stay App-scoped');
+assert.match(quietPages, /\.qa-character-view\s+\.cvx-row\s*>\s*\.qa-button__content\s*\{[^}]*width:\s*100%[^}]*justify-content:\s*flex-start/s, 'character rows must keep their full-width content alignment');
+assert.match(quietControls, /prefers-reduced-motion:\s*reduce/, 'Quiet Aqua must support reduced motion');
+assert.doesNotMatch(quietControlsNoComments, /backdrop-filter:[^;]*blur\([^;]*!important/, 'normal control chrome must not override the balanced/lite blur gate');
+assert.match(controlsSource, /AppIconButton requires/, 'App icon buttons must fail loudly in development when their accessible name is missing');
+assert.match(controlsSource, /BUTTON_VARIANTS = new Set\(\['primary', 'secondary', 'tertiary', 'danger'\]\)[\s\S]*AppButton variant/, 'AppButton must reject visual variants outside its single design contract');
+assert.match(controlsSource, /ICON_VARIANTS = new Set\(\['ghost', 'secondary', 'filled'\]\)[\s\S]*AppIconButton variant/, 'filled must remain an icon-button treatment rather than an undefined AppButton variant');
+assert.match(controlsSource, /aria-pressed=\{pressed === undefined \? undefined : Boolean\(pressed\)\}/, 'selected styling must not invent toggle-button semantics');
+assert.match(controlsSource, /badgeCount[\s\S]*count > 99 \? '99\+'/, 'tab badges must expose real counts and cap their visual label at 99+');
+assert.match(controlsSource, /preventDefault\(\);[\s\S]*stopPropagation\(\);/, 'disabled non-button controls must suppress link activation');
+assert.match(controlsSource, /if \(!isAppChrome\(\)\)[\s\S]*<LegacyControl/, 'control primitives must transparently preserve legacy Web markup');
+assert.match(layoutSource, /route\.dock\s*&&\s*\([\s\S]*className="app-dock"/, 'the Quiet Aqua Dock must still obey Route Registry visibility');
+const dockNavStart = layoutSource.indexOf('<nav className="app-tabbar"');
+const dockNavEnd = layoutSource.indexOf('</nav>', dockNavStart);
+const dockFab = layoutSource.indexOf("className={'app-fab'", dockNavStart);
+assert.ok(dockNavStart >= 0 && dockNavEnd > dockNavStart && dockFab > dockNavEnd, 'the create action must be a sibling outside the four-destination nav');
+assert.match(layoutSource, /badgeCount=\{badgeCount\}/, 'the Messages tab must receive its numeric unread count');
+assert.match(layoutSource, /useAppOverlay\(true,\s*onClose,\s*\{\s*rootRef:\s*sheetRef,\s*isolate:\s*true,\s*returnFocusRef\s*\}\)[\s\S]*createPortal/, 'the redesigned create sheet must preserve PR4 portal isolation and explicit focus return');
+assert.match(appSource, /path="\/app-controls"[\s\S]*isAppMode\(\) \? P\(<AppControlsGallery \/>/, 'the control gallery must be lazy, protected, and unreachable through the Web shell');
+assert.match(routeChunksSource, /AppControlsGallery:[\s\S]*import\('\.\/pages\/AppControlsGallery\.jsx'\)/, 'the control gallery must participate in the route chunk registry');
+assert.match(fxSource, /dataset\.app === '1'[\s\S]*\.qa-button[\s\S]*\.app-fab/, 'legacy ripple injection must skip Quiet Aqua controls and the App FAB');
+
+assert.equal(quietCharacterPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', 'the reviewed character fallback must remain a valid PNG');
+assert.ok(quietCharacterPng.length >= 1_000_000, 'the production character fallback must retain the approved high-detail master');
+assert.match(artSource, /quiet-aqua-character-v3\.png\?url[\s\S]*QuietAquaCharacterArt/, 'the large App oracle art must load from the reviewed raster asset');
+assert.match(appHomeSource + discoverSource, /QuietAquaCharacterArt/, 'Today and Discover must use the reviewed oracle art for legacy seed media');
+assert.doesNotMatch(appHomeSource + discoverSource + artSource, /quiet-aqua-v3-(?:primary|core-flow|secondary)\.png|character-source-v3\.png/, 'runtime App code must never import full-screen design-source boards');
+assert.doesNotMatch(runtimeSource, /quiet-aqua-v3-(?:primary|core-flow|secondary|character-source)\.png|docs\/ui-oracle/, 'no client runtime source may reference oracle boards or their documentation directory');
+assert.match(vipSource, /immersive qa-vip[\s\S]*AppIconButton[\s\S]*AppButton/, 'the App membership page must opt into Quiet Aqua controls without replacing the Web branch');
+assert.match(quietPages, /\.qa-vip[\s\S]*:where\(\.vm-card-pat, \.vm-card-shine, \.vm-spark\)[\s\S]*display:\s*none/, 'the App membership page must remove campaign shine and spark effects');
+assert.match(quietPages, /\.qa-vip \.vm-card,[\s\S]*background:\s*#173d39/, 'membership gold must remain semantic instead of filling the App page');
+
+console.log('app invariants: 100/100 passed');

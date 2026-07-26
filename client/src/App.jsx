@@ -74,6 +74,7 @@ const Atelier = lazyRetry(L.Atelier);
 const NovelWorkspace = lazyRetry(L.NovelWorkspace);
 const NovelReader = lazyRetry(L.NovelReader);
 const AppHome = lazyRetry(L.AppHome);
+const AppControlsGallery = lazyRetry(L.AppControlsGallery);
 const Messages = lazyRetry(L.Messages);
 const AppProfile = lazyRetry(L.AppProfile);
 const Vip = lazyRetry(L.Vip);
@@ -128,6 +129,7 @@ export default function App() {
             <Route path="/help" element={<Help />} />
             <Route path="/" element={P(isAppMode() ? <DiscoverFeed /> : <Home />)} />
             <Route path="/today" element={P(<AppHome />)} />
+            <Route path="/app-controls" element={isAppMode() ? P(<AppControlsGallery />) : <Navigate to="/" replace />} />
             <Route path="/scripts" element={P(<Scripts />)} />
             <Route path="/script/new" element={P(<ScriptEditor />)} />
             <Route path="/script/:id" element={P(<ScriptDetail />)} />

@@ -3,13 +3,16 @@
 // the web discover page: instead it greets the user, surfaces the daily check-in,
 // a "continue your story" rail, daily tasks and a personalised pick — the things
 // you reach for when you open the app, not a browse-everything grid.
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNav } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday, fmtNum } from '../util.js';
-import { CoverArt } from '../art.jsx';
+import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from '../art.jsx';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { isAppMode } from '../appmode.js';
+import { useAppTabActive } from '../appTabActivity.js';
 import {
   Check, Flame, MessagesSquare, ChevronRight, Sparkles,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell,
@@ -28,7 +31,8 @@ function greeting() {
   return '夜深了';
 }
 
-// 问候卡天色：随真实时段切换渐变（晨曦 / 白昼 / 暮色 / 夜晚）。
+// Keep the existing time-of-day hook as a subtle surface variant. The final
+// Quiet Aqua treatment is owned by the App-only CSS rather than baked artwork.
 function skyClass() {
   const h = new Date().getHours();
   if (h < 5 || h >= 20) return 'sky-night';
@@ -40,12 +44,12 @@ function skyClass() {
 // 快捷入口 —— 去重：创建类（建角色/写小说/AI绘图/开剧场）已由底栏中央 +AI 按钮
 // 全量承载，这里不再重复；改放启动页顺手要去、且别处没有一键入口的目的地。
 const CREATE_SHORTCUTS = [
-  { to: '/gacha', ic: Dices, label: '扭蛋' },
-  { to: '/events', ic: PartyPopper, label: '活动' },
-  { to: '/scripts', ic: ScrollText, label: '剧本' },
-  { to: '/theater', ic: Drama, label: '剧场' },
-  { to: '/community', ic: Users, label: '社区' },
-  { to: '/leaderboard', ic: Trophy, label: '排行榜' }
+  { to: '/gacha', ic: Dices, label: '扭蛋', tone: 'reward' },
+  { to: '/events', ic: PartyPopper, label: '活动', tone: 'coral' },
+  { to: '/scripts', ic: ScrollText, label: '剧本', tone: 'graphite' },
+  { to: '/theater', ic: Drama, label: '剧场', tone: 'indigo' },
+  { to: '/community', ic: Users, label: '社区', tone: 'blue' },
+  { to: '/leaderboard', ic: Trophy, label: '排行榜', tone: 'reward' }
 ];
 
 export default function AppHome() {
@@ -63,10 +67,23 @@ export default function AppHome() {
   const [busy, setBusy] = useState(false);
   // 顶栏已随 app 壳移除，通知铃移到页面自己的顶部行；SSE 秒级刷角标。
   const [unread, setUnread] = useState(0);
-  useEffect(() => { api('/social/notifications').then(d => setUnread(d.unread || 0)).catch(() => {}); }, []);
+  const displayName = user?.display_name || user?.username || '旅人';
+  const notificationLabel = unread > 0 ? `通知，${unread} 条未读` : '通知';
+  const loadUnread = useCallback(() => api('/social/notifications').then(d => setUnread(d.unread || 0)).catch(() => {}), []);
+  useEffect(() => { loadUnread(); }, [loadUnread]);
+  useEffect(() => {
+    const clear = () => setUnread(0);
+    window.addEventListener('huanyu-noti-read', clear);
+    return () => window.removeEventListener('huanyu-noti-read', clear);
+  }, []);
   useRealtimeEvent('notification', () => setUnread(u => u + 1));
 
   useEffect(() => {
+    setChecked(Boolean(user?.last_checkin && user.last_checkin === cnToday()));
+    setStreak(user?.checkin_streak || 0);
+  }, [user?.last_checkin, user?.checkin_streak]);
+
+  const loadHome = useCallback(() => {
     api('/chat/conversations').then(d => setResume((d.conversations || []).slice(0, 10))).catch(() => setResume([]));
     // One hot fetch feeds both the featured hero and the picks fallback; the
     // personalised "recommended" set takes precedence for picks when present.
@@ -81,8 +98,13 @@ export default function AppHome() {
       .then(d => { const cs = d.characters || []; if (cs.length) setPick(cs.slice(0, 6)); })
       .catch(() => {});
     api('/engage/tasks').then(d => setTasks((d.tasks || []).filter(t => !t.claimed).slice(0, 3))).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => { loadHome(); }, [loadHome]);
+  useAppTabActive('/today', () => {
+    loadHome();
+    loadUnread();
+    refreshUser?.();
+  });
 
   const checkin = async () => {
     if (busy || checked) return;
@@ -106,92 +128,146 @@ export default function AppHome() {
 
   const openChat = async (c) => {
     try { const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } }); nav('/chats/' + d.conversation.id); }
-    catch { nav('/character/' + c.id); }
+    catch (error) { toast(error?.message || '暂时无法开始对话，请稍后重试', 'err'); }
   };
 
   return (
-    <div className="apphome">
-      {/* 页首行：品牌 × 搜索 / 通知（壳层无持久顶栏，一级页自带头部） */}
-      <div className="aht">
-        <b className="aht-brand">幻域</b>
+    <div
+      className="apphome qa3-today"
+      aria-busy={hero === null || resume === null || pick === null}
+    >
+      {/* Large-title App toolbar. It collapses optically as content scrolls;
+          search and notifications stay on the control plane. */}
+      <header className="aht" role="toolbar" aria-label="今日页工具">
+        <div className="aht-copy">
+          <span className="aht-eyebrow">{greeting()}，{displayName}</span>
+          <h1 className="aht-brand" aria-label="幻域首页">幻域</h1>
+        </div>
         <div className="aht-acts">
-          <button onClick={openCmdk} aria-label="搜索"><Search size={20} /></button>
-          <button onClick={() => nav('/notifications')} aria-label="通知" className="aht-bell">
+          <AppIconButton label="搜索" onClick={openCmdk}><Search size={20} /></AppIconButton>
+          <AppIconButton label={notificationLabel} onClick={() => nav('/notifications', { state: { appBackTo: '/today' } })} className="aht-bell">
             <Bell size={20} />
             {unread > 0 && <span className="aht-nb">{unread > 99 ? '99+' : unread}</span>}
-          </button>
-        </div>
-      </div>
-
-      {/* greeting band — 天色渐变问候卡 */}
-      <header className={'ah-hero ' + skyClass()}>
-        <span className="ah-celestial" aria-hidden="true" />
-        <div className="ah-hero-row">
-          <div>
-            <div className="ah-greet">{greeting()}，</div>
-            <h1 className="ah-name">{user?.display_name || user?.username || '旅人'}</h1>
-          </div>
-          <button className="ah-avatar" onClick={() => nav('/profile')} aria-label="我的">
-            <Avatar src={user?.avatar} name={user?.display_name} size={46} />
-            {user?.svip ? <span className="ah-tier svip">SVIP</span> : user?.vip ? <span className="ah-tier vip"><Crown size={11} /></span> : null}
-          </button>
-        </div>
-        <div className="ah-wallet">
-          <button className="ah-coin" onClick={() => nav('/wallet')}><CoinIcon size={15} /> {fmtNum(user?.gold)}</button>
-          <button className="ah-coin di" onClick={() => nav('/wallet')}><DiamondIcon size={15} /> {fmtNum(user?.diamond)}</button>
-          <button className={'ah-checkin' + (checked ? ' done' : '')} onClick={checkin} disabled={busy}>
-            {checked
-              ? <><Check size={15} /> {streak ? `连签 ${streak} 天` : '已签到'}</>
-              : <><Gift size={15} /> 签到领币</>}
-          </button>
+          </AppIconButton>
         </div>
       </header>
 
-      {/* quick create shortcuts */}
-      <div className="ah-shortcuts">
+      {/* Identity is a compact continuous row, not another dashboard card. */}
+      <section className={'ah-hero ' + skyClass()} aria-labelledby="today-member-title">
+        <span className="ah-celestial" aria-hidden="true" />
+        <div className="ah-hero-row ah-member-row">
+          <AppIconButton className="ah-avatar" label="我的" onClick={() => nav('/me')} aria-label="我的">
+            <Avatar src={user?.avatar} name={displayName} size={46} />
+            {user?.svip ? <span className="ah-tier svip">SVIP</span> : user?.vip ? <span className="ah-tier vip"><Crown size={11} /></span> : null}
+          </AppIconButton>
+          <div className="ah-member-copy">
+            <h2 className="ah-name" id="today-member-title">{displayName}</h2>
+            <span className="ah-presence"><i aria-hidden="true" /> 在线</span>
+          </div>
+          <div className="ah-wallet" aria-label="账户余额与签到">
+            <AppButton
+              className="ah-coin"
+              variant="secondary"
+              onClick={() => nav('/wallet')}
+              aria-label={`金币 ${fmtNum(user?.gold)}`}
+            >
+              <CoinIcon size={15} /> <span className="ah-balance-value">{fmtNum(user?.gold)}</span>
+            </AppButton>
+            <AppButton
+              className="ah-coin di"
+              variant="secondary"
+              onClick={() => nav('/wallet')}
+              aria-label={`钻石 ${fmtNum(user?.diamond)}`}
+            >
+              <DiamondIcon size={15} /> <span className="ah-balance-value">{fmtNum(user?.diamond)}</span>
+            </AppButton>
+            <AppButton
+              className={'ah-checkin' + (checked ? ' done' : '')}
+              variant="primary"
+              onClick={checkin}
+              disabled={busy || checked}
+              loading={busy}
+              aria-label={checked ? (streak ? `已连续签到 ${streak} 天` : '今天已签到') : '签到领金币'}
+            >
+              {checked
+                ? <><Check size={15} /> {streak ? `连签 ${streak} 天` : '已签到'}</>
+                : <><Gift size={15} /> 签到</>}
+            </AppButton>
+          </div>
+        </div>
+      </section>
+
+      {/* Six stable destinations; creation remains the Dock accessory. */}
+      <nav className="ah-shortcuts" aria-label="快捷入口">
         {CREATE_SHORTCUTS.map(s => (
-          <button key={s.to} className="ah-sc" onClick={() => nav(s.to)}>
+          <AppButton key={s.to} className="ah-sc" data-tone={s.tone} variant="secondary" onClick={() => nav(s.to)}>
             <span className="ah-sc-ic"><s.ic size={20} /></span>
             <span>{s.label}</span>
-          </button>
+          </AppButton>
         ))}
-      </div>
+      </nav>
 
-      {/* daily featured hero */}
-      {hero === null && <div className="ah-hero-skel" />}
+      {/* Editorial recommendation: the artwork stays dynamic business content. */}
+      {hero === null && <div className="ah-hero-skel" role="status" aria-label="正在加载今日精选" />}
       {hero && (
-        <button className="ah-hero-card" onClick={() => openChat(hero)}>
-          {hero.avatar ? <img className="ah-hc-bg" src={assetUrl(hero.avatar)} alt="" /> : <div className="ah-hc-bg cover-art-box"><CoverArt name={hero.name} /></div>}
-          <div className="ah-hc-scrim" />
-          <div className="ah-hc-body">
-            <span className="ah-hc-tag"><Star size={11} fill="currentColor" /> 今日精选</span>
-            <b>{hero.name}</b>
-            <p>{hero.tagline || hero.intro || '一个等待被开启的故事'}</p>
-            <span className="ah-hc-cta"><MessagesSquare size={14} /> 开始对话</span>
-          </div>
-        </button>
+        <article
+          className="ah-hero-card"
+        >
+          <button type="button" className="ah-hero-open" onClick={() => nav('/character/' + hero.id)}
+            aria-label={`查看今日精选角色：${hero.name}`}>
+            <div className="ah-hc-media" aria-hidden="true" style={{ viewTransitionName: 'qa-character-art' }}>
+              {resolveCharacterMedia(hero).src
+                ? <img className="ah-hc-bg" src={assetUrl(resolveCharacterMedia(hero).src)} alt="" loading="eager" fetchPriority="high" />
+                : <QuietAquaCharacterArt className="ah-hc-bg qa-oracle-character" />}
+              <span className="ah-hc-scrim" />
+            </div>
+            <span className="ah-hc-body">
+              <span className="ah-hc-tag"><Star size={11} fill="currentColor" /> 今日精选</span>
+              <b className="ah-hc-name">{hero.name}</b>
+              <span className="ah-hc-copy">{hero.tagline || hero.intro || '一个等待被开启的故事'}</span>
+            </span>
+          </button>
+          <AppButton className="ah-hc-cta" variant="primary" onClick={() => openChat(hero)} aria-label={`与${hero.name}开始对话`}>
+            <MessagesSquare size={14} /> 开始对话
+          </AppButton>
+        </article>
       )}
 
       {/* continue your story */}
       {resume === null ? (
-        <div className="ah-rail-skel" />
+        <div className="ah-rail-skel" role="status" aria-label="正在加载故事" />
       ) : resume.length > 0 ? (
-        <section className="ah-sec">
-          <div className="ah-sec-head"><h2><MessagesSquare size={16} /> 继续你的故事</h2>
-            <button className="ah-more" onClick={() => nav('/chats')}>全部 <ChevronRight size={14} /></button>
+        <section className="ah-sec ah-resume-section" aria-labelledby="today-resume-title">
+          <div className="ah-sec-head"><h2 id="today-resume-title">继续你的故事</h2>
+            <AppButton
+              className="ah-more"
+              variant="tertiary"
+              size="sm"
+              onClick={() => nav(isAppMode() ? '/messages' : '/chats')}
+            >
+              全部 <ChevronRight size={14} />
+            </AppButton>
           </div>
-          <div className="ah-rail">
+          <div className="ah-rail" aria-label="最近对话">
             {resume.map(cv => (
-              <button key={cv.id} className="ah-resume" onClick={() => nav('/chats/' + cv.id)}>
+              <button
+                key={cv.id}
+                type="button"
+                className="ah-resume"
+                onClick={() => nav('/chats/' + cv.id)}
+                aria-label={`继续与${cv.character_name || '角色'}的故事${cv.affinity ? `，好感度 ${cv.affinity}` : ''}`}
+              >
                 <Avatar src={cv.character_avatar} name={cv.character_name} size={56} />
                 <b>{cv.character_name}</b>
-                {cv.affinity ? <span className="ah-aff"><Flame size={11} /> {cv.affinity}</span> : <span className="ah-aff dim">未开始</span>}
+                {cv.affinity
+                  ? <span className="ah-aff"><Flame size={11} aria-hidden="true" /> {cv.affinity}</span>
+                  : <span className="ah-aff dim">未开始</span>}
               </button>
             ))}
           </div>
         </section>
       ) : (
-        <button className="ah-empty" onClick={() => nav('/')}>
+        <button type="button" className="ah-empty" onClick={() => nav('/')}>
           <Compass size={22} />
           <div><b>还没有开始任何故事</b><span>去发现广场，挑一个角色聊聊吧</span></div>
           <ChevronRight size={18} />
@@ -204,11 +280,10 @@ export default function AppHome() {
           <div className="ah-sec-head"><h2><Flame size={16} /> 今日任务</h2></div>
           <div className="ah-tasks">
             {tasks.map(t => (
-              <div key={t.id} className="ah-task" role="button" tabIndex={0} onClick={() => nav('/events')}
-                onKeyDown={e => e.key === 'Enter' && nav('/events')}>
+              <button key={t.id} type="button" className="ah-task" onClick={() => nav('/events')}>
                 <div className="ah-task-tx"><b>{t.name}</b><span>{t.done ? '可领取 · ' : ''}+{t.reward} 金币</span></div>
                 <div className="ah-task-bar"><i style={{ width: Math.min(100, Math.round((t.progress || 0) / (t.target || 1) * 100)) + '%' }} /></div>
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -218,19 +293,21 @@ export default function AppHome() {
       {pick === null && (
         <section className="ah-sec">
           <div className="ah-sec-head"><h2><Sparkles size={16} /> 为你挑选</h2></div>
-          <div className="ah-picks">{[0, 1].map(i => <div key={i} className="ah-pick-skel" />)}</div>
+          <div className="ah-picks">{[0, 1].map(i => <div key={i} className="ah-pick-skel" aria-hidden="true" />)}</div>
         </section>
       )}
       {pick && pick.length > 0 && (
         <section className="ah-sec">
           <div className="ah-sec-head"><h2><Sparkles size={16} /> 为你挑选</h2>
-            <button className="ah-more" onClick={() => nav('/')}>逛广场 <ChevronRight size={14} /></button>
+            <AppButton className="ah-more" variant="tertiary" size="sm" onClick={() => nav('/')}>
+              逛广场 <ChevronRight size={14} />
+            </AppButton>
           </div>
           <div className="ah-picks">
             {pick.map(c => (
-              <button key={c.id} className="ah-pick" onClick={() => openChat(c)}>
+              <button key={c.id} type="button" className="ah-pick" onClick={() => openChat(c)} aria-label={`与${c.name}开始对话`}>
                 <div className="ah-pick-av">
-                  {c.avatar ? <img src={assetUrl(c.avatar)} alt="" loading="lazy" /> : <div className="ah-pick-ph cover-art-box"><CoverArt name={c.name} /></div>}
+                  {resolveCharacterMedia(c).src ? <img src={assetUrl(resolveCharacterMedia(c).src)} alt="" loading="lazy" /> : <div className="ah-pick-ph"><QuietAquaCharacterArt alt="" loading="lazy" /></div>}
                 </div>
                 <div className="ah-pick-tx">
                   <b>{c.name}</b>

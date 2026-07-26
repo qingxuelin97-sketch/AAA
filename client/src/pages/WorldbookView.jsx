@@ -4,6 +4,8 @@ import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar, Modal } from '../ui.jsx';
 import { shareUrl } from '../util.js';
+import { isAppMode } from '../appmode.js';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { BookOpen, ArrowLeft, Pencil, GitFork, Link2, Globe, BookLock, BookCheck, ChevronDown, ChevronUp,
   Users, Folder, Sparkles, Image as ImageIcon, Layout, Sliders, Layers, Variable, GitBranch, Plug, Check, BadgeCheck } from 'lucide-react';
 
@@ -34,6 +36,7 @@ function deriveCaps(w) {
 }
 
 export default function WorldbookView() {
+  const appMode = isAppMode();
   const { id } = useParams();
   const { user } = useAuth();
   const nav = useNavigate();
@@ -91,30 +94,41 @@ export default function WorldbookView() {
     catch { toast('复制失败', 'err'); }
   };
 
-  if (!wb) return <div className="empty" style={{ paddingTop: 120 }}>展开卷轴…</div>;
+  if (!wb) return appMode
+    ? <div className="empty qa-worldbooks-view-loading" style={{ paddingTop: 120 }}><BookOpen size={32} />展开卷轴…</div>
+    : <div className="empty" style={{ paddingTop: 120 }}>展开卷轴…</div>;
   const shownFolders = showAll ? folders : folders.map(([f, es]) => [f, es]).slice(0, 50);
   const totalEntries = (wb.entries || []).length;
   let previewLeft = showAll ? Infinity : 12;
+  const ViewShell = appMode ? 'div' : React.Fragment;
+  const AttachShell = appMode ? 'div' : React.Fragment;
 
   return (
-    <>
-      <div className="topbar">
-        <button className="btn ghost" onClick={() => nav('/worldbooks')}><ArrowLeft size={16} /></button>
+    <ViewShell {...(appMode ? { className: 'qa-worldbooks-view' } : {})}>
+      <div className={appMode ? 'topbar qa-worldbooks-view-topbar' : 'topbar'}>
+        {appMode
+          ? <AppIconButton className="qa-worldbooks-view-back" onClick={() => nav('/worldbooks')} label="返回世界书列表"><ArrowLeft size={20} /></AppIconButton>
+          : <button className="btn ghost" onClick={() => nav('/worldbooks')}><ArrowLeft size={16} /></button>}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{wb.name}
+          <h1 className={appMode ? 'qa-worldbooks-view-title' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{wb.name}
             {wb.is_public ? <span className="pill-pub" style={{ position: 'static' }}><Globe size={11} /> 公开</span> : <span className="pill-pub" style={{ position: 'static' }}><BookLock size={11} /> 私有</span>}
           </h1>
           <div className="sub">世界书 · {totalEntries} 条设定{wb.uses ? ` · 被使用 ${wb.uses} 次` : ''}</div>
         </div>
-        <button className="btn ghost" onClick={copyLink} title="复制分享链接"><Link2 size={15} /></button>
-        {isOwner
-          ? <button className="btn primary" onClick={() => nav('/worldbook/' + id + '/edit')}><Pencil size={15} /> 编辑</button>
-          : <button className="btn primary" onClick={fork} disabled={busy}><GitFork size={15} /> {busy ? '复制中…' : 'Fork 为我的'}</button>}
+        {appMode
+          ? <AppIconButton className="qa-worldbooks-view-share" variant="secondary" onClick={copyLink} label="复制分享链接"><Link2 size={19} /></AppIconButton>
+          : <button className="btn ghost" onClick={copyLink} title="复制分享链接"><Link2 size={15} /></button>}
+        {appMode ? (isOwner
+          ? <AppIconButton className="qa-worldbooks-view-edit" variant="filled" onClick={() => nav('/worldbook/' + id + '/edit')} label="编辑世界书"><Pencil size={19} /></AppIconButton>
+          : <AppIconButton className="qa-worldbooks-view-fork" variant="filled" loading={busy} onClick={fork} disabled={busy} label="Fork 为我的世界书"><GitFork size={19} /></AppIconButton>)
+          : (isOwner
+            ? <button className="btn primary" onClick={() => nav('/worldbook/' + id + '/edit')}><Pencil size={15} /> 编辑</button>
+            : <button className="btn primary" onClick={fork} disabled={busy}><GitFork size={15} /> {busy ? '复制中…' : 'Fork 为我的'}</button>)}
       </div>
 
-      <div className="page wbv">
+      <div className={appMode ? 'page wbv qa-worldbooks-view-content' : 'page wbv'}>
         {/* —— 卷首 —— */}
-        <div className="wb-hero wbv-hero">
+        <div className={appMode ? 'wb-hero wbv-hero qa-worldbooks-view-hero' : 'wb-hero wbv-hero'}>
           <div className="wb-hero-aurora" />
           <div className="wb-hero-content">
             <div className="wbv-owner">
@@ -136,16 +150,16 @@ export default function WorldbookView() {
               </div>
             )}
             <div className="wbv-actions">
-              <button className="btn sm" onClick={openAttach}><Plug size={13} /> 挂载到我的角色</button>
-              {!isOwner && <button className="btn sm ghost" onClick={fork} disabled={busy}><GitFork size={13} /> Fork 改造</button>}
-              {isOwner && <button className="btn sm ghost" onClick={() => nav('/worldbook/' + id + '/edit')}><Pencil size={13} /> 进入编辑器</button>}
+              <AppButton className="btn sm" size="sm" variant="primary" onClick={openAttach}><Plug size={14} /> 挂载到我的角色</AppButton>
+              {!isOwner && <AppButton className="btn sm ghost" size="sm" variant="secondary" loading={busy} onClick={fork} disabled={busy}><GitFork size={14} /> Fork 改造</AppButton>}
+              {isOwner && <AppButton className="btn sm ghost" size="sm" variant="secondary" onClick={() => nav('/worldbook/' + id + '/edit')}><Pencil size={14} /> 进入编辑器</AppButton>}
             </div>
           </div>
         </div>
 
         {/* —— 条目总览 —— */}
         <div className="wbv-sec-title"><BookCheck size={14} /> 设定条目 <span className="muted">（{totalEntries} 条）</span></div>
-        {totalEntries === 0 && <div className="empty" style={{ padding: 30 }}>这本书还没有条目</div>}
+        {totalEntries === 0 && <div className={appMode ? 'empty qa-worldbooks-view-empty' : 'empty'} style={{ padding: 30 }}>这本书还没有条目</div>}
         {shownFolders.map(([folder, es]) => (
           <div key={folder || '_root'} className="wbv-folder">
             {folder && <div className="wbv-folder-hd"><Folder size={13} /> {folder} <span className="muted">{es.length} 条</span></div>}
@@ -156,7 +170,8 @@ export default function WorldbookView() {
               const keys = (e.keys || '').split(',').map(k => k.trim()).filter(Boolean);
               return (
                 <div key={e.id} className={'wbv-entry' + (e.enabled === 0 || e.enabled === false ? ' off' : '')}>
-                  <button className="wbv-entry-hd" onClick={() => setExpanded(x => ({ ...x, [e.id]: !open }))}>
+                  <AppButton className="wbv-entry-hd" variant="tertiary" selected={open} aria-expanded={appMode ? open : undefined}
+                    aria-controls={appMode ? `worldbook-entry-${e.id}` : undefined} onClick={() => setExpanded(x => ({ ...x, [e.id]: !open }))}>
                     <div className="wbv-entry-keys">
                       {e.mode === 'always' || keys.length === 0
                         ? <span className="wbv-key always">常驻</span>
@@ -165,26 +180,30 @@ export default function WorldbookView() {
                     </div>
                     {e.comment && <span className="wbv-entry-note">{e.comment}</span>}
                     {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </button>
-                  {open && <div className="wbv-entry-body">{e.content}</div>}
+                  </AppButton>
+                  {open && <div id={appMode ? `worldbook-entry-${e.id}` : undefined} className="wbv-entry-body">{e.content}</div>}
                 </div>
               );
             })}
           </div>
         ))}
         {!showAll && totalEntries > 12 && (
-          <button className="btn block ghost" onClick={() => setShowAll(true)}>展开全部 {totalEntries} 条</button>
+          <AppButton className="btn block ghost" variant="secondary" onClick={() => setShowAll(true)}>展开全部 {totalEntries} 条</AppButton>
         )}
       </div>
 
       {attachOpen && (
         <Modal onClose={() => setAttachOpen(false)}>
+          <AttachShell {...(appMode ? { className: 'qa-worldbooks-attach' } : {})}>
           <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Plug size={18} /> 挂载到我的角色</h2>
           <p className="muted" style={{ marginTop: -4, fontSize: 13 }}>挂载后，与该角色对话时会按关键词自动注入这本书的设定。</p>
           {!chars && <div className="empty" style={{ padding: 24 }}>加载角色…</div>}
           {chars && chars.length === 0 && <div className="empty" style={{ padding: 24 }}>你还没有角色，先去创建一个吧</div>}
           {chars && chars.map(c => (
-            <div key={c.id} className={'wbv-char-row' + (c.attached ? ' on' : '')} onClick={() => toggleAttach(c)}>
+            <div key={c.id} className={'wbv-char-row' + (c.attached ? ' on' : '')} onClick={() => toggleAttach(c)}
+              {...(appMode ? { role: 'button', tabIndex: 0, 'aria-pressed': Boolean(c.attached), onKeyDown: e => {
+                if (!['Enter', ' '].includes(e.key)) return; e.preventDefault(); toggleAttach(c);
+              } } : {})}>
               <Avatar src={c.avatar} name={c.name} size={34} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontSize: 13.5 }}>{c.name}</b>
@@ -193,9 +212,10 @@ export default function WorldbookView() {
               {c.attached ? <span className="wbv-attached"><Check size={13} /> 已挂载</span> : <span className="muted" style={{ fontSize: 12 }}>点击挂载</span>}
             </div>
           ))}
-          <button className="btn block" style={{ marginTop: 12 }} onClick={() => setAttachOpen(false)}>完成</button>
+          <AppButton className="btn block" variant="secondary" style={{ marginTop: 12 }} onClick={() => setAttachOpen(false)}>完成</AppButton>
+          </AttachShell>
         </Modal>
       )}
-    </>
+    </ViewShell>
   );
 }

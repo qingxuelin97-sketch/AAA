@@ -1,0 +1,231 @@
+/*
+ * Quiet Aqua / 静水青 — App-shell design tokens.
+ * Components live in app-controls.css. This file only defines App-scoped
+ * colour, typography, surface, geometry, depth and timing values.
+ */
+html[data-app="1"] {
+  color-scheme: light;
+
+  --qa-canvas: #f4f7f6;
+  --qa-grouped: #ecf2f1;
+  --qa-surface: #ffffff;
+  --qa-surface-raised: #ffffff;
+  --qa-ink: #102b29;
+  --qa-ink-secondary: #4b6562;
+  --qa-ink-tertiary: #5f7673;
+  --qa-hairline: #d6e2df;
+
+  --qa-brand-fill: #087f79;
+  --qa-brand-pressed: #066a66;
+  --qa-brand-soft: #ddedea;
+  --qa-brand-ink: #ffffff;
+
+  /* Clay remains the explicit user option and the Web-compatible baseline. */
+  --qa-action-fill: #a94f32;
+  --qa-action-pressed: #883d28;
+  --qa-action-soft: #f4e3dd;
+  --qa-action-ink: #ffffff;
+  --qa-focus: #a94f32;
+
+  --qa-danger: #b42318;
+  --qa-danger-soft: #f9e4e1;
+  --qa-danger-ink: #ffffff;
+  --qa-success: #267354;
+  --qa-success-soft: #dfeee7;
+  --qa-success-ink: #ffffff;
+  --qa-reward: #8c650d;
+  --qa-reward-soft: #f5ecd5;
+  --qa-reward-ink: #ffffff;
+  --qa-unread: #c64d42;
+  --qa-unread-ink: #ffffff;
+
+  /* Stable content semantics. These do not follow the user accent choice. */
+  --qa-semantic-gold: #9b6a12;
+  --qa-semantic-gold-soft: #f5ecd5;
+  --qa-semantic-coral: #c64d42;
+  --qa-semantic-coral-soft: #f7e2df;
+  --qa-semantic-indigo: #4e5d9d;
+  --qa-semantic-indigo-soft: #e8eaf7;
+  --qa-semantic-blue: #367997;
+  --qa-semantic-blue-soft: #e2eff3;
+  --qa-semantic-graphite: #59615f;
+  --qa-semantic-graphite-soft: #e7eae8;
+  --qa-semantic-rose: #a8546e;
+  --qa-semantic-rose-soft: #f3e3e9;
+  --qa-finance-surface: #263a38;
+  --qa-finance-surface-mid: #314947;
+  --qa-finance-ink: #f7fbfa;
+  --qa-finance-muted: rgb(238 249 246 / 72%);
+
+  --qa-font-ui: var(--sans, Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
+  --qa-type-display: 28px;
+  --qa-type-title: 22px;
+  --qa-type-section: 17px;
+  --qa-type-body: 15px;
+  --qa-type-meta: 13px;
+
+  --qa-chrome: color-mix(in srgb, var(--qa-surface) 92%, transparent);
+  --qa-overlay: color-mix(in srgb, var(--qa-surface) 96%, transparent);
+  --qa-scrim: rgb(7 27 25 / 36%);
+  --qa-shadow-1: 0 1px 2px rgb(8 45 42 / 6%), 0 6px 18px rgb(8 45 42 / 6%);
+  --qa-shadow-2: inset 0 1px rgb(255 255 255 / 70%), 0 10px 24px rgb(8 45 42 / 10%);
+  --qa-shadow-3: 0 18px 48px rgb(8 33 31 / 16%);
+
+  --qa-space-1: 4px;
+  --qa-space-2: 8px;
+  --qa-space-3: 12px;
+  --qa-space-4: 16px;
+  --qa-space-5: 20px;
+  --qa-space-6: 24px;
+  --qa-radius-xs: 8px;
+  --qa-radius-sm: 10px;
+  --qa-radius-control: 12px;
+  --qa-radius-row: 14px;
+  --qa-radius-card: 18px;
+  --qa-radius-panel: 20px;
+  --qa-radius-sheet: 24px;
+  --qa-radius-pill: 999px;
+
+  --qa-control-min: 44px;
+  --qa-control-submit: 48px;
+  --qa-dock-height: 66px;
+  --qa-dock-bottom: max(8px, env(safe-area-inset-bottom));
+  --qa-editor-chrome: calc(72px + env(safe-area-inset-top));
+  --qa-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --qa-duration-press: 80ms;
+  --qa-duration-state: 180ms;
+}
+
+html[data-app="1"][data-accent="dusk"] {
+  --qa-action-fill: #6547a5;
+  --qa-action-pressed: #503783;
+  --qa-action-soft: #e9e3f5;
+  --qa-focus: #6547a5;
+}
+
+html[data-app="1"][data-accent="teal"] {
+  --qa-action-fill: #087f79;
+  --qa-action-pressed: #066a66;
+  --qa-action-soft: #ddedea;
+  --qa-focus: #087f79;
+}
+
+html[data-app="1"][data-accent="forest"] {
+  --qa-action-fill: #3f6f47;
+  --qa-action-pressed: #315738;
+  --qa-action-soft: #e1ecdf;
+  --qa-focus: #3f6f47;
+}
+
+html[data-app="1"][data-accent="rose"] {
+  --qa-action-fill: #a33d5d;
+  --qa-action-pressed: #803049;
+  --qa-action-soft: #f4e0e7;
+  --qa-focus: #a33d5d;
+}
+
+html[data-app="1"][data-accent="amber"] {
+  --qa-action-fill: #7a5b16;
+  --qa-action-pressed: #604711;
+  --qa-action-soft: #f1ead8;
+  --qa-focus: #7a5b16;
+}
+
+html[data-app="1"][data-theme="dark"] {
+  color-scheme: dark;
+  --qa-canvas: #0d1211;
+  --qa-grouped: #131b1a;
+  --qa-surface: #18201f;
+  --qa-surface-raised: #202927;
+  --qa-ink: #f2f7f6;
+  --qa-ink-secondary: #b4c3c0;
+  --qa-ink-tertiary: #8fa39f;
+  --qa-hairline: #34423f;
+  --qa-brand-fill: #5ccbc1;
+  --qa-brand-pressed: #43b2a9;
+  --qa-brand-soft: #183e3b;
+  --qa-brand-ink: #09211f;
+  --qa-action-fill: #d88468;
+  --qa-action-pressed: #c06d52;
+  --qa-action-soft: #472b23;
+  --qa-action-ink: #24110c;
+  --qa-focus: #e09b84;
+  --qa-danger: #ff8b83;
+  --qa-danger-soft: #48211f;
+  --qa-danger-ink: #25100f;
+  --qa-success: #69c79d;
+  --qa-success-soft: #17392c;
+  --qa-success-ink: #0b2118;
+  --qa-reward: #e0b95c;
+  --qa-reward-soft: #403319;
+  --qa-reward-ink: #211906;
+  --qa-unread: #ff8077;
+  --qa-unread-ink: #2a0e0c;
+  --qa-semantic-gold: #e0b95c;
+  --qa-semantic-gold-soft: #403319;
+  --qa-semantic-coral: #ff8b83;
+  --qa-semantic-coral-soft: #48211f;
+  --qa-semantic-indigo: #a8b4e8;
+  --qa-semantic-indigo-soft: #262c42;
+  --qa-semantic-blue: #86c4db;
+  --qa-semantic-blue-soft: #1b3440;
+  --qa-semantic-graphite: #c0cbc8;
+  --qa-semantic-graphite-soft: #27302e;
+  --qa-semantic-rose: #e2a0b8;
+  --qa-semantic-rose-soft: #432631;
+  --qa-finance-surface: #1c2b2a;
+  --qa-finance-surface-mid: #263936;
+  --qa-finance-ink: #f2f8f6;
+  --qa-finance-muted: rgb(229 243 239 / 70%);
+  --qa-chrome: color-mix(in srgb, var(--qa-surface) 92%, transparent);
+  --qa-overlay: color-mix(in srgb, var(--qa-surface-raised) 96%, transparent);
+  --qa-scrim: rgb(0 0 0 / 56%);
+  --qa-shadow-1: 0 1px 2px rgb(0 0 0 / 20%), 0 8px 22px rgb(0 0 0 / 20%);
+  --qa-shadow-2: inset 0 1px rgb(255 255 255 / 5%), 0 12px 28px rgb(0 0 0 / 28%);
+  --qa-shadow-3: 0 20px 52px rgb(0 0 0 / 42%);
+}
+
+html[data-app="1"][data-theme="dark"][data-accent="dusk"] {
+  --qa-action-fill: #aa91eb;
+  --qa-action-pressed: #9478da;
+  --qa-action-soft: #302747;
+  --qa-action-ink: #181126;
+  --qa-focus: #b9a5ef;
+}
+
+html[data-app="1"][data-theme="dark"][data-accent="teal"] {
+  --qa-action-fill: #5ccbc1;
+  --qa-action-pressed: #43b2a9;
+  --qa-action-soft: #183e3b;
+  --qa-action-ink: #09211f;
+  --qa-focus: #73d9cf;
+}
+
+html[data-app="1"][data-theme="dark"][data-accent="forest"] {
+  --qa-action-fill: #8bc58f;
+  --qa-action-pressed: #73ad78;
+  --qa-action-soft: #223b27;
+  --qa-action-ink: #102313;
+  --qa-focus: #9bd49f;
+}
+
+html[data-app="1"][data-theme="dark"][data-accent="rose"] {
+  --qa-action-fill: #e58baa;
+  --qa-action-pressed: #d17394;
+  --qa-action-soft: #462735;
+  --qa-action-ink: #2a111a;
+  --qa-focus: #efa2bc;
+}
+
+html[data-app="1"][data-theme="dark"][data-accent="amber"] {
+  --qa-action-fill: #d4b35f;
+  --qa-action-pressed: #bea04f;
+  --qa-action-soft: #403519;
+  --qa-action-ink: #241b08;
+  --qa-focus: #e1c573;
+}
+
+html[data-app="1"][data-perf="lite"] {
+  --qa-chrome: var(--qa-surface);
+  --qa-overlay: var(--qa-surface-raised);
+}

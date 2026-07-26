@@ -1,6 +1,7 @@
-// 主题色调色盘 — 六套全局强调色（黏土橙默认），persisted in localStorage,
-// applied via data-accent on <html> before first paint（与 theme.js 同一时机，无闪变）。
-// 每套色都提供深/浅两组变量（styles.css 里 [data-accent] × [data-theme] 双维覆盖）。
+// Six persisted accent palettes. An unset HTTP App-shell preview starts with
+// Quiet Aqua; ordinary Web keeps the established clay default.
+import { isAppMode } from './appmode.js';
+
 const KEY = 'huanyu_accent';
 
 export const ACCENTS = [
@@ -14,7 +15,8 @@ export const ACCENTS = [
 
 export function getAccent() {
   const v = localStorage.getItem(KEY);
-  return ACCENTS.some(a => a.id === v) ? v : 'clay';
+  if (ACCENTS.some(a => a.id === v)) return v;
+  return isAppMode() ? 'teal' : 'clay';
 }
 
 export function applyAccent(id = getAccent()) {

@@ -8,7 +8,10 @@ import { getPerfPref, setPerfPref, resolvePerf } from '../perf.js';
 import { browserVoices, playAudioUrl, speakBrowser, stopSpeaking } from '../voice.js';
 import HelpCenter from '../components/HelpCenter.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
-import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, Upload, LifeBuoy, LayoutGrid, Scale, Check } from 'lucide-react';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { isAppMode } from '../appmode.js';
+import { useAppNavigationOptional, useUnsavedChanges } from '../appNavigation.jsx';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, Upload, LifeBuoy, LayoutGrid, Scale, Check, ArrowLeft, ChevronRight, Bell } from 'lucide-react';
 
 // Renders a gold price; when a membership discount applies it shows the full
 // price struck through next to the discounted one so VIP/SVIP can see the deal.
@@ -60,12 +63,17 @@ const VOICE_BY_VALUE = Object.fromEntries(VOICE_PROVIDER_OPTS.map(([v, , b, p]) 
 // 无需、也无从改写，避免把凭据和数据误发到非官方服务器。
 
 export default function Settings() {
+  const app = isAppMode();
   const toast = useToast();
   const nav = useNavigate();
+  const appNavigation = useAppNavigationOptional();
   const { user, setUser, refreshUser } = useAuth();
   const [tab, setTab] = useState('model');
+  const [appRoot, setAppRoot] = useState(app);
   const [legal, setLegal] = useState(null);
   const [s, setS] = useState(null);
+  const [settingsError, setSettingsError] = useState('');
+  const [unread, setUnread] = useState(0);
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState({ display_name: '', bio: '', avatar: '', banner: '' });
   const [pwd, setPwd] = useState({ old_password: '', new_password: '' });
@@ -76,6 +84,8 @@ export default function Settings() {
   const [testing, setTesting] = useState(false);
   const voiceAbortRef = useRef(null);
   const mountedRef = useRef(true);
+  const cleanSettingsRef = useRef(null);
+  const cleanProfileRef = useRef(null);
   const [theme, setTheme] = useState(getThemeMode());
   const [glass, setGlassOn] = useState(getGlass());
   const [accent, setAccentId] = useState(getAccent());
@@ -83,6 +93,7 @@ export default function Settings() {
   const [perf, setPerf] = useState(getPerfPref());
   const changePerf = (mode) => { setPerf(mode); setPerfPref(mode); };
   const [bvoices, setBvoices] = useState(() => browserVoices());
+  const withAppClass = (base, hook) => app ? [base, hook].filter(Boolean).join(' ') : base;
   // 密钥 / 密码显隐切换（移动端核对长密钥用）
   const [showSecret, setShowSecret] = useState({});
   // 注意：必须在下面 if (!s) 提前返回之前声明（hooks 数量不能随渲染变化）
@@ -109,19 +120,74 @@ export default function Settings() {
   }, []);
   const changeTheme = (mode) => { setTheme(mode); setThemeMode(mode); setS(p => p ? { ...p, theme: mode } : p); };
 
-  useEffect(() => { api('/settings').then(d => setS(d.settings)).catch(e => toast(e.message, 'err')); }, []);
-  useEffect(() => { if (user) setProfile({ display_name: user.display_name || '', bio: user.bio || '', avatar: user.avatar || '', banner: user.banner || '' }); }, [user]);
+  const loadSettings = () => {
+    setSettingsError('');
+    return api('/settings').then(d => {
+      cleanSettingsRef.current = d.settings;
+      setS(d.settings);
+    }).catch(e => {
+      setSettingsError(e.message || '设置载入失败');
+      toast(e.message, 'err');
+    });
+  };
+  useEffect(() => { loadSettings(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => {
+    if (!app) return undefined;
+    let alive = true;
+    api('/social/notifications').then(d => alive && setUnread(d.unread || 0)).catch(() => {});
+    return () => { alive = false; };
+  }, [app]);
+  useEffect(() => {
+    if (!user) return;
+    const next = { display_name: user.display_name || '', bio: user.bio || '', avatar: user.avatar || '', banner: user.banner || '' };
+    cleanProfileRef.current = next;
+    setProfile(next);
+  }, [user]);
+
+  const settingsDirty = !!s && !!cleanSettingsRef.current && JSON.stringify(s) !== JSON.stringify(cleanSettingsRef.current);
+  const profileDirty = !!cleanProfileRef.current && JSON.stringify(profile) !== JSON.stringify(cleanProfileRef.current);
+  const passwordDirty = !!(pwd.old_password || pwd.new_password);
+  const clearSettingsNavigationGuard = useUnsavedChanges(
+    app && !appRoot && (settingsDirty || profileDirty || passwordDirty),
+    '这一页有尚未保存的设置，确定返回吗？',
+  );
   if (!s) return (
-    <div className="page" style={{ maxWidth: 760 }} aria-hidden="true">
-      <div className="skel" style={{ height: 40, marginBottom: 16 }} />
-      <div className="skel" style={{ height: 300 }} />
-    </div>
+    <>
+      {app && (
+        <header className="qa-settings-topbar">
+          <AppIconButton className="qa-settings-back" label="返回个人中心" onClick={() => nav('/me')}><ArrowLeft size={20} /></AppIconButton>
+          <h1>设置与通知</h1>
+          <span aria-hidden="true" />
+        </header>
+      )}
+      <div className={withAppClass('page', 'qa-settings-page qa-settings-loading')} style={{ maxWidth: 760 }} aria-busy={!settingsError}>
+        {settingsError ? (
+          <section className="qa-settings-load-error" role="alert">
+            <span aria-hidden="true"><RefreshCw size={22} /></span>
+            <h2>暂时无法载入设置</h2>
+            <p>{settingsError}</p>
+            <AppButton variant="primary" onClick={loadSettings}><RefreshCw size={16} /> 重试</AppButton>
+          </section>
+        ) : (
+          <div aria-hidden="true">
+            <div className="skel" style={{ height: 40, marginBottom: 16 }} />
+            <div className="skel" style={{ height: 300 }} />
+          </div>
+        )}
+      </div>
+    </>
   );
   const set = (k, v) => setS(p => ({ ...p, [k]: v }));
 
   const saveModel = async () => {
     setBusy(true);
-    try { const d = await api('/settings', { method: 'PUT', body: s }); setS(d.settings); toast('设置已保存'); }
+    try {
+      const d = await api('/settings', { method: 'PUT', body: s });
+      cleanSettingsRef.current = d.settings;
+      setS(d.settings);
+      clearSettingsNavigationGuard();
+      toast('设置已保存');
+    }
     catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
   };
   const detectModels = async () => {
@@ -173,7 +239,13 @@ export default function Settings() {
     } catch (e) { toast(e.message, 'err'); } finally { setDetectingVoice(false); }
   };
   const saveProfile = async () => {
-    try { const d = await api('/auth/me', { method: 'PUT', body: profile }); setUser(d.user); toast('资料已更新'); }
+    try {
+      const d = await api('/auth/me', { method: 'PUT', body: profile });
+      cleanProfileRef.current = profile;
+      setUser(d.user);
+      clearSettingsNavigationGuard();
+      toast('资料已更新');
+    }
     catch (e) { toast(e.message, 'err'); }
   };
   const changePwd = async () => {
@@ -181,7 +253,9 @@ export default function Settings() {
       const d = await api('/auth/password', { method: 'PUT', body: pwd });
       // 改密会使旧 token 全部失效；服务端为当前会话回发新 token，本机免重登。
       if (d.token) setToken(d.token);
-      setPwd({ old_password: '', new_password: '' }); toast('密码已修改');
+      setPwd({ old_password: '', new_password: '' });
+      clearSettingsNavigationGuard();
+      toast('密码已修改');
     } catch (e) { toast(e.message, 'err'); }
   };
 
@@ -220,20 +294,92 @@ export default function Settings() {
   };
 
   const TABS = [['model', '语言模型', Cpu], ['voice', '语音模型', Volume2], ['account', '账号安全', UserCog], ['privacy', '隐私', Lock], ['pref', '偏好', SlidersHorizontal], ['help', '帮助中心', LifeBuoy]];
+  const TAB_LABEL = Object.fromEntries(TABS.map(([key, label]) => [key, label]));
+  const APP_GROUPS = [
+    ['智能能力', [
+      ['model', '语言模型', '服务商、模型与生成参数', Cpu, 'indigo'],
+      ['voice', '语音模型', '朗读服务、音色与试听', Volume2, 'blue'],
+    ]],
+    ['账号与隐私', [
+      ['account', '账号安全', '个人资料与登录密码', UserCog, 'graphite'],
+      ['privacy', '隐私', '可见范围、消息与数据管理', Lock, 'rose'],
+    ]],
+    ['显示与支持', [
+      ['pref', '偏好', '主题、色彩、性能与通知', SlidersHorizontal, 'gold'],
+      ['help', '帮助中心', '使用指引、产品功能与条款', LifeBuoy, 'coral'],
+    ]],
+  ];
+  const DetailContainer = app ? 'div' : React.Fragment;
+  const openAppTab = (next) => {
+    setTab(next);
+    setAppRoot(false);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }));
+  };
+  const closeAppDetail = () => {
+    if (appNavigation && !appNavigation.confirmNavigation()) return;
+    setAppRoot(true);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }));
+  };
 
   return (
     <>
-      <div className="topbar">
-        <div style={{ flex: 1 }}><h1>设置</h1><div className="sub">模型接入、账号安全与个性化偏好</div></div>
-      </div>
-      <div className="page" style={{ maxWidth: 760 }}>
-        <div className="tabs-bar">
-          {TABS.map(([k, l, Ic]) => <button key={k} className={(tab === k ? 'active' : '') + ' pressable'} onClick={() => setTab(k)}><Ic size={15} style={{ verticalAlign: -2, marginRight: 5 }} />{l}</button>)}
+      {app ? (
+        <header className="qa-settings-topbar">
+          <AppIconButton
+            className="qa-settings-back"
+            label={appRoot ? '返回个人中心' : '返回设置'}
+            onClick={() => appRoot ? nav('/me') : closeAppDetail()}
+          ><ArrowLeft size={20} /></AppIconButton>
+          <h1>{appRoot ? '设置与通知' : TAB_LABEL[tab]}</h1>
+          <span aria-hidden="true" />
+        </header>
+      ) : (
+        <div className="topbar">
+          <div style={{ flex: 1 }}><h1>设置</h1><div className="sub">模型接入、账号安全与个性化偏好</div></div>
         </div>
+      )}
+      <div className={withAppClass('page', 'qa-settings-page')} style={{ maxWidth: 760 }}>
+        {app ? (
+          appRoot && (
+            <div className="qa-settings-root" aria-label="设置分类">
+              <AppButton className="qa-settings-notifications" variant="tertiary" onClick={() => nav('/notifications', { state: { appBackTo: '/settings' } })}>
+                <span className="qa-settings-notifications-icon" aria-hidden="true"><Bell size={22} /></span>
+                <span className="qa-settings-notifications-copy">
+                  <b>{unread > 0 ? `${unread} 条新通知` : '通知中心'}</b>
+                  <small>{unread > 0 ? '查看尚未读过的互动与系统消息' : '互动、系统与活动消息都在这里'}</small>
+                </span>
+                {unread > 0 && <span className="qa-settings-notifications-badge" aria-label={`${unread} 条未读`}>{Math.min(unread, 99)}</span>}
+                <ChevronRight size={18} aria-hidden="true" />
+              </AppButton>
+              <p className="qa-settings-intro">账号、安全、智能能力与显示偏好</p>
+              {APP_GROUPS.map(([group, items]) => (
+                <section className="qa-settings-group" key={group} aria-labelledby={`settings-group-${group}`}>
+                  <h2 id={`settings-group-${group}`}>{group}</h2>
+                  <div className="qa-settings-list">
+                    {items.map(([key, label, description, Icon, tone]) => (
+                      <AppButton className="qa-settings-row" variant="tertiary" key={key} onClick={() => openAppTab(key)}>
+                        <span className="qa-settings-row-icon" data-tone={tone} aria-hidden="true"><Icon size={19} /></span>
+                        <span className="qa-settings-row-copy"><b>{label}</b><small>{description}</small></span>
+                        <ChevronRight className="qa-settings-row-chevron" size={18} aria-hidden="true" />
+                      </AppButton>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )
+        ) : (
+          <div className="tabs-bar">
+            {TABS.map(([k, l, Ic]) => <button key={k} className={(tab === k ? 'active' : '') + ' pressable'} onClick={() => setTab(k)}><Ic size={15} style={{ verticalAlign: -2, marginRight: 5 }} />{l}</button>)}
+          </div>
+        )}
+
+        {(!app || !appRoot) && (
+        <DetailContainer {...(app ? { className: 'qa-settings-detail', 'aria-label': `${TAB_LABEL[tab]}设置` } : {})}>
 
         {tab === 'model' && (
           <div className="card stagger-in">
-            <div className="section-title"><h2>语言模型 API</h2><div style={{ display: 'flex', gap: 8 }}><button className="btn sm" onClick={testLLM} disabled={testing || !s.llm_api_key}>{testing ? '测试中…' : '测试连接'}</button><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div></div>
+            <div className="section-title"><h2>语言模型 API</h2><div className={app ? 'qa-settings-actions' : undefined} style={{ display: 'flex', gap: 8 }}><AppButton className={withAppClass('btn sm', 'qa-settings-secondary')} variant="secondary" loading={testing} onClick={testLLM} disabled={testing || !s.llm_api_key}>{testing ? '测试中…' : '测试连接'}</AppButton><AppButton className={withAppClass('btn sm primary', 'qa-settings-save')} variant="primary" loading={busy} onClick={saveModel} disabled={busy}>保存</AppButton></div></div>
             {s.platform_fee && (
               <div className="platform-note">
                 <span className="pn-ic"><ShieldCheck size={18} /></span>
@@ -261,9 +407,9 @@ export default function Settings() {
               <div className="field"><label>模型名称</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   <input className="input" style={{ flex: 1, minWidth: 160 }} value={s.llm_model} onChange={e => set('llm_model', e.target.value)} placeholder="gpt-4o-mini" list="model-list" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
-                  <button className="btn" onClick={detectModels} disabled={detecting} title="检测服务商可用模型">
+                  <AppButton className={withAppClass('btn', 'qa-settings-secondary')} variant="secondary" loading={detecting} onClick={detectModels} disabled={detecting} title="检测服务商可用模型">
                     <RefreshCw size={15} className={detecting ? 'spin' : ''} /> {detecting ? '检测中' : '检测模型'}
-                  </button>
+                  </AppButton>
                 </div>
                 {models.length > 0 && (
                   <>
@@ -280,7 +426,7 @@ export default function Settings() {
             <div className="field"><label>API Key {s.llm_api_key_set && <span className="tag">已配置</span>}</label>
               <div className="secret-input">
                 <input className="input" type={showSecret.llm ? 'text' : 'password'} value={s.llm_api_key || ''} onChange={e => set('llm_api_key', e.target.value)} placeholder={s.llm_api_key_set ? '••••••（留空不修改）' : 'sk-...'} autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
-                <button type="button" className="secret-toggle" onClick={() => setShowSecret(p => ({ ...p, llm: !p.llm }))} title={showSecret.llm ? '隐藏' : '显示'}>{showSecret.llm ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                <AppIconButton type="button" className={withAppClass('secret-toggle', 'qa-settings-secret-toggle')} label={showSecret.llm ? '隐藏语言模型密钥' : '显示语言模型密钥'} pressed={showSecret.llm} onClick={() => setShowSecret(p => ({ ...p, llm: !p.llm }))} title={showSecret.llm ? '隐藏' : '显示'}>{showSecret.llm ? <EyeOff size={15} /> : <Eye size={15} />}</AppIconButton>
               </div>
               <div className="hint">点「检测模型」可向服务商拉取可用模型列表再选择（需先填 Base URL 与 Key）。</div></div>
             <div className="row">
@@ -292,7 +438,7 @@ export default function Settings() {
 
         {tab === 'voice' && (
           <div className="card stagger-in">
-            <div className="section-title"><h2>语音模型 API</h2><div style={{ display: 'flex', gap: 8 }}><button className="btn sm" onClick={testVoice} disabled={testing}>{testing ? '试听中…' : '试听'}</button><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div></div>
+            <div className="section-title"><h2>语音模型 API</h2><div className={app ? 'qa-settings-actions' : undefined} style={{ display: 'flex', gap: 8 }}><AppButton className={withAppClass('btn sm', 'qa-settings-secondary')} variant="secondary" loading={testing} onClick={testVoice} disabled={testing}>{testing ? '试听中…' : '试听'}</AppButton><AppButton className={withAppClass('btn sm primary', 'qa-settings-save')} variant="primary" loading={busy} onClick={saveModel} disabled={busy}>保存</AppButton></div></div>
             {s.voice_fee && (
               <div className="platform-note">
                 <span className="pn-ic"><ShieldCheck size={18} /></span>
@@ -342,7 +488,7 @@ export default function Settings() {
                       {bvoices.map(v => <option key={v.name} value={v.name}>{v.name} · {v.lang}</option>)}
                     </select>
                     <div className="hint">使用浏览器/系统自带的语音合成，<b>无需 API Key、无跨域限制、可离线</b>。不同系统可用音色不同（移动端可能较少）。</div></div>
-                  <button className="btn" onClick={() => speakBrowser('幻域欢迎你，这是浏览器内置语音的试听。', s.voice_name)}><Volume2 size={15} /> 试听当前音色</button>
+                  <AppButton className={withAppClass('btn', 'qa-settings-secondary')} variant="secondary" onClick={() => speakBrowser('幻域欢迎你，这是浏览器内置语音的试听。', s.voice_name)}><Volume2 size={15} /> 试听当前音色</AppButton>
                 </>);
               }
               return (<>
@@ -355,9 +501,9 @@ export default function Settings() {
               <div className="field"><label>模型</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   <input className="input" style={{ flex: 1, minWidth: 160 }} value={s.voice_model} onChange={e => set('voice_model', e.target.value)} placeholder={MODEL_PH[vproto] || 'model'} list="voice-model-list" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
-                  <button className="btn" onClick={detectVoiceModels} disabled={detectingVoice} title="检测服务商可用模型">
+                  <AppButton className={withAppClass('btn', 'qa-settings-secondary')} variant="secondary" loading={detectingVoice} onClick={detectVoiceModels} disabled={detectingVoice} title="检测服务商可用模型">
                     <RefreshCw size={15} className={detectingVoice ? 'spin' : ''} /> {detectingVoice ? '检测中' : '检测模型'}
-                  </button>
+                  </AppButton>
                 </div>
                 {voiceModels.length > 0 && (
                   <>
@@ -382,7 +528,7 @@ export default function Settings() {
               <div className="field"><label>{KEY_LB[vproto] || 'API Key'} {s.voice_api_key_set && <span className="tag">已配置</span>}</label>
                 <div className="secret-input">
                   <input className="input" type={showSecret.voice ? 'text' : 'password'} value={s.voice_api_key || ''} onChange={e => set('voice_api_key', e.target.value)} placeholder={s.voice_api_key_set ? '••••••（留空不修改）' : KEY_PH} autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} />
-                  <button type="button" className="secret-toggle" onClick={() => setShowSecret(p => ({ ...p, voice: !p.voice }))} title={showSecret.voice ? '隐藏' : '显示'}>{showSecret.voice ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                  <AppIconButton type="button" className={withAppClass('secret-toggle', 'qa-settings-secret-toggle')} label={showSecret.voice ? '隐藏语音模型密钥' : '显示语音模型密钥'} pressed={showSecret.voice} onClick={() => setShowSecret(p => ({ ...p, voice: !p.voice }))} title={showSecret.voice ? '隐藏' : '显示'}>{showSecret.voice ? <EyeOff size={15} /> : <Eye size={15} />}</AppIconButton>
                 </div>
                 <div className="hint">浏览器将直连该服务商；若其未开放跨域(CORS)，纯静态站点可能无法播放，建议优先选「浏览器内置语音」、OpenAI 协议族或 ElevenLabs。</div></div>
             </div>
@@ -394,7 +540,7 @@ export default function Settings() {
         {tab === 'account' && (
           <>
             <div className="card stagger-in" style={{ marginBottom: 20 }}>
-              <div className="section-title"><h2>个人资料</h2><button className="btn sm primary" onClick={saveProfile}>保存资料</button></div>
+              <div className="section-title"><h2>个人资料</h2><AppButton className={withAppClass('btn sm primary', 'qa-settings-save')} variant="primary" onClick={saveProfile}>保存资料</AppButton></div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'center', marginBottom: 14 }}>
                 <AvatarPicker value={profile.avatar} onChange={url => setProfile({ ...profile, avatar: url })} size={92} />
                 <div style={{ flex: 1, minWidth: 200 }}>
@@ -406,18 +552,18 @@ export default function Settings() {
               <div className="field"><label>主页横幅</label><Uploader value={profile.banner} onChange={url => setProfile({ ...profile, banner: url })} accept="image/*" /></div>
             </div>
             <div className="card">
-              <div className="section-title"><h2>修改密码</h2><button className="btn sm" onClick={changePwd}>确认修改</button></div>
+              <div className="section-title"><h2>修改密码</h2><AppButton className={withAppClass('btn sm', 'qa-settings-save')} variant="primary" onClick={changePwd}>确认修改</AppButton></div>
               <div className="row">
                 <div className="field"><label>原密码</label>
                   <div className="secret-input">
                     <input className="input" type={showSecret.oldpwd ? 'text' : 'password'} value={pwd.old_password} onChange={e => setPwd({ ...pwd, old_password: e.target.value })} autoComplete="current-password" spellCheck={false} />
-                    <button type="button" className="secret-toggle" onClick={() => setShowSecret(p => ({ ...p, oldpwd: !p.oldpwd }))} title={showSecret.oldpwd ? '隐藏' : '显示'}>{showSecret.oldpwd ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                    <AppIconButton type="button" className={withAppClass('secret-toggle', 'qa-settings-secret-toggle')} label={showSecret.oldpwd ? '隐藏原密码' : '显示原密码'} pressed={showSecret.oldpwd} onClick={() => setShowSecret(p => ({ ...p, oldpwd: !p.oldpwd }))} title={showSecret.oldpwd ? '隐藏' : '显示'}>{showSecret.oldpwd ? <EyeOff size={15} /> : <Eye size={15} />}</AppIconButton>
                   </div>
                 </div>
                 <div className="field"><label>新密码</label>
                   <div className="secret-input">
                     <input className="input" type={showSecret.newpwd ? 'text' : 'password'} value={pwd.new_password} onChange={e => setPwd({ ...pwd, new_password: e.target.value })} autoComplete="new-password" spellCheck={false} />
-                    <button type="button" className="secret-toggle" onClick={() => setShowSecret(p => ({ ...p, newpwd: !p.newpwd }))} title={showSecret.newpwd ? '隐藏' : '显示'}>{showSecret.newpwd ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                    <AppIconButton type="button" className={withAppClass('secret-toggle', 'qa-settings-secret-toggle')} label={showSecret.newpwd ? '隐藏新密码' : '显示新密码'} pressed={showSecret.newpwd} onClick={() => setShowSecret(p => ({ ...p, newpwd: !p.newpwd }))} title={showSecret.newpwd ? '隐藏' : '显示'}>{showSecret.newpwd ? <EyeOff size={15} /> : <Eye size={15} />}</AppIconButton>
                   </div>
                 </div>
               </div>
@@ -428,7 +574,7 @@ export default function Settings() {
         {tab === 'privacy' && (
           <>
             <div className="card stagger-in" style={{ marginBottom: 20 }}>
-              <div className="section-title"><h2><ShieldCheck size={17} style={{ verticalAlign: -3, marginRight: 6 }} />隐私与可见性</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
+              <div className="section-title"><h2><ShieldCheck size={17} style={{ verticalAlign: -3, marginRight: 6 }} />隐私与可见性</h2><AppButton className={withAppClass('btn sm primary', 'qa-settings-save')} variant="primary" loading={busy} onClick={saveModel} disabled={busy}>保存</AppButton></div>
               <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>掌控谁能看到你、谁能联系你，以及你的数据如何被使用。设置即时保存于账号。</p>
 
               <div className="field">
@@ -470,21 +616,21 @@ export default function Settings() {
               <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>导出你的全部数据，或清理本机/服务端记录。删除类操作不可撤销，请谨慎执行。</p>
               <div className="priv-data-row">
                 <div><b>导出我的数据</b><div className="muted" style={{ fontSize: 12.5 }}>下载包含资料、设置、角色、剧本与对话的 JSON 备份</div></div>
-                <button className="btn sm" onClick={exportData}><Download size={14} /> 导出 JSON</button>
+                <AppButton className={withAppClass('btn sm', 'qa-settings-data-action')} variant="secondary" onClick={exportData}><Download size={14} /> 导出 JSON</AppButton>
               </div>
               <div className="priv-data-row">
                 <div><b>导入数据</b><div className="muted" style={{ fontSize: 12.5 }}>把导出的 JSON 备份（含网页试玩数据）作为新数据导入本账号</div></div>
                 <input ref={importRef} type="file" accept="application/json,.json" style={{ display: 'none' }}
                   onChange={e => { importData(e.target.files?.[0]); e.target.value = ''; }} />
-                <button className="btn sm" onClick={() => importRef.current?.click()}><Upload size={14} /> 导入 JSON</button>
+                <AppButton className={withAppClass('btn sm', 'qa-settings-data-action')} variant="secondary" onClick={() => importRef.current?.click()}><Upload size={14} /> 导入 JSON</AppButton>
               </div>
               <div className="priv-data-row">
                 <div><b>清除本机浏览痕迹</b><div className="muted" style={{ fontSize: 12.5 }}>清空「最近浏览」等仅存于本设备的记录</div></div>
-                <button className="btn sm" onClick={clearLocal}><EyeOff size={14} /> 清除痕迹</button>
+                <AppButton className={withAppClass('btn sm', 'qa-settings-data-action')} variant="secondary" onClick={clearLocal}><EyeOff size={14} /> 清除痕迹</AppButton>
               </div>
               <div className="priv-data-row">
                 <div><b>清空全部对话记录</b><div className="muted" style={{ fontSize: 12.5 }}>永久删除你与所有角色的对话与消息</div></div>
-                <button className="btn sm danger" onClick={clearConvs}><Trash2 size={14} /> 清空对话</button>
+                <AppButton className={withAppClass('btn sm danger', 'qa-settings-data-action qa-settings-danger')} variant="secondary" tone="danger" onClick={clearConvs}><Trash2 size={14} /> 清空对话</AppButton>
               </div>
             </div>
           </>
@@ -493,7 +639,7 @@ export default function Settings() {
         {tab === 'pref' && (
           <>
           <div className="card stagger-in">
-            <div className="section-title"><h2>偏好设置</h2><button className="btn sm primary" onClick={saveModel} disabled={busy}>保存</button></div>
+            <div className="section-title"><h2>偏好设置</h2><AppButton className={withAppClass('btn sm primary', 'qa-settings-save')} variant="primary" loading={busy} onClick={saveModel} disabled={busy}>保存</AppButton></div>
             <div className="field">
               <label>外观主题</label>
               <div className="theme-seg">
@@ -553,20 +699,22 @@ export default function Settings() {
           <>
             <div className="card" style={{ marginBottom: 16 }}>
               <div className="section-title"><h2><LifeBuoy size={17} style={{ verticalAlign: -3, marginRight: 6 }} />帮助中心</h2>
-                <button className="btn sm" onClick={() => nav('/help')}>打开完整页面</button>
+                <AppButton className={withAppClass('btn sm', 'qa-settings-secondary')} variant="secondary" onClick={() => nav('/help')}>打开完整页面</AppButton>
               </div>
               <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>常见问题与上手指引，支持搜索。也可在登录页直接访问帮助中心与产品功能。</p>
               <HelpCenter />
             </div>
             <div className="card">
               <div className="section-title"><h2><Scale size={17} style={{ verticalAlign: -3, marginRight: 6 }} />关于与条款</h2>
-                <button className="btn sm" onClick={() => nav('/features')}><LayoutGrid size={14} style={{ verticalAlign: -2, marginRight: 4 }} />产品功能</button>
+                <AppButton className={withAppClass('btn sm', 'qa-settings-secondary')} variant="secondary" onClick={() => nav('/features')}><LayoutGrid size={14} style={{ verticalAlign: -2, marginRight: 4 }} />产品功能</AppButton>
               </div>
               <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>本站在中华人民共和国现行法律法规下运行。点击查看平台法律文本：</p>
               <LegalLinks onOpen={setLegal} />
               <div className="muted" style={{ fontSize: 12, marginTop: 14 }}>© 2026 幻域 HUANYU · AI 角色扮演社区平台</div>
             </div>
           </>
+        )}
+        </DetailContainer>
         )}
       </div>
       {legal && <LegalModal docKey={legal} onClose={() => setLegal(null)} onOpen={setLegal} />}

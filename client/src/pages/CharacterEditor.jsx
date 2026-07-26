@@ -10,7 +10,8 @@ import { playAudioUrl, speakBrowser, stopSpeaking } from '../voice.js';
 import { useDraftAutosave, loadDraft, delDraft, listDrafts } from '../drafts.js';
 import { isAppMode } from '../appmode.js';
 import { useUnsavedValue } from '../appNavigation.jsx';
-import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Unlink, BookUp, Globe, Search, Sparkles, Upload } from 'lucide-react';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { Plus, Dices, Music, X, Volume2, RotateCcw, Trash, Unlink, BookUp, Globe, Search, Sparkles, Upload, ArrowLeft, Save } from 'lucide-react';
 import { parseCharacterCard } from '../charcard.js';
 
 // 关联世界书时展示的能力数（与「世界书」页一致，按字段派生）。
@@ -18,6 +19,7 @@ const WB_CAP_KEYS = ['cap_image', 'cap_front', 'cap_overlay', 'cap_recursion', '
 const capCount = (w) => WB_CAP_KEYS.reduce((n, k) => n + (w[k] ? 1 : 0), 0);
 
 const BGM_MAX_SEC = 60;
+const EDITOR_STEPS = ['basic', 'persona', 'world', 'media'];
 
 // Cross-provider voice presets for the character voice picker. The actual
 // provider is whatever the user/platform configured in Settings; these are the
@@ -76,6 +78,7 @@ export default function CharacterEditor() {
   const editing = !!id;
   const nav = useNavigate();
   const toast = useToast();
+  const appMode = isAppMode();
   const [tab, setTab] = useState('basic');
   const [c, setC] = useState(BLANK);
   const [busy, setBusy] = useState(false);
@@ -84,6 +87,8 @@ export default function CharacterEditor() {
   const [voiceCfg, setVoiceCfg] = useState(null);
   const [previewing, setPreviewing] = useState(false);
   const [loaded, setLoaded] = useState(false); // 服务器数据加载完成前不自动存草稿，避免覆盖
+  const [loadError, setLoadError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [draftHint, setDraftHint] = useState(null); // { savedAt } 检测到本地草稿时提示恢复
   const [myWbs, setMyWbs] = useState([]); // 我的世界书列表，供关联选择
   const [showAttach, setShowAttach] = useState(false);
@@ -184,21 +189,30 @@ export default function CharacterEditor() {
   const rollAvatar = () => { set('avatar', randomAnimeAvatar()); toast('已抽到一个头像 🎲'); };
 
   useEffect(() => {
+    let alive = true;
+    setLoaded(false);
+    setLoadError('');
     if (editing) {
       api('/characters/' + id).then(d => {
+        if (!alive) return;
         const next = { ...BLANK, ...d.character, is_public: !!d.character.is_public, world: d.character.world || [] };
         markCharacterClean(next);
         setC(next);
         setLoaded(true);
         const dl = listDrafts('character').find(x => x.key === id); if (dl) setDraftHint(dl);
       })
-        .catch(e => toast(e.message, 'err'));
+        .catch(e => {
+          if (!alive) return;
+          setLoadError(e.message || '角色资料载入失败');
+          toast(e.message, 'err');
+        });
     } else {
       markCharacterClean(BLANK);
       setLoaded(true);
       const dl = listDrafts('character').find(x => x.key === 'new'); if (dl) setDraftHint(dl);
     }
-  }, [id]);
+    return () => { alive = false; };
+  }, [editing, id, loadAttempt, markCharacterClean, toast]);
 
   const restoreDraft = () => { const d = loadDraft('character', draftKey); if (d) { setC({ ...BLANK, ...d }); toast('已恢复草稿，记得保存'); } setDraftHint(null); };
   const discardDraft = () => { delDraft('character', draftKey); setDraftHint(null); toast('草稿已丢弃'); };
@@ -308,6 +322,7 @@ export default function CharacterEditor() {
   };
 
   const save = async () => {
+    if (!loaded || loadError) { toast('角色资料尚未成功载入，不能保存', 'err'); return; }
     if (!c.name.trim()) { toast('请填写角色名', 'err'); setTab('basic'); return; }
     setBusy(true);
     try {
@@ -320,43 +335,110 @@ export default function CharacterEditor() {
     } catch (err) { toast(err.message, 'err'); } finally { setBusy(false); }
   };
 
+  const moveStepFocus = (event, current) => {
+    if (!appMode || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const index = EDITOR_STEPS.indexOf(current);
+    const next = event.key === 'Home' ? 0
+      : event.key === 'End' ? EDITOR_STEPS.length - 1
+        : (index + (event.key === 'ArrowRight' ? 1 : -1) + EDITOR_STEPS.length) % EDITOR_STEPS.length;
+    setTab(EDITOR_STEPS[next]);
+    requestAnimationFrame(() => document.getElementById(`character-editor-tab-${EDITOR_STEPS[next]}`)?.focus());
+  };
+
+  const EditorShell = appMode ? 'div' : React.Fragment;
+
+  if (editing && !loaded) {
+    const retry = () => setLoadAttempt(value => value + 1);
+    return (
+      <div className={appMode ? 'qa-character-editor qa-character-editor--loading' : 'page'}>
+        <div className={appMode ? 'topbar qa-character-editor__topbar' : 'topbar'}>
+          {appMode
+            ? <AppIconButton className="qa-character-editor__back" onClick={() => nav(-1)} label="返回"><ArrowLeft size={20} /></AppIconButton>
+            : <button className="btn ghost sm" onClick={() => nav(-1)}>← 返回</button>}
+          <div style={{ flex: 1 }}><h1>编辑角色</h1><div className="sub">{loadError ? '载入遇到问题' : '正在载入角色资料'}</div></div>
+          <span aria-hidden="true" />
+        </div>
+        {loadError ? (
+          <section className="qa-character-editor__load-error" role="alert">
+            <RotateCcw size={24} aria-hidden="true" />
+            <h2>无法打开这个角色</h2>
+            <p>{loadError}</p>
+            <div>
+              <AppButton variant="primary" onClick={retry}><RotateCcw size={16} /> 重试</AppButton>
+              <AppButton variant="secondary" onClick={() => nav(-1)}>返回</AppButton>
+            </div>
+          </section>
+        ) : (
+          <div className="qa-character-editor__loading-state" aria-busy="true" aria-label="正在载入角色资料">
+            <span className="skel" /><span className="skel" /><span className="skel" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="topbar">
-        <button className="btn ghost sm" onClick={() => nav(-1)}>← 返回</button>
-        <div style={{ flex: 1 }}>
+      <EditorShell {...(appMode ? { className: 'qa-character-editor', 'data-step': tab } : {})}>
+      <div className={appMode ? 'topbar qa-character-editor__topbar' : 'topbar'}>
+        {appMode
+          ? <AppButton className="qa-character-editor__cancel" variant="tertiary" onClick={() => nav(-1)}>取消</AppButton>
+          : <button className="btn ghost sm" onClick={() => nav(-1)}>← 返回</button>}
+        <div className={appMode ? 'qa-character-editor__title' : undefined} style={{ flex: 1 }}>
           <h1>{editing ? '编辑角色' : '新建角色'}</h1>
-          <div className="sub">{c.name || '为你的角色注入灵魂'}</div>
+          <div className="sub">{loaded ? (c.name ? `${c.name} · 已自动暂存` : '未命名 · 已自动暂存') : '正在准备编辑器'}</div>
         </div>
-        {loaded && <span className="draft-badge" title="内容会自动暂存到本机，断网不丢失"><RotateCcw size={12} /> 已自动暂存</span>}
-        <button className="btn sm" onClick={() => cardFileRef.current?.click()} disabled={importingCard}
-          title="导入角色卡（幻域 JSON / 酒馆 JSON / 酒馆 PNG），内容会填入下方表单"><Upload size={14} /> {importingCard ? '导入中…' : '导入卡片'}</button>
+        {appMode
+          ? <div className="qa-character-editor__head-actions">
+              <AppIconButton className="qa-character-editor__import" variant="secondary" loading={importingCard}
+                onClick={() => cardFileRef.current?.click()} disabled={importingCard} label="导入角色卡"
+                title="导入角色卡（幻域 JSON / 酒馆 JSON / 酒馆 PNG），内容会填入下方表单"><Upload size={18} /></AppIconButton>
+              <AppButton className="qa-character-editor__top-save" variant="primary" loading={busy}
+                onClick={save} disabled={busy || !loaded}>保存</AppButton>
+            </div>
+          : <button className="btn sm" onClick={() => cardFileRef.current?.click()} disabled={importingCard}
+              title="导入角色卡（幻域 JSON / 酒馆 JSON / 酒馆 PNG），内容会填入下方表单"><Upload size={14} /> {importingCard ? '导入中…' : '导入卡片'}</button>}
         <input ref={cardFileRef} type="file" accept="application/json,.json,image/png,.png" style={{ display: 'none' }} onChange={importToForm} />
-        <label className="switch">
+        {!appMode && <label className="switch">
           <input type="checkbox" checked={c.is_public} onChange={e => set('is_public', e.target.checked)} />
           <span className="track" /><span style={{ fontSize: 13 }}>公开到广场</span>
-        </label>
-        <button className="btn primary" onClick={save} disabled={busy}>{busy ? '保存中…' : '保存角色'}</button>
+        </label>}
+        {!appMode && <button className="btn primary" onClick={save} disabled={busy || !loaded}>{busy ? '保存中…' : '保存角色'}</button>}
       </div>
 
       {draftHint && (
-        <div className="draft-restore">
+        <div className="draft-restore" role={appMode ? 'status' : undefined}>
           <span>检测到未保存的草稿「{draftHint.name}」（{Math.round((Date.now() - draftHint.savedAt) / 60000)} 分钟前）</span>
-          <button className="btn sm primary" onClick={restoreDraft}><RotateCcw size={13} /> 恢复</button>
-          <button className="btn sm ghost" onClick={discardDraft}><Trash size={13} /> 丢弃</button>
+          <AppButton className="btn sm primary" size="sm" variant="primary" onClick={restoreDraft}><RotateCcw size={13} /> 恢复</AppButton>
+          <AppButton className="btn sm ghost" size="sm" variant="tertiary" onClick={discardDraft}><Trash size={13} /> 丢弃</AppButton>
         </div>
       )}
 
-      <div className="page">
-        <div className="tabs-bar">
-          <button className={tab === 'basic' ? 'active' : ''} onClick={() => setTab('basic')}>基础信息</button>
-          <button className={tab === 'persona' ? 'active' : ''} onClick={() => setTab('persona')}>人设 / 简介</button>
-          <button className={tab === 'world' ? 'active' : ''} onClick={() => setTab('world')}>世界书 ({c.world.length})</button>
-          <button className={tab === 'media' ? 'active' : ''} onClick={() => setTab('media')}>立绘 / 背景</button>
+      <div className={appMode ? 'page qa-character-editor__page' : 'page'}>
+        <div className="tabs-bar" role={appMode ? 'tablist' : undefined} aria-label={appMode ? '角色编辑步骤' : undefined}>
+          <AppButton id={appMode ? 'character-editor-tab-basic' : undefined} className={tab === 'basic' ? 'active' : ''}
+            variant="tertiary" selected={tab === 'basic'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? tab === 'basic' : undefined}
+            aria-controls={appMode ? 'character-editor-panel-basic' : undefined} tabIndex={appMode && tab !== 'basic' ? -1 : undefined}
+            onKeyDown={appMode ? e => moveStepFocus(e, 'basic') : undefined} onClick={() => setTab('basic')}>{appMode ? '基础' : '基础信息'}</AppButton>
+          <AppButton id={appMode ? 'character-editor-tab-persona' : undefined} className={tab === 'persona' ? 'active' : ''}
+            variant="tertiary" selected={tab === 'persona'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? tab === 'persona' : undefined}
+            aria-controls={appMode ? 'character-editor-panel-persona' : undefined} tabIndex={appMode && tab !== 'persona' ? -1 : undefined}
+            onKeyDown={appMode ? e => moveStepFocus(e, 'persona') : undefined} onClick={() => setTab('persona')}>{appMode ? '人设' : '人设 / 简介'}</AppButton>
+          <AppButton id={appMode ? 'character-editor-tab-world' : undefined} className={tab === 'world' ? 'active' : ''}
+            variant="tertiary" selected={tab === 'world'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? tab === 'world' : undefined}
+            aria-controls={appMode ? 'character-editor-panel-world' : undefined} tabIndex={appMode && tab !== 'world' ? -1 : undefined}
+            onKeyDown={appMode ? e => moveStepFocus(e, 'world') : undefined} onClick={() => setTab('world')}>{appMode ? `世界书 ${c.world.length}` : `世界书 (${c.world.length})`}</AppButton>
+          <AppButton id={appMode ? 'character-editor-tab-media' : undefined} className={tab === 'media' ? 'active' : ''}
+            variant="tertiary" selected={tab === 'media'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? tab === 'media' : undefined}
+            aria-controls={appMode ? 'character-editor-panel-media' : undefined} tabIndex={appMode && tab !== 'media' ? -1 : undefined}
+            onKeyDown={appMode ? e => moveStepFocus(e, 'media') : undefined} onClick={() => setTab('media')}>{appMode ? '媒体' : '立绘 / 背景'}</AppButton>
         </div>
 
         {tab === 'basic' && (
-          <div className="editor-grid">
+          <div id={appMode ? 'character-editor-panel-basic' : undefined}
+            className={appMode ? 'editor-grid qa-character-editor__panel' : 'editor-grid'} role={appMode ? 'tabpanel' : undefined}
+            aria-labelledby={appMode ? 'character-editor-tab-basic' : undefined}>
             <div>
               <div className="field"><label>角色名 *</label>
                 <input className="input" value={c.name} onChange={e => set('name', e.target.value)} placeholder="例如：星界旅人 · 莉雅" /></div>
@@ -381,15 +463,16 @@ export default function CharacterEditor() {
                 <div style={{ display: 'grid', placeItems: 'center' }}>
                   <AvatarPicker value={c.avatar} onChange={(url) => set('avatar', url)} size={104} />
                 </div>
-                <button type="button" className="btn sm ghost" style={{ margin: '8px auto 0' }} onClick={rollAvatar}><Dices size={14} /> 随机二次元头像</button>
+                <AppButton type="button" className="btn sm ghost" size="sm" variant="tertiary" style={{ margin: '8px auto 0' }} onClick={rollAvatar}><Dices size={14} /> 随机二次元头像</AppButton>
                 <div className="hint" style={{ textAlign: 'center' }}>可挑选真人风格预设脸模（区分男女）、随机二次元头像，或上传自定义静态图片</div>
               </div>
               <div className="field"><label style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Volume2 size={15} /> 音色调优 <span className="muted">(可选)</span></label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input className="input" style={{ flex: 1 }} value={c.voice_name} onChange={e => set('voice_name', e.target.value)} placeholder="如 Cherry / alloy，留空用默认音色" list="voice-presets" />
-                  <button type="button" className="btn sm" onClick={previewVoice} disabled={previewing} title="试听该音色">
+                  <AppButton type="button" className="btn sm" size="sm" variant="secondary" loading={previewing}
+                    onClick={previewVoice} disabled={previewing} title="试听该音色">
                     <Volume2 size={14} className={previewing ? 'spin' : ''} /> {previewing ? '播放中' : '试听'}
-                  </button>
+                  </AppButton>
                 </div>
                 <datalist id="voice-presets">
                   {VOICE_PRESETS.map(([g, vs]) => vs.map(([v, lb]) => <option key={g + v} value={v}>{g} · {lb}</option>))}
@@ -419,7 +502,9 @@ export default function CharacterEditor() {
         )}
 
         {tab === 'persona' && (
-          <div>
+          <div id={appMode ? 'character-editor-panel-persona' : undefined}
+            className={appMode ? 'qa-character-editor__panel' : undefined} role={appMode ? 'tabpanel' : undefined}
+            aria-labelledby={appMode ? 'character-editor-tab-persona' : undefined}>
             <div className="field"><label>角色简介 <span className="muted">(展示给玩家阅读)</span></label>
               <textarea className="textarea" style={{ minHeight: 120 }} value={c.intro} onChange={e => set('intro', e.target.value)}
                 placeholder="角色的背景故事、外貌、性格…" /></div>
@@ -432,10 +517,12 @@ export default function CharacterEditor() {
         )}
 
         {tab === 'world' && (
-          <div>
+          <div id={appMode ? 'character-editor-panel-world' : undefined}
+            className={appMode ? 'qa-character-editor__panel qa-character-editor__world' : undefined} role={appMode ? 'tabpanel' : undefined}
+            aria-labelledby={appMode ? 'character-editor-tab-world' : undefined}>
             <div className="section-title">
               <h2>内嵌世界书 <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· 基础</span></h2>
-              <button className="btn sm" onClick={addWorld}><Plus size={14} /> 添加条目</button>
+              <AppButton className="btn sm" size="sm" variant="secondary" onClick={addWorld}><Plus size={14} /> 添加条目</AppButton>
             </div>
             <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>
               内嵌条目为「基础模式」：当最近对话中出现「触发关键词」时自动注入设定，留空关键词则为常驻。
@@ -451,7 +538,7 @@ export default function CharacterEditor() {
                     <input type="checkbox" checked={w.enabled !== false} onChange={e => updWorld(i, 'enabled', e.target.checked)} />
                     <span className="track" />
                   </label>
-                  <button className="btn sm danger" onClick={() => delWorld(i)}>删除</button>
+                  <AppButton className="btn sm danger" size="sm" tone="danger" variant="tertiary" onClick={() => delWorld(i)}>删除</AppButton>
                 </div>
                 <textarea className="textarea" placeholder="设定内容，例如：「圣城阿斯特拉位于浮空岛之上，由七位贤者守护…」"
                   value={w.content} onChange={e => updWorld(i, 'content', e.target.value)} />
@@ -462,8 +549,8 @@ export default function CharacterEditor() {
                 <div className="section-title">
                   <h2 style={{ fontSize: 15 }}><Sparkles size={14} style={{ verticalAlign: -2, marginRight: 5, color: 'var(--accent)' }} />关联满血世界书 ({linked.length})</h2>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    {editing && <button className="btn sm" onClick={saveAsWb} disabled={wbBusy} title="把上方内嵌条目另存为独立世界书（即可升级为满血版编辑）"><BookUp size={13} /> 另存为</button>}
-                    <button className="btn sm primary" onClick={openAttach} disabled={wbBusy}><Plus size={13} /> 关联</button>
+                    {editing && <AppButton className="btn sm" size="sm" variant="secondary" onClick={saveAsWb} disabled={wbBusy} title="把上方内嵌条目另存为独立世界书（即可升级为满血版编辑）"><BookUp size={13} /> 另存为</AppButton>}
+                    <AppButton className="btn sm primary" size="sm" variant="primary" selected={showAttach} onClick={openAttach} disabled={wbBusy}><Plus size={13} /> 关联</AppButton>
                   </div>
                 </div>
                 <p className="muted" style={{ fontSize: 12.5, marginTop: -8 }}>
@@ -478,7 +565,8 @@ export default function CharacterEditor() {
                       <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>{w.entry_count || 0} 条</span>
                       {w.is_public ? <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>· 公开</span> : null}
                     </div>
-                    <button className="btn sm ghost danger" onClick={() => detachWb(w.id)} disabled={wbBusy} title="解除关联"><Unlink size={13} /></button>
+                    <AppIconButton className={'btn sm ghost danger' + (appMode ? ' qa-character-editor__unlink' : '')} tone="danger"
+                      onClick={() => detachWb(w.id)} disabled={wbBusy} label={`解除关联 ${w.name}`} title="解除关联"><Unlink size={15} /></AppIconButton>
                   </div>
                 ))}
                 {showAttach && (() => {
@@ -487,8 +575,8 @@ export default function CharacterEditor() {
                   return (
                     <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
                       <div className="seg" style={{ marginBottom: 8 }}>
-                        <button className={attachTab === 'mine' ? 'active' : ''} onClick={() => switchAttachTab('mine')}><BookUp size={12} style={{ verticalAlign: -1, marginRight: 4 }} />我的世界书</button>
-                        <button className={attachTab === 'public' ? 'active' : ''} onClick={() => switchAttachTab('public')}><Globe size={12} style={{ verticalAlign: -1, marginRight: 4 }} />公开广场</button>
+                        <AppButton className={attachTab === 'mine' ? 'active' : ''} variant="tertiary" selected={attachTab === 'mine'} onClick={() => switchAttachTab('mine')}><BookUp size={12} style={{ verticalAlign: -1, marginRight: 4 }} />我的世界书</AppButton>
+                        <AppButton className={attachTab === 'public' ? 'active' : ''} variant="tertiary" selected={attachTab === 'public'} onClick={() => switchAttachTab('public')}><Globe size={12} style={{ verticalAlign: -1, marginRight: 4 }} />公开广场</AppButton>
                       </div>
                       {attachTab === 'public' && (
                         <div className="wb-search" style={{ marginBottom: 8 }}>
@@ -514,9 +602,9 @@ export default function CharacterEditor() {
                               </div>
                             </div>
                           ))}
-                      <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={() => nav('/worldbook/new/edit')} title="去创建一本满血世界书，创建后回到这里关联">
+                      <AppButton className="btn sm ghost" size="sm" variant="tertiary" style={{ marginTop: 8 }} onClick={() => nav('/worldbook/new/edit')} title="去创建一本满血世界书，创建后回到这里关联">
                         <Sparkles size={13} /> 新建满血世界书
-                      </button>
+                      </AppButton>
                     </div>
                   );
                 })()}
@@ -525,15 +613,17 @@ export default function CharacterEditor() {
         )}
 
         {tab === 'media' && (
-          <div className="editor-grid">
+          <div id={appMode ? 'character-editor-panel-media' : undefined}
+            className={appMode ? 'editor-grid qa-character-editor__panel qa-character-editor__media' : 'editor-grid'} role={appMode ? 'tabpanel' : undefined}
+            aria-labelledby={appMode ? 'character-editor-tab-media' : undefined}>
             <div className="field">
               <label>聊天背景（支持动态 GIF / 视频）</label>
               <Uploader value={c.background} type={c.background_type} dynamic
                 onChange={(url, type) => setC(prev => ({ ...prev, background: url, background_type: type }))} />
               <div className="hint">将作为与该角色对话时的沉浸式背景。支持 jpg/png/webp/gif 或 mp4/webm 短视频实现动态背景。</div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+              <div className={appMode ? 'qa-character-editor__preset-head' : undefined} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
                 <label style={{ margin: 0 }}>二次元 / 风景背景预设</label>
-                <button type="button" className="btn sm primary" onClick={rollBg}><Dices size={14} /> 随机生成一张（锁定）</button>
+                <AppButton type="button" className="btn sm primary" size="sm" variant="primary" onClick={rollBg}><Dices size={14} /> 随机生成一张（锁定）</AppButton>
               </div>
               <div className="bg-preset-grid">
                 {BG_PRESETS.map(b => (
@@ -554,9 +644,9 @@ export default function CharacterEditor() {
                   </button>
                 ))}
               </div>
-              <div className="hint">在线图库来自开源社区随机图接口。点击后会立即抓取其中一张并保存为固定背景，之后进入对话不会再变化。若该图源不支持跨域抓取，将退回为随机链接（每次进入可能不同）；需要稳定背景建议直接在上方上传图片 / GIF / MP4。</div>
-              {c.background && <button className="btn sm ghost" style={{ marginTop: 10 }}
-                onClick={() => setC(prev => ({ ...prev, background: '', background_type: 'image' }))}>清除背景</button>}
+              <div className="hint">在线图库来自开源社区随机图接口。点击后会立即抓取其中一张并保存为固定背景，之后进入对话不会再变化。若图源不支持跨域抓取，当前背景会保持不变；可改用下方随机生成、预设或直接上传图片 / GIF / MP4。</div>
+              {c.background && <AppButton className="btn sm ghost" size="sm" variant="tertiary" style={{ marginTop: 10 }}
+                onClick={() => setC(prev => ({ ...prev, background: '', background_type: 'image' }))}>清除背景</AppButton>}
             </div>
             <div className="card">
               <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>预览</label>
@@ -573,32 +663,36 @@ export default function CharacterEditor() {
                 <div className="bgm-row">
                   <audio src={assetUrl(c.bgm)} controls loop preload="metadata" style={{ width: '100%' }} />
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <button type="button" className="btn sm ghost" onClick={() => document.getElementById('bgm-file').click()} disabled={bgmBusy}>{bgmBusy ? '上传中…' : '更换'}</button>
-                    <button type="button" className="btn sm danger" onClick={() => set('bgm', '')}><X size={14} /> 移除</button>
+                    <AppButton type="button" className="btn sm ghost" size="sm" variant="tertiary" loading={bgmBusy}
+                      onClick={() => document.getElementById('bgm-file').click()} disabled={bgmBusy}>{bgmBusy ? '上传中…' : '更换'}</AppButton>
+                    <AppButton type="button" className="btn sm danger" size="sm" tone="danger" variant="tertiary" onClick={() => set('bgm', '')}><X size={14} /> 移除</AppButton>
                   </div>
                 </div>
               ) : (
-                <button type="button" className="btn sm" style={{ marginTop: 8 }} onClick={() => document.getElementById('bgm-file').click()} disabled={bgmBusy}>
+                <AppButton type="button" className="btn sm" size="sm" variant="secondary" loading={bgmBusy}
+                  style={{ marginTop: 8 }} onClick={() => document.getElementById('bgm-file').click()} disabled={bgmBusy}>
                   <Music size={14} /> {bgmBusy ? '上传中…' : '上传背景音乐'}
-                </button>
+                </AppButton>
               )}
               <div className="hint">进入与该角色的对话时自动循环播放（用户可在对话内随时静音）。仅支持音频文件，时长不超过 {BGM_MAX_SEC} 秒。</div>
             </div>
           </div>
         )}
       </div>
+      </EditorShell>
 
       {/* APP 壳吸底保存条：长表单里保存动作始终在拇指区
           （顶部 topbar 的保存按钮保留；Web 壳不渲染此条）。
           portal 到 body：路由容器的入场动画会让 transform 祖先成为 fixed
           的包含块，条会被钉在文档流里而非视口底部。 */}
-      {isAppMode() && createPortal(
-        <div className="app-savebar">
+      {appMode && createPortal(
+        <div className="app-savebar qa-character-editor__savebar" role="toolbar" aria-label="角色保存操作">
           <label className="switch">
             <input type="checkbox" checked={c.is_public} onChange={e => set('is_public', e.target.checked)} />
             <span className="track" /><span style={{ fontSize: 13 }}>公开</span>
           </label>
-          <button className="btn primary" onClick={save} disabled={busy}>{busy ? '保存中…' : '保存角色'}</button>
+          <AppButton className="btn primary qa-character-editor__save" variant="primary" size="lg" loading={busy}
+            onClick={save} disabled={busy || !loaded}><Save size={18} /> {busy ? '保存中…' : '保存角色'}</AppButton>
         </div>,
         document.body
       )}

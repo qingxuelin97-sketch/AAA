@@ -72,6 +72,9 @@ export function initFx() {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     const t = e.target.closest('.btn, .nav-item, .cast-chip, .seg button, .cat-bar button, .send-btn, .task-row .btn, .theme-seg button, .tabs-bar button');
     if (!t || t.disabled || t.classList.contains('no-ripple')) return;
+    // Quiet Aqua owns App control feedback. Do not inject the legacy ripple DOM
+    // into its primitives (including legacy classes retained for Web parity).
+    if (document.documentElement.dataset.app === '1' && t.closest('.qa-button, .qa-icon-button, .qa-tab-button, .app-fab')) return;
     if (getComputedStyle(t).position === 'static') t.style.position = 'relative';
     if (!t.style.overflow) t.style.overflow = 'hidden';
     if (!reduce) spawnRipple(t, e.clientX, e.clientY);

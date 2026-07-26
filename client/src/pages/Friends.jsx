@@ -5,6 +5,10 @@ import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV, CouncilorBadge } from '../ui.jsx';
 import { EmptyArt } from '../art.jsx';
 import { useAutoGrow } from '../util.js';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { isAppMode } from '../appmode.js';
+import { useNav } from '../nav.js';
+import { useAppOverlay } from '../overlay.jsx';
 import {
   Users, UserPlus, Search, Send, Check, X, MessageCircle, ArrowLeft, MoreVertical,
   Trash2, BadgeCheck, Inbox,
@@ -12,6 +16,8 @@ import {
 
 export default function Friends() {
   const toast = useToast();
+  const nav = useNav();
+  const appMode = isAppMode();
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState({ incoming: [], outgoing: [] });
   const [sel, setSel] = useState(null);          // selected friend id
@@ -23,7 +29,14 @@ export default function Friends() {
   const [menu, setMenu] = useState(false);
   const scrollRef = useRef();
   const dmInputRef = useRef();
+  const dmPanelRef = useRef(null);
+  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
   const [params] = useSearchParams();
+  // App 将私信视作联系人列表上的第二层：Android Back / Escape 先关闭
+  // 菜单，再回联系人列表；Web 不注册浮层，继续维持左右分栏。
+  useAppOverlay(appMode && Boolean(sel), () => setSel(null), { rootRef: dmPanelRef });
+  useAppOverlay(appMode && menu, () => setMenu(false), { rootRef: menuRef, returnFocusRef: menuButtonRef });
   // 私信输入框随内容自动增高（与对话页一致），封顶后转内部滚动
   useAutoGrow(dmInputRef, text, 130);
 
@@ -100,19 +113,29 @@ export default function Friends() {
   };
 
   return (
-    <div className={'friends-layout' + (sel ? ' has-dm' : '')}>
+    <div className={(appMode ? 'qa-friends-page ' : '') + 'friends-layout' + (sel ? ' has-dm' : '')}
+      data-view={appMode ? (sel ? 'conversation' : 'contacts') : undefined}>
       {/* ---- left: list ---- */}
       <aside className="fr-list">
-        <div className="fr-list-head">
+        <div className="fr-list-head" role={appMode ? 'toolbar' : undefined} aria-label={appMode ? '好友页面工具栏' : undefined}>
+          {appMode && (
+            <AppIconButton className="fr-page-back" onClick={() => nav('/me')} label="返回我的">
+              <ArrowLeft size={20} />
+            </AppIconButton>
+          )}
           <b><Users size={17} /> 好友 <span className="muted" style={{ fontWeight: 400 }}>{friends.length}</span></b>
-          <button className={'btn sm' + (adding ? ' primary' : '')} onClick={() => { setAdding(a => !a); setQ(''); setResults([]); }}>
+          <AppButton variant="tertiary" selected={adding}
+            className={(appMode ? 'fr-add-toggle ' : '') + 'btn sm' + (adding ? ' primary' : '')}
+            aria-expanded={appMode ? adding : undefined} aria-controls={appMode ? 'friend-add-panel' : undefined}
+            onClick={() => { setAdding(a => !a); setQ(''); setResults([]); }}>
             {adding ? <X size={15} /> : <><UserPlus size={15} /> 添加</>}
-          </button>
+          </AppButton>
         </div>
 
         {adding && (
-          <div className="fr-add">
-            <div className="fr-search"><Search size={15} className="muted" /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="搜索用户名 / 昵称 / ID 添加好友" /></div>
+          <div className="fr-add" id={appMode ? 'friend-add-panel' : undefined}>
+            <div className="fr-search"><Search size={15} className="muted" /><input autoFocus value={q} onChange={e => setQ(e.target.value)}
+              aria-label={appMode ? '搜索要添加的好友' : undefined} placeholder="搜索用户名 / 昵称 / ID 添加好友" /></div>
             <div className="fr-add-results">
               {q.trim() && results.length === 0 && <div className="fr-empty-sm">未找到用户</div>}
               {results.map(u => (
@@ -121,7 +144,7 @@ export default function Friends() {
                   <div className="fr-add-tx"><b>{u.display_name}</b><span>@{u.username}</span></div>
                   {friendSet.has(u.id) ? <span className="fr-tag">已是好友</span>
                     : outSet.has(u.id) ? <span className="fr-tag">待通过</span>
-                      : <button className="btn sm primary" onClick={() => addFriend(u.id)}><UserPlus size={13} /> 加好友</button>}
+                      : <AppButton className="btn sm primary" size="sm" variant="primary" onClick={() => addFriend(u.id)}><UserPlus size={13} /> 加好友</AppButton>}
                 </div>
               ))}
             </div>
@@ -137,8 +160,8 @@ export default function Friends() {
                   <Avatar src={r.avatar} name={r.display_name} size={38} />
                   <div className="fr-req-tx"><b>{r.display_name}<CreatorV tier={r.creator_tier} size={12} /></b><span>申请加你为好友</span></div>
                   <div className="fr-req-acts">
-                    <button className="fr-ok" onClick={() => respond(r.req_id, 'accept')} title="接受"><Check size={16} /></button>
-                    <button className="fr-no" onClick={() => respond(r.req_id, 'reject')} title="忽略"><X size={16} /></button>
+                    <AppIconButton className="fr-ok" variant="filled" onClick={() => respond(r.req_id, 'accept')} label="接受好友申请" title="接受"><Check size={16} /></AppIconButton>
+                    <AppIconButton className="fr-no" onClick={() => respond(r.req_id, 'reject')} label="忽略好友申请" title="忽略"><X size={16} /></AppIconButton>
                   </div>
                 </div>
               ))}
@@ -149,32 +172,47 @@ export default function Friends() {
             <div className="fr-empty"><EmptyArt kind="friends" size={116} />还没有好友<br /><span>点击右上角「添加」结识新朋友</span></div>
           ) : (
             friends.map(f => (
-              <button key={f.id} className={'fr-item' + (sel === f.id ? ' active' : '')} onClick={() => setSel(f.id)}>
+              <AppButton key={f.id} variant="tertiary" selected={sel === f.id}
+                className={'fr-item' + (sel === f.id ? ' active' : '')} onClick={() => setSel(f.id)}>
                 <div className="fr-ava"><Avatar src={f.avatar} name={f.display_name} size={44} />{f.online && <span className="fr-on" />}</div>
                 <div className="fr-item-tx">
                   <b>{f.display_name}{f.verified && <BadgeCheck size={12} style={{ color: 'var(--diamond)' }} />}<CreatorV tier={f.creator_tier} size={11} />{f.is_councilor && <CouncilorBadge size={10} />}</b>
                   <span>{f.last_message ? (f.last_message.mine ? '我：' : '') + f.last_message.text : (f.online ? '在线' : '离线')}</span>
                 </div>
                 {f.unread > 0 && <span className="fr-unread">{f.unread}</span>}
-              </button>
+              </AppButton>
             ))
           )}
         </div>
       </aside>
 
       {/* ---- right: DM ---- */}
-      <section className="fr-dm">
+      <section className="fr-dm" ref={dmPanelRef} tabIndex={appMode ? -1 : undefined}
+        aria-label={appMode && dm?.peer ? `与 ${dm.peer.display_name} 的私信` : undefined}>
         {!sel || !dm ? (
-          <div className="fr-dm-empty"><EmptyArt kind="chat" />选择一位好友开始私聊</div>
+          appMode && sel
+            ? <div className="fr-dm-empty" role="status">正在打开对话…</div>
+            : <div className="fr-dm-empty"><EmptyArt kind="chat" />选择一位好友开始私聊</div>
         ) : (
           <>
-            <div className="fr-dm-head">
-              <button className="btn ghost sm mobile-only" onClick={() => setSel(null)}><ArrowLeft size={16} /></button>
+            <div className="fr-dm-head" role={appMode ? 'toolbar' : undefined} aria-label={appMode ? '私信会话工具栏' : undefined}>
+              <AppIconButton className={'btn ghost sm mobile-only' + (appMode ? ' fr-dm-back' : '')} onClick={() => setSel(null)} label="返回好友列表">
+                <ArrowLeft size={20} />
+              </AppIconButton>
               <div className="fr-ava"><Avatar src={dm.peer.avatar} name={dm.peer.display_name} size={40} />{dm.peer.online && <span className="fr-on" />}</div>
               <div className="fr-dm-nm"><b>{dm.peer.display_name}<CreatorV tier={dm.peer.creator_tier} size={12} /></b><span>{dm.peer.online ? '在线' : '离线'}</span></div>
               <div className="fr-menu-wrap">
-                <button className="speak fr-menu-btn" onClick={() => setMenu(o => !o)}><MoreVertical size={18} /></button>
-                {menu && <><div className="fr-menu-mask" onClick={() => setMenu(false)} /><div className="fr-menu"><button className="danger" onClick={() => unfriend(dm.peer.id)}><Trash2 size={14} /> 解除好友</button></div></>}
+                <AppIconButton ref={menuButtonRef} className="speak fr-menu-btn" selected={menu}
+                  onClick={() => setMenu(o => !o)} label="会话选项" aria-expanded={appMode ? menu : undefined}
+                  aria-haspopup={appMode ? 'menu' : undefined} aria-controls={appMode ? 'friend-conversation-menu' : undefined}>
+                  <MoreVertical size={20} />
+                </AppIconButton>
+                {menu && <><div className="fr-menu-mask" onClick={() => setMenu(false)} />
+                  <div className="fr-menu" id={appMode ? 'friend-conversation-menu' : undefined} ref={menuRef}
+                    role={appMode ? 'menu' : undefined} tabIndex={appMode ? -1 : undefined}>
+                    <AppButton className="danger" tone="danger" variant="tertiary" role={appMode ? 'menuitem' : undefined}
+                      onClick={() => unfriend(dm.peer.id)}><Trash2 size={14} /> 解除好友</AppButton>
+                  </div></>}
               </div>
             </div>
 
@@ -190,8 +228,9 @@ export default function Friends() {
 
             <div className="fr-dm-input">
               <textarea ref={dmInputRef} rows={1} value={text} enterKeyHint="send" onChange={e => setText(e.target.value)} placeholder={dm.can_dm ? `给 ${dm.peer.display_name} 发消息…` : '对方不接受私信'} disabled={!dm.can_dm}
+                aria-label={appMode ? `给 ${dm.peer.display_name} 发消息` : undefined}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
-              <button className="send-btn" onClick={send} disabled={!text.trim() || !dm.can_dm}><Send size={17} /></button>
+              <AppIconButton className="send-btn" variant="filled" onClick={send} disabled={!text.trim() || !dm.can_dm} label="发送消息"><Send size={19} /></AppIconButton>
             </div>
           </>
         )}

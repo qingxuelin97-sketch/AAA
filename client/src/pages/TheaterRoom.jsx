@@ -8,6 +8,8 @@ import { useKeyboardInsetBar } from '../mobile.js';
 import { speakBrowser, stopSpeaking, onVoiceStateChange, currentVoiceId } from '../voice.js';
 import StageEditor from '../components/StageEditor.jsx';
 import NovelWorldEditor from '../components/NovelWorldEditor.jsx';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { isAppMode } from '../appmode.js';
 import { Send, Sparkles, ArrowLeft, Feather, Users, LogOut, BookOpen, Zap, ZapOff, ChevronRight,
   Palette, Image as ImageIcon, MoreVertical, RotateCcw, Copy, Download, Type, Shuffle, ArrowDown,
   List, Wand2, Smile, Volume2, Square, BookmarkPlus, Music, Clapperboard, Flag, Trash2, X, RefreshCw } from 'lucide-react';
@@ -36,12 +38,15 @@ const parseReactions = (r) => {
 export default function TheaterRoom() {
   const { id } = useParams();
   const { user } = useAuth();
+  const appMode = isAppMode();
   const nav = useNavigate();
   const toast = useToast();
   const [data, setData] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [acting, setActing] = useState(false);
+  const [sending, setSending] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [autoFlow, setAutoFlow] = useState(() => localStorage.getItem('inovel_autoflow') !== '0');
@@ -68,12 +73,20 @@ export default function TheaterRoom() {
   const lastId = useRef(0);
   const atBottomRef = useRef(true);
   const restoredRef = useRef(false);                       // 已按保存的进度定位，首屏别再跳底部
+  const actionLockRef = useRef(false);
+  const autoFlowTimerRef = useRef(0);
+  const joinedRef = useRef(false);
 
   // 移动端软键盘适配：输入栏顶在键盘上方（与对话页同一套稳健实现）。
   useKeyboardInsetBar(barRef, [id]);
 
   useEffect(() => onVoiceStateChange(() => setSpeakingId(currentVoiceId())), []);
   useEffect(() => () => stopSpeaking(), [id]);
+  useEffect(() => () => {
+    clearTimeout(autoFlowTimerRef.current);
+    autoFlowTimerRef.current = 0;
+    actionLockRef.current = false;
+  }, [id]);
 
   const leave = async () => {
     setMenuOpen(false);
@@ -89,6 +102,7 @@ export default function TheaterRoom() {
   };
 
   const load = async () => {
+    setLoadError('');
     try {
       const d = await api('/theater/' + id);
       setData(d);
@@ -100,8 +114,11 @@ export default function TheaterRoom() {
         status: d.theater?.status || 'ongoing', bgm: d.theater?.bgm || ''
       });
       lastId.current = d.messages.length ? d.messages[d.messages.length - 1].id : 0;
-      if (!d.joined) api('/theater/' + id + '/join', { method: 'POST' }).catch(() => {});
-    } catch (e) { toast(e.message, 'err'); }
+      joinedRef.current = !!d.joined;
+    } catch (e) {
+      setLoadError(e.message || '故事载入失败');
+      toast(e.message, 'err');
+    }
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
 
@@ -134,7 +151,7 @@ export default function TheaterRoom() {
   // 智能跟随：仅当读者已在底部附近时自动滚到最新，避免回看历史被强行拉走。
   const scrollToBottom = (behavior = 'smooth') => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
   useEffect(() => { atBottomRef.current = atBottom; }, [atBottom]);
-  useEffect(() => { if (atBottomRef.current && !restoredRef.current) scrollToBottom(); restoredRef.current = false; }, [messages, acting]);
+  useEffect(() => { if (atBottomRef.current && !restoredRef.current) scrollToBottom(); restoredRef.current = false; }, [messages, acting, sending]);
   const onScroll = () => {
     const el = scrollRef.current; if (!el) return;
     setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 120);
@@ -172,46 +189,91 @@ export default function TheaterRoom() {
   const setFont = (v) => { setFontSize(v); localStorage.setItem(FONT_KEY, v); };
   const toggleSerif = () => setSerif(v => { const n = !v; localStorage.setItem(SERIF_KEY, n ? '1' : '0'); return n; });
 
+  const ensureJoined = async () => {
+    if (joinedRef.current) return;
+    await api('/theater/' + id + '/join', { method: 'POST' });
+    joinedRef.current = true;
+    setData(current => current ? { ...current, joined: true } : current);
+  };
+
+  const beginAction = () => {
+    if (actionLockRef.current) return false;
+    clearTimeout(autoFlowTimerRef.current);
+    autoFlowTimerRef.current = 0;
+    actionLockRef.current = true;
+    return true;
+  };
+
+  const endAction = () => { actionLockRef.current = false; };
+  const operationId = () => {
+    try { return crypto.randomUUID(); }
+    catch { return `theater-${id}-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+  };
+
   // 让旁白 / 某个角色续写一段。
   const advance = async (body, label) => {
-    if (acting) return;
+    if (!beginAction()) return false;
     stick(); setActing(label || '旁白');
-    try { const d = await api('/theater/' + id + '/act', { method: 'POST', body: body || { narrator: true } }); push(d.message); }
-    catch (e) { toast(e.message, 'err'); } finally { setActing(false); }
+    try {
+      await ensureJoined();
+      const d = await api('/theater/' + id + '/act', {
+        method: 'POST',
+        body: { ...(body || { narrator: true }), operation_id: operationId() },
+      });
+      push(d.message);
+      return true;
+    }
+    catch (e) { toast(e.message, 'err'); return false; }
+    finally { setActing(false); endAction(); }
   };
   // 随机挑一位登场角色接话，制造意外。
   const randomCharacter = () => {
-    if (!cast.length || acting) return;
+    if (!cast.length || actionLockRef.current) return;
     const c = cast[Math.floor(Math.random() * cast.length)];
     advance({ character_id: c.id }, c.name);
   };
   // 重写最近一段 AI 续写（不满意时换一种写法）。
   const retry = async () => {
-    if (acting) return;
+    if (!beginAction()) return;
     stick(); setActing('重写');
     try {
-      const d = await api('/theater/' + id + '/retry', { method: 'POST', body: {} });
+      await ensureJoined();
+      const d = await api('/theater/' + id + '/retry', { method: 'POST', body: { operation_id: operationId() } });
       setMessages(m => [...m.filter(x => x.id !== d.removedId), d.message]);
       lastId.current = Math.max(lastId.current, d.message.id);
-    } catch (e) { toast(e.message, 'err'); } finally { setActing(false); }
+    } catch (e) { toast(e.message, 'err'); } finally { setActing(false); endAction(); }
   };
 
   // 你写下一段行动 / 台词；可选地自动让旁白续写后果，形成「行动 → 后果」的互动循环。
   const say = async (textArg) => {
     const content = (textArg ?? input).trim();
-    if (!content || acting) return;
+    if (!content || !beginAction()) return;
     if (textArg == null) setInput('');
-    stick();
+    stick(); setSending(true);
+    let sent = false;
     try {
-      const d = await api('/theater/' + id + '/say', { method: 'POST', body: { content } });
+      await ensureJoined();
+      const d = await api('/theater/' + id + '/say', { method: 'POST', body: { content, operation_id: operationId() } });
       push(d.message);
-      if (autoFlow) setTimeout(() => advance(undefined, '旁白'), 120);
-    } catch (e) { toast(e.message, 'err'); }
+      sent = true;
+    } catch (e) {
+      if (textArg == null) setInput(current => current.trim() ? current : content);
+      toast(e.message, 'err');
+    } finally {
+      setSending(false);
+      endAction();
+    }
+    if (sent && autoFlow) {
+      autoFlowTimerRef.current = setTimeout(() => {
+        autoFlowTimerRef.current = 0;
+        void advance(undefined, '旁白');
+      }, 180);
+    }
   };
 
   // —— 命运抉择：AI 生成三个候选行动，选中即作为「你」的行动发出。
   const fetchChoices = async () => {
-    if (acting || choices === 'loading') return;
+    if (actionLockRef.current || choices === 'loading') return;
     setChoices('loading');
     try { const d = await api('/theater/' + id + '/choices', { method: 'POST', body: {} }); setChoices(d.choices); }
     catch (e) { toast(e.message, 'err'); setChoices(null); }
@@ -327,12 +389,44 @@ export default function TheaterRoom() {
   // 首个旁白段落用于首字下沉装饰。
   const firstNarrIdx = useMemo(() => messages.findIndex(m => m.sender_type === 'narrator'), [messages]);
 
-  if (!data) return <div className="empty" style={{ paddingTop: 120 }}>翻开书页…</div>;
+  if (!data) {
+    if (appMode) {
+      return (
+        <main className={'qa-theater-room-loading' + (loadError ? ' is-error' : '')} role={loadError ? 'alert' : 'status'} aria-label={loadError ? '故事载入失败' : '正在翻开故事'}>
+          <header className="qa-theater-room-head">
+            <AppIconButton label="返回故事书架" onClick={() => nav('/theater')}><ArrowLeft size={21} /></AppIconButton>
+            <div className="qa-theater-room-head-title"><b>互动小说</b><span>{loadError ? '载入遇到问题' : '正在翻开书页'}</span></div>
+            <span className="qa-theater-room-head-spacer" aria-hidden="true" />
+          </header>
+          {loadError ? (
+            <section className="qa-theater-room-load-error">
+              <RefreshCw size={24} aria-hidden="true" />
+              <h1>暂时无法翻开这部故事</h1>
+              <p>{loadError}</p>
+              <AppButton variant="primary" onClick={load}><RefreshCw size={16} /> 重试</AppButton>
+            </section>
+          ) : (
+            <div className="qa-theater-room-loading-body" aria-hidden="true">
+              <span className="skel qa-theater-room-loading-kicker" />
+              <span className="skel qa-theater-room-loading-title" />
+              <span className="skel qa-theater-room-loading-line" />
+              <span className="skel qa-theater-room-loading-passage" />
+              <span className="skel qa-theater-room-loading-passage is-short" />
+            </div>
+          )}
+        </main>
+      );
+    }
+    return loadError
+      ? <div className="empty" style={{ paddingTop: 120 }}>{loadError}<button className="btn" onClick={load}>重试</button></div>
+      : <div className="empty" style={{ paddingTop: 120 }}>翻开书页…</div>;
+  }
   const { theater, cast } = data;
   const isOwner = user && theater.owner_id === user.id;
   const finished = (director.status || theater.status) === 'finished';
   const lastMsg = messages[messages.length - 1];
   const canRetry = !finished && !!lastMsg && (lastMsg.sender_type === 'ai' || lastMsg.sender_type === 'narrator');
+  const actionBusy = !!acting || sending;
 
   const reactionBar = (m) => {
     const rx = parseReactions(m.reactions);
@@ -348,33 +442,60 @@ export default function TheaterRoom() {
       </div>
     );
   };
-  const passageActs = (m) => (
-    <div className="inovel-acts">
-      <button onClick={() => copyPassage(m.content)} title="复制本段"><Copy size={12} /> 复制</button>
-      <button onClick={() => speakPassage(m)} title={speakingId === 'th-' + m.id ? '停止朗读' : '朗读本段'}>
-        {speakingId === 'th-' + m.id ? <><Square size={11} /> 停止</> : <><Volume2 size={12} /> 朗读</>}
-      </button>
-      <span className="inovel-rx-wrap">
-        <button onClick={() => setReactFor(reactFor === m.id ? null : m.id)} title="回应本段"><Smile size={12} /> 回应</button>
-        {reactFor === m.id && (
-          <>
-            <span className="react-mask" onClick={() => setReactFor(null)} />
-            <span className="react-pop inovel-react-pop">
-              {REACT_EMOJI.map(e => {
-                const rx = parseReactions(m.reactions);
-                return <button key={e} className={(rx[e] || []).includes(user.id) ? 'on' : ''} onClick={() => react(m, e)}>{e}</button>;
-              })}
-            </span>
-          </>
-        )}
-      </span>
-    </div>
-  );
+  const passageActs = (m) => {
+    if (appMode) {
+      return (
+        <div className="inovel-acts qa-theater-passage-actions">
+          <AppButton variant="tertiary" size="sm" onClick={() => copyPassage(m.content)}><Copy size={14} /> 复制</AppButton>
+          <AppButton variant="tertiary" size="sm" onClick={() => speakPassage(m)}>
+            {speakingId === 'th-' + m.id ? <><Square size={13} /> 停止</> : <><Volume2 size={14} /> 朗读</>}
+          </AppButton>
+          <span className="inovel-rx-wrap">
+            <AppButton variant="tertiary" size="sm" selected={reactFor === m.id} onClick={() => setReactFor(reactFor === m.id ? null : m.id)}><Smile size={14} /> 回应</AppButton>
+            {reactFor === m.id && (
+              <>
+                <span className="react-mask" onClick={() => setReactFor(null)} />
+                <span className="react-pop inovel-react-pop qa-theater-reaction-pop" role="menu" aria-label="选择回应">
+                  {REACT_EMOJI.map(e => {
+                    const rx = parseReactions(m.reactions);
+                    return <button key={e} className={(rx[e] || []).includes(user.id) ? 'on' : ''} onClick={() => react(m, e)} aria-label={`回应 ${e}`}>{e}</button>;
+                  })}
+                </span>
+              </>
+            )}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="inovel-acts">
+        <button onClick={() => copyPassage(m.content)} title="复制本段"><Copy size={12} /> 复制</button>
+        <button onClick={() => speakPassage(m)} title={speakingId === 'th-' + m.id ? '停止朗读' : '朗读本段'}>
+          {speakingId === 'th-' + m.id ? <><Square size={11} /> 停止</> : <><Volume2 size={12} /> 朗读</>}
+        </button>
+        <span className="inovel-rx-wrap">
+          <button onClick={() => setReactFor(reactFor === m.id ? null : m.id)} title="回应本段"><Smile size={12} /> 回应</button>
+          {reactFor === m.id && (
+            <>
+              <span className="react-mask" onClick={() => setReactFor(null)} />
+              <span className="react-pop inovel-react-pop">
+                {REACT_EMOJI.map(e => {
+                  const rx = parseReactions(m.reactions);
+                  return <button key={e} className={(rx[e] || []).includes(user.id) ? 'on' : ''} onClick={() => react(m, e)}>{e}</button>;
+                })}
+              </span>
+            </>
+          )}
+        </span>
+      </div>
+    );
+  };
 
   let chapterCounter = 0;
 
   return (
-    <div className="chat-layout immersive inovel">
+    <div className={appMode ? 'chat-layout immersive inovel qa-theater-room' : 'chat-layout immersive inovel'}>
       <div className="chat-main">
         <div className="chat-bg inovel-bg" aria-hidden="true">
           {stageBg.url
@@ -392,51 +513,66 @@ export default function TheaterRoom() {
             .chat-menu-wrap —— wrap 是 38px 按钮的相对定位容器，inset:0 的
             遮罩会缩成按钮大小的一块，APP 壳的 blur(6px) 让它变成盖在按钮上
             的「方形模糊块」（实机 bug）。 */}
-        {menuOpen && <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />}
+        {!appMode && menuOpen && <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />}
 
-        {/* 取消整条标题栏：功能键悬浮成独立 UI，阅读区直通到顶，空间更宽阔。标题已在封面区呈现。 */}
-        <div className="inovel-topbar">
-          <button className="inovel-fab" onClick={() => nav('/theater')} title="返回"><ArrowLeft size={17} /></button>
-          <div className="inovel-topbar-actions">
-            {theater.bgm && (
-              <button className={'inovel-fab' + (bgmOn ? ' on' : '')} onClick={toggleBgm} title={bgmOn ? '关闭背景音乐' : '播放背景音乐'}>
-                <Music size={16} />
-              </button>
-            )}
-            <button className={'inovel-fab' + (tocOpen ? ' on' : '')} onClick={() => setTocOpen(o => !o)} title="目录"><List size={16} /></button>
-            <button className={'inovel-fab' + (autoFlow ? ' on' : '')} onClick={toggleAuto} title={autoFlow ? '自动续写：开' : '自动续写：关'}>
-              {autoFlow ? <Zap size={16} /> : <ZapOff size={16} />}
-            </button>
-            <div className="chat-menu-wrap">
-              <button className={'inovel-fab' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
-              {menuOpen && (
-                <>
-                  <div className="chat-menu">
-                    <div className="chat-menu-row"><span><Type size={15} /> 字号</span>
-                      <div className="seg seg-mini">
-                        {[['sm', '小'], ['md', '中'], ['lg', '大']].map(([v, l]) => (
-                          <button key={v} className={fontSize === v ? 'active' : ''} onClick={() => setFont(v)}>{l}</button>
-                        ))}
-                      </div>
-                    </div>
-                    <button onClick={toggleSerif}><Feather size={15} /> 衬线字体 <span className={'chat-menu-toggle' + (serif ? ' on' : '')}>{serif ? '已开启' : '已关闭'}</span></button>
-                    <div className="chat-menu-sep" />
-                    <button onClick={() => { setShowMembers(v => !v); setMenuOpen(false); }}><Users size={15} /> 读者列表（{data.members.length}）</button>
-                    {isOwner && !finished && <button onClick={insertChapter}><BookmarkPlus size={15} /> 插入章节分隔</button>}
-                    <button onClick={() => exportAs('md')}><Download size={15} /> 导出为 Markdown</button>
-                    <button onClick={() => exportAs('txt')}><Download size={15} /> 导出为 TXT</button>
-                    {isOwner && <button onClick={() => { setStageOpen(true); setStageTab('director'); setMenuOpen(false); }}><Clapperboard size={15} /> 导演台 · 舞台设定</button>}
-                    <div className="chat-menu-sep" />
-                    {isOwner
-                      ? <button className="danger" onClick={removeWork}><Trash2 size={15} /> 删除整部作品</button>
-                      : <button className="danger" onClick={leave}><LogOut size={15} /> 离开故事</button>}
-                  </div>
-                </>
+        {appMode ? (
+          <header className="qa-theater-room-head">
+            <AppIconButton label="返回故事书架" onClick={() => nav('/theater')}><ArrowLeft size={21} /></AppIconButton>
+            <div className="qa-theater-room-head-title">
+              <b>{theater.name}</b>
+              <span>{finished ? '已完结' : sending ? '正在发送你的行动' : acting ? `${acting}正在续写` : '互动阅读'}</span>
+            </div>
+            <div className="qa-theater-room-head-actions">
+              <AppIconButton label="打开目录" selected={tocOpen} pressed={tocOpen} onClick={() => { setTocOpen(true); setShowMembers(false); setMenuOpen(false); }}><List size={20} /></AppIconButton>
+              <AppIconButton label="查看读者" selected={showMembers} pressed={showMembers} onClick={() => { setShowMembers(true); setTocOpen(false); setMenuOpen(false); }}><Users size={20} /></AppIconButton>
+              <AppIconButton label="更多阅读设置" selected={menuOpen} pressed={menuOpen} onClick={() => { setMenuOpen(true); setTocOpen(false); setShowMembers(false); }}><MoreVertical size={20} /></AppIconButton>
+            </div>
+          </header>
+        ) : (
+          /* 取消整条标题栏：功能键悬浮成独立 UI，阅读区直通到顶，空间更宽阔。标题已在封面区呈现。 */
+          <div className="inovel-topbar">
+            <button className="inovel-fab" onClick={() => nav('/theater')} title="返回"><ArrowLeft size={17} /></button>
+            <div className="inovel-topbar-actions">
+              {theater.bgm && (
+                <button className={'inovel-fab' + (bgmOn ? ' on' : '')} onClick={toggleBgm} title={bgmOn ? '关闭背景音乐' : '播放背景音乐'}>
+                  <Music size={16} />
+                </button>
               )}
+              <button className={'inovel-fab' + (tocOpen ? ' on' : '')} onClick={() => setTocOpen(o => !o)} title="目录"><List size={16} /></button>
+              <button className={'inovel-fab' + (autoFlow ? ' on' : '')} onClick={toggleAuto} title={autoFlow ? '自动续写：开' : '自动续写：关'}>
+                {autoFlow ? <Zap size={16} /> : <ZapOff size={16} />}
+              </button>
+              <div className="chat-menu-wrap">
+                <button className={'inovel-fab' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
+                {menuOpen && (
+                  <>
+                    <div className="chat-menu">
+                      <div className="chat-menu-row"><span><Type size={15} /> 字号</span>
+                        <div className="seg seg-mini">
+                          {[['sm', '小'], ['md', '中'], ['lg', '大']].map(([v, l]) => (
+                            <button key={v} className={fontSize === v ? 'active' : ''} onClick={() => setFont(v)}>{l}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <button onClick={toggleSerif}><Feather size={15} /> 衬线字体 <span className={'chat-menu-toggle' + (serif ? ' on' : '')}>{serif ? '已开启' : '已关闭'}</span></button>
+                      <div className="chat-menu-sep" />
+                      <button onClick={() => { setShowMembers(v => !v); setMenuOpen(false); }}><Users size={15} /> 读者列表（{data.members.length}）</button>
+                      {isOwner && !finished && <button onClick={insertChapter}><BookmarkPlus size={15} /> 插入章节分隔</button>}
+                      <button onClick={() => exportAs('md')}><Download size={15} /> 导出为 Markdown</button>
+                      <button onClick={() => exportAs('txt')}><Download size={15} /> 导出为 TXT</button>
+                      {isOwner && <button onClick={() => { setStageOpen(true); setStageTab('director'); setMenuOpen(false); }}><Clapperboard size={15} /> 导演台 · 舞台设定</button>}
+                      <div className="chat-menu-sep" />
+                      {isOwner
+                        ? <button className="danger" onClick={removeWork}><Trash2 size={15} /> 删除整部作品</button>
+                        : <button className="danger" onClick={leave}><LogOut size={15} /> 离开故事</button>}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        {showMembers && (
+        )}
+        {!appMode && showMembers && (
           <>
             <div className="chat-menu-mask" onClick={() => setShowMembers(false)} />
             <div className="inovel-members">
@@ -453,7 +589,7 @@ export default function TheaterRoom() {
         )}
 
         {/* —— 目录抽屉：章节导航 + 全书统计 —— */}
-        {tocOpen && (
+        {!appMode && tocOpen && (
           <>
             <div className="chat-menu-mask" onClick={() => setTocOpen(false)} />
             <div className="inovel-toc">
@@ -481,6 +617,93 @@ export default function TheaterRoom() {
               {toc.chapters.length === 0 && <div className="inovel-toc-empty">尚未分章{isOwner ? ' —— 可在菜单里「插入章节分隔」' : ''}</div>}
             </div>
           </>
+        )}
+
+        {appMode && tocOpen && (
+          <Modal onClose={() => setTocOpen(false)} className="qa-theater-sheet qa-theater-toc-sheet" backdropClassName="qa-theater-sheet-backdrop">
+            <header className="qa-theater-sheet-head">
+              <div><span><List size={14} /> 阅读导航</span><h2>目录</h2></div>
+              <AppIconButton label="关闭目录" onClick={() => setTocOpen(false)}><X size={20} /></AppIconButton>
+            </header>
+            <div className="qa-theater-toc-stats">
+              {toc.chapters.length > 0 && <span>{toc.chapters.length + 1} 卷章</span>}
+              <span>{toc.passages} 段</span>
+              <span>{toc.chars >= 10000 ? (toc.chars / 10000).toFixed(1) + ' 万' : toc.chars} 字</span>
+              {finished && <span className="is-finished"><Flag size={12} /> 已完结</span>}
+            </div>
+            <nav className="qa-theater-toc-list" aria-label="章节目录">
+              <AppButton variant="tertiary" onClick={() => { setTocOpen(false); scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                <i>序</i><span>序章{theater.scene ? ' · ' + theater.scene.slice(0, 14) : ''}</span><ChevronRight size={17} />
+              </AppButton>
+              {toc.chapters.map(chapter => (
+                <AppButton key={chapter.id} variant="tertiary" onClick={() => {
+                  setTocOpen(false);
+                  document.getElementById('pass-' + chapter.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}>
+                  <i>{chapter.n}</i><span>{chapter.title}</span><ChevronRight size={17} />
+                </AppButton>
+              ))}
+              {toc.chapters.length === 0 && <p className="qa-theater-sheet-empty">尚未分章{isOwner ? '，可从更多菜单插入章节。' : '。'}</p>}
+            </nav>
+          </Modal>
+        )}
+
+        {appMode && showMembers && (
+          <Modal onClose={() => setShowMembers(false)} className="qa-theater-sheet qa-theater-members-sheet" backdropClassName="qa-theater-sheet-backdrop">
+            <header className="qa-theater-sheet-head">
+              <div><span><Users size={14} /> 共读</span><h2>读者 · {data.members.length}</h2></div>
+              <AppIconButton label="关闭读者列表" onClick={() => setShowMembers(false)}><X size={20} /></AppIconButton>
+            </header>
+            <div className="qa-theater-members-list">
+              {data.members.map((member, index) => (
+                <div className="qa-theater-member" key={member.id || index}>
+                  <Avatar src={member.avatar} name={member.display_name} size={40} />
+                  <span>{member.display_name || '读者'}</span>
+                  {member.id === theater.owner_id && <small>作者</small>}
+                </div>
+              ))}
+              {data.members.length === 0 && <p className="qa-theater-sheet-empty">暂时没有其他读者。</p>}
+            </div>
+          </Modal>
+        )}
+
+        {appMode && menuOpen && (
+          <Modal onClose={() => setMenuOpen(false)} className="qa-theater-sheet qa-theater-more-sheet" backdropClassName="qa-theater-sheet-backdrop">
+            <header className="qa-theater-sheet-head">
+              <div><span><MoreVertical size={14} /> 阅读工具</span><h2>更多</h2></div>
+              <AppIconButton label="关闭更多设置" onClick={() => setMenuOpen(false)}><X size={20} /></AppIconButton>
+            </header>
+
+            <section className="qa-theater-setting-group" aria-labelledby="qa-theater-font-setting">
+              <div className="qa-theater-setting-label" id="qa-theater-font-setting"><Type size={17} /> 正文字号</div>
+              <div className="qa-theater-font-segment" role="group" aria-label="正文字号">
+                {[['sm', '小'], ['md', '中'], ['lg', '大']].map(([value, label]) => (
+                  <AppButton key={value} variant="tertiary" selected={fontSize === value} pressed={fontSize === value} onClick={() => setFont(value)}>{label}</AppButton>
+                ))}
+              </div>
+              <AppButton className="qa-theater-setting-row" variant="tertiary" selected={serif} pressed={serif} onClick={toggleSerif}>
+                <Feather size={18} /><span>衬线字体</span><small>{serif ? '已开启' : '已关闭'}</small>
+              </AppButton>
+              <AppButton className="qa-theater-setting-row" variant="tertiary" selected={autoFlow} pressed={autoFlow} onClick={toggleAuto}>
+                {autoFlow ? <Zap size={18} /> : <ZapOff size={18} />}<span>行动后自动续写</span><small>{autoFlow ? '已开启' : '已关闭'}</small>
+              </AppButton>
+              {theater.bgm && (
+                <AppButton className="qa-theater-setting-row" variant="tertiary" selected={bgmOn} pressed={bgmOn} onClick={toggleBgm}>
+                  <Music size={18} /><span>背景音乐</span><small>{bgmOn ? '播放中' : '已关闭'}</small>
+                </AppButton>
+              )}
+            </section>
+
+            <section className="qa-theater-tool-list" aria-label="作品工具">
+              {isOwner && !finished && <AppButton variant="secondary" onClick={insertChapter}><BookmarkPlus size={18} /> 插入章节分隔</AppButton>}
+              <AppButton variant="secondary" onClick={() => exportAs('md')}><Download size={18} /> 导出 Markdown</AppButton>
+              <AppButton variant="secondary" onClick={() => exportAs('txt')}><Download size={18} /> 导出 TXT</AppButton>
+              {isOwner && <AppButton variant="secondary" onClick={() => { setStageOpen(true); setStageTab('director'); setMenuOpen(false); }}><Clapperboard size={18} /> 导演台与舞台设定</AppButton>}
+              {isOwner
+                ? <AppButton variant="danger" tone="danger" onClick={removeWork}><Trash2 size={18} /> 删除整部作品</AppButton>
+                : <AppButton variant="danger" tone="danger" onClick={leave}><LogOut size={18} /> 离开故事</AppButton>}
+            </section>
+          </Modal>
         )}
 
         <div className="chat-scroll inovel-scroll" ref={scrollRef} onScroll={onScroll}>
@@ -564,7 +787,55 @@ export default function TheaterRoom() {
 
         {theater.bgm && <audio ref={bgmRef} src={assetUrl(theater.bgm)} loop preload="none" />}
 
-        {!finished && (
+        {!finished && (appMode ? (
+          <div className="chat-input-bar inovel-bar qa-theater-composer" ref={barRef}>
+            {choices && (
+              <section className="qa-theater-choice-panel" aria-labelledby="qa-theater-choice-title">
+                <header>
+                  <span id="qa-theater-choice-title"><Wand2 size={15} /> 命运抉择</span>
+                  <AppIconButton label="收起命运抉择" onClick={() => setChoices(null)}><X size={18} /></AppIconButton>
+                </header>
+                {choices === 'loading'
+                  ? <div className="qa-theater-choice-loading">正在编织新的可能…</div>
+                  : (
+                    <div className="qa-theater-choice-list">
+                      {choices.map((choice, index) => (
+                        <AppButton key={index} variant="tertiary" onClick={() => pickChoice(choice)}>
+                          <i>{['壹', '贰', '叁'][index] || index + 1}</i><span>{choice}</span><ChevronRight size={17} />
+                        </AppButton>
+                      ))}
+                      <AppButton variant="secondary" onClick={fetchChoices}><RefreshCw size={15} /> 换一批命运</AppButton>
+                    </div>
+                  )}
+              </section>
+            )}
+
+            <div className="qa-theater-quick-actions" aria-label="续写操作">
+              <AppButton variant="primary" disabled={actionBusy} onClick={() => advance(undefined, '旁白')}><Sparkles size={16} /> 推进剧情</AppButton>
+              <AppButton variant="tertiary" selected={Boolean(choices)} disabled={actionBusy} onClick={() => choices ? setChoices(null) : fetchChoices()}><Wand2 size={16} /> 命运抉择</AppButton>
+              {cast.map(character => (
+                <AppButton key={character.id} variant="tertiary" disabled={actionBusy} onClick={() => advance({ character_id: character.id }, character.name)}>
+                  <Avatar src={character.avatar} name={character.name} size={22} /> {character.name}
+                </AppButton>
+              ))}
+              {cast.length > 1 && <AppButton variant="tertiary" disabled={actionBusy} onClick={randomCharacter}><Shuffle size={16} /> 随机</AppButton>}
+              {canRetry && <AppButton variant="tertiary" disabled={actionBusy} onClick={retry}><RotateCcw size={16} /> 重写</AppButton>}
+            </div>
+
+            <div className="qa-theater-action-hints" aria-label="行动建议">
+              {ACTION_HINTS.map(hint => (
+                <AppButton key={hint} variant="tertiary" size="sm" disabled={actionBusy} onClick={() => say(hint)}>{hint}</AppButton>
+              ))}
+            </div>
+
+            <div className="qa-theater-input-island">
+              <textarea rows={1} value={input} placeholder="写下你的行动或台词…" aria-label="行动或台词"
+                enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
+                onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); say(); } }} />
+              <AppIconButton label="发送行动或台词" variant="filled" loading={sending} onClick={() => say()} disabled={!input.trim() || actionBusy}><Send size={19} /></AppIconButton>
+            </div>
+          </div>
+        ) : (
           <div className="chat-input-bar inovel-bar" ref={barRef}>
             {/* —— 命运抉择面板 —— */}
             {choices && (
@@ -588,27 +859,27 @@ export default function TheaterRoom() {
               </div>
             )}
             <div className="inovel-choices">
-              <button className="inovel-chip primary" disabled={!!acting} onClick={() => advance(undefined, '旁白')}>
+              <button className="inovel-chip primary" disabled={actionBusy} onClick={() => advance(undefined, '旁白')}>
                 <Sparkles size={13} /> 推进剧情
               </button>
-              <button className={'inovel-chip fate' + (choices ? ' on' : '')} disabled={!!acting} onClick={() => choices ? setChoices(null) : fetchChoices()} title="AI 生成三个候选行动">
+              <button className={'inovel-chip fate' + (choices ? ' on' : '')} disabled={actionBusy} onClick={() => choices ? setChoices(null) : fetchChoices()} title="AI 生成三个候选行动">
                 <Wand2 size={13} /> 命运抉择
               </button>
               {cast.map(c => (
-                <button key={c.id} className="inovel-chip" disabled={!!acting} onClick={() => advance({ character_id: c.id }, c.name)}>
+                <button key={c.id} className="inovel-chip" disabled={actionBusy} onClick={() => advance({ character_id: c.id }, c.name)}>
                   <Avatar src={c.avatar} name={c.name} size={18} /> {c.name}
                 </button>
               ))}
               {cast.length > 1 && (
-                <button className="inovel-chip" disabled={!!acting} onClick={randomCharacter} title="随机一位角色接话"><Shuffle size={13} /> 随机</button>
+                <button className="inovel-chip" disabled={actionBusy} onClick={randomCharacter} title="随机一位角色接话"><Shuffle size={13} /> 随机</button>
               )}
               {canRetry && (
-                <button className="inovel-chip" disabled={!!acting} onClick={retry} title="重写最近一段"><RotateCcw size={13} /> 重写</button>
+                <button className="inovel-chip" disabled={actionBusy} onClick={retry} title="重写最近一段"><RotateCcw size={13} /> 重写</button>
               )}
             </div>
             <div className="inovel-hints">
               {ACTION_HINTS.map(h => (
-                <button key={h} className="inovel-hint" disabled={!!acting} onClick={() => say(h)}><ChevronRight size={11} /> {h}</button>
+                <button key={h} className="inovel-hint" disabled={actionBusy} onClick={() => say(h)}><ChevronRight size={11} /> {h}</button>
               ))}
             </div>
             <div className="box">
@@ -618,16 +889,21 @@ export default function TheaterRoom() {
               <button className="send-btn" onClick={() => say()} disabled={!input.trim()}><Send size={17} /></button>
             </div>
           </div>
-        )}
+        ))}
 
-        {finished && (
+        {finished && (appMode ? (
+          <div className="chat-input-bar inovel-bar inovel-bar-fin qa-theater-finished-bar" ref={barRef}>
+            <span><Flag size={16} /> 本作已完结</span>
+            {isOwner && <AppButton variant="secondary" onClick={() => { setStageOpen(true); setStageTab('director'); }}>重新开启连载</AppButton>}
+          </div>
+        ) : (
           <div className="chat-input-bar inovel-bar inovel-bar-fin" ref={barRef}>
             <div className="inovel-fin-bar">
               <Flag size={14} /> 本作已完结
               {isOwner && <button className="btn sm ghost" onClick={() => { setStageOpen(true); setStageTab('director'); }}>重新开启连载</button>}
             </div>
           </div>
-        )}
+        ))}
       </div>
 
       {stageOpen && (

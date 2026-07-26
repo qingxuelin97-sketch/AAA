@@ -72,7 +72,7 @@ export function useOverlayStack() {
 
 // Registers an already-rendered overlay without mutating browser history.
 // Focus is moved into it and restored to the launcher when the overlay closes.
-export function useAppOverlay(open, onClose, { rootRef, isolate = false } = {}) {
+export function useAppOverlay(open, onClose, { rootRef, isolate = false, returnFocusRef } = {}) {
   const enabled = isAppMode();
   const stack = useContext(OverlayContext);
   const register = stack?.register;
@@ -82,7 +82,7 @@ export function useAppOverlay(open, onClose, { rootRef, isolate = false } = {}) 
 
   useEffect(() => {
     if (!enabled || !open || !register) return undefined;
-    const previousFocus = document.activeElement;
+    const previousFocus = returnFocusRef?.current || document.activeElement;
     const unregister = register({
       id: idRef.current,
       close: () => closeRef.current?.(),
@@ -100,9 +100,22 @@ export function useAppOverlay(open, onClose, { rootRef, isolate = false } = {}) 
     return () => {
       cancelAnimationFrame(raf);
       unregister();
-      if (previousFocus?.isConnected) requestAnimationFrame(() => previousFocus.focus?.({ preventScroll: true }));
+      // Unregistering the stack and removing `inert` are separate React
+      // effects. Focusing during the intervening frame is rejected by the
+      // browser and silently falls back to <body>, so retry for a few frames
+      // until the application root is interactive again.
+      const restore = (attempt = 0) => {
+        if (!previousFocus?.isConnected) return;
+        const appRoot = document.getElementById('root');
+        if (appRoot?.inert && attempt < 6) {
+          requestAnimationFrame(() => restore(attempt + 1));
+          return;
+        }
+        previousFocus.focus?.({ preventScroll: true });
+      };
+      requestAnimationFrame(() => restore());
     };
-  }, [enabled, open, register, rootRef, isolate]);
+  }, [enabled, open, register, rootRef, isolate, returnFocusRef]);
 
   useEffect(() => {
     if (!enabled || !open || !rootRef?.current) return undefined;

@@ -1,0 +1,900 @@
+/* Quiet Aqua controls. Every selector is fenced to the App shell. */
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button) {
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  border: 0;
+  box-sizing: border-box;
+  font: inherit;
+  text-decoration: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button)::before,
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button)::after {
+  content: none !important;
+  animation: none !important;
+}
+
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):focus-visible {
+  outline: 2px solid var(--qa-focus) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px var(--qa-surface);
+}
+
+html[data-app="1"] .qa-button {
+  position: relative;
+  display: inline-flex;
+  min-width: var(--qa-control-min);
+  min-height: var(--qa-control-min);
+  align-items: center;
+  justify-content: center;
+  gap: var(--qa-space-2);
+  padding: 0 var(--qa-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--qa-radius-control);
+  background: var(--qa-surface);
+  color: var(--qa-ink);
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    transform var(--qa-duration-press) var(--qa-ease-out),
+    background-color var(--qa-duration-state) var(--qa-ease-out),
+    border-color var(--qa-duration-state) var(--qa-ease-out),
+    color var(--qa-duration-state) var(--qa-ease-out),
+    box-shadow var(--qa-duration-state) var(--qa-ease-out);
+}
+
+html[data-app="1"] .qa-button--sm {
+  min-height: var(--qa-control-min);
+  padding-inline: var(--qa-space-3);
+  font-size: 13px;
+}
+
+html[data-app="1"] .qa-button--lg {
+  min-height: var(--qa-control-submit);
+  padding-inline: var(--qa-space-5);
+  font-size: 15px;
+}
+
+html[data-app="1"] .qa-button--primary {
+  background: var(--qa-action-fill);
+  color: var(--qa-action-ink);
+}
+
+html[data-app="1"] .qa-button--secondary {
+  border-color: var(--qa-hairline);
+  background: var(--qa-surface);
+  color: var(--qa-ink);
+}
+
+html[data-app="1"] .qa-button--tertiary {
+  background: var(--qa-grouped);
+  color: var(--qa-ink);
+}
+
+html[data-app="1"] .qa-button--danger,
+html[data-app="1"] .qa-button.qa-tone--danger {
+  background: var(--qa-danger);
+  color: var(--qa-danger-ink);
+}
+
+html[data-app="1"] .qa-button[data-selected] {
+  border-color: color-mix(in srgb, var(--qa-action-fill) 24%, transparent);
+  background: var(--qa-action-soft);
+  color: var(--qa-action-fill);
+}
+
+html[data-app="1"] .qa-button__content,
+html[data-app="1"] .qa-icon-button__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--qa-space-2);
+}
+
+html[data-app="1"] :where(.qa-button, .qa-icon-button)[data-loading]
+  :where(.qa-button__content, .qa-icon-button__content) {
+  visibility: hidden;
+}
+
+html[data-app="1"] .qa-spinner {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: qa-spin 700ms linear infinite;
+}
+
+html[data-app="1"] .qa-icon-button {
+  position: relative;
+  display: inline-flex;
+  width: var(--qa-control-min);
+  height: var(--qa-control-min);
+  min-width: var(--qa-control-min);
+  min-height: var(--qa-control-min);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--qa-radius-control);
+  background: transparent;
+  color: var(--qa-ink-secondary);
+  box-shadow: none;
+  transition:
+    transform var(--qa-duration-press) var(--qa-ease-out),
+    background-color var(--qa-duration-state) var(--qa-ease-out),
+    border-color var(--qa-duration-state) var(--qa-ease-out),
+    color var(--qa-duration-state) var(--qa-ease-out);
+}
+
+html[data-app="1"] .qa-icon-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+html[data-app="1"] .qa-icon-button--secondary {
+  border-color: var(--qa-hairline);
+  background: var(--qa-surface);
+}
+
+html[data-app="1"] .qa-icon-button--filled {
+  background: var(--qa-action-fill);
+  color: var(--qa-action-ink);
+}
+
+html[data-app="1"] .qa-icon-button[data-selected] {
+  background: var(--qa-action-soft);
+  color: var(--qa-action-fill);
+}
+
+html[data-app="1"] .qa-icon-button.qa-tone--danger {
+  color: var(--qa-danger);
+}
+
+html[data-app="1"] .qa-icon-button--filled.qa-tone--danger {
+  background: var(--qa-danger);
+  color: var(--qa-danger-ink);
+}
+
+html[data-app="1"] .qa-tab-button {
+  position: relative;
+  display: flex;
+  min-width: var(--qa-control-min);
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px 4px;
+  border-radius: var(--qa-radius-control);
+  background: transparent;
+  color: var(--qa-ink-tertiary);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.1;
+  transition:
+    transform var(--qa-duration-press) var(--qa-ease-out),
+    background-color var(--qa-duration-state) var(--qa-ease-out),
+    color var(--qa-duration-state) var(--qa-ease-out);
+}
+
+html[data-app="1"] .qa-tab-button__icon {
+  position: relative;
+  display: grid;
+  width: 32px;
+  height: 26px;
+  place-items: center;
+}
+
+html[data-app="1"] .qa-tab-button__glyph {
+  display: grid;
+  place-items: center;
+}
+
+html[data-app="1"] .qa-tab-button__label {
+  white-space: nowrap;
+}
+
+html[data-app="1"] .qa-tab-button[data-selected] {
+  background: var(--qa-action-soft);
+  color: var(--qa-action-fill);
+}
+
+html[data-app="1"] .qa-tab-button__badge {
+  position: absolute;
+  top: -4px;
+  left: 21px;
+  display: inline-flex;
+  min-width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--qa-chrome);
+  border-radius: var(--qa-radius-pill);
+  background: var(--qa-unread);
+  color: var(--qa-unread-ink);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):disabled,
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button)[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.45;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):disabled {
+  pointer-events: none;
+}
+
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):active:not(:disabled):not([aria-disabled="true"]) {
+  transform: scale(0.97) !important;
+  transition-duration: var(--qa-duration-press);
+}
+
+html[data-app="1"] .qa-button--primary:active:not(:disabled),
+html[data-app="1"] .qa-icon-button--filled:active:not(:disabled) {
+  background: var(--qa-action-pressed);
+}
+
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):active * {
+  transform: none !important;
+}
+
+html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button)
+  :where(svg, .qa-button__content, .qa-icon-button__content, .qa-tab-button__icon) {
+  animation: none !important;
+}
+
+/* Four destinations plus a separate creation action. */
+html[data-app="1"] .app-dock {
+  position: fixed;
+  z-index: 260;
+  left: 50%;
+  bottom: var(--qa-dock-bottom);
+  width: min(calc(100% - 36px), 390px);
+  height: var(--qa-dock-height);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+html[data-app="1"] .app-dock .app-tabbar {
+  position: absolute !important;
+  inset: 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 72px repeat(2, minmax(0, 1fr));
+  align-items: center;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 6px !important;
+  border: 1px solid var(--qa-hairline) !important;
+  border-radius: 24px !important;
+  background: var(--qa-chrome) !important;
+  box-shadow: var(--qa-shadow-2) !important;
+  backdrop-filter: blur(20px) saturate(1.25);
+  -webkit-backdrop-filter: blur(20px) saturate(1.25);
+  transform: none !important;
+  pointer-events: auto;
+}
+
+html[data-app="1"] .app-dock .app-tabbar::before,
+html[data-app="1"] .app-dock .app-tabbar::after {
+  content: none !important;
+}
+
+html[data-app="1"] .app-dock-gap {
+  display: block;
+  width: 72px;
+  height: 1px;
+  pointer-events: none;
+}
+
+html[data-app="1"] .app-dock .dock-ink {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  display: block !important;
+  border: 1px solid color-mix(in srgb, var(--qa-action-fill) 18%, transparent);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 10%, rgb(255 255 255 / 56%), transparent 58%),
+    color-mix(in srgb, var(--qa-action-soft) 82%, transparent);
+  box-shadow: inset 0 1px rgb(255 255 255 / 70%), 0 4px 12px rgb(8 85 80 / 8%);
+  opacity: 0;
+  transition:
+    transform 420ms cubic-bezier(.2, .9, .22, 1.16),
+    width 420ms cubic-bezier(.2, .9, .22, 1.16),
+    height 280ms var(--qa-ease-out),
+    top 280ms var(--qa-ease-out),
+    opacity 160ms ease-out;
+  pointer-events: none;
+}
+
+html[data-app="1"] .app-dock .app-tab {
+  position: relative;
+  z-index: 1;
+  width: auto !important;
+  min-width: 0;
+  height: 54px !important;
+  padding: 3px !important;
+  color: var(--qa-ink-tertiary) !important;
+}
+
+html[data-app="1"] .app-dock .app-tab.active {
+  color: var(--qa-action-fill) !important;
+  background: transparent !important;
+}
+
+html[data-app="1"] .app-dock .app-tab.active .qa-tab-button__glyph {
+  transform: translateY(-1px) scale(1.06);
+}
+
+html[data-app="1"] .app-dock .qa-tab-button__glyph {
+  transition: transform 320ms cubic-bezier(.2, .9, .22, 1.2);
+}
+
+html[data-app="1"] .app-dock .app-tab::before,
+html[data-app="1"] .app-dock .app-tab::after {
+  content: none !important;
+}
+
+html[data-app="1"] .app-dock .app-tab-ic {
+  display: contents;
+}
+
+html[data-app="1"] .app-dock .app-dot {
+  display: none;
+}
+
+html[data-app="1"] .app-dock .app-fab {
+  position: absolute !important;
+  z-index: 2;
+  top: -4px !important;
+  left: 50% !important;
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 52px;
+  min-height: 52px;
+  margin: 0 !important;
+  border: 1.5px solid var(--qa-semantic-blue) !important;
+  border-radius: 50% !important;
+  background:
+    radial-gradient(circle at 34% 22%, rgb(255 255 255 / 92%), transparent 38%),
+    rgb(255 255 255 / 92%) !important;
+  color: var(--qa-semantic-blue) !important;
+  box-shadow: 0 0 0 7px var(--qa-canvas), 0 8px 20px rgb(30 80 104 / 18%) !important;
+  transform: translateX(-50%) !important;
+  pointer-events: auto;
+}
+
+html[data-app="1"] .app-dock .app-fab:active {
+  background: var(--qa-semantic-blue-soft) !important;
+  color: var(--qa-semantic-blue) !important;
+  transform: translateX(-50%) scale(0.97) !important;
+}
+
+html[data-app="1"] .app-dock .app-fab.open {
+  transform: translateX(-50%) rotate(90deg) !important;
+}
+
+html[data-app="1"] .app-dock .app-fab:not(:active) {
+  transition:
+    transform 420ms cubic-bezier(.2, .9, .22, 1.2),
+    background-color 180ms ease-out,
+    box-shadow 220ms ease-out;
+}
+
+html[data-app="1"] .app-dock .app-fab svg {
+  margin: 0 !important;
+  transform: none !important;
+}
+
+html[data-app="1"] .app-fab-ai {
+  display: none !important;
+}
+
+html[data-app="1"] .app-root:has(.immersive) .app-dock,
+html[data-app="1"] .app-root:has(.pl-immersive) .app-dock,
+html[data-app="1"] .app-root:has(.atl-ws) .app-dock,
+html[data-app="1"] .app-root:has(.atl-read-page) .app-dock {
+  display: none;
+}
+
+/* Create sheet: one material and one accent language. */
+html[data-app="1"] .app-sheet-mask {
+  z-index: 420;
+  background: var(--qa-scrim);
+}
+
+html[data-app="1"] .app-sheet {
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+  border: 1px solid var(--qa-hairline);
+  border-radius: var(--qa-radius-sheet) var(--qa-radius-sheet) 0 0;
+  background: var(--qa-overlay) !important;
+  color: var(--qa-ink);
+  box-shadow: var(--qa-shadow-3);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+}
+
+html[data-app="1"] .app-sheet-head {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qa-space-3);
+}
+
+html[data-app="1"] .app-sheet-title {
+  margin: 0;
+  color: var(--qa-ink);
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+html[data-app="1"] .app-sheet-grip {
+  width: 36px;
+  height: 5px;
+  margin: 0 auto 4px;
+  border-radius: var(--qa-radius-pill);
+  background: var(--qa-hairline);
+}
+
+html[data-app="1"] .app-create-row {
+  width: 100%;
+  min-height: 60px;
+  justify-content: flex-start;
+  margin: 4px 0;
+  padding: 8px 10px;
+  border: 1px solid transparent !important;
+  border-radius: 16px !important;
+  background: var(--qa-surface) !important;
+  color: var(--qa-ink) !important;
+  box-shadow: none !important;
+  text-align: left;
+}
+
+html[data-app="1"] .app-create-row .qa-button__content {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+html[data-app="1"] .app-create-row .ac-ic {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  flex: 0 0 42px;
+  border-radius: var(--qa-radius-control);
+  background: var(--qa-action-soft) !important;
+  color: var(--qa-action-fill) !important;
+}
+
+html[data-app="1"] .app-create-row .ac-tx {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+html[data-app="1"] .app-create-row .ac-tx b {
+  color: var(--qa-ink);
+  font-size: 15px;
+}
+
+html[data-app="1"] .app-create-row .ac-tx small {
+  color: var(--qa-ink-secondary);
+  font-size: 12px;
+}
+
+/* Today controls: opaque surfaces, fixed semantic states, no rainbow index. */
+html[data-app="1"] .apphome {
+  background: var(--qa-canvas);
+  color: var(--qa-ink);
+}
+
+html[data-app="1"] .aht-acts {
+  display: flex;
+  gap: 4px;
+}
+
+html[data-app="1"] .aht-acts .qa-icon-button {
+  color: var(--qa-ink-secondary);
+}
+
+html[data-app="1"] .aht-acts .aht-nb {
+  background: var(--qa-unread);
+  color: var(--qa-unread-ink);
+}
+
+html[data-app="1"] .ah-avatar.qa-icon-button {
+  width: 52px;
+  height: 52px;
+  border-radius: 17px;
+}
+
+html[data-app="1"] .ah-wallet {
+  gap: var(--qa-space-2);
+}
+
+html[data-app="1"] .ah-coin.qa-button {
+  min-height: var(--qa-control-min);
+  padding-inline: var(--qa-space-3);
+  border: 1px solid var(--qa-hairline) !important;
+  background: var(--qa-surface) !important;
+  color: var(--qa-ink) !important;
+  box-shadow: var(--qa-shadow-1);
+}
+
+html[data-app="1"] .ah-checkin.qa-button {
+  min-height: var(--qa-control-min);
+  background: var(--qa-action-fill) !important;
+  color: var(--qa-action-ink) !important;
+  box-shadow: none !important;
+}
+
+html[data-app="1"] .ah-checkin.qa-button.done {
+  border-color: color-mix(in srgb, var(--qa-success) 24%, transparent) !important;
+  background: var(--qa-success-soft) !important;
+  color: var(--qa-success) !important;
+}
+
+html[data-app="1"] .ah-shortcuts {
+  gap: var(--qa-space-2);
+}
+
+html[data-app="1"] .ah-sc.qa-button {
+  min-width: 0;
+  min-height: 82px;
+  padding: 10px 4px;
+  border: 1px solid var(--qa-hairline) !important;
+  border-radius: var(--qa-radius-card) !important;
+  background: var(--qa-surface) !important;
+  color: var(--qa-ink-secondary) !important;
+  box-shadow: var(--qa-shadow-1) !important;
+  font-size: 11px;
+}
+
+html[data-app="1"] .ah-sc .qa-button__content {
+  flex-direction: column;
+  gap: 7px;
+}
+
+html[data-app="1"] .ah-sc .ah-sc-ic {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--qa-action-soft) !important;
+  color: var(--qa-action-fill) !important;
+  box-shadow: none !important;
+}
+
+html[data-app="1"] .ah-sc .ah-sc-ic::after {
+  content: none !important;
+}
+
+html[data-app="1"] .ah-more.qa-button {
+  min-height: var(--qa-control-min);
+  padding-inline: var(--qa-space-3);
+  background: transparent !important;
+  color: var(--qa-action-fill) !important;
+}
+
+/* Authentication: segmented semantics stay owned by the integration markup. */
+html[data-app="1"] .auth-wrap {
+  background: var(--qa-canvas);
+  color: var(--qa-ink);
+}
+
+html[data-app="1"] .auth-orbs {
+  display: none !important;
+}
+
+html[data-app="1"] .auth-card {
+  border: 1px solid var(--qa-hairline) !important;
+  background: var(--qa-surface) !important;
+  box-shadow: var(--qa-shadow-2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-app="1"] .auth-tabs {
+  min-height: 52px;
+  padding: 4px;
+  border: 1px solid var(--qa-hairline);
+  border-radius: 16px;
+  background: var(--qa-grouped);
+}
+
+html[data-app="1"] .auth-tabs .qa-button {
+  z-index: 1;
+  min-height: var(--qa-control-min);
+  flex: 1;
+  background: transparent !important;
+  color: var(--qa-ink-secondary) !important;
+  box-shadow: none !important;
+}
+
+html[data-app="1"] .auth-tabs .qa-button[data-selected] {
+  background: var(--qa-surface) !important;
+  color: var(--qa-ink) !important;
+  box-shadow: var(--qa-shadow-1) !important;
+}
+
+html[data-app="1"] .auth-tab-ink {
+  display: none !important;
+}
+
+html[data-app="1"] .affix-btn.qa-icon-button {
+  width: var(--qa-control-min);
+  height: var(--qa-control-min);
+  color: var(--qa-ink-secondary);
+}
+
+html[data-app="1"] .auth-submit.qa-button {
+  min-height: var(--qa-control-submit) !important;
+  border: 0 !important;
+  background: var(--qa-action-fill) !important;
+  color: var(--qa-action-ink) !important;
+  box-shadow: none !important;
+}
+
+html[data-app="1"] .auth-submit::after {
+  content: none !important;
+}
+
+html[data-app="1"] .auth-explore {
+  gap: var(--qa-space-2);
+}
+
+html[data-app="1"] .auth-explore-btn.qa-button {
+  min-height: var(--qa-control-min);
+  border: 1px solid var(--qa-hairline);
+  background: var(--qa-surface);
+  color: var(--qa-ink-secondary);
+}
+
+/* Chat chrome only; bubbles and message content intentionally remain untouched. */
+html[data-app="1"] .chat-head .chat-back.qa-icon-button,
+html[data-app="1"] .chat-tools .qa-icon-button {
+  width: var(--qa-control-min) !important;
+  height: var(--qa-control-min) !important;
+  min-width: var(--qa-control-min);
+  min-height: var(--qa-control-min);
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html[data-app="1"] .chat-tools {
+  gap: 4px;
+}
+
+html[data-app="1"] .chat-tool.qa-icon-button.on {
+  background: var(--qa-action-soft) !important;
+  color: var(--qa-action-fill) !important;
+}
+
+html[data-app="1"] .chat-tool.qa-icon-button::after {
+  content: none !important;
+}
+
+html[data-app="1"] .chat-head .ch-av .avatar {
+  animation: none !important;
+}
+
+html[data-app="1"] .chat-input-bar {
+  border-color: var(--qa-hairline) !important;
+  background: var(--qa-chrome) !important;
+  box-shadow: var(--qa-shadow-2) !important;
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+
+html[data-app="1"] .chat-input-bar .act-btn.qa-icon-button {
+  width: var(--qa-control-min) !important;
+  height: var(--qa-control-min) !important;
+  min-width: var(--qa-control-min);
+  min-height: var(--qa-control-min);
+  flex: 0 0 var(--qa-control-min) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: var(--qa-ink-secondary) !important;
+}
+
+html[data-app="1"] .chat-input-bar .act-btn.qa-icon-button.on {
+  background: var(--qa-action-soft) !important;
+  color: var(--qa-action-fill) !important;
+}
+
+html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button {
+  width: var(--qa-control-min) !important;
+  height: var(--qa-control-min) !important;
+  min-width: var(--qa-control-min);
+  min-height: var(--qa-control-min);
+  flex: 0 0 var(--qa-control-min) !important;
+  margin: 0 !important;
+  border-radius: 14px !important;
+  background: var(--qa-action-fill) !important;
+  color: var(--qa-action-ink) !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button.stop {
+  background: var(--qa-danger) !important;
+  color: var(--qa-danger-ink) !important;
+}
+
+html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button:disabled {
+  background: var(--qa-grouped) !important;
+  color: var(--qa-ink-tertiary) !important;
+  opacity: 1;
+}
+
+/* Contact sheet used for code review and browser screenshot baselines. */
+html[data-app="1"] .qa-gallery {
+  min-height: 100%;
+  padding: max(18px, env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
+  background: var(--qa-canvas);
+  color: var(--qa-ink);
+}
+
+html[data-app="1"] .qa-gallery__frame {
+  width: min(100%, 390px);
+  margin: 0 auto;
+}
+
+html[data-app="1"] .qa-gallery__header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+html[data-app="1"] .qa-gallery__header h1 {
+  margin: 0;
+  text-align: center;
+  font-family: inherit;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+html[data-app="1"] .qa-gallery__section {
+  margin: 12px 0;
+  padding: 16px;
+  border: 1px solid var(--qa-hairline);
+  border-radius: var(--qa-radius-card);
+  background: var(--qa-surface);
+  box-shadow: var(--qa-shadow-1);
+}
+
+html[data-app="1"] .qa-gallery__section h2 {
+  margin: 0 0 12px;
+  color: var(--qa-ink-secondary);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html[data-app="1"] .qa-gallery__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qa-space-2);
+}
+
+html[data-app="1"] .qa-gallery__tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--qa-grouped);
+}
+
+html[data-app="1"] .qa-gallery__note {
+  margin: 10px 0 0;
+  color: var(--qa-ink-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+html[data-app="1"] .qa-gallery__swatches {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--qa-space-2);
+}
+
+html[data-app="1"] .qa-gallery__swatch {
+  min-height: 58px;
+  padding: var(--qa-space-2);
+  border: 1px solid var(--qa-hairline);
+  border-radius: var(--qa-radius-control);
+  background: var(--qa-surface);
+  color: var(--qa-ink);
+  font-size: 10px;
+}
+
+html[data-app="1"] .qa-gallery__swatch--canvas { background: var(--qa-canvas); }
+html[data-app="1"] .qa-gallery__swatch--grouped { background: var(--qa-grouped); }
+html[data-app="1"] .qa-gallery__swatch--surface { background: var(--qa-surface); }
+html[data-app="1"] .qa-gallery__swatch--action { background: var(--qa-action-fill); color: var(--qa-action-ink); }
+html[data-app="1"] .qa-gallery__swatch--danger { background: var(--qa-danger); color: var(--qa-danger-ink); }
+html[data-app="1"] .qa-gallery__swatch--success { background: var(--qa-success); color: var(--qa-success-ink); }
+html[data-app="1"] .qa-gallery__swatch--reward { background: var(--qa-reward); color: var(--qa-reward-ink); }
+html[data-app="1"] .qa-gallery__swatch--unread { background: var(--qa-unread); color: var(--qa-unread-ink); }
+
+/* Lite is intentionally opaque. Balanced retains one sampled navigation layer
+   so the control plane still responds to moving content beneath it. */
+html[data-app="1"][data-perf="lite"] .app-dock .app-tabbar,
+html[data-app="1"][data-perf="lite"] .app-sheet,
+html[data-app="1"][data-perf="lite"] .chat-input-bar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html[data-app="1"] .qa-button--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--qa-action-fill) 90%, var(--qa-ink));
+  }
+
+  html[data-app="1"] .qa-button--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: color-mix(in srgb, var(--qa-ink-tertiary) 30%, transparent);
+    background: var(--qa-grouped);
+  }
+
+  html[data-app="1"] .qa-button--tertiary:hover:not(:disabled):not([aria-disabled="true"]),
+  html[data-app="1"] .qa-icon-button:hover:not(:disabled):not([aria-disabled="true"]),
+  html[data-app="1"] .qa-tab-button:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--qa-action-soft);
+    color: var(--qa-action-fill);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button) {
+    transition: none !important;
+  }
+
+  html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):active {
+    transform: none !important;
+  }
+
+  html[data-app="1"] .app-dock .app-fab:active {
+    transform: translateX(-50%) !important;
+  }
+
+  html[data-app="1"] .app-dock .app-fab.open {
+    transform: translateX(-50%) !important;
+  }
+
+  html[data-app="1"] .app-dock .dock-ink,
+  html[data-app="1"] .app-dock .qa-tab-button__glyph {
+    transition: none !important;
+  }
+
+  html[data-app="1"] .qa-spinner {
+    animation-duration: 1400ms;
+  }
+}
+
+@keyframes qa-spin {
+  to { transform: rotate(360deg); }
+}

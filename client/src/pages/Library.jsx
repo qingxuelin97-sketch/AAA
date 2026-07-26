@@ -1,15 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, uploadFile, assetUrl } from '../api.jsx';
 import { parseCharacterCard } from '../charcard.js';
 import { useToast, GridSkeleton } from '../ui.jsx';
 import { EmptyArt, CoverArt } from '../art.jsx';
-import { Globe, MessageCircle, Plus, X, Upload } from 'lucide-react';
+import { isAppMode } from '../appmode.js';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { ArrowLeft, Globe, MessageCircle, Plus, Search, X, Upload } from 'lucide-react';
 
 export default function Library() {
+  const appMode = isAppMode();
   const [chars, setChars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [q, setQ] = useState('');
+  const [visibility, setVisibility] = useState('all');
   const toast = useToast();
   const nav = useNavigate();
   const fileRef = useRef();
@@ -60,41 +65,90 @@ export default function Library() {
     catch (err) { toast(err.message, 'err'); }
   };
 
+  const visibleChars = useMemo(() => {
+    if (!appMode) return chars;
+    const needle = q.trim().toLocaleLowerCase();
+    return chars.filter(c => {
+      if (visibility === 'public' && !c.is_public) return false;
+      if (visibility === 'private' && c.is_public) return false;
+      if (!needle) return true;
+      return [c.name, c.tagline, c.intro, c.tags].some(value => String(value || '').toLocaleLowerCase().includes(needle));
+    });
+  }, [appMode, chars, q, visibility]);
+
+  const openCharacter = (c) => nav('/character/' + c.id + '/edit');
+  const LibraryShell = appMode ? 'div' : React.Fragment;
+
   return (
-    <>
-      <div className="topbar">
+    <LibraryShell {...(appMode ? { className: 'qa-library-page' } : {})}>
+      <div className={appMode ? 'topbar qa-library-topbar' : 'topbar'}>
+        {appMode && <AppIconButton className="qa-library-back" onClick={() => nav('/me')} label="返回个人中心"><ArrowLeft size={20} /></AppIconButton>}
         <div style={{ flex: 1 }}>
           <h1>我的角色</h1>
           <div className="sub">创建并管理你的角色，配置立绘、动态背景与世界书</div>
         </div>
-        <button className="btn" onClick={() => fileRef.current?.click()} disabled={importing} title="导入角色卡（支持幻域 JSON、酒馆 JSON / PNG 角色卡）"><Upload size={15} style={{ verticalAlign: -3 }} /> {importing ? '导入中…' : '导入'}</button>
-        <button className="btn primary" onClick={() => nav('/character/new')}><Plus size={16} style={{ verticalAlign: -3 }} /> 新建角色</button>
+        {appMode ? (
+          <>
+            <AppIconButton className="qa-library-import" variant="secondary" loading={importing}
+              onClick={() => fileRef.current?.click()} disabled={importing} label="导入角色卡"
+              title="导入角色卡（支持幻域 JSON、酒馆 JSON / PNG 角色卡）"><Upload size={19} /></AppIconButton>
+            <AppIconButton className="qa-library-create" variant="filled" onClick={() => nav('/character/new')} label="新建角色"><Plus size={20} /></AppIconButton>
+          </>
+        ) : (
+          <>
+            <button className="btn" onClick={() => fileRef.current?.click()} disabled={importing} title="导入角色卡（支持幻域 JSON、酒馆 JSON / PNG 角色卡）"><Upload size={15} style={{ verticalAlign: -3 }} /> {importing ? '导入中…' : '导入'}</button>
+            <button className="btn primary" onClick={() => nav('/character/new')}><Plus size={16} style={{ verticalAlign: -3 }} /> 新建角色</button>
+          </>
+        )}
       </div>
       <input ref={fileRef} type="file" accept="application/json,.json,image/png,.png" style={{ display: 'none' }} onChange={importCard} />
-      <div className="page">
+      <div className={appMode ? 'page qa-library-content' : 'page'}>
+        {appMode && (
+          <div className="qa-library-controls" aria-label="角色筛选">
+            <div className="qa-library-search">
+              <Search size={18} aria-hidden="true" />
+              <input value={q} onChange={e => setQ(e.target.value)} aria-label="搜索角色"
+                placeholder="搜索名称、简介或标签" inputMode="search" />
+              {q && <AppIconButton className="qa-library-search-clear" onClick={() => setQ('')} label="清除搜索"><X size={17} /></AppIconButton>}
+            </div>
+            <div className="qa-library-filters" role="group" aria-label="公开状态">
+              <AppButton variant="tertiary" selected={visibility === 'all'} onClick={() => setVisibility('all')}>全部</AppButton>
+              <AppButton variant="tertiary" selected={visibility === 'public'} onClick={() => setVisibility('public')}>已公开</AppButton>
+              <AppButton variant="tertiary" selected={visibility === 'private'} onClick={() => setVisibility('private')}>未公开</AppButton>
+            </div>
+          </div>
+        )}
         {loading ? <GridSkeleton n={6} /> :
-          chars.length === 0 ? (
-            <div className="empty">
-              <EmptyArt kind="library" />还没有角色
-              <div style={{ marginTop: 16 }}><button className="btn primary" onClick={() => nav('/character/new')}>创建第一个角色</button></div>
+          visibleChars.length === 0 ? (
+            <div className={appMode ? 'empty qa-library-empty' : 'empty'}>
+              <EmptyArt kind="library" />{chars.length === 0 ? '还没有角色' : '没有符合条件的角色'}
+              <div style={{ marginTop: 16 }}>
+                {chars.length === 0
+                  ? <AppButton className="btn primary" variant="primary" onClick={() => nav('/character/new')}>创建第一个角色</AppButton>
+                  : <AppButton variant="secondary" onClick={() => { setQ(''); setVisibility('all'); }}>清除筛选</AppButton>}
+              </div>
             </div>
           ) : (
-            <div className="grid">
-              {chars.map(c => (
-                <div key={c.id} className="char-card" onClick={() => nav('/character/' + c.id + '/edit')}>
-                  <div className="cover">
+            <div className={appMode ? 'grid qa-library-list' : 'grid'}>
+              {visibleChars.map(c => (
+                <div key={c.id} className={appMode ? 'char-card qa-library-card' : 'char-card'} onClick={() => openCharacter(c)}
+                  {...(appMode ? { role: 'link', tabIndex: 0, 'aria-label': `编辑角色 ${c.name}`, onKeyDown: e => {
+                    if (e.currentTarget !== e.target || !['Enter', ' '].includes(e.key)) return;
+                    e.preventDefault(); openCharacter(c);
+                  } } : {})}>
+                  <div className={appMode ? 'cover qa-library-cover' : 'cover'}>
                     {c.avatar ? <img src={assetUrl(c.avatar)} alt="" loading="lazy" /> : <div className="ph cover-art-box"><CoverArt name={c.name} /></div>}
                     {c.is_public ? <div className="pill-pub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Globe size={12} /> 已公开</div> : null}
                   </div>
-                  <div className="meta">
+                  <div className={appMode ? 'meta qa-library-meta' : 'meta'}>
                     <h3>{c.name}</h3>
                     <p>{c.tagline || c.intro || '暂无简介'}</p>
                     <div className="foot">
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MessageCircle size={13} /> {c.uses}</span>
                       <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-                        <button className="btn sm primary" onClick={e => startChat(e, c)}>对话</button>
-                        {!c.is_public && <button className="btn sm" onClick={e => publish(e, c)}>发布</button>}
-                        <button className="btn sm danger" onClick={e => del(e, c)}><X size={14} /></button>
+                        <AppButton className="btn sm primary" size="sm" variant="primary" onClick={e => startChat(e, c)}>对话</AppButton>
+                        {!c.is_public && <AppButton className="btn sm" size="sm" variant="secondary" onClick={e => publish(e, c)}>发布</AppButton>}
+                        <AppIconButton className={'btn sm danger' + (appMode ? ' qa-library-delete' : '')} tone="danger" onClick={e => del(e, c)} label={`删除角色 ${c.name}`}><X size={appMode ? 17 : 14} /></AppIconButton>
                       </div>
                     </div>
                   </div>
@@ -103,6 +157,6 @@ export default function Library() {
             </div>
           )}
       </div>
-    </>
+    </LibraryShell>
   );
 }

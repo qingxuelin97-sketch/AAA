@@ -15,10 +15,12 @@ import { api, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { CategoryIcon, categoryName } from '../assets.jsx';
-import { EmptyArt, CoverArt } from '../art.jsx';
+import { EmptyArt, CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from '../art.jsx';
 import { shareUrl } from '../util.js';
 import { tick } from '../appgestures.js';
 import CallScreen from '../components/CallScreen.jsx';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { isAppMode } from '../appmode.js';
 import { useAppOverlay } from '../overlay.jsx';
 import {
   Heart, MessageCircle, Star, Share2, Drama, Sparkles, ChevronUp,
@@ -44,9 +46,12 @@ const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); }
 export default function DiscoverFeed() {
   const nav = useNav();
   const toast = useToast();
+  const appMode = isAppMode();
   const [chars, setChars] = useState([]);
   const [mode, setMode] = useState('recommend'); // 发现流分段：recommend 推荐 / new 新作 / follow 关注
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [pageError, setPageError] = useState('');
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [favSet, setFavSet] = useState(new Set());
@@ -57,7 +62,7 @@ export default function DiscoverFeed() {
   const historySheetRef = useRef(null);
   const [burst, setBurst] = useState(null);        // 双击点赞爱心迸发 { id, x, y, k }
   const [expandedId, setExpandedId] = useState(null); // 介绍卡展开态（每次只展开一张）
-  const [entering, setEntering] = useState(false); // 正在建立对话
+  const [enteringId, setEnteringId] = useState(null); // 正在建立对话的角色
   const [histOpen, setHistOpen] = useState(false); // 「历史」最近看过面板
   useAppOverlay(histOpen, () => setHistOpen(false), { rootRef: historySheetRef });
   const [callChar, setCallChar] = useState(null);  // 通话中的角色（电话键落点）
@@ -72,7 +77,7 @@ export default function DiscoverFeed() {
 
   const load = useCallback((m, reset = true) => {
     const flag = ++loadFlag.current;
-    if (reset) { setLoading(true); setHasMore(true); }
+    if (reset) { setLoading(true); setChars([]); setHasMore(true); setLoadError(''); setPageError(''); }
     setLoadingMore(true);
     api(`/characters/public?${modeQuery(m)}&limit=20`)
       .then(d => {
@@ -88,7 +93,11 @@ export default function DiscoverFeed() {
         }
         setHasMore(list.length >= 20);
       })
-      .catch(() => {})
+      .catch(error => {
+        if (flag !== loadFlag.current) return;
+        setLoadError(error?.message || '暂时无法载入发现内容');
+        if (reset) setChars([]);
+      })
       .finally(() => { if (flag === loadFlag.current) { setLoading(false); setLoadingMore(false); } });
   }, []);
 
@@ -125,9 +134,18 @@ export default function DiscoverFeed() {
   // 换卡时收起展开的介绍。
   useEffect(() => { setExpandedId(null); }, [activeIdx]);
 
+  // A card becomes "recent" only after a deliberate pause. Fast swipes do not
+  // pollute history, while browsing without starting a chat is still remembered.
+  useEffect(() => {
+    const current = chars[activeIdx];
+    if (!current) return undefined;
+    const timer = setTimeout(() => pushRecent(current), 600);
+    return () => clearTimeout(timer);
+  }, [activeIdx, chars]);
+
   // 触底加载：当前卡接近末尾时拉下一页。
   useEffect(() => {
-    if (loadingMore || !hasMore || chars.length === 0) return;
+    if (loadingMore || pageError || !hasMore || chars.length === 0) return;
     if (activeIdx >= chars.length - 3) {
       setLoadingMore(true);
       const flag = ++loadFlag.current;
@@ -135,13 +153,17 @@ export default function DiscoverFeed() {
         .then(d => {
           if (flag !== loadFlag.current) return;
           const list = d.characters || [];
+          setPageError('');
           setChars(prev => [...prev, ...list.filter(c => !prev.some(x => x.id === c.id))]);
           setHasMore(list.length >= 20);
         })
-        .catch(() => {})
+        .catch(error => {
+          if (flag !== loadFlag.current) return;
+          setPageError(error?.message || '更多内容载入失败');
+        })
         .finally(() => { if (flag === loadFlag.current) setLoadingMore(false); });
     }
-  }, [activeIdx, chars.length, hasMore, loadingMore, mode]);
+  }, [activeIdx, chars.length, hasMore, loadingMore, mode, pageError]);
 
   const fav = async (c) => {
     try {
@@ -168,18 +190,19 @@ export default function DiscoverFeed() {
   };
   // 进入对话；draft 非空时随路由带过去，落地即预填在输入框里。
   const chat = async (c, draft) => {
-    if (entering) return;
-    setEntering(true);
+    if (enteringId) return;
+    setEnteringId(c.id);
     pushRecent(c);
     try {
       const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } });
       nav('/chats/' + d.conversation.id, draft ? { state: { draft } } : undefined);
-    } catch { nav('/character/' + c.id); }
-    finally { setEntering(false); }
+    } catch (error) { toast(error?.message || '暂时无法进入对话，请稍后重试', 'err'); }
+    finally { setEnteringId(null); }
   };
   const share = async (c) => {
     const url = shareUrl('/character/' + c.id);
-    try { if (navigator.share) { await navigator.share({ title: c.name, url }); return; } } catch { /* */ }
+    try { if (navigator.share) { await navigator.share({ title: c.name, url }); return; } }
+    catch (error) { if (error?.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(url); toast('链接已复制'); }
     catch { toast('分享：' + c.name); }
   };
@@ -189,21 +212,34 @@ export default function DiscoverFeed() {
   // 顶部：分段（关注 / 推荐 / 新作，居中）+ 右侧搜索浮钮 —— 始终常驻（含空/加载态可切换）。
   const topBar = (
     <div className="feed-top">
-      <div className="feed-modes">
-        <button className={'feed-mode' + (mode === 'follow' ? ' on' : '')} onClick={() => setMode('follow')}>关注</button>
-        <button className={'feed-mode' + (mode === 'recommend' ? ' on' : '')} onClick={() => setMode('recommend')}>推荐</button>
-        <button className={'feed-mode' + (mode === 'new' ? ' on' : '')} onClick={() => setMode('new')}>新作</button>
+      <div className="feed-modes" role={appMode ? 'tablist' : undefined} aria-label={appMode ? '发现内容筛选' : undefined}>
+        <AppButton variant="tertiary" selected={mode === 'follow'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? mode === 'follow' : undefined}
+          className={'feed-mode' + (mode === 'follow' ? ' on' : '')} onClick={() => setMode('follow')}>关注</AppButton>
+        <AppButton variant="tertiary" selected={mode === 'recommend'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? mode === 'recommend' : undefined}
+          className={'feed-mode' + (mode === 'recommend' ? ' on' : '')} onClick={() => setMode('recommend')}>推荐</AppButton>
+        <AppButton variant="tertiary" selected={mode === 'new'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? mode === 'new' : undefined}
+          className={'feed-mode' + (mode === 'new' ? ' on' : '')} onClick={() => setMode('new')}>新作</AppButton>
       </div>
-      <button className="feed-search" onClick={openCmdk} aria-label="搜索"><Search size={18} /></button>
+      <AppIconButton className="feed-search" onClick={openCmdk} label="搜索" aria-label="搜索"><Search size={18} /></AppIconButton>
     </div>
   );
 
   if (loading && chars.length === 0) {
-    return <div className="feed-wrap">{topBar}<div className="feed-state"><Drama size={40} className="feed-spin" /><span>正在挑选精彩角色…</span></div></div>;
+    return <div className={appMode ? 'feed-wrap qa-discover-page qa3-discover' : 'feed-wrap'}>{topBar}<div className="feed-state"><Drama size={40} className="feed-spin" /><span>正在挑选精彩角色…</span></div></div>;
+  }
+  if (loadError && chars.length === 0) {
+    return (
+      <div className={appMode ? 'feed-wrap qa-discover-page qa3-discover' : 'feed-wrap'}>{topBar}
+        <div className="feed-state" role="alert"><EmptyArt kind="library" />
+          <span>{loadError}</span>
+          <AppButton variant="primary" onClick={() => load(mode)}>重新载入</AppButton>
+        </div>
+      </div>
+    );
   }
   if (chars.length === 0) {
     return (
-      <div className="feed-wrap">{topBar}
+      <div className={appMode ? 'feed-wrap qa-discover-page qa3-discover' : 'feed-wrap'}>{topBar}
         <div className="feed-state"><EmptyArt kind="library" />
           {mode === 'follow' ? '还没有关注的创作者 —— 去「推荐」发现更多吧' : '暂无角色，快来发布第一个'}
         </div>
@@ -212,10 +248,10 @@ export default function DiscoverFeed() {
   }
 
   return (
-    <div className="feed-wrap">
+    <div className={appMode ? 'feed-wrap qa-discover-page qa3-discover' : 'feed-wrap'}>
       {topBar}
 
-      <div className="feed-root" ref={containerRef}>
+      <div className="feed-root" ref={containerRef} data-scroll-root>
         {chars.map((c, i) => {
           const liked = likedSet.has(c.id);
           const faved = favSet.has(c.id);
@@ -225,17 +261,21 @@ export default function DiscoverFeed() {
           // 角色带视频壁纸时，流里直接放动态背景 —— 和进对话后看到的是同一张
           // 「活的」壁纸，不再降级成静态头像。只给相邻卡挂 <video>（滑远即卸载，
           // 解码器和内存不随列表膨胀），远处的卡仍用静态图兜底。
-          const liveBg = near && c.background && c.background_type === 'video';
+          const media = resolveCharacterMedia(c);
+          const liveBg = i === activeIdx && media.kind === 'video' && media.src;
+          const sharedMediaStyle = i === activeIdx ? { viewTransitionName: 'qa-character-art' } : undefined;
           return (
             <section key={c.id} className={'feed-card' + (i === activeIdx ? ' cur' : '')} data-idx={i}>
               {liveBg
-                ? <video className="feed-bg" src={assetUrl(c.background)} poster={c.avatar ? assetUrl(c.avatar) : undefined}
-                    muted loop autoPlay playsInline preload="metadata" />
-                : c.avatar
-                  ? <img className="feed-bg" src={assetUrl(c.avatar)} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
-                  : <div className="feed-bg cover-art-box"><CoverArt name={c.name} /></div>}
+                ? <video className="feed-bg" src={assetUrl(media.src)} poster={media.poster ? assetUrl(media.poster) : undefined}
+                    muted loop autoPlay playsInline preload="metadata" style={sharedMediaStyle} />
+                : media.src
+                  ? <img className="feed-bg" src={assetUrl(media.src)} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" style={sharedMediaStyle} />
+                  : appMode
+                    ? <QuietAquaCharacterArt className="feed-bg qa-oracle-character" loading={i < 2 ? 'eager' : 'lazy'} style={sharedMediaStyle} />
+                    : <div className="feed-bg cover-art-box" style={sharedMediaStyle}><CoverArt name={c.name} /></div>}
               <div className="feed-scrim" />
-              <span className="feed-ai-mark" aria-hidden="true">由 AI 生成</span>
+              {c.ai_generated && <span className="feed-ai-mark" aria-hidden="true">由 AI 生成</span>}
               {/* 双击点赞层：盖住画面区域，按钮层在其上不受影响 */}
               <div className="feed-tap" onClick={e => cardTap(e, c)} />
               {burst && burst.id === c.id && (
@@ -246,15 +286,15 @@ export default function DiscoverFeed() {
 
               {/* 方案B：右侧竖排互动条（玻璃圆钮），浮于画面右缘，脱离底部信息栈 */}
               <div className="fd2-acts">
-                <button className={'fd2-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label="点赞">
+                <button className={'fd2-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label={liked ? '取消本机心动标记' : '标记为心动，仅保存在本机'} aria-pressed={appMode ? liked : undefined}>
                   <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
-                  <span>{fmtW((c.likes || 0) + (liked ? 1 : 0))}</span>
+                  <span>{liked ? '已心动' : '心动'}</span>
                 </button>
-                <button className={'fd2-act' + (faved ? ' on gold' : '')} onClick={() => fav(c)} aria-label="收藏">
+                <button className={'fd2-act' + (faved ? ' on gold' : '')} onClick={() => fav(c)} aria-label="收藏" aria-pressed={appMode ? faved : undefined}>
                   <Star size={24} fill={faved ? 'currentColor' : 'none'} />
                   <span>{faved ? '已藏' : '收藏'}</span>
                 </button>
-                <button className="fd2-act" onClick={() => nav('/character/' + c.id)} aria-label="评论">
+                <button className="fd2-act" onClick={() => nav('/character/' + c.id)} aria-label={`查看角色详情，${c.uses || 0} 次对话`}>
                   <MessageCircle size={24} />
                   <span>{fmtW(c.uses)}</span>
                 </button>
@@ -269,54 +309,59 @@ export default function DiscoverFeed() {
               </div>
 
               <div className="fd2-stack">
-                {/* 介绍卡：深色玻璃面板，可展开；右下角放大镜进详情 */}
-                {(c.intro || c.tagline) && (
-                  <div className={'fd2-intro' + (expanded ? ' open' : '')}
-                    role="button" tabIndex={0}
-                    onClick={() => setExpandedId(expanded ? null : c.id)}
-                    onKeyDown={e => e.key === 'Enter' && setExpandedId(expanded ? null : c.id)}>
-                    <p><ScrollText size={13} className="fd2-intro-ic" /><b>介绍：</b>{c.intro || c.tagline}</p>
-                    <button className="fd2-zoom" aria-label="查看角色详情"
+                {/* 简介保持两行阅读节奏；需要时可展开或进入完整详情。 */}
+                {!appMode && (c.intro || c.tagline) && (
+                  <div className={'fd2-intro' + (expanded ? ' open' : '')}>
+                    <button className="fd2-intro-copy" type="button" aria-expanded={appMode ? expanded : undefined}
+                      onClick={() => setExpandedId(expanded ? null : c.id)}>
+                      <span><ScrollText size={13} className="fd2-intro-ic" /><b>介绍：</b>{c.intro || c.tagline}</span>
+                    </button>
+                    <AppIconButton className="fd2-zoom" label="查看角色详情" aria-label="查看角色详情"
                       onClick={e => { e.stopPropagation(); nav('/character/' + c.id); }}>
                       <Maximize2 size={14} />
-                    </button>
+                    </AppIconButton>
                   </div>
                 )}
 
-                {/* 开场白气泡：角色先开口 —— 点它即刻入戏。
-                    用 div 而不是 button：气泡限高后内部要能滚，部分 WebView
-                    不把 button 当滚动容器。 */}
+                {/* 开场白仍可点击入戏，但视觉上降为一条补充叙事。 */}
                 {greeting && (
                   <div className="fd2-greet" role="button" tabIndex={0}
                     onClick={() => chat(c)}
-                    onKeyDown={e => e.key === 'Enter' && chat(c)}>
+                    onKeyDown={e => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();
+                      chat(c);
+                    }}>
                     {greeting}
                   </div>
                 )}
 
-                {/* 角色名 + 作者 行（方案B：互动条移至右侧竖排，见 .fd2-acts） */}
                 <div className="fd2-meta">
                   <div className="fd2-id" role="button" tabIndex={0}
                     onClick={() => nav('/character/' + c.id)}
-                    onKeyDown={e => e.key === 'Enter' && nav('/character/' + c.id)}>
+                    onKeyDown={e => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();
+                      nav('/character/' + c.id);
+                    }}>
                     <h2 className="fd2-name">{c.name} <ChevronRight size={17} /></h2>
+                    {appMode && c.tagline && <p className="fd2-tagline">{c.tagline}</p>}
                     <div className="fd2-author">
                       <Avatar src={c.owner_avatar} name={c.owner_name} size={20} />
-                      <span>@{c.owner_name}</span>
+                      <span>{appMode ? `创作者：${c.owner_name}` : `@${c.owner_name}`}</span>
                       <CreatorV tier={c.owner_tier} size={12} />
                       {c.category && <em className="fd2-cat"><CategoryIcon slug={c.category} size={11} /> {categoryName(c.category)}</em>}
                     </div>
                   </div>
                 </div>
 
-                {/* 方案B：点击即聊 —— 「进入对话」大按钮 + 语音电话按钮（替代自由输入） */}
                 <div className="fd2-cta">
-                  <button className="fd2-enter" onClick={() => chat(c)} disabled={entering} aria-label="进入对话">
+                  <AppButton className="fd2-enter" variant="primary" loading={enteringId === c.id} disabled={Boolean(enteringId)} onClick={() => chat(c)} aria-label="进入对话">
                     <MessageCircle size={19} /> 进入对话
-                  </button>
-                  <button className="fd2-call" onClick={() => { pushRecent(c); tick(12); setCallChar(c); }} aria-label="语音通话" title="给 TA 打电话">
+                  </AppButton>
+                  <AppIconButton className="fd2-call" variant="filled" onClick={() => { pushRecent(c); tick(12); setCallChar(c); }} label="语音通话" aria-label="语音通话" title="给 TA 打电话">
                     <Phone size={20} />
-                  </button>
+                  </AppIconButton>
                 </div>
               </div>
             </section>
@@ -326,6 +371,12 @@ export default function DiscoverFeed() {
 
       {/* 加载 / 到底提示 —— 悬浮胶囊，不参与 snap 流 */}
       {loadingMore && <div className="feed-hint"><Sparkles size={14} /> 正在加载更多…</div>}
+      {pageError && !loadingMore && (
+        <div className="feed-hint feed-hint-error" role="alert">
+          <span>{pageError}</span>
+          <AppButton variant="tertiary" size="sm" onClick={() => setPageError('')}>重试</AppButton>
+        </div>
+      )}
       {atEnd && !loadingMore && <div className="feed-hint"><ChevronUp size={15} /> 已经到底啦，上滑回顶</div>}
 
       {/* 「历史」—— 最近看过的角色（本地记录），一键回访 / 续聊 */}
@@ -338,20 +389,20 @@ export default function DiscoverFeed() {
               <div className="fd2-hist-empty">还没有浏览记录 —— 滑一滑，喜欢的角色都会记在这里</div>
             )}
             {readRecent().map(rc => (
-              <div key={rc.id} className="fd2-hist-row" role="button" tabIndex={0}
-                onClick={() => { setHistOpen(false); nav('/character/' + rc.id); }}
-                onKeyDown={e => e.key === 'Enter' && (setHistOpen(false), nav('/character/' + rc.id))}>
-                <Avatar src={rc.avatar} name={rc.name} size={44} />
-                <div className="fd2-hist-tx">
-                  <b>{rc.name}</b>
-                  <span>{rc.tagline || `@${rc.owner_name || '佚名'}`}</span>
-                </div>
-                <button className="fd2-hist-go" onClick={e => { e.stopPropagation(); setHistOpen(false); chat(rc); }}>
-                  <MessageCircle size={13} /> 续聊
+              <div key={rc.id} className="fd2-hist-row">
+                <button className="fd2-hist-main" type="button" onClick={() => { setHistOpen(false); nav('/character/' + rc.id); }}>
+                  <Avatar src={rc.avatar} name={rc.name} size={44} />
+                  <span className="fd2-hist-tx">
+                    <b>{rc.name}</b>
+                    <span>{rc.tagline || `@${rc.owner_name || '佚名'}`}</span>
+                  </span>
                 </button>
+                <AppButton className="fd2-hist-go" size="sm" onClick={e => { e.stopPropagation(); setHistOpen(false); chat(rc); }}>
+                  <MessageCircle size={13} /> 续聊
+                </AppButton>
               </div>
             ))}
-            <button className="fd2-hist-close" onClick={() => setHistOpen(false)}><X size={15} /> 关闭</button>
+            <AppButton className="fd2-hist-close" variant="tertiary" onClick={() => setHistOpen(false)}><X size={15} /> 关闭</AppButton>
           </div>
         </div>
       )}

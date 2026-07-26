@@ -9,6 +9,7 @@ import { streamSSE } from '../chat/sse.js';
 import { useUnsavedChanges } from '../appNavigation.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { isAppMode } from '../appmode.js';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import {
   ArrowLeft, Feather, Sparkles, Wand2, Loader2, Send, Square, Palette, Layers,
   BookLock, BookOpen, GitBranch, Trash2, Pin, RefreshCw, Lock, Unlock, Network,
@@ -47,6 +48,7 @@ let _lid = 1;
 const localId = () => 'l' + (_lid++) + Math.random().toString(36).slice(2, 5);
 
 export default function NovelWorkspace() {
+  const app = isAppMode();
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
@@ -250,10 +252,20 @@ export default function NovelWorkspace() {
     } catch (e) { toast(e.message, 'err'); }
   };
 
-  if (loading || !novel || !run) return <div className="empty" style={{ paddingTop: 160 }}>载入创作台…</div>;
+  if (loading || !novel || !run) return app ? (
+    <div className="qa-novel-loading" role="status" aria-label="正在载入创作台">
+      <header className="qa-novel-loading-head">
+        <AppIconButton label="返回小说工坊" onClick={() => nav('/atelier')}><ArrowLeft size={20} /></AppIconButton>
+        <span className="skel" /><span />
+      </header>
+      <div className="qa-novel-loading-page" aria-hidden="true">
+        <i className="skel" /><i className="skel" /><i className="skel" /><i className="skel" />
+      </div>
+    </div>
+  ) : <div className="empty" style={{ paddingTop: 160 }}>载入创作台…</div>;
 
   return (
-    <div className="atl-ws">
+    <div className={app ? 'atl-ws qa-novel-workspace' : 'atl-ws'}>
       <WorkspaceHeader
         novel={novel} run={run} runs={runs} words={run.words}
         onBack={() => nav('/atelier')} onSwitchRun={switchRun}
@@ -261,10 +273,10 @@ export default function NovelWorkspace() {
         onOverlay={setOverlay} onExport={exportNovel}
       />
 
-      <div className="atl-ws-main">
-        <div className="atl-manuscript" ref={scrollRef}>
-          <div className="atl-ms-inner">
-            <div className="atl-ms-head">
+      <div className={app ? 'atl-ws-main qa-novel-main' : 'atl-ws-main'}>
+        <div className={app ? 'atl-manuscript qa-novel-manuscript' : 'atl-manuscript'} ref={scrollRef} role={app ? 'region' : undefined} aria-label={app ? `${novel.title}正文工作区` : undefined}>
+          <div className={app ? 'atl-ms-inner qa-novel-page' : 'atl-ms-inner'}>
+            <div className={app ? 'atl-ms-head qa-novel-page-head' : 'atl-ms-head'}>
               <div className="atl-kicker"><ScrollText size={13} /> {run.name}</div>
               <h1 className="atl-ms-title">{novel.title}</h1>
               {novel.logline && <p className="atl-ms-logline">{novel.logline}</p>}
@@ -272,20 +284,20 @@ export default function NovelWorkspace() {
             </div>
 
             {beats.length === 0 && (
-              <div className="atl-ms-empty">
+              <div className={app ? 'atl-ms-empty qa-novel-empty' : 'atl-ms-empty'}>
                 <Feather size={30} />
                 {novel.synopsis ? (
                   <>
                     <div className="atl-premise"><span>故事起点</span>{novel.synopsis}</div>
                     <p>就从这里开始 —— AI 会据此写下开篇，你也可以在下方给个更具体的方向。</p>
-                    <button className="btn primary" onClick={() => write('')} disabled={streaming}><Feather size={15} /> 据此写开篇</button>
+                    <AppButton className={app ? 'btn primary qa-novel-empty-primary' : 'btn primary'} variant="primary" onClick={() => write('')} disabled={streaming}><Feather size={15} /> 据此写开篇</AppButton>
                   </>
                 ) : (
                   <>
                     <p>空白的第一页。在下方写下你想要的开场或方向，或点「灵感」让 AI 给你几条思路。</p>
                     <div className="atl-starter">
                       {['以一个充满画面感的场景开场', '直接进入一段紧张的冲突', '从主角的一个清晨写起'].map(s => (
-                        <button key={s} className="btn sm ghost" onClick={() => write(s)} disabled={streaming}>{s}</button>
+                        <AppButton key={s} className={app ? 'btn sm ghost qa-novel-starter' : 'btn sm ghost'} onClick={() => write(s)} disabled={streaming}>{s}</AppButton>
                       ))}
                     </div>
                   </>
@@ -328,6 +340,7 @@ export default function NovelWorkspace() {
 
 /* ───────────────────────── header ───────────────────────── */
 function WorkspaceHeader({ novel, run, runs, words, onBack, onSwitchRun, onOpenPanel, activePanel, onOverlay, onExport }) {
+  const app = isAppMode();
   const [runMenu, setRunMenu] = useState(false);
   const [more, setMore] = useState(false);
   const TOOLS = [
@@ -345,6 +358,57 @@ function WorkspaceHeader({ novel, run, runs, words, onBack, onSwitchRun, onOpenP
     { ic: FileDown, label: '导出 Markdown', run: () => onExport('md') },
     { ic: FileDown, label: '导出 TXT', run: () => onExport('txt') },
   ];
+  if (app) return (
+    <header className="atl-ws-head qa-novel-header">
+      <div className="qa-novel-header-primary">
+        <AppIconButton className="atl-back qa-novel-back" label="返回小说工坊" onClick={onBack}><ArrowLeft size={20} /></AppIconButton>
+        <div className="atl-head-id qa-novel-head-id">
+          <b>{novel.title}</b>
+          <span>{run.name} · {(words || 0).toLocaleString()} 字</span>
+        </div>
+        <AppIconButton className="qa-novel-more" label="更多创作工具" pressed={more} onClick={() => { setRunMenu(false); setMore(true); }}><MoreHorizontal size={20} /></AppIconButton>
+      </div>
+      <nav className="atl-tools qa-novel-toolbar" aria-label="小说工作区工具">
+        <AppButton className="atl-tool qa-novel-run-trigger" selected={runMenu} onClick={() => { setMore(false); setRunMenu(true); }}>
+          <GitBranch size={16} /><span>{run.name}</span><ChevronDown size={14} />
+        </AppButton>
+        {TOOLS.map(t => (
+          <AppButton key={t.k} className={'atl-tool qa-novel-tool' + (activePanel === t.k ? ' on' : '')} selected={activePanel === t.k} onClick={() => onOpenPanel(activePanel === t.k ? null : t.k)}>
+            <t.ic size={17} /><span>{t.label}</span>
+          </AppButton>
+        ))}
+      </nav>
+      {runMenu && (
+        <Modal onClose={() => setRunMenu(false)} className="qa-novel-sheet qa-novel-run-sheet" backdropClassName="qa-novel-sheet-backdrop">
+          <div className="qa-novel-sheet-head">
+            <div><h2>选择剧情线</h2><p>{runs.length} 条存档 · 当前 {run.name}</p></div>
+            <AppIconButton label="关闭剧情线列表" onClick={() => setRunMenu(false)}><X size={19} /></AppIconButton>
+          </div>
+          <div className="qa-novel-run-list" role="listbox" aria-label="剧情线">
+            {runs.map(r => (
+              <AppButton key={r.id} className={'atl-run-item qa-novel-run-item' + (r.id === run.id ? ' on' : '')} selected={r.id === run.id} role="option" aria-selected={r.id === run.id} onClick={() => { onSwitchRun(r.id); setRunMenu(false); }}>
+                <span className="qa-novel-run-check">{r.id === run.id ? <Check size={16} /> : null}</span>
+                <span className="atl-run-nm"><b>{r.name}</b><small>{r.archived ? '已归档 · ' : ''}{(r.words || 0).toLocaleString()} 字</small></span>
+              </AppButton>
+            ))}
+          </div>
+        </Modal>
+      )}
+      {more && (
+        <Modal onClose={() => setMore(false)} className="qa-novel-sheet qa-novel-more-sheet" backdropClassName="qa-novel-sheet-backdrop">
+          <div className="qa-novel-sheet-head">
+            <div><h2>更多</h2><p>作品、灵感、阅读与导出</p></div>
+            <AppIconButton label="关闭更多工具" onClick={() => setMore(false)}><X size={19} /></AppIconButton>
+          </div>
+          <div className="qa-novel-more-list">
+            {MORE.map((it) => (
+              <AppButton key={it.label} className="qa-novel-more-item" onClick={() => { setMore(false); it.run(); }}><it.ic size={18} /><span>{it.label}</span></AppButton>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </header>
+  );
   return (
     <div className="atl-ws-head">
       <button className="btn ghost sm atl-back" onClick={onBack}><ArrowLeft size={16} /></button>
@@ -392,33 +456,36 @@ function WorkspaceHeader({ novel, run, runs, words, onBack, onSwitchRun, onOpenP
 
 /* ───────────────────────── single beat ───────────────────────── */
 function Beat({ beat, index, streaming, playing, onRewrite, onDelete, onEdit, onBranch, onIllustrate, onRemoveImage, onSpeak, onRestore }) {
+  const app = isAppMode();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(beat.content);
   const [rewriting, setRewriting] = useState(false);
   const [instr, setInstr] = useState('');
   const [histOpen, setHistOpen] = useState(false);
   const hist = Array.isArray(beat.history) ? beat.history : [];
+  useUnsavedChanges(editing && draft !== beat.content, `第 ${index + 1} 段正文还没有保存，确定离开吗？`);
+  const BeatRoot = app ? 'article' : 'div';
 
   const save = () => { onEdit(beat, draft); setEditing(false); };
   const doRewrite = (text) => { onRewrite(beat, text); setRewriting(false); setInstr(''); };
 
   return (
-    <div className={'atl-beat' + (beat._streaming ? ' streaming' : '')}>
+    <BeatRoot className={'atl-beat' + (app ? ' qa-novel-beat' : '') + (beat._streaming ? ' streaming' : '')}>
       {beat.directive ? <div className="atl-beat-dir"><Feather size={12} /> {beat.directive}</div> : null}
 
       {beat.image && (
         <div className="atl-beat-img">
           <img src={assetUrl(beat.image)} alt="" loading="lazy" />
-          {!beat._streaming && <button className="atl-img-x" title="移除配图" onClick={() => onRemoveImage(beat)}><X size={13} /></button>}
+          {!beat._streaming && <AppIconButton className="atl-img-x" label="移除本段配图" title="移除配图" tone="danger" onClick={() => onRemoveImage(beat)}><X size={app ? 15 : 13} /></AppIconButton>}
         </div>
       )}
 
       {editing ? (
         <div className="atl-beat-edit">
-          <textarea className="textarea" value={draft} onChange={e => setDraft(e.target.value)} rows={Math.min(20, Math.max(4, Math.ceil(draft.length / 40)))} />
+          <textarea className="textarea" aria-label={app ? `编辑第 ${index + 1} 段正文` : undefined} value={draft} onChange={e => setDraft(e.target.value)} rows={Math.min(20, Math.max(4, Math.ceil(draft.length / 40)))} />
           <div className="atl-beat-edit-act">
-            <button className="btn sm ghost" onClick={() => { setEditing(false); setDraft(beat.content); }}>取消</button>
-            <button className="btn sm primary" onClick={save}><Check size={13} /> 保存</button>
+            <AppButton className="btn sm ghost" onClick={() => { setEditing(false); setDraft(beat.content); }}>取消</AppButton>
+            <AppButton className="btn sm primary" variant="primary" onClick={save} disabled={app && draft === beat.content}><Check size={app ? 15 : 13} /> 保存</AppButton>
           </div>
         </div>
       ) : (
@@ -426,14 +493,14 @@ function Beat({ beat, index, streaming, playing, onRewrite, onDelete, onEdit, on
       )}
 
       {!beat._streaming && !editing && (
-        <div className="atl-beat-tools">
-          <button title={playing ? '停止朗读' : '朗读'} className={playing ? 'on' : ''} onClick={() => onSpeak(beat)}><Volume2 size={13} /></button>
-          <button title="为本段配图" onClick={() => onIllustrate(beat)} disabled={beat._illustrating}>{beat._illustrating ? <Loader2 size={13} className="spin" /> : <ImageIcon size={13} />}</button>
-          <button title="改写润色" onClick={() => setRewriting(v => !v)}><Wand2 size={13} /></button>
-          <button title="手动编辑" onClick={() => { setDraft(beat.content); setEditing(true); }}><Pencil size={13} /></button>
-          {hist.length > 0 && <button title={`版本历史（${hist.length}）`} className={histOpen ? 'on' : ''} onClick={() => setHistOpen(v => !v)}><History size={13} /></button>}
-          <button title="从此处开分支" onClick={() => onBranch(beat)}><GitBranch size={13} /></button>
-          <button title="删除" className="danger" onClick={() => onDelete(beat)}><Trash2 size={13} /></button>
+        <div className={app ? 'atl-beat-tools qa-novel-beat-tools' : 'atl-beat-tools'} role={app ? 'toolbar' : undefined} aria-label={app ? `第 ${index + 1} 段工具` : undefined}>
+          <AppIconButton label={playing ? '停止朗读' : '朗读本段'} selected={playing} title={playing ? '停止朗读' : '朗读'} className={playing ? 'on' : ''} onClick={() => onSpeak(beat)}><Volume2 size={app ? 16 : 13} /></AppIconButton>
+          <AppIconButton label="为本段配图" title="为本段配图" loading={app && beat._illustrating} disabled={beat._illustrating} onClick={() => onIllustrate(beat)}>{beat._illustrating ? <Loader2 size={app ? 16 : 13} className="spin" /> : <ImageIcon size={app ? 16 : 13} />}</AppIconButton>
+          <AppIconButton label="改写润色" title="改写润色" pressed={rewriting} onClick={() => setRewriting(v => !v)}><Wand2 size={app ? 16 : 13} /></AppIconButton>
+          <AppIconButton label="手动编辑本段" title="手动编辑" onClick={() => { setDraft(beat.content); setEditing(true); }}><Pencil size={app ? 16 : 13} /></AppIconButton>
+          {hist.length > 0 && <AppIconButton label={`版本历史，共 ${hist.length} 个版本`} title={`版本历史（${hist.length}）`} pressed={histOpen} className={histOpen ? 'on' : ''} onClick={() => setHistOpen(v => !v)}><History size={app ? 16 : 13} /></AppIconButton>}
+          <AppIconButton label="从此处开分支" title="从此处开分支" onClick={() => onBranch(beat)}><GitBranch size={app ? 16 : 13} /></AppIconButton>
+          <AppIconButton label="删除本段" title="删除" tone="danger" className="danger" onClick={() => onDelete(beat)}><Trash2 size={app ? 16 : 13} /></AppIconButton>
         </div>
       )}
 
@@ -441,8 +508,8 @@ function Beat({ beat, index, streaming, playing, onRewrite, onDelete, onEdit, on
         <div className="atl-rewrite-bar">
           <input className="input sm" placeholder="改写要求（留空＝整体润色），如：更紧凑、加强心理描写、改成下雨的夜晚…"
             value={instr} onChange={e => setInstr(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') doRewrite(instr); }} autoFocus />
-          <button className="btn sm" onClick={() => doRewrite('')}>润色</button>
-          <button className="btn sm primary" onClick={() => doRewrite(instr)}>改写</button>
+          <AppButton className="btn sm" onClick={() => doRewrite('')}>润色</AppButton>
+          <AppButton className="btn sm primary" variant="primary" onClick={() => doRewrite(instr)}>改写</AppButton>
         </div>
       )}
 
@@ -450,70 +517,76 @@ function Beat({ beat, index, streaming, playing, onRewrite, onDelete, onEdit, on
         <div className="atl-hist">
           <div className="atl-hist-head"><History size={12} /> 历史版本 · 点击回退</div>
           {hist.map((h, i) => (
-            <button key={i} className="atl-hist-item" onClick={() => { onRestore(beat, h.content); setHistOpen(false); }}>
+            <AppButton key={i} className="atl-hist-item" onClick={() => { onRestore(beat, h.content); setHistOpen(false); }}>
               <span className="atl-hist-n">v{hist.length - i}</span>
               <span className="atl-hist-tx">{h.content.slice(0, 90)}…</span>
-            </button>
+            </AppButton>
           ))}
         </div>
       )}
-    </div>
+    </BeatRoot>
   );
 }
 
 /* ───────────────────────── composer ───────────────────────── */
 function Composer({ input, setInput, streaming, autoRunning, onWrite, onFree, onStop, onAuto, onSuggest, suggesting, suggestions, onPick, autoSync, setAutoSync, onManualSync, onMuse }) {
+  const app = isAppMode();
   const onKey = (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); onWrite(); } };
+  const ComposerRoot = app ? 'footer' : 'div';
   return (
-    <div className="atl-composer">
+    <ComposerRoot className={app ? 'atl-composer qa-novel-composer' : 'atl-composer'} aria-label={app ? 'AI 续写编辑器' : undefined}>
       {suggestions.length > 0 && (
-        <div className="atl-suggest-row">
+        <div className={app ? 'atl-suggest-row qa-novel-suggestions' : 'atl-suggest-row'}>
           {suggestions.map((s, i) => (
-            <button key={i} className="atl-suggest" onClick={() => onPick(s.prompt)} title={s.prompt}>
+            <AppButton key={i} className="atl-suggest" onClick={() => onPick(s.prompt)} title={s.prompt}>
               <Lightbulb size={12} /> <b>{s.label}</b><span>{s.prompt}</span>
-            </button>
+            </AppButton>
           ))}
         </div>
       )}
-      <div className="atl-composer-bar">
+      <div className={app ? 'atl-composer-bar qa-novel-input-island' : 'atl-composer-bar'}>
         <textarea className="atl-prompt" placeholder="写下你想要的方向：接下来发生什么？谁登场？气氛如何？（⌘/Ctrl + Enter 发送）"
-          value={input} onChange={e => setInput(e.target.value)} onKeyDown={onKey} rows={1} disabled={streaming} />
+          aria-label={app ? '续写方向' : undefined} value={input} onChange={e => setInput(e.target.value)} onKeyDown={onKey} rows={1} disabled={streaming} />
         <div className="atl-composer-act">
-          <button className="atl-mini" title="续写灵感" onClick={onSuggest} disabled={streaming || suggesting}>{suggesting ? <Loader2 size={15} className="spin" /> : <Lightbulb size={15} />}</button>
-          <button className="atl-mini" title="灵感火花（人名/转折/细节）" onClick={onMuse} disabled={streaming}><Sparkles size={15} /></button>
-          <button className="atl-mini" title="自动巡航（连续生成多段）" onClick={onAuto} disabled={streaming}><Rocket size={15} /></button>
+          <AppIconButton className="atl-mini" label="获取续写灵感" title="续写灵感" loading={app && suggesting} onClick={onSuggest} disabled={streaming || suggesting}>{suggesting ? <Loader2 size={15} className="spin" /> : <Lightbulb size={15} />}</AppIconButton>
+          <AppIconButton className="atl-mini" label="打开灵感火花" title="灵感火花（人名/转折/细节）" onClick={onMuse} disabled={streaming}><Sparkles size={15} /></AppIconButton>
+          <AppIconButton className="atl-mini" label="开始自动巡航" title="自动巡航（连续生成多段）" onClick={onAuto} disabled={streaming}><Rocket size={15} /></AppIconButton>
           {streaming
-            ? <button className="btn primary atl-send" onClick={onStop}><Square size={15} /> {autoRunning ? '停止巡航' : '停止'}</button>
-            : <button className="btn primary atl-send" onClick={onWrite}><Send size={15} /> 写下去</button>}
+            ? <AppButton className="btn primary atl-send" variant="primary" tone="danger" onClick={onStop}><Square size={15} /> {autoRunning ? '停止巡航' : '停止'}</AppButton>
+            : <AppButton className="btn primary atl-send" variant="primary" onClick={onWrite}><Send size={15} /> 写下去</AppButton>}
         </div>
       </div>
-      <div className="atl-composer-foot">
+      <div className={app ? 'atl-composer-foot qa-novel-composer-foot' : 'atl-composer-foot'}>
         <label className="atl-auto" title="每写完一段，自动把新设定沉淀进局内设定">
           <input type="checkbox" checked={autoSync} onChange={e => setAutoSync(e.target.checked)} /> 自动沉淀设定
         </label>
-        <button className="atl-link" onClick={onFree} disabled={streaming}><Sparkles size={12} /> 自由续写</button>
-        <button className="atl-link" onClick={onManualSync}><RefreshCw size={12} /> 立即提炼局内设定</button>
+        <AppButton className="atl-link" onClick={onFree} disabled={streaming}><Sparkles size={12} /> 自由续写</AppButton>
+        <AppButton className="atl-link" onClick={onManualSync}><RefreshCw size={12} /> 立即提炼局内设定</AppButton>
       </div>
-    </div>
+    </ComposerRoot>
   );
 }
 
 /* ───────────────────────── side panel ───────────────────────── */
 function SidePanel({ panel, novel, run, setRun, onClose, onSaveNovel, refreshRuns, onSwitchRun, onSyncCanon, toast, loadRun, nav }) {
+  const app = isAppMode();
   const [panelDirty, setPanelDirty] = useState(false);
+  const panelRef = useRef(null);
   useEffect(() => setPanelDirty(false), [panel]);
   useUnsavedChanges(panelDirty, '创作面板里有尚未保存的修改，确定离开吗？');
   const closePanel = () => {
     if (!panelDirty || !isAppMode() || confirm('这部分修改还没有保存，确定关闭吗？')) onClose();
   };
+  useAppOverlay(true, closePanel, { rootRef: panelRef });
   const titles = { style: '整体文风', codex: '局外设定 · 永不可改的母版', canon: '局内设定 · 唯一生效', runs: '剧情线', analysis: 'AI 分析', info: '作品信息' };
+  const PanelRoot = app ? 'aside' : 'div';
   return (
-    <div className="atl-panel">
-      <div className="atl-panel-head">
+    <PanelRoot ref={panelRef} className={app ? 'atl-panel qa-novel-panel' : 'atl-panel'} role={app ? 'dialog' : undefined} aria-modal={app ? 'true' : undefined} aria-label={app ? titles[panel] : undefined} tabIndex={app ? -1 : undefined}>
+      <div className={app ? 'atl-panel-head qa-novel-panel-head' : 'atl-panel-head'}>
         <b>{titles[panel]}</b>
-        <button className="atl-panel-x" onClick={closePanel}><X size={17} /></button>
+        <AppIconButton className="atl-panel-x" label="关闭创作面板" onClick={closePanel}><X size={17} /></AppIconButton>
       </div>
-      <div className="atl-panel-body">
+      <div className={app ? 'atl-panel-body qa-novel-panel-body' : 'atl-panel-body'}>
         {panel === 'style' && <StylePanel novel={novel} onSaveNovel={onSaveNovel} toast={toast} onDirtyChange={setPanelDirty} />}
         {panel === 'codex' && <CodexPanel novel={novel} onSaveNovel={onSaveNovel} toast={toast} onDirtyChange={setPanelDirty} />}
         {panel === 'canon' && <CanonPanel run={run} setRun={setRun} onSyncCanon={onSyncCanon} toast={toast} onDirtyChange={setPanelDirty} />}
@@ -521,7 +594,7 @@ function SidePanel({ panel, novel, run, setRun, onClose, onSaveNovel, refreshRun
         {panel === 'analysis' && <AnalysisPanel run={run} toast={toast} />}
         {panel === 'info' && <InfoPanel novel={novel} run={run} onSaveNovel={onSaveNovel} refreshRuns={refreshRuns} toast={toast} onDirtyChange={setPanelDirty} />}
       </div>
-    </div>
+    </PanelRoot>
   );
 }
 
@@ -553,7 +626,7 @@ function StylePanel({ novel, onSaveNovel, toast, onDirtyChange }) {
       <input className="input" value={style.forbidden || ''} onChange={e => set('forbidden', e.target.value)} maxLength={400} placeholder="如：避免现代网络用语、避免上帝视角剧透" />
       <label className="field-label">作者额外指令</label>
       <textarea className="textarea" rows={3} value={style.custom || ''} onChange={e => set('custom', e.target.value)} maxLength={1200} placeholder="任何你想叮嘱 AI 的写作偏好" />
-      <button className="btn primary block" style={{ marginTop: 12 }} onClick={save} disabled={!dirty}><Check size={15} /> 保存文风</button>
+      <AppButton className="btn primary block" variant="primary" style={{ marginTop: 12 }} onClick={save} disabled={!dirty}><Check size={15} /> 保存文风</AppButton>
     </div>
   );
 }
@@ -580,10 +653,10 @@ function CodexPanel({ novel, onSaveNovel, toast, onDirtyChange }) {
       <p className="atl-panel-hint"><BookLock size={13} /> 局外设定是你的创作母版，<b>永不会被剧情自动改动</b>。每开一条新剧情线，它都会被「复刻」成该线的局内设定。</p>
       <div className="atl-gen-box">
         <input className="input sm" value={focus} onChange={e => setFocus(e.target.value)} placeholder="想让 AI 侧重生成什么？（可留空）" />
-        <button className="btn sm" onClick={generate} disabled={gen}>{gen ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />} AI 生成设定</button>
+        <AppButton className="btn sm" loading={isAppMode() && gen} onClick={generate} disabled={gen}>{gen ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />} AI 生成设定</AppButton>
       </div>
       <EntryEditor entries={codex} onChange={update} allowLock={false} />
-      <button className="btn primary block atl-sticky-save" onClick={save} disabled={!dirty}><Check size={15} /> 保存母版</button>
+      <AppButton className="btn primary block atl-sticky-save" variant="primary" onClick={save} disabled={!dirty}><Check size={15} /> 保存母版</AppButton>
     </div>
   );
 }
@@ -609,19 +682,24 @@ function CanonPanel({ run, setRun, onSyncCanon, toast, onDirtyChange }) {
     <div>
       <p className="atl-panel-hint"><BookOpen size={13} /> 局内设定是<b>唯一真正生效</b>的设定，会随剧情推进被 AI 自动增补。可手动校正、锁定不被覆盖。</p>
       <div className="atl-canon-act">
-        <button className="btn sm" onClick={sync} disabled={syncing}>{syncing ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} 从剧情提炼</button>
-        <button className="btn sm ghost" onClick={() => refork(true)} title="保留沉淀条目，仅母版部分回到初始">复刻·保留</button>
-        <button className="btn sm ghost danger" onClick={() => refork(false)} title="完全回到母版初始状态">复刻·重置</button>
+        <AppButton className="btn sm" loading={isAppMode() && syncing} onClick={sync} disabled={syncing}>{syncing ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} 从剧情提炼</AppButton>
+        <AppButton className="btn sm ghost" onClick={() => refork(true)} title="保留沉淀条目，仅母版部分回到初始">复刻·保留</AppButton>
+        <AppButton className="btn sm ghost danger" tone="danger" onClick={() => refork(false)} title="完全回到母版初始状态">复刻·重置</AppButton>
       </div>
       <EntryEditor entries={canon} onChange={update} allowLock={true} showSource={true} />
-      <button className="btn primary block atl-sticky-save" onClick={save} disabled={!dirty}><Check size={15} /> 保存局内设定</button>
+      <AppButton className="btn primary block atl-sticky-save" variant="primary" onClick={save} disabled={!dirty}><Check size={15} /> 保存局内设定</AppButton>
     </div>
   );
 }
 
 function RunsPanel({ novel, run, onSwitchRun, refreshRuns, toast, loadRun }) {
+  const app = isAppMode();
   const [runs, setRuns] = useState([]);
-  const reload = () => api(`/novels/${novel.id}`).then(d => setRuns(d.runs)).catch(() => {});
+  const [loadingRuns, setLoadingRuns] = useState(app);
+  const reload = () => {
+    if (app) setLoadingRuns(true);
+    return api(`/novels/${novel.id}`).then(d => setRuns(d.runs)).catch(() => {}).finally(() => { if (app) setLoadingRuns(false); });
+  };
   useEffect(() => { reload(); }, [run.id]);
   const create = async () => {
     const name = prompt('新剧情线名称', '新线'); if (name === null) return;
@@ -643,24 +721,30 @@ function RunsPanel({ novel, run, onSwitchRun, refreshRuns, toast, loadRun }) {
   return (
     <div>
       <p className="atl-panel-hint"><GitBranch size={13} /> 每条剧情线都是独立的存档：开新线会复刻一份局外母版作为它的局内设定，从此各自生长。</p>
-      <button className="btn block" onClick={create} style={{ marginBottom: 12 }}><Plus size={15} /> 开一条新线（复刻母版）</button>
-      <div className="atl-runs-list">
-        {runs.map(r => (
-          <div key={r.id} className={'atl-run-card' + (r.id === run.id ? ' on' : '') + (r.archived ? ' archived' : '')}>
-            <div className="atl-run-main" onClick={() => onSwitchRun(r.id)}>
+      <AppButton className={app ? 'btn block qa-novel-create-run' : 'btn block'} variant="secondary" onClick={create} style={{ marginBottom: 12 }}><Plus size={15} /> 开一条新线（复刻母版）</AppButton>
+      <div className={app ? 'atl-runs-list qa-novel-runs-list' : 'atl-runs-list'}>
+        {app && loadingRuns ? (
+          <div className="qa-novel-runs-loading" role="status" aria-label="正在载入剧情线"><i className="skel" /><i className="skel" /><i className="skel" /></div>
+        ) : app && runs.length === 0 ? (
+          <div className="qa-novel-runs-empty"><GitBranch size={24} /><b>还没有剧情线</b><span>创建一条新线后即可开始独立创作。</span></div>
+        ) : runs.map(r => {
+          const RunMain = app ? 'button' : 'div';
+          return (
+          <div key={r.id} className={'atl-run-card' + (app ? ' qa-novel-run-card' : '') + (r.id === run.id ? ' on' : '') + (r.archived ? ' archived' : '')}>
+            <RunMain className="atl-run-main" type={app ? 'button' : undefined} onClick={() => onSwitchRun(r.id)}>
               <b>{r.name}{r.id === run.id && <span className="atl-run-cur">当前</span>}</b>
               <span>{r.beats} 段 · {(r.words || 0).toLocaleString()} 字{r.archived ? ' · 已归档' : ''}</span>
               {r.summary && <p>{r.summary}</p>}
-            </div>
+            </RunMain>
             <div className="atl-run-card-act">
-              <button title="生成前情提要" onClick={() => recap(r)}><RefreshCw size={13} /></button>
-              <button title="导出 Markdown" onClick={() => exportRun(r)}><FileDown size={13} /></button>
-              <button title="重命名" onClick={() => rename(r)}><Pencil size={13} /></button>
-              <button title={r.archived ? '取消归档' : '归档'} onClick={() => archive(r)}>{r.archived ? <Eye size={13} /> : <EyeOff size={13} />}</button>
-              <button title="删除" className="danger" onClick={() => del(r)}><Trash2 size={13} /></button>
+              <AppIconButton label="生成前情提要" title="生成前情提要" onClick={() => recap(r)}><RefreshCw size={app ? 16 : 13} /></AppIconButton>
+              <AppIconButton label="导出 Markdown" title="导出 Markdown" onClick={() => exportRun(r)}><FileDown size={app ? 16 : 13} /></AppIconButton>
+              <AppIconButton label="重命名剧情线" title="重命名" onClick={() => rename(r)}><Pencil size={app ? 16 : 13} /></AppIconButton>
+              <AppIconButton label={r.archived ? '取消归档' : '归档剧情线'} title={r.archived ? '取消归档' : '归档'} onClick={() => archive(r)}>{r.archived ? <Eye size={app ? 16 : 13} /> : <EyeOff size={app ? 16 : 13} />}</AppIconButton>
+              <AppIconButton label="删除剧情线" title="删除" tone="danger" className="danger" onClick={() => del(r)}><Trash2 size={app ? 16 : 13} /></AppIconButton>
             </div>
           </div>
-        ))}
+        );})}
       </div>
     </div>
   );
@@ -689,9 +773,9 @@ function AnalysisPanel({ run, toast }) {
       <div className="atl-seg atl-analysis-tabs">
         {TABS.map(([k, l, Ic]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}><Ic size={13} /> {l}</button>)}
       </div>
-      <button className="btn sm block" style={{ margin: '10px 0' }} onClick={() => runIt(tab)} disabled={busy}>
+      <AppButton className="btn sm block" loading={isAppMode() && busy} style={{ margin: '10px 0' }} onClick={() => runIt(tab)} disabled={busy}>
         {busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} {tab === 'check' ? '检查一致性' : tab === 'timeline' ? '梳理时间线' : '生成关系图谱'}
-      </button>
+      </AppButton>
 
       {tab === 'check' && check && (check.length === 0 ? <div className="atl-analysis-ok"><Check size={16} /> 未发现明显矛盾，连贯性良好。</div> : (
         <div className="atl-issues">{check.map((c, i) => (
@@ -748,6 +832,7 @@ function GraphView({ graph }) {
 
 /* ───────────────────────── work info / publish panel ───────────────────────── */
 function InfoPanel({ novel, run, onSaveNovel, refreshRuns, toast, onDirtyChange }) {
+  const app = isAppMode();
   const [form, setForm] = useState({ title: novel.title, logline: novel.logline || '', genre: novel.genre || '', tags: novel.tags || '', cover: novel.cover || '' });
   const [dirty, setDirty] = useState(false);
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
@@ -778,9 +863,9 @@ function InfoPanel({ novel, run, onSaveNovel, refreshRuns, toast, onDirtyChange 
           {form.cover ? <img src={assetUrl(form.cover)} alt="" /> : <div className="atl-cover-ph"><ScrollText size={22} /></div>}
         </div>
         <div className="atl-cover-act">
-          <button className="btn sm" onClick={aiCover} disabled={genCover}>{genCover ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />} AI 生成封面</button>
+          <AppButton className="btn sm" loading={app && genCover} onClick={aiCover} disabled={genCover}>{genCover ? <Loader2 size={14} className="spin" /> : <Wand2 size={14} />} AI 生成封面</AppButton>
           <div className="atl-cover-up"><Uploader value={form.cover} onChange={(url) => set('cover', url)} label="上传封面" /></div>
-          {form.cover && <button className="btn sm ghost danger" onClick={() => set('cover', '')}>移除封面</button>}
+          {form.cover && <AppButton className="btn sm ghost danger" tone="danger" onClick={() => set('cover', '')}>移除封面</AppButton>}
         </div>
       </div>
       <label className="field-label">作品名</label>
@@ -791,18 +876,20 @@ function InfoPanel({ novel, run, onSaveNovel, refreshRuns, toast, onDirtyChange 
         <div><label className="field-label">类型</label><input className="input" value={form.genre} onChange={e => set('genre', e.target.value)} maxLength={40} /></div>
         <div><label className="field-label">标签</label><input className="input" value={form.tags} onChange={e => set('tags', e.target.value)} maxLength={200} /></div>
       </div>
-      <button className="btn primary block" style={{ marginTop: 12 }} onClick={save} disabled={!dirty}><Check size={15} /> 保存信息</button>
+      <AppButton className="btn primary block" variant="primary" style={{ marginTop: 12 }} onClick={save} disabled={!dirty}><Check size={15} /> 保存信息</AppButton>
       <div className="atl-rule"><span>发布</span></div>
       <p className="atl-panel-hint" style={{ marginBottom: 10 }}><Globe size={13} /> 发布后，本作品（以「{run.name}」为展示线）会出现在书架精选，其他人可<b>只读</b>欣赏。</p>
-      <button className={'btn block' + (novel.published ? ' danger' : ' primary')} onClick={publish}>
+      {app && dirty && <p className="qa-novel-publish-hint" role="status">请先保存作品信息，再调整发布状态。</p>}
+      <AppButton className={(app ? 'btn block qa-novel-publish' : 'btn block') + (novel.published ? ' danger' : ' primary')} variant={novel.published ? 'secondary' : 'primary'} tone={novel.published ? 'danger' : 'default'} onClick={publish} disabled={app && dirty}>
         {novel.published ? <><EyeOff size={15} /> 取消发布</> : <><Globe size={15} /> 发布到书架精选（当前线）</>}
-      </button>
+      </AppButton>
     </div>
   );
 }
 
 /* ───────────────────────── muse modal ───────────────────────── */
 function MuseModal({ novelId, onClose, onInsert, toast }) {
+  const app = isAppMode();
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
   const load = async () => {
@@ -816,13 +903,15 @@ function MuseModal({ novelId, onClose, onInsert, toast }) {
     <div className="atl-muse-sec">
       <h4>{title}</h4>
       <div className="atl-muse-chips">
-        {(items || []).map((it, i) => <button key={i} className="atl-muse-chip" onClick={() => onInsert(prefix ? prefix + it : it)} title="点击插入到提示词">{it}</button>)}
+        {(items || []).map((it, i) => <AppButton key={i} className="atl-muse-chip" onClick={() => onInsert(prefix ? prefix + it : it)} title="点击插入到提示词">{it}</AppButton>)}
       </div>
     </div>
   );
   return (
-    <Modal onClose={onClose}>
-      <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Sparkles size={18} /> 灵感火花</h2>
+    <Modal onClose={onClose} className={app ? 'qa-novel-modal' : ''} backdropClassName={app ? 'qa-novel-modal-backdrop' : ''}>
+      {app ? (
+        <div className="qa-novel-modal-head"><h2><Sparkles size={18} /> 灵感火花</h2><AppIconButton label="关闭灵感火花" onClick={onClose}><X size={19} /></AppIconButton></div>
+      ) : <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Sparkles size={18} /> 灵感火花</h2>}
       <p className="muted" style={{ fontSize: 12.5, marginTop: -6 }}>卡文了？点任意一条插入到创作提示词。</p>
       {busy && !data ? <div className="empty" style={{ padding: 30 }}><Loader2 size={20} className="spin" /></div> : data && (
         <>
@@ -831,18 +920,21 @@ function MuseModal({ novelId, onClose, onInsert, toast }) {
           <Section title="画面细节" items={data.details} prefix="融入细节：" />
         </>
       )}
-      <button className="btn block" style={{ marginTop: 12 }} onClick={load} disabled={busy}>{busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} 换一批</button>
+      <AppButton className="btn block" loading={app && busy} style={{ marginTop: 12 }} onClick={load} disabled={busy}>{busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} 换一批</AppButton>
     </Modal>
   );
 }
 
 /* ───────────────────────── stats modal ───────────────────────── */
 function StatsModal({ novelId, onClose, toast }) {
+  const app = isAppMode();
   const [stats, setStats] = useState(null);
   useEffect(() => { api(`/novels/${novelId}/stats`).then(d => setStats(d.stats)).catch(e => toast(e.message, 'err')); }, []);
   return (
-    <Modal onClose={onClose}>
-      <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart3 size={18} /> 写作统计</h2>
+    <Modal onClose={onClose} className={app ? 'qa-novel-modal' : ''} backdropClassName={app ? 'qa-novel-modal-backdrop' : ''}>
+      {app ? (
+        <div className="qa-novel-modal-head"><h2><BarChart3 size={18} /> 写作统计</h2><AppIconButton label="关闭写作统计" onClick={onClose}><X size={19} /></AppIconButton></div>
+      ) : <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart3 size={18} /> 写作统计</h2>}
       {!stats ? <div className="empty" style={{ padding: 30 }}><Loader2 size={20} className="spin" /></div> : (
         <>
           <div className="atl-stat-grid">
@@ -870,18 +962,19 @@ function StatsModal({ novelId, onClose, toast }) {
 
 /* ───────────────────────── immersive reader ───────────────────────── */
 function ReaderOverlay({ novel, run, beats, onClose }) {
+  const app = isAppMode();
   const [size, setSize] = useState(18);
   const readerRef = useRef(null);
   useAppOverlay(true, onClose, { rootRef: readerRef });
   return (
-    <div ref={readerRef} className="atl-reader" role="dialog" aria-modal="true" aria-label="沉浸阅读" tabIndex={-1}>
-      <div className="atl-reader-bar">
-        <button className="btn ghost sm" onClick={onClose}><X size={16} /> 退出阅读</button>
+    <div ref={readerRef} className={app ? 'atl-reader qa-novel-reader' : 'atl-reader'} role="dialog" aria-modal="true" aria-label="沉浸阅读" tabIndex={-1}>
+      <div className={app ? 'atl-reader-bar qa-novel-reader-bar' : 'atl-reader-bar'}>
+        <AppButton className="btn ghost sm" onClick={onClose}><X size={16} /> 退出阅读</AppButton>
         <span className="atl-reader-title">{novel.title} · {run.name}</span>
         <div className="atl-reader-font">
-          <button onClick={() => setSize(s => Math.max(14, s - 1))} title="缩小"><Minus size={14} /></button>
+          <AppIconButton label="缩小字号" title="缩小" onClick={() => setSize(s => Math.max(14, s - 1))}><Minus size={14} /></AppIconButton>
           <Type size={14} />
-          <button onClick={() => setSize(s => Math.min(28, s + 1))} title="放大"><Plus size={14} /></button>
+          <AppIconButton label="放大字号" title="放大" onClick={() => setSize(s => Math.min(28, s + 1))}><Plus size={14} /></AppIconButton>
         </div>
       </div>
       <div className="atl-reader-scroll">
@@ -903,6 +996,7 @@ function ReaderOverlay({ novel, run, beats, onClose }) {
 
 /* ───────────────────────── reusable entry editor ───────────────────────── */
 function EntryEditor({ entries, onChange, allowLock, showSource }) {
+  const app = isAppMode();
   const upd = (i, k, v) => onChange(entries.map((e, j) => j === i ? { ...e, [k]: v } : e));
   const add = () => onChange([...entries, { id: localId(), title: '', category: 'other', trigger: 'keyword', keys: '', content: '', source: 'manual', enabled: true, locked: false }]);
   const del = (i) => onChange(entries.filter((_, j) => j !== i));
@@ -930,20 +1024,20 @@ function EntryEditor({ entries, onChange, allowLock, showSource }) {
             </div>
             <textarea className="textarea atl-entry-content" rows={2} placeholder="设定内容" value={e.content || ''} onChange={ev => upd(i, 'content', ev.target.value)} maxLength={4000} />
             <div className="atl-entry-foot">
-              <button className="atl-entry-toggle" onClick={() => upd(i, 'enabled', e.enabled === false)} title={e.enabled === false ? '已停用' : '启用中'}>
+              <AppButton className="atl-entry-toggle" selected={e.enabled !== false} onClick={() => upd(i, 'enabled', e.enabled === false)} title={e.enabled === false ? '已停用' : '启用中'}>
                 {e.enabled === false ? <EyeOff size={13} /> : <Eye size={13} />}{e.enabled === false ? '停用' : '启用'}
-              </button>
+              </AppButton>
               {allowLock && (
-                <button className={'atl-entry-toggle' + (e.locked ? ' on' : '')} onClick={() => upd(i, 'locked', !e.locked)} title={e.locked ? '已锁定，不被 AI 自动覆盖' : '锁定后不被 AI 自动覆盖'}>
+                <AppButton className={'atl-entry-toggle' + (e.locked ? ' on' : '')} selected={e.locked} onClick={() => upd(i, 'locked', !e.locked)} title={e.locked ? '已锁定，不被 AI 自动覆盖' : '锁定后不被 AI 自动覆盖'}>
                   {e.locked ? <Lock size={13} /> : <Unlock size={13} />}{e.locked ? '锁定' : '可改'}
-                </button>
+                </AppButton>
               )}
-              <button className="atl-entry-del" onClick={() => del(i)} title="删除"><Trash2 size={13} /></button>
+              <AppIconButton className="atl-entry-del" label="删除设定条目" title="删除" tone="danger" onClick={() => del(i)}><Trash2 size={app ? 16 : 13} /></AppIconButton>
             </div>
           </div>
         );
       })}
-      <button className="btn sm ghost atl-entry-add" onClick={add}><Plus size={14} /> 添加设定条目</button>
+      <AppButton className="btn sm ghost atl-entry-add" onClick={add}><Plus size={14} /> 添加设定条目</AppButton>
     </div>
   );
 }

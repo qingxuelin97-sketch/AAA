@@ -76,8 +76,13 @@ html[data-app="1"] :where(.badge, .tag, .gm-owner) {
   border-color: color-mix(in srgb, var(--app-coral) 24%, var(--border));
 }
 
-/* Auto/balanced: remove compositor-heavy live sampling and persistent layers. */
-html[data-app="1"][data-perf="balanced"] :where(*) {
+/* Balanced keeps purposeful transform/opacity motion and one navigation
+   material plane. Only content-level live sampling is removed; disabling all
+   motion made the App feel frozen and also erased state feedback. */
+html[data-app="1"][data-perf="balanced"] :where(
+  .card, .set-card, .msgs-conv, .msgs-entry, .room-row, .noti-item,
+  .ah-hero, .ah-hero-card, .pf-card, .cvx-body, .fd2-intro, .fd2-greet
+) {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   will-change: auto !important;
@@ -86,18 +91,17 @@ html[data-app="1"][data-perf="balanced"] :where(
   .app-dot, .flow-sheen::after, .pulse-dot, .auth-orbs i, .ring-track,
   .chat-aura span, .chat-bg img, .chat-bg video, .ch-av .avatar,
   .msg.user .bubble::before, .empty .big, .empty svg:first-child,
-  .char-hero-bg, .ah-celestial, .ah-hero::after, .ah-coin,
+  .char-hero-bg,
   .vipx-card-shine, .vx2-shine, .vm-card-shine, .vm-spark,
   .wb-hero-aurora, .wb-cap-ribbon, .title-glow, .lb-crown,
-  .ach-hall-glow, .app-sheet-grip, .auth-card-badge
+  .ach-hall-glow, .auth-card-badge
 ) { animation: none !important; }
 html[data-app="1"][data-perf="balanced"] .flow-sheen::after,
-html[data-app="1"][data-perf="balanced"] .msg.user .bubble::before,
-html[data-app="1"][data-perf="balanced"] .ah-hero::after {
+html[data-app="1"][data-perf="balanced"] .msg.user .bubble::before {
   animation: none !important;
 }
 html[data-app="1"][data-perf="balanced"] :where(.app-tabbar, .topbar, .tabs-bar, .cat-bar) {
-  background: color-mix(in srgb, var(--bg) 96%, var(--accent) 4%) !important;
+  background: color-mix(in srgb, var(--bg) 78%, transparent) !important;
   box-shadow: 0 -1px 0 color-mix(in srgb, var(--accent) 16%, transparent) inset,
     0 -9px 26px rgba(4,51,55,0.10);
 }
@@ -188,6 +192,14 @@ html[data-app="1"] .app-exit-hint {
   pointer-events: none;
 }
 html[data-app="1"] .app-root.no-dock .app-main { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Route-owned edge-to-edge media must not inherit the generic Dock reserve.
+   The route keeps its own interactive content above the floating Dock. */
+html[data-app="1"] .app-root[data-full-bleed="true"] .app-main {
+  height: 100dvh;
+  min-height: 100dvh;
+  padding: 0;
+  overflow: hidden;
+}
 html[data-app="1"][data-keyboard="1"] .app-tabbar { display: none; }
 html[data-app="1"][data-keyboard="1"] .app-main { padding-bottom: 0; }
 @keyframes appRouteSpin { to { transform: rotate(360deg); } }
@@ -202,7 +214,7 @@ html[data-app="1"][data-keyboard="1"] .app-main { padding-bottom: 0; }
      line, but let whole controls flow to a second row instead of pushing the
      360px viewport sideways. */
   html[data-app="1"] .topbar { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
-  html[data-app="1"] .topbar > :where(div, section):has(h1) {
+  html[data-app="1"] .topbar:not(.qa-character-editor__topbar) > :where(div, section):has(h1) {
     flex-grow: 1;
     flex-shrink: 1;
     min-width: min(58vw, 240px);

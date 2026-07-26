@@ -358,7 +358,7 @@ html[data-app="1"] .chat-main .hy-search .hy-search-count {
 html[data-app="1"] .chat-main .hy-search .hy-search-count.none { font-weight: 500; opacity: 0.6; }
 html[data-app="1"] .chat-main .hy-search .hy-search-nav { display: flex; gap: 2px; flex: none; }
 html[data-app="1"] .chat-main .hy-search button {
-  display: grid; place-items: center; width: 30px; height: 30px; flex: none; padding: 0;
+  display: grid; place-items: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex: none; padding: 0;
   border: none; border-radius: 50%; background: none; color: var(--chat-accent-ink); cursor: pointer;
 }
 html[data-app="1"] .chat-main .hy-search button:disabled { opacity: 0.35; }

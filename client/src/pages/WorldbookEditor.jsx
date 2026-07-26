@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
 import { useToast, Modal } from '../ui.jsx';
 import { useUnsavedValue } from '../appNavigation.jsx';
+import { isAppMode } from '../appmode.js';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { Plus, ArrowLeft, Trash, BookOpen, Save, Globe, ChevronDown, ChevronUp,
   Settings2, Image as ImageIcon, Layout, Play, Eye, Sliders, Filter, Clock, Percent, Layers,
   Copy, Folder, FolderOpen, Search, Download, Upload, Variable, GitBranch, Sparkles, Timer,
@@ -60,6 +63,7 @@ const DEFAULT_VAR_SCHEMA = JSON.stringify({
 export default function WorldbookEditor() {
   const { id } = useParams();
   const editing = id && id !== 'new';
+  const appMode = isAppMode();
   const { user } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
@@ -79,7 +83,9 @@ export default function WorldbookEditor() {
   const [collapsedFolders, setCollapsedFolders] = useState({});
   const [selected, setSelected] = useState(new Set());
   const [aiSplit, setAiSplit] = useState(null);   // AI 拆书：null 关闭 | { text, loading, result, picked }
+  const [appTab, setAppTab] = useState('overview');
   const fileRef = React.useRef(null);
+  const appSectionRefs = React.useRef({});
   const readOnly = editing && user && ownerId != null && ownerId !== user.id;
   const markWorldbookClean = useUnsavedValue(wb, loaded && !readOnly, '世界书还有尚未保存的修改，确定离开吗？');
 
@@ -384,14 +390,76 @@ export default function WorldbookEditor() {
     }, 80);
   };
 
-  if (!loaded) return (
-    <><div className="topbar"><button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button><div style={{ flex: 1 }}><h1>世界书</h1></div></div>
-      <div className="page"><div className="empty">载入中…</div></div></>
-  );
+  const setAppSectionRef = (key) => (node) => {
+    if (node) appSectionRefs.current[key] = node;
+    else delete appSectionRefs.current[key];
+  };
+
+  const scrollAppSection = (key) => {
+    setAppTab(key);
+    appSectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  useEffect(() => {
+    if (!appMode || !loaded || typeof IntersectionObserver === 'undefined') return undefined;
+    const sections = new Map(
+      Object.entries(appSectionRefs.current).filter(([, node]) => Boolean(node))
+    );
+    if (!sections.size) return undefined;
+
+    const keyByNode = new Map(Array.from(sections, ([key, node]) => [node, key]));
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter(entry => entry.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      const key = visible && keyByNode.get(visible.target);
+      if (key) setAppTab(key);
+    }, { rootMargin: '-132px 0px -56% 0px', threshold: [0, 0.01, 0.2] });
+
+    keyByNode.forEach((_, node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [appMode, loaded, editing, wb.entries.length]);
+
+  if (!loaded) {
+    if (appMode) return (
+      <div className="qa-worldbook-editor qa-worldbook-editor--loading">
+        <header className="qa-worldbook-editor__topbar">
+          <AppIconButton label="返回" onClick={() => nav(-1)}><ArrowLeft size={19} /></AppIconButton>
+          <div className="qa-worldbook-editor__title">
+            <h1>世界书</h1>
+            <span>正在载入编辑器</span>
+          </div>
+        </header>
+        <main className="qa-worldbook-editor__loading" role="status" aria-label="正在载入世界书">
+          <span className="qa-worldbook-editor__loading-icon"><BookOpen size={24} /></span>
+          <b>正在载入世界书</b>
+          <span>设定与条目马上就好</span>
+        </main>
+      </div>
+    );
+    return (
+      <><div className="topbar"><button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button><div style={{ flex: 1 }}><h1>世界书</h1></div></div>
+        <div className="page"><div className="empty">载入中…</div></div></>
+    );
+  }
+
+  const EditorShell = appMode ? 'div' : React.Fragment;
 
   return (
-    <>
-      <div className="topbar">
+    <EditorShell {...(appMode ? { className: 'qa-worldbook-editor', 'data-read-only': readOnly ? 'true' : undefined } : {})}>
+      {appMode ? (
+        <header className="qa-worldbook-editor__topbar">
+          <AppIconButton className="qa-worldbook-editor__back" label="返回" onClick={() => nav(-1)}><ArrowLeft size={19} /></AppIconButton>
+          <div className="qa-worldbook-editor__title">
+            <h1>{editing ? wb.name || '世界书' : '新建世界书'}</h1>
+            <span>{readOnly ? '只读预览' : busy ? '正在保存…' : editing ? '编辑草稿' : '创建新设定'}</span>
+          </div>
+          <span className="qa-worldbook-editor__top-state" data-busy={busy || undefined}>
+            {readOnly ? '只读' : busy ? '保存中' : '草稿'}
+          </span>
+        </header>
+      ) : (
+        <div className="topbar">
         <button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button>
         <div style={{ flex: 1 }}>
           <h1>{editing ? wb.name || '世界书' : '新建世界书'}</h1>
@@ -403,11 +471,60 @@ export default function WorldbookEditor() {
         <input ref={fileRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={e => { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ''; }} />
         {editing && !readOnly && <button className="btn ghost danger" onClick={del} title="删除"><Trash size={15} /></button>}
         {!readOnly && <button className="btn primary" onClick={save} disabled={busy}><Save size={15} /> {busy ? '保存中…' : '保存'}</button>}
-      </div>
+        </div>
+      )}
 
-      <div className="page wb-editor">
+      {appMode && (
+        <>
+          {!readOnly && (
+            <section className="qa-worldbook-editor__toolbar" aria-label="世界书工具">
+              {editing && <AppButton variant="tertiary" size="sm" onClick={exportJson}><Download size={15} /> 导出</AppButton>}
+              <AppButton variant="tertiary" size="sm" onClick={() => fileRef.current?.click()}><Upload size={15} /> 导入</AppButton>
+              <AppButton variant="secondary" size="sm" onClick={() => setAiSplit({ text: '', loading: false, result: null, picked: new Set() })}><Wand2 size={15} /> AI 拆书</AppButton>
+              {editing && <AppButton variant="tertiary" tone="danger" size="sm" onClick={del}><Trash size={15} /> 删除</AppButton>}
+              <input ref={fileRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={e => { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ''; }} />
+            </section>
+          )}
+          <nav className="qa-worldbook-editor__tabs" aria-label="世界书编辑区">
+            {[
+              ['overview', '概览'],
+              ['identity', '信息'],
+              ['entries', '条目'],
+              ['preview', '预览'],
+            ].map(([key, label]) => (
+              <AppButton
+                key={key}
+                className="qa-worldbook-editor__tab"
+                variant="tertiary"
+                size="sm"
+                selected={appTab === key}
+                disabled={key === 'preview' && !editing}
+                onClick={() => scrollAppSection(key)}
+                aria-current={appTab === key ? 'page' : undefined}
+              >
+                {label}
+              </AppButton>
+            ))}
+          </nav>
+        </>
+      )}
+
+      <div className={appMode ? 'page wb-editor qa-worldbook-editor__page' : 'page wb-editor'}>
+        {appMode && (
+          <div className="qa-worldbook-editor__section-heading">
+            <span className="qa-worldbook-editor__section-icon"><BookOpen size={18} /></span>
+            <div>
+              <h2>世界书设置</h2>
+              <p>先定义世界的身份，再逐步添加会在对话中生效的设定。</p>
+            </div>
+          </div>
+        )}
         {/* —— 三档身份徽章（通常/高级/专家，三类可共存）—— */}
-        <div className="wb-cap-bar">
+        <div
+          className={appMode ? 'wb-cap-bar qa-worldbook-editor__capabilities' : 'wb-cap-bar'}
+          ref={appMode ? setAppSectionRef('overview') : undefined}
+          id={appMode ? 'qa-worldbook-editor-overview' : undefined}
+        >
           <span className="wb-cap-badge tier-normal on"><BookOpen size={11} /> 通常<span className="muted"> 关键词</span></span>
           {advancedOn && <span className="wb-cap-badge tier-advanced on"><Sliders size={11} /> 高级<span className="muted"> 概率/分组/计时</span></span>}
           {hasImage && <span className="wb-cap-badge tier-expert on"><ImageIcon size={11} /> 图片注入</span>}
@@ -421,7 +538,7 @@ export default function WorldbookEditor() {
 
         {/* —— 世界书概览：规模统计 + Token 估算 + 健康检查 —— */}
         {wb.entries.length > 0 && (
-          <div className="wb-overview">
+          <div className={appMode ? 'wb-overview qa-worldbook-editor__overview' : 'wb-overview'}>
             <div className="wb-ov-stats">
               <button type="button" className={'wb-ov-stat' + (statFilter === 'all' ? ' active' : '')} onClick={() => setStatFilter('all')}><b>{stats.total}</b><span>全部条目</span></button>
               <button type="button" className={'wb-ov-stat' + (statFilter === 'always' ? ' active' : '')} onClick={() => setStatFilter(f => f === 'always' ? 'all' : 'always')}><b>{stats.always}</b><span>常驻</span></button>
@@ -452,7 +569,12 @@ export default function WorldbookEditor() {
         )}
 
         {/* —— 基础信息 —— */}
-        <div className="card" style={{ marginBottom: 16 }}>
+        <div
+          className={appMode ? 'card qa-worldbook-editor__section qa-worldbook-editor__identity' : 'card'}
+          style={{ marginBottom: 16 }}
+          ref={appMode ? setAppSectionRef('identity') : undefined}
+          id={appMode ? 'qa-worldbook-editor-identity' : undefined}
+        >
           <div className="field">
             <label>名称</label>
             <input className="input" placeholder="如：圣域世界观" value={wb.name} onChange={e => set('name', e.target.value)} maxLength={60} disabled={readOnly} />
@@ -473,7 +595,7 @@ export default function WorldbookEditor() {
         </div>
 
         {/* —— 高级设定面板（折叠）—— */}
-        <div className="card wb-advanced-panel">
+        <div className={appMode ? 'card wb-advanced-panel qa-worldbook-editor__section qa-worldbook-editor__advanced' : 'card wb-advanced-panel'}>
           <button className="wb-advanced-toggle" onClick={() => setShowAdvanced(s => !s)} disabled={readOnly}>
             <Sliders size={16} /> 高级设定
             <span className="wb-adv-summary">
@@ -533,7 +655,7 @@ export default function WorldbookEditor() {
         </div>
 
         {/* —— 专家能力面板（折叠，独立于高级设定）—— */}
-        <div className="card wb-expert-panel">
+        <div className={appMode ? 'card wb-expert-panel qa-worldbook-editor__section qa-worldbook-editor__expert' : 'card wb-expert-panel'}>
           <button className="wb-advanced-toggle expert" onClick={() => setShowExpert(s => !s)} disabled={readOnly}>
             <Sparkles size={16} /> 专家能力
             <span className="wb-adv-summary">
@@ -581,7 +703,12 @@ export default function WorldbookEditor() {
         </div>
 
         {/* —— 条目列表 —— */}
-        <div className="section-title wb-list-head" style={{ marginTop: 20 }}>
+        <div
+          className={appMode ? 'section-title wb-list-head qa-worldbook-editor__entries-head' : 'section-title wb-list-head'}
+          style={{ marginTop: 20 }}
+          ref={appMode ? setAppSectionRef('entries') : undefined}
+          id={appMode ? 'qa-worldbook-editor-entries' : undefined}
+        >
           <h2>设定条目 ({wb.entries.length})</h2>
           <div className="wb-list-actions">
             <div className="wb-search-inline">
@@ -818,7 +945,11 @@ export default function WorldbookEditor() {
 
         {/* —— 触发预览：多段测试 + Token 估算 + 互斥告警 + 变量状态 —— */}
         {editing && (
-          <div className="card wb-preview">
+          <div
+            className={appMode ? 'card wb-preview qa-worldbook-editor__section qa-worldbook-editor__preview' : 'card wb-preview'}
+            ref={appMode ? setAppSectionRef('preview') : undefined}
+            id={appMode ? 'qa-worldbook-editor-preview' : undefined}
+          >
             <div className="wb-preview-head">
               <Eye size={16} /> 触发预览
               <label className="switch" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
@@ -903,9 +1034,30 @@ export default function WorldbookEditor() {
         )}
       </div>
 
+      {appMode && !readOnly && typeof document !== 'undefined' && createPortal(
+        <div className="qa-worldbook-editor__savebar" role="toolbar" aria-label="世界书保存操作">
+          <div className="qa-worldbook-editor__save-state">
+            <BookCheck size={16} />
+            <span>{busy ? '正在保存…' : '当前更改未保存'}</span>
+          </div>
+          <div className="qa-worldbook-editor__save-actions">
+            <AppButton variant="secondary" size="sm" onClick={() => scrollAppSection('entries')}>
+              <Plus size={15} /> 条目
+            </AppButton>
+            <AppButton variant="primary" size="lg" loading={busy} disabled={busy} onClick={save}>
+              <Save size={16} /> 保存
+            </AppButton>
+          </div>
+        </div>,
+        document.body,
+      )}
+
       {/* —— AI 拆书 —— */}
       {aiSplit && (
-        <Modal onClose={() => setAiSplit(null)}>
+        <Modal
+          onClose={() => setAiSplit(null)}
+          {...(appMode ? { portal: true, className: 'qa-worldbook-editor__modal', backdropClassName: 'qa-worldbook-editor__modal-backdrop' } : {})}
+        >
           <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Wand2 size={18} /> AI 拆书</h2>
           <p className="muted" style={{ marginTop: -4, fontSize: 13 }}>
             把小说设定、维基条目、跑团模组等大段文本粘贴进来，AI 会拆成带触发关键词的世界书条目；预览勾选后并入本书。使用你在设置中配置的语言模型。
@@ -953,6 +1105,6 @@ export default function WorldbookEditor() {
           )}
         </Modal>
       )}
-    </>
+    </EditorShell>
   );
 }

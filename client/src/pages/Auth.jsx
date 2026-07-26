@@ -4,7 +4,9 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { Logo } from '../assets.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { getRegistrationIntegrityToken } from '../playIntegrity.js';
+import { isAppMode } from '../appmode.js';
 import { Drama, Plug, Volume2, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dices, MessagesSquare, LayoutGrid, LifeBuoy, Mail, ShieldCheck, KeyRound } from 'lucide-react';
 
 const TAGLINES = [
@@ -64,13 +66,29 @@ export default function Auth() {
   // 邮箱验证码：倒计时（秒）、发送中
   const [codeCountdown, setCodeCountdown] = useState(0);
   const [sendingCode, setSendingCode] = useState(false);
+  const app = isAppMode();
+  const withAppClass = (base, hook) => app ? [base, hook].filter(Boolean).join(' ') : base;
 
-  useEffect(() => { const t = setInterval(() => setTl(i => (i + 1) % TAGLINES.length), 3600); return () => clearInterval(t); }, []);
+  const moveAuthTab = (event) => {
+    if (!app || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' || event.key === 'ArrowLeft' ? 'login' : 'register';
+    setMode(next);
+    requestAnimationFrame(() => document.getElementById(`auth-tab-${next}`)?.focus());
+  };
+
   useEffect(() => {
+    if (app) return undefined;
+    const t = setInterval(() => setTl(i => (i + 1) % TAGLINES.length), 3600);
+    return () => clearInterval(t);
+  }, [app]);
+  useEffect(() => {
+    if (app) return undefined;
     api('/characters/public?sort=hot')
       .then(d => setRing((d.characters || []).filter(c => c.avatar).slice(0, 16)))
       .catch(() => {});
-  }, []);
+    return undefined;
+  }, [app]);
   // 验证码倒计时驱动
   useEffect(() => {
     if (codeCountdown <= 0) return;
@@ -82,7 +100,7 @@ export default function Auth() {
     setForm(current => ({
       ...current,
       [k]: value,
-      ...((k === 'email' || k === 'username') ? { integrity_ticket: '' } : {}),
+      ...((k === 'email' || k === 'username' || k === 'invite') ? { integrity_ticket: '' } : {}),
     }));
   };
 
@@ -131,7 +149,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="auth-wrap v2 auth-reveal">
+    <div className={withAppClass('auth-wrap v2 auth-reveal', 'qa-auth-page')}>
       <div className="auth-hero">
         <div className="glow" />
         <div className="auth-orbs" aria-hidden="true"><i /><i /><i /></div>
@@ -167,53 +185,109 @@ export default function Auth() {
           <CharacterRing chars={ring} compact />
           {ring.length > 0 && <div className="arm-cap">{ring.length}+ 位角色正在幻域等你</div>}
         </div>
-        <div className="card auth-card">
+        <div className={withAppClass('card auth-card', 'qa-auth-card')}>
           <div className="auth-card-badge"><Sparkles size={13} /> AI 角色扮演平台</div>
           <h2>{mode === 'login' ? '登录账号' : '创建账号'}</h2>
-          <p className="muted" style={{ fontSize: 13, margin: 0 }}>{mode === 'login' ? '欢迎回来，继续你的故事' : '白名单 / 邀请密钥 / 正式 Play App 可注册'}</p>
-          <div className="auth-tabs">
-            <button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>登录</button>
-            <button className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>注册</button>
+          <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+            {mode === 'login'
+              ? '欢迎回来，继续你的故事'
+              : app
+                ? '白名单 / 邀请密钥 / HTTP App 壳内测'
+                : '白名单 / 邀请密钥 / 正式 Play App 可注册'}
+          </p>
+          <div className={withAppClass('auth-tabs', 'qa-auth-mode-switch')} role={app ? 'tablist' : undefined} aria-label={app ? '账号入口' : undefined} onKeyDown={app ? moveAuthTab : undefined}>
+            <AppButton
+              className={withAppClass(mode === 'login' ? 'active' : '', 'qa-auth-mode-tab')}
+              variant="tertiary"
+              selected={mode === 'login'}
+              onClick={() => setMode('login')}
+              id={app ? 'auth-tab-login' : undefined}
+              role={app ? 'tab' : undefined}
+              aria-selected={app ? mode === 'login' : undefined}
+              aria-controls={app ? 'auth-panel' : undefined}
+              tabIndex={app ? (mode === 'login' ? 0 : -1) : undefined}
+            >登录</AppButton>
+            <AppButton
+              className={withAppClass(mode === 'register' ? 'active' : '', 'qa-auth-mode-tab')}
+              variant="tertiary"
+              selected={mode === 'register'}
+              onClick={() => setMode('register')}
+              id={app ? 'auth-tab-register' : undefined}
+              role={app ? 'tab' : undefined}
+              aria-selected={app ? mode === 'register' : undefined}
+              aria-controls={app ? 'auth-panel' : undefined}
+              tabIndex={app ? (mode === 'register' ? 0 : -1) : undefined}
+            >注册</AppButton>
             <span className="auth-tab-ink" style={{ transform: `translateX(${mode === 'login' ? 0 : 100}%)` }} />
           </div>
-          <form onSubmit={submit}>
+          <form
+            onSubmit={submit}
+            id={app ? 'auth-panel' : undefined}
+            className={app ? 'qa-auth-form' : undefined}
+            role={app ? 'tabpanel' : undefined}
+            aria-labelledby={app ? `auth-tab-${mode}` : undefined}
+            aria-busy={app ? busy : undefined}
+          >
             <div className="field">
-              <label>用户名</label>
-              <input className="input" value={form.username} onChange={upd('username')} placeholder="字母 / 数字，2 位以上" autoFocus autoComplete="username" />
+              <label htmlFor={app ? 'auth-username' : undefined}>用户名</label>
+              <input id={app ? 'auth-username' : undefined} className="input" value={form.username} onChange={upd('username')} placeholder="字母 / 数字，2 位以上" autoFocus autoComplete="username" />
             </div>
             {mode === 'register' && (
               <div className="field">
-                <label>昵称 <span className="muted">(可选)</span></label>
-                <input className="input" value={form.display_name} onChange={upd('display_name')} placeholder="展示给其他玩家的名字" />
+                <label htmlFor={app ? 'auth-display-name' : undefined}>昵称 <span className="muted">(可选)</span></label>
+                <input id={app ? 'auth-display-name' : undefined} className="input" value={form.display_name} onChange={upd('display_name')} placeholder="展示给其他玩家的名字" />
               </div>
             )}
             <div className="field">
-              <label>密码</label>
-              <div className="input-affix">
-                <input className="input" type={showPwd ? 'text' : 'password'} value={form.password} onChange={upd('password')} placeholder="至少 8 位，含字母/数字/符号两类" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
-                <button type="button" className="affix-btn" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? '隐藏密码' : '显示密码'} tabIndex={-1}>
+              <label htmlFor={app ? 'auth-password' : undefined}>密码</label>
+              <div className={withAppClass('input-affix', 'qa-auth-password-field')}>
+                <input id={app ? 'auth-password' : undefined} className="input" type={showPwd ? 'text' : 'password'} value={form.password} onChange={upd('password')} placeholder="至少 8 位，含字母/数字/符号两类" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+                <AppIconButton
+                  type="button"
+                  className={withAppClass('affix-btn', 'qa-auth-password-toggle')}
+                  label={showPwd ? '隐藏密码' : '显示密码'}
+                  pressed={showPwd}
+                  onClick={() => setShowPwd(v => !v)}
+                  aria-label={showPwd ? '隐藏密码' : '显示密码'}
+                  aria-controls={app ? 'auth-password' : undefined}
+                  tabIndex={app ? undefined : -1}
+                >
                   {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+                </AppIconButton>
               </div>
             </div>
             {mode === 'register' && (
               <>
                 <div className="field">
-                  <label><Mail size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邮箱</label>
-                  <input className="input" type="email" value={form.email} onChange={upd('email')} placeholder="white@example.com" autoComplete="email" />
-                  <div className="hint">注册后该邮箱将作为账号凭证。非白名单用户需填写邀请密钥，或使用 Google Play 安装的正式 App 完成设备完整性校验。</div>
+                  <label htmlFor={app ? 'auth-email' : undefined}><Mail size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邮箱</label>
+                  <input id={app ? 'auth-email' : undefined} className="input" type="email" value={form.email} onChange={upd('email')} placeholder="white@example.com" autoComplete="email" aria-describedby={app ? 'auth-email-hint' : undefined} />
+                  <div className="hint" id={app ? 'auth-email-hint' : undefined}>
+                    {app
+                      ? '注册后该邮箱将作为账号凭证。当前仅为 HTTP App 壳内测；白名单或邀请资格由服务端校验，设备完整性流程尚未作为正式 App 能力发布。'
+                      : '注册后该邮箱将作为账号凭证。非白名单用户需填写邀请密钥，或使用 Google Play 安装的正式 App 完成设备完整性校验。'}
+                  </div>
                 </div>
                 <div className="field">
-                  <label><ShieldCheck size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邀请密钥 <span className="muted">(可选)</span></label>
-                  <input className="input" value={form.invite} onChange={upd('invite')} placeholder="若有邀请密钥请在获取验证码前填写" />
+                  <label htmlFor={app ? 'auth-invite' : undefined}><ShieldCheck size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邀请密钥 <span className="muted">(可选)</span></label>
+                  <input id={app ? 'auth-invite' : undefined} className="input" value={form.invite} onChange={upd('invite')} placeholder="若有邀请密钥请在获取验证码前填写" />
                 </div>
                 <div className="field">
-                  <label><KeyRound size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邮箱验证码</label>
-                  <div className="input-affix" style={{ display: 'flex', gap: 8 }}>
-                    <input className="input" style={{ flex: 1 }} value={form.code} onChange={upd('code')} placeholder="6 位验证码" inputMode="numeric" autoComplete="one-time-code" />
-                    <button type="button" className="btn sm" onClick={sendCode} disabled={sendingCode || codeCountdown > 0 || !form.email.trim() || !form.username.trim()} style={{ whiteSpace: 'nowrap' }}>
+                  <label htmlFor={app ? 'auth-code' : undefined}><KeyRound size={13} style={{ verticalAlign: -2, marginRight: 4 }} />邮箱验证码</label>
+                  <div className={withAppClass('input-affix', 'qa-auth-code-row')} style={{ display: 'flex', gap: 8 }}>
+                    <input id={app ? 'auth-code' : undefined} className={withAppClass('input', 'qa-auth-code-input')} style={{ flex: 1 }} value={form.code} onChange={upd('code')} placeholder="6 位验证码" inputMode="numeric" autoComplete="one-time-code" />
+                    <AppButton
+                      type="button"
+                      className={withAppClass('btn sm', 'qa-auth-code-request')}
+                      variant="secondary"
+                      size="sm"
+                      loading={sendingCode}
+                      onClick={sendCode}
+                      disabled={sendingCode || codeCountdown > 0 || !form.email.trim() || !form.username.trim()}
+                      style={{ whiteSpace: 'nowrap' }}
+                      aria-live={app ? 'polite' : undefined}
+                    >
                       {sendingCode ? '发送中…' : codeCountdown > 0 ? `${codeCountdown}s 后重发` : '获取验证码'}
-                    </button>
+                    </AppButton>
                   </div>
                 </div>
               </>
@@ -229,14 +303,21 @@ export default function Auth() {
                 </span>
               </label>
             )}
-            <button className="btn primary block auth-submit" disabled={busy || (mode === 'register' && !agree)}>
+            <AppButton
+              type={app ? 'submit' : undefined}
+              className={withAppClass('btn primary block auth-submit', 'qa-auth-submit')}
+              variant="primary"
+              size="lg"
+              loading={busy}
+              disabled={busy}
+            >
               {busy ? '处理中…' : <>{mode === 'login' ? '登 录' : '注 册'} <ArrowRight size={16} /></>}
-            </button>
+            </AppButton>
           </form>
           <div className="auth-foot">
-            <div className="auth-explore">
-              <button type="button" className="auth-explore-btn" onClick={() => nav('/features')}><LayoutGrid size={14} /> 产品功能</button>
-              <button type="button" className="auth-explore-btn" onClick={() => nav('/help')}><LifeBuoy size={14} /> 帮助中心</button>
+            <div className={withAppClass('auth-explore', 'qa-auth-help-actions')}>
+              <AppButton type="button" className={withAppClass('auth-explore-btn', 'qa-auth-help-button')} variant="secondary" onClick={() => nav('/features')}><LayoutGrid size={14} /> 产品功能</AppButton>
+              <AppButton type="button" className={withAppClass('auth-explore-btn', 'qa-auth-help-button')} variant="secondary" onClick={() => nav('/help')}><LifeBuoy size={14} /> 帮助中心</AppButton>
             </div>
             {mode === 'login' && <div className="auth-foot-note">登录 / 注册即表示你已阅读并同意以下条款</div>}
             <LegalLinks onOpen={setLegal} className="center" />

@@ -48,6 +48,7 @@ export const loaders = {
   Home:            chunk(/^\/$/, () => import('./pages/Home.jsx')),
   DiscoverFeed:    chunk(/^\/$/, () => import('./pages/DiscoverFeed.jsx'), { hot: true }),
   AppHome:         chunk(/^\/today$/, () => import('./pages/AppHome.jsx'), { hot: true }),
+  AppControlsGallery: chunk(/^\/app-controls$/, () => import('./pages/AppControlsGallery.jsx')),
   Messages:        chunk(/^\/messages$/, () => import('./pages/Messages.jsx'), { hot: true }),
   AppProfile:      chunk(/^\/me$/, () => import('./pages/AppProfile.jsx'), { hot: true }),
   Chat:            chunk(/^\/chats(\/|$)/, () => import('./pages/Chat.jsx'), { hot: true }),

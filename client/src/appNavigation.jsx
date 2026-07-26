@@ -63,12 +63,17 @@ export function AppNavProvider({ children }) {
     if (!confirmNavigation()) return true;
 
     const route = getAppRoute(location.pathname);
+    const contextualParent = location.state?.appBackTo;
+    if (typeof contextualParent === 'string' && contextualParent.startsWith('/') && contextualParent !== location.pathname) {
+      navigate(contextualParent, { replace: true, state: { appNavDir: 'pop' } });
+      return true;
+    }
     if (route.parent) {
-      navigate(route.parent, { replace: false });
+      navigate(route.parent, { replace: true, state: { appNavDir: 'pop' } });
       return true;
     }
     if (route.tab !== null && location.pathname !== DEFAULT_APP_TAB) {
-      navigate(DEFAULT_APP_TAB, { replace: false });
+      navigate(DEFAULT_APP_TAB, { replace: true, state: { appNavDir: 'pop' } });
       return true;
     }
 
@@ -82,7 +87,7 @@ export function AppNavProvider({ children }) {
     clearTimeout(hintTimer.current);
     hintTimer.current = setTimeout(() => setExitHint(false), EXIT_WINDOW_MS);
     return true;
-  }, [confirmNavigation, dismissInput, location.pathname, navigate, overlays]);
+  }, [confirmNavigation, dismissInput, location.pathname, location.state, navigate, overlays]);
   requestBackRef.current = requestBack;
 
   useEffect(() => {

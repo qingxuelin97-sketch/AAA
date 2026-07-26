@@ -8,6 +8,7 @@ import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow, msgPreview } from '../util.js';
 import IllustrateModal from '../components/IllustrateModal.jsx';
 import CallScreen from '../components/CallScreen.jsx';
+import { AppIconButton } from '../components/AppControls.jsx';
 import { EmptyArt } from '../art.jsx';
 import { installTavernHost } from '../tavernbridge.js';
 import { streamSSE } from '../chat/sse.js';
@@ -15,6 +16,7 @@ import { BubbleContent, setPanelCtx } from '../chat/BubbleContent.jsx';
 import { useOverlayBack, useBookmarks, useLongPress } from '../chat/hooks.js';
 import ChatSearchBar from '../chat/ChatSearchBar.jsx';
 import { isAppMode } from '../appmode.js';
+import { useAppOverlay } from '../overlay.jsx';
 import {
   GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
   REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo, timeDivider,
@@ -22,6 +24,10 @@ import {
 import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft } from 'lucide-react';
 
 export default function Chat() {
+  const app = isAppMode();
+  const withAppClass = (base, hook) => app ? [base, hook].filter(Boolean).join(' ') : base;
+  const ChatHeader = app ? 'header' : 'div';
+  const ChatComposer = app ? 'footer' : 'div';
   const { id } = useParams();
   const nav = useNav();
   const loc = useLocation();
@@ -101,6 +107,10 @@ export default function Chat() {
   const bgmRef = useRef(null);
   const inputRef = useRef(null);
   const inputBarRef = useRef(null);
+  const menuRef = useRef(null);
+  const menuTriggerRef = useRef(null);
+  const searchPanelRef = useRef(null);
+  const searchTriggerRef = useRef(null);
   // 流式更新 rAF 节流：累积 delta 到缓冲，每帧最多刷新一次，降低低端机渲染压力
   const streamBufRef = useRef(null);
   const streamRafRef = useRef(0);
@@ -177,8 +187,16 @@ export default function Chat() {
     setActionsOpen(false); setReactFor(null); setEditingId(null); setPlusOpen(false); setGiftOpen(false);
     setSheetFor(null);
   };
-  const anyOverlayOpen = drawerOpen || menuOpen || searchOpen || actionsOpen || reactFor != null || editingId != null || plusOpen || sheetFor != null;
+  const anyOverlayOpen = drawerOpen || actionsOpen || reactFor != null || editingId != null || plusOpen || sheetFor != null;
   useOverlayBack(anyOverlayOpen, closeAllOverlays);
+  useAppOverlay(menuOpen, () => setMenuOpen(false), {
+    rootRef: menuRef,
+    returnFocusRef: menuTriggerRef,
+  });
+  useAppOverlay(searchOpen, () => setSearchOpen(false), {
+    rootRef: searchPanelRef,
+    returnFocusRef: searchTriggerRef,
+  });
   const setFont = (v) => { setFontSize(v); localStorage.setItem(FONT_KEY, v); };
   const toggleAutoRead = () => setAutoRead(v => {
     const n = !v;
@@ -187,6 +205,20 @@ export default function Chat() {
     return n;
   });
   const toggleBgm = () => setBgmOn(v => { const n = !v; localStorage.setItem(BGM_KEY, n ? '1' : '0'); return n; });
+  const onChatMenuKeyDown = (event) => {
+    if (!app || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = [...event.currentTarget.querySelectorAll(
+      '[role="menuitem"]:not([disabled]), [role="menuitemradio"]:not([disabled]), [role="menuitemcheckbox"]:not([disabled])',
+    )];
+    if (!items.length) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement);
+    let next = 0;
+    if (event.key === 'End') next = items.length - 1;
+    else if (event.key === 'ArrowUp') next = current <= 0 ? items.length - 1 : current - 1;
+    else if (event.key === 'ArrowDown') next = current < 0 || current === items.length - 1 ? 0 : current + 1;
+    items[next]?.focus();
+  };
 
   // Character background music — loop softly while in the conversation. Browsers
   // may block autoplay until a gesture; the play() rejection is swallowed and
@@ -536,7 +568,7 @@ export default function Chat() {
   const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
 
   return (
-    <div className={'chat-layout' + (conv ? ' immersive' : '')}>
+    <div className={withAppClass('chat-layout' + (conv ? ' immersive' : ''), 'qa-chat-page')}>
       <div className={'chat-list' + (conv ? ' hide-mobile' : '') + (listMini ? ' mini' : '')}>
         <div className="hd">
           {!listMini && <span style={{ flex: 1 }}>对话</span>}
@@ -558,7 +590,7 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className={'chat-main' + (character?.background ? ' has-bg' : '') + ' ba-' + bubbleAlpha}>
+      <div className={withAppClass('chat-main' + (character?.background ? ' has-bg' : '') + ' ba-' + bubbleAlpha, 'qa-chat-main')}>
         {!conv ? (
           <div className="empty" style={{ margin: 'auto' }}>
             <EmptyArt kind="chat" />选择左侧对话，或从角色库开启新对话
@@ -569,7 +601,7 @@ export default function Chat() {
               <div className="chat-bg">
                 {character.background_type === 'video'
                   ? <video src={assetUrl(character.background)} muted loop autoPlay playsInline />
-                  : <img src={assetUrl(character.background)} alt="" />}
+                  : <img src={assetUrl(character.background)} alt="" style={app ? { viewTransitionName: 'qa-character-art' } : undefined} />}
               </div>
             )}
             {!character?.background && <div className="chat-aura" aria-hidden="true"><span /><span /><span /></div>}
@@ -577,61 +609,102 @@ export default function Chat() {
             {/* 菜单遮罩挂 .chat-main 层级：塞进 .chat-menu-wrap 会缩成按钮
                 大小的方形模糊块（见 TheaterRoom 同注释） */}
             {menuOpen && <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />}
-            <div className="chat-head">
-              <button className="btn ghost sm mobile-only chat-back" onClick={() => nav('/messages')}><ArrowLeft size={16} /></button>
-              {/* 身份胶囊：左上空间有限，不再写角色名（每条消息上方已有名字）；只留头像 + 状态 */}
-              <div className="ch-idpill">
+            <ChatHeader className={withAppClass('chat-head', 'qa-chat-header')}>
+              <AppIconButton className={withAppClass('btn ghost sm mobile-only chat-back', 'qa-chat-back')} label="返回消息" onClick={() => nav('/messages')}><ArrowLeft size={16} /></AppIconButton>
+              {/* App keeps identity in the navigation chrome where people expect
+                  it. Message rows can then stay visually quiet instead of
+                  repeating a dark name badge above every response. */}
+              <div className={withAppClass('ch-idpill', 'qa-chat-identity')}>
                 <div className={'ch-av' + (streaming ? ' live' : '')} style={{ '--af': affinityInfo(affinity).pct }}><Avatar src={character?.avatar} name={character?.name} size={40} /></div>
-                {/* 状态文案只留「在线」：长文案在窄屏与好感徽章互相挤压遮挡（实机反馈），
-                    沉浸感由头像光环/打字动画传达，不靠字数 */}
-                <div className="nm"><span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : '在线'}</span></div>
+                <div className="nm">
+                  {app && <b>{character?.name}</b>}
+                  <span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : '在线'}</span>
+                </div>
               </div>
-              {(() => { const af = affinityInfo(affinity); return (
+              {!app && (() => { const af = affinityInfo(affinity); return (
                 <button className={'affinity-badge' + (afPulse ? ' pulse' : '')} onClick={() => setDrawerOpen(true)} title="角色档案 · 好感度 / 记忆 / 世界书">
                   <span className="af-ic">{af.icon}</span>
                   <span className="af-tx"><b>{af.name}</b><i><em style={{ width: af.pct + '%' }} /></i></span>
                 </button>
               ); })()}
-              <div className="chat-tools">
-                {character?.bgm && (
-                  <button className={'speak chat-tool' + (bgmOn ? ' on' : '')} onClick={toggleBgm} title={bgmOn ? '关闭背景音乐' : '播放背景音乐'}>
+              <div className={withAppClass('chat-tools', 'qa-chat-header-actions')}>
+                {!app && character?.bgm && (
+                  <AppIconButton
+                    className={withAppClass('speak chat-tool' + (bgmOn ? ' on' : ''), 'qa-chat-header-button')}
+                    label={bgmOn ? '关闭背景音乐' : '播放背景音乐'}
+                    pressed={bgmOn}
+                    onClick={toggleBgm}
+                    title={bgmOn ? '关闭背景音乐' : '播放背景音乐'}
+                  >
                     {bgmOn ? <Music size={17} /> : <VolumeX size={17} />}
-                  </button>
+                  </AppIconButton>
                 )}
                 {/* 「生成插图」收进更多菜单 —— 头部一行曾塞下 7 个控件，412px 宽必然
                     互相挤压（用户实机上身份胶囊的状态文字被压到只剩一个字符）。 */}
-                <button className={'speak chat-tool' + (searchOpen ? ' on' : '')} onClick={() => { setSearchOpen(o => !o); setSearchQ(''); }} title="对话内搜索"><Search size={17} /></button>
+                <AppIconButton
+                  ref={searchTriggerRef}
+                  className={withAppClass('speak chat-tool' + (searchOpen ? ' on' : ''), 'qa-chat-header-button')}
+                  label="对话内搜索"
+                  pressed={searchOpen}
+                  onClick={() => {
+                    if (app) setMenuOpen(false);
+                    setSearchOpen(o => !o);
+                    setSearchQ('');
+                  }}
+                  title="对话内搜索"
+                  aria-expanded={app ? searchOpen : undefined}
+                  aria-controls={app ? 'chat-search-panel' : undefined}
+                ><Search size={17} /></AppIconButton>
                 <div className="chat-menu-wrap">
-                  <button className={'speak chat-tool' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(o => !o)} title="更多"><MoreVertical size={17} /></button>
+                  <AppIconButton
+                    ref={menuTriggerRef}
+                    className={withAppClass('speak chat-tool' + (menuOpen ? ' on' : ''), 'qa-chat-header-button')}
+                    label="更多"
+                    onClick={() => {
+                      if (app) { setSearchOpen(false); setSearchQ(''); }
+                      setMenuOpen(o => !o);
+                    }}
+                    title="更多"
+                    aria-haspopup={app ? 'menu' : undefined}
+                    aria-expanded={app ? menuOpen : undefined}
+                    aria-controls={app ? 'chat-more-menu' : undefined}
+                  ><MoreVertical size={17} /></AppIconButton>
                   {menuOpen && (
                     <>
-                      <div className="chat-menu">
-                        <button onClick={() => { setIllusOpen(true); setMenuOpen(false); }}><Wand2 size={15} /> 为当前剧情生成插图</button>
-                        <button onClick={renameConv}><Edit3 size={15} /> 重命名对话</button>
-                        <button onClick={() => exportConv('md')}><Download size={15} /> 导出为 Markdown</button>
-                        <button onClick={() => exportConv('json')}><Download size={15} /> 导出为 JSON</button>
-                        <button className="danger" onClick={clearConv}><Eraser size={15} /> 清空消息</button>
-                        <div className="chat-menu-sep" />
-                        <div className="chat-menu-row"><span><Type size={15} /> 字号</span>
+                      <div ref={menuRef} className={withAppClass('chat-menu', 'qa-chat-more-menu')}
+                        id={app ? 'chat-more-menu' : undefined} role={app ? 'menu' : undefined}
+                        aria-label={app ? '对话更多操作' : undefined} tabIndex={app ? -1 : undefined}
+                        onKeyDown={onChatMenuKeyDown}>
+                        <button type="button" role={app ? 'menuitem' : undefined} onClick={() => { setIllusOpen(true); setMenuOpen(false); }}><Wand2 size={15} /> 为当前剧情生成插图</button>
+                        <button type="button" role={app ? 'menuitem' : undefined} onClick={renameConv}><Edit3 size={15} /> 重命名对话</button>
+                        <button type="button" role={app ? 'menuitem' : undefined} onClick={() => exportConv('md')}><Download size={15} /> 导出为 Markdown</button>
+                        <button type="button" role={app ? 'menuitem' : undefined} onClick={() => exportConv('json')}><Download size={15} /> 导出为 JSON</button>
+                        <button type="button" role={app ? 'menuitem' : undefined} className="danger" onClick={clearConv}><Eraser size={15} /> 清空消息</button>
+                        <div className="chat-menu-sep" role={app ? 'separator' : undefined} />
+                        <div className="chat-menu-row" role={app ? 'group' : undefined} aria-labelledby={app ? 'chat-font-label' : undefined}>
+                          <span id={app ? 'chat-font-label' : undefined}><Type size={15} /> 字号</span>
                           <div className="seg seg-mini">
                             {[['sm', '小'], ['md', '中'], ['lg', '大']].map(([v, l]) => (
-                              <button key={v} className={fontSize === v ? 'active' : ''} onClick={() => setFont(v)}>{l}</button>
+                              <button type="button" key={v} className={fontSize === v ? 'active' : ''}
+                                role={app ? 'menuitemradio' : undefined} aria-checked={app ? fontSize === v : undefined}
+                                onClick={() => setFont(v)}>{l}</button>
                             ))}
                           </div>
                         </div>
-                        <button onClick={toggleAutoRead}><Volume2 size={15} /> 自动朗读 <span className={'chat-menu-toggle' + (autoRead ? ' on' : '')}>{autoRead ? '已开启' : '已关闭'}</span></button>
-                        <button onClick={() => { setMarksOpen(true); setMenuOpen(false); }}><Bookmark size={15} /> 消息书签{marks.size ? `（${marks.size}）` : ''}</button>
+                        <button type="button" role={app ? 'menuitemcheckbox' : undefined} aria-checked={app ? autoRead : undefined}
+                          onClick={toggleAutoRead}><Volume2 size={15} /> 自动朗读 <span className={'chat-menu-toggle' + (autoRead ? ' on' : '')}>{autoRead ? '已开启' : '已关闭'}</span></button>
+                        <button type="button" role={app ? 'menuitem' : undefined} onClick={() => { setMarksOpen(true); setMenuOpen(false); }}><Bookmark size={15} /> 消息书签{marks.size ? `（${marks.size}）` : ''}</button>
                       </div>
                     </>
                   )}
                 </div>
               </div>
-            </div>
+            </ChatHeader>
             {character?.background && <span className="chat-ai-mark" aria-hidden="true">内容由 AI 生成</span>}
             {/* APP 壳：悬浮玻璃胶囊，高亮 + 上/下条跳转（不过滤，保留上下文）。
                 Web 壳：维持原过滤式搜索不动。 */}
-            {searchOpen && (isAppMode()
-              ? <ChatSearchBar messages={messages} onClose={() => setSearchOpen(false)} />
+            {searchOpen && (app
+              ? <div ref={searchPanelRef} id="chat-search-panel" style={{ display: 'contents' }}><ChatSearchBar messages={messages} onClose={() => setSearchOpen(false)} /></div>
               : (
               <div className="chat-search">
                 <Search size={15} className="muted" />
@@ -643,7 +716,7 @@ export default function Chat() {
               </div>
             ))}
 
-            <div className={'chat-scroll font-' + fontSize} ref={scrollRef} onScroll={onScroll}>
+            <div className={'chat-scroll font-' + fontSize} ref={scrollRef} onScroll={onScroll} role={app ? 'log' : undefined} aria-live={app ? 'polite' : undefined} aria-relevant={app ? 'additions text' : undefined} aria-label={app ? '对话消息' : undefined}>
               {/* 专家档世界书：自构对话前端 banner 槽（若 front_schema 含 banner 类型 slot）。
                   注意按 front_schema 是否有数据判定 —— 服务端已不下发 tier 字段，
                   旧的 tier==='expert' 闸门会让 banner 永远不渲染。 */}
@@ -785,9 +858,9 @@ export default function Chat() {
             {/* 输入栏：移动端 CSS 改 position:fixed 脱离文档流，键盘弹起时 visualViewport
                 驱动 bottom 上移到键盘上方。chat-main 布局不动，下方被键盘覆盖是自然的，
                 只有输入框被顶上去 —— 不会"拉出半屏原色背景"。 */}
-            <div className="chat-input-bar" ref={inputBarRef}>
+            <ChatComposer className={withAppClass('chat-input-bar', 'qa-chat-composer')} ref={inputBarRef} aria-label={app ? '消息编辑器' : undefined}>
               {replyTo && (
-                <div className="reply-bar">
+                <div className={withAppClass('reply-bar', 'qa-chat-reply')}>
                   <div className="rb-body">
                     <div className="rb-who">回复 {replyTo.role === 'user' ? '我' : (character?.name || '角色')}</div>
                     <div className="rb-text">{(replyTo.content || '').replace(/\s+/g, ' ').trim()}</div>
@@ -796,25 +869,42 @@ export default function Chat() {
                 </div>
               )}
               {actionsOpen && (
-                <div className="action-panel">
+                <div className={withAppClass('action-panel', 'qa-chat-actions-panel')} id={app ? 'chat-actions-panel' : undefined} role={app ? 'group' : undefined} aria-label={app ? '动作与表情' : undefined}>
                   {QUICK_ACTIONS.map(a => <button key={a} onClick={() => insertAction(a)}>{a}</button>)}
                 </div>
               )}
-              <div className="box">
+              <div className={withAppClass('box', 'qa-chat-input-island')}>
                 {/* 流式期间不再禁输入：可以照常打字、开表情面板、组织下一句 ——
                     「AI 说话时我被冻住」是二次交互延迟的大头。发送本身仍被 send()
                     的 streaming 守卫拦住（发送键此刻也是停止键），写库类操作
                     （编辑/删除/重生成）维持锁定。 */}
-                <button className={'act-btn' + (actionsOpen ? ' on' : '')} onClick={() => { setActionsOpen(o => !o); setPlusOpen(false); }} title="动作 / 表情"><Smile size={19} /></button>
-                <textarea ref={inputRef} rows={1} value={input}
+                <AppIconButton
+                  className={withAppClass('act-btn' + (actionsOpen ? ' on' : ''), 'qa-chat-action-toggle')}
+                  label="动作与表情"
+                  pressed={actionsOpen}
+                  onClick={() => { setActionsOpen(o => !o); setPlusOpen(false); }}
+                  title="动作 / 表情"
+                  aria-expanded={app ? actionsOpen : undefined}
+                  aria-controls={app ? 'chat-actions-panel' : undefined}
+                ><Smile size={19} /></AppIconButton>
+                <textarea className={app ? 'qa-chat-textarea' : undefined} ref={inputRef} rows={1} value={input}
+                  aria-label={app ? '输入消息' : undefined}
                   placeholder={`对 ${(character?.name || '').length > 5 ? (character.name.slice(0, 5) + '…') : (character?.name || 'TA')} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
                   enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} />
                 {/* 「+」对话功能面板：把散落在头部菜单里的对话内能力聚合到拇指热区 */}
-                <button className={'act-btn plus-btn' + (plusOpen ? ' on' : '')} onClick={() => { setPlusOpen(o => !o); setActionsOpen(false); }} title="对话功能"><Plus size={20} /></button>
+                <AppIconButton
+                  className={withAppClass('act-btn plus-btn' + (plusOpen ? ' on' : ''), 'qa-chat-tools-toggle')}
+                  label="对话功能"
+                  pressed={plusOpen}
+                  onClick={() => { setPlusOpen(o => !o); setActionsOpen(false); }}
+                  title="对话功能"
+                  aria-expanded={app ? plusOpen : undefined}
+                  aria-controls={app ? 'chat-tools-panel' : undefined}
+                ><Plus size={20} /></AppIconButton>
                 {streaming
-                  ? <button className="send-btn stop" onClick={stop} title="停止生成"><Square size={15} fill="currentColor" /></button>
-                  : <button className="send-btn" onClick={() => send()} disabled={!input.trim()}><Send size={17} /></button>}
+                  ? <AppIconButton className={withAppClass('send-btn stop', 'qa-chat-send qa-chat-stop')} label="停止生成" variant="filled" tone="danger" onClick={stop} title="停止生成"><Square size={15} fill="currentColor" /></AppIconButton>
+                  : <AppIconButton className={withAppClass('send-btn', 'qa-chat-send')} label="发送消息" variant="filled" onClick={() => send()} disabled={!input.trim()}><Send size={17} /></AppIconButton>}
               </div>
               {plusOpen && (() => {
                 // 两页 × 6 项（对标一线聊天功能面板）：P1 互动添趣 / P2 实用工具。
@@ -863,7 +953,7 @@ export default function Chat() {
                   </div>
                 );
                 return (
-                  <div className="chat-plus-sheet paged">
+                  <div className={withAppClass('chat-plus-sheet paged', 'qa-chat-tools-panel')} id={app ? 'chat-tools-panel' : undefined} role={app ? 'region' : undefined} aria-label={app ? '对话工具' : undefined}>
                     {giftOpen && (
                       <div className="cps-gifts">
                         {GIFTS.map(g => (
@@ -885,7 +975,7 @@ export default function Chat() {
                   </div>
                 );
               })()}
-            </div>
+            </ChatComposer>
 
           {drawerOpen && (() => { const af = affinityInfo(affinity); return (
             <>

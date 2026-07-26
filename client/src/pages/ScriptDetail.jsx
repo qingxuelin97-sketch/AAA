@@ -6,20 +6,44 @@ import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
-import { Heart, Play, Lock, Trash2, Eye , ArrowLeft } from 'lucide-react';
+import { isAppMode } from '../appmode.js';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { Heart, Play, Lock, Trash2, Eye, ArrowLeft, Pencil, Sparkles, ShieldCheck, Clock3, BookOpen, ChevronRight } from 'lucide-react';
 
 export default function ScriptDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
   const { user, refreshUser } = useAuth();
+  const appMode = isAppMode();
   const [script, setScript] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
-  const load = () => api('/scripts/' + id).then(d => setScript(d.script)).catch(e => toast(e.message, 'err'));
+  const load = () => {
+    setLoadError(null);
+    return api('/scripts/' + id).then(d => {
+      setScript(d.script);
+      if (typeof d.script?.liked === 'boolean') setLiked(d.script.liked);
+    }).catch(e => { setLoadError(e); toast(e.message, 'err'); });
+  };
   useEffect(() => { load(); api('/engage/view', { method: 'POST', body: { type: 'script', id: +id } }).catch(() => {}); /* eslint-disable-next-line */ }, [id]);
 
-  if (!script) return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
+  if (!script) {
+    if (appMode) return (
+      <main className="qa-script-detail-v4 qa-script-detail-v4--loading" data-testid="app-script-detail-loading">
+        <AppIconButton className="qa-script-detail-v4__back" label="返回剧本市集" onClick={() => nav(-1)}><ArrowLeft size={20} /></AppIconButton>
+        <section className="qa-script-detail-v4__load-state" role={loadError ? 'alert' : 'status'} aria-live="polite">
+          <span className="qa-script-detail-v4__load-icon" aria-hidden="true">{loadError ? <BookOpen size={25} /> : <span className="qa-script-detail-v4__load-spinner" />}</span>
+          <h1>{loadError ? '剧本暂时打不开' : '正在载入剧本'}</h1>
+          <p>{loadError ? '请检查网络后重试，已购买的剧本不会受到影响。' : '正在整理封面、作者与互动设定…'}</p>
+          {loadError && <AppButton variant="primary" onClick={load}>重试</AppButton>}
+        </section>
+      </main>
+    );
+    return <div className="empty" style={{ paddingTop: 120 }}>载入中…</div>;
+  }
 
   const isAuthor = user && user.id === script.author_id;
   const paid = script.price_gold > 0;
@@ -57,7 +81,9 @@ export default function ScriptDetail() {
 
   const like = async () => {
     try {
-      await api('/scripts/' + id + '/like', { method: 'POST' });
+      const d = await api('/scripts/' + id + '/like', { method: 'POST' });
+      if (typeof d?.liked === 'boolean') setLiked(d.liked);
+      else setLiked(value => !value);
       await load();
     } catch (err) { toast(err.message, 'err'); }
   };
@@ -72,6 +98,107 @@ export default function ScriptDetail() {
   };
 
   const canRefund = script.unlocked && paid && !isAuthor;
+
+  if (appMode) {
+    return (
+      <main className="qa-script-detail-v4" data-testid="app-script-detail">
+        <header className="qa-script-detail-v4__topbar">
+          <AppIconButton className="qa-script-detail-v4__back" label="返回剧本市集" onClick={() => nav(-1)}>
+            <ArrowLeft size={20} />
+          </AppIconButton>
+          <div className="qa-script-detail-v4__topcopy">
+            <span>剧本详情</span>
+            <strong>{script.title}</strong>
+          </div>
+          {!isAuthor
+            ? <span className="qa-script-detail-v4__top-action"><ReportButton type="script" id={script.id} label="" size={18} /></span>
+            : <AppIconButton className="qa-script-detail-v4__top-edit" label="编辑剧本" onClick={() => nav('/script/' + id + '/edit')}>
+              <Pencil size={18} />
+            </AppIconButton>}
+        </header>
+
+        <div className="qa-script-detail-v4__scroll">
+          <section className="qa-script-detail-v4__hero" aria-labelledby="qa-script-detail-title">
+            <div className="qa-script-detail-v4__hero-backdrop" aria-hidden="true">
+              {script.cover ? <img src={assetUrl(script.cover)} alt="" /> : <span className="qa-script-detail-v4__hero-lines" />}
+            </div>
+            <div className="qa-script-detail-v4__hero-media">
+              {script.cover
+                ? <img src={assetUrl(script.cover)} alt="" />
+                : <div className="qa-script-detail-v4__cover-placeholder" aria-hidden="true"><BookOpen size={44} /><span>剧本</span></div>}
+              <span className={'qa-script-detail-v4__access ' + (locked ? 'is-locked' : 'is-open')}>
+                {locked ? <><Lock size={13} /> 需解锁</> : <><ShieldCheck size={13} /> 已开放</>}
+              </span>
+            </div>
+            <div className="qa-script-detail-v4__hero-copy">
+              <span className="qa-script-detail-v4__eyebrow">{script.category || '沉浸式剧本'} · {pid('script', script.id)}</span>
+              <h1 id="qa-script-detail-title">{script.title}</h1>
+              <p>{script.summary || '暂无简介'}</p>
+            </div>
+          </section>
+
+          <section className="qa-script-detail-v4__body" aria-label="剧本信息">
+            <div className="qa-script-detail-v4__author-row">
+              <button className="qa-script-detail-v4__author" type="button" onClick={() => nav('/user/' + script.author_id)}>
+                <Avatar src={script.author_avatar} name={script.author_name} size={44} eager />
+                <span><b>{script.author_name}</b><small>创作者 · {script.created_at}</small></span>
+                <ChevronRight size={17} aria-hidden="true" />
+              </button>
+              <AppIconButton className="qa-script-detail-v4__like" label={liked ? '取消喜欢' : '喜欢'} pressed={liked} onClick={like}>
+                <Heart size={19} fill={liked ? 'currentColor' : 'none'} />
+              </AppIconButton>
+            </div>
+
+            <div className="qa-script-detail-v4__stats" aria-label="剧本数据">
+              <span><Play size={14} aria-hidden="true" /><b>{script.plays || 0}</b><small>演绎</small></span>
+              <span><Eye size={14} aria-hidden="true" /><b>{script.views || 0}</b><small>浏览</small></span>
+              <span className="is-like"><Heart size={14} aria-hidden="true" /><b>{script.likes || 0}</b><small>喜欢</small></span>
+              <span className="is-clock"><Clock3 size={14} aria-hidden="true" /><b>30 分钟</b><small>退款期</small></span>
+            </div>
+
+            {tags.length > 0 && <div className="qa-script-detail-v4__tags" aria-label="剧本标签">{tags.map(t => <span key={t}>{t}</span>)}</div>}
+
+            {locked ? (
+              <section className="qa-script-detail-v4__unlock" aria-labelledby="qa-script-unlock-title">
+                <div className="qa-script-detail-v4__unlock-icon" aria-hidden="true"><Lock size={21} /></div>
+                <div className="qa-script-detail-v4__unlock-copy">
+                  <span className="qa-script-detail-v4__section-kicker">完整剧本</span>
+                  <h2 id="qa-script-unlock-title">解锁后开始你的专属演绎</h2>
+                  <p>购买后 30 分钟内不满意可申请退款，余额会在确认后更新。</p>
+                </div>
+                <div className="qa-script-detail-v4__price"><CoinIcon size={17} /> {script.price_gold}<small>金币</small></div>
+                <AppButton className="qa-script-detail-v4__unlock-button" variant="primary" size="lg" loading={busy} onClick={buy}>
+                  {busy ? '处理中…' : '购买并解锁'}
+                </AppButton>
+              </section>
+            ) : (
+              <section className="qa-script-detail-v4__content" aria-labelledby="qa-script-content-title">
+                <div className="qa-script-detail-v4__content-head">
+                  <div><span className="qa-script-detail-v4__section-kicker">故事设定</span><h2 id="qa-script-content-title">剧情与世界观</h2></div>
+                  <span className="qa-script-detail-v4__open-mark"><ShieldCheck size={14} /> 可互动</span>
+                </div>
+                <p className="qa-script-detail-v4__content-text">{script.content || '暂无正文'}</p>
+                <AppButton className="qa-script-detail-v4__play-button" variant="primary" size="lg" loading={busy} onClick={play}>
+                  <Play size={17} fill="currentColor" /> {busy ? '准备中…' : '进入剧本，开始互动'}
+                </AppButton>
+              </section>
+            )}
+
+            {canRefund && <div className="qa-script-detail-v4__refund"><AppButton variant="tertiary" tone="danger" loading={busy} onClick={refund}><Clock3 size={15} /> 申请退款（30 分钟内）</AppButton></div>}
+
+            <section className="qa-script-detail-v4__reviews" aria-label="剧本评价">
+              <Reviews type="script" id={script.id} />
+            </section>
+          </section>
+        </div>
+
+        {isAuthor && <div className="qa-script-detail-v4__ownerbar" role="toolbar" aria-label="剧本管理操作">
+          <span><Sparkles size={15} /> 这是你的剧本</span>
+          <div><AppButton variant="secondary" onClick={() => nav('/script/' + id + '/edit')}><Pencil size={15} /> 编辑</AppButton><AppIconButton label="删除剧本" tone="danger" onClick={del}><Trash2 size={18} /></AppIconButton></div>
+        </div>}
+      </main>
+    );
+  }
 
   return (
     <>

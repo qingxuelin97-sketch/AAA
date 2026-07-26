@@ -9,6 +9,28 @@
 //  - <CoverArt name />   无头像角色的占位封面：按名字确定性生成
 //                        双色渐变 + 图案（星尘 / 波纹 / 山月）+ 首字大字
 import React from 'react';
+import quietAquaCharacterUrl from './assets/quiet-aqua-character-v3.png?url';
+
+/**
+ * High-detail App oracle art for large seed/demo media planes. The imported
+ * reviewed raster artwork is intentionally used here: the portrait contains
+ * fine hair and fabric detail that a path-only trace visibly degraded. Product
+ * UI remains live DOM above it and genuine user media still wins whenever it
+ * exists.
+ */
+export function QuietAquaCharacterArt({ className, alt = '', loading = 'eager', ...imgProps }) {
+  return (
+    <img
+      {...imgProps}
+      className={className}
+      src={quietAquaCharacterUrl}
+      alt={alt}
+      loading={loading}
+      decoding="async"
+      draggable="false"
+    />
+  );
+}
 
 /* ---------------- 确定性哈希：同名永远得到同一套配色与图案 ---------------- */
 const hash = (s) => {
@@ -17,12 +39,146 @@ const hash = (s) => {
   return h >>> 0;
 };
 
+// The original static/demo seed generated 400px SVG avatars whose only focal
+// content was a 180px monogram. Detect that exact legacy shape so the App can
+// substitute the richer vector portrait without hiding genuine user SVG art.
+export function isLegacyMonogramCover(src) {
+  if (typeof src !== 'string' || !src.toLowerCase().startsWith('data:image/svg+xml')) return false;
+  const value = src.toLowerCase();
+  return value.includes('%3ctext')
+    && (value.includes('font-size%3d%22180%22') || value.includes('font-size="180"'));
+}
+
+export function isGeneratedAmbientBackdrop(src) {
+  if (typeof src !== 'string' || !src.toLowerCase().startsWith('data:image/svg+xml')) return false;
+  let value = src;
+  try {
+    const comma = src.indexOf(',');
+    if (comma >= 0) value = decodeURIComponent(src.slice(comma + 1));
+  } catch { /* inspect the encoded source as a safe fallback */ }
+  return /width=(?:["']|%22)1280(?:["']|%22)[\s\S]*height=(?:["']|%22)720(?:["']|%22)/i.test(value);
+}
+
+/**
+ * One media policy for Today, Discover and Character detail. The returned
+ * values are raw API media references; callers still pass them through
+ * assetUrl. Abstract demo backdrops stay ambient instead of replacing the
+ * character focal image.
+ */
+export function resolveCharacterMedia(character) {
+  const background = character?.background || '';
+  const avatar = character?.avatar || '';
+  const video = character?.background_type === 'video' && Boolean(background);
+  const ambient = !video && isGeneratedAmbientBackdrop(background);
+  const usableAvatar = avatar && !isLegacyMonogramCover(avatar) ? avatar : '';
+  const image = video
+    ? usableAvatar
+    : (!ambient && background) || usableAvatar || '';
+  return {
+    kind: video ? 'video' : 'image',
+    src: video ? background : image,
+    poster: video ? usableAvatar : '',
+    ambient: ambient ? background : '',
+    useFallback: !image && !video,
+  };
+}
+
 /* ---------------- 占位封面：双色渐变 + 三款图案轮换 ---------------- */
 // 暮色流光家族色：黏土橙 / 湖蓝 / 鎏金 / 暮紫 / 松绿 / 绯陶
 const COVER_PALETTES = [
   ['#e0885f', '#7d4468'], ['#4f93a8', '#25445c'], ['#c9a04a', '#7a4a22'],
   ['#9a6ab0', '#3c2a55'], ['#6f9a76', '#2f4a3a'], ['#d0704e', '#6e2f3c'],
 ];
+
+// App-only fallback portraits. These are code-native vector illustrations
+// traced from the Quiet Aqua visual oracle: no bitmap, remote request or text
+// baked into the media plane. Web keeps the original monogram covers below.
+const APP_COVER_PALETTES = [
+  ['#e9f4f2', '#9cc8c1', '#183f3c', '#f1cfc3', '#5e8f89'],
+  ['#edf0f4', '#a6b3c3', '#263b48', '#eed0c5', '#718899'],
+  ['#f3eee5', '#c4ad89', '#493b32', '#efd0bd', '#8a7561'],
+  ['#f0eaf1', '#bba4bc', '#403344', '#efd0c6', '#8f7892'],
+];
+
+function AppCoverPortrait({ name, className, uid, h, glyph }) {
+  const [sky, haze, hair, skin, cloth] = APP_COVER_PALETTES[h % APP_COVER_PALETTES.length];
+  const flipped = Boolean(h & 1);
+  const initial = String(name).trim().charAt(0) || '幻';
+  return (
+    <svg className={'cover-art cover-art--portrait' + (className ? ' ' + className : '')}
+      viewBox="0 0 120 160" preserveAspectRatio="xMidYMid slice" role="img" aria-label={name || '角色封面'}>
+      <defs>
+        <linearGradient id={`qaCvBg${uid}`} x1="0" y1="0" x2="0.88" y2="1">
+          <stop offset="0" stopColor={sky} />
+          <stop offset="0.58" stopColor={haze} />
+          <stop offset="1" stopColor={hair} />
+        </linearGradient>
+        <linearGradient id={`qaCvCloth${uid}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f8fbfa" />
+          <stop offset="1" stopColor={cloth} />
+        </linearGradient>
+        <radialGradient id={`qaCvLight${uid}`} cx="30%" cy="18%" r="78%">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.72" />
+          <stop offset="0.62" stopColor="#fff" stopOpacity="0.05" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </radialGradient>
+        <filter id={`qaCvSoft${uid}`} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="5" />
+        </filter>
+      </defs>
+
+      <rect width="120" height="160" fill={`url(#qaCvBg${uid})`} />
+      <circle cx="24" cy="28" r="30" fill="#fff" opacity="0.22" filter={`url(#qaCvSoft${uid})`} />
+      <circle cx="104" cy="78" r="38" fill={sky} opacity="0.28" filter={`url(#qaCvSoft${uid})`} />
+      <path d="M-8 130 C20 109 42 116 64 105 C84 95 105 96 132 82 L132 168 L-8 168Z" fill={hair} opacity="0.17" />
+      <path d="M-8 142 C26 120 50 134 74 119 C92 108 110 112 130 102 L130 168 L-8 168Z" fill="#071f1d" opacity="0.13" />
+
+      <g transform={flipped ? 'translate(120 0) scale(-1 1)' : undefined}>
+        {/* Rear hair and shoulders form one calm silhouette at every crop. */}
+        <path d="M29 118 C24 86 29 48 56 38 C83 28 100 51 96 83 C94 101 101 117 111 139 L15 139 C24 131 30 124 29 118Z" fill={hair} />
+        <path d="M46 102 C45 114 41 119 34 124 C21 133 16 145 14 166 L111 166 C109 145 102 132 87 124 C80 120 77 113 77 102Z" fill={`url(#qaCvCloth${uid})`} />
+        <path d="M53 91 C54 103 52 112 47 118 C54 124 70 125 79 116 C73 108 70 100 71 91Z" fill={skin} />
+        {/* Face */}
+        <path d="M43 58 C46 43 61 37 75 42 C88 47 90 63 86 79 C82 95 73 105 62 104 C49 103 40 86 41 71 C41 66 42 62 43 58Z" fill={skin} />
+        <path d="M43 60 C46 45 57 38 71 40 C83 41 91 50 91 63 C84 59 79 53 76 47 C67 57 55 61 43 62Z" fill={hair} />
+        <path d="M44 59 C38 74 39 96 50 111 C39 106 32 95 31 79 C31 64 36 51 47 44Z" fill={hair} />
+        <path d="M82 48 C94 61 91 86 82 103 C93 98 99 86 98 69 C97 56 91 45 80 41Z" fill={hair} />
+        {/* Hair ribbons keep the portrait authored rather than a generic bust. */}
+        <path d="M43 61 C56 58 69 51 76 43" fill="none" stroke={haze} strokeWidth="1.2" strokeLinecap="round" opacity="0.58" />
+        <path d="M46 47 C37 73 41 103 53 123" fill="none" stroke={haze} strokeWidth="1" strokeLinecap="round" opacity="0.46" />
+        <path d="M86 54 C91 78 83 105 72 121" fill="none" stroke={haze} strokeWidth="1" strokeLinecap="round" opacity="0.44" />
+        {/* Minimal facial detail survives both cards and full-bleed fallback. */}
+        <path d="M50 73 Q55 69 60 73" fill="none" stroke={hair} strokeWidth="1.4" strokeLinecap="round" />
+        <path d="M69 72 Q74 69 79 72" fill="none" stroke={hair} strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="56" cy="73" r="1.3" fill={hair} />
+        <circle cx="74" cy="72" r="1.3" fill={hair} />
+        <path d="M64 75 Q62 82 65 83" fill="none" stroke="#a87870" strokeWidth="0.9" strokeLinecap="round" opacity="0.7" />
+        <path d="M59 90 Q65 94 71 89" fill="none" stroke="#a85f67" strokeWidth="1.2" strokeLinecap="round" />
+        <path d="M40 125 C55 137 78 137 91 124" fill="none" stroke="#fff" strokeWidth="1.2" opacity="0.46" />
+      </g>
+
+      {/* Quiet botanical/spark detail is vector chrome, never content text. */}
+      <g fill="none" stroke="#fff" strokeLinecap="round" opacity="0.58">
+        <path d="M96 15 C88 28 90 42 83 53" strokeWidth="1" />
+        <path d="M91 26 C84 24 81 20 80 16 M89 34 C97 31 102 27 105 22 M86 43 C80 41 76 38 73 34" strokeWidth="0.8" />
+      </g>
+      <g fill="#fff" opacity="0.7">
+        <circle cx="80" cy="16" r="2" /><circle cx="105" cy="22" r="1.8" /><circle cx="73" cy="34" r="1.6" />
+        <path d="M19 34c.6 3 1.4 3.8 4.4 4.4-3 .6-3.8 1.4-4.4 4.4-.6-3-1.4-3.8-4.4-4.4 3-.6 3.8-1.4 4.4-4.4Z" />
+      </g>
+      <rect width="120" height="160" fill={`url(#qaCvLight${uid})`} />
+      {glyph && (
+        <g transform="translate(97 137)">
+          <circle r="13" fill="#fff" opacity="0.88" />
+          <circle r="12.5" fill="none" stroke="#fff" opacity="0.8" />
+          <text y="1" textAnchor="middle" dominantBaseline="middle"
+            fontFamily="Inter, 'PingFang SC', system-ui, sans-serif" fontWeight="700" fontSize="10"
+            fill={hair}>{initial}</text>
+        </g>
+      )}
+    </svg>
+  );
+}
 
 function CoverPattern({ variant, uid }) {
   if (variant === 0) {
@@ -75,6 +231,8 @@ export function CoverArt({ name = '', className, glyph = true }) {
   const [c1, c2] = COVER_PALETTES[h % COVER_PALETTES.length];
   const variant = (h >>> 3) % 3;
   const initial = (String(name).trim().charAt(0) || '幻');
+  const app = typeof document !== 'undefined' && document.documentElement.dataset.app === '1';
+  if (app) return <AppCoverPortrait name={name} className={className} uid={uid} h={h} glyph={glyph} />;
   return (
     <svg className={'cover-art' + (className ? ' ' + className : '')} viewBox="0 0 120 160"
       preserveAspectRatio="xMidYMid slice" role="img" aria-label={name || '角色封面'}>

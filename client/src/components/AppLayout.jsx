@@ -16,8 +16,10 @@ import { Logo } from '../assets.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import RouteErrorBoundary from './RouteErrorBoundary.jsx';
+import { AppButton, AppIconButton, AppTabButton } from './AppControls.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
 import { useNav, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
+import { notifyAppTabActive } from '../appTabActivity.js';
 import { useAppNavigation } from '../appNavigation.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { preheat } from '../routeChunks.js';
@@ -65,6 +67,7 @@ export default function AppLayout({ children }) {
   }, []);
   const mainRef = useRef(null);
   const tabbarRef = useRef(null);
+  const fabRef = useRef(null);
   const inkRef = useRef(null);
   // 启动品牌闪屏：每会话一次，尊重减弱动效 / 低端机档
   const [boot, setBoot] = useState(() => {
@@ -193,7 +196,7 @@ export default function AppLayout({ children }) {
       const elapsed = performance.now() - refreshStart.current;
       setTimeout(() => { setRefreshing(false); setPull(0); }, Math.max(0, 450 - elapsed));
     } else if (loc.pathname !== prevPath.current) {
-      html.dataset.navDir = computeDir(prevPath.current, loc.pathname, navType);
+      html.dataset.navDir = loc.state?.appNavDir || computeDir(prevPath.current, loc.pathname, navType);
     }
     prevPath.current = loc.pathname;
     routeCommitted(loc.pathname);
@@ -204,7 +207,7 @@ export default function AppLayout({ children }) {
       const el = mainRef.current?.querySelector(':scope > .route-fade:not(.tab-pane)');
       if (el) el.style.animation = 'none';
     }
-  }, [loc.key, refreshKey, loc.pathname, navType]);
+  }, [loc.key, refreshKey, loc.pathname, loc.state, navType]);
 
   // tab pane 切换编排：离开 → 存滚动位置 / 暂停 pane 内视频 / 收焦点；
   // 进入 → 恢复视频 / 还原滚动（paint 前，VT 新快照拍到的即是还原后状态）/
@@ -243,6 +246,7 @@ export default function AppLayout({ children }) {
         }
       }
     }
+    if (cur && prev !== cur) notifyAppTabActive(cur);
     prevTab.current = cur;
   }, [loc.pathname]);
 
@@ -292,7 +296,7 @@ export default function AppLayout({ children }) {
   };
   const refreshStart = useRef(0);
   const doRefresh = () => {
-    if (refreshing) return;
+    if (refreshing || route.refresh === 'none') { setPull(0); return; }
     tick(12); setRefreshing(true);
     refreshStart.current = performance.now();
     // tab 页：驱逐当前 pane 缓存（key 变 → 仅该 pane 重挂载重拉），其余 pane 保活
@@ -307,15 +311,17 @@ export default function AppLayout({ children }) {
     onNext: () => swipeGo(1),
     onPrev: () => swipeGo(-1),
     onBack: () => { tick(); void requestBack({ source: 'gesture' }); },
-    onPullMove: (px) => { if (!refreshing) setPull(px); },
-    onPullEnd: (ok) => { if (ok) doRefresh(); else setPull(0); }
+    onPullMove: (px) => { if (!refreshing && route.refresh !== 'none') setPull(px); },
+    onPullEnd: (ok) => { if (ok && route.refresh !== 'none') doRefresh(); else setPull(0); }
   });
 
   const ptr = refreshing ? 56 : pull;
 
   return (
     <div className={'app-root' + (route.dock ? '' : ' no-dock')}
-      data-statusbar-tone={route.statusBar} data-dirty-policy={route.dirty}>
+      data-statusbar-tone={route.statusBar}
+      data-dirty-policy={route.dirty}
+      data-full-bleed={route.fullBleed || undefined}>
       {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
       {perfNote && (
         <div className="app-perfnote" role="status">
@@ -323,20 +329,24 @@ export default function AppLayout({ children }) {
           <button onClick={() => setPerfNote(false)} aria-label="关闭提示"><X size={13} /></button>
         </div>
       )}
-      <div className={'app-ptr' + (refreshing ? ' spin' : '')} style={{ height: ptr, opacity: ptr ? 1 : 0 }} aria-hidden="true">
+      <div className={'app-ptr' + (refreshing ? ' spin' : '')}
+        style={{ height: ptr, opacity: ptr ? 1 : 0, '--pull-progress': Math.min(1, ptr / 66) }} aria-hidden="true">
         <RefreshCw size={20} style={{ transform: refreshing ? 'none' : `rotate(${ptr * 3}deg)` }} />
       </div>
       <main className="app-main" ref={mainRef}
         style={pull && !refreshing ? { transform: `translateY(${Math.min(pull, 90)}px)`, transition: 'none' } : undefined}>
-        {SWIPE_TABS.map(p => paneCache.current[p] && (
-          <div key={p + '#' + (paneVer.current[p] || 0)}
-            className={'route-fade tab-pane' + (isTab && p === loc.pathname ? '' : ' off')}
-            data-pane={p}>
+        {SWIPE_TABS.map(p => paneCache.current[p] && (() => {
+          const activePane = isTab && p === loc.pathname;
+          return <div key={p + '#' + (paneVer.current[p] || 0)}
+            className={'route-fade tab-pane' + (activePane ? '' : ' off')}
+            data-pane={p}
+            aria-hidden={activePane ? undefined : true}
+            inert={activePane ? undefined : true}>
             {/* 每 pane 各自的错误边界：KeepAlive 后四页常驻渲染树，任何一页
                 崩溃若只靠根边界会把整屏打白且伪装成"当前页崩溃" */}
             <RouteErrorBoundary label={p}>{paneCache.current[p]}</RouteErrorBoundary>
-          </div>
-        ))}
+          </div>;
+        })())}
         {!isTab && (
           <div className="route-fade" key={loc.pathname + '#' + refreshKey}>
             <RouteErrorBoundary label={loc.pathname}>{children}</RouteErrorBoundary>
@@ -345,18 +355,36 @@ export default function AppLayout({ children }) {
       </main>
 
       {route.dock && (
-        <nav className="app-tabbar" ref={tabbarRef} aria-label="主导航">
-          <span className="dock-ink" ref={inkRef} aria-hidden="true" />
-          {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-          <button className={'app-fab' + (sheet ? ' open' : '')} onClick={() => setSheet(s => !s)} aria-label={sheet ? '关闭' : '创建'}>
-            <Plus size={20} strokeWidth={2.8} />
-            <i className="app-fab-ai" aria-hidden="true">AI</i>
-          </button>
-          {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-        </nav>
+        <div className="app-dock">
+          <nav className="app-tabbar" ref={tabbarRef} aria-label="主导航">
+            <span className="dock-ink" ref={inkRef} aria-hidden="true" />
+            {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+            <span className="app-dock-gap" aria-hidden="true" />
+            {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+          </nav>
+          <AppIconButton
+            ref={fabRef}
+            className={'app-fab' + (sheet ? ' open' : '')}
+            variant="filled"
+            selected={sheet}
+            onClick={(event) => {
+              // Touch activation does not consistently move DOM focus. Make
+              // the launcher explicit so OverlayProvider can restore it after
+              // Escape / Android Back just as it does for keyboard activation.
+              event.currentTarget.focus?.({ preventScroll: true });
+              setSheet(s => !s);
+            }}
+            label={sheet ? '关闭创建菜单' : '打开创建菜单'}
+            aria-expanded={sheet}
+            aria-haspopup="dialog"
+            aria-controls="app-create-sheet"
+          >
+            {sheet ? <X size={20} /> : <Plus size={21} strokeWidth={2.6} />}
+          </AppIconButton>
+        </div>
       )}
 
-      {sheet && <CreateSheet onClose={() => setSheet(false)} />}
+      {sheet && <CreateSheet onClose={() => setSheet(false)} returnFocusRef={fabRef} />}
 
       <CommandPalette />
       <WelcomePopup />
@@ -376,6 +404,7 @@ export default function AppLayout({ children }) {
 
 function Tab({ t, unread, dmUnread, curPath }) {
   const go = useNav();
+  const selected = curPath === t.to;
   // Tapping the already-active tab scrolls the page back to the top (native pattern).
   // 也覆盖内部滚动容器（发现流 .feed-root、聊天列表等），否则再点无反应。
   // 非活跃 tab：拦掉 NavLink 默认导航，走 useNav 拿方向化过渡（active 样式仍由
@@ -392,36 +421,64 @@ function Tab({ t, unread, dmUnread, curPath }) {
       inner?.scrollTo?.({ top: 0, behavior: 'smooth' });
     } catch { /* */ }
   };
+  const badgeCount = t.badge === 'noti'
+    ? unread
+    : t.badge === 'dm'
+      ? dmUnread
+      : t.badge === 'msg'
+        ? unread + dmUnread
+        : 0;
   return (
-    <NavLink to={t.to} end={t.end} onClick={onClick} className={({ isActive }) => 'app-tab' + (isActive ? ' active' : '')}>
-      <span className="app-tab-ic">
-        <t.ic size={23} />
-        {t.badge === 'noti' && unread > 0 && <i className="app-dot" />}
-        {t.badge === 'dm' && dmUnread > 0 && <i className="app-dot" />}
-        {t.badge === 'msg' && unread + dmUnread > 0 && <i className="app-dot" />}
-      </span>
-      <span>{t.label}</span>
-    </NavLink>
+    <AppTabButton
+      as={NavLink}
+      to={t.to}
+      end={t.end}
+      onClick={onClick}
+      className="app-tab"
+      selected={selected}
+      icon={t.ic}
+      label={t.label}
+      badgeCount={badgeCount}
+    />
   );
 }
 
-function CreateSheet({ onClose }) {
+function CreateSheet({ onClose, returnFocusRef }) {
   const navTo = useNav();
   const sheetRef = useRef(null);
-  useAppOverlay(true, onClose, { rootRef: sheetRef, isolate: true });
+  useAppOverlay(true, onClose, { rootRef: sheetRef, isolate: true, returnFocusRef });
   const go = (to) => { if (navTo(to) !== false) onClose(); };
   return createPortal((
     <div className="app-sheet-mask" onClick={onClose}>
-      <div ref={sheetRef} className="app-sheet" role="dialog" aria-modal="true" aria-label="创建" tabIndex={-1} onClick={e => e.stopPropagation()}>
+      <section
+        id="app-create-sheet"
+        ref={sheetRef}
+        className="app-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="app-create-title"
+        tabIndex={-1}
+        onClick={e => e.stopPropagation()}
+      >
         <div className="app-sheet-grip" />
-        <h3 className="app-sheet-title">想创作点什么？</h3>
+        <div className="app-sheet-head">
+          <h3 className="app-sheet-title" id="app-create-title">想创作点什么？</h3>
+          <AppIconButton label="关闭创建菜单" onClick={onClose}><X size={19} /></AppIconButton>
+        </div>
         {CREATE.map((c, i) => (
-          <button key={c.to} className="app-create-row" style={{ '--i': i }} onClick={() => go(c.to)}>
+          <AppButton
+            key={c.to}
+            className="app-create-row"
+            variant="secondary"
+            data-sheet-action
+            style={{ '--i': i }}
+            onClick={() => go(c.to)}
+          >
             <span className="ac-ic"><c.ic size={20} /></span>
             <span className="ac-tx"><b>{c.label}</b><small>{c.hint}</small></span>
-          </button>
+          </AppButton>
         ))}
-      </div>
+      </section>
     </div>
   ), document.body);
 }

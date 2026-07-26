@@ -3,7 +3,9 @@ import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast } from '../ui.jsx';
 import { EmptyArt } from '../art.jsx';
-import { Bell, Heart, MessageCircle, Gift, Megaphone, Landmark, CheckCheck, Sparkles } from 'lucide-react';
+import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import { isAppMode } from '../appmode.js';
+import { ArrowLeft, Bell, Heart, MessageCircle, Gift, Megaphone, Landmark, CheckCheck, Sparkles } from 'lucide-react';
 
 // Infer an icon + accent from the notification text (no schema change needed).
 function iconFor(text) {
@@ -23,6 +25,7 @@ export default function Notifications() {
   const [tab, setTab] = useState('all');
   const toast = useToast();
   const nav = useNavigate();
+  const appMode = isAppMode();
 
   useEffect(() => {
     let alive = true;
@@ -55,20 +58,34 @@ export default function Notifications() {
     return [['今天', g.today], ['本周', g.week], ['更早', g.earlier]].filter(([, arr]) => arr.length);
   }, [shown]);
 
+  const Root = appMode ? 'main' : React.Fragment;
+  const rootProps = appMode ? { className: 'qa-notifications' } : {};
+
   return (
-    <>
-      <div className="topbar">
-        <div style={{ flex: 1 }}>
-          <h1>通知中心</h1>
-          <div className="sub">点赞、评论、议会与系统消息都在这里</div>
+    <Root {...rootProps}>
+      {appMode ? (
+        <header className="qa-notifications-head">
+          <AppIconButton label="返回" onClick={() => nav(-1)}><ArrowLeft size={21} /></AppIconButton>
+          <div className="qa-notifications-title">
+            <h1>通知中心</h1>
+            <span>{unreadCount > 0 ? `${unreadCount} 条未读` : '已经全部读完'}</span>
+          </div>
+          <span className="qa-notifications-read" aria-label="通知已自动标为已读"><CheckCheck size={19} /></span>
+        </header>
+      ) : (
+        <div className="topbar">
+          <div style={{ flex: 1 }}>
+            <h1>通知中心</h1>
+            <div className="sub">点赞、评论、议会与系统消息都在这里</div>
+          </div>
+          {unreadCount > 0 && <span className="noti-allread"><CheckCheck size={15} /> 已全部标记为已读</span>}
         </div>
-        {unreadCount > 0 && <span className="noti-allread"><CheckCheck size={15} /> 已全部标记为已读</span>}
-      </div>
+      )}
 
       <div className="page" style={{ maxWidth: 760 }}>
-        <div className="seg seg-3" style={{ marginBottom: 16, maxWidth: 280 }}>
-          <button className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>全部 {items.length > 0 && `(${items.length})`}</button>
-          <button className={tab === 'unread' ? 'active' : ''} onClick={() => setTab('unread')}>未读 {unreadCount > 0 && `(${unreadCount})`}</button>
+        <div className="seg seg-3" role={appMode ? 'tablist' : undefined} aria-label={appMode ? '通知筛选' : undefined} style={{ marginBottom: 16, maxWidth: 280 }}>
+          <AppButton className={tab === 'all' ? 'active' : ''} selected={tab === 'all'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? tab === 'all' : undefined} onClick={() => setTab('all')}>全部 {items.length > 0 && `(${items.length})`}</AppButton>
+          <AppButton className={tab === 'unread' ? 'active' : ''} selected={tab === 'unread'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? tab === 'unread' : undefined} onClick={() => setTab('unread')}>未读 {unreadCount > 0 && `(${unreadCount})`}</AppButton>
         </div>
 
         {loading ? (
@@ -86,8 +103,9 @@ export default function Notifications() {
                 <div className="noti-group">{label}</div>
                 {arr.map(n => {
                   const [kind, Ic] = iconFor(n.text);
+                  const Row = appMode && n.link ? 'button' : 'div';
                   return (
-                    <div key={n.id} className={'noti-item pressable ' + kind + (n.read ? '' : ' unread')}
+                    <Row key={n.id} type={Row === 'button' ? 'button' : undefined} className={'noti-item pressable ' + kind + (n.read ? '' : ' unread')}
                       onClick={() => n.link && nav(n.link)} style={{ cursor: n.link ? 'pointer' : 'default' }}>
                       <span className="noti-ic"><Ic size={17} /></span>
                       <div className="noti-tx">
@@ -95,7 +113,7 @@ export default function Notifications() {
                         <div className="noti-time">{fmtDate(n.created_at)}</div>
                       </div>
                       {!n.read && <span className="noti-dot pulse-dot" />}
-                    </div>
+                    </Row>
                   );
                 })}
               </React.Fragment>
@@ -103,6 +121,6 @@ export default function Notifications() {
           </div>
         )}
       </div>
-    </>
+    </Root>
   );
 }
