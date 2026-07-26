@@ -127,6 +127,28 @@ try {
   assert.equal(new Set(savedInterests).size, savedInterests.length, '兴趣必须去重');
   console.log('  ✅ 语义：旧充值 410 / 荣誉拒领 / 兴趣白名单去重钳 6');
 
+  /* ── 5. 排行榜我的名次：声望公式一致 + 排位单调 ── */
+  const lb = await j('/engage/leaderboard');
+  assert.ok(lb.me && lb.me.rank >= 1, '登录请求必须附带我的排位');
+  const myLikes = db.prepare(`SELECT
+      (SELECT COALESCE(SUM(likes),0) FROM characters WHERE owner_id=?) +
+      (SELECT COALESCE(SUM(likes),0) FROM scripts WHERE author_id=? AND deleted_at IS NULL) AS s`)
+    .get(uid, uid).s || 0;
+  assert.equal(lb.me.score, myLikes, '排位声望必须等于角色+剧本获赞和');
+  // 给自己的角色加一批赞后排位不应变差
+  db.prepare('UPDATE characters SET likes = likes + 1000 WHERE owner_id = ?').run(uid);
+  const lb2 = await j('/engage/leaderboard');
+  assert.ok(lb2.me.rank <= lb.me.rank, `加赞后排位不得下降（${lb.me.rank} → ${lb2.me.rank}）`);
+  assert.ok(lb2.me.score > lb.me.score, '加赞后声望必须上升');
+  console.log('  ✅ 名次：声望公式一致 + 排位单调');
+
+  /* ── 6. 周报未来天恒 0（北京周界；今天是周日则该组自然为空） ── */
+  const wNow = await j('/me/weekly');
+  const cnDow = (new Date(cnToday() + 'T00:00:00Z').getUTCDay() + 6) % 7; // 0=周一
+  const futureDays = wNow.days.slice(cnDow + 1);
+  assert.ok(futureDays.every((d) => d.n === 0), `未来天必须为 0（got ${JSON.stringify(futureDays)})`);
+  console.log('  ✅ 周报：未来天恒 0');
+
   db.close();
   console.log('\n✅ S7 边界回归：全部通过');
 } catch (e) {

@@ -375,3 +375,27 @@ node scripts/appdiff.mjs   # 样式/令牌重构时：改前 --baseline 录基�
   七场景；app-test 以场景名清单守卫接线。
 - 阶段规格详见 `docs/design/LUMEN_S7_SPEC.md`；用户可见变更见
   根目录 `CHANGELOG.md`。
+
+### 10.8 G10 追溯表（功能 → 契约 → 验证）
+
+| 功能 | 关键实现 | 机器契约（app-test） | 行为验证 |
+|---|---|---|---|
+| 周报卡 | AppHome `.qa-weekly` + `GET /me/weekly` | 双轨字段配对 / 静默失败 / role=img 全文替代 | e2e weeklyRecap + boundary 周界/未来天 0 |
+| 台词卡 | sharecard `renderQuoteCard` + Chat/Theater 入口 | App-only / 双侧署名 / 旁白署名 | e2e quoteCard + 手测用户侧 1080×1440 |
+| 星轨卡 | `renderInsightsCard` + Insights hero 入口 | App-only / 羁绊载荷 | 手测合成 + e2e shareCard 家族 |
+| 会话整理 | conversations.pinned/muted + PATCH mark-only | 排序 / mark-only 双端 / 迁移列 | e2e conversationMarks + boundary 组 3 |
+| 会话草稿 | `huanyu_draft_<id>`（App 门控） | 门控 / 清空即删 / 行预览优先 | e2e draft 全环 |
+| 私信草稿+长按 | `huanyu_dmdraft_<id>` + AppPressMenu 复制 | 门控 / 清空即删 / App-only 绑定 | 手测三步全环 |
+| 群聊 @提及 | 长按插入 + `.gr-mention` 高亮 | Web 零泄漏 | 手测菜单 + 插入 |
+| 触感开关 | tick() 闸门 + 设置行 | 闸门语义 / App-only 行 | e2e g10Surface 默认开 |
+| 我的名次 | leaderboard `me:{rank,score}` 双端 | 公式双端配对 / UI 常驻行 | boundary 组 5（公式一致+单调） |
+| 热门分类 | Search cats chips + tabOverride | App-only / 角色搜索直达 | e2e g10Surface 点击直达 |
+| 一键全领 | Events claimAllTasks | 容错语义 / ≥2 才现 | 手测 + 行内领取 e2e（today） |
+| 新功能 Sheet | WhatsNewSheet + 未读点 | 隔离契约 / 版本键 | e2e g10Surface（≥8 行 + Escape） |
+| 相伴一览/足迹 | `.qa-glance` / `.qa-bond` | allSettled 降级 / 最高好感续聊 | e2e g10Surface 真实导航链 |
+| 里程碑分档 | streakSealForTier + 三档印章 | 阈值 / 管线双变体 / 双消费点 | 视觉审阅（印章成图） |
+| 阅读进度 | `huanyu_read_<id>` + 2px 进度条 | 门控 / 端点复位 / 字号域校验 | 手测 0.50 往返恢复 |
+| 长按开即关修复 | msg-sheet 遮罩 350ms 挂载守卫 | 守卫源码断言 | 手测居中气泡开-留-关全环 |
+
+每行的 e2e 场景名都在 app-test 的场景守卫清单里锁死；boundary 指
+`server/s7-boundary.test.mjs`（七组验值）。

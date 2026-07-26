@@ -263,8 +263,9 @@ assert.match(e2eSourceForS7, /shareCardAssertions/, 'the e2e suite must keep exe
 /* ---- S7-G10 台词卡契约 ---- */
 assert.match(shareCardSource, /renderQuoteCard/, 'the compositor must offer the quote-card template');
 assert.match(shareSheetSource, /kind === 'quote'[\s\S]*renderQuoteCard/, 'the share sheet must route the quote kind to its template');
-assert.match(chatSource, /app && m\.role === 'assistant'[\s\S]*生成台词卡/, 'the quote-card entry must stay App-only and character-line-only');
-assert.match(chatSource, /kind="quote"[\s\S]*speaker: character\.name/, 'quote cards must attribute the line to the speaking character');
+assert.match(chatSource, /app && !!m\.content && \([\s\S]*生成台词卡/, 'the quote-card entry must stay App-only');
+assert.match(chatSource, /speaker: quoteShare\.role === 'user' \? \(user\?\.display_name[\s\S]*: character\.name/, 'quote cards must attribute the line to its real speaker on both sides');
+assert.match(chatSource, /sheetOpenedAtRef\.current = performance\.now\(\);[\s\S]*msg-sheet-mask" onClick=\{\(\) => \{ if \(performance\.now\(\) - sheetOpenedAtRef\.current < 350\) return;/, 'the message sheet mask must swallow the trailing long-press click');
 /* ---- S7-G10 星轨年鉴卡契约 ---- */
 assert.match(shareCardSource, /renderInsightsCard/, 'the compositor must offer the insights annual-card template');
 assert.match(shareSheetSource, /kind === 'insights'[\s\S]*renderInsightsCard/, 'the share sheet must route the insights kind to its template');
@@ -522,4 +523,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 255/255 passed');
+console.log('app invariants: 259/259 passed');

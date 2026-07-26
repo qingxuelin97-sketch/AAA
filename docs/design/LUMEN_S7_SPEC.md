@@ -180,3 +180,15 @@ Lumen P 调色板，零文字零按钮，单张 <300KB，tmp+rename 原子写。
 - `node scripts/appdiff.mjs`：样式/令牌重构时的 0px 自证门
   （9 路由 × light/dark/lite，冻结时钟 + 头像掩膜 + 2px AA 阈）。
 - 人工基线：`docs/ui-baselines/manual-v9/`（S7 改动面定向重录）。
+
+## 11. G10 后半增量（速览）
+
+- 足迹卡 `.qa-bond`（rose 8% 软底，好感度最高段续聊）与相伴一览
+  `.qa-glance`（26px conic 完成环）；排行榜 `.qa-lb-mine` 常驻排位。
+- 月历头印章随 `streakSealForTier` 分档，并新增里程碑地平线副行
+  （最近的 7 倍数 / 30 / 100）。
+- 阅读页：进度记忆（比例制、<1% 与 >99.9% 从头开）+ 顶部 2px act
+  进度条（滚动位置的直接映射，非装饰动画）+ 字号记忆。
+- 台词卡双侧署名（用户台词 = 昵称与头像）；消息面板遮罩获得与
+  AppPressMenu 同源的 350ms 挂载守卫（居中气泡「开即被关」修复）。
+- 静态参考页 `lumen-s7-ui-kit.html` 收录以上全部状态样板。

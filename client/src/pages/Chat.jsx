@@ -40,7 +40,7 @@ export default function Chat() {
   const nav = useNav();
   const loc = useLocation();
   const toast = useToast();
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [convs, setConvs] = useState([]);
   const [conv, setConv] = useState(null);
   const [character, setCharacter] = useState(null);
@@ -512,7 +512,15 @@ export default function Chat() {
   };
 
   // 触屏长按消息 → 打开操作面板（hover 操作行在触屏不可用，已由 CSS 在 coarse pointer 隐藏）。
-  const bindLongPress = useLongPress((m) => { if (m.content) setSheetFor(m); });
+  // 长按抬指后浏览器会补发一次 click：若落在刚展开的遮罩上会「开即被关」
+  //（与 AppPressMenu 同源问题；居中气泡必现，贴底气泡恰好点进面板所以偶发）。
+  // 记录展开时刻，350ms 内忽略遮罩点击。
+  const sheetOpenedAtRef = useRef(0);
+  const bindLongPress = useLongPress((m) => {
+    if (!m.content) return;
+    sheetOpenedAtRef.current = performance.now();
+    setSheetFor(m);
+  });
 
   // 消息书签（收藏段落随时跳回，纯本地存储、按会话隔离）—— 逻辑收敛到 chat/hooks.js。
   const { marks, toggleMark, jumpToMark: jumpToMarkRaw } = useBookmarks(id, () => toast('未找到该消息（可能已被删除）', 'err'));
@@ -1067,7 +1075,7 @@ export default function Chat() {
       {/* 长按操作面板（触屏）：承载原 hover 操作行的全部能力 */}
       {sheetFor && (() => { const m = sheetFor; const isLast = messages[messages.length - 1]?.id === m.id || messages[messages.length - 1] === m; const close = () => setSheetFor(null); return (
         <>
-          <div className="msg-sheet-mask" onClick={close} />
+          <div className="msg-sheet-mask" onClick={() => { if (performance.now() - sheetOpenedAtRef.current < 350) return; close(); }} />
           <div className="msg-sheet" role="menu">
             <div className="ms-preview">{(m.content || '').replace(/^>\s.*\n+/, '').slice(0, 120)}</div>
             {/* 表情反应行已按真机反馈移除（面板保持纯操作列表）；
@@ -1077,7 +1085,7 @@ export default function Chat() {
               : <button className="ms-row" onClick={() => { toggleSpeak(m); close(); }}><Volume2 size={18} /> {voicedIds.has(m.id) ? '再听一遍' : '朗读'}</button>)}
             <button className="ms-row" onClick={() => { copyMsg(m.content); close(); }}><Copy size={18} /> 复制</button>
             <button className="ms-row" onClick={() => { setReplyTo(m); close(); inputRef.current?.focus(); }}><CornerUpLeft size={18} /> 引用回复</button>
-            {app && m.role === 'assistant' && !!m.content && (
+            {app && !!m.content && (
               <button className="ms-row" onClick={() => { setQuoteShare(m); close(); }}><ImagePlus size={18} /> 生成台词卡</button>
             )}
             {m.role === 'assistant' && isLast && <button className="ms-row" onClick={() => { close(); regenerate(); }} disabled={streaming}><RotateCcw size={18} /> 重新生成</button>}
@@ -1092,8 +1100,10 @@ export default function Chat() {
           kind="quote"
           payload={{
             text: (quoteShare.content || '').replace(/^>\s.*\n+/, '').replace(/\*+/g, '').trim(),
-            speaker: character.name,
-            avatar: character.avatar ? assetUrl(character.avatar) : '',
+            speaker: quoteShare.role === 'user' ? (user?.display_name || user?.username || '我') : character.name,
+            avatar: quoteShare.role === 'user'
+              ? (user?.avatar ? assetUrl(user.avatar) : '')
+              : (character.avatar ? assetUrl(character.avatar) : ''),
             date: cnToday(),
             path: '/character/' + character.id,
           }}
