@@ -125,6 +125,25 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 阅读页 · 顶部进度条 ---- */
+html[data-app="1"] .qa-read-progress {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  left: 0;
+  z-index: 30;
+  width: 100%;
+  height: 2px;
+  background: var(--lg-act);
+  transform-origin: left center;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+
+/* 进度条是滚动位置的直接映射（因果反馈），reduced-motion 无需额外处理 */
+html[data-app="1"] .qa-novel-read.is-chrome-hidden .qa-read-progress {
+  opacity: 0.55;
+}
+
 /* ---- 签到月历 · 里程碑地平线 ---- */
 html[data-app="1"] .qa-cal-horizon {
   display: block;
