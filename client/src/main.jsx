@@ -30,6 +30,9 @@ import './styles/app-pages-quiet-aqua.css';
 // V3 experience layer: page composition and motion only. It is App-scoped and
 // intentionally loads last so legacy page rules cannot flatten the new shell.
 import './styles/app-experience-v3.css';
+// Liuli v5 HIG re-skin: the FINAL App authority — typography, grouped lists,
+// segmented controls, sheets, causal motion and dark parity. App-fenced only.
+import './styles/app-hig-v5.css';
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {

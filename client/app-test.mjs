@@ -187,9 +187,18 @@ assert.ok(
   mainSource.indexOf('app-runtime.css') < mainSource.indexOf('app-quiet-aqua-tokens.css')
     && mainSource.indexOf('app-quiet-aqua-tokens.css') < mainSource.indexOf('app-controls.css')
     && mainSource.indexOf('app-controls.css') < mainSource.indexOf('app-pages-quiet-aqua.css')
-    && mainSource.indexOf('app-pages-quiet-aqua.css') < mainSource.indexOf('app-experience-v3.css'),
-  'Quiet Aqua token, control, page, and v3 experience authorities must load after the PR4 runtime layer',
+    && mainSource.indexOf('app-pages-quiet-aqua.css') < mainSource.indexOf('app-experience-v3.css')
+    && mainSource.indexOf('app-experience-v3.css') < mainSource.indexOf('app-hig-v5.css'),
+  'Quiet Aqua token, control, page, v3 and Liuli HIG authorities must load after the PR4 runtime layer',
 );
+const higCss = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
+const higNoComments = higCss.replace(/\/\*[\s\S]*?\*\//g, '');
+assert.match(higCss, /html\[data-app="1"\]/, 'the Liuli HIG layer must remain App-scoped');
+assert.doesNotMatch(higNoComments, /^\s*\.qa-[^{,]+/m, 'HIG selectors must never escape the data-app fence');
+assert.doesNotMatch(higNoComments, /nth-(?:child|of-type)/, 'the HIG layer must not assign styling by position');
+assert.match(higCss, /prefers-reduced-motion:\s*reduce/, 'the HIG layer must support reduced motion');
+assert.doesNotMatch(higNoComments, /backdrop-filter:[^;]*blur\([^;]*!important/, 'the HIG layer must not override the balanced/lite blur gate');
+assert.doesNotMatch(higNoComments.replaceAll('sans-serif', ''), /serif|Fraunces|Songti/i, 'App headings must never return to display serifs');
 assert.match(quietTokens, /--qa-control-min:\s*44px/, 'ordinary App controls must keep a 44px minimum target');
 assert.match(quietTokens, /--qa-control-submit:\s*48px/, 'authentication submit controls must remain 48px tall');
 assert.match(quietTokens, /--qa-glass-chrome-blur:\s*blur\(/, 'the Liuli glass token authority must define the chrome material');
@@ -235,7 +244,8 @@ assert.deepEqual(
 assert.match(quietExperience, /html\[data-app="1"\] \.chat-main \.cps-item\.hue-call/, 'the chat plus-panel must keep its App-fenced semantic-tone override');
 assert.match(quietExperience, /html\[data-app="1"\] \.ins-star \{ display: none/, 'shared decorative star drift must stay hidden inside the App shell');
 const quietTokenDefinitions = new Set([...quietTokens.matchAll(/(--qa-[a-z0-9-]+)\s*:/g)].map((match) => match[1]));
-const quietTokenUses = new Set([...(quietControls + quietPages + quietExperience).matchAll(/var\((--qa-[a-z0-9-]+)/g)].map((match) => match[1]));
+const higForTokens = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
+const quietTokenUses = new Set([...(quietControls + quietPages + quietExperience + higForTokens).matchAll(/var\((--qa-[a-z0-9-]+)/g)].map((match) => match[1]));
 assert.deepEqual([...quietTokenUses].filter((name) => !quietTokenDefinitions.has(name)), [], 'every Quiet Aqua token reference must resolve in the single token authority');
 assert.match(quietControls, /html\[data-app="1"\]/, 'Quiet Aqua controls must remain App-scoped');
 assert.doesNotMatch(quietControls + quietPages, /^\s*\.qa-[^{,]+/m, 'Quiet Aqua class selectors must never escape the data-app fence');
