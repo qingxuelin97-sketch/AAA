@@ -1,18 +1,17 @@
 /* Native App final material/performance layer. Never affects the web UI. */
 html[data-app="1"] {
-  --app-ink: #087f79;
-  --app-cyan: #18a9b0;
-  --app-coral: #e66c5c;
-  --app-gold: #c99b42;
-  --app-depth-border: color-mix(in srgb, var(--accent) 18%, var(--border));
+  --app-ink: #1d5fdb;
+  --app-cyan: #3b74e8;
+  --app-coral: #d15748;
+  --app-gold: #b08a2e;
+  --app-depth-border: color-mix(in srgb, var(--text) 10%, var(--border));
   --app-depth-shadow: 0 1px 0 rgba(255,255,255,0.72) inset,
-    0 5px 14px rgba(6,74,78,0.08), 0 18px 42px rgba(6,74,78,0.08);
+    0 5px 14px rgba(15,18,26,0.06), 0 18px 42px rgba(15,18,26,0.06);
   --app-depth-shadow-raised: 0 1px 0 rgba(255,255,255,0.78) inset,
-    0 8px 18px rgba(6,74,78,0.11), 0 24px 54px rgba(6,74,78,0.12);
-  --app-surface: linear-gradient(145deg, color-mix(in srgb, var(--panel) 97%, #fff),
-    color-mix(in srgb, var(--panel) 91%, #dff7f3));
-  --app-surface-raised: linear-gradient(145deg, #fff,
-    color-mix(in srgb, var(--panel) 90%, #e9faf7));
+    0 8px 18px rgba(15,18,26,0.09), 0 24px 54px rgba(15,18,26,0.10);
+  /* Liuli：内容面回归不透明纯面（Apple 式），深度只由发丝边与短阴影表达 */
+  --app-surface: var(--panel);
+  --app-surface-raised: #ffffff;
 }
 
 /* Deliberately loud: an HTTP test package must never be mistaken for a
@@ -30,15 +29,13 @@ html[data-app="1"][data-insecure-http="1"] .http-test-badge {
 }
 
 html[data-app="1"][data-theme="dark"] {
-  --app-depth-border: color-mix(in srgb, var(--accent) 28%, var(--border));
+  --app-depth-border: color-mix(in srgb, #fff 9%, var(--border));
   --app-depth-shadow: 0 1px 0 rgba(255,255,255,0.055) inset,
     0 7px 18px rgba(0,0,0,0.25), 0 22px 48px rgba(0,0,0,0.20);
   --app-depth-shadow-raised: 0 1px 0 rgba(255,255,255,0.08) inset,
     0 10px 24px rgba(0,0,0,0.32), 0 28px 62px rgba(0,0,0,0.26);
-  --app-surface: linear-gradient(145deg, color-mix(in srgb, var(--panel) 94%, #173b3d),
-    color-mix(in srgb, var(--panel) 91%, #082f34));
-  --app-surface-raised: linear-gradient(145deg, color-mix(in srgb, var(--panel) 91%, #214449),
-    color-mix(in srgb, var(--panel) 94%, #10282c));
+  --app-surface: var(--qa-surface, #161a20);
+  --app-surface-raised: var(--qa-surface-raised, #1d222a);
 }
 
 /* Static depth is cheaper and clearer than stacking translucent blur layers. */
@@ -63,14 +60,13 @@ html[data-app="1"][data-theme="dark"] :where(.input, textarea, select, .chat-inp
   box-shadow: 0 1px 0 rgba(255,255,255,0.045) inset, 0 3px 9px rgba(0,0,0,0.22) inset;
 }
 html[data-app="1"] :where(.btn.primary, .send-btn) {
-  background: linear-gradient(140deg, var(--app-cyan), var(--app-ink));
-  box-shadow: 0 1px 0 rgba(255,255,255,0.28) inset, 0 8px 19px rgba(8,127,121,0.24);
+  background: var(--qa-action-fill, var(--app-ink));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.20) inset, 0 6px 16px rgba(29,95,219,0.20);
 }
 html[data-app="1"] .section-title::before {
   content: '';
   width: 4px; height: 1.05em; border-radius: 999px;
-  background: linear-gradient(180deg, var(--app-coral), var(--app-gold));
-  box-shadow: 0 3px 9px rgba(230,108,92,0.24);
+  background: var(--qa-action-fill, var(--app-ink));
 }
 html[data-app="1"] :where(.badge, .tag, .gm-owner) {
   border-color: color-mix(in srgb, var(--app-coral) 24%, var(--border));
@@ -100,10 +96,13 @@ html[data-app="1"][data-perf="balanced"] .flow-sheen::after,
 html[data-app="1"][data-perf="balanced"] .msg.user .bubble::before {
   animation: none !important;
 }
+/* Liuli：balanced 保留 chrome 层真玻璃（Dock/顶栏/分类条是导航材质，
+   内容卡才是被剥掉 blur 的对象）。lite 由 tokens 的 lite 块回落不透明。 */
 html[data-app="1"][data-perf="balanced"] :where(.app-tabbar, .topbar, .tabs-bar, .cat-bar) {
-  background: color-mix(in srgb, var(--bg) 78%, transparent) !important;
-  box-shadow: 0 -1px 0 color-mix(in srgb, var(--accent) 16%, transparent) inset,
-    0 -9px 26px rgba(4,51,55,0.10);
+  background: var(--qa-glass-chrome-bg) !important;
+  -webkit-backdrop-filter: var(--qa-glass-chrome-blur);
+  backdrop-filter: var(--qa-glass-chrome-blur);
+  box-shadow: 0 -1px 0 var(--qa-glass-hairline) inset;
 }
 
 /* Group chat has its own two-sided conversation geometry. The old page placed
@@ -132,7 +131,7 @@ html[data-app="1"] .group-thread .group-message.assistant .bubble {
   border: 1px solid var(--app-depth-border);
 }
 html[data-app="1"] .group-thread .group-message.user .bubble {
-  background: linear-gradient(140deg, #22b8b0, #087f79);
+  background: var(--qa-action-fill, #1d5fdb);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -164,7 +163,7 @@ html[data-app="1"] .app-bootstrap-mark {
   color: #fff;
   background: var(--accent);
   box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 28%, transparent);
-  font: 700 24px/1 var(--serif);
+  font: 700 24px/1 var(--qa-font-ui, var(--sans));
 }
 html[data-app="1"] :where(.app-bootstrap, .app-route-loading, .app-session-recovery) small,
 html[data-app="1"] .app-session-recovery p { max-width: 320px; color: var(--faint); font-size: 13px; }
@@ -186,8 +185,8 @@ html[data-app="1"] .app-exit-hint {
   padding: 9px 14px;
   border-radius: 999px;
   color: #fff;
-  background: rgba(16, 43, 41, .9);
-  box-shadow: 0 8px 24px rgba(10, 28, 27, .22);
+  background: rgb(22 24 29 / 90%);
+  box-shadow: 0 8px 24px rgb(12 16 24 / 22%);
   font-size: 13px;
   pointer-events: none;
 }
@@ -235,27 +234,17 @@ html[data-app="1"][data-keyboard="1"] .app-main { padding-bottom: 0; }
    the first row is never clipped by the sheet header on short viewports. */
 html[data-app="1"] .vm-plans { padding-top: 12px; }
 
-/* A nearly opaque Dock plus a short fade prevents moving content from showing
-   through the navigation labels, while preserving the raised control layer. */
+/* Dock material contract (Liuli v5): real chrome glass on high AND balanced —
+   navigation chrome is where glass lives; content stays opaque. lite drops
+   every blur and returns to an opaque surface with unchanged hierarchy. */
 html[data-app="1"] .app-tabbar,
-html[data-app="1"][data-perf="balanced"] .app-tabbar,
+html[data-app="1"][data-perf="balanced"] .app-tabbar {
+  background: var(--qa-glass-chrome-bg) !important;
+  -webkit-backdrop-filter: var(--qa-glass-chrome-blur);
+  backdrop-filter: var(--qa-glass-chrome-blur);
+}
 html[data-app="1"][data-perf="lite"] .app-tabbar {
-  overflow: visible;
-  background: color-mix(in srgb, var(--bg) 98%, var(--accent) 2%) !important;
+  background: var(--qa-surface) !important;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-}
-html[data-app="1"] .app-tabbar::before,
-html[data-app="1"][data-perf="lite"] .app-tabbar::before {
-  display: block;
-  content: '';
-  position: absolute;
-  z-index: -1;
-  pointer-events: none;
-  left: -1px;
-  right: -1px;
-  top: -18px;
-  height: 18px;
-  opacity: 1;
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--bg) 96%, transparent));
 }

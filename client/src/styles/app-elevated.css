@@ -556,37 +556,23 @@ html[data-app="1"] .msgs-skel-row {
    仅在 html[data-app="1"] 生效，Web/mobile-web 视觉不受影响。
    ========================================================================== */
 
+/* Liuli v5：--gl-* 是遗留消费别名，全部改由 tokens 文件的 --qa-glass-* 驱动。
+   厚度语义保持：1=薄纱（thin）/ 2=磨砂（chrome）/ 3=厚玻璃（sheet）。
+   光环（halo）与青紫描边已按「无因果装饰归零」原则移除。 */
 html[data-app="1"] {
-  /* —— 三档磨砂 —— */
-  --gl-1-bg: color-mix(in srgb, var(--panel) 62%, transparent);
-  --gl-2-bg: color-mix(in srgb, var(--panel) 74%, transparent);
-  --gl-3-bg: color-mix(in srgb, var(--panel) 84%, transparent);
-  /* blur 成本随半径超线性增长；>20px 在手机 DPR 下感知差异极小，
-     三档整体下调一级（18/26/38 → 14/20/28），观感几乎不变、GPU 显著减负 */
-  --gl-1-blur: blur(14px) saturate(180%);
-  --gl-2-blur: blur(20px) saturate(180%);
-  --gl-3-blur: blur(28px) saturate(200%);
-  --gl-border: color-mix(in srgb, #fff 14%, transparent);
-  --gl-border-in: inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
-  --gl-shadow: 0 12px 34px rgba(0,0,0,0.28);
+  --gl-1-bg: var(--qa-glass-thin-bg);
+  --gl-2-bg: var(--qa-glass-chrome-bg);
+  --gl-3-bg: var(--qa-glass-sheet-bg);
+  --gl-1-blur: var(--qa-glass-thin-blur);
+  --gl-2-blur: var(--qa-glass-chrome-blur);
+  --gl-3-blur: var(--qa-glass-sheet-blur);
+  --gl-border: var(--qa-glass-hairline);
+  --gl-border-in: var(--qa-glass-specular);
+  --gl-shadow: var(--qa-glass-shadow);
   /* —— 高光条：玻璃边缘反射 —— */
   --gl-sheen: linear-gradient(115deg,
     color-mix(in srgb, #fff 22%, transparent) 0%,
     color-mix(in srgb, #fff 0%, transparent) 40%);
-  /* —— 强调色光晕（背后隐约透出） —— */
-  --gl-halo-a: radial-gradient(80% 60% at 25% 20%, color-mix(in srgb, var(--accent) 32%, transparent), transparent 62%);
-  --gl-halo-b: radial-gradient(80% 60% at 82% 88%, color-mix(in srgb, var(--dusk, #7d4468) 30%, transparent), transparent 60%);
-}
-html[data-app="1"][data-theme="light"] {
-  /* 白+青 磨砂：白玻璃透出淡青，边缘用青灰描边（在浅底上可见） */
-  --gl-1-bg: color-mix(in srgb, #f2fdff 62%, transparent);
-  --gl-2-bg: color-mix(in srgb, #f2fdff 76%, transparent);
-  --gl-3-bg: color-mix(in srgb, #f6feff 86%, transparent);
-  --gl-border: color-mix(in srgb, #22d3ee 30%, transparent);
-  --gl-border-in: inset 0 1px 0 color-mix(in srgb, #fff 90%, transparent);
-  --gl-shadow: 0 12px 34px rgba(8, 90, 108, 0.14);
-  --gl-halo-a: radial-gradient(80% 60% at 25% 20%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 62%);
-  --gl-halo-b: radial-gradient(80% 60% at 82% 88%, color-mix(in srgb, #22d3ee 24%, transparent), transparent 60%);
 }
 
 /* —— 玻璃通用类（同时给关键既有类补上真玻璃观感） —— */
@@ -636,15 +622,15 @@ html[data-app="1"][data-theme="light"] .glass-noise::before { opacity: 0.05; }
    Dock / 顶部头行 / 发现分类条 / 底部 Sheet / 通话入口卡 / 播放器等
    ========================================================================== */
 
-/* —— Dock：高不透明实底 + 高光丝 + 噪点（观感保留，去掉常驻实时模糊）——
-   底栏是固定层，内容在其后滚动，backdrop-filter 意味着每帧重算一条全宽
-   模糊带；改 94% 实底后高光丝/噪点细节仍在，865 滚动帧立省一层。 */
+/* —— Dock：真玻璃 chrome 层（Liuli v5）——
+   Apple 式分层：内容面不透明、导航 chrome 真玻璃。blur 上限 20px 控制
+   GPU 成本；lite 档整体回落不透明实底（下方降级块 + tokens lite 块双保险）。 */
 html[data-app="1"] .app-tabbar {
-  background: color-mix(in srgb, var(--panel) 94%, transparent);
-  border-top: 1px solid var(--gl-border);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
-    0 -8px 30px rgba(0,0,0,0.28);
+  background: var(--qa-glass-chrome-bg);
+  -webkit-backdrop-filter: var(--qa-glass-chrome-blur);
+  backdrop-filter: var(--qa-glass-chrome-blur);
+  border-top: 1px solid var(--qa-glass-hairline);
+  box-shadow: var(--qa-glass-specular), 0 -8px 30px rgb(12 16 24 / 14%);
   overflow: hidden;
 }
 html[data-app="1"] .app-tabbar::before {
@@ -666,15 +652,13 @@ html[data-app="1"][data-perf="lite"] .app-tabbar {
 html[data-app="1"][data-perf="lite"] .app-tabbar::before,
 html[data-app="1"][data-perf="lite"] .app-tabbar::after { display: none; }
 
-/* —— +AI FAB：透明玻璃钮，按压时液态涟漪扩散 —— */
+/* —— FAB：薄玻璃钮，按压时液态涟漪扩散 —— */
 html[data-app="1"] .app-fab {
-  background: color-mix(in srgb, var(--panel) 34%, transparent);
-  backdrop-filter: blur(14px) saturate(180%);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
-  border-color: color-mix(in srgb, var(--text) 65%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent),
-    0 6px 20px rgba(0,0,0,0.28);
+  background: var(--qa-glass-thin-bg);
+  backdrop-filter: var(--qa-glass-thin-blur);
+  -webkit-backdrop-filter: var(--qa-glass-thin-blur);
+  border-color: var(--qa-glass-hairline);
+  box-shadow: var(--qa-glass-specular), 0 6px 20px rgb(12 16 24 / 18%);
   overflow: hidden;
 }
 html[data-app="1"] .app-fab::before {
@@ -1329,30 +1313,30 @@ html[data-app="1"][data-perf="lite"] .app-tabbar::after { display: block; opacit
    等特异性后写者胜，既保留合成层提示又恢复居中。 */
 html[data-app="1"] .app-tabbar { transform: translateX(-50%) translateZ(0); }
 
-/* 浅底上的文字/图标对比（原来近白，会看不见）→ 青灰 / teal */
-html[data-app="1"] .app-tab { color: color-mix(in srgb, #0e7490 42%, #64748b); }
-html[data-app="1"] .app-tab.active { color: #0e7490; }
-html[data-app="1"] .dock-ink { background: color-mix(in srgb, #22d3ee 26%, transparent); }
+/* 浅底上的文字/图标对比（原来近白，会看不见）→ 中性灰 / 群青 */
+html[data-app="1"] .app-tab { color: color-mix(in srgb, var(--qa-ink, #16181d) 52%, #8a919d); }
+html[data-app="1"] .app-tab.active { color: var(--qa-brand-fill, #1d5fdb); }
+html[data-app="1"] .dock-ink { background: color-mix(in srgb, var(--qa-brand-fill, #1d5fdb) 16%, transparent); }
 
-/* 中央 +AI 钮：清透白玻璃 + teal 描边字，与白+青底一致 */
+/* 中央创建钮：清透白玻璃 + 群青描边字，与瓷白底一致 */
 html[data-app="1"] .app-fab {
   background: rgba(255,255,255,0.42);
-  border-color: #0e7490;
-  color: #0e7490;
+  border-color: var(--qa-brand-fill, #1d5fdb);
+  color: var(--qa-brand-fill, #1d5fdb);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.9),
-    0 6px 18px rgba(8,145,178,0.20);
+    0 6px 18px rgba(29,95,219,0.18);
 }
 html[data-app="1"] .app-fab::before {
   background: linear-gradient(135deg, rgba(255,255,255,0.6), transparent 55%);
 }
 html[data-app="1"] .app-fab:active,
 html[data-app="1"] .app-fab.open {
-  background: color-mix(in srgb, #22d3ee 20%, rgba(255,255,255,0.5));
-  border-color: #0e7490;
+  background: color-mix(in srgb, var(--qa-brand-fill, #1d5fdb) 14%, rgba(255,255,255,0.5));
+  border-color: var(--qa-brand-fill, #1d5fdb);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.9),
-    0 8px 22px rgba(8,145,178,0.30);
+    0 8px 22px rgba(29,95,219,0.26);
 }
 /* 未读红点：浅底上用玫红 + 白环，依旧醒目 */
 html[data-app="1"] .app-dot {

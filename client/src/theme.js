@@ -8,8 +8,7 @@ const mq = () => window.matchMedia('(prefers-color-scheme: dark)');
 export function getThemeMode() { return localStorage.getItem(KEY) || 'system'; }
 export function resolveTheme(mode = getThemeMode()) {
   if (mode === 'system') {
-    // App 壳默认「白+青」清透浅色（毛玻璃观感）；用户在设置里显式选深色仍然生效。
-    if (isAppMode()) return 'light';
+    // Liuli v5：App 与 Web 一致，「跟随系统」真正跟随系统深浅色。
     return mq().matches ? 'dark' : 'light';
   }
   return mode;
@@ -23,8 +22,8 @@ export function applyTheme(mode = getThemeMode()) {
   if (meta) {
     const app = isAppMode();
     meta.setAttribute('content', resolved === 'dark'
-      ? (app ? '#0d1211' : '#15120e')
-      : (app ? '#f4f7f6' : '#f4f2ec'));
+      ? (app ? '#0a0c10' : '#15120e')
+      : (app ? '#f6f7f9' : '#f4f2ec'));
   }
   try { window.dispatchEvent(new Event('huanyu-theme')); } catch { /* */ }
 }

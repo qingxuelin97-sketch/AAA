@@ -7,38 +7,41 @@
  * markup and visuals.
  */
 
+/* Internal page-composition aliases. Since Liuli v5 these resolve to the
+   neutral/ultramarine palette; the historical `--qa3-teal` name now carries
+   the brand action colour (kept to avoid a 1000-line mechanical rename). */
 html[data-app="1"] {
-  --qa3-canvas: #f5f7f6;
-  --qa3-canvas-deep: #edf2f0;
-  --qa3-ink: #102b29;
-  --qa3-muted: #607572;
-  --qa3-teal: #087f79;
-  --qa3-teal-deep: #075d5a;
-  --qa3-teal-soft: #dcecea;
-  --qa3-coral: #d85d4d;
-  --qa3-gold: #a97419;
-  --qa3-line: rgb(16 43 41 / 10%);
-  --qa3-material: rgb(250 252 251 / 76%);
+  --qa3-canvas: #f6f7f9;
+  --qa3-canvas-deep: #edeff3;
+  --qa3-ink: #16181d;
+  --qa3-muted: #5b6470;
+  --qa3-teal: #1d5fdb;
+  --qa3-teal-deep: #174dbb;
+  --qa3-teal-soft: #e7eefc;
+  --qa3-coral: #d15748;
+  --qa3-gold: #96690e;
+  --qa3-line: rgb(22 24 29 / 10%);
+  --qa3-material: rgb(251 252 253 / 76%);
   --qa3-shadow-short: 0 1px 0 rgb(255 255 255 / 76%) inset,
-    0 5px 16px rgb(10 48 45 / 7%);
+    0 5px 16px rgb(15 18 26 / 7%);
   --qa3-shadow-float: 0 1px 0 rgb(255 255 255 / 70%) inset,
-    0 14px 38px rgb(8 42 40 / 14%);
+    0 14px 38px rgb(12 16 24 / 14%);
   --qa3-spring: cubic-bezier(.2, .9, .22, 1.16);
   --qa3-spring-soft: cubic-bezier(.22, .78, .2, 1);
 }
 
 html[data-app="1"][data-theme="dark"] {
-  --qa3-canvas: #0d1312;
-  --qa3-canvas-deep: #121b19;
-  --qa3-ink: #f0f6f4;
-  --qa3-muted: #9fb1ad;
-  --qa3-teal: #67c9bf;
-  --qa3-teal-deep: #2f958d;
-  --qa3-teal-soft: #183d39;
+  --qa3-canvas: #0a0c10;
+  --qa3-canvas-deep: #10131a;
+  --qa3-ink: #f2f4f7;
+  --qa3-muted: #9aa4b0;
+  --qa3-teal: #7aa5ff;
+  --qa3-teal-deep: #5e8ef5;
+  --qa3-teal-soft: #1a2540;
   --qa3-coral: #ff8a7e;
   --qa3-gold: #d6b264;
-  --qa3-line: rgb(232 246 242 / 11%);
-  --qa3-material: rgb(18 26 24 / 78%);
+  --qa3-line: rgb(240 244 250 / 11%);
+  --qa3-material: rgb(20 24 30 / 78%);
   --qa3-shadow-short: 0 1px 0 rgb(255 255 255 / 5%) inset,
     0 7px 20px rgb(0 0 0 / 24%);
   --qa3-shadow-float: 0 1px 0 rgb(255 255 255 / 7%) inset,
@@ -195,7 +198,7 @@ html[data-app="1"] .qa3-today .ah-tier {
   right: -5px !important;
   bottom: -5px !important;
   padding: 2px 5px !important;
-  border: 2px solid #18514f !important;
+  border: 2px solid #174dbb !important;
   border-radius: 999px !important;
   background: #d7b352 !important;
   color: #3d2c08 !important;
@@ -264,8 +267,8 @@ html[data-app="1"] .qa3-today .ah-checkin.qa-button {
   grid-column: auto;
   justify-self: stretch;
   min-width: 82px !important;
-  background: #e7f4f1 !important;
-  color: #0a605b !important;
+  background: #e7eefc !important;
+  color: #174dbb !important;
   font-weight: 760 !important;
 }
 
@@ -374,7 +377,7 @@ html[data-app="1"] .qa3-today .ah-hero-card {
   overflow: hidden;
   border: 0 !important;
   border-radius: 26px !important;
-  background: #183536 !important;
+  background: #1b2130 !important;
   box-shadow: 0 16px 38px rgb(11 47 45 / 18%) !important;
   color: #fff;
   isolation: isolate;
@@ -441,7 +444,7 @@ html[data-app="1"] .qa3-today .ah-hc-tag {
   padding: 5px 8px;
   border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 999px;
-  background: rgb(9 35 34 / 31%);
+  background: rgb(14 18 28 / 31%);
   color: rgb(255 255 255 / 88%);
   font-size: 10px;
   font-weight: 700;
@@ -476,7 +479,7 @@ html[data-app="1"] .qa3-today .ah-hc-cta.qa-button {
   min-height: 44px !important;
   border: 1px solid rgb(255 255 255 / 34%) !important;
   border-radius: 999px !important;
-  background: color-mix(in srgb, #0f928a 86%, transparent) !important;
+  background: color-mix(in srgb, #2e6ae4 86%, transparent) !important;
   color: #fff !important;
   box-shadow: 0 9px 22px rgb(4 50 48 / 24%) !important;
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
@@ -1338,7 +1341,7 @@ html[data-app="1"] .qa3-discover.feed-wrap {
   height: 100% !important;
   margin-top: 0 !important;
   overflow: hidden;
-  background: #102526 !important;
+  background: #12161f !important;
 }
 
 html[data-app="1"] .qa3-discover .feed-top {
@@ -1367,7 +1370,7 @@ html[data-app="1"] .qa3-discover .feed-modes {
   padding: 3px !important;
   border: 1px solid rgb(255 255 255 / 13%) !important;
   border-radius: 18px !important;
-  background: rgb(9 28 30 / 34%) !important;
+  background: rgb(14 18 28 / 34%) !important;
   box-shadow: 0 8px 22px rgb(0 0 0 / 13%) !important;
   pointer-events: auto;
   -webkit-backdrop-filter: blur(18px) saturate(1.22);
@@ -1396,7 +1399,7 @@ html[data-app="1"] .qa3-discover .feed-search.qa-icon-button,
 html[data-app="1"] .qa3-discover .feed-history.qa-icon-button {
   border: 1px solid rgb(255 255 255 / 13%);
   border-radius: 50%;
-  background: rgb(9 28 30 / 34%);
+  background: rgb(14 18 28 / 34%);
   color: #fff;
   pointer-events: auto;
   -webkit-backdrop-filter: blur(18px) saturate(1.2);
@@ -1421,7 +1424,7 @@ html[data-app="1"] .qa3-discover .feed-card {
   height: 100% !important;
   min-height: 100% !important;
   overflow: hidden;
-  background: #102526;
+  background: #12161f;
   scroll-snap-align: start;
   scroll-snap-stop: always;
   isolation: isolate;
@@ -1617,7 +1620,7 @@ html[data-app="1"] .qa3-discover .fd2-enter.qa-button {
   min-height: 52px !important;
   border: 1px solid rgb(255 255 255 / 25%) !important;
   border-radius: 20px !important;
-  background: color-mix(in srgb, #19a9a1 82%, transparent) !important;
+  background: color-mix(in srgb, #3b74e8 82%, transparent) !important;
   color: #fff !important;
   box-shadow: 0 11px 26px rgb(3 50 49 / 30%) !important;
   font-size: 15px !important;
@@ -1633,8 +1636,8 @@ html[data-app="1"] .qa3-discover .fd2-call.qa-icon-button {
   min-width: 52px !important;
   border: 1px solid rgb(255 255 255 / 34%) !important;
   border-radius: 20px !important;
-  background: rgb(244 250 249 / 82%) !important;
-  color: #0a6762 !important;
+  background: rgb(246 248 252 / 82%) !important;
+  color: #174dbb !important;
   box-shadow: 0 10px 24px rgb(0 0 0 / 18%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(1.12);
   backdrop-filter: blur(16px) saturate(1.12);
@@ -1655,7 +1658,7 @@ html[data-app="1"] .qa-character-view.cvx {
 html[data-app="1"] .qa-character-view .cvx-hero {
   height: clamp(300px, 46dvh, 480px) !important;
   min-height: 300px !important;
-  background: #152927;
+  background: #161b23;
 }
 
 html[data-app="1"] .qa-character-view .cvx-hero-media {
@@ -2079,7 +2082,7 @@ html[data-app="1"] .qa-chat-main .msg .avatar {
   width: 34px !important;
   height: 34px !important;
   border: 1.5px solid rgb(255 255 255 / 76%);
-  box-shadow: 0 3px 10px rgb(9 46 43 / 12%);
+  box-shadow: 0 3px 10px rgb(14 18 28 / 12%);
 }
 
 html[data-app="1"] .qa-chat-main .msg.assistant.run-cont {
@@ -2105,11 +2108,11 @@ html[data-app="1"] .qa-chat-main.has-bg .msg.assistant .bubble,
 html[data-app="1"] .qa-chat-main.has-bg.ba-solid .msg.assistant .bubble,
 html[data-app="1"] .qa-chat-main.has-bg.ba-mid .msg.assistant .bubble,
 html[data-app="1"] .qa-chat-main.has-bg.ba-clear .msg.assistant .bubble {
-  border: 1px solid rgb(16 43 41 / 8%) !important;
+  border: 1px solid rgb(22 24 29 / 8%) !important;
   border-top-left-radius: 7px !important;
   background: rgb(252 253 252 / 91%) !important;
   color: var(--qa3-ink) !important;
-  box-shadow: 0 1px 0 rgb(255 255 255 / 72%) inset, 0 7px 20px rgb(10 48 45 / 8%) !important;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 72%) inset, 0 7px 20px rgb(14 18 28 / 8%) !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
@@ -2237,7 +2240,7 @@ html[data-app="1"] .qa-chat-main .chat-input-spacer {
 }
 
 html[data-app="1"][data-theme="dark"] .qa-chat-main.chat-main.has-bg {
-  background: #111817 !important;
+  background: #12151b !important;
 }
 
 html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .chat-bg > img {
@@ -2564,8 +2567,8 @@ html[data-app="1"] .qa-wallet .wallet-hero {
   border: 1px solid rgb(255 255 255 / 10%) !important;
   border-radius: 24px !important;
   background:
-    radial-gradient(circle at 92% 2%, rgb(126 211 201 / 25%), transparent 35%),
-    linear-gradient(145deg, #0b4644 0%, #123f43 54%, #082d31 100%) !important;
+    radial-gradient(circle at 92% 2%, rgb(146 176 255 / 25%), transparent 35%),
+    linear-gradient(145deg, #262b34 0%, #23272e 54%, #1a1e25 100%) !important;
   box-shadow: 0 1px 0 rgb(255 255 255 / 10%) inset, 0 18px 42px rgb(7 55 54 / 20%) !important;
   color: #fff;
   isolation: isolate;
@@ -2683,7 +2686,7 @@ html[data-app="1"] .qa-wallet-v4 {
   background:
     radial-gradient(circle at 9% 2%, rgb(65 137 171 / 15%), transparent 31%),
     radial-gradient(circle at 94% 18%, rgb(207 169 91 / 11%), transparent 28%),
-    linear-gradient(180deg, #f3f6f6 0%, var(--qa3-canvas) 48%, #f0f3f2 100%) !important;
+    linear-gradient(180deg, #f4f6f9 0%, var(--qa3-canvas) 48%, #eff1f5 100%) !important;
 }
 
 /* A transformed route wrapper becomes the containing block for `fixed`.
@@ -2702,8 +2705,8 @@ html[data-app="1"] .qa-wallet-v4 .qa-wallet-head {
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   padding: max(8px, env(safe-area-inset-top)) 14px 8px;
   border-bottom: 1px solid rgb(255 255 255 / 52%);
-  background: rgb(244 247 246 / 68%) !important;
-  box-shadow: 0 1px 0 rgb(16 43 41 / 5%);
+  background: rgb(246 247 249 / 68%) !important;
+  box-shadow: 0 1px 0 rgb(22 24 29 / 5%);
   -webkit-backdrop-filter: blur(26px) saturate(1.22);
   backdrop-filter: blur(26px) saturate(1.22);
 }
@@ -2803,9 +2806,9 @@ html[data-app="1"] .qa-wallet-v4__balance {
   background:
     radial-gradient(circle at 92% 3%, rgb(145 200 220 / 24%), transparent 34%),
     radial-gradient(circle at 7% 108%, rgb(219 181 93 / 15%), transparent 42%),
-    linear-gradient(145deg, rgb(16 111 113 / 91%), rgb(39 102 128 / 86%) 58%, rgb(32 71 84 / 91%));
+    linear-gradient(145deg, rgb(31 62 133 / 92%), rgb(38 53 94 / 88%) 58%, rgb(26 34 58 / 92%));
   color: var(--qa-finance-ink);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 34%) inset, 0 18px 38px rgb(23 54 65 / 20%);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 34%) inset, 0 18px 38px rgb(18 28 58 / 20%);
   isolation: isolate;
   -webkit-backdrop-filter: blur(26px) saturate(1.28);
   backdrop-filter: blur(26px) saturate(1.28);
@@ -2854,8 +2857,8 @@ html[data-app="1"] .qa-wallet-v4__recharge.qa-button {
   min-height: 44px;
   border: 1px solid rgb(255 255 255 / 40%) !important;
   border-radius: 999px !important;
-  background: rgb(248 253 252 / 92%) !important;
-  color: #076b66 !important;
+  background: rgb(249 250 253 / 92%) !important;
+  color: #174dbb !important;
   box-shadow: 0 7px 18px rgb(2 48 46 / 16%) !important;
 }
 
@@ -3014,7 +3017,7 @@ html[data-app="1"] .qa-wallet-v4__ledger {
   padding: 16px;
   border: 1px solid var(--wallet-glass-edge);
   border-radius: 21px;
-  background: rgb(250 252 251 / 88%);
+  background: rgb(251 252 253 / 88%);
   box-shadow: var(--wallet-glass-shadow);
   -webkit-backdrop-filter: blur(22px) saturate(1.16);
   backdrop-filter: blur(22px) saturate(1.16);
@@ -3213,7 +3216,7 @@ html[data-app="1"] .qa-wallet-v4__checkout {
   padding: 10px;
   border: 1px solid var(--wallet-glass-edge);
   border-radius: 20px;
-  background: rgb(250 252 251 / 88%);
+  background: rgb(251 252 253 / 88%);
   box-shadow: 0 1px 0 rgb(255 255 255 / 86%) inset, 0 20px 46px rgb(25 49 55 / 18%);
   transform: translateX(-50%);
   -webkit-backdrop-filter: blur(26px) saturate(1.22);
@@ -3270,11 +3273,11 @@ html[data-app="1"][data-theme="dark"] .qa-wallet-v4 {
   background:
     radial-gradient(circle at 9% 2%, rgb(60 128 159 / 18%), transparent 31%),
     radial-gradient(circle at 94% 18%, rgb(184 143 71 / 12%), transparent 28%),
-    linear-gradient(180deg, #0d1414 0%, var(--qa3-canvas) 52%, #0b1110 100%) !important;
+    linear-gradient(180deg, #0f1216 0%, var(--qa3-canvas) 52%, #0c0f13 100%) !important;
 }
 
 html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout {
-  background: rgb(18 27 26 / 90%);
+  background: rgb(18 21 28 / 90%);
 }
 
 html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout .qa-button:disabled {
@@ -3638,16 +3641,16 @@ html[data-app="1"] .qa-group-room,
 html[data-app="1"] .qa-group-room-loading {
   min-height: 100dvh;
   color: var(--qa3-ink);
-  background: #f3f7f6 !important;
+  background: #f4f6f9 !important;
 }
 
-html[data-app="1"] .qa-group-room-main { background: #f3f7f6 !important; }
+html[data-app="1"] .qa-group-room-main { background: #f4f6f9 !important; }
 html[data-app="1"] .qa-group-room-header {
   min-height: 68px !important;
   padding: 8px 12px !important;
   border: 0 !important;
   border-bottom: 1px solid var(--qa3-line) !important;
-  background: color-mix(in srgb, #fbfdfc 88%, transparent) !important;
+  background: color-mix(in srgb, #fbfcfd 88%, transparent) !important;
   color: var(--qa3-ink) !important;
   box-shadow: none !important;
   -webkit-backdrop-filter: blur(18px) saturate(1.12);
@@ -3669,15 +3672,15 @@ html[data-app="1"] .qa-group-room-roster {
   padding: 8px 16px;
   border: 0;
   border-bottom: 1px solid var(--qa3-line);
-  background: #fbfdfc;
+  background: #fbfcfd;
   color: var(--qa3-ink);
   text-align: left;
 }
 
 html[data-app="1"] .qa-group-room-roster-avatars { display: flex; min-width: 86px; padding-left: 4px; }
 html[data-app="1"] .qa-group-room-roster-avatar { position: relative; display: block; width: 25px; }
-html[data-app="1"] .qa-group-room-roster-avatar .avatar { border: 2px solid #fbfdfc; box-shadow: 0 1px 5px rgb(16 43 41 / 12%); }
-html[data-app="1"] .qa-group-room-roster-avatar i { position: absolute; right: -7px; bottom: 0; width: 9px; height: 9px; border: 2px solid #fbfdfc; border-radius: 50%; background: #30aa78; }
+html[data-app="1"] .qa-group-room-roster-avatar .avatar { border: 2px solid #fbfcfd; box-shadow: 0 1px 5px rgb(22 24 29 / 12%); }
+html[data-app="1"] .qa-group-room-roster-avatar i { position: absolute; right: -7px; bottom: 0; width: 9px; height: 9px; border: 2px solid #fbfcfd; border-radius: 50%; background: #30aa78; }
 html[data-app="1"] .qa-group-room-roster-copy { min-width: 0; flex: 1; }
 html[data-app="1"] .qa-group-room-roster b,
 html[data-app="1"] .qa-group-room-roster small { display: block; }
@@ -3685,7 +3688,7 @@ html[data-app="1"] .qa-group-room-roster b { font-size: 13px; }
 html[data-app="1"] .qa-group-room-roster small { margin-top: 1px; color: var(--qa3-muted); font-size: 11.5px; }
 html[data-app="1"] .qa-group-room-roster > svg { color: var(--qa3-muted); }
 
-html[data-app="1"] .qa-group-room-scroll { background: linear-gradient(180deg, #f3f7f6, #edf3f1) !important; }
+html[data-app="1"] .qa-group-room-scroll { background: linear-gradient(180deg, #f4f6f9, #eef0f4) !important; }
 html[data-app="1"] .qa-group-room .group-thread { padding: 18px 14px 28px !important; }
 html[data-app="1"] .qa-group-room .group-message { gap: 8px !important; margin: 0 0 16px !important; animation: qa3MessageArrive 300ms var(--qa3-spring-soft) both; }
 html[data-app="1"] .qa-group-room .group-message.user { flex-direction: row-reverse !important; }
@@ -3694,11 +3697,11 @@ html[data-app="1"] .qa-group-room .group-message.user .group-message-body { alig
 html[data-app="1"] .qa-group-room .who { margin: 0 4px 4px !important; color: var(--qa3-muted) !important; font-size: 11.5px !important; }
 html[data-app="1"] .qa-group-room .bubble { padding: 10px 13px !important; border: 1px solid var(--qa3-line) !important; border-radius: 7px 17px 17px 17px !important; background: #fff !important; color: var(--qa3-ink) !important; box-shadow: 0 5px 15px rgb(14 54 50 / 6%) !important; }
 html[data-app="1"] .qa-group-room .group-message.user .bubble { border-color: transparent !important; border-radius: 17px 7px 17px 17px !important; background: var(--qa3-teal-deep) !important; color: #fff !important; box-shadow: 0 7px 17px rgb(7 93 90 / 14%) !important; }
-html[data-app="1"] .qa-group-room-composer { padding: 7px 12px calc(7px + env(safe-area-inset-bottom)) !important; border-top: 1px solid var(--qa3-line) !important; background: color-mix(in srgb, #fbfdfc 86%, transparent) !important; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+html[data-app="1"] .qa-group-room-composer { padding: 7px 12px calc(7px + env(safe-area-inset-bottom)) !important; border-top: 1px solid var(--qa3-line) !important; background: color-mix(in srgb, #fbfcfd 86%, transparent) !important; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 html[data-app="1"] .qa-group-room-input-island { min-height: 54px !important; border: 1px solid var(--qa3-line) !important; border-radius: 19px !important; background: #fff !important; box-shadow: var(--qa3-shadow-short) !important; }
 html[data-app="1"] .qa-group-room-textarea { color: var(--qa3-ink) !important; }
 html[data-app="1"] .qa-group-room-send.qa-icon-button { border-radius: 50% !important; background: var(--qa3-teal) !important; color: #fff !important; }
-html[data-app="1"] .qa-group-room-loading-head { border-bottom: 1px solid var(--qa3-line) !important; background: #fbfdfc !important; }
+html[data-app="1"] .qa-group-room-loading-head { border-bottom: 1px solid var(--qa3-line) !important; background: #fbfcfd !important; }
 
 /* Theater — a continuous paper/ink reading surface, never chat-card soup. */
 html[data-app="1"] .qa-theater-room,
@@ -3827,16 +3830,16 @@ html[data-app="1"] .qa-character-editor__savebar .qa-character-editor__save.qa-b
 html[data-app="1"][data-theme="dark"] .qa-group-room,
 html[data-app="1"][data-theme="dark"] .qa-group-room-loading,
 html[data-app="1"][data-theme="dark"] .qa-group-room-main,
-html[data-app="1"][data-theme="dark"] .qa-group-room-scroll { background: #0e1514 !important; }
+html[data-app="1"][data-theme="dark"] .qa-group-room-scroll { background: #0f1218 !important; }
 html[data-app="1"][data-theme="dark"] .qa-group-room-header,
-html[data-app="1"][data-theme="dark"] .qa-group-room-roster { background: #121b19 !important; }
-html[data-app="1"][data-theme="dark"] .qa-group-room-roster-avatar .avatar { border-color: #121b19; }
-html[data-app="1"][data-theme="dark"] .qa-group-room .bubble { background: #182321 !important; }
-html[data-app="1"][data-theme="dark"] .qa-group-room-input-island { background: #182321 !important; }
+html[data-app="1"][data-theme="dark"] .qa-group-room-roster { background: #11141a !important; }
+html[data-app="1"][data-theme="dark"] .qa-group-room-roster-avatar .avatar { border-color: #11141a; }
+html[data-app="1"][data-theme="dark"] .qa-group-room .bubble { background: #171b22 !important; }
+html[data-app="1"][data-theme="dark"] .qa-group-room-input-island { background: #171b22 !important; }
 html[data-app="1"][data-theme="dark"] .qa-theater-room,
 html[data-app="1"][data-theme="dark"] .qa-theater-room-loading { --qa3-paper: #181714; --qa3-paper-ink: #f0ece2; --qa3-paper-muted: #aaa399; }
 html[data-app="1"][data-theme="dark"] .qa-theater-input-island { background: #211f1a !important; }
-html[data-app="1"][data-theme="dark"] .qa-character-editor__page :where(.input, .select, .textarea) { background: #17201e !important; }
+html[data-app="1"][data-theme="dark"] .qa-character-editor__page :where(.input, .select, .textarea) { background: #161a20 !important; }
 
 html[data-app="1"][data-perf="lite"] :where(
   .qa-wallet-head, .qa-vip .vm-top, .qa-atelier-head, .qa-settings-topbar,
@@ -3958,8 +3961,8 @@ html[data-app="1"] .qa-worldbook-editor,
 html[data-app="1"] .qa-worldbook-editor--loading {
   --wb-editor-topbar: calc(64px + env(safe-area-inset-top, 0px));
   --wb-editor-panel: #ffffff;
-  --wb-editor-panel-soft: #eef3f0;
-  --wb-editor-paper: #f6f8f6;
+  --wb-editor-panel-soft: #eef0f4;
+  --wb-editor-paper: #f6f7f9;
   --wb-editor-warm: #a7662b;
   min-height: 100dvh;
   color: var(--qa3-ink);
@@ -3970,7 +3973,7 @@ html[data-app="1"] .qa-worldbook-editor--loading {
 /* Portalled editor chrome does not inherit custom properties from the page. */
 html[data-app="1"] :where(.qa-worldbook-editor__savebar, .qa-worldbook-editor__modal) {
   --wb-editor-panel: #ffffff;
-  --wb-editor-paper: #f6f8f6;
+  --wb-editor-paper: #f6f7f9;
 }
 
 html[data-app="1"] .qa-worldbook-editor__topbar {
@@ -4395,8 +4398,8 @@ html[data-app="1"] .qa-worldbook-editor__loading b { color: var(--qa3-ink); font
 html[data-app="1"] .qa-worldbook-editor__loading-icon { display: grid; width: 52px; height: 52px; margin-bottom: 4px; place-items: center; border-radius: 17px; background: var(--qa3-teal-soft); color: var(--qa3-teal); }
 
 html[data-app="1"][data-theme="dark"] .qa-worldbook-editor,
-html[data-app="1"][data-theme="dark"] .qa-worldbook-editor--loading { --wb-editor-panel: #17201e; --wb-editor-panel-soft: #1d2a27; --wb-editor-paper: #101816; background: var(--qa3-canvas) !important; }
-html[data-app="1"][data-theme="dark"] :where(.qa-worldbook-editor__savebar, .qa-worldbook-editor__modal) { --wb-editor-panel: #17201e; --wb-editor-paper: #101816; }
+html[data-app="1"][data-theme="dark"] .qa-worldbook-editor--loading { --wb-editor-panel: #161a20; --wb-editor-panel-soft: #1c222b; --wb-editor-paper: #10131a; background: var(--qa3-canvas) !important; }
+html[data-app="1"][data-theme="dark"] :where(.qa-worldbook-editor__savebar, .qa-worldbook-editor__modal) { --wb-editor-panel: #161a20; --wb-editor-paper: #10131a; }
 html[data-app="1"][data-theme="dark"] .qa-worldbook-editor__modal-backdrop { background: rgb(0 0 0 / 62%); }
 html[data-app="1"][data-theme="dark"] .qa-worldbook-editor__modal.card.modal { box-shadow: 0 24px 70px rgb(0 0 0 / 45%); }
 
@@ -4475,7 +4478,7 @@ html[data-app="1"] .qa-worldbook-editor__page .world-entry input[type="range"] {
 /* -------------------------------------------------------------------------- */
 html[data-app="1"] :where(.qa-script-detail-v4, .qa-script-editor-v4) {
   --script-panel: #ffffff;
-  --script-paper: #f3f5f3;
+  --script-paper: #f4f5f8;
   --script-indigo: #53639f;
   --script-indigo-soft: #e9ebf6;
   --script-coral: #bd594e;
@@ -5205,7 +5208,7 @@ html[data-app="1"] .qa-script-editor-v4__story-note svg { flex: 0 0 auto; color:
 
 html[data-app="1"] .qa-script-editor-v4__savebar {
   --script-panel: #ffffff;
-  --script-paper: #f3f5f3;
+  --script-paper: #f4f5f8;
   position: fixed;
   z-index: 85;
   right: 12px;
@@ -5235,8 +5238,8 @@ html[data-app="1"] .qa-script-editor-v4__save-state span { overflow: hidden; tex
 html[data-app="1"] .qa-script-editor-v4__save.qa-button { min-width: 112px; min-height: 48px; border-radius: 15px; }
 
 html[data-app="1"][data-theme="dark"] :where(.qa-script-detail-v4, .qa-script-editor-v4) {
-  --script-panel: #17201e;
-  --script-paper: #111816;
+  --script-panel: #161a20;
+  --script-paper: #11141a;
   --script-indigo: #a8b4e8;
   --script-indigo-soft: #262c42;
   --script-coral: #e8958d;
@@ -5245,7 +5248,7 @@ html[data-app="1"][data-theme="dark"] :where(.qa-script-detail-v4, .qa-script-ed
   --script-gold-soft: #40341b;
 }
 
-html[data-app="1"][data-theme="dark"] .qa-script-editor-v4__savebar { --script-panel: #17201e; --script-paper: #111816; }
+html[data-app="1"][data-theme="dark"] .qa-script-editor-v4__savebar { --script-panel: #161a20; --script-paper: #11141a; }
 html[data-app="1"][data-theme="dark"] .qa-script-detail-v4__hero-backdrop::after { background: linear-gradient(180deg, rgb(12 18 16 / 10%), color-mix(in srgb, var(--qa3-canvas) 96%, transparent) 90%); }
 
 html[data-app="1"][data-perf="lite"] :where(.qa-script-detail-v4__topbar, .qa-script-detail-v4__ownerbar, .qa-script-editor-v4__topbar, .qa-script-editor-v4__tabs, .qa-script-editor-v4__savebar) {

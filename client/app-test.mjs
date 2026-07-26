@@ -180,7 +180,8 @@ assert.ok(
 assert.match(runtimeCss, /\.topbar h1,[\s\S]*word-break:\s*keep-all/, 'narrow App topbar titles must not stack vertically');
 assert.match(runtimeCss, /\.topbar\s*\{[^}]*flex-wrap:\s*wrap;[^}]*row-gap:\s*10px;/, 'dense narrow App topbars must wrap whole controls without horizontal overflow');
 assert.match(runtimeCss, /\.vm-plans\s*\{\s*padding-top:\s*12px/, 'VIP plans must reserve space for the raised badge');
-assert.match(runtimeCss, /\.app-tabbar[\s\S]*98%[\s\S]*top:\s*-18px/, 'App Dock must use a solid surface with a top fade');
+assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--qa-glass-chrome-blur\)/, 'App Dock must use the Liuli chrome glass material on high and balanced tiers');
+assert.match(runtimeCss, /\[data-perf="lite"\]\s*\.app-tabbar\s*\{[^}]*backdrop-filter:\s*none/s, 'lite tier must drop the Dock blur and fall back to an opaque surface');
 
 assert.ok(
   mainSource.indexOf('app-runtime.css') < mainSource.indexOf('app-quiet-aqua-tokens.css')
@@ -191,6 +192,12 @@ assert.ok(
 );
 assert.match(quietTokens, /--qa-control-min:\s*44px/, 'ordinary App controls must keep a 44px minimum target');
 assert.match(quietTokens, /--qa-control-submit:\s*48px/, 'authentication submit controls must remain 48px tall');
+assert.match(quietTokens, /--qa-glass-chrome-blur:\s*blur\(/, 'the Liuli glass token authority must define the chrome material');
+assert.match(quietTokens, /--qa-glass-sheet-blur:\s*blur\(/, 'the Liuli glass token authority must define the sheet material');
+assert.match(quietTokens, /\[data-perf="lite"\][\s\S]*--qa-glass-chrome-blur:\s*none/, 'lite tier must resolve every glass blur to none at the token layer');
+const elevatedCss = await readFile(new URL('./src/styles/app-elevated.css', import.meta.url), 'utf8');
+assert.doesNotMatch(elevatedCss, /--gl-halo/, 'glass cards must not restore accent/dusk halo washes');
+assert.doesNotMatch(elevatedCss, /#22d3ee/i, 'the Liuli glass system must not reintroduce the cyan neon edge');
 const quietTokenDefinitions = new Set([...quietTokens.matchAll(/(--qa-[a-z0-9-]+)\s*:/g)].map((match) => match[1]));
 const quietTokenUses = new Set([...(quietControls + quietPages + quietExperience).matchAll(/var\((--qa-[a-z0-9-]+)/g)].map((match) => match[1]));
 assert.deepEqual([...quietTokenUses].filter((name) => !quietTokenDefinitions.has(name)), [], 'every Quiet Aqua token reference must resolve in the single token authority');
@@ -230,6 +237,6 @@ assert.doesNotMatch(appHomeSource + discoverSource + artSource, /quiet-aqua-v3-(
 assert.doesNotMatch(runtimeSource, /quiet-aqua-v3-(?:primary|core-flow|secondary|character-source)\.png|docs\/ui-oracle/, 'no client runtime source may reference oracle boards or their documentation directory');
 assert.match(vipSource, /immersive qa-vip[\s\S]*AppIconButton[\s\S]*AppButton/, 'the App membership page must opt into Quiet Aqua controls without replacing the Web branch');
 assert.match(quietPages, /\.qa-vip[\s\S]*:where\(\.vm-card-pat, \.vm-card-shine, \.vm-spark\)[\s\S]*display:\s*none/, 'the App membership page must remove campaign shine and spark effects');
-assert.match(quietPages, /\.qa-vip \.vm-card,[\s\S]*background:\s*#173d39/, 'membership gold must remain semantic instead of filling the App page');
+assert.match(quietPages, /\.qa-vip \.vm-card,[\s\S]*background:\s*#23272e/, 'membership gold must remain semantic instead of filling the App page');
 
 console.log('app invariants: 100/100 passed');

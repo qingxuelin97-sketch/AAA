@@ -16,10 +16,10 @@
 
 /* ── 0. 对话作用域令牌（集中青色，收敛历史硬编码 #22d3ee/#0e9cb8/#2BD0BF/#0e7490）── */
 html[data-app="1"] .chat-main {
-  --chat-accent: #22d3ee;          /* 主青（高光/描边/用户气泡上缘） */
-  --chat-accent-2: #0e9cb8;        /* 深青（渐变落点/阴影） */
-  --chat-accent-ink: #0a7f97;      /* 更深（用户气泡底/文字对比） */
-  --chat-accent-soft: rgba(34, 211, 238, 0.16);
+  --chat-accent: #3b74e8;          /* 主群青（高光/描边/用户气泡上缘） */
+  --chat-accent-2: #1d5fdb;        /* 深群青（落点/阴影） */
+  --chat-accent-ink: #174dbb;      /* 更深（用户气泡底/文字对比） */
+  --chat-accent-soft: rgba(59, 116, 232, 0.16);
   --chat-glass-radius: 22px;
   --chat-anchor-radius: 9px;       /* run-start 锚角 */
   --chat-ease: cubic-bezier(.22, .61, .36, 1);
@@ -242,11 +242,11 @@ html[data-app="1"] .chat-main .starter-chip.on { border-color: var(--chat-accent
 
 /* ── 8. 悬浮输入岛 —— 单层玻璃、圆角浮起、送出键就绪呼吸/形变 ── */
 html[data-app="1"] .chat-main {
-  --hy-cg-blur: blur(18px) saturate(150%);
-  --hy-cg-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(240, 250, 252, 0.68));
-  --hy-cg-bg-solid: #f3fbfd;
+  --hy-cg-blur: var(--qa-glass-chrome-blur, blur(18px) saturate(150%));
+  --hy-cg-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(246, 248, 252, 0.68));
+  --hy-cg-bg-solid: #f5f7fa;
   --hy-cg-brd: var(--border-2);
-  --hy-cg-sh: inset 0 1px 0 #fff, 0 -4px 14px rgba(13, 74, 88, 0.05), 0 18px 50px rgba(13, 74, 88, 0.16);
+  --hy-cg-sh: inset 0 1px 0 #fff, 0 -4px 14px rgba(15, 18, 26, 0.05), 0 18px 50px rgba(15, 18, 26, 0.14);
 }
 html[data-app="1"] .chat-main.has-bg {
   --hy-cg-bg: linear-gradient(160deg, rgba(30, 27, 40, 0.38), rgba(15, 13, 21, 0.5));

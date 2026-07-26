@@ -1,23 +1,26 @@
 /*
- * Quiet Aqua / 静水青 — App-shell design tokens.
+ * Liuli v5 / 琉璃 — App-shell design tokens.
  * Components live in app-controls.css. This file only defines App-scoped
- * colour, typography, surface, geometry, depth and timing values.
+ * colour, typography, surface, geometry, depth, glass-material and timing
+ * values. Token NAMES keep the legacy `--qa-` namespace (Quiet Aqua era) so
+ * 1700+ existing selectors stay valid; the VALUES are the Liuli palette:
+ * neutral porcelain/ink greys with an ultramarine action colour.
  */
 html[data-app="1"] {
   color-scheme: light;
 
-  --qa-canvas: #f4f7f6;
-  --qa-grouped: #ecf2f1;
+  --qa-canvas: #f6f7f9;
+  --qa-grouped: #edeff3;
   --qa-surface: #ffffff;
   --qa-surface-raised: #ffffff;
-  --qa-ink: #102b29;
-  --qa-ink-secondary: #4b6562;
-  --qa-ink-tertiary: #5f7673;
-  --qa-hairline: #d6e2df;
+  --qa-ink: #16181d;
+  --qa-ink-secondary: #5b6470;
+  --qa-ink-tertiary: #7a828e;
+  --qa-hairline: #e2e5ea;
 
-  --qa-brand-fill: #087f79;
-  --qa-brand-pressed: #066a66;
-  --qa-brand-soft: #ddedea;
+  --qa-brand-fill: #1d5fdb;
+  --qa-brand-pressed: #174dbb;
+  --qa-brand-soft: #e7eefc;
   --qa-brand-ink: #ffffff;
 
   /* Clay remains the explicit user option and the Web-compatible baseline. */
@@ -28,36 +31,37 @@ html[data-app="1"] {
   --qa-focus: #a94f32;
 
   --qa-danger: #b42318;
-  --qa-danger-soft: #f9e4e1;
+  --qa-danger-soft: #fbe5e2;
   --qa-danger-ink: #ffffff;
-  --qa-success: #267354;
-  --qa-success-soft: #dfeee7;
+  --qa-success: #1e7a50;
+  --qa-success-soft: #e0f0e8;
   --qa-success-ink: #ffffff;
-  --qa-reward: #8c650d;
-  --qa-reward-soft: #f5ecd5;
+  --qa-reward: #8a6200;
+  --qa-reward-soft: #f6edd6;
   --qa-reward-ink: #ffffff;
-  --qa-unread: #c64d42;
+  --qa-unread: #c6483c;
   --qa-unread-ink: #ffffff;
 
   /* Stable content semantics. These do not follow the user accent choice. */
-  --qa-semantic-gold: #9b6a12;
-  --qa-semantic-gold-soft: #f5ecd5;
-  --qa-semantic-coral: #c64d42;
-  --qa-semantic-coral-soft: #f7e2df;
+  --qa-semantic-gold: #96690e;
+  --qa-semantic-gold-soft: #f6edd6;
+  --qa-semantic-coral: #c6483c;
+  --qa-semantic-coral-soft: #f9e3e0;
   --qa-semantic-indigo: #4e5d9d;
   --qa-semantic-indigo-soft: #e8eaf7;
-  --qa-semantic-blue: #367997;
-  --qa-semantic-blue-soft: #e2eff3;
-  --qa-semantic-graphite: #59615f;
-  --qa-semantic-graphite-soft: #e7eae8;
+  --qa-semantic-blue: #33758f;
+  --qa-semantic-blue-soft: #e1eef4;
+  --qa-semantic-graphite: #5c6168;
+  --qa-semantic-graphite-soft: #e8eaee;
   --qa-semantic-rose: #a8546e;
   --qa-semantic-rose-soft: #f3e3e9;
-  --qa-finance-surface: #263a38;
-  --qa-finance-surface-mid: #314947;
-  --qa-finance-ink: #f7fbfa;
-  --qa-finance-muted: rgb(238 249 246 / 72%);
+  --qa-finance-surface: #23272e;
+  --qa-finance-surface-mid: #2f343c;
+  --qa-finance-ink: #f5f7fa;
+  --qa-finance-muted: rgb(240 244 250 / 72%);
 
   --qa-font-ui: var(--sans, Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
+  --qa-type-large-title: 34px;
   --qa-type-display: 28px;
   --qa-type-title: 22px;
   --qa-type-section: 17px;
@@ -66,10 +70,23 @@ html[data-app="1"] {
 
   --qa-chrome: color-mix(in srgb, var(--qa-surface) 92%, transparent);
   --qa-overlay: color-mix(in srgb, var(--qa-surface) 96%, transparent);
-  --qa-scrim: rgb(7 27 25 / 36%);
-  --qa-shadow-1: 0 1px 2px rgb(8 45 42 / 6%), 0 6px 18px rgb(8 45 42 / 6%);
-  --qa-shadow-2: inset 0 1px rgb(255 255 255 / 70%), 0 10px 24px rgb(8 45 42 / 10%);
-  --qa-shadow-3: 0 18px 48px rgb(8 33 31 / 16%);
+  --qa-scrim: rgb(10 12 16 / 38%);
+  --qa-shadow-1: 0 1px 2px rgb(15 18 26 / 6%), 0 6px 18px rgb(15 18 26 / 6%);
+  --qa-shadow-2: inset 0 1px rgb(255 255 255 / 70%), 0 10px 24px rgb(15 18 26 / 10%);
+  --qa-shadow-3: 0 18px 48px rgb(12 16 24 / 16%);
+
+  /* Liuli glass material. Chrome = navigation/temporal layers (Dock, top
+     bars, input island, FAB); sheet = raised overlays; thin = small floating
+     chips. Content surfaces stay opaque — glass is a chrome privilege. */
+  --qa-glass-chrome-bg: rgb(252 253 255 / 72%);
+  --qa-glass-chrome-blur: blur(20px) saturate(180%);
+  --qa-glass-sheet-bg: rgb(255 255 255 / 66%);
+  --qa-glass-sheet-blur: blur(28px) saturate(180%);
+  --qa-glass-thin-bg: rgb(255 255 255 / 52%);
+  --qa-glass-thin-blur: blur(14px) saturate(160%);
+  --qa-glass-hairline: rgb(22 24 29 / 10%);
+  --qa-glass-specular: inset 0 1px 0 rgb(255 255 255 / 60%);
+  --qa-glass-shadow: 0 10px 30px rgb(12 16 24 / 12%);
 
   --qa-space-1: 4px;
   --qa-space-2: 8px;
@@ -92,22 +109,27 @@ html[data-app="1"] {
   --qa-dock-bottom: max(8px, env(safe-area-inset-bottom));
   --qa-editor-chrome: calc(72px + env(safe-area-inset-top));
   --qa-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --qa-ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --qa-duration-press: 80ms;
   --qa-duration-state: 180ms;
+  --qa-duration-nav: 260ms;
+  --qa-duration-sheet: 320ms;
 }
 
 html[data-app="1"][data-accent="dusk"] {
-  --qa-action-fill: #6547a5;
-  --qa-action-pressed: #503783;
-  --qa-action-soft: #e9e3f5;
-  --qa-focus: #6547a5;
+  --qa-action-fill: #565d9e;
+  --qa-action-pressed: #464c85;
+  --qa-action-soft: #e9eaf6;
+  --qa-focus: #565d9e;
 }
 
+/* App default accent. The historical id is "teal"; under Liuli it maps to the
+   ultramarine brand action so the default App accent IS the brand colour. */
 html[data-app="1"][data-accent="teal"] {
-  --qa-action-fill: #087f79;
-  --qa-action-pressed: #066a66;
-  --qa-action-soft: #ddedea;
-  --qa-focus: #087f79;
+  --qa-action-fill: #1d5fdb;
+  --qa-action-pressed: #174dbb;
+  --qa-action-soft: #e7eefc;
+  --qa-focus: #1d5fdb;
 }
 
 html[data-app="1"][data-accent="forest"] {
@@ -133,18 +155,18 @@ html[data-app="1"][data-accent="amber"] {
 
 html[data-app="1"][data-theme="dark"] {
   color-scheme: dark;
-  --qa-canvas: #0d1211;
-  --qa-grouped: #131b1a;
-  --qa-surface: #18201f;
-  --qa-surface-raised: #202927;
-  --qa-ink: #f2f7f6;
-  --qa-ink-secondary: #b4c3c0;
-  --qa-ink-tertiary: #8fa39f;
-  --qa-hairline: #34423f;
-  --qa-brand-fill: #5ccbc1;
-  --qa-brand-pressed: #43b2a9;
-  --qa-brand-soft: #183e3b;
-  --qa-brand-ink: #09211f;
+  --qa-canvas: #0a0c10;
+  --qa-grouped: #11141a;
+  --qa-surface: #161a20;
+  --qa-surface-raised: #1d222a;
+  --qa-ink: #f2f4f7;
+  --qa-ink-secondary: #a6aeb9;
+  --qa-ink-tertiary: #828b98;
+  --qa-hairline: #2c313a;
+  --qa-brand-fill: #7aa5ff;
+  --qa-brand-pressed: #5e8ef5;
+  --qa-brand-soft: #1a2540;
+  --qa-brand-ink: #0a1730;
   --qa-action-fill: #d88468;
   --qa-action-pressed: #c06d52;
   --qa-action-soft: #472b23;
@@ -169,36 +191,42 @@ html[data-app="1"][data-theme="dark"] {
   --qa-semantic-indigo-soft: #262c42;
   --qa-semantic-blue: #86c4db;
   --qa-semantic-blue-soft: #1b3440;
-  --qa-semantic-graphite: #c0cbc8;
-  --qa-semantic-graphite-soft: #27302e;
+  --qa-semantic-graphite: #c3c9d2;
+  --qa-semantic-graphite-soft: #262b33;
   --qa-semantic-rose: #e2a0b8;
   --qa-semantic-rose-soft: #432631;
-  --qa-finance-surface: #1c2b2a;
-  --qa-finance-surface-mid: #263936;
-  --qa-finance-ink: #f2f8f6;
-  --qa-finance-muted: rgb(229 243 239 / 70%);
+  --qa-finance-surface: #1a1e26;
+  --qa-finance-surface-mid: #242a34;
+  --qa-finance-ink: #f2f5fa;
+  --qa-finance-muted: rgb(232 238 248 / 70%);
   --qa-chrome: color-mix(in srgb, var(--qa-surface) 92%, transparent);
   --qa-overlay: color-mix(in srgb, var(--qa-surface-raised) 96%, transparent);
   --qa-scrim: rgb(0 0 0 / 56%);
   --qa-shadow-1: 0 1px 2px rgb(0 0 0 / 20%), 0 8px 22px rgb(0 0 0 / 20%);
   --qa-shadow-2: inset 0 1px rgb(255 255 255 / 5%), 0 12px 28px rgb(0 0 0 / 28%);
   --qa-shadow-3: 0 20px 52px rgb(0 0 0 / 42%);
+  --qa-glass-chrome-bg: rgb(20 24 31 / 66%);
+  --qa-glass-sheet-bg: rgb(23 27 34 / 70%);
+  --qa-glass-thin-bg: rgb(26 30 38 / 55%);
+  --qa-glass-hairline: rgb(255 255 255 / 9%);
+  --qa-glass-specular: inset 0 1px 0 rgb(255 255 255 / 10%);
+  --qa-glass-shadow: 0 12px 34px rgb(0 0 0 / 40%);
 }
 
 html[data-app="1"][data-theme="dark"][data-accent="dusk"] {
-  --qa-action-fill: #aa91eb;
-  --qa-action-pressed: #9478da;
-  --qa-action-soft: #302747;
-  --qa-action-ink: #181126;
-  --qa-focus: #b9a5ef;
+  --qa-action-fill: #9ba3e8;
+  --qa-action-pressed: #838cda;
+  --qa-action-soft: #272b47;
+  --qa-action-ink: #131630;
+  --qa-focus: #adb4ee;
 }
 
 html[data-app="1"][data-theme="dark"][data-accent="teal"] {
-  --qa-action-fill: #5ccbc1;
-  --qa-action-pressed: #43b2a9;
-  --qa-action-soft: #183e3b;
-  --qa-action-ink: #09211f;
-  --qa-focus: #73d9cf;
+  --qa-action-fill: #7aa5ff;
+  --qa-action-pressed: #5e8ef5;
+  --qa-action-soft: #1a2540;
+  --qa-action-ink: #0a1730;
+  --qa-focus: #93b6ff;
 }
 
 html[data-app="1"][data-theme="dark"][data-accent="forest"] {
@@ -228,4 +256,11 @@ html[data-app="1"][data-theme="dark"][data-accent="amber"] {
 html[data-app="1"][data-perf="lite"] {
   --qa-chrome: var(--qa-surface);
   --qa-overlay: var(--qa-surface-raised);
+  --qa-glass-chrome-bg: var(--qa-surface);
+  --qa-glass-chrome-blur: none;
+  --qa-glass-sheet-bg: var(--qa-surface-raised);
+  --qa-glass-sheet-blur: none;
+  --qa-glass-thin-bg: var(--qa-surface);
+  --qa-glass-thin-blur: none;
+  --qa-glass-shadow: 0 4px 14px rgb(12 16 24 / 12%);
 }
