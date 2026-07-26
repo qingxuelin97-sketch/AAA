@@ -1,4 +1,7 @@
-/* Quiet Aqua controls. Every selector is fenced to the App shell. */
+/* Lumen Glass v1.0 controls (S2 换装). Every selector is fenced to the App
+   shell. 材质权威 = lumen-glass-tokens.css（--lg-*）；遗留 --qa-* 经 shim 指向
+   同一权威。硬规则：同一对象一层玻璃 + 发丝边 + 内高光（全部含在
+   --lg-glass-shadow-* 里），禁外发光。 */
 html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button) {
   -webkit-tap-highlight-color: transparent;
   appearance: none;
@@ -59,32 +62,50 @@ html[data-app="1"] .qa-button--lg {
   font-size: 15px;
 }
 
+/* SPEC §4：primary = act 实底胶囊 */
 html[data-app="1"] .qa-button--primary {
-  background: var(--qa-action-fill);
-  color: var(--qa-action-ink);
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
 }
 
+/* SPEC §4：secondary = L1 玻璃（发丝边 + 内高光都在 shadow-1 里） */
 html[data-app="1"] .qa-button--secondary {
-  border-color: var(--qa-hairline);
-  background: var(--qa-surface);
-  color: var(--qa-ink);
+  border-color: transparent;
+  background: var(--lg-glass-1);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
 }
 
+/* SPEC §4：tertiary = 纯文字 act 色 */
 html[data-app="1"] .qa-button--tertiary {
-  background: var(--qa-grouped);
-  color: var(--qa-ink);
+  background: transparent;
+  color: var(--lg-act);
 }
 
+/* SPEC §4：danger = 珊瑚描边默认；确认（data-confirming）或按压时实底 */
 html[data-app="1"] .qa-button--danger,
 html[data-app="1"] .qa-button.qa-tone--danger {
-  background: var(--qa-danger);
+  border-color: var(--lg-coral);
+  background: transparent;
+  color: var(--lg-coral);
+}
+
+html[data-app="1"] .qa-button--danger[data-confirming],
+html[data-app="1"] .qa-button.qa-tone--danger[data-confirming],
+html[data-app="1"] .qa-button--danger:active:not(:disabled):not([aria-disabled="true"]),
+html[data-app="1"] .qa-button.qa-tone--danger:active:not(:disabled):not([aria-disabled="true"]) {
+  border-color: transparent;
+  background: var(--lg-coral);
   color: var(--qa-danger-ink);
 }
 
 html[data-app="1"] .qa-button[data-selected] {
-  border-color: color-mix(in srgb, var(--qa-action-fill) 24%, transparent);
-  background: var(--qa-action-soft);
-  color: var(--qa-action-fill);
+  border-color: color-mix(in srgb, var(--lg-act) 24%, transparent);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
 }
 
 html[data-app="1"] .qa-button__content,
@@ -139,27 +160,32 @@ html[data-app="1"] .qa-icon-button svg {
   height: 20px;
 }
 
+/* SPEC §4：AppIconButton = ghost（基态透明）/ secondary（L1 玻璃）/ filled（act 实底） */
 html[data-app="1"] .qa-icon-button--secondary {
-  border-color: var(--qa-hairline);
-  background: var(--qa-surface);
+  border-color: transparent;
+  background: var(--lg-glass-1);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-glass-shadow-1);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
 }
 
 html[data-app="1"] .qa-icon-button--filled {
-  background: var(--qa-action-fill);
-  color: var(--qa-action-ink);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
 }
 
 html[data-app="1"] .qa-icon-button[data-selected] {
-  background: var(--qa-action-soft);
-  color: var(--qa-action-fill);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
 }
 
 html[data-app="1"] .qa-icon-button.qa-tone--danger {
-  color: var(--qa-danger);
+  color: var(--lg-coral);
 }
 
 html[data-app="1"] .qa-icon-button--filled.qa-tone--danger {
-  background: var(--qa-danger);
+  background: var(--lg-coral);
   color: var(--qa-danger-ink);
 }
 
@@ -182,6 +208,7 @@ html[data-app="1"] .qa-tab-button {
   transition:
     transform var(--qa-duration-press) var(--qa-ease-out),
     background-color var(--qa-duration-state) var(--qa-ease-out),
+    box-shadow var(--qa-duration-state) var(--qa-ease-out),
     color var(--qa-duration-state) var(--qa-ease-out);
 }
 
@@ -202,9 +229,12 @@ html[data-app="1"] .qa-tab-button__label {
   white-space: nowrap;
 }
 
+/* SPEC §4 分段语义：选中片 = --lg-glass-sel + shadow-1（切换走 --lg-dur-state 240ms，
+   落在 180–380ms 区间内；Dock 内由 dock-ink 滑片承担，本规则被围栏覆盖）。 */
 html[data-app="1"] .qa-tab-button[data-selected] {
-  background: var(--qa-action-soft);
-  color: var(--qa-action-fill);
+  background: var(--lg-glass-sel);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-act);
 }
 
 html[data-app="1"] .qa-tab-button__badge {
@@ -217,9 +247,9 @@ html[data-app="1"] .qa-tab-button__badge {
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  border: 2px solid var(--qa-chrome);
+  border: 2px solid transparent;
   border-radius: var(--qa-radius-pill);
-  background: var(--qa-unread);
+  background: var(--lg-coral);
   color: var(--qa-unread-ink);
   font-size: 9px;
   font-style: normal;
@@ -280,12 +310,13 @@ html[data-app="1"] .app-dock .app-tabbar {
   height: 100% !important;
   margin: 0 !important;
   padding: 6px !important;
-  border: 1px solid var(--qa-hairline) !important;
-  border-radius: 24px !important;
-  background: var(--qa-chrome) !important;
-  box-shadow: var(--qa-shadow-2) !important;
-  backdrop-filter: blur(20px) saturate(1.25);
-  -webkit-backdrop-filter: blur(20px) saturate(1.25);
+  /* SPEC §4 Dock：L3 玻璃悬浮条，发丝边与内高光都在 shadow-3 里，圆角 26 */
+  border: 1px solid transparent !important;
+  border-radius: var(--lg-r-sheet) !important;
+  background: var(--lg-glass-3) !important;
+  box-shadow: var(--lg-glass-shadow-3) !important;
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
   transform: none !important;
   pointer-events: auto;
 }
@@ -302,24 +333,23 @@ html[data-app="1"] .app-dock-gap {
   pointer-events: none;
 }
 
+/* 选中滑片 = 分段「选中片」语言：--lg-glass-sel + shadow-1，无第二层玻璃 */
 html[data-app="1"] .app-dock .dock-ink {
   position: absolute;
   z-index: 0;
   left: 0;
   display: block !important;
-  border: 1px solid color-mix(in srgb, var(--qa-action-fill) 18%, transparent);
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 50% 10%, rgb(255 255 255 / 56%), transparent 58%),
-    color-mix(in srgb, var(--qa-action-soft) 82%, transparent);
-  box-shadow: inset 0 1px rgb(255 255 255 / 70%), 0 4px 12px rgb(8 85 80 / 8%);
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: var(--lg-glass-sel);
+  box-shadow: var(--lg-glass-shadow-1);
   opacity: 0;
   transition:
-    transform 420ms cubic-bezier(.2, .9, .22, 1.16),
-    width 420ms cubic-bezier(.2, .9, .22, 1.16),
-    height 280ms var(--qa-ease-out),
-    top 280ms var(--qa-ease-out),
-    opacity 160ms ease-out;
+    transform 320ms var(--lg-ease),
+    width 320ms var(--lg-ease),
+    height 240ms var(--lg-ease),
+    top 240ms var(--lg-ease),
+    opacity 160ms var(--lg-ease);
   pointer-events: none;
 }
 
@@ -331,11 +361,15 @@ html[data-app="1"] .app-dock .app-tab {
   height: 54px !important;
   padding: 3px !important;
   color: var(--qa-ink-tertiary) !important;
+  font-weight: 500;
 }
 
+/* SPEC §4：四目的地选中 = act 色 + 600 字重（选中片由 dock-ink 承担） */
 html[data-app="1"] .app-dock .app-tab.active {
-  color: var(--qa-action-fill) !important;
+  color: var(--lg-act) !important;
   background: transparent !important;
+  box-shadow: none !important;
+  font-weight: 600;
 }
 
 html[data-app="1"] .app-dock .app-tab.active .qa-tab-button__glyph {
@@ -343,7 +377,7 @@ html[data-app="1"] .app-dock .app-tab.active .qa-tab-button__glyph {
 }
 
 html[data-app="1"] .app-dock .qa-tab-button__glyph {
-  transition: transform 320ms cubic-bezier(.2, .9, .22, 1.2);
+  transition: transform 320ms var(--lg-ease);
 }
 
 html[data-app="1"] .app-dock .app-tab::before,
@@ -359,6 +393,8 @@ html[data-app="1"] .app-dock .app-dot {
   display: none;
 }
 
+/* SPEC §4：中央创建钮 = act 实底圆钮；极细白描边与内高光 + 阴影都在
+   --lg-glass-shadow-2 里（一层发丝边 + 一道内高光，无外发光）。 */
 html[data-app="1"] .app-dock .app-fab {
   position: absolute !important;
   z-index: 2;
@@ -369,20 +405,18 @@ html[data-app="1"] .app-dock .app-fab {
   min-width: 52px;
   min-height: 52px;
   margin: 0 !important;
-  border: 1.5px solid var(--qa-brand-fill) !important;
+  border: 0 !important;
   border-radius: 50% !important;
-  background:
-    radial-gradient(circle at 34% 22%, rgb(255 255 255 / 92%), transparent 38%),
-    rgb(255 255 255 / 92%) !important;
-  color: var(--qa-brand-fill) !important;
-  box-shadow: 0 0 0 7px var(--qa-canvas), 0 8px 20px rgb(21 52 120 / 18%) !important;
+  background: var(--lg-act) !important;
+  color: var(--lg-act-ink) !important;
+  box-shadow: var(--lg-glass-shadow-2) !important;
   transform: translateX(-50%) !important;
   pointer-events: auto;
 }
 
 html[data-app="1"] .app-dock .app-fab:active {
-  background: var(--qa-brand-soft) !important;
-  color: var(--qa-brand-fill) !important;
+  background: var(--qa-action-pressed) !important;
+  color: var(--lg-act-ink) !important;
   transform: translateX(-50%) scale(0.97) !important;
 }
 
@@ -392,9 +426,9 @@ html[data-app="1"] .app-dock .app-fab.open {
 
 html[data-app="1"] .app-dock .app-fab:not(:active) {
   transition:
-    transform 420ms cubic-bezier(.2, .9, .22, 1.2),
-    background-color 180ms ease-out,
-    box-shadow 220ms ease-out;
+    transform var(--lg-dur-push) var(--lg-ease),
+    background-color var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease);
 }
 
 html[data-app="1"] .app-dock .app-fab svg {
@@ -419,15 +453,17 @@ html[data-app="1"] .app-sheet-mask {
   background: var(--qa-scrim);
 }
 
+/* SPEC §1/§4：Sheet = L2 玻璃（发丝边+内高光在 shadow-2 里；细化由 hig-v5 经
+   --qa-glass-* shim 收口，此处是同一材质的基线） */
 html[data-app="1"] .app-sheet {
   padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
-  border: 1px solid var(--qa-hairline);
+  border: 1px solid transparent;
   border-radius: var(--qa-radius-sheet) var(--qa-radius-sheet) 0 0;
   background: var(--qa-overlay) !important;
   color: var(--qa-ink);
-  box-shadow: var(--qa-shadow-3);
-  backdrop-filter: blur(24px) saturate(1.2);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: var(--lg-glass-shadow-2);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
 }
 
 html[data-app="1"] .app-sheet-head {
@@ -613,27 +649,32 @@ html[data-app="1"] .auth-card {
   -webkit-backdrop-filter: none !important;
 }
 
+/* SPEC §4 分段控件：胶囊槽 = L1 玻璃；选中片 = --lg-glass-sel + shadow-1 */
 html[data-app="1"] .auth-tabs {
   min-height: 52px;
   padding: 4px;
-  border: 1px solid var(--qa-hairline);
-  border-radius: 16px;
-  background: var(--qa-grouped);
+  border: 1px solid transparent;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-glass-1);
+  box-shadow: var(--lg-glass-shadow-1);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
 }
 
 html[data-app="1"] .auth-tabs .qa-button {
   z-index: 1;
   min-height: var(--qa-control-min);
   flex: 1;
+  border-radius: var(--lg-r-pill);
   background: transparent !important;
   color: var(--qa-ink-secondary) !important;
   box-shadow: none !important;
 }
 
 html[data-app="1"] .auth-tabs .qa-button[data-selected] {
-  background: var(--qa-surface) !important;
+  background: var(--lg-glass-sel) !important;
   color: var(--qa-ink) !important;
-  box-shadow: var(--qa-shadow-1) !important;
+  box-shadow: var(--lg-glass-shadow-1) !important;
 }
 
 html[data-app="1"] .auth-tab-ink {
@@ -697,12 +738,13 @@ html[data-app="1"] .chat-head .ch-av .avatar {
   animation: none !important;
 }
 
+/* 输入岛 = L3 系统玻璃基线（会话语境的悬浮岛细化由 hig-v5 经 shim 收口） */
 html[data-app="1"] .chat-input-bar {
-  border-color: var(--qa-hairline) !important;
+  border-color: transparent !important;
   background: var(--qa-chrome) !important;
-  box-shadow: var(--qa-shadow-2) !important;
-  backdrop-filter: blur(20px) saturate(1.2);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: var(--lg-glass-shadow-3) !important;
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
 }
 
 html[data-app="1"] .chat-input-bar .act-btn.qa-icon-button {
@@ -805,8 +847,11 @@ html[data-app="1"] .qa-gallery__tabs {
   gap: 6px;
   width: 100%;
   padding: 6px;
-  border-radius: 18px;
-  background: var(--qa-grouped);
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-glass-1);
+  box-shadow: var(--lg-glass-shadow-1);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
 }
 
 html[data-app="1"] .qa-gallery__note {
@@ -852,19 +897,23 @@ html[data-app="1"][data-perf="lite"] .chat-input-bar {
 
 @media (hover: hover) and (pointer: fine) {
   html[data-app="1"] .qa-button--primary:hover:not(:disabled):not([aria-disabled="true"]) {
-    background: color-mix(in srgb, var(--qa-action-fill) 90%, var(--qa-ink));
+    background: color-mix(in srgb, var(--lg-act) 90%, var(--lg-ink));
   }
 
   html[data-app="1"] .qa-button--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
-    border-color: color-mix(in srgb, var(--qa-ink-tertiary) 30%, transparent);
-    background: var(--qa-grouped);
+    background: var(--lg-glass-2);
+  }
+
+  html[data-app="1"] .qa-button--danger:hover:not(:disabled):not([aria-disabled="true"]),
+  html[data-app="1"] .qa-button.qa-tone--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--lg-coral) 10%, transparent);
   }
 
   html[data-app="1"] .qa-button--tertiary:hover:not(:disabled):not([aria-disabled="true"]),
   html[data-app="1"] .qa-icon-button:hover:not(:disabled):not([aria-disabled="true"]),
   html[data-app="1"] .qa-tab-button:hover:not(:disabled):not([aria-disabled="true"]) {
-    background: var(--qa-action-soft);
-    color: var(--qa-action-fill);
+    background: var(--lg-act-soft);
+    color: var(--lg-act);
   }
 }
 
