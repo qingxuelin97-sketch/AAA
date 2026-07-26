@@ -407,3 +407,55 @@ html[data-app="1"] .qa-vip .vm-card::before {
   border-radius: inherit;
 }
 html[data-app="1"] .qa-vip .vm-card > * { position: relative; z-index: 1; }
+
+/* ── 16. 会话输入栏：整栏全玻璃悬浮岛（覆盖 v3 的全宽拍平方案） ──
+   v3 曾把外层 composer 拍平为全宽渐变承托、玻璃内收到小岛；按产品决策
+   恢复「整栏悬浮玻璃」：外层是唯一玻璃层（chrome 档材质），内岛转透明
+   （单层玻璃原则）。lite 档由 --qa-glass-* 令牌自动回落不透明无 blur。 */
+html[data-app="1"] .chat-main .chat-input-bar,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar,
+html[data-app="1"] .qa-chat-main .qa-chat-composer.chat-input-bar,
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-composer.chat-input-bar {
+  left: 10px !important;
+  right: 10px !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
+  padding: 10px !important;
+  border: 1px solid var(--qa-glass-hairline) !important;
+  border-radius: 26px !important;
+  background: var(--qa-glass-chrome-bg) !important;
+  -webkit-backdrop-filter: var(--qa-glass-chrome-blur) !important;
+  backdrop-filter: var(--qa-glass-chrome-blur) !important;
+  box-shadow: var(--qa-glass-specular), 0 14px 40px rgb(12 16 24 / 20%) !important;
+}
+/* 沉浸立绘语境：墨色玻璃 tint（浅玻璃压在暗立绘上会发奶白） */
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-composer.chat-input-bar,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar {
+  border-color: rgb(255 255 255 / 14%) !important;
+  background: rgb(20 24 31 / 55%) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 14px 40px rgb(0 0 0 / 34%) !important;
+}
+html[data-app="1"][data-perf="lite"] .qa-chat-main.has-bg .qa-chat-composer.chat-input-bar,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar {
+  background: rgb(23 27 34 / 96%) !important;
+}
+/* 内层输入岛转透明：玻璃只有一层，输入框由发丝边界定 */
+html[data-app="1"] .qa-chat-main .qa-chat-input-island.box,
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-input-island.box,
+html[data-app="1"] .chat-main .chat-input-bar .box {
+  background: color-mix(in srgb, var(--qa-surface) 46%, transparent) !important;
+  border: 1px solid var(--qa-hairline) !important;
+  border-radius: 20px !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-input-island.box,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
+  background: rgb(255 255 255 / 10%) !important;
+  border-color: rgb(255 255 255 / 16%) !important;
+}
+html[data-app="1"] .qa-chat-main .qa-chat-input-island.box:focus-within,
+html[data-app="1"] .chat-main .chat-input-bar .box:focus-within {
+  border-color: color-mix(in srgb, var(--qa-brand-fill) 45%, transparent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--qa-brand-fill) 12%, transparent) !important;
+}
