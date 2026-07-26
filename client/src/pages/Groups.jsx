@@ -12,6 +12,7 @@ export default function Groups() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [seg, setSeg] = useState('all'); // S7-G10 App 加入状态分段（Web 零变化）
   const nav = useNavigate();
   const toast = useToast();
 
@@ -64,8 +65,19 @@ export default function Groups() {
           ) : <div className="empty"><EmptyArt kind="friends" />还没有群聊，创建一个吧</div>
         ) : (
           app ? (
+            <>
+            {/* S7-G10 分段：我加入的群优先可见（两侧都有才展示分段） */}
+            {groups.some(g => g.joined) && groups.some(g => !g.joined) && (
+              <div className="qa-groups-seg" role="group" aria-label="按加入状态筛选群聊">
+                {[['all', '全部'], ['joined', '我加入的'], ['open', '可加入']].map(([key, label]) => (
+                  <AppButton key={key} size="sm" variant="tertiary" selected={seg === key} pressed={seg === key} onClick={() => setSeg(key)}>
+                    {label}
+                  </AppButton>
+                ))}
+              </div>
+            )}
             <section className="qa-groups-list" aria-label="群聊列表">
-              {groups.map(g => (
+              {groups.filter(g => seg === 'all' ? true : seg === 'joined' ? g.joined : !g.joined).map(g => (
                 <AppButton key={g.id} className="qa-groups-row" variant="tertiary" onClick={() => open(g)}>
                   {g.avatar ? <img className="ava" src={assetUrl(g.avatar)} alt="" /> : <span className="ava qa-groups-avatar-fallback" aria-hidden="true"><Users size={22} /></span>}
                   <span className="qa-groups-copy">
@@ -78,6 +90,7 @@ export default function Groups() {
                 </AppButton>
               ))}
             </section>
+            </>
           ) : groups.map(g => (
               <div key={g.id} className="room-row" onClick={() => open(g)}>
                 {g.avatar ? <img className="ava" src={assetUrl(g.avatar)} alt="" /> : <div className="ava" style={{ display: 'grid', placeItems: 'center', background: 'var(--panel-2)' }}><Users size={22} /></div>}

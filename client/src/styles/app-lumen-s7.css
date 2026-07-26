@@ -125,6 +125,14 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 群聊 · 加入状态分段 chips ---- */
+html[data-app="1"] .qa-groups-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
 /* ---- 公告 · NEW 徽标（本次浏览即读，徽标只活一屏） ---- */
 html[data-app="1"] .qa-ann-new {
   display: inline-block;

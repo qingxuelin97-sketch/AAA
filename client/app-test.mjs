@@ -278,6 +278,10 @@ const announcementsSource = await readFile(new URL('./src/pages/Announcements.js
 assert.match(announcementsSource, /if \(!app \|\| loading \|\| list\.length === 0\) return;[\s\S]*huanyu_ann_seen/, 'announcement read-memory must stay App-gated');
 assert.match(announcementsSource, /\.slice\(-100\)/, 'the seen-id ledger must stay bounded');
 assert.match(announcementsSource, /app && newIds\.has\(a\.id\) && <span className="qa-ann-new"/, 'unseen announcements must badge only inside the App shell');
+/* ---- S7-G10 群聊分段 ---- */
+const groupsSource = await readFile(new URL('./src/pages/Groups.jsx', import.meta.url), 'utf8');
+assert.match(groupsSource, /groups\.some\(g => g\.joined\) && groups\.some\(g => !g\.joined\)[\s\S]*qa-groups-seg/, 'the join-state segment must appear only when both sides exist');
+assert.match(groupsSource, /seg === 'joined' \? g\.joined : !g\.joined/, 'segment filtering must partition by joined state');
 /* ---- S7-G10 星轨年鉴卡契约 ---- */
 assert.match(shareCardSource, /renderInsightsCard/, 'the compositor must offer the insights annual-card template');
 assert.match(shareSheetSource, /kind === 'insights'[\s\S]*renderInsightsCard/, 'the share sheet must route the insights kind to its template');

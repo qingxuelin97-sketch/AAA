@@ -1430,6 +1430,21 @@ async function conversationMarksAssertions(browser, base) {
   await page.waitForSelector('.msgs-marks [aria-label="已免打扰"]', { timeout: 8000 });
   await saveScreenshot(page, 'conversation-marks-390x844-light.png');
 
+  // 排序稳定性：新建一段「更新时间更晚」的会话后，置顶的旧会话必须仍居首
+  //（mark-only 不 bump updated_at + pinned 优先排序的组合验收）
+  // 走产品自己的动线开一段新会话（今日 → 为你挑选 → 开聊）：
+  // 新会话 updated_at 必然最新，检验 pinned 优先 + mark-only 不 bump 的组合
+  await page.goto(`${base}/?app=1#/today`);
+  await page.waitForSelector('.ah-pick', { visible: true, timeout: 10000 });
+  await page.evaluate(() => document.querySelector('.ah-pick').click());
+  await page.waitForFunction(() => location.hash.startsWith('#/chats/'), { timeout: 10000 });
+  await new Promise((resolve) => setTimeout(resolve, 600)); // mock 350ms 落库
+  await page.goto(`${base}/?app=1#/messages`);
+  await page.waitForFunction(() => document.querySelectorAll('.msgs-conv--app').length >= 2, { timeout: 15000 });
+  const firstRowPinned = await page.evaluate(() =>
+    Boolean(document.querySelectorAll('.msgs-conv--app')[0].querySelector('[aria-label="已置顶"]')));
+  assert(firstRowPinned, '有更新会话出现后，置顶会话未能保持列表首位');
+
   assert(page.__qaErrors.length === 0, '会话整理流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
   await page.close();
 }
