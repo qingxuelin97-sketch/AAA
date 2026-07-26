@@ -183,16 +183,23 @@ assert.match(runtimeCss, /\.vm-plans\s*\{\s*padding-top:\s*12px/, 'VIP plans mus
 assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--qa-glass-chrome-blur\)/, 'App Dock must use the Liuli chrome glass material on high and balanced tiers');
 assert.match(runtimeCss, /\[data-perf="lite"\]\s*\.app-tabbar\s*\{[^}]*backdrop-filter:\s*none/s, 'lite tier must drop the Dock blur and fall back to an opaque surface');
 
+// W6 CSS 按模式分包：App 层样式的静态 import 与级联顺序整体迁入
+// styles/app-entry.js；main.jsx 只保留 isAppMode() 门控的 render 前动态加载。
+const appEntrySource = await readFile(new URL('./src/styles/app-entry.js', import.meta.url), 'utf8');
 assert.ok(
-  mainSource.indexOf('app-runtime.css') < mainSource.indexOf('lumen-glass-tokens.css')
-    && mainSource.indexOf('lumen-glass-tokens.css') < mainSource.indexOf('app-quiet-aqua-tokens.css')
-    && mainSource.indexOf('app-quiet-aqua-tokens.css') < mainSource.indexOf('app-controls.css')
-    && mainSource.indexOf('app-controls.css') < mainSource.indexOf('app-pages-quiet-aqua.css')
-    && mainSource.indexOf('app-pages-quiet-aqua.css') < mainSource.indexOf('app-experience-v3.css')
-    && mainSource.indexOf('app-experience-v3.css') < mainSource.indexOf('app-hig-v5.css')
-    && mainSource.indexOf('app-hig-v5.css') < mainSource.indexOf('app-lumen-materials.css'),
+  appEntrySource.indexOf('chat-app.css') < appEntrySource.indexOf('app-runtime.css')
+    && appEntrySource.indexOf('app-runtime.css') < appEntrySource.indexOf('lumen-glass-tokens.css')
+    && appEntrySource.indexOf('lumen-glass-tokens.css') < appEntrySource.indexOf('app-quiet-aqua-tokens.css')
+    && appEntrySource.indexOf('app-quiet-aqua-tokens.css') < appEntrySource.indexOf('app-controls.css')
+    && appEntrySource.indexOf('app-controls.css') < appEntrySource.indexOf('app-pages-quiet-aqua.css')
+    && appEntrySource.indexOf('app-pages-quiet-aqua.css') < appEntrySource.indexOf('app-experience-v3.css')
+    && appEntrySource.indexOf('app-experience-v3.css') < appEntrySource.indexOf('app-hig-v5.css')
+    && appEntrySource.indexOf('app-hig-v5.css') < appEntrySource.indexOf('app-lumen-materials.css'),
   'Lumen tokens, qa shim, control, page, v3, HIG and Lumen materials must load in cascade order after the runtime layer',
 );
+assert.doesNotMatch(mainSource, /import '\.\/styles\/app-[a-z0-9-]+\.css'|import '\.\/chat\/chat-app\.css'|import '\.\/styles\/lumen-glass-tokens\.css'/, 'App-layer CSS must not be statically imported by main.jsx (web users must not download it)');
+assert.match(mainSource, /isAppMode\(\)[\s\S]*import\('\.\/styles\/app-entry\.js'\)/, 'the App style bundle must load behind the isAppMode gate');
+assert.match(mainSource, /ensureAppStyles\(\)\.then\(render\)/, 'the App style bundle must finish loading before first render (no FOUC behind the boot splash)');
 /* ---- Lumen Glass token authority guards ---- */
 const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
 const lumenHandoff = await readFile(new URL('../docs/design/lumen-glass-tokens.css', import.meta.url), 'utf8');
@@ -281,7 +288,9 @@ assert.match(controlsSource, /ICON_VARIANTS = new Set\(\['ghost', 'secondary', '
 assert.match(controlsSource, /aria-pressed=\{pressed === undefined \? undefined : Boolean\(pressed\)\}/, 'selected styling must not invent toggle-button semantics');
 assert.match(controlsSource, /badgeCount[\s\S]*count > 99 \? '99\+'/, 'tab badges must expose real counts and cap their visual label at 99+');
 assert.match(controlsSource, /preventDefault\(\);[\s\S]*stopPropagation\(\);/, 'disabled non-button controls must suppress link activation');
-assert.match(controlsSource, /if \(!isAppChrome\(\)\)[\s\S]*<LegacyControl/, 'control primitives must transparently preserve legacy Web markup');
+assert.match(controlsSource, /if \(!isAppChrome\(\)\)[\s\S]*<LegacyControl/, 'control primitives must keep the legacy escape hatch outside the App chrome gate');
+assert.match(controlsSource, /isWebChrome\(\)[\s\S]*'lgw-button'/, 'the Lumen Web chrome gate must render real .lgw-* controls on the web shell');
+assert.match(controlsSource, /dataset\.lumenWeb === '1'/, 'the web control gate must key off the removable data-lumen-web boot flag');
 assert.match(layoutSource, /route\.dock\s*&&\s*\([\s\S]*className="app-dock"/, 'the Quiet Aqua Dock must still obey Route Registry visibility');
 const dockNavStart = layoutSource.indexOf('<nav className="app-tabbar"');
 const dockNavEnd = layoutSource.indexOf('</nav>', dockNavStart);
@@ -292,9 +301,10 @@ assert.match(layoutSource, /data-tone=\{c\.tone\}/, 'create-sheet rows must carr
 assert.doesNotMatch(layoutSource, /Sparkles|Wand2/, 'the App shell must use concrete verbs for creation icons, not sparkle/wand metaphors');
 assert.match(chatSource, /AFFINITY_APP_ICONS/, 'the App chat affinity badge must render vector icons in place of emoji chrome');
 assert.match(layoutSource, /useAppOverlay\(true,\s*onClose,\s*\{\s*rootRef:\s*sheetRef,\s*isolate:\s*true,\s*returnFocusRef\s*\}\)[\s\S]*createPortal/, 'the redesigned create sheet must preserve PR4 portal isolation and explicit focus return');
-assert.match(appSource, /path="\/app-controls"[\s\S]*isAppMode\(\) \? P\(<AppControlsGallery \/>/, 'the control gallery must be lazy, protected, and unreachable through the Web shell');
+assert.match(appSource, /path="\/app-controls"[\s\S]*P\(<AppControlsGallery \/>\)/, 'the control gallery must stay lazy and protected (dual-shell acceptance page since W4)');
 assert.match(routeChunksSource, /AppControlsGallery:[\s\S]*import\('\.\/pages\/AppControlsGallery\.jsx'\)/, 'the control gallery must participate in the route chunk registry');
 assert.match(fxSource, /dataset\.app === '1'[\s\S]*\.qa-button[\s\S]*\.app-fab/, 'legacy ripple injection must skip Quiet Aqua controls and the App FAB');
+assert.match(fxSource, /\.lgw-button, \.lgw-icon-button, \.lgw-tab-button/, 'legacy ripple injection must also skip Lumen Web controls (they own their pressed state)');
 
 assert.equal(quietCharacterPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', 'the reviewed character fallback must remain a valid PNG');
 assert.ok(quietCharacterPng.length >= 1_000_000, 'the production character fallback must retain the approved high-detail master');

@@ -68,14 +68,16 @@ export function setPerfPref(pref) {
 // per-frame work) can consult this to bow out entirely.
 export function isLite() { return document.documentElement.dataset.perf === 'lite'; }
 
-// 运行时自适应降级器（仅 APP 壳 + auto 档 + 当前满血时启动）。
+// 运行时自适应降级器（auto 档 + 当前满血时启动；W6 起 Web 壳同样受益 ——
+// Lumen Web 的 chrome 玻璃在低端核显上同样可能掉帧，降级规则与令牌回落
+// （--lg-blur→none、玻璃→不透明分组底）两端一致）。
 // 用 Long Animation Frames 被动观测 —— 绝不跑常驻 rAF 循环（rAF 本身会强制
 // 满帧渲染费电）。连续 3 个 10s 窗口 LoAF 时长占比 >35%（持续严重掉帧，而非
 // 偶发卡顿）才触发：打会话级标记 → 降到 lite（复用全部既有降级规则）→ 发
 // huanyu-perf-degraded 事件（AppLayout 展示可关闭提示）。产品决策不破坏：
 // 默认满血不变、只在严重掉帧时降、不落盘、用户手选可即刻覆盖。
 export function initAdaptivePerf() {
-  if (!isAppMode() || getPerfPref() !== 'auto' || resolvePerf() === 'lite') return;
+  if (getPerfPref() !== 'auto' || resolvePerf() === 'lite') return;
   if (typeof PerformanceObserver === 'undefined'
     || !PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) return;
   let loafMs = 0;

@@ -10,7 +10,7 @@ import { initTheme } from './theme.js';
 import { initAccent } from './accent.js';
 import { initPerf } from './perf.js';
 import { initFx } from './fx.js';
-import { initAppMode } from './appmode.js';
+import { initAppMode, isAppMode } from './appmode.js';
 import { installGlobalErrorCapture } from './logger.js';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import '@fontsource-variable/inter';
@@ -23,32 +23,9 @@ import './styles/web-lumen-tokens.css';
 import './styles/web-lumen-bridge.css';
 import './styles/web-lumen-materials.css';
 import './styles/web-lumen-shell.css';
-// APP 端沉浸对话皮肤（白+青玻璃深度进化）—— 在 styles.css 之后引入，import 顺序即级联
-// 顺序，故此文件为 app 对话皮肤的唯一权威来源（覆盖 styles.css 里历史层叠的 chat 规则）。
-import './chat/chat-app.css';
-// PR4 native material and balanced-performance overrides. Quiet Aqua loads
-// immediately after it and preserves the same balanced/lite performance gate.
-import './styles/app-runtime.css';
-// Lumen Glass v1.0 token authority (verbatim from docs/design, values frozen),
-// followed by the --qa-* compatibility shim that maps the legacy namespace.
-import './styles/lumen-glass-tokens.css';
-import './styles/app-quiet-aqua-tokens.css';
-import './styles/app-controls.css';
-import './styles/app-pages-quiet-aqua.css';
-// V3 experience layer: page composition and motion only. It is App-scoped and
-// intentionally loads last so legacy page rules cannot flatten the new shell.
-import './styles/app-experience-v3.css';
-// Liuli v5 HIG re-skin: typography, grouped lists, segmented controls, sheets,
-// causal motion and dark parity. App-fenced only.
-import './styles/app-hig-v5.css';
-// Lumen Glass per-stage screen layers (S3 primary tabs / S4 immersive+chat /
-// S5 identity+creation), then the material composition layer as final authority.
-import './styles/app-lumen-s3.css';
-import './styles/app-lumen-s4.css';
-import './styles/app-lumen-s5.css';
-// Lumen Glass material composition layer: glass classes, ambient washes and
-// legacy accent-id aliasing. Loads last as the final App authority.
-import './styles/app-lumen-materials.css';
+// App 层 CSS（chat-app + runtime + Lumen 全家）自 W6 起按模式分包：静态 import
+// 整体搬入 styles/app-entry.js（顺序逐行保持，顺序即级联权威），isAppMode()
+// 时在 render 前 await 动态加载 —— Web 用户不再下载 ~700KB App CSS。
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {
@@ -118,10 +95,22 @@ function render() {
 //   · 网页 / 静态站演示 → 无真实后端时装内置 mock 跑离线演示（本仓库预览与试玩用）。
 //   · 同源部署（服务器自己托管前端）→ 直接 render，/api 走同源。
 const RUNTIME_SERVER = (() => { try { return (localStorage.getItem('huanyu_server') || '').trim(); } catch { return ''; } })();
+
+// W6 CSS 按模式分包：App 壳在 render 前补载 App 层样式包（initAppMode 已解析
+// data-app，时机足够早；App 启动闪屏遮盖加载帧）。加载失败不阻断启动 ——
+// 宁可先渲染出功能，样式包由 lazyRetry 同类逻辑兜底（Vite 动态 import 自带
+// 一次网络失败即 reject，这里静默重试一次后放行）。
+const ensureAppStyles = () => (isAppMode()
+  ? import('./styles/app-entry.js').catch(() => new Promise(r => setTimeout(r, 300)).then(() => import('./styles/app-entry.js')).catch(() => {}))
+  : Promise.resolve());
+
 if (NATIVE) {
-  render();
+  ensureAppStyles().then(render);
 } else if (STATIC && !RUNTIME_SERVER) {
-  import('./mock/backend.js').then(({ installMockBackend }) => { installMockBackend(); render(); });
+  Promise.all([
+    import('./mock/backend.js').then(({ installMockBackend }) => installMockBackend()),
+    ensureAppStyles(),
+  ]).then(render);
 } else {
-  render();
+  ensureAppStyles().then(render);
 }
