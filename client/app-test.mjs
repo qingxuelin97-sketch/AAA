@@ -228,6 +228,11 @@ assert.match(appHomeSource, /qa-weekly-bars"[\s\S]*role="img"[\s\S]*aria-label/,
 const s7StageSource = await readFile(new URL('./src/styles/app-lumen-s7.css', import.meta.url), 'utf8');
 assert.match(s7StageSource, /\.qa-weekly-card/, 'the weekly recap card must land in the S7 stage layer');
 assert.match(s7StageSource, /\[data-perf="lite"\][\s\S]*\.qa-weekly-card[\s\S]*backdrop-filter:\s*none/, 'the weekly card must drop its blur on the lite tier');
+/* ---- S7-G10 Gallery 展区契约 ---- */
+const gallerySource = await readFile(new URL('./src/pages/AppControlsGallery.jsx', import.meta.url), 'utf8');
+assert.match(gallerySource, /gallery-s7-empty[\s\S]*gallery-s7-streak[\s\S]*gallery-s7-medal[\s\S]*gallery-s7-weekly[\s\S]*gallery-s7-press/, 'the controls gallery must exhibit the full S7 component family');
+assert.match(gallerySource, /<AppErrorState[\s\S]*onRetry=\{demoRetry\}/, 'the gallery error-state demo must exercise a real retry affordance');
+assert.match(gallerySource, /<AppPressMenu[\s\S]*returnFocusRef=\{pressAnchorRef\}/, 'the gallery press-menu demo must return focus to its anchor');
 /* ---- S7-G5 成就 2.0 契约 ---- */
 const achievementsSource = await readFile(new URL('./src/pages/Achievements.jsx', import.meta.url), 'utf8');
 assert.match(achievementsSource, /data-medal=\{medalOf\(achievement\.reward\)\}/, 'App achievement rarity must derive from the shared reward formula');
