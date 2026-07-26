@@ -4,6 +4,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday } from '../util.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import CheckinCalendarSheet from '../components/CheckinCalendarSheet.jsx';
 import { isAppMode } from '../appmode.js';
 import pack60ArtUrl from '../assets/wallet-products/60.png';
 import pack300ArtUrl from '../assets/wallet-products/300.png';
@@ -53,6 +54,8 @@ export default function Wallet() {
   const [busy, setBusy] = useState('');
   const [appSection, setAppSection] = useState('wallet');
   const [appPanel, setAppPanel] = useState('');
+  const [calOpen, setCalOpen] = useState(false);
+  const walletStreakRef = useRef(null);
   const [selectedPackageId, setSelectedPackageId] = useState('');
   const actionLockRef = useRef('');
   const [achPending, setAchPending] = useState(0);
@@ -211,6 +214,19 @@ export default function Wallet() {
               <span className="qa-wallet-v4__checkin-copy"><b>{signed ? '今日已签到' : '每日签到'}</b><small>{wallet.checkin_streak ? `已连续 ${wallet.checkin_streak} 天` : '签到领取金币'}</small></span>
               <span className="qa-wallet-v4__checkin-state">{signed ? <><Check size={15} /> 已完成</> : '去签到'}</span>
             </AppButton>
+
+            {/* S7 连签周视图 + 日历入口（与今日页同款；数据即时来自钱包态） */}
+            <button type="button" ref={walletStreakRef} className="qa-streak qa-streak--wallet" onClick={() => setCalOpen(true)}
+              aria-label={`连续签到 ${wallet.checkin_streak || 0} 天，查看签到日历`}>
+              <span className="qa-streak-dots" aria-hidden="true">
+                {Array.from({ length: 7 }, (_, i) => (
+                  <i key={i} className={'qa-streak-dot' + ((wallet.checkin_streak || 0) > 0 && i < (((wallet.checkin_streak || 0) - 1) % 7) + 1 ? ' on' : '')} />
+                ))}
+              </span>
+              <span className="qa-streak-copy">{(wallet.checkin_streak || 0) > 0 ? `连签 ${wallet.checkin_streak} 天` : '开始你的连签'}</span>
+              <span className="qa-streak-cal"><CalendarCheck size={14} aria-hidden="true" /> 日历</span>
+            </button>
+            {calOpen && <CheckinCalendarSheet onClose={() => setCalOpen(false)} returnFocusRef={walletStreakRef} />}
 
             {appPanel === 'exchange' && (
               <section className="qa-wallet-v4__panel" aria-labelledby="wallet-exchange-title">

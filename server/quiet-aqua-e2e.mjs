@@ -1136,6 +1136,64 @@ async function detailErrorStateAssertions(browser, base) {
   await page.close();
 }
 
+// S7-G4 · 今日签到仪式：streak 周点 → 签到成功转 done + 点亮 → 日历 sheet
+// 数据一致 → 「完成每日签到」任务行内领取 → 金币上涨。
+async function todayRitualAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/today', '.qa-streak');
+  const before = await page.evaluate(() => ({
+    dots: document.querySelectorAll('.qa-streak-dot').length,
+    lit: document.querySelectorAll('.qa-streak-dot.on').length,
+    checkinReady: Boolean(document.querySelector('.ah-checkin:not(.done)')),
+  }));
+  assert(before.dots === 7 && before.checkinReady,
+    '今日页连签周视图初始状态异常', JSON.stringify(before));
+
+  await page.click('.ah-checkin');
+  await page.waitForSelector('.ah-checkin.done', { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelectorAll('.qa-streak-dot.on').length === 1, { timeout: 5000 });
+  await saveScreenshot(page, 'today-ritual-390x844-light.png');
+
+  // 「完成每日签到」任务即时转可领：行内领取 → 金币上涨
+  await page.waitForSelector('.qa-task-claim', { timeout: 8000 });
+  const goldBefore = await page.evaluate(() => {
+    const text = document.querySelector('.ah-coin .ah-balance-value')?.textContent || '0';
+    return Number(text.replace(/[^0-9]/g, ''));
+  });
+  await page.click('.qa-task-claim');
+  await page.waitForFunction((prev) => {
+    const text = document.querySelector('.ah-coin .ah-balance-value')?.textContent || '0';
+    return Number(text.replace(/[^0-9]/g, '')) > prev;
+  }, { timeout: 8000 }, goldBefore);
+
+  // 日历 sheet：隔离契约 + 今日格与签到日一致
+  await page.click('.qa-streak');
+  await appModalAssertions(page, '.qa-cal', 'check-in calendar sheet');
+  const calendar = await page.evaluate(() => ({
+    headers: document.querySelectorAll('.qa-cal-wd').length,
+    todayOn: Boolean(document.querySelector('.qa-cal-cell.on.today')),
+    month: document.querySelector('.qa-cal-month')?.textContent || '',
+    nextDisabled: [...document.querySelectorAll('.qa-cal-nav .qa-icon-button')]
+      .some((button) => button.disabled && button.getAttribute('aria-label') === '下一月'),
+  }));
+  assert(calendar.headers === 7 && calendar.todayOn && /^\d{4}-\d{2}$/.test(calendar.month) && calendar.nextDisabled,
+    '签到日历网格状态异常', JSON.stringify(calendar));
+  await saveScreenshot(page, 'checkin-calendar-390x844-light.png');
+
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.qa-cal'), { timeout: 5000 });
+
+  assert(page.__qaErrors.length === 0, '签到仪式流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
 // S7-G3 · 首启引导：新账号首启弹出 → 逐屏前进 → 选兴趣 → 完成写键持久化；
 // 二次进入不再弹；老账号静默补键零打扰。
 async function onboardingAssertions(browser, base) {
@@ -1353,6 +1411,7 @@ async function run() {
     await detailErrorStateAssertions(browser, base);
     await insightsRecoveryAssertions(browser, base);
     await onboardingAssertions(browser, base);
+    await todayRitualAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);

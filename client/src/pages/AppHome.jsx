@@ -3,7 +3,7 @@
 // the web discover page: instead it greets the user, surfaces the daily check-in,
 // a "continue your story" rail, daily tasks and a personalised pick — the things
 // you reach for when you open the app, not a browse-everything grid.
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
@@ -11,12 +11,15 @@ import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
 import { cnToday, fmtNum } from '../util.js';
 import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import CheckinCalendarSheet from '../components/CheckinCalendarSheet.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppTabActive } from '../appTabActivity.js';
+import { burst } from '../fx.js';
+import { tick } from '../appgestures.js';
 import {
   Check, Flame, MessagesSquare, ChevronRight, ThumbsUp,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell,
-  ScrollText, Users, Trophy
+  ScrollText, Users, Trophy, CalendarCheck
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -65,6 +68,10 @@ export default function AppHome() {
   const [checked, setChecked] = useState(() => !!user?.last_checkin && user.last_checkin === cnToday());
   const [streak, setStreak] = useState(user?.checkin_streak || 0);
   const [busy, setBusy] = useState(false);
+  const [calOpen, setCalOpen] = useState(false);
+  const [claiming, setClaiming] = useState('');
+  const streakRef = useRef(null);
+  const checkinBtnRef = useRef(null);
   // 顶栏已随 app 壳移除，通知铃移到页面自己的顶部行；SSE 秒级刷角标。
   const [unread, setUnread] = useState(0);
   const displayName = user?.display_name || user?.username || '旅人';
@@ -113,7 +120,13 @@ export default function AppHome() {
       const d = await api('/economy/checkin', { method: 'POST' });
       setChecked(true); setStreak(d.streak || 0);
       toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
+      // 仪式感：一次性粒子 + 触感（burst 自带 reduced-motion 降级为无）
+      tick(12);
+      const rect = checkinBtnRef.current?.getBoundingClientRect?.();
+      if (rect) burst(rect.left + rect.width / 2, rect.top + rect.height / 2);
       refreshUser?.(); // 顶部金币余额立即更新，不留旧值
+      // 「完成每日签到」任务随签到即时转可领，行内领取钮同步出现
+      api('/engage/tasks').then(x => setTasks((x.tasks || []).filter(k => !k.claimed).slice(0, 3))).catch(() => {});
     } catch (e) {
       // Only the server's explicit idempotent verdict may settle the CTA as
       // complete. Offline, timeout and 5xx failures keep it retryable.
@@ -124,6 +137,19 @@ export default function AppHome() {
         toast(e?.message || '签到失败，请稍后重试', 'err');
       }
     } finally { setBusy(false); }
+  };
+
+  const claimTask = async (t) => {
+    if (claiming) return;
+    setClaiming(t.id);
+    try {
+      const d = await api(`/engage/tasks/${t.id}/claim`, { method: 'POST' });
+      tick(10);
+      toast(`任务完成 · +${d.reward} 金币`);
+      refreshUser?.();
+      api('/engage/tasks').then(x => setTasks((x.tasks || []).filter(k => !k.claimed).slice(0, 3))).catch(() => {});
+    } catch (e) { toast(e?.message || '领取失败，请稍后重试', 'err'); }
+    finally { setClaiming(''); }
   };
 
   const openChat = async (c) => {
@@ -181,6 +207,7 @@ export default function AppHome() {
               <DiamondIcon size={15} /> <span className="ah-balance-value">{fmtNum(user?.diamond)}</span>
             </AppButton>
             <AppButton
+              ref={checkinBtnRef}
               className={'ah-checkin' + (checked ? ' done' : '')}
               variant="primary"
               onClick={checkin}
@@ -194,6 +221,24 @@ export default function AppHome() {
             </AppButton>
           </div>
         </div>
+        {/* S7 连签周视图：七粒周点 + 日历入口（点亮数 = (streak-1)%7+1） */}
+        <button
+          type="button"
+          ref={streakRef}
+          className="qa-streak"
+          onClick={() => setCalOpen(true)}
+          aria-label={`连续签到 ${streak} 天，查看签到日历`}
+        >
+          <span className="qa-streak-dots" aria-hidden="true">
+            {Array.from({ length: 7 }, (_, i) => (
+              <i key={i} className={'qa-streak-dot' + (streak > 0 && i < ((streak - 1) % 7) + 1 ? ' on' : '')} />
+            ))}
+          </span>
+          <span className="qa-streak-copy">
+            {streak > 0 ? `连签 ${streak} 天` : '开始你的连签'}
+          </span>
+          <span className="qa-streak-cal"><CalendarCheck size={14} aria-hidden="true" /> 日历</span>
+        </button>
       </section>
 
       {/* Six stable destinations; creation remains the Dock accessory. */}
@@ -279,10 +324,24 @@ export default function AppHome() {
           <div className="ah-sec-head"><h2><Flame size={16} /> 今日任务</h2></div>
           <div className="ah-tasks">
             {tasks.map(t => (
-              <button key={t.id} type="button" className="ah-task" onClick={() => nav('/events')}>
-                <div className="ah-task-tx"><b>{t.name}</b><span>{t.done ? '可领取 · ' : ''}+{t.reward} 金币</span></div>
-                <div className="ah-task-bar"><i style={{ width: Math.min(100, Math.round((t.progress || 0) / (t.target || 1) * 100)) + '%' }} /></div>
-              </button>
+              <div key={t.id} className={'ah-task' + (t.done && !t.claimed ? ' qa-task-claimable' : '')}>
+                <button type="button" className="qa-task-main" onClick={() => nav('/events')} aria-label={`${t.name}，前往活动页`}>
+                  <div className="ah-task-tx"><b>{t.name}</b><span>{t.done ? '可领取 · ' : ''}+{t.reward} 金币</span></div>
+                  <div className="ah-task-bar"><i style={{ width: Math.min(100, Math.round((t.progress || 0) / (t.target || 1) * 100)) + '%' }} /></div>
+                </button>
+                {t.done && !t.claimed && (
+                  <AppButton
+                    className="qa-task-claim"
+                    variant="primary"
+                    size="sm"
+                    loading={claiming === t.id}
+                    disabled={Boolean(claiming)}
+                    onClick={() => claimTask(t)}
+                  >
+                    领取
+                  </AppButton>
+                )}
+              </div>
             ))}
           </div>
         </section>
@@ -317,6 +376,7 @@ export default function AppHome() {
           </div>
         </section>
       )}
+      {calOpen && <CheckinCalendarSheet onClose={() => setCalOpen(false)} returnFocusRef={streakRef} />}
     </div>
   );
 }

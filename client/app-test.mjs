@@ -204,6 +204,15 @@ assert.match(onboardingSource, /personalize[\s\S]*interests/, 'the interest pick
 assert.match(layoutSource, /<AppOnboarding \/>[\s\S]*<WelcomePopup \/>/, 'onboarding must mount inside the App shell ahead of the daily welcome');
 assert.match(e2eSourceForS7, /onboard = true[\s\S]*huanyu_onboard_done/, 'the e2e harness must pre-seed the onboarding key so baselines stay onboarding-blind');
 assert.match(e2eSourceForS7, /onboardingAssertions/, 'the e2e suite must keep exercising the first-run onboarding flow');
+/* ---- S7-G4 签到仪式契约 ---- */
+assert.match(appHomeSource, /CheckinCalendarSheet[\s\S]*qa-streak/, 'the Today page must surface the streak week view with a calendar entry');
+assert.match(appHomeSource, /burst\(/, 'a successful check-in must fire the one-shot celebration');
+assert.doesNotMatch(appHomeSource, /setInterval\(\s*\(\)\s*=>\s*burst/, 'celebrations must stay one-shot, never looping');
+assert.match(appHomeSource, /engage\/tasks\/\$\{t\.id\}\/claim/, 'daily tasks must be claimable inline on the Today page');
+const calendarSheetSource = await readFile(new URL('./src/components/CheckinCalendarSheet.jsx', import.meta.url), 'utf8');
+assert.match(calendarSheetSource, /checkin\/calendar[\s\S]*role="grid"/, 'the calendar sheet must render the server-derived history as an accessible grid');
+assert.match(calendarSheetSource, /isolate:\s*appPortal[\s\S]*createPortal\(sheet/, 'the calendar sheet must keep the App overlay isolation contract');
+assert.match(e2eSourceForS7, /todayRitualAssertions/, 'the e2e suite must keep exercising the check-in ritual');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(

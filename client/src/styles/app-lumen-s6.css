@@ -238,6 +238,255 @@ html[data-app="1"][data-perf="lite"] .qa-onboard {
   backdrop-filter: none;
 }
 
+/* ── S7-G4 · 连签周视图（今日 hero 行下 + 钱包） ── */
+html[data-app="1"] .qa-streak {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: rgb(255 255 255 / 10%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 14%);
+  color: rgb(255 255 255 / 88%);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 首屏垂直预算：streak 行加入后，精选卡与快捷入口各让出一档，
+   保证 390×844 首屏故事卡 CTA 完整浮在 Dock 之上（e2e 几何闸）。 */
+html[data-app="1"] .qa3-today .ah-hero-card {
+  height: 186px;
+  min-height: 186px !important;
+}
+
+html[data-app="1"] .qa3-today .ah-shortcuts {
+  grid-template-rows: repeat(2, minmax(58px, auto));
+}
+
+html[data-app="1"] .qa3-today .ah-sc.qa-button {
+  min-height: 58px !important;
+}
+
+/* 360 级窄屏：垂直预算更紧，逐档再收 */
+@media (max-width: 374px) {
+  html[data-app="1"] .qa3-today .ah-hero-card {
+    height: 168px;
+    min-height: 168px !important;
+  }
+
+  html[data-app="1"] .qa3-today .ah-shortcuts {
+    grid-template-rows: repeat(2, minmax(52px, auto));
+  }
+
+  html[data-app="1"] .qa3-today .ah-sc.qa-button {
+    min-height: 52px !important;
+  }
+
+  html[data-app="1"] .qa-streak {
+    min-height: 32px;
+    margin-top: 6px;
+    padding: 4px 10px;
+  }
+}
+
+/* 钱包语境不在深色 hero 上：换 L1 玻璃与墨色令牌 */
+html[data-app="1"] .qa-streak--wallet {
+  margin-top: 0;
+  background: var(--lg-glass-1);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink);
+}
+
+html[data-app="1"] .qa-streak-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+html[data-app="1"] .qa-streak-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--lg-r-pill);
+  background: rgb(255 255 255 / 22%);
+  transition: background var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-state) var(--lg-ease);
+}
+
+html[data-app="1"] .qa-streak--wallet .qa-streak-dot {
+  background: var(--lg-hairline);
+}
+
+html[data-app="1"] .qa-streak-dot.on {
+  background: var(--lg-gold);
+  transform: scale(1.12);
+}
+
+html[data-app="1"] .qa-streak-copy {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+html[data-app="1"] .qa-streak-cal {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* ── S7-G4 · 签到日历 Sheet ── */
+html[data-app="1"] .qa-cal {
+  max-height: min(72dvh, 560px);
+  overflow-y: auto;
+}
+
+html[data-app="1"] .qa-cal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 4px 12px;
+}
+
+html[data-app="1"] .qa-cal-seal {
+  flex: none;
+}
+
+html[data-app="1"] .qa-cal-head-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+html[data-app="1"] .qa-cal-head-copy b {
+  display: block;
+  color: var(--lg-ink);
+  font-size: var(--lg-type-section);
+  letter-spacing: -0.01em;
+}
+
+html[data-app="1"] .qa-cal-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+}
+
+html[data-app="1"] .qa-cal-streak svg {
+  color: var(--lg-gold);
+}
+
+html[data-app="1"] .qa-cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+html[data-app="1"] .qa-cal-month {
+  min-width: 74px;
+  color: var(--lg-ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+html[data-app="1"] .qa-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px 2px;
+  padding: 4px 2px 8px;
+}
+
+html[data-app="1"] .qa-cal-wd {
+  padding: 4px 0;
+  color: var(--lg-ink-3);
+  font-size: 11px;
+  text-align: center;
+}
+
+html[data-app="1"] .qa-cal-cell {
+  display: grid;
+  place-items: center;
+  min-height: 40px;
+  border-radius: var(--lg-r-control);
+  color: var(--lg-ink-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-cal-cell.on {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  font-weight: 700;
+}
+
+html[data-app="1"] .qa-cal-cell.today {
+  box-shadow: inset 0 0 0 1.6px var(--lg-act);
+  color: var(--lg-ink);
+}
+
+html[data-app="1"] .qa-cal-cell.on.today {
+  color: var(--lg-act);
+}
+
+html[data-app="1"] .qa-cal-cell.future {
+  opacity: 0.38;
+}
+
+html[data-app="1"] .qa-cal-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  padding: 26px 0 30px;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+}
+
+html[data-app="1"] .qa-cal-error button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── S7-G4 · 今日任务行内领取 ── */
+html[data-app="1"] .ah-task.qa-task-claimable {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+html[data-app="1"] .qa-task-main {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-task-claim.qa-button {
+  flex: none;
+  min-width: 64px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] .qa-error-state {
     animation: none !important;
