@@ -139,6 +139,10 @@ export default function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const docked = !app && wide && panelPinned;
+  // 窄屏开着抽屉时拉宽到三栏：抽屉被 docked 隐藏但 drawerOpen 残留会吃掉一次
+  // 浏览器后退（anyOverlayOpen 误判），且缩窄回去抽屉突然重现 —— 常驻列接管时
+  // 顺手关掉抽屉态。App 壳 docked 恒 false，零波及。
+  useEffect(() => { if (docked && drawerOpen) setDrawerOpen(false); }, [docked, drawerOpen]);
   const [newMem, setNewMem] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);

@@ -21,6 +21,8 @@ export default function Spotlight({ items, onView, onChat }) {
   useEffect(() => { if (i >= list.length) setI(0); }, [i, list.length]);
   if (list.length === 0) return null;
   const c = list[i];
+  // 防御：items 收缩到 i 之外时（校正 effect 在渲染后才跑），本帧安全退空
+  if (!c) return null;
   const go = (d) => setI((x) => (x + d + list.length) % list.length);
   return (
     <div className="spotlight" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
