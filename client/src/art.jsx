@@ -9,7 +9,43 @@
 //  - <CoverArt name />   无头像角色的占位封面：按名字确定性生成
 //                        双色渐变 + 图案（星尘 / 波纹 / 山月）+ 首字大字
 import React from 'react';
+import { isAppMode } from './appmode.js';
 import quietAquaCharacterUrl from './assets/quiet-aqua-character-v3.png?url';
+// Liuli v5 · App 空态插画（scripts/render-app-assets.mjs 确定性生成的内容媒体，
+// 720×480 @2x；Web 保留原矢量 EmptyArt）。
+import emptyChatUrl from './assets/app/qa5-empty-chat@2x.png?url';
+import emptyFavoritesUrl from './assets/app/qa5-empty-favorites@2x.png?url';
+import emptyNotificationsUrl from './assets/app/qa5-empty-notifications@2x.png?url';
+import emptyFriendsUrl from './assets/app/qa5-empty-friends@2x.png?url';
+import emptySearchUrl from './assets/app/qa5-empty-search@2x.png?url';
+import emptyLibraryUrl from './assets/app/qa5-empty-library@2x.png?url';
+import emptyGenericUrl from './assets/app/qa5-empty-generic@2x.png?url';
+
+const APP_EMPTY_ART = {
+  chat: emptyChatUrl,
+  favorites: emptyFavoritesUrl,
+  notifications: emptyNotificationsUrl,
+  friends: emptyFriendsUrl,
+  search: emptySearchUrl,
+  library: emptyLibraryUrl,
+  generic: emptyGenericUrl,
+};
+
+// App 空态：审阅过的 PNG 内容媒体（懒加载、无文字、说明与 CTA 保持活 DOM）。
+export function AppEmptyArt({ kind = 'generic', size = 132, className }) {
+  return (
+    <img
+      className={'qa5-empty-art' + (className ? ' ' + className : '')}
+      src={APP_EMPTY_ART[kind] || emptyGenericUrl}
+      width={Math.round(size * 1.21)}
+      height={Math.round(size * 0.807)}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      draggable="false"
+    />
+  );
+}
 
 /**
  * High-detail App oracle art for large seed/demo media planes. The imported
@@ -362,6 +398,7 @@ function GenericScene() {
 
 // 空态插画。kind 见 SCENES；宽高比 160:132。
 export function EmptyArt({ kind = 'generic', size = 132, className }) {
+  if (isAppMode()) return <AppEmptyArt kind={kind} size={size} className={className} />;
   const scene = SCENES[kind] || <GenericScene />;
   return (
     <svg className={'empty-art' + (className ? ' ' + className : '')} width={size} height={Math.round(size * 0.825)}

@@ -288,4 +288,16 @@ assert.match(vipSource, /immersive qa-vip[\s\S]*AppIconButton[\s\S]*AppButton/, 
 assert.match(quietPages, /\.qa-vip[\s\S]*:where\(\.vm-card-pat, \.vm-card-shine, \.vm-spark\)[\s\S]*display:\s*none/, 'the App membership page must remove campaign shine and spark effects');
 assert.match(quietPages, /\.qa-vip \.vm-card,[\s\S]*background:\s*#23272e/, 'membership gold must remain semantic instead of filling the App page');
 
+/* ---- Liuli v5 generated content-media assets ---- */
+const appAssetNames = (await readdir(new URL('./src/assets/app/', import.meta.url)))
+  .filter((name) => name.endsWith('.png'));
+assert.ok(appAssetNames.length >= 10, 'the Liuli asset catalog must stay generated (run scripts/render-app-assets.mjs)');
+for (const name of appAssetNames) {
+  const png = await readFile(new URL(`./src/assets/app/${name}`, import.meta.url));
+  assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${name} must be a valid PNG`);
+  assert.ok(png.length <= 300 * 1024, `${name} must stay under the 300KB content-media ceiling`);
+}
+assert.match(artSource, /qa5-empty-generic[\s\S]*AppEmptyArt/, 'the App empty states must ship the generated content media with a generic fallback');
+assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
+
 console.log('app invariants: 100/100 passed');

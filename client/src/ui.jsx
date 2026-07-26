@@ -141,10 +141,33 @@ const AV_GRADS = [
   ['#D7C3F5', '#6A4A9E'], // violet
   ['#FBC7A4', '#C56A3C'], // amber
 ];
+// Liuli v5：App 端头像占位走静音双色（无霓虹紫），首字用 UI 字体；Web 原样。
+const AV_GRADS_APP = [
+  ['#dbe6fb', '#8fadf0'], // mist ultramarine
+  ['#e5e2f2', '#9d99c9'], // lavender grey
+  ['#f4e8d8', '#cfa96b'], // sand
+  ['#dceee4', '#84b89b'], // sage
+  ['#f4e0e0', '#c98f92'], // rose grey
+  ['#e3e6ea', '#9aa3af'], // graphite
+  ['#dff0f2', '#7fb4bd'], // haze cyan
+];
 export function Avatar({ src, name = '', size = 40, eager }) {
   const initial = (name || '?').trim().charAt(0).toUpperCase();
   if (src) return <img className="avatar" src={assetUrl(src)} style={{ width: size, height: size }} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" />;
-  const [a, b] = AV_GRADS[(name || '?').charCodeAt(0) % AV_GRADS.length];
+  const appMode = isAppMode();
+  const grads = appMode ? AV_GRADS_APP : AV_GRADS;
+  const [a, b] = grads[(name || '?').charCodeAt(0) % grads.length];
+  if (appMode) {
+    return (
+      <div className="avatar avatar-mono" style={{
+        width: size, height: size, display: 'grid', placeItems: 'center',
+        fontSize: size * 0.42, fontWeight: 700, color: 'rgba(22,24,29,0.72)',
+        fontFamily: 'var(--qa-font-ui, var(--sans))',
+        background: `linear-gradient(150deg, ${a}, ${b})`,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.55)'
+      }}>{initial}</div>
+    );
+  }
   return (
     <div className="avatar avatar-mono" style={{
       width: size, height: size, display: 'grid', placeItems: 'center',

@@ -389,3 +389,21 @@ html[data-app="1"][data-theme="dark"] .app-sheet-grip {
 /* 加载图标旋转（状态循环，随加载态出现与消失） */
 html[data-app="1"] .qa5-spin { animation: qa5Spin 0.9s linear infinite; }
 @keyframes qa5Spin { to { transform: rotate(360deg); } }
+
+/* ── 15. SVIP 卡织纹材质（PNG 内容媒体，叠加于测试钉住的实体底色之上） ── */
+html[data-app="1"] .qa-vip .vm-card {
+  position: relative;
+  overflow: hidden;
+}
+html[data-app="1"] .qa-vip .vm-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url('../assets/app/qa5-vip-weave@2x.png');
+  background-size: cover;
+  opacity: 0.5;
+  border-radius: inherit;
+}
+html[data-app="1"] .qa-vip .vm-card > * { position: relative; z-index: 1; }
