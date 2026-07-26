@@ -46,6 +46,7 @@ export function preheat() {
 // hot = APP 壳高频页：四路一级 tab + 高频二级页（沿用原 AppLayout 预热清单）。
 export const loaders = {
   Home:            chunk(/^\/$/, () => import('./pages/Home.jsx')),
+  WebHome:         chunk(/^\/$/, () => import('./pages/WebHome.jsx')),
   DiscoverFeed:    chunk(/^\/$/, () => import('./pages/DiscoverFeed.jsx'), { hot: true }),
   AppHome:         chunk(/^\/today$/, () => import('./pages/AppHome.jsx'), { hot: true }),
   AppControlsGallery: chunk(/^\/app-controls$/, () => import('./pages/AppControlsGallery.jsx')),

@@ -8,11 +8,14 @@ import { useNav } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
-import { cnToday, fmtNum } from '../util.js';
+import { fmtNum } from '../util.js';
 import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppTabActive } from '../appTabActivity.js';
+// 数据层（问候/天光、签到闭环、续读轨/任务/精选加载）抽到 home/shared.js，
+// 与 Web 端合体首页（WebHome.jsx）共用；本文件只保留 App 壳的渲染与交互。
+import { greeting, skyClass, useCheckin, loadResumeRail, loadHeroAndPicks, loadTodayTasks } from './home/shared.js';
 import {
   Check, Flame, MessagesSquare, ChevronRight, ThumbsUp,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell,
@@ -20,26 +23,6 @@ import {
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
-
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 5) return '夜深了';
-  if (h < 11) return '早安';
-  if (h < 14) return '午安';
-  if (h < 18) return '下午好';
-  if (h < 23) return '晚上好';
-  return '夜深了';
-}
-
-// Keep the existing time-of-day hook as a subtle surface variant. The final
-// Quiet Aqua treatment is owned by the App-only CSS rather than baked artwork.
-function skyClass() {
-  const h = new Date().getHours();
-  if (h < 5 || h >= 20) return 'sky-night';
-  if (h < 11) return 'sky-morning';
-  if (h < 17) return '';        // 白昼用默认暖阳渐变
-  return 'sky-dusk';
-}
 
 // 快捷入口 —— 去重：创建类（建角色/写小说/AI绘图/开剧场）已由底栏中央 +AI 按钮
 // 全量承载，这里不再重复；改放启动页顺手要去、且别处没有一键入口的目的地。
@@ -60,11 +43,10 @@ export default function AppHome() {
   const [pick, setPick] = useState(null);
   const [hero, setHero] = useState(null);
   const [tasks, setTasks] = useState([]);
-  // 用 /auth/me 带回的 last_checkin 初始化，已签到就直接呈现「已签到」态，
-  // 而不是等到用户点了按钮吃 400 才知道。
-  const [checked, setChecked] = useState(() => !!user?.last_checkin && user.last_checkin === cnToday());
-  const [streak, setStreak] = useState(user?.checkin_streak || 0);
-  const [busy, setBusy] = useState(false);
+  // 签到闭环在 home/shared.js 的 useCheckin 里（与 Web 首页共用）。契约不变：
+  // 仅服务端幂等裁决 e?.code === 'ALREADY_CHECKED_IN' 会把 CTA 落定为已签；
+  // 离线/超时/5xx 仍 toast「签到失败，请稍后重试」并保持可重试。
+  const { checked, streak, busy, checkin } = useCheckin();
   // 顶栏已随 app 壳移除，通知铃移到页面自己的顶部行；SSE 秒级刷角标。
   const [unread, setUnread] = useState(0);
   const displayName = user?.display_name || user?.username || '旅人';
@@ -78,26 +60,10 @@ export default function AppHome() {
   }, []);
   useRealtimeEvent('notification', () => setUnread(u => u + 1));
 
-  useEffect(() => {
-    setChecked(Boolean(user?.last_checkin && user.last_checkin === cnToday()));
-    setStreak(user?.checkin_streak || 0);
-  }, [user?.last_checkin, user?.checkin_streak]);
-
   const loadHome = useCallback(() => {
-    api('/chat/conversations').then(d => setResume((d.conversations || []).slice(0, 10))).catch(() => setResume([]));
-    // One hot fetch feeds both the featured hero and the picks fallback; the
-    // personalised "recommended" set takes precedence for picks when present.
-    // (null = loading → skeleton; false/[] = loaded-empty → hidden.)
-    api('/characters/public?sort=hot').then(d => {
-      const hot = d.characters || [];
-      const top = hot.find(c => c.featured) || hot[0] || null;
-      setHero(top || false);
-      setPick(p => (p && p.length) ? p : hot.filter(c => !top || c.id !== top.id).slice(0, 6));
-    }).catch(() => { setHero(false); setPick(p => p || []); });
-    api('/characters/recommended')
-      .then(d => { const cs = d.characters || []; if (cs.length) setPick(cs.slice(0, 6)); })
-      .catch(() => {});
-    api('/engage/tasks').then(d => setTasks((d.tasks || []).filter(t => !t.claimed).slice(0, 3))).catch(() => {});
+    loadResumeRail(setResume);
+    loadHeroAndPicks(setHero, setPick);
+    loadTodayTasks(setTasks);
   }, []);
   useEffect(() => { loadHome(); }, [loadHome]);
   useAppTabActive('/today', () => {
@@ -105,26 +71,6 @@ export default function AppHome() {
     loadUnread();
     refreshUser?.();
   });
-
-  const checkin = async () => {
-    if (busy || checked) return;
-    setBusy(true);
-    try {
-      const d = await api('/economy/checkin', { method: 'POST' });
-      setChecked(true); setStreak(d.streak || 0);
-      toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
-      refreshUser?.(); // 顶部金币余额立即更新，不留旧值
-    } catch (e) {
-      // Only the server's explicit idempotent verdict may settle the CTA as
-      // complete. Offline, timeout and 5xx failures keep it retryable.
-      if (e?.code === 'ALREADY_CHECKED_IN') {
-        setChecked(true);
-        toast('今天已签到');
-      } else {
-        toast(e?.message || '签到失败，请稍后重试', 'err');
-      }
-    } finally { setBusy(false); }
-  };
 
   const openChat = async (c) => {
     try { const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } }); nav('/chats/' + d.conversation.id); }

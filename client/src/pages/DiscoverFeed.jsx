@@ -26,6 +26,8 @@ import {
   Heart, MessageCircle, Star, Share2, Drama, Loader2, ChevronUp,
   ChevronRight, ScrollText, Maximize2, Phone, Search, History, X
 } from 'lucide-react';
+// Lumen Glass · Web 形态（每条选择器 fenced 在 html:not([data-app="1"])，App 零影响）
+import '../styles/web-lumen-discover.css';
 
 // 开场白预览：*动作* 星号只是排版标记，流里展示时去掉更干净。
 const cleanGreeting = (t) => (t || '').replace(/\*/g, '').replace(/\n{2,}/g, '\n').trim();
@@ -69,6 +71,11 @@ export default function DiscoverFeed() {
   const containerRef = useRef(null);
   const loadFlag = useRef(0);   // 防竞态
   const lastTap = useRef({ t: 0, id: null });
+
+  // 壳类名：App 侧字符串逐字节不变（零波及）；Web 侧挂 Lumen 皮肤类 + immersive
+  // （≤860px 复用 web-modules 的 .app-shell:has(.immersive) 机制隐藏移动顶栏/底部 dock，
+  // 竖滑流真全屏）。
+  const wrapCls = appMode ? 'feed-wrap qa-discover-page qa3-discover' : 'feed-wrap lgw-discover immersive';
 
   const persistLiked = (s) => { try { localStorage.setItem('feed_liked', JSON.stringify([...s].slice(-200))); } catch { /* */ } };
 
@@ -165,6 +172,46 @@ export default function DiscoverFeed() {
     }
   }, [activeIdx, chars.length, hasMore, loadingMore, mode, pageError]);
 
+  // Web 键盘导航（仅 !appMode）：↓/j 下一张、↑/k 上一张、Enter 开聊、Esc 关历史。
+  // 输入框 / contenteditable / 打开的 dialog（命令面板等）内不劫持按键；
+  // 焦点落在按钮/链接上时 Enter 交还给该控件自己处理。
+  useEffect(() => {
+    if (appMode) return undefined;
+    const onKey = (e) => {
+      if (e.defaultPrevented || e.isComposing || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'Escape') {
+        if (histOpen) { e.preventDefault(); setHistOpen(false); }
+        return;
+      }
+      if (histOpen || callChar) return;
+      const t = e.target;
+      if (t?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="dialog"]')) return;
+      const step = (e.key === 'ArrowDown' || e.key === 'j') ? 1
+        : (e.key === 'ArrowUp' || e.key === 'k') ? -1 : 0;
+      if (step !== 0) {
+        if (chars.length === 0) return;
+        e.preventDefault();
+        const next = Math.min(Math.max(activeIdx + step, 0), chars.length - 1);
+        if (next === activeIdx) return;
+        const el = containerRef.current?.querySelector(`[data-idx="${next}"]`);
+        if (!el) return;
+        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+        return;
+      }
+      if (e.key === 'Enter') {
+        if (t?.closest?.('button, a, [role="button"], [tabindex]')) return;
+        const c = chars[activeIdx];
+        if (!c) return;
+        e.preventDefault();
+        chat(c);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appMode, chars, activeIdx, histOpen, callChar, enteringId]);
+
   const fav = async (c) => {
     try {
       const d = await api(`/characters/${c.id}/favorite`, { method: 'POST' });
@@ -225,11 +272,11 @@ export default function DiscoverFeed() {
   );
 
   if (loading && chars.length === 0) {
-    return <div className={appMode ? 'feed-wrap qa-discover-page qa3-discover' : 'feed-wrap'}>{topBar}<div className="feed-state"><Drama size={40} className="feed-spin" /><span>正在挑选精彩角色…</span></div></div>;
+    return <div className={wrapCls}>{topBar}<div className="feed-state"><Drama size={40} className="feed-spin" /><span>正在挑选精彩角色…</span></div></div>;
   }
   if (loadError && chars.length === 0) {
     return (
-      <div className={appMode ? 'feed-wrap qa-discover-page qa3-discover' : 'feed-wrap'}>{topBar}
+      <div className={wrapCls}>{topBar}
         <div className="feed-state" role="alert"><EmptyArt kind="library" />
           <span>{loadError}</span>
           <AppButton variant="primary" onClick={() => load(mode)}>重新载入</AppButton>
@@ -239,7 +286,7 @@ export default function DiscoverFeed() {
   }
   if (chars.length === 0) {
     return (
-      <div className={appMode ? 'feed-wrap qa-discover-page qa3-discover' : 'feed-wrap'}>{topBar}
+      <div className={wrapCls}>{topBar}
         <div className="feed-state"><EmptyArt kind="library" />
           {mode === 'follow' ? '还没有关注的创作者 —— 去「推荐」发现更多吧' : '暂无角色，快来发布第一个'}
         </div>
@@ -248,10 +295,13 @@ export default function DiscoverFeed() {
   }
 
   return (
-    <div className={appMode ? 'feed-wrap qa-discover-page qa3-discover' : 'feed-wrap'}>
+    <div className={wrapCls}>
       {topBar}
 
-      <div className="feed-root" ref={containerRef} data-scroll-root>
+      <div className="feed-root" ref={containerRef} data-scroll-root
+        role={appMode ? undefined : 'feed'}
+        aria-label={appMode ? undefined : '沉浸角色流'}
+        aria-busy={appMode ? undefined : (loadingMore || undefined)}>
         {chars.map((c, i) => {
           const liked = likedSet.has(c.id);
           const faved = favSet.has(c.id);
@@ -265,7 +315,11 @@ export default function DiscoverFeed() {
           const liveBg = i === activeIdx && media.kind === 'video' && media.src;
           const sharedMediaStyle = i === activeIdx ? { viewTransitionName: 'qa-character-art' } : undefined;
           return (
-            <section key={c.id} className={'feed-card' + (i === activeIdx ? ' cur' : '')} data-idx={i}>
+            <section key={c.id} className={'feed-card' + (i === activeIdx ? ' cur' : '')} data-idx={i}
+              role={appMode ? undefined : 'article'}
+              aria-posinset={appMode ? undefined : i + 1}
+              aria-setsize={appMode ? undefined : chars.length}
+              aria-label={appMode ? undefined : c.name}>
               {liveBg
                 ? <video className="feed-bg" src={assetUrl(media.src)} poster={media.poster ? assetUrl(media.poster) : undefined}
                     muted loop autoPlay playsInline preload="metadata" style={sharedMediaStyle} />
@@ -369,8 +423,64 @@ export default function DiscoverFeed() {
         })}
       </div>
 
+      {/* 切卡宣告（仅 Web）：屏幕阅读器以 polite 级别播报当前角色名与位次 */}
+      {!appMode && (
+        <div className="lgwd-live" aria-live="polite">
+          {chars[activeIdx] ? `${chars[activeIdx].name}，第 ${activeIdx + 1} 张，共 ${chars.length} 张` : ''}
+        </div>
+      )}
+
+      {/* 桌面右侧信息板（仅 Web；<1024px 由 CSS 隐藏）：数据就是当前卡，零新请求 */}
+      {!appMode && chars[activeIdx] && (() => {
+        const cur = chars[activeIdx];
+        const curFaved = favSet.has(cur.id);
+        const curGreeting = cleanGreeting(cur.greeting);
+        return (
+          <aside className="lgwd-panel lgw-glass-2" aria-label={`当前角色：${cur.name}`}>
+            <div className="lgwd-panel-head">
+              <Avatar src={cur.avatar} name={cur.name} size={46} />
+              <div className="lgwd-panel-id">
+                <b className="lgwd-panel-name">{cur.name}</b>
+                <span className="lgwd-panel-owner">
+                  @{cur.owner_name || '佚名'} <CreatorV tier={cur.owner_tier} size={12} />
+                </span>
+              </div>
+            </div>
+            {cur.category && (
+              <em className="lgwd-panel-cat"><CategoryIcon slug={cur.category} size={12} /> {categoryName(cur.category)}</em>
+            )}
+            {(cur.intro || cur.tagline) && (
+              <div className="lgwd-panel-sec">
+                <h3>介绍</h3>
+                <p>{cur.intro || cur.tagline}</p>
+              </div>
+            )}
+            {curGreeting && (
+              <div className="lgwd-panel-sec">
+                <h3>开场白</h3>
+                <p className="lgwd-panel-greet">{curGreeting}</p>
+              </div>
+            )}
+            <div className="lgwd-panel-acts">
+              <button type="button" className="lgwd-panel-chat" disabled={Boolean(enteringId)} onClick={() => chat(cur)}>
+                <MessageCircle size={17} /> {enteringId === cur.id ? '正在进入…' : '开始对话'}
+              </button>
+              <button type="button" className="lgwd-panel-call" aria-label="语音通话" title="语音通话"
+                onClick={() => { pushRecent(cur); tick(12); setCallChar(cur); }}>
+                <Phone size={17} />
+              </button>
+              <button type="button" className={'lgwd-panel-fav' + (curFaved ? ' on' : '')}
+                aria-label={curFaved ? '取消收藏' : '收藏'} title={curFaved ? '取消收藏' : '收藏'}
+                aria-pressed={curFaved} onClick={() => fav(cur)}>
+                <Star size={17} fill={curFaved ? 'currentColor' : 'none'} />
+              </button>
+            </div>
+          </aside>
+        );
+      })()}
+
       {/* 加载 / 到底提示 —— 悬浮胶囊，不参与 snap 流 */}
-      {loadingMore && <div className="feed-hint"><Loader2 size={14} className="qa5-spin" /> 正在加载更多…</div>}
+      {loadingMore && <div className="feed-hint"><Loader2 size={14} className={appMode ? 'qa5-spin' : 'lgwd-spin'} /> 正在加载更多…</div>}
       {pageError && !loadingMore && (
         <div className="feed-hint feed-hint-error" role="alert">
           <span>{pageError}</span>

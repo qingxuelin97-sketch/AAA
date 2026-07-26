@@ -36,6 +36,7 @@ const lazyRetry = (factory) => lazy(() =>
   )
 );
 const Home = lazyRetry(L.Home);
+const WebHome = lazyRetry(L.WebHome);
 const Library = lazyRetry(L.Library);
 const CharacterEditor = lazyRetry(L.CharacterEditor);
 const Chat = lazyRetry(L.Chat);
@@ -130,7 +131,7 @@ export default function App() {
             <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
             <Route path="/features" element={<Features />} />
             <Route path="/help" element={<Help />} />
-            <Route path="/" element={P(isAppMode() ? <DiscoverFeed /> : <Home />)} />
+            <Route path="/" element={P(isAppMode() ? <DiscoverFeed /> : <WebHome />)} />
             <Route path="/today" element={isAppMode() ? P(<AppHome />) : <Navigate to="/" replace />} />
             <Route path="/discover" element={isAppMode() ? <Navigate to="/" replace /> : P(<DiscoverFeed />)} />
             <Route path="/app-controls" element={isAppMode() ? P(<AppControlsGallery />) : <Navigate to="/" replace />} />

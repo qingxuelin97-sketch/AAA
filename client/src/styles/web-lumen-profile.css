@@ -1,0 +1,506 @@
+/* ============================================================================
+   曜光玻璃 Lumen Glass · Web 个人主页层（web-lumen-profile.css / .pfw-*）
+   ----------------------------------------------------------------------------
+   范围：pages/Profile.jsx 的 Web 分支 + components/profile/ 四模块的 Web 形态
+     · banner / 头像区（.pfw-hero，Lumen 玻璃卡）
+     · 会员横幅（.pfw-vip：violet 调促销卡；SVIP 用 --lg-gold 语义；
+       一次性入场光线 lgwVipSweep，时长 var(--lg-dur-entity)，不循环）
+     · 资产卡（.pfw-assets：.lgw-entity 石墨实体面 + ::before 唯一暖金光点）
+     · 内容 Tab 分段（.pfw-tabs / .pfw-tab）+ 骨架 + 载入失败态
+   ----------------------------------------------------------------------------
+   铁律执行说明：
+   1. 围栏：每条选择器从 html:not([data-app="1"]) 开始，与 App 围栏 DOM 互斥。
+   2. 零 backdrop-filter：本页全部是内容卡 —— 半透明底 +
+      var(--lg-glass-shadow-1) 三件套（.lgw-card / 本文件手写同配方），
+      唯一实体面走 .lgw-entity。
+   3. @keyframes 仅两个，均 lgw 前缀：lgwProfileShimmer（骨架 shimmer，
+      规范豁免的循环动画，reduced-motion 下静止）与 lgwVipSweep（一次性
+      入场光线，时长走 --lg-dur-entity，reduced-motion 下令牌归零瞬完）。
+   4. 颜色零新增字面量：全部 var(--lg-*) / 桥接变量（--panel，材质层先例）/
+      color-mix(令牌, #fff/#000/transparent)；白系玻璃 rgb(255 255 255 / x%)
+      与黑系投影 rgb(0 0 0 / x%) 为规范豁免。
+   5. 触控目标 ≥44px（--lg-control-min）；:focus-visible 统一 --lg-focus 外环；
+      图标按钮的可访问名称在 JSX 侧核对（分享/退出登录带 aria-label，
+      其余按钮均含文字）。
+   ========================================================================== */
+
+/* ════════════════════════════════════════════════════════════════════════
+   §0 · 页面骨架与可达性基线
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .page.pfw {
+  max-width: 980px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lg-space-4);
+}
+html:not([data-app="1"]) .pfw :is(button, a):focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   §1 · banner / 头像区（.pfw-hero 挂 .lgw-card：半透明底 + 三件套阴影）
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .pfw-hero {
+  padding: 0;
+  overflow: hidden;
+}
+html:not([data-app="1"]) .pfw-banner {
+  height: 172px;
+  background-color: var(--lg-grouped);
+  /* 无自定义横幅时的 Lumen 默认光带（用户横幅经内联 background-image 覆盖） */
+  background-image: linear-gradient(
+    130deg,
+    color-mix(in srgb, var(--lg-violet) 34%, var(--lg-canvas)),
+    color-mix(in srgb, var(--lg-azure) 26%, var(--lg-canvas)) 55%,
+    color-mix(in srgb, var(--lg-rose) 24%, var(--lg-canvas))
+  );
+  background-position: center;
+  background-size: cover;
+}
+html:not([data-app="1"]) .pfw-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--lg-space-4);
+  padding: 0 var(--lg-space-5);
+  margin-top: -40px;
+}
+/* 头像座圈：选中片白玻璃 + 三件套，替代旧 4px 实线描边 */
+html:not([data-app="1"]) .pfw-avatar {
+  flex: none;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-glass-sel);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .pfw-head-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lg-space-1);
+  padding-bottom: var(--lg-space-1);
+}
+html:not([data-app="1"]) .pfw-name {
+  margin: 0;
+  font-size: var(--lg-type-title);
+  line-height: 1.25;
+  color: var(--lg-ink);
+}
+html:not([data-app="1"]) .pfw-bio {
+  margin: 0;
+  font-size: var(--lg-type-body);
+  color: var(--lg-ink-2);
+  overflow-wrap: anywhere;
+}
+html:not([data-app="1"]) .pfw-edit {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--lg-control-min);
+  padding: 0 var(--lg-space-4);
+  margin-bottom: var(--lg-space-1);
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--lg-type-meta);
+  font-weight: 600;
+  color: var(--lg-ink);
+  background: var(--lg-glass-1);
+  border-radius: var(--lg-r-pill);
+  box-shadow: var(--lg-glass-shadow-1);
+  transition: background-color var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .pfw-edit:active { transform: scale(0.97); }
+
+/* 统计行（CountUp 数字保留；粉丝/关注开弹层、角色/剧本切 Tab） */
+html:not([data-app="1"]) .pfw-stats {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: var(--lg-space-3);
+  padding: var(--lg-space-2) var(--lg-space-3) var(--lg-space-3);
+  border-top: 1px solid var(--lg-hairline);
+}
+html:not([data-app="1"]) .pfw-stat {
+  flex: 1 1 0;
+  min-width: 84px;
+  min-height: var(--lg-control-min);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  background: transparent;
+  border-radius: var(--lg-r-control);
+  transition: background-color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .pfw-stat b {
+  font-size: var(--lg-type-section);
+  color: var(--lg-ink);
+  font-variant-numeric: tabular-nums;
+}
+html:not([data-app="1"]) .pfw-stat span {
+  font-size: var(--lg-type-meta);
+  color: var(--lg-ink-3);
+}
+html:not([data-app="1"]) .pfw-stat.inert { cursor: default; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   §2 · 骨架（shimmer 为规范豁免的循环动画；reduced-motion / 失败态静止）
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .pfw-skel {
+  background-color: color-mix(in srgb, var(--panel) 70%, transparent);
+  background-image: var(--lg-skeleton);
+  background-size: 200% 100%;
+  animation: lgwProfileShimmer 1.4s linear infinite;
+}
+html:not([data-app="1"]) .pfw-avatar.pfw-skel {
+  width: 92px;
+  height: 92px;
+}
+html:not([data-app="1"]) .pfw-skel-line {
+  display: block;
+  height: 14px;
+  border-radius: var(--lg-r-xs);
+}
+html:not([data-app="1"]) .pfw-skel-line.w40 { width: 40%; }
+html:not([data-app="1"]) .pfw-skel-line.w72 { width: 72%; margin-bottom: var(--lg-space-2); }
+/* 载入失败：骨架停摆，重试入口在下方内容区（ProfileLoadError） */
+html:not([data-app="1"]) .pfw-hero.err .pfw-skel { animation: none; }
+
+@keyframes lgwProfileShimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   §3 · 会员横幅（violet 调促销卡；SVIP 金语义；一次性入场光线）
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .pfw-vip {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: var(--lg-space-4);
+  width: 100%;
+  min-height: 76px;
+  padding: var(--lg-space-4) var(--lg-space-5);
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--lg-ink);
+  border-radius: var(--lg-r-card);
+  /* 内容卡三件套 + violet 促销洗层（零实时模糊） */
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--lg-violet) 16%, transparent), color-mix(in srgb, var(--lg-azure) 8%, transparent) 62%, transparent),
+    color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .pfw-vip:active { transform: scale(0.99); }
+
+/* 一次性入场光线：宽 sweep 走 --lg-dur-entity，forwards 停在透明，不循环。
+   reduced-motion 下时长令牌归零 → 瞬时完成（等价无动画）。 */
+html:not([data-app="1"]) .pfw-vip-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(105deg, transparent 32%, rgb(255 255 255 / 42%) 47%, transparent 62%);
+  transform: translateX(-70%);
+  animation: lgwVipSweep var(--lg-dur-entity) var(--lg-ease) 240ms 1 forwards;
+}
+@keyframes lgwVipSweep {
+  0% { transform: translateX(-70%); opacity: 0; }
+  18% { opacity: 1; }
+  100% { transform: translateX(70%); opacity: 0; }
+}
+
+html:not([data-app="1"]) .pfw-vip-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--lg-r-control);
+  color: var(--lg-violet);
+  background: color-mix(in srgb, var(--lg-violet) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-violet) 24%, transparent);
+}
+html:not([data-app="1"]) .pfw-vip-tx {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+html:not([data-app="1"]) .pfw-vip-tx b {
+  font-size: var(--lg-type-section);
+  color: var(--lg-ink);
+}
+html:not([data-app="1"]) .pfw-vip-exp {
+  font-size: var(--lg-type-meta);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .pfw-vip-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--lg-space-4);
+  font-size: var(--lg-type-meta);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .pfw-vip-perks i {
+  font-style: normal;
+  position: relative;
+}
+html:not([data-app="1"]) .pfw-vip-perks i + i::before {
+  content: '·';
+  position: absolute;
+  left: calc(-1 * var(--lg-space-2) - 3px);
+  color: var(--lg-ink-3);
+}
+html:not([data-app="1"]) .pfw-vip-go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 32px;
+  padding: 0 var(--lg-space-3);
+  border-radius: var(--lg-r-pill);
+  font-size: var(--lg-type-meta);
+  font-weight: 600;
+  color: var(--lg-canvas);
+  background: var(--lg-violet);
+}
+
+/* VIP 已开通：violet 洗层加深，语义不变 */
+html:not([data-app="1"]) .pfw-vip.on {
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--lg-violet) 26%, transparent), color-mix(in srgb, var(--lg-azure) 10%, transparent) 66%, transparent),
+    color-mix(in srgb, var(--panel) 86%, transparent);
+}
+/* SVIP：--lg-gold 内容语义（金属于奖励/会员，不随强调色漂移） */
+html:not([data-app="1"]) .pfw-vip.svip {
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--lg-gold) 26%, transparent), color-mix(in srgb, var(--lg-gold) 6%, transparent) 68%, transparent),
+    color-mix(in srgb, var(--panel) 86%, transparent);
+}
+html:not([data-app="1"]) .pfw-vip.svip .pfw-vip-mark {
+  color: var(--lg-gold);
+  background: color-mix(in srgb, var(--lg-gold) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-gold) 28%, transparent);
+}
+html:not([data-app="1"]) .pfw-vip.svip .pfw-vip-go {
+  background: var(--lg-gold);
+  color: color-mix(in srgb, var(--lg-gold) 14%, #000);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   §4 · 资产卡（.lgw-entity 石墨实体面；::before 是唯一的暖金光点）
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .pfw-assets {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--lg-space-4);
+  padding: var(--lg-space-5);
+  box-shadow: 0 10px 26px rgb(0 0 0 / 22%);
+}
+html:not([data-app="1"]) .pfw-assets::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(150px 100px at 86% -6%, color-mix(in srgb, var(--lg-gold) 46%, transparent), transparent 72%);
+}
+html:not([data-app="1"]) .pfw-asset-bals {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lg-space-3) var(--lg-space-6);
+}
+html:not([data-app="1"]) .pfw-asset-bal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--lg-type-meta);
+  color: color-mix(in srgb, var(--lg-finance-ink) 72%, transparent);
+}
+html:not([data-app="1"]) .pfw-asset-bal b {
+  font-size: var(--lg-type-title);
+  line-height: 1.1;
+  color: var(--lg-finance-ink);
+  font-variant-numeric: tabular-nums;
+}
+html:not([data-app="1"]) .pfw-asset-go {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--lg-control-min);
+  padding: 0 var(--lg-space-4);
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--lg-type-meta);
+  font-weight: 600;
+  color: var(--lg-finance-ink);
+  background: rgb(255 255 255 / 10%);
+  border-radius: var(--lg-r-pill);
+  transition: background-color var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .pfw-asset-go:active { transform: scale(0.97); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   §5 · 内容 Tab 分段（选中片 = 白玻璃 + 三件套，即 .lgw-seg-sel 配方）
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .pfw-tabs {
+  display: flex;
+  gap: var(--lg-space-1);
+  margin-top: var(--lg-space-2);
+  padding: var(--lg-space-1);
+  border-radius: calc(var(--lg-r-control) + var(--lg-space-1));
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .pfw-tab {
+  flex: 1 1 0;
+  min-height: var(--lg-control-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--lg-type-body);
+  font-weight: 500;
+  color: var(--lg-ink-2);
+  background: transparent;
+  border-radius: var(--lg-r-control);
+  transition: color var(--lg-dur-state) var(--lg-ease), background-color var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .pfw-tab.on {
+  color: var(--lg-ink);
+  font-weight: 600;
+  background: var(--lg-glass-sel);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .pfw-tab-n {
+  font-style: normal;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: var(--lg-r-pill);
+  font-size: var(--lg-type-meta);
+  font-variant-numeric: tabular-nums;
+  color: var(--lg-ink-3);
+  background: color-mix(in srgb, var(--lg-ink) 8%, transparent);
+}
+html:not([data-app="1"]) .pfw-tab.on .pfw-tab-n {
+  color: var(--lg-act);
+  background: var(--lg-act-soft);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   §6 · Tab 面板：内容骨架网格 + 载入失败态
+   ════════════════════════════════════════════════════════════════════════ */
+html:not([data-app="1"]) .pfw-tab-panel { min-height: 180px; }
+html:not([data-app="1"]) .pfw-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--lg-space-4);
+}
+html:not([data-app="1"]) .pfw-skel-card {
+  height: 230px;
+  border-radius: var(--lg-r-card);
+  background-color: color-mix(in srgb, var(--panel) 70%, transparent);
+  background-image: var(--lg-skeleton);
+  background-size: 200% 100%;
+  box-shadow: var(--lg-glass-shadow-1);
+  animation: lgwProfileShimmer 1.4s linear infinite;
+}
+html:not([data-app="1"]) .pfw-load-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lg-space-4);
+  padding: var(--lg-space-6) var(--lg-space-5);
+  text-align: center;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .pfw-load-error p {
+  margin: 0;
+  font-size: var(--lg-type-body);
+  color: var(--lg-ink-2);
+}
+html:not([data-app="1"]) .pfw-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--lg-control-min);
+  padding: 0 var(--lg-space-5);
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--lg-type-body);
+  font-weight: 600;
+  color: var(--lg-act);
+  background: var(--lg-act-soft);
+  border-radius: var(--lg-r-pill);
+  transition: background-color var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .pfw-retry:active { transform: scale(0.97); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   §7 · 桌面 hover 层（仅指针设备；触屏零表演）
+   ════════════════════════════════════════════════════════════════════════ */
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .pfw-vip:hover {
+    transform: var(--lgw-hover-raise);
+    box-shadow: var(--lgw-hover-lift);
+  }
+  html:not([data-app="1"]) .pfw-stat:not(.inert):hover { background: var(--lg-act-soft); }
+  html:not([data-app="1"]) .pfw-edit:hover { background: var(--lg-glass-sel); }
+  html:not([data-app="1"]) .pfw-tab:not(.on):hover { color: var(--lg-ink); background: color-mix(in srgb, var(--lg-ink) 6%, transparent); }
+  html:not([data-app="1"]) .pfw-asset-go:hover { background: rgb(255 255 255 / 16%); }
+  html:not([data-app="1"]) .pfw-retry:hover { background: color-mix(in srgb, var(--lg-act) 20%, transparent); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   §8 · 窄屏适配
+   ════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 720px) {
+  html:not([data-app="1"]) .pfw-banner { height: 132px; }
+  html:not([data-app="1"]) .pfw-head {
+    flex-wrap: wrap;
+    padding: 0 var(--lg-space-4);
+  }
+  html:not([data-app="1"]) .pfw-edit { margin-left: auto; }
+  html:not([data-app="1"]) .pfw-vip { flex-wrap: wrap; }
+  html:not([data-app="1"]) .pfw-assets {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  html:not([data-app="1"]) .pfw-asset-go { justify-content: center; }
+  html:not([data-app="1"]) .pfw-content-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   §9 · reduced-motion：骨架 shimmer 静止（sweep 由时长令牌归零，无需重复声明）
+   ════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-app="1"]) .pfw-skel,
+  html:not([data-app="1"]) .pfw-skel-card { animation: none; }
+}

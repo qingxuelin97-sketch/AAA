@@ -2,44 +2,28 @@
 // 结构采用个人主页通用范式（资料头 → 统计 → 会员横幅 → 资产卡 → 快捷功能条 →
 // 内容 Tab → 全部功能），全部为幻域自有品牌/文案/lucide 图标的原创实现。
 // 「全部功能」宫格保底承接原 launcher 的每一个入口，确保功能不丢。
+// 会员横幅 / 资产卡 / 内容 Tab / 载入失败态已抽为 components/profile/ 四模块
+// （纯代码搬家，本页渲染输出与抽取前逐字节一致），Web 端 Profile.jsx 复用。
 import React, { useEffect, useState } from 'react';
 import { useNav } from '../nav.js';
-import { api, useAuth, assetUrl } from '../api.jsx';
-import { useToast, Avatar, CoinIcon, DiamondIcon, IdentityBadges } from '../ui.jsx';
+import { api, useAuth } from '../api.jsx';
+import { useToast, Avatar, IdentityBadges } from '../ui.jsx';
 import { fmtNum } from '../util.js';
-import { CoverArt, EmptyArt, QuietAquaCharacterArt, isLegacyMonogramCover } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import MembershipBanner from '../components/profile/MembershipBanner.jsx';
+import AssetCard from '../components/profile/AssetCard.jsx';
+import ProfileContentTabs from '../components/profile/ProfileContentTabs.jsx';
 import { isAppMode } from '../appmode.js';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
 import {
-  Bell, BookOpen, Copy, ChevronRight, Dices, Download, Drama,
+  Bell, BookOpen, Copy, Dices, Download, Drama,
   Feather, Heart, Landmark, LifeBuoy, LogOut, Medal, Megaphone,
   Orbit, PartyPopper, Pencil, ScrollText, Search, Settings,
-  Shield, Tags, TrendingUp, Trophy, UserRound, Users, Wand2, Gift, Crown
+  Shield, Tags, TrendingUp, Trophy, UserRound, Users, Wand2
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
-
-function ProfileCharacterCover({ character, app, eager = false }) {
-  const [failed, setFailed] = useState(false);
-  const source = character?.avatar;
-  const useFallback = !source || failed || (app && isLegacyMonogramCover(source));
-  if (useFallback) {
-    return app
-      ? <QuietAquaCharacterArt className="pf-cc-oracle-art" alt="" loading={eager ? 'eager' : 'lazy'} />
-      : <div className="cover-art-box"><CoverArt name={character?.name} /></div>;
-  }
-  return (
-    <img
-      src={assetUrl(source)}
-      alt=""
-      loading={eager ? 'eager' : 'lazy'}
-      decoding="async"
-      onError={() => setFailed(true)}
-    />
-  );
-}
 
 // 快捷功能条（横向滚动，取最常用）。
 // 去重原则：签到/钱包入口由上方资产卡承担；会员由 VIP 横幅承担 —— 快捷条只放
@@ -160,6 +144,11 @@ export default function AppProfile() {
     if (appMode && !user?.id) { toast('资料仍在载入，请稍后再试', 'err'); return; }
     try { await navigator.clipboard.writeText('U' + user.id); toast('已复制 UID'); } catch { toast('UID：U' + user.id); }
   };
+  // 内容 Tab 载入失败重试（原错误分支的 onClick 原样搬出为具名函数）
+  const retryContent = () => {
+    if (tab === 'chars') { setChars(null); setCharsError(''); api('/characters/mine').then(d => setChars(d.characters || [])).catch((error) => { setChars([]); setCharsError(error.message || '暂时无法载入角色'); }); }
+    else { setFavs(null); setFavsError(''); }
+  };
 
   const ST = [
     { n: stats?.characters, label: '角色', to: '/library' },
@@ -167,8 +156,10 @@ export default function AppProfile() {
     { n: stats?.followers, label: '粉丝', to: '/profile' },
     { n: stats?.following, label: '关注', to: '/profile' }
   ];
-  const content = tab === 'chars' ? chars : favs;
-  const contentError = tab === 'chars' ? charsError : favsError;
+  const gridGroups = appMode ? GRID : [...GRID, WEB_PROFILE_GRID];
+
+  // The App shell groups identity, bio, badges and stats into one semantic
+  // profile surface. Web receives the same legacy sibling DOM via Fragment.
   const bioKeyboard = appMode ? {
     role: 'button',
     tabIndex: 0,
@@ -178,22 +169,6 @@ export default function AppProfile() {
       nav('/profile');
     }
   } : {};
-  const tabListA11y = appMode ? { role: 'tablist', 'aria-label': '个人内容' } : {};
-  const tabA11y = (name) => appMode ? {
-    role: 'tab',
-    id: `pf-tab-${name}`,
-    'aria-selected': tab === name,
-    'aria-controls': 'pf-content-panel'
-  } : {};
-  const panelA11y = appMode ? {
-    role: 'tabpanel',
-    id: 'pf-content-panel',
-    'aria-labelledby': `pf-tab-${tab}`
-  } : {};
-  const gridGroups = appMode ? GRID : [...GRID, WEB_PROFILE_GRID];
-
-  // The App shell groups identity, bio, badges and stats into one semantic
-  // profile surface. Web receives the same legacy sibling DOM via Fragment.
   const identityContent = (
     <>
       <div className="pf-id">
@@ -246,33 +221,10 @@ export default function AppProfile() {
         : identityContent}
 
       {/* 会员横幅（紫调促销卡 + 权益词条）*/}
-      <button
-        className={'pf-vip' + (user?.svip ? ' svip' : user?.vip ? ' on' : '') + (appMode ? ' qa-profile__membership' : '')}
-        onClick={() => nav('/vip')}
-        {...(appMode ? { 'aria-label': user?.vip || user?.svip ? '查看会员权益' : '开通幻域会员' } : {})}
-      >
-        <span className="pf-vip-glow" aria-hidden="true" />
-        {appMode && <span className="pf-vip-mark" aria-hidden="true"><Crown size={24} /></span>}
-        <div className="pf-vip-l">
-          <b>{user?.svip ? 'SVIP 尊享会员' : user?.vip ? 'VIP 会员' : '开通幻域会员'}</b>
-          {user?.vip || user?.svip
-            ? <span className="pf-vip-exp">{user?.svip ? '平台 AI 5 折 · 至高权益' : `有效期至 ${String(user?.vip_until || '').slice(0, 10)}`}</span>
-            : <div className="pf-vip-perks"><span>无限沉浸</span><span>记忆增强</span><span>语音朗读</span><span>免打扰</span></div>}
-        </div>
-        <span className="pf-vip-go">{user?.vip || user?.svip ? '查看' : '立即开通'}</span>
-      </button>
+      <MembershipBanner user={user} app={appMode} onOpen={() => nav('/vip')} />
 
       {/* 资产卡 */}
-      <div className={appMode ? 'pf-assets qa-profile__assets' : 'pf-assets'}>
-        <div className="pf-asset-head">
-          <span className="pf-asset-bal"><CoinIcon size={19} /> <b>{fmtNum(user?.gold)}</b> 金币</span>
-          <span className="pf-asset-bal"><DiamondIcon size={19} /> <b>{fmtNum(user?.diamond)}</b> 钻石</span>
-        </div>
-        <div className="pf-asset-acts">
-          {/* 两个按钮此前都跳 /wallet（重复）；合并为一个明确的钱包入口 */}
-          <AppButton variant="tertiary" onClick={() => nav('/wallet')}><Gift size={14} /> 钱包 · 签到 / 兑换 / 流水 <ChevronRight size={14} /></AppButton>
-        </div>
-      </div>
+      <AssetCard user={user} app={appMode} onWallet={() => nav('/wallet')} />
 
       {/* 快捷功能条 */}
       <div className="pf-quick">
@@ -284,58 +236,17 @@ export default function AppProfile() {
         ))}
       </div>
 
-      {/* 内容 Tab */}
-      <div className="pf-tabs" {...tabListA11y}>
-        <AppButton
-          className={tab === 'chars' ? 'on' : ''}
-          variant="tertiary"
-          selected={tab === 'chars'}
-          onClick={() => setTab('chars')}
-          {...tabA11y('chars')}
-        >
-          我的角色 {chars ? chars.length : ''}
-        </AppButton>
-        <AppButton
-          className={tab === 'favs' ? 'on' : ''}
-          variant="tertiary"
-          selected={tab === 'favs'}
-          onClick={() => setTab('favs')}
-          {...tabA11y('favs')}
-        >
-          收藏 {favs ? favs.length : ''}
-        </AppButton>
-      </div>
-      {content === null ? (
-        <div className="pf-content-grid" {...panelA11y}>{[0, 1, 2].map(i => <div key={i} className="pf-cc-skel" />)}</div>
-      ) : appMode && content.length === 0 && contentError ? (
-        <div className="pf-empty" role="alert" {...panelA11y}>
-          <p>{contentError}</p>
-          <AppButton variant="secondary" size="sm" onClick={() => {
-            if (tab === 'chars') { setChars(null); setCharsError(''); api('/characters/mine').then(d => setChars(d.characters || [])).catch((error) => { setChars([]); setCharsError(error.message || '暂时无法载入角色'); }); }
-            else { setFavs(null); setFavsError(''); }
-          }}>重新载入</AppButton>
-        </div>
-      ) : content.length === 0 ? (
-        <div className="pf-empty" {...panelA11y}>
-          <EmptyArt kind={tab === 'chars' ? 'library' : 'chat'} size={104} />
-          <p>{tab === 'chars' ? '还没有创建角色' : '还没有收藏的角色'}</p>
-          <AppButton className="btn primary sm" variant="primary" size="sm" onClick={() => nav(tab === 'chars' ? '/character/new' : '/')}>
-            {tab === 'chars' ? '去创建' : '去发现'}
-          </AppButton>
-        </div>
-      ) : (
-        <div className="pf-content-grid" {...panelA11y}>
-          {content.map((c, i) => (
-            <button key={c.id} className="pf-cc" onClick={() => nav('/character/' + c.id)}>
-              <div className="pf-cc-cover">
-                <ProfileCharacterCover character={c} app={appMode} eager={appMode && i < 2} />
-              </div>
-              <b>{c.name}</b>
-              <span>{c.tagline || '——'}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* 内容 Tab（分段 + 骨架 / 错误重试 / 空态 / 网格） */}
+      <ProfileContentTabs
+        app={appMode}
+        tab={tab}
+        setTab={setTab}
+        chars={chars}
+        favs={favs}
+        contentError={tab === 'chars' ? charsError : favsError}
+        onRetry={retryContent}
+        nav={nav}
+      />
 
       {/* 全部功能 —— 保底承接每一个入口 */}
       {gridGroups.map(g => (
