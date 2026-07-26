@@ -52,8 +52,12 @@ Web 端零像素、零行为变化（webdiff 全程 0px 门禁）。
 - e2e 新增 13 个场景（含深色/lite 巡检与触摸长按流）；app-test
   契约随各阶段锁步增长。
 - 设计文档：`docs/design/LUMEN_S7_SPEC.md`（阶段规格）、
+  `docs/design/lumen-s7-ui-kit.html`（S7 组件家族静态参考）、
   `APP_UI_ORACLE.md` §10（实现契约与账目）、
   `docs/ui-baselines/manual-v9/`（S7 改动面人工基线）。
+- G10 后半补充：角色页「与 TA 的足迹」、我的页「相伴一览」、私信
+  长按复制与按好友草稿、群聊 @提及高亮、「新功能」Sheet、搜索热门
+  分类、任务一键全领、触感开关、排行榜我的名次、里程碑印章分档。
 
 ## Lumen Glass v1.0（S1–S6 + UI kit 对齐）
 

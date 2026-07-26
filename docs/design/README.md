@@ -8,6 +8,9 @@
 - `lumen-glass-tokens.css` — 全套 --lg-* 设计令牌（浅/深/强调色/lite）
 - `LUMEN_GLASS_SPEC.md` — 设计规范 + 50 屏逐屏实施表
 - `CLAUDE_CODE_PROMPT.md` — 给 Claude Code 的实施指令（复制横线内整段发送）
+- `LUMEN_S7_SPEC.md` — S7「仪式与相伴」阶段规格（周报卡/分享卡五模板/长按系统/月历/后端契约）
+- `lumen-s7-ui-kit.html` — S7 组件家族静态参考（周报卡/连签月历/奖章印章/足迹一览/长按菜单等，单文件离线版）
+- `LUMEN_MIGRATION_PLAN.md` — S1–S6 迁移记录
 
 ## 最快上传方式（GitHub 网页，免命令行）
 1. 打开 https://github.com/qingxuelin97-sketch/AAA
