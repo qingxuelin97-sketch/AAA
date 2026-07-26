@@ -50,10 +50,12 @@ Do not treat a single screenshot as release evidence. Store regenerated images w
   Dock 创建钮 50 + act 35% 柔影、沉浸 CTA 白胶囊。
 - 路由与生成条件同 v7。
 
-## manual-v9（Lumen S7 仪式与相伴）
-- 定向重录 S7 改动面（390×844 浅/深）：today（连签周点 + 任务行内领取 + 日历入口）、
-  wallet（App 分支 streak 行 + 日历入口）、achievements（五环徽章墙 + 三档奖章 + 荣誉 + 分享钮）。
-- 首启引导、日历 Sheet、分享卡、长按菜单为交互态，证据在 `client/dist/quiet-aqua-e2e/`
-  （e2e 每次构建重生成），不以落地帧入库。
+## manual-v9（Lumen S7 仪式与相伴 · 含 G10 重录）
+- 定向重录 S7/G10 改动面（390×844 浅/深）：today（连签周点 + 任务行内领取 + 日历入口
+  + 「本周与你相伴」周报卡）、wallet（streak 行 + 日历入口 + 流水筛选 chips）、
+  achievements（五环徽章墙 + 三档奖章 + 荣誉 + 分享钮）、insights（星轨 + App 年鉴卡入口）、
+  app-controls（Gallery 全量含 S7 展区）。
+- 首启引导、日历 Sheet、分享卡、长按菜单、新功能 Sheet 为交互态，证据在
+  `client/dist/quiet-aqua-e2e/`（e2e 每次构建重生成），不以落地帧入库。
 - 生成条件同 v7：build:static + mock 登录（huanyu_token=tok.1）+ perf=high，
   另预置 `huanyu_onboard_done` 抑制首启引导。

@@ -348,3 +348,30 @@ node scripts/appdiff.mjs   # 样式/令牌重构时：改前 --baseline 录基�
 - `settings.interests`：slug 白名单 = meta CATEGORIES、上限 6、逗号串存储；`/characters/recommended` 在 personalize 开启时对 interests 命中各 +2 权重（双端孪生）。
 - 成就目录双端 30 条集合等值断言（matchAll id 提取 deepEqual）；honor 成就（creator_hall）reward 0、只铭刻不可领取，领取请求双端一致拒绝。
 - 旧 `POST /economy/recharge` 双端一致返回 410 `PAYMENT_ORDER_REQUIRED`；充值走订单两端点，mock 入账一次性幂等（credited 标记）。支付路由本阶段零改动。
+
+### 10.7 G10「相伴加深」增补（阶段三后半）
+
+- **新端点/新列**：`GET /me/weekly`（北京周界周一起始）；
+  `conversations.pinned/muted` 迁移列 + mark-only PATCH（不 bump
+  `updated_at`，置顶不得伪造新鲜度）；`/engage/leaderboard` 登录附
+  `me:{rank,score}`。三者均有 mock 孪生 + app-test 配对断言 +
+  `server/s7-boundary.test.mjs` 验值（含旧充值 410、荣誉拒领、
+  兴趣白名单钳制）。
+- **新组件**：周报卡 `.qa-weekly-card`（role=img 全文替代、lite 去
+  blur 实测）；`WhatsNewSheet`（S7 特性清单，我的页页脚入口）；
+  分享卡新增 quote（聊天/剧场长按导出，旁白段署名「旁白」）与
+  insights（星轨年鉴）两模板 —— 媒体边界同 §10.4。
+- **会话草稿**：`huanyu_draft_<id>` 仅 App 壳生效（Web 行为零变化
+  红线）；清空/发送即删；列表「[草稿]」优先预览。
+- **触感闸门**：全部触感调用统一 `tick()`；`huanyu_haptics='0'`
+  一处关断（设置 → 偏好 App 专属行）。
+- **里程碑印章分档**：`streakSealForTier`（≥100 金冠双环 / ≥30
+  玉桂环 / 基础焰章），素材目录 23→25，管线与许可同 §10.3。
+- **Gallery S7 展区**：空态/错误演示、连签与月历状态样板、奖章
+  三档、周报条形、长按菜单与示例台词卡活演示 —— 新组件家族的
+  评审面（e2e galleryS7Assertions 锁定）。
+- **e2e 增量**：weeklyRecap / walletCalendar（含流水筛选）/
+  quoteCard / galleryS7 / conversationMarks / draft / s7DarkTier
+  七场景；app-test 以场景名清单守卫接线。
+- 阶段规格详见 `docs/design/LUMEN_S7_SPEC.md`；用户可见变更见
+  根目录 `CHANGELOG.md`。
