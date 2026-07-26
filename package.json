@@ -16,6 +16,7 @@
     "start": "node server/index.js",
     "seed": "node server/seed.js",
     "smoke": "node server/smoke.mjs",
+    "test:server:s7": "node server/s7-boundary.test.mjs",
     "reg-flow": "node server/reg-flow.mjs",
     "test:novels": "node server/novel-test.mjs",
     "test:novels:mock": "node server/novel-mock-test.mjs",

@@ -1,0 +1,121 @@
+// S7 边界回归测试：北京日界（签到日历）、北京周界（周报）、会话整理
+// mark-only PATCH 语义。跑法：npm run test:server:s7
+//
+// 为什么单独存在：smoke 只验 200，这里验「值」——时区折算与排序语义
+// 一旦回归，界面不会报错，只会安静地把签到记到错误的日子上。
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import Database from 'better-sqlite3';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PORT = 4198;
+const DB_PATH = path.join(__dirname, 's7test.tmp.sqlite');
+const BASE = `http://localhost:${PORT}/api`;
+for (const f of [DB_PATH, DB_PATH + '-wal', DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch { /* */ } }
+
+const run = (cmd, args, env) => new Promise((res, rej) => {
+  const p = spawn(cmd, args, { cwd: path.join(__dirname, '..'), env: { ...process.env, ...env }, stdio: 'inherit' });
+  p.on('exit', (code) => (code === 0 ? res() : rej(new Error(cmd + ' exited ' + code))));
+});
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sqliteUtc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+const cnToday = (d = new Date()) => new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+
+console.log('· 灌入临时演示数据…');
+await run('node', ['server/seed.js'], { DB_PATH });
+
+console.log('· 启动服务端…');
+const srv = spawn('node', ['server/index.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: String(PORT), DB_PATH }, stdio: 'ignore' });
+
+let ok = true;
+try {
+  for (let i = 0; i < 40; i++) { try { if ((await fetch(BASE + '/health')).ok) break; } catch { /* */ } await sleep(250); }
+  const tok = (await (await fetch(BASE + '/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'demo', password: '123456' }),
+  })).json()).token;
+  const H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
+  const j = async (p, init) => (await fetch(BASE + p, { headers: H, ...init })).json();
+  const me = await j('/auth/me');
+  const uid = me.user.id;
+
+  // 第二个连接直写库，构造边界样本（服务端 WAL 模式下跨进程读写安全）
+  const db = new Database(DB_PATH);
+
+  /* ── 1. 签到日历：北京日界折算 ── */
+  // 取一个稳定的历史日：本月 10 日（避免撞今天/月首的次要分支）。
+  const today = cnToday();
+  const month = today.slice(0, 7);
+  const [y, m] = month.split('-').map(Number);
+  const dayMs = Date.UTC(y, m - 1, 10); // 北京 10 日 00:00 == UTC 09 日 16:00
+  const ins = db.prepare(`INSERT INTO transactions (user_id, kind, gold, diamond, memo, created_at)
+    VALUES (?, 'checkin', 50, 0, ?, ?)`);
+  // 北京 10 日 00:10（UTC 09 日 16:10）与北京 10 日 23:50（UTC 10 日 15:50）→ 同一天
+  ins.run(uid, '边界样本A', sqliteUtc(dayMs - 8 * 3600e3 + 10 * 60e3));
+  ins.run(uid, '边界样本B', sqliteUtc(dayMs + 16 * 3600e3 - 10 * 60e3));
+  // 北京 11 日 00:05（UTC 10 日 16:05）→ 次日
+  ins.run(uid, '边界样本C', sqliteUtc(dayMs + 24 * 3600e3 - 8 * 3600e3 + 5 * 60e3));
+
+  const cal = await j(`/economy/checkin/calendar?month=${month}`);
+  assert.ok(cal.days.includes(10), `北京 10 日的两笔跨 UTC 日签到都应归入 10 日（got ${JSON.stringify(cal.days)})`);
+  assert.ok(cal.days.includes(11), '北京 11 日凌晨（UTC 仍是 10 日）的签到应归入 11 日');
+  assert.equal(cal.month, month);
+  console.log('  ✅ 日历：UTC 存储跨日样本按北京日正确归桶');
+
+  // 月参数校验与 12 个月钳制
+  const bad = await fetch(BASE + '/economy/checkin/calendar?month=2020-01', { headers: H });
+  assert.equal(bad.status, 400, '超过 12 个月的查询必须被拒绝');
+  const malformed = await fetch(BASE + '/economy/checkin/calendar?month=abcd', { headers: H });
+  assert.equal(malformed.status, 400, '非法月份格式必须被拒绝');
+  console.log('  ✅ 日历：月份格式与 12 个月钳制生效');
+
+  /* ── 2. 周报：北京周界（周一起始）与逐日归桶 ── */
+  const w0 = await j('/me/weekly');
+  const ws = new Date(w0.week_start + 'T00:00:00Z');
+  assert.equal((ws.getUTCDay() + 6) % 7, 0, `week_start 必须是周一（got ${w0.week_start}）`);
+  assert.equal(w0.days.length, 7, '周报必须恰好 7 天');
+  assert.ok(w0.days.every((d) => typeof d.n === 'number'), '每天都要有数值（未来天为 0）');
+
+  const convId = (await j('/chat/conversations')).conversations?.[0]?.id;
+  assert.ok(convId, '演示账号必须有会话');
+  const weekStartMs = Date.parse(w0.week_start + 'T00:00:00Z');
+  const insMsg = db.prepare('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?, ?, ?, ?)');
+  // 本周一北京 00:05（UTC 周日 16:05）→ 计入本周第一天
+  insMsg.run(convId, 'user', '周界内样本', sqliteUtc(weekStartMs - 8 * 3600e3 + 5 * 60e3));
+  // 上周日北京 23:55（UTC 上周日 15:55）→ 不计入本周
+  insMsg.run(convId, 'user', '周界外样本', sqliteUtc(weekStartMs - 8 * 3600e3 - 5 * 60e3));
+
+  const w1 = await j('/me/weekly');
+  assert.equal(w1.messages, w0.messages + 1, '恰好一条边界内消息应计入本周');
+  assert.equal(w1.days[0].n, w0.days[0].n + 1, '周一凌晨（UTC 仍是周日）的消息应归入周一');
+  console.log('  ✅ 周报：周一起始 + 北京周界归桶正确');
+
+  /* ── 3. 会话整理：mark-only PATCH 不 bump updated_at；置顶列表先行 ── */
+  const before = db.prepare('SELECT updated_at FROM conversations WHERE id = ?').get(convId).updated_at;
+  await j(`/chat/conversations/${convId}`, { method: 'PATCH', body: JSON.stringify({ pinned: 1, muted: 1 }) });
+  const afterMark = db.prepare('SELECT updated_at, pinned, muted FROM conversations WHERE id = ?').get(convId);
+  assert.equal(afterMark.pinned, 1);
+  assert.equal(afterMark.muted, 1);
+  assert.equal(afterMark.updated_at, before, '置顶/免打扰不得改变会话排序时间戳');
+
+  const list = await j('/chat/conversations');
+  assert.equal(list.conversations[0].id, convId, '置顶会话必须排在列表首位');
+
+  await j(`/chat/conversations/${convId}`, { method: 'PATCH', body: JSON.stringify({ title: '改名会 bump' }) });
+  const afterTitle = db.prepare('SELECT updated_at FROM conversations WHERE id = ?').get(convId).updated_at;
+  assert.notEqual(afterTitle, before, '改名等实质编辑仍应刷新排序时间戳');
+  console.log('  ✅ 会话整理：mark-only 语义与置顶排序正确');
+
+  db.close();
+  console.log('\n✅ S7 边界回归：全部通过');
+} catch (e) {
+  ok = false;
+  console.error('\n❌ S7 边界回归失败：', e.message);
+} finally {
+  srv.kill();
+  for (const f of [DB_PATH, DB_PATH + '-wal', DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch { /* */ } }
+}
+process.exit(ok ? 0 : 1);
