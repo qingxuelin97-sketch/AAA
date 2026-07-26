@@ -120,6 +120,9 @@ async function preparePage(browser, base, {
   perf = 'auto',
   viewport = { width: 390, height: 844 },
   reducedMotion = false,
+  // S7 首启引导默认预置为「已完成」：既有场景与像素基线不感知引导；
+  // 专测引导的场景显式传 onboard:false 摘除预置。
+  onboard = true,
 } = {}) {
   const page = await browser.newPage();
   const errors = [];
@@ -146,6 +149,8 @@ async function preparePage(browser, base, {
   });
   await page.evaluateOnNewDocument((config) => {
     localStorage.setItem('huanyu_welcome_seen', new Date().toISOString().slice(0, 10));
+    if (config.onboard) localStorage.setItem('huanyu_onboard_done', new Date().toISOString().slice(0, 10));
+    else localStorage.removeItem('huanyu_onboard_done');
     localStorage.setItem('huanyu_theme', config.theme);
     localStorage.setItem('huanyu_accent', config.accent);
     localStorage.setItem('huanyu_perf', config.perf);
@@ -153,7 +158,7 @@ async function preparePage(browser, base, {
     else localStorage.removeItem('huanyu_app');
     if (config.token) localStorage.setItem('huanyu_token', 'tok.1');
     else localStorage.removeItem('huanyu_token');
-  }, { app, token, theme, accent, perf });
+  }, { app, token, theme, accent, perf, onboard });
   page.__qaErrors = errors;
   page.__qaBase = base;
   return page;
@@ -1131,6 +1136,100 @@ async function detailErrorStateAssertions(browser, base) {
   await page.close();
 }
 
+// S7-G3 · 首启引导：新账号首启弹出 → 逐屏前进 → 选兴趣 → 完成写键持久化；
+// 二次进入不再弹；老账号静默补键零打扰。
+async function onboardingAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+    onboard: false,
+  });
+
+  await page.goto(`${base}/?app=1#/today`, { waitUntil: 'networkidle0', timeout: 30000 });
+  await appModalAssertions(page, '.qa-onboard', 'onboarding dialog');
+  await saveScreenshot(page, 'onboarding-world-390x844-light.png');
+
+  const clickAct = (label) => page.evaluate((text) => {
+    const target = [...document.querySelectorAll('.qa-onboard-acts .qa-button')]
+      .find((button) => button.textContent.includes(text));
+    target?.click();
+    return Boolean(target);
+  }, label);
+
+  assert(await clickAct('继续'), '首启引导第一屏缺少「继续」');
+  await page.waitForFunction(() => document.querySelectorAll('.qa-onboard-dot')[1]?.classList.contains('on')
+    && document.querySelectorAll('.qa-onboard-screen')[1]?.getAttribute('aria-hidden') === 'false', { timeout: 3000 });
+  assert(await clickAct('继续'), '首启引导第二屏缺少「继续」');
+  await page.waitForSelector('.qa-onboard-chips .qa-button', { visible: true, timeout: 5000 });
+
+  await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('.qa-onboard-chips .qa-button')];
+    chips[0]?.click(); chips[2]?.click();
+  });
+  await page.waitForFunction(
+    () => document.querySelectorAll('.qa-onboard-chips .qa-button[data-selected]').length === 2,
+    { timeout: 3000 },
+  );
+  // pager 位移 380ms：等第三屏真正滑到位再截图
+  await page.waitForFunction(() => {
+    const track = document.querySelector('.qa-onboard-track');
+    if (!track) return false;
+    const m = new DOMMatrixReadOnly(getComputedStyle(track).transform);
+    return Math.abs(Math.abs(m.m41) - track.getBoundingClientRect().width * 2) < 2;
+  }, { timeout: 3000 });
+  await saveScreenshot(page, 'onboarding-tune-390x844-light.png');
+
+  assert(await clickAct('选好了'), '第三屏缺少完成按钮');
+  await page.waitForFunction(() => !document.querySelector('.qa-onboard'), { timeout: 8000 });
+  // mock 的 save() 有 350ms 合并落盘防抖：兴趣画像以轮询等待其真正写入 localStorage
+  await page.waitForFunction(() => {
+    try {
+      const db = JSON.parse(localStorage.getItem('huanyu_db_v7') || '{}');
+      const interests = (db.settings || []).find((s) => s.user_id === 1)?.interests || '';
+      return Boolean(localStorage.getItem('huanyu_onboard_done'))
+        && Boolean(localStorage.getItem('huanyu_welcome_seen'))
+        && interests.split(',').filter(Boolean).length === 2;
+    } catch { return false; }
+  }, { timeout: 5000 });
+
+  // 二次进入不再弹
+  await page.goto(`${base}/?app=1#/today`, { waitUntil: 'networkidle0', timeout: 30000 });
+  await settlePage(page);
+  assert(await page.evaluate(() => !document.querySelector('.qa-onboard')), '完成后的二次进入仍弹出引导');
+
+  // 老账号：无键但 created_at 久远 → 静默补键，不弹。
+  // 注入必须在「旧页 pagehide 落盘之后、新页应用启动之前」执行——
+  // evaluateOnNewDocument 恰在该窗口运行（页内 evaluate 会被落盘覆盖）。
+  await page.evaluateOnNewDocument(() => {
+    try {
+      localStorage.removeItem('huanyu_onboard_done');
+      const db = JSON.parse(localStorage.getItem('huanyu_db_v7') || '{}');
+      const me = (db.users || []).find((u) => u.id === 1);
+      if (me) { me.created_at = '2020-01-01 00:00:00'; localStorage.setItem('huanyu_db_v7', JSON.stringify(db)); }
+    } catch { /* */ }
+  });
+  await page.goto(`${base}/?app=1#/today`, { waitUntil: 'networkidle0', timeout: 30000 });
+  await settlePage(page);
+  await page.waitForFunction(() => Boolean(localStorage.getItem('huanyu_onboard_done')), { timeout: 8000 });
+  assert(await page.evaluate(() => !document.querySelector('.qa-onboard')), '老账号被误弹引导');
+
+  assert(page.__qaErrors.length === 0, '首启引导流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+
+  // 减弱动效变体：pager 不做位移过渡
+  const rmPage = await preparePage(browser, base, {
+    app: true, token: true, theme: 'light', perf: 'auto', reducedMotion: true, onboard: false,
+  });
+  await rmPage.goto(`${base}/?app=1#/today`, { waitUntil: 'networkidle0', timeout: 30000 });
+  await rmPage.waitForSelector('.qa-onboard', { visible: true, timeout: 8000 });
+  const rmTrack = await rmPage.$eval('.qa-onboard-track', (el) => getComputedStyle(el).transitionDuration);
+  assert(rmTrack === '0s', '减弱动效下引导 pager 仍保留位移过渡', rmTrack);
+  await rmPage.close();
+}
+
 // S7-G2 · Insights 首载失败 → AppErrorState 恢复出口（ORACLE §7.2）。
 // 静态构建的 /api 由页内 mock fetch 直接合成响应，CDP 拦截看不到——
 // 用访问器包装 mock 安装的 fetch，按开关注入 /me/insights 断网。
@@ -1253,6 +1352,7 @@ async function run() {
     await worldbookEditorAssertions(browser, base);
     await detailErrorStateAssertions(browser, base);
     await insightsRecoveryAssertions(browser, base);
+    await onboardingAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);

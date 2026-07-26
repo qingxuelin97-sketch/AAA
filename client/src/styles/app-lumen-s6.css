@@ -42,9 +42,217 @@ html[data-app="1"] .qa-error-state__acts {
   margin-top: 12px;
 }
 
+/* ── S7-G3 · 首启引导（三屏 pager；一次性位移，无循环动画） ── */
+html[data-app="1"] .qa-onboard-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 480;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--qa-scrim);
+}
+
+html[data-app="1"] .qa-onboard {
+  width: 100%;
+  max-width: 430px;
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 0 calc(14px + env(safe-area-inset-bottom));
+  border-radius: var(--lg-r-sheet) var(--lg-r-sheet) 0 0;
+  background: var(--lg-glass-2);
+  box-shadow: var(--lg-glass-shadow-2);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  animation: qaOnboardRise var(--lg-dur-sheet) var(--lg-ease) both;
+}
+
+@keyframes qaOnboardRise {
+  from { transform: translateY(26px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+html[data-app="1"] .qa-onboard-track {
+  display: flex;
+  width: 100%;
+  transition: transform 380ms var(--lg-ease);
+}
+
+html[data-app="1"] .qa-onboard-screen {
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 26px 8px;
+  text-align: center;
+}
+
+html[data-app="1"] .qa-onboard-screen[aria-hidden="true"] {
+  visibility: hidden;
+}
+
+html[data-app="1"] .qa-onboard-art {
+  width: min(290px, 72vw);
+  height: auto;
+  margin-bottom: 4px;
+}
+
+html[data-app="1"] .qa-onboard-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+html[data-app="1"] .qa-onboard-screen h2 {
+  margin: 2px 0 0;
+  color: var(--lg-ink);
+  font-size: var(--lg-type-title);
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+html[data-app="1"] .qa-onboard-screen > p {
+  margin: 0;
+  max-width: 32ch;
+  color: var(--lg-ink-2);
+  font-size: var(--lg-type-meta);
+  line-height: 1.65;
+}
+
+html[data-app="1"] .qa-onboard-feats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+html[data-app="1"] .qa-onboard-feats li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--lg-r-row);
+  background: var(--lg-glass-1);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+
+html[data-app="1"] .qa-onboard-feat-ic {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+
+html[data-app="1"] .qa-onboard-feats b {
+  display: block;
+  color: var(--lg-ink);
+  font-size: 14px;
+}
+
+html[data-app="1"] .qa-onboard-feats small {
+  display: block;
+  margin-top: 2px;
+  color: var(--lg-ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+html[data-app="1"] .qa-onboard-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+html[data-app="1"] .qa-onboard-chip.qa-button {
+  min-height: 38px;
+  padding-inline: 14px;
+  background: var(--lg-glass-1);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-2);
+  font-size: 13px;
+}
+
+html[data-app="1"] .qa-onboard-chip.qa-button[data-selected] {
+  background: var(--lg-act-soft);
+  box-shadow: inset 0 0 0 1px var(--lg-act);
+  color: var(--lg-act);
+  font-weight: 600;
+}
+
+html[data-app="1"] .qa-onboard-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin: 14px 0 4px;
+}
+
+html[data-app="1"] .qa-onboard-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-hairline);
+  transition: background var(--lg-dur-state) var(--lg-ease), width var(--lg-dur-state) var(--lg-ease);
+}
+
+html[data-app="1"] .qa-onboard-dot.on {
+  width: 20px;
+  background: var(--lg-act);
+}
+
+html[data-app="1"] .qa-onboard-acts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 20px 0;
+}
+
+html[data-app="1"] .qa-onboard-acts .qa-button--lg {
+  flex: 1;
+  max-width: 230px;
+}
+
+/* lite：令牌层已把 blur 归零；玻璃底回落不透明面 */
+html[data-app="1"][data-perf="lite"] .qa-onboard {
+  background: var(--qa-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] .qa-error-state {
     animation: none !important;
+    transition: none !important;
+  }
+
+  html[data-app="1"] .qa-onboard {
+    animation: none !important;
+  }
+
+  html[data-app="1"] .qa-onboard-track {
+    transition: none !important;
+  }
+
+  html[data-app="1"] .qa-onboard-dot {
     transition: none !important;
   }
 }
