@@ -4,6 +4,7 @@
 
 ## 内容
 - `lumen-glass-mockup.html` — 50 屏可交互视觉稿（单文件离线版，双击即开）
+- `lumen-glass-ui-kit.html` — UI 组件库（每个控件 × 每个状态，单文件离线版）
 - `lumen-glass-tokens.css` — 全套 --lg-* 设计令牌（浅/深/强调色/lite）
 - `LUMEN_GLASS_SPEC.md` — 设计规范 + 50 屏逐屏实施表
 - `CLAUDE_CODE_PROMPT.md` — 给 Claude Code 的实施指令（复制横线内整段发送）
