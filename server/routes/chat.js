@@ -17,8 +17,12 @@ function getSettings(userId) {
 
 // Resolve which LLM creds a request uses: the user's own key (free) takes priority,
 // otherwise fall back to the platform language service (billed per reply).
+// 关键：用户 key 必须同时有 base_url 才可用——只有 key 没有 base_url 时跳过，
+// 回退到平台模型。否则 pumpModelStream 会拼出 "/chat/completions" → ERR_INVALID_URL。
+// 这正是「后台测试平台配置成功、实际对话却报 Invalid URL」的根因：
+// test-llm 测的是平台配置（GM 后台填的），chat 走 effectiveLLM 优先用户个人配置。
 function effectiveLLM(settings) {
-  if (settings?.llm_api_key) {
+  if (settings?.llm_api_key && settings?.llm_base_url && String(settings.llm_base_url).trim()) {
     return { base_url: settings.llm_base_url, api_key: settings.llm_api_key, model: settings.llm_model,
       temperature: settings.llm_temperature, max_tokens: settings.llm_max_tokens, system_prompt: '', platform: false };
   }
@@ -725,13 +729,29 @@ async function pumpModelStream(res, eff, payloadMessages) {
   const onClose = () => ac.abort();
   res.on('close', onClose);
   const headerTimer = setTimeout(() => ac.abort(), 60000);
+  // 诊断日志：定位「后台测试有效但对话失败」——记录实际使用的模型来源、目标 URL、
+  // payload 概要（不记 key 明文），供 GM 从 pm2 logs 直接看到 chat 路径的真实调用参数，
+  // 与 /admin/platform/test-llm 的调用参数对比差异。
+  const reqId = res.req?.requestId || '';
+  // URL 构造与 /admin/platform/test-llm 对齐：强制 String + split('?')[0] 去查询参数 + 去尾斜杠。
+  // 否则用户填了带 ? 的 base_url（如 MiniMax ?GroupId=xxx 或误填）会拼出非法 URL 抛 ERR_INVALID_URL。
+  const targetUrl = String(eff.base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions';
+  console.log('[chat:diag] pumpModelStream 开始', {
+    request_id: reqId, platform: !!eff.platform, model: eff.model,
+    raw_base_url: String(eff.base_url || '').slice(0, 80),
+    target: targetUrl, fetch_mode: eff.platform ? 'native' : 'safeFetch',
+    msgs_count: payloadMessages?.length, total_chars: payloadMessages?.reduce((n,m)=>n+(m.content?.length||0),0),
+    max_tokens: eff.max_tokens, temperature: eff.temperature, stream: true,
+  });
+  let headerArrivedMs = 0;
+  const t_start = Date.now();
   try {
     // 平台模型(admin 配置)允许指向本机/局域网(本地 Ollama/LM Studio)，走原生 fetch；
     // 用户自填 base_url 不可信 → safeFetch 做 DNS 复检 + 逐跳重定向 + 请求头超时(60s，容忍首字节慢)。
     const doFetch = eff.platform
       ? (u, o) => fetch(u, { ...o, signal: ac.signal })
       : (u, o) => safeFetch(u, { ...o, signal: ac.signal }, { timeoutMs: 60000 });
-    const upstream = await doFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
+    const upstream = await doFetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
       body: JSON.stringify({
@@ -739,26 +759,56 @@ async function pumpModelStream(res, eff, payloadMessages) {
         temperature: eff.temperature, max_tokens: eff.max_tokens, stream: true
       })
     });
+    headerArrivedMs = Date.now() - t_start;
     clearTimeout(headerTimer);   // 响应头已到，解除首字节超时
+    console.log('[chat:diag] 上游响应头到达', { request_id: reqId, status: upstream.status, latency_ms: headerArrivedMs, content_type: upstream.headers.get('content-type') });
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => '');
-      // 仅在服务端日志记录上游详情，对客户端只返回通用提示，避免泄露内部信息
-      console.error('[chat] 上游模型服务错误', upstream.status, text.slice(0, 300));
-      // 用户自带 key 鉴权失败（401/403）：key 可能已失效/被撤销。抛出带 authFailed
-      // 标记的错误，让 streamReply 捕获后自动回退到平台模型重试（而非直接报错中断对话）。
-      // 仅对非平台请求生效——平台模型本身 401/403 没有回退目标，按原逻辑报错即可。
-      if (!eff.platform && (upstream.status === 401 || upstream.status === 403)) {
-        const e = new Error('用户 API Key 鉴权失败');
-        e.authFailed = true;
+      // 服务端日志保留完整上游详情（status + 响应体前 300 字），便于排查。
+      console.error('[chat] 上游模型服务错误', upstream.status, text.slice(0, 300), eff.platform ? '(platform)' : '(user-key)');
+      // 用户自带 key 的任何上游错误（不只 401/403）都向上抛，让 streamReply 捕获后
+      // 自动回退到平台模型重试。因为用户 key 可能 base_url 错 / key 失效 / model 名错 /
+      // 上下文超限——这些都应回退平台保证对话不中断，而非直接报错。
+      // 平台模型本身出错没有回退目标，走下面的细化错误（写 SSE 后返回 null）。
+      if (!eff.platform) {
+        const e = new Error(`用户 LLM 上游错误 (${upstream.status})`);
+        e.userKeyFailed = true;
         e.upstreamStatus = upstream.status;
+        e.upstreamText = text.slice(0, 200);
         throw e;
       }
-      res.write(`data: ${JSON.stringify({ error: '模型服务暂不可用，请稍后再试' })}\n\n`);
+      // 细化上游错误，杜绝笼统「模型服务暂不可用」——让用户/管理员能直接看到真实原因：
+      //   · 平台 401/403 → 平台 key 失效，提示联系管理员（普通用户无权改平台配置）
+      //   · 429          → 限流，提示稍后重试
+      //   · 5xx          → 上游服务故障，提示稍后重试（这才是真正的「暂不可用」）
+      //   · 400          → 请求格式/参数错（model 名错、上下文超限等），透传上游关键信息
+      //   · 其他 4xx     → 透传状态码 + 摘要
+      // 平台与用户 key 两种来源都适用；用户 key 路径的错误文案指向「设置 → 语言模型」。
+      const where = eff.platform ? '后台「平台 AI → 语言模型」' : '「设置 → 语言模型」';
+      let hint;
+      if (upstream.status === 401 || upstream.status === 403) {
+        hint = eff.platform
+          ? `平台 API Key 鉴权失败（上游 ${upstream.status}），请联系管理员检查${where}的 Key 配置`
+          : `API Key 鉴权失败（上游 ${upstream.status}），请前往${where}更新 Key`;
+      } else if (upstream.status === 429) {
+        hint = '模型请求过于频繁（429），请稍后再试';
+      } else if (upstream.status >= 500) {
+        hint = `模型服务暂时不可用（上游 ${upstream.status}），请稍后再试`;
+      } else if (upstream.status === 400) {
+        // 上游 400 多为 model 名错 / 上下文超限 / 参数不兼容，透传前 120 字便于定位
+        const detail = text.slice(0, 120).replace(/\s+/g, ' ').trim();
+        hint = `模型服务拒绝请求（400）：${detail || '请检查 model 名与参数'}`;
+      } else {
+        hint = `模型服务返回 ${upstream.status}，请稍后再试`;
+      }
+      res.write(`data: ${JSON.stringify({ error: hint, upstream_status: upstream.status, platform: !!eff.platform })}\n\n`);
       return null;
     }
     const reader = upstream.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let firstDeltaMs = 0;
+    let chunkCount = 0;
     while (true) {
       if (res.destroyed) break;   // 客户端已断开（socket 被销毁）：停止读上游
       const { done, value } = await reader.read();
@@ -774,23 +824,60 @@ async function pumpModelStream(res, eff, payloadMessages) {
         try {
           const json = JSON.parse(data);
           const delta = json.choices?.[0]?.delta?.content || '';
-          if (delta) { full += delta; res.write(`data: ${JSON.stringify({ delta })}\n\n`); }
+          if (delta) {
+            if (!firstDeltaMs) firstDeltaMs = Date.now() - t_start;
+            chunkCount++;
+            full += delta;
+            res.write(`data: ${JSON.stringify({ delta })}\n\n`);
+          }
         } catch { /* partial chunk */ }
       }
     }
+    console.log('[chat:diag] 流式读取完成', { request_id: reqId, chunks: chunkCount, chars: full.length, first_delta_ms: firstDeltaMs, total_ms: Date.now() - t_start });
   } catch (err) {
-    // 用户 key 鉴权失败：向上抛出，由 streamReply 捕获后回退平台模型重试（不在此吞掉）。
-    if (err.authFailed) throw err;
+    // 诊断：网络/超时/SSRF 错误的关键字段，便于从日志直接定位失败点
+    console.error('[chat:diag] pumpModelStream 异常', {
+      request_id: reqId, error: err.message, code: err.code || err.cause?.code || '',
+      cause: err.cause?.message || '', name: err.name,
+      platform: !!eff.platform, target: targetUrl, elapsed_ms: Date.now() - t_start,
+      header_arrived: headerArrivedMs > 0,
+    });
+    // 用户 key 的任何错误（网络/超时/SSRF/Invalid URL）都向上抛，让 streamReply
+    // 捕获后回退平台模型——与上面的 !upstream.ok 路径一致，统一回退策略。
+    // 平台模型的错误在此内部处理（写 SSE 错误），因为没有回退目标。
+    if (!eff.platform) {
+      err.userKeyFailed = true;
+      throw err;
+    }
     // 客户端断开：静默（已无接收方）；首字节超时：告知超时；SSRF/网络错误：给出可排查提示；其余：通用不可用。
     if (err.name === 'AbortError') {
       if (!res.writableEnded) { try { res.write(`data: ${JSON.stringify({ error: '模型服务响应超时，请稍后再试' })}\n\n`); } catch { /* 连接已断 */ } }
     } else {
-      console.error('[chat] 连接模型服务失败', err.message);
-      // SSRF 预检错误（safeFetch 抛出，带 expose 标记）：把真实原因透传给客户端，
-      // 便于用户发现是 Base URL 配置问题（如误填内网地址、域名无法解析）。
-      const hint = err.expose
-        ? `模型服务连接失败：${err.message}。请检查「设置 → 语言模型」的 Base URL 是否正确。`
-        : '模型服务暂不可用，请稍后再试';
+      console.error('[chat] 连接模型服务失败', err.message, err.code || '', eff.platform ? '(platform)' : '(user-key)');
+      // 网络层错误按 err.code 细化，让用户能直接判断是 DNS / 拒连 / 超时还是其他；
+      // SSRF 预检错误（safeFetch 抛出，带 expose 标记）透传真实原因；
+      // 其余非暴露错误也带上 err.message，避免笼统「暂不可用」掩盖真实故障。
+      // Node 原生 fetch 的网络错误是 TypeError "fetch failed"，真实原因在 err.cause
+      //（如 ENOTFOUND / ECONNREFUSED），这里展开 cause 给出可定位的提示。
+      const where = eff.platform ? '后台「平台 AI → 语言模型」' : '「设置 → 语言模型」';
+      const cause = err.cause || {};
+      const code = err.code || cause.code || '';
+      let hint;
+      if (err.expose) {
+        hint = `模型服务连接失败：${err.message}。请检查${where}的 Base URL 是否正确。`;
+      } else if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
+        hint = `无法解析模型服务域名（${code}），请检查${where}的 Base URL 是否正确`;
+      } else if (code === 'ECONNREFUSED' || code === 'ECONNRESET') {
+        hint = `模型服务拒绝连接 / 连接被重置（${code}），请检查 Base URL 与端口，或稍后再试`;
+      } else if (code === 'ETIMEDOUT' || err.name === 'TimeoutError' || cause.name === 'TimeoutError') {
+        hint = '模型服务连接超时，请稍后再试';
+      } else if (err.message === 'fetch failed' && cause.message) {
+        // 原生 fetch 网络错误：展开 cause 给出更具体原因
+        hint = `模型服务连接失败：${cause.message}。请检查${where}的 Base URL 与网络是否可达`;
+      } else {
+        // 兜底：带 err.message，不再用笼统「暂不可用」掩盖真实原因
+        hint = `模型服务连接失败：${err.message || '未知错误'}${code ? `（${code}）` : ''}`;
+      }
       if (!res.writableEnded) { try { res.write(`data: ${JSON.stringify({ error: hint })}\n\n`); } catch { /* 连接已断 */ } }
     }
   } finally {
@@ -811,7 +898,7 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
   const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
   const settings = getSettings(req.user.id);
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
-  const eff = effectiveLLM(settings);
+  let eff = effectiveLLM(settings);
 
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
@@ -841,9 +928,41 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
     ...history.map(m => ({ role: m.role, content: m.content })),
     { role: 'user', content: userInput }
   ];
-  const full = await pumpModelStream(res, eff, payloadMessages);
+  // 用户 key 失败时自动回退平台模型（与 streamReply 一致），保证面板生成不中断
+  let full;
+  let activeFeeCtx = feeCtx;
+  try {
+    full = await pumpModelStream(res, eff, payloadMessages);
+  } catch (err) {
+    if (err.userKeyFailed && !eff.platform) {
+      const p = getPlatform();
+      if (p.key && p.base_url) {
+        console.warn('[chat] /generate 用户 key 调用失败，自动回退平台模型', { user_id: conv.user_id, reason: err.message });
+        const eff2 = { base_url: p.base_url, api_key: p.key, model: p.model,
+          temperature: settings?.llm_temperature ?? 0.8, max_tokens: settings?.llm_max_tokens || 1024,
+          system_prompt: p.system_prompt || '', platform: true };
+        let system2 = system;
+        if (eff2.system_prompt.trim()) system2 = eff2.system_prompt.trim() + '\n\n' + system2;
+        const payload2 = [{ role: 'system', content: system2 }, ...payloadMessages.slice(1)];
+        const feeCtx2 = chargePlatformFee({
+          req, res, sse, me, eff: eff2, historyLen: history.length,
+          memo: `平台 AI · 面板生成《${character?.name || ''}》（用户 key 失效回退）`, refOwner: character?.owner_id,
+          convId: conv.id, characterId: conv.character_id,
+        });
+        if (feeCtx2.rejected) return res.end();
+        activeFeeCtx = feeCtx2;
+        eff = eff2;
+        full = await pumpModelStream(res, eff2, payload2);
+      } else {
+        sse({ error: '您的语言模型配置调用失败，且平台未配置回退模型。请前往「设置 → 语言模型」检查配置。' });
+        sse('[DONE]'); return res.end();
+      }
+    } else {
+      return res.end();
+    }
+  }
   if (full == null) {
-    feeCtx.refund('上游错误');
+    activeFeeCtx.refund('上游错误');
     log({ level: 'warn', source: 'server', category: 'chat', event: 'generate',
       message: `面板生成失败《${character?.name || ''}》（上游错误）`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
       endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
@@ -852,10 +971,10 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
   }
   // 客户端在流式中途断开：回复未确认送达且可能被截断，原路退款（与「有产出才收费」
   // 的既有政策一致，避免为用户没看到的截断内容全额计费）。socket 已销毁，直接收尾。
-  if (res.destroyed) { feeCtx.refund('客户端断开'); try { res.end(); } catch { /* */ } return; }
-  if (full.trim()) feeCtx.settle();
-  else feeCtx.refund('空产出');
-  const feeDue = feeCtx.fee;
+  if (res.destroyed) { activeFeeCtx.refund('客户端断开'); try { res.end(); } catch { /* */ } return; }
+  if (full.trim()) activeFeeCtx.settle();
+  else activeFeeCtx.refund('空产出');
+  const feeDue = activeFeeCtx.fee;
   log({ level: 'info', source: 'server', category: 'chat', event: 'generate',
     message: `面板生成《${character?.name || ''}》`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
     endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
@@ -901,12 +1020,14 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   try {
     full = await pumpModelStream(res, eff, payloadMessages);
   } catch (err) {
-    // 用户自带 key 鉴权失败（401/403）：key 可能已失效/被撤销。自动回退到平台模型
-    // 重试一次（若平台模型可用），保证对话不中断。用户无感知，仅日志记录。
-    if (err.authFailed && !eff.platform) {
+    // 用户自带 key 的任何失败（401/403 鉴权失败 / Invalid URL / 网络错误 / 超时 /
+    // model 名错 / 上下文超限等）：自动回退到平台模型重试一次（若平台模型可用），
+    // 保证对话不中断。用户无感知，仅日志记录。这是「用户 key 失效但依旧绑定 key
+    // 时平台自动路由到平台模型」的完整实现——不局限于 401/403。
+    if (err.userKeyFailed && !eff.platform) {
       const p = getPlatform();
       if (p.key && p.base_url) {
-        console.warn('[chat] 用户 key 鉴权失败，自动回退平台模型', { user_id: conv.user_id, upstream: err.upstreamStatus, platform_model: p.model });
+        console.warn('[chat] 用户 key 调用失败，自动回退平台模型', { user_id: conv.user_id, reason: err.message, upstream: err.upstreamStatus, platform_model: p.model });
         const eff2 = { base_url: p.base_url, api_key: p.key, model: p.model,
           temperature: settings?.llm_temperature ?? 0.8, max_tokens: settings?.llm_max_tokens || 1024,
           system_prompt: p.system_prompt || '', platform: true };
@@ -927,7 +1048,7 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
         full = await pumpModelStream(res, eff2, payload2);
       } else {
         // 平台模型未配置：告知用户 key 失效且无回退可用
-        sse({ error: '您的 API Key 鉴权失败（可能已失效），且平台未配置回退模型。请前往「设置 → 语言模型」更新 Key。' });
+        sse({ error: '您的语言模型配置调用失败（可能 Key 失效或 Base URL 有误），且平台未配置回退模型。请前往「设置 → 语言模型」检查配置。' });
         sse('[DONE]'); return res.end();
       }
     } else {

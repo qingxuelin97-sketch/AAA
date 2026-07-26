@@ -34,7 +34,7 @@ async function llmOnce(eff, system, user, { maxTokens = 1200, temperature } = {}
   // 防止同步 assertPublicUrl 被「域名解析到内网 / 公网 302 跳内网」绕过（同 chat.js 范式）。
   // 平台配置由 GM 控制台设置、视为可信，走原生 fetch（可能部署在内网）。
   const doFetch = eff.platform ? fetch : (u, o) => safeFetch(u, o, { timeoutMs: 60000 });
-  const r = await doFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
+  const r = await doFetch(String(eff.base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
     body: JSON.stringify({
       model: eff.model,
@@ -496,7 +496,7 @@ async function streamWrite(res, { run, novel, settings, directive, beats, userId
     const doFetch = eff.platform
       ? (u, o) => fetch(u, { ...o, signal: ac.signal })
       : (u, o) => safeFetch(u, { ...o, signal: ac.signal }, { timeoutMs: 60000 });
-    const upstream = await doFetch(eff.base_url.replace(/\/$/, '') + '/chat/completions', {
+    const upstream = await doFetch(String(eff.base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
       body: JSON.stringify({ model: eff.model, messages, temperature: eff.temperature ?? 0.9, max_tokens: eff.max_tokens || 1600, stream: true }),
     });
