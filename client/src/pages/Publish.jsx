@@ -2,18 +2,25 @@ import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast } from '../ui.jsx';
-import { CoverArt } from '../art.jsx';
+import { CoverArt, EmptyArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
-import { Drama, ScrollText, Users, ArrowRight, Globe } from 'lucide-react';
+import { Drama, ScrollText, Users, ArrowRight, Globe, RefreshCw } from 'lucide-react';
 
 export default function Publish() {
   const nav = useNavigate();
   const toast = useToast();
   const appMode = isAppMode(); // App 壳视觉钩子；Web DOM 零差异
   const [mine, setMine] = useState([]);
+  const [loading, setLoading] = useState(!appMode); // Web 首载骨架；App 保持原行为
+  const [loadError, setLoadError] = useState('');
 
-  const load = () => api('/characters/mine').then(d => setMine(d.characters)).catch(() => {});
-  useEffect(() => { load(); }, []);
+  const load = () => {
+    if (!appMode) setLoadError('');
+    return api('/characters/mine').then(d => setMine(d.characters))
+      .catch(e => { if (!appMode) setLoadError(e.message || '角色列表载入失败，请稍后重试'); })
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const publish = async (c) => {
     try { await api('/community/publish-character/' + c.id, { method: 'POST' }); toast('已发布到广场'); load(); }
@@ -42,7 +49,25 @@ export default function Publish() {
         </div>
 
         <div className="section-title" style={{ marginTop: 34 }}><h2>把已有角色发布到广场</h2></div>
-        {mine.length === 0 ? <div className="empty" style={{ padding: 40 }}>还没有角色，先去创建一个吧</div> : (
+        {!appMode && loading ? (
+          <div className="lgw-skel-list" aria-hidden="true">{[0, 1, 2].map(i => <div key={i} className="skel" />)}</div>
+        ) : !appMode && loadError && mine.length === 0 ? (
+          <div className="lgw-error-inline" role="alert">
+            <span>{loadError}</span>
+            <button className="btn sm" onClick={() => void load()}><RefreshCw size={14} /> 重试</button>
+          </div>
+        ) : mine.length === 0 ? (
+          appMode
+            ? <div className="empty" style={{ padding: 40 }}>还没有角色，先去创建一个吧</div>
+            : (
+              <div className="empty lgw-empty">
+                <EmptyArt kind="library" />
+                <h2 className="lgw-empty-title">还没有可发布的角色</h2>
+                <p className="lgw-empty-sub">先创建一个属于你的角色，就能把 TA 发布到广场与大家见面。</p>
+                <div className="lgw-empty-cta"><button className="btn primary" onClick={() => nav('/character/new')}><Drama size={15} /> 去创建角色</button></div>
+              </div>
+            )
+        ) : (
           <div className="grid">
             {mine.map(c => (
               <div key={c.id} className="char-card">

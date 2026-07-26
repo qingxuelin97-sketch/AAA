@@ -76,10 +76,15 @@ GitHub Pages 只能托管纯浏览器版（静态）。要部署带真实数据�
 - 完整用户中心：资料 / 横幅 / 安全（改密）/ 偏好（NSFW、通知）设置
 - 移动端底部导航 + 响应式布局，桌面端侧边栏
 
+**Web 端体验（Lumen Glass 大更新）**
+- 🔭 沉浸发现 `/discover`：桌面全屏卡片流 + 右侧信息板，`j / k` 或方向键翻卡、Enter 直接开聊
+- 🗞 今日仪表盘首页：签到、每日任务、续读轨、快捷入口与浏览目录合体的 WebHome（宽屏双栏布局）
+- 📨 消息中心与通话入口：侧栏直达 `/messages` 会话中心；角色页 / 沉浸流一键发起全屏语音通话
+
 ## 🛠 技术栈
 
 - 后端：Node.js + Express 5 + better-sqlite3 + JWT + multer
-- 前端：React 19 + Vite + React Router + lucide-react 图标 + Inter 字体（自定义深色 UI，无 UI 框架）
+- 前端：React 19 + Vite + React Router + lucide-react 图标（无 UI 框架）；界面为「曜光玻璃 Lumen Glass」双壳体系 —— App 壳与 Web 壳共享一套冻结设计令牌、CSS 围栏互斥零波及，Web 层权威见 `docs/design/WEB_LUMEN_SPEC.md`
 
 ## 🚀 本地运行
 

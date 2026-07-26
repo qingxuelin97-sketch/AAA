@@ -1,0 +1,750 @@
+/* ============================================================================
+   曜光玻璃 Lumen Glass · Web 长尾页面重皮（web-lumen-longtail.css）— 任务 K
+   ----------------------------------------------------------------------------
+   · 定位：web-lumen-pages.css 已覆盖主干页（§1-§9），本文件补长尾：
+     Admin / Insights / Draw / Publish / Tags / Announcements / Parliament
+     外围 chrome / PublicShell（/features /help）/ Gacha·Achievements 缺口。
+     CSS-only，零 JSX 改动；只做材质与排版统一，不动布局逻辑。
+   · 围栏：每一条选择器从 html:not([data-app="1"]) 开始（@media 内同样），
+     与 App 的 html[data-app="1"] 围栏在 DOM 上互斥，App 侧字节零波及。
+     围栏贡献 (0,1,1) 特异性，天然压过存量基线与 [data-theme="dark"] 散补丁，
+     深浅两态一律靠 --lg-* 令牌自动翻转，不写深色专块。
+   · 材质纪律（SPEC §1 / D8）：内容卡一律「半透明底 + var(--lg-glass-
+     shadow-*) 三件套」零 blur；本文件零新增 backdrop-filter（真实模糊为 0）。
+   · 颜色零新增字面量：var(--lg-*) / 桥接令牌（--panel / --serif，材质层先例；
+     议会段的 --au 是 .pl-root 既有权威变量）/ color-mix(令牌, #fff/#000/
+     transparent)；唯二豁免：白系玻璃 rgb(255 255 255 / x%) 与黑系遮罩
+     rgb(0 0 0 / x%)。
+   · 动效：零新增 @keyframes（存量入场/loading 动画保留原名原样）；按压与
+     状态过渡统一 --lg-dur-* + --lg-ease，reduced-motion 下时长令牌自动清零。
+   · !important 仅两处（.ann-banner / .ann-ic 的 background）：Announcements
+     的 GM 徽卡把旧暖棕渐变写死在 JSX 行内 style 上（禁改 DOM），行内样式
+     只能以 !important 压过 —— 与 web-lumen-shell.css §8.5 的先例同理。
+   · qa-* 类零触碰；Parliament（Cinzel 罗马体沉浸王国）与 Achievements 开场
+     金色典礼（.ach-intro）的独立美术不重皮，只衔接外围 chrome。
+   ----------------------------------------------------------------------------
+   接线提醒（编排者）：本文件为【新建】，需在 main.jsx 统一接线
+   （import './styles/web-lumen-longtail.css';，晚于 web-lumen-tokens.css
+   即可 —— 规则全靠围栏特异性取胜，不依赖精确 import 顺序）。
+   本任务禁改 main.jsx，未自行接线。
+   ----------------------------------------------------------------------------
+   目录
+     §1  Admin（/admin，.adm-*）—— 统计卡 / 表格行 / GM 控制台分组 / 危险区
+     §2  Insights（/insights，.ins-*）—— 星轨看板卡 + KPI 行 + Charts.jsx
+     §3  Draw（/draw）—— 工作室侧栏 / 舞台生成态 / 绘廊网格
+     §4  Publish（/publish）—— 发布中心入口卡与角色发布网格
+     §5  Tags（/tags）胶囊云 + Announcements（/announcements，.ann-*）
+     §6  Parliament（/parliament）—— 只接外围 chrome，不动殿堂美术
+     §7  PublicShell（/features /help，.pubpage*）—— 品牌板 / 目录 / 正文
+     §8  Gacha / Achievements 补缺（pages §7.3/§7.4 之外的余量）
+     §9  跨页收尾 —— 危险语义 / 触控补高 / reduced-motion 兜底
+   ========================================================================== */
+
+/* ============================================================================
+   §1 Admin（/admin，.adm-* 类族）—— 只做材质与排版统一，不动布局逻辑
+   ========================================================================== */
+
+/* ── 1.1 页签条：GM 控制台十枚页签换行呼吸感（指示线样式由 pages §2.6
+       的 .tabs-bar 统一接管，这里只补几何） ── */
+html:not([data-app="1"]) .adm-tabs {
+  gap: 2px 10px;
+  row-gap: 2px;
+}
+html:not([data-app="1"]) .adm-tabs button {
+  border-radius: var(--lg-r-sm) var(--lg-r-sm) 0 0;
+  font-weight: 600;
+}
+
+/* ── 1.2 统计卡：内容卡三件套 + 大数字排版；金币产出是唯一金色光点 ── */
+html:not([data-app="1"]) .adm-stat {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .adm-stat b {
+  font-family: var(--serif);
+  font-size: var(--lg-type-display);
+  color: var(--lg-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+html:not([data-app="1"]) .adm-stat > span:not(.adm-stat-ic) { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .adm-stat-ic { color: var(--lg-ink-3); opacity: 1; }
+html:not([data-app="1"]) .gold-num { color: var(--lg-gold); }
+@media (hover: hover) and (pointer: fine) {
+  html:not([data-app="1"]) .adm-stat:hover {
+    transform: var(--lgw-hover-raise);
+    box-shadow: var(--lgw-hover-lift);
+  }
+}
+
+/* ── 1.3 图表看板卡（Charts.jsx 输出）：卡面三件套 + 刻度/标签用墨阶 ── */
+html:not([data-app="1"]) .chart-card {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .chart-card h3 {
+  color: var(--lg-ink);
+  font-size: var(--lg-type-section);
+}
+html:not([data-app="1"]) .chart-empty { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .bc-grid span { background: var(--lg-hairline); }
+html:not([data-app="1"]) .bc-grid span:last-child {
+  background: color-mix(in srgb, var(--lg-ink) 18%, transparent);
+}
+html:not([data-app="1"]) .bc-ymax,
+html:not([data-app="1"]) .bc-label { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .bc-val { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .bc-col.lead .bc-val { color: var(--lg-act); }
+html:not([data-app="1"]) .bc-col.lead .bc-label { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .lc-axis span { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .lc-total { color: var(--lg-ink-2); font-variant-numeric: tabular-nums; }
+
+/* ── 1.4 管理行（用户/内容/兑换码/白名单/举报共用 .adm-row）：
+       稳定行高 + 三件套 + hover 轻移（与排行榜行同语汇） ── */
+html:not([data-app="1"]) .adm-row {
+  border: 0;
+  border-radius: var(--lg-r-row);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  min-height: 56px;
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .adm-row:hover {
+  transform: translateX(3px);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .adm-row .grow b { color: var(--lg-ink); }
+html:not([data-app="1"]) .adm-row .grow .sub2 { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .adm-actions .btn { min-height: 36px; }
+/* 身份徽记：GM=violet（治理语义）· 封禁=coral（危险语义） */
+html:not([data-app="1"]) .gm-tag {
+  background: color-mix(in srgb, var(--lg-violet) 14%, transparent);
+  color: var(--lg-violet);
+  border-radius: var(--lg-r-pill);
+}
+html:not([data-app="1"]) .ban-flag {
+  background: var(--lg-coral);
+  color: var(--lg-finance-ink);
+  border-radius: var(--lg-r-pill);
+}
+html:not([data-app="1"]) .code-chip {
+  background: var(--lg-grouped);
+  color: var(--lg-ink);
+  border-radius: var(--lg-r-xs);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+
+/* ── 1.5 议会 GM 分组：席位格盘（inset group）+ 状态语义
+       over=coral 超额 · vac=gold 虚位 · full=jade 满员 ── */
+html:not([data-app="1"]) .seat-grid { gap: 10px; }
+html:not([data-app="1"]) .seat-cell {
+  border: 0;
+  border-radius: var(--lg-r-control);
+  background: var(--lg-grouped);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+html:not([data-app="1"]) .seat-cell b {
+  font-family: var(--serif);
+  color: var(--lg-ink);
+  font-variant-numeric: tabular-nums;
+}
+html:not([data-app="1"]) .seat-cell > span { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .seat-cell.over {
+  background: color-mix(in srgb, var(--lg-coral) 8%, var(--lg-grouped));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-coral) 40%, transparent);
+}
+html:not([data-app="1"]) .seat-cell.over b { color: var(--lg-coral); }
+html:not([data-app="1"]) .seat-cell.vac {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-gold) 42%, transparent);
+}
+html:not([data-app="1"]) .seat-cell.vac b { color: var(--lg-gold); }
+html:not([data-app="1"]) .seat-cell.full b { color: var(--lg-jade); }
+html:not([data-app="1"]) .seat-controls .btn { min-height: var(--lg-control-min); }
+/* 超额警示条：珊瑚左缘（与离线条同语汇），不整片染红 */
+html:not([data-app="1"]) .seat-warn {
+  border: 0;
+  border-inline-start: 3px solid var(--lg-coral);
+  border-radius: var(--lg-r-sm);
+  background: color-mix(in srgb, var(--lg-coral) 8%, transparent);
+  color: var(--lg-ink);
+}
+html:not([data-app="1"]) .seat-warn svg { color: var(--lg-coral); }
+/* 现任议员胶囊：玻璃 chip + 撤职按钮珊瑚 hover */
+html:not([data-app="1"]) .council-chip {
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink);
+  min-height: 34px;
+}
+html:not([data-app="1"]) .council-chip button {
+  color: var(--lg-ink-3);
+  transition: color var(--lg-dur-state) var(--lg-ease), background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .council-chip button:hover {
+  color: var(--lg-coral);
+  background: color-mix(in srgb, var(--lg-coral) 12%, transparent);
+}
+
+/* ── 1.6 平台 AI 自检结果卡（.itr-*）：成败只落图标与标题色 ── */
+html:not([data-app="1"]) .img-test-result .itr-head { color: var(--lg-ink); }
+html:not([data-app="1"]) .img-test-result.ok .itr-head { color: var(--lg-jade); }
+html:not([data-app="1"]) .img-test-result.fail .itr-head { color: var(--lg-coral); }
+html:not([data-app="1"]) .img-test-result .itr-msg { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .img-test-result .itr-sample img {
+  border: 0;
+  border-radius: var(--lg-r-sm);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+
+/* ============================================================================
+   §2 Insights（/insights，.ins-*）—— 星轨：hero 光晕卡 + KPI 行 + 看板卡
+   ========================================================================== */
+
+/* ── 2.1 Hero：panel 高不透明面 + 主动作/星辉双光斑（零 blur） ── */
+html:not([data-app="1"]) .ins-hero {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background-color: color-mix(in srgb, var(--panel) 88%, transparent);
+  background-image:
+    radial-gradient(120% 90% at 12% -12%, color-mix(in srgb, var(--lg-act) 14%, transparent), transparent 62%),
+    radial-gradient(100% 80% at 96% 112%, color-mix(in srgb, var(--lg-violet) 12%, transparent), transparent 58%);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .ins-hero h2 {
+  font-family: var(--serif);
+  color: var(--lg-ink);
+  letter-spacing: -0.01em;
+}
+html:not([data-app="1"]) .ins-hero .ins-sub { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .ins-hero .ins-streak {
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 26%, transparent);
+}
+/* 星点着主动作色（漂移动画是存量装饰，lite 档已由旧规则隐藏） */
+html:not([data-app="1"]) .ins-star { background: var(--lg-act); }
+
+/* ── 2.2 KPI 行：内容卡三件套 + 数字排版 ── */
+html:not([data-app="1"]) .ins-kpi {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .ins-kpi .k-label { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .ins-kpi .k-label svg { color: var(--lg-act); }
+html:not([data-app="1"]) .ins-kpi .k-value {
+  color: var(--lg-ink);
+  font-variant-numeric: tabular-nums;
+}
+html:not([data-app="1"]) .ins-kpi .k-hint { color: var(--lg-ink-3); }
+
+/* ── 2.3 看板卡与图表：卡面三件套；条形图零值/轴标走墨阶 ── */
+html:not([data-app="1"]) .ins-card {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .ins-card h3 {
+  color: var(--lg-ink);
+  font-size: var(--lg-type-section);
+}
+html:not([data-app="1"]) .ins-card .c-sub { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .ins-bar.zero i { background: var(--lg-grouped); }
+html:not([data-app="1"]) .ins-bar b { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .ins-bar small { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .ins-bar .tip {
+  border-radius: var(--lg-r-xs);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
+}
+
+/* ── 2.4 羁绊行 / 创作六宫格 / 经济胶囊：inset group 语汇 ── */
+html:not([data-app="1"]) .ins-comp-row {
+  border-radius: var(--lg-r-row);
+  transition: background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .ins-comp-row:hover { background: var(--lg-grouped); }
+html:not([data-app="1"]) .ins-comp-row .n { color: var(--lg-ink); }
+html:not([data-app="1"]) .ins-comp-row .bar { background: var(--lg-grouped); }
+html:not([data-app="1"]) .ins-comp-row .v { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .ins-made {
+  border: 0;
+  border-radius: var(--lg-r-control);
+  background: var(--lg-grouped);
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: background var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .ins-made:hover {
+  background: var(--lg-act-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 30%, transparent);
+  transform: var(--lgw-hover-raise);
+}
+html:not([data-app="1"]) .ins-made svg { color: var(--lg-act); }
+html:not([data-app="1"]) .ins-made b { color: var(--lg-ink); font-variant-numeric: tabular-nums; }
+html:not([data-app="1"]) .ins-made span { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .ins-eco .pill {
+  border-radius: var(--lg-r-control);
+  background: var(--lg-grouped);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+html:not([data-app="1"]) .ins-eco .pill b { font-variant-numeric: tabular-nums; color: var(--lg-ink); }
+html:not([data-app="1"]) .ins-eco .pill span { color: var(--lg-ink-3); }
+
+/* ============================================================================
+   §3 Draw（/draw）—— .draw-* 前轮只做了 glass-on 重定价（shell §8.5），
+   这里补齐：工作室侧栏（左 panel）/ 舞台生成态 / 绘廊网格
+   ========================================================================== */
+
+/* ── 3.1 工作室侧栏与舞台：承载卡三件套（.card 底料再上一档） ── */
+html:not([data-app="1"]) .draw-panel,
+html:not([data-app="1"]) .draw-stage {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+/* 舞台上垫一层主动作柔光，空态不显得死白 */
+html:not([data-app="1"]) .draw-stage {
+  background-image: radial-gradient(120% 90% at 50% 0%, var(--lg-act-soft), transparent 70%);
+}
+html:not([data-app="1"]) .draw-panel .field label { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .draw-panel .hint { color: var(--lg-ink-3); }
+
+/* ── 3.2 计费徽章：玻璃胶囊，金币语义是唯一光点 ── */
+html:not([data-app="1"]) .draw-cost-badge {
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  color: var(--lg-ink);
+  min-height: 34px;
+}
+html:not([data-app="1"]) .draw-cost-badge > svg { color: var(--lg-gold); }
+html:not([data-app="1"]) .draw-vip {
+  background: color-mix(in srgb, var(--lg-gold) 16%, transparent);
+  color: var(--lg-gold);
+  border-radius: var(--lg-r-pill);
+}
+
+/* ── 3.3 风格 chip：与全站 cat-chip 同配方（选中 = act 实心） ── */
+html:not([data-app="1"]) .draw-chip {
+  min-height: 36px;
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  color: var(--lg-ink-2);
+  transition: background var(--lg-dur-state) var(--lg-ease), color var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .draw-chip:hover {
+  color: var(--lg-ink);
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-ink) 18%, transparent);
+  transform: none;
+}
+html:not([data-app="1"]) .draw-chip.on {
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--lg-act) 26%, transparent);
+  font-weight: 600;
+}
+
+/* ── 3.4 生成动作区：余额 / 不足警示 / 主按钮 ── */
+html:not([data-app="1"]) .draw-balance { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .draw-balance b { color: var(--lg-ink); font-variant-numeric: tabular-nums; }
+html:not([data-app="1"]) .draw-balance b svg { color: var(--lg-gold); }
+html:not([data-app="1"]) .draw-warn { color: var(--lg-coral); }
+html:not([data-app="1"]) .btn.primary.draw-go {
+  min-height: var(--lg-control-min);
+  border-radius: var(--lg-r-control);
+}
+
+/* ── 3.5 舞台生成队列态：空态 / 绘制中 / 出图 ── */
+html:not([data-app="1"]) .draw-stage-empty { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .draw-ph {
+  border-radius: var(--lg-r-card);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 22%, transparent);
+}
+html:not([data-app="1"]) .draw-loader { color: var(--lg-act); }
+html:not([data-app="1"]) .draw-result-img {
+  border-radius: var(--lg-r-card);
+  box-shadow: var(--lg-glass-shadow-2);
+}
+html:not([data-app="1"]) .draw-result-bar .btn { min-height: 36px; }
+
+/* ── 3.6 绘廊网格：占位纹理 + hover 升起 + 角标遮罩 ── */
+html:not([data-app="1"]) .draw-tile {
+  border-radius: var(--lg-r-card);
+  background: var(--lg-ph);
+  box-shadow: var(--lg-glass-shadow-1);
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .draw-tile:hover {
+  border-color: transparent;
+  transform: var(--lgw-hover-raise);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .draw-tile figcaption {
+  background: linear-gradient(180deg, rgb(0 0 0 / 0%), rgb(0 0 0 / 62%));
+}
+html:not([data-app="1"]) .draw-tile-acts button {
+  border: 0;
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-scrim);
+  color: var(--lg-finance-ink);
+  transition: background var(--lg-dur-state) var(--lg-ease), transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .draw-tile-acts button:hover { background: var(--lg-act); color: var(--lg-act-ink); }
+html:not([data-app="1"]) .draw-tile-acts button:nth-child(3):hover { background: var(--lg-coral); }
+
+/* ============================================================================
+   §4 Publish（/publish）—— 发布中心：入口三卡 hover 升起；角色发布网格
+   复用 §6.1 的 .char-card 与 .pill-pub，这里只补层级与触控
+   ========================================================================== */
+html:not([data-app="1"]) .page .card .cover-art-box { background: var(--lg-ph); }
+html:not([data-app="1"]) .char-card .foot .btn.sm { min-height: 36px; }
+html:not([data-app="1"]) .char-card .cover .cover-art-box { border-radius: 0; }
+
+/* ============================================================================
+   §5 Tags（/tags）胶囊云 + Announcements（/announcements，.ann-*）
+   （云胶囊本体已由 pages §6.5 接管，这里只补计数徽与公告列表）
+   ========================================================================== */
+
+/* ── 5.1 标签云：计数徽从裸文本升为微型胶囊 ── */
+html:not([data-app="1"]) .tag-cloud { padding: var(--lg-space-2) 0 var(--lg-space-4); }
+html:not([data-app="1"]) .tag-cloud-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act-soft);
+  font-size: 11px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 5.2 公告横幅（Draw 服务未开启提示 / Announcements GM 徽卡共用）：
+       GM 徽卡的旧暖棕渐变写死在行内 style（禁改 DOM），以 !important 统一为
+       玻璃观感三件套；图标位统一主动作实心 ── */
+html:not([data-app="1"]) .ann-banner {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 88%, transparent) !important;
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .ann-banner .ann-tx b { color: var(--lg-ink); }
+html:not([data-app="1"]) .ann-banner .ann-tx p { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .ann-ic {
+  background: var(--lg-act) !important;
+  color: var(--lg-act-ink);
+  border-radius: var(--lg-r-sm);
+}
+html:not([data-app="1"]) .ann-banner .ann-x {
+  color: var(--lg-ink-3);
+  border-radius: var(--lg-r-sm);
+  transition: color var(--lg-dur-state) var(--lg-ease), background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .ann-banner .ann-x:hover {
+  color: var(--lg-ink);
+  background: var(--lg-grouped);
+}
+
+/* ── 5.3 公告列表：卡面三件套；置顶 = 主动作柔底 + 内环（不再暖橙渐变） ── */
+html:not([data-app="1"]) .ann-item {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .ann-item h3 {
+  color: var(--lg-ink);
+  font-size: var(--lg-type-section);
+}
+html:not([data-app="1"]) .ann-item.pinned {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--lg-act-soft), var(--lg-act-soft)),
+    color-mix(in srgb, var(--panel) 90%, transparent);
+  box-shadow: var(--lg-glass-shadow-1), inset 0 0 0 1px color-mix(in srgb, var(--lg-act) 26%, transparent);
+}
+html:not([data-app="1"]) .ann-item .pin {
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  border-radius: var(--lg-r-pill);
+}
+html:not([data-app="1"]) .ann-item .meta { color: var(--lg-ink-3); }
+
+/* ============================================================================
+   §6 Parliament（/parliament）—— Cinzel 罗马体沉浸王国：殿堂美术零触碰，
+   只把外围 chrome（页头 / 返回 / 卡面边缘）与 Lumen 画布衔接得体。
+   （--au / --au-hi 是 .pl-root 既有权威金石变量，非新增字面量）
+   ========================================================================== */
+
+/* ── 6.1 页头 chrome：返回/礼乐/名册/起草按钮触控位 ≥44px ── */
+html:not([data-app="1"]) .pl-topbar .btn {
+  min-height: var(--lg-control-min);
+  border-radius: var(--lg-r-control);
+  transition: background var(--lg-dur-state) var(--lg-ease), border-color var(--lg-dur-state) var(--lg-ease), color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .pl-back { min-width: var(--lg-control-min); }
+
+/* ── 6.2 焦点环入乡随俗：殿堂内的键盘外环走金石 --au，而非 Lumen 紫
+       （压过 shell §0 的通配 --lg-focus；不改变可见性语义，只换色温） ── */
+html:not([data-app="1"]) .pl-root :focus-visible {
+  outline: 2px solid var(--au);
+  outline-offset: 2px;
+}
+
+/* ── 6.3 卡面边缘与画布衔接：正文容器留白节奏对齐 Lumen 页面网格；
+       殿堂卡面的金石描边保留，仅统一圆角档位到 --lg-r-panel 语汇 ── */
+html:not([data-app="1"]) .pl-page {
+  padding-bottom: var(--lg-space-6);
+}
+html:not([data-app="1"]) .pl-list { gap: var(--lg-space-4); }
+
+/* ============================================================================
+   §7 PublicShell（/features /help，.pubpage* 类族）—— 公开页壳 Lumen 化：
+   品牌板 / 目录 / 正文排版。这两页不套 Protected 壳，body 光晕已生效，
+   重点是卡面与标题层级。顶栏既有 blur(12px) 由 perf-atelier 提供，
+   本文件不新增 backdrop-filter（材质纪律）。
+   ========================================================================== */
+
+/* ── 7.1 页壳与顶栏：画布 + 光晕打底；顶栏白玻璃 + 发丝 ── */
+html:not([data-app="1"]) .pubpage {
+  background-color: var(--lg-canvas);
+  background-image: var(--lg-ambient);
+  color: var(--lg-ink);
+}
+html:not([data-app="1"]) .pubpage-top {
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  border-bottom: 1px solid var(--lg-hairline);
+}
+html:not([data-app="1"]) .pubpage-brand { color: var(--lg-ink); }
+html:not([data-app="1"]) .pubpage-brand small { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .pubpage-nav-link {
+  min-height: 38px;
+  border-radius: var(--lg-r-sm);
+  color: var(--lg-ink-2);
+  transition: background var(--lg-dur-state) var(--lg-ease), color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .pubpage-nav-link:hover {
+  background: var(--lg-grouped);
+  color: var(--lg-ink);
+}
+html:not([data-app="1"]) .pubpage-nav-link.on {
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+html:not([data-app="1"]) .btn.pubpage-enter { min-height: 40px; border-radius: var(--lg-r-control); }
+
+/* ── 7.2 Hero 标题层级：墨→主动作渐变字保留语汇，换 Lumen 令牌 ── */
+html:not([data-app="1"]) .pubpage-hero h1 {
+  font-family: var(--serif);
+  background: linear-gradient(110deg, var(--lg-ink) 32%, var(--lg-act));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+html:not([data-app="1"]) .pubpage-hero p { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .pubpage-foot { border-top: 1px solid var(--lg-hairline); }
+html:not([data-app="1"]) .pubpage-copy { color: var(--lg-ink-3); }
+
+/* ── 7.3 产品功能（/features）：分区头 + 功能卡三件套 ── */
+html:not([data-app="1"]) .feat-section-ic {
+  border-radius: var(--lg-r-control);
+  background: linear-gradient(150deg, color-mix(in oklab, var(--lg-act) 78%, #fff), var(--lg-act));
+  color: var(--lg-act-ink);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--lg-act) 26%, transparent);
+}
+html:not([data-app="1"]) .feat-section-head h2 { color: var(--lg-ink); letter-spacing: -0.01em; }
+html:not([data-app="1"]) .feat-section-head p { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .feat-card {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  transition: transform var(--lg-dur-state) var(--lg-ease), box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .feat-card:hover {
+  border-color: transparent;
+  transform: var(--lgw-hover-raise);
+  box-shadow: var(--lgw-hover-lift);
+}
+html:not([data-app="1"]) .feat-card h3 { color: var(--lg-ink); }
+html:not([data-app="1"]) .feat-card-ic {
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+html:not([data-app="1"]) .feat-list li { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .feat-tick { color: var(--lg-jade); }
+html:not([data-app="1"]) .feat-note { color: var(--lg-ink-3); }
+
+/* ── 7.4 帮助中心（/help）：搜索条 / 问答分组卡 / 折叠行 ── */
+html:not([data-app="1"]) .help-search {
+  border: 0;
+  border-radius: var(--lg-r-control);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+  min-height: var(--lg-control-min);
+  color: var(--lg-ink-3);
+  transition: box-shadow var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .help-search:focus-within {
+  border-color: transparent;
+  box-shadow: var(--lg-glass-shadow-1), 0 0 0 3px color-mix(in srgb, var(--lg-act) 22%, transparent);
+}
+html:not([data-app="1"]) .help-search-input { color: var(--lg-ink); }
+html:not([data-app="1"]) .help-search-clear { color: var(--lg-act); min-height: 32px; }
+html:not([data-app="1"]) .help-group {
+  border: 0;
+  border-radius: var(--lg-r-card);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .help-group-ic {
+  border-radius: var(--lg-r-sm);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+}
+html:not([data-app="1"]) .help-group-head h3 { color: var(--lg-ink); }
+html:not([data-app="1"]) .help-group-head p { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .help-qa { border-top: 1px solid var(--lg-hairline); }
+html:not([data-app="1"]) .help-q {
+  min-height: var(--lg-control-min);
+  color: var(--lg-ink);
+  transition: color var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .help-q:hover { color: var(--lg-act); }
+html:not([data-app="1"]) .help-q-chev {
+  color: var(--lg-ink-3);
+  transition: transform var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .help-a { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .help-empty { color: var(--lg-ink-3); }
+
+/* ============================================================================
+   §8 Gacha / Achievements 补缺 —— pages §7.3 已盖 gx-orb/card/rarity(SSR)/
+   pity/spin，§7.4 已盖 ach-hero/card/ic/prog 家族；此处只补：
+   卡片文字区、标签、稀有度环语义（N/R/SR）与殿堂 hero（.ach-hall）。
+   开场典礼 .ach-intro 是独立金色美术 —— 与议会同理，零触碰。
+   ========================================================================== */
+
+/* ── 8.1 扭蛋出货卡文字区与标签 ── */
+html:not([data-app="1"]) .gx-meta { color: var(--lg-ink); }
+html:not([data-app="1"]) .gx-meta b { color: var(--lg-ink); }
+html:not([data-app="1"]) .gx-meta p { color: var(--lg-ink-2); }
+html:not([data-app="1"]) .gx-tags span {
+  background: var(--lg-grouped);
+  color: var(--lg-ink-2);
+  border-radius: var(--lg-r-pill);
+}
+html:not([data-app="1"]) .gx-face {
+  border-color: var(--panel);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
+}
+
+/* ── 8.2 稀有度语义环：N=中性墨 · R=azure · SR=violet · SSR=gold
+       （硬编码蓝紫橙 → 内容语义令牌；徽底用软色片，深浅两态都可读） ── */
+html:not([data-app="1"]) .gx-n .gx-rarity {
+  background: color-mix(in srgb, var(--lg-ink) 56%, transparent);
+  color: var(--lg-canvas);
+}
+html:not([data-app="1"]) .gx-r {
+  box-shadow: var(--lg-glass-shadow-2), 0 0 0 1.5px color-mix(in srgb, var(--lg-azure) 55%, transparent), 0 12px 30px color-mix(in srgb, var(--lg-azure) 22%, transparent);
+}
+html:not([data-app="1"]) .gx-r .gx-rarity {
+  background: color-mix(in srgb, var(--lg-azure) 16%, var(--panel));
+  color: var(--lg-azure);
+}
+html:not([data-app="1"]) .gx-sr {
+  box-shadow: var(--lg-glass-shadow-2), 0 0 0 1.5px color-mix(in srgb, var(--lg-violet) 55%, transparent), 0 14px 36px color-mix(in srgb, var(--lg-violet) 26%, transparent);
+}
+html:not([data-app="1"]) .gx-sr .gx-rarity {
+  background: color-mix(in srgb, var(--lg-violet) 16%, var(--panel));
+  color: var(--lg-violet);
+}
+html:not([data-app="1"]) .gx-ssr {
+  box-shadow: var(--lg-glass-shadow-2), 0 0 0 1.5px color-mix(in srgb, var(--lg-gold) 62%, transparent), 0 16px 44px color-mix(in srgb, var(--lg-gold) 30%, transparent);
+}
+html:not([data-app="1"]) .gx-ssr .gx-rarity {
+  background: linear-gradient(135deg, color-mix(in oklab, var(--lg-gold) 70%, #fff), var(--lg-gold));
+  color: var(--lg-finance);
+}
+
+/* ── 8.3 成就殿堂 hero（.ach-hall，web-super 的荣誉化层）：
+       卡面换三件套，金辉走 --lg-gold 令牌；徽章金底深字 ── */
+html:not([data-app="1"]) .ach-hall {
+  border: 0;
+  border-radius: var(--lg-r-panel);
+  background:
+    radial-gradient(90% 140% at 8% -10%, color-mix(in srgb, var(--lg-gold) 12%, transparent), transparent 55%),
+    color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: var(--lg-glass-shadow-1);
+}
+html:not([data-app="1"]) .ach-hall-badge {
+  background: linear-gradient(135deg, color-mix(in oklab, var(--lg-gold) 70%, #fff), var(--lg-gold));
+  color: var(--lg-finance);
+  border-radius: var(--lg-r-pill);
+}
+html:not([data-app="1"]) .ach-hall-stat { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .ach-prog small { color: var(--lg-ink-3); }
+html:not([data-app="1"]) .ach-cat .section-title h2 { color: var(--lg-ink); }
+
+/* ============================================================================
+   §9 跨页收尾 —— 危险/幽灵按钮语义、触控补高、reduced-motion 兜底
+   ========================================================================== */
+
+/* ── 9.1 危险操作语义（Admin 危险区 / Announcements 删除 / Draw 删除等
+       共用存量 .btn.danger —— base.css 是硬编码暖棕红底，这里统一为
+       珊瑚描边、hover 珊瑚软底，与 lgw-button--danger 同语义） ── */
+html:not([data-app="1"]) .btn.danger {
+  color: var(--lg-coral);
+  border-color: color-mix(in srgb, var(--lg-coral) 36%, transparent);
+  background: color-mix(in srgb, var(--lg-coral) 6%, transparent);
+}
+html:not([data-app="1"]) .btn.danger:hover {
+  background: color-mix(in srgb, var(--lg-coral) 12%, transparent);
+  border-color: color-mix(in srgb, var(--lg-coral) 52%, transparent);
+}
+/* 幽灵按钮 hover 的硬编码米灰底 → 墨阶软底（Admin/Parliament 页头共用） */
+html:not([data-app="1"]) .btn.ghost:hover {
+  background: color-mix(in srgb, var(--lg-ink) 6%, transparent);
+}
+
+/* ── 9.2 触控补高：coarse 指针下本文件涉及的小件拉到 ≥44px ── */
+@media (pointer: coarse) {
+  html:not([data-app="1"]) :is(
+    .draw-chip, .adm-tabs button, .pubpage-nav-link, .help-search-clear,
+    .council-chip, .draw-cost-badge, .tag-cloud-item, .draw-result-bar .btn,
+    .adm-actions .btn, .char-card .foot .btn.sm
+  ) {
+    min-height: var(--lg-control-min);
+  }
+  html:not([data-app="1"]) :is(.draw-tile-acts button, .ann-banner .ann-x) {
+    min-width: var(--lg-control-min);
+    min-height: var(--lg-control-min);
+  }
+}
+
+/* ── 9.3 reduced-motion：本文件新增的 hover 位移显式归零
+       （时长令牌已被 tokens 清零，transform 这里兜底） ── */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-app="1"]) :is(
+    .adm-stat, .adm-row, .ins-made, .draw-tile, .feat-card
+  ):hover {
+    transform: none;
+  }
+}

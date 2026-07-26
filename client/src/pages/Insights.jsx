@@ -3,26 +3,57 @@ import { useNav as useNavigate } from '../nav.js';
 import { api } from '../api.jsx';
 import { useToast, Avatar, CountUp } from '../ui.jsx';
 import { fmtNum } from '../util.js';
+import { EmptyArt } from '../art.jsx';
+import { isAppMode } from '../appmode.js';
 import {
   Orbit, MessageCircle, MessagesSquare, CalendarDays, Flame, Sparkles,
-  BookOpen, ScrollText, Feather, Wand2, Heart, Users, UserRound, TrendingUp, TrendingDown
+  BookOpen, ScrollText, Feather, Wand2, Heart, Users, UserRound, TrendingUp, TrendingDown, RefreshCw
 } from 'lucide-react';
 
 // 星轨 — 个人幻域旅程数据页。全部只读聚合；单系列条形图用 CSS 画，
 // 深浅色的图表用色已按对比度校验（--chart-fill）。
 export default function Insights() {
+  const app = isAppMode();
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
   const toast = useToast();
   const nav = useNavigate();
 
+  const load = () => {
+    setErr('');
+    return api('/me/insights').then(setD).catch(e => { setErr(e.message); toast(e.message, 'err'); });
+  };
   useEffect(() => {
-    api('/me/insights').then(setD).catch(e => { setErr(e.message); toast(e.message, 'err'); });
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (err) return <div className="empty" style={{ paddingTop: 120 }}>星轨暂时无法点亮：{err}</div>;
-  if (!d) return <div className="empty" style={{ paddingTop: 120 }}>正在点亮你的星轨…</div>;
+  if (err) {
+    return app
+      ? <div className="empty" style={{ paddingTop: 120 }}>星轨暂时无法点亮：{err}</div>
+      : (
+        <div className="page" style={{ maxWidth: 980 }}>
+          <div className="empty lgw-error" role="alert">
+            <span className="lgw-error-ic"><Orbit size={22} /></span>
+            <h2 className="lgw-error-title">星轨暂时无法点亮</h2>
+            <p className="lgw-error-msg">{err}</p>
+            <button className="btn primary lgw-error-retry" onClick={() => void load()}><RefreshCw size={15} /> 重新点亮</button>
+          </div>
+        </div>
+      );
+  }
+  if (!d) {
+    return app
+      ? <div className="empty" style={{ paddingTop: 120 }}>正在点亮你的星轨…</div>
+      : (
+        <div className="page" style={{ maxWidth: 980 }}>
+          <div className="lgw-skel-list" aria-hidden="true">
+            <div className="skel lgw-skel-lg" />
+            {[0, 1, 2].map(i => <div key={i} className="skel" />)}
+          </div>
+        </div>
+      );
+  }
 
   const maxDay = Math.max(1, ...d.days.map(x => x.n));
   const peakIdx = d.days.reduce((bi, x, i) => (x.n > d.days[bi].n ? i : bi), 0);
@@ -115,7 +146,15 @@ export default function Insights() {
               <h3>羁绊最深</h3>
               <div className="c-sub">按消息往来排序的角色 Top {Math.max(d.companions.length, 1)}</div>
               {d.companions.length === 0
-                ? <div className="empty" style={{ padding: '18px 0' }}><UserRound size={28} style={{ opacity: 0.4 }} /><br />还没有羁绊，去发现广场邂逅一个角色吧</div>
+                ? (app
+                  ? <div className="empty" style={{ padding: '18px 0' }}><UserRound size={28} style={{ opacity: 0.4 }} /><br />还没有羁绊，去发现广场邂逅一个角色吧</div>
+                  : (
+                    <div className="empty lgw-empty lgw-empty-compact">
+                      <EmptyArt kind="chat" size={96} />
+                      <p className="lgw-empty-sub">还没有羁绊 —— 和角色聊过之后，最深的几段会排在这里。</p>
+                      <div className="lgw-empty-cta"><button className="btn sm primary" onClick={() => nav('/')}>去发现广场邂逅一个角色</button></div>
+                    </div>
+                  ))
                 : (
                   <div className="ins-comp">
                     {d.companions.map(c => (

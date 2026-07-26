@@ -175,4 +175,14 @@ html:not([data-app="1"])[data-theme="dark"] .lgw-error-inline {
     rgb(0 0 0 / 28%);
 }
 
+/* ── 4. 紧凑空态：卡片/面板内嵌变体（任务 L：星轨等面板内的小空态） ─────── */
+html:not([data-app="1"]) .lgw-empty.lgw-empty-compact {
+  padding: var(--lg-space-4) var(--lg-space-2);
+  gap: var(--lg-space-1);
+}
+
+html:not([data-app="1"]) .lgw-empty.lgw-empty-compact .lgw-empty-cta {
+  margin-top: var(--lg-space-2);
+}
+
 /* reduced-motion：本文件无自有动画；空态插画的 floaty 已由 base.css 关停 */

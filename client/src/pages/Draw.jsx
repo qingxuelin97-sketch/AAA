@@ -2,11 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Modal, CoinIcon } from '../ui.jsx';
 import { STYLE_PRESETS, SIZE_OPTS, composePrompt, generateImage, downloadImage } from '../imagegen.js';
-import { Sparkles, Wand2, Download, Trash2, Copy, ImageIcon, Crown, Info, X } from 'lucide-react';
+import { EmptyArt } from '../art.jsx';
+import { isAppMode } from '../appmode.js';
+import { Sparkles, Wand2, Download, Trash2, Copy, ImageIcon, Crown, Info, X, RefreshCw } from 'lucide-react';
 
 // AI 绘图 — text-to-image studio. The image API is configured by GM in the admin
 // console; each generation costs gold (VIP discount), shown transparently up-front.
 export default function Draw() {
+  const app = isAppMode();
   const toast = useToast();
   const { user, refreshUser } = useAuth();
   const [prompt, setPrompt] = useState('');
@@ -19,10 +22,15 @@ export default function Draw() {
   const [ready, setReady] = useState(true);
   const [discount, setDiscount] = useState(1);
   const [viewing, setViewing] = useState(null);
+  const [genError, setGenError] = useState('');       // Web：生成失败原地重试
+  const [historyError, setHistoryError] = useState(''); // Web：绘廊载入失败
   const stageRef = useRef(null);
 
-  const load = () => api('/ai/images').then(d => { setHistory(d.images || []); setFee(d.fee); setReady(d.ready); })
-    .catch(e => toast(e.message, 'err'));
+  const load = () => {
+    if (!app) setHistoryError('');
+    return api('/ai/images').then(d => { setHistory(d.images || []); setFee(d.fee); setReady(d.ready); })
+      .catch(e => { if (!app) setHistoryError(e.message || '绘廊载入失败，请稍后重试'); toast(e.message, 'err'); });
+  };
   useEffect(() => { load(); api('/settings').then(d => setDiscount(d.settings?.image_fee?.discount ?? 1)).catch(() => {}); /* eslint-disable-next-line */ }, []);
 
   const canAfford = fee == null || (user?.gold ?? 0) >= fee;
@@ -33,6 +41,7 @@ export default function Draw() {
     if (!ready) { toast('平台 AI 生图服务尚未开启', 'err'); return; }
     if (!canAfford) { toast(`金币不足，本次需 ${fee} 金币`, 'err'); return; }
     setBusy(true); setResult(null);
+    if (!app) setGenError('');
     try {
       const d = await generateImage({ prompt: composePrompt(p, style), size });
       setResult(d);
@@ -40,7 +49,7 @@ export default function Draw() {
       load();
       toast(`生成成功 · 消耗 ${d.fee} 金币`);
       setTimeout(() => stageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
-    } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+    } catch (e) { toast(e.message, 'err'); if (!app) setGenError(e.message || '生成失败，请稍后重试'); } finally { setBusy(false); }
   };
 
   const del = async (id) => {
@@ -111,6 +120,13 @@ export default function Draw() {
           <div className="card draw-stage" ref={stageRef}>
             {busy ? (
               <div className="draw-stage-empty"><div className="draw-loader"><Wand2 size={30} /></div><p>正在为你绘制，请稍候…</p></div>
+            ) : !app && genError ? (
+              <div className="lgw-error" role="alert">
+                <span className="lgw-error-ic"><Wand2 size={22} /></span>
+                <h2 className="lgw-error-title">这张图没能生成</h2>
+                <p className="lgw-error-msg">{genError}</p>
+                <button className="btn primary lgw-error-retry" onClick={generate} disabled={busy || !prompt.trim() || !ready || !canAfford}><RefreshCw size={15} /> 重试一次</button>
+              </div>
             ) : result ? (
               <div className="draw-result">
                 <div className="draw-result-img" onClick={() => setViewing({ url: result.image, prompt: result.prompt, size: result.size, id: result.id })}>
@@ -129,8 +145,22 @@ export default function Draw() {
         </div>
 
         <div className="section-title" style={{ marginTop: 30 }}><h2><ImageIcon size={16} style={{ verticalAlign: -3, marginRight: 6 }} />我的绘廊</h2></div>
-        {history.length === 0 ? (
-          <div className="empty" style={{ padding: 36 }}><div className="big"><Wand2 size={40} /></div>还没有作品，去生成你的第一张插画吧</div>
+        {!app && historyError && history.length === 0 ? (
+          <div className="lgw-error-inline" role="alert">
+            <span>{historyError}</span>
+            <button className="btn sm" onClick={() => void load()}><RefreshCw size={14} /> 重试</button>
+          </div>
+        ) : history.length === 0 ? (
+          app
+            ? <div className="empty" style={{ padding: 36 }}><div className="big"><Wand2 size={40} /></div>还没有作品，去生成你的第一张插画吧</div>
+            : (
+              <div className="empty lgw-empty">
+                <EmptyArt kind="generic" />
+                <h2 className="lgw-empty-title">绘廊还空着</h2>
+                <p className="lgw-empty-sub">生成的插画都会保存在这里；在上方写下画面描述，让第一张作品诞生。</p>
+                <div className="lgw-empty-cta"><button className="btn primary" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}><Sparkles size={15} /> 去写画面描述</button></div>
+              </div>
+            )
         ) : (
           <div className="draw-gallery">
             {history.map(h => (

@@ -199,11 +199,11 @@ export default function Atelier() {
           {[0, 1, 2].map(i => <div key={i} className="skel lgw-skel-lg" />)}
         </div>
       ) : novels.length === 0 ? (
-        <div className="atl-empty">
+        <div className="atl-empty lgw-empty">
           <div className="atl-empty-ic"><BookText size={40} /></div>
           <h2>还没有作品</h2>
           <p>从一个念头开始 —— 一句创意、一个开场，剩下的交给与你共写的 AI。</p>
-          <button className="btn primary" onClick={() => setCreating(true)}><Wand2 size={16} /> 灵感开局</button>
+          <div className="lgw-empty-cta"><button className="btn primary" onClick={() => setCreating(true)}><Wand2 size={16} /> 灵感开局</button></div>
         </div>
       ) : (
         <div className="atl-shelf">

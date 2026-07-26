@@ -5,11 +5,12 @@ import { api, useAuth } from '../api.jsx';
 import { useToast, CountUp, CoinIcon } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
+import { EmptyArt } from '../art.jsx';
 import {
   Trophy, Award, Check, ChevronRight, Lock,
   MessageCircle, MessagesSquare, Send, Heart, Sparkles, UserPlus, Drama, Globe, ScrollText,
   BadgeCheck, Crown, Star, Bookmark, PenLine, Users, UserCheck, Scale, Gavel, CheckSquare,
-  Landmark, CalendarCheck, Dices, ArrowLeft,
+  Landmark, CalendarCheck, Dices, ArrowLeft, RefreshCw,
 } from 'lucide-react';
 
 const ICONS = {
@@ -30,6 +31,7 @@ export default function Achievements() {
   const [list, setList] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState('');
   const [appCat, setAppCat] = useState('全部');
   // Ceremonial opening animation — plays once per session.
@@ -41,7 +43,12 @@ export default function Achievements() {
     return () => clearTimeout(t);
   }, [intro]);
 
-  const load = () => api('/achievements').then(d => { setList(d.achievements || []); setSummary(d.summary); }).catch(e => toast(e.message, 'err')).finally(() => setLoading(false));
+  const load = () => {
+    if (!appMode) setLoadError('');
+    return api('/achievements').then(d => { setList(d.achievements || []); setSummary(d.summary); })
+      .catch(e => { if (!appMode) setLoadError(e.message || '成就载入失败，请稍后重试'); toast(e.message, 'err'); })
+      .finally(() => setLoading(false));
+  };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const claim = async (a) => {
@@ -162,7 +169,23 @@ export default function Achievements() {
           </div>
         </div>
 
-        {loading ? <div className="empty">载入中…</div> : CATS.map(cat => (byCat[cat]?.length ? (
+        {loading ? (
+          <div className="lgw-skel-list" aria-hidden="true">{[0, 1, 2, 3].map(i => <div key={i} className="skel" />)}</div>
+        ) : loadError && list.length === 0 ? (
+          <div className="empty lgw-error" role="alert">
+            <span className="lgw-error-ic"><Trophy size={22} /></span>
+            <h2 className="lgw-error-title">成就殿堂暂时无法载入</h2>
+            <p className="lgw-error-msg">{loadError}</p>
+            <button className="btn primary lgw-error-retry" onClick={() => { setLoading(true); void load(); }}><RefreshCw size={15} /> 重新载入</button>
+          </div>
+        ) : list.length === 0 ? (
+          <div className="empty lgw-empty">
+            <EmptyArt kind="generic" />
+            <h2 className="lgw-empty-title">成就正在等你点亮</h2>
+            <p className="lgw-empty-sub">在对话、创作与社交板块留下足迹，就会在这里铭刻成荣耀。</p>
+            <div className="lgw-empty-cta"><button className="btn primary" onClick={() => nav('/')}>去发现广场逛逛</button></div>
+          </div>
+        ) : CATS.map(cat => (byCat[cat]?.length ? (
           <section key={cat} className="ach-cat">
             <div className="section-title"><h2>{cat}</h2><span className="muted" style={{ fontSize: 13 }}>{byCat[cat].filter(a => a.unlocked).length}/{byCat[cat].length}</span></div>
             <div className="ach-grid">

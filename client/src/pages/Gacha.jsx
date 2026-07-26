@@ -5,7 +5,7 @@ import { useToast, Modal } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { randomAnimeAvatar, randomBg } from '../faces.js';
-import { Dices, Sparkles, MessageCircle, Save, ArrowLeft, X, ShieldCheck, Eye } from 'lucide-react';
+import { Dices, Sparkles, MessageCircle, Save, ArrowLeft, X, ShieldCheck, Eye, RefreshCw } from 'lucide-react';
 
 // Rarity tiers (draw weights). Higher tiers are rarer and glow stronger.
 const TIERS = {
@@ -52,9 +52,11 @@ export default function Gacha() {
   const [count, setCount] = useState(0);
   const [pity, setPity] = useState(() => +(localStorage.getItem('huanyu_gacha_pity') || 0));
   const [confetti, setConfetti] = useState(false);
+  const [createError, setCreateError] = useState(null); // Web：收下失败原地重试（{ msg, thenChat }）
 
   const draw = () => {
     setRolling(true); setResult(null); setShowResult(false);
+    if (!appMode) setCreateError(null);
     const np = pity + 1;
     const tier = np >= PITY ? 'SSR' : rollTier(); // 保底：第 PITY 抽必出 SSR
     const cand = POOL.filter(p => p.tier === tier);
@@ -73,6 +75,7 @@ export default function Gacha() {
   const create = async (thenChat) => {
     if (!result || busy) return;
     setBusy(true);
+    if (!appMode) setCreateError(null);
     try {
       const body = {
         name: result.name, avatar: result.avatar, background: result.background, background_type: 'image',
@@ -88,7 +91,7 @@ export default function Gacha() {
         toast('已存入「我的角色」');
         nav('/library');
       }
-    } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); }
+    } catch (e) { toast(e.message, 'err'); if (!appMode) setCreateError({ msg: e.message || '保存失败，请稍后重试', thenChat }); } finally { setBusy(false); }
   };
 
   const tier = result ? TIERS[result.tier] : null;
@@ -211,6 +214,12 @@ export default function Gacha() {
             </>
           )}
         </div>
+        {createError && result && !rolling && (
+          <div className="lgw-error-inline" role="alert" style={{ marginTop: 12 }}>
+            <span>没能收下「{result.name}」：{createError.msg}</span>
+            <button className="btn sm primary" disabled={busy} onClick={() => create(createError.thenChat)}><RefreshCw size={14} /> 重试</button>
+          </div>
+        )}
         <div className="gx-pity">
           <div className="gx-pity-bar"><span style={{ width: Math.min(100, pity / PITY * 100) + '%' }} /></div>
           <p className="muted">保底进度 {pity}/{PITY} · 再 {Math.max(0, PITY - pity)} 抽内必出 SSR{count > 0 ? ` · 已抽 ${count} 次` : ''}</p>

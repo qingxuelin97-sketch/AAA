@@ -67,3 +67,29 @@ lite 档无任何 backdrop-filter；Web 零差异闸（与 main 双构建像素�
 改 --lg-* 值 / 私增颜色；玻璃叠玻璃 / 外发光 / 呼吸光 / 循环扫光；
 动 Web 视觉与行为；动业务数据/权限/协议；设计稿图作运行时资源；
 一次性重写多页的大改；不带验收结果宣布完成。
+
+## Web 移植（web: W1–W7）
+
+App 壳六阶段落地后，同一套冻结令牌向 Web 壳整体移植（围栏
+`html:not([data-app="1"])`，与 App 围栏 DOM 互斥）。「动 Web 视觉」红线自此
+按新权威解除 —— Web 层权威文档：`WEB_LUMEN_SPEC.md`；守卫：`npm run test:web`。
+阶段 ↔ commit 对应：
+
+| 阶段 | 内容 | commit |
+|---|---|---|
+| W1 | 基建三件套：web-lumen-tokens / bridge / materials | `7eac5d8` |
+| W3a | 路由分流：/discover Web 沉浸流、/today /me 重定向、每路由错误边界 | `3dcbe12` |
+| W2 | 壳 chrome：侧栏四态 / 移动顶栏与抽屉 / 底部 dock / 命令面板 / Modal / Toast | `1bccfb4` |
+| W3 | 功能对齐：WebHome 仪表盘、Profile 双壳合并（components/profile 共享模块）、桌面沉浸流 | `2ff2739` |
+| — | 补丁：data-glass 内容卡重定价，消灭幽灵卡失效模式 | `7ad72a6` |
+| W6 | 每壳 CSS 分包（main.jsx 不再静态引 app-*.css）+ 自适应性能降级覆盖 Web | `92a0757` |
+| W7 | web-test.mjs 静态守卫 + server/shots.mjs 截图基线工具 + CI 门（test:web 入 Validate） | `5d8b8fb` |
+| W4 | 控件契约 dispatch：AppControls 三态分发 + data-lumen-web 逃生阀 | `edd4a34` |
+| W4+W5 | .lgw-* 控件视觉、存量页面重皮（pages）、深色归一、三态系统（states） | `d01fc2a` |
+| — | e2e Web 零差异闸对 W4 控件契约开闸（状态属性只认 .lgw-*） | `9a85fe3` |
+
+执行顺序刻意与编号不同：W3a（路由）先于 W2 落地，让壳 chrome 直接对着最终路由表
+开发；W6/W7（分包与守卫）提前到 W4/W5 之前，控件与重皮阶段全程在守卫下推进。
+收尾批（本节写作时点未入 commit）：states/misc/longtail 三个补充样式层、
+长尾页 JSX 挂类（Achievements/Announcements/Atelier/Draw/Gacha/Insights/
+Publish/Tags）、README 对齐与 WEB_LUMEN_SPEC.md 本身。
