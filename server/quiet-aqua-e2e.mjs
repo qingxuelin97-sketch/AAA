@@ -1513,6 +1513,75 @@ async function s7DarkTierAssertions(browser, base) {
   await lite.close();
 }
 
+// S7-G10 · 新面收口巡检：新功能 Sheet / 相伴一览 / 足迹卡 / 排行榜名次 /
+// 搜索热门分类 / 触感开关 —— G10 后半新增面的存在性与语义。
+async function g10SurfaceAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  // 我的页：相伴一览三格 + 新功能 Sheet
+  await visit(page, '/me', '.qa-glance');
+  const glance = await page.evaluate(() => ({
+    cells: document.querySelectorAll('.qa-glance-cell').length,
+    ring: Boolean(document.querySelector('.qa-glance-ring')),
+  }));
+  assert(glance.cells >= 2 && glance.ring, '相伴一览三格或完成环缺失', JSON.stringify(glance));
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.pf-foot .qa-button')].find((b) => b.textContent.includes('新功能'))?.click();
+  });
+  await page.waitForSelector('.qa-whatsnew', { visible: true, timeout: 5000 });
+  assert(await page.evaluate(() => document.querySelectorAll('.qa-whatsnew-row').length >= 8),
+    '新功能 Sheet 条目不足');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.qa-whatsnew'), { timeout: 5000 });
+
+  // 角色页：与 TA 的足迹（演示账号与薇尔有会话）
+  await visit(page, '/messages', '.msgs-conv--app .msgs-conv-main');
+  await page.evaluate(() => {
+    document.querySelector('.msgs-conv--app .msgs-conv-main')
+      .dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 300 }));
+  });
+  await page.waitForSelector('.qa-press-menu', { visible: true, timeout: 5000 });
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.qa-press-item')].find((b) => b.textContent.includes('查看角色'))?.click();
+  });
+  await page.waitForSelector('.qa-bond', { timeout: 8000 });
+  assert(await page.evaluate(() => /继续这段故事/.test(document.querySelector('.qa-bond').textContent)),
+    '足迹卡缺少续聊 CTA');
+
+  // 排行榜：创作者榜我的名次行
+  await visit(page, '/leaderboard', '.qa-leaderboard-tabs');
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.qa-leaderboard-tabs .qa-button')].find((b) => b.textContent.includes('创作者榜'))?.click();
+  });
+  await page.waitForSelector('.qa-lb-mine', { timeout: 8000 });
+  assert(await page.evaluate(() => /第 \d+ 名/.test(document.querySelector('.qa-lb-mine').textContent)),
+    '我的名次行缺少排位数字');
+
+  // 搜索：热门分类 chips 直达角色搜索
+  await visit(page, '/search', '.qa-search-cats .tag-chip');
+  await page.evaluate(() => document.querySelector('.qa-search-cats .tag-chip').click());
+  await page.waitForFunction(() => Boolean(document.querySelector('.qa-search-results, .qa-search-empty, .qa-search-loading')), { timeout: 8000 });
+
+  // 设置：触感开关 App 专属行存在且默认开
+  await visit(page, '/settings', '.qa-settings-root, .settings, .page');
+  await page.evaluate(() => {
+    const prefEntry = [...document.querySelectorAll('button, a')].find((el) => /偏好/.test(el.textContent));
+    prefEntry?.click();
+  });
+  await page.waitForSelector('.qa-haptics-row input', { timeout: 8000 });
+  assert(await page.evaluate(() => document.querySelector('.qa-haptics-row input').checked),
+    '触感开关默认应为开');
+
+  assert(page.__qaErrors.length === 0, 'G10 新面巡检产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
 // S7-G6 · 分享卡：角色页菜单入口 → canvas 合成 1080×1440 预览 → 出口可用
 // → 关闭回焦。canvas 文字反锯齿跨环境不稳，不建像素基线，只验尺寸与无错。
 async function shareCardAssertions(browser, base) {
@@ -1923,6 +1992,7 @@ async function run() {
     await conversationMarksAssertions(browser, base);
     await draftAssertions(browser, base);
     await s7DarkTierAssertions(browser, base);
+    await g10SurfaceAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);
