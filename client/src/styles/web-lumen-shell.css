@@ -780,3 +780,226 @@ html:not([data-app="1"]) .route-fade {
   html:not([data-app="1"]) .nav-item.active .ic { transform: none; }
   html:not([data-app="1"]) .user-chip:hover { transform: none; }
 }
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   §14 · 桌面侧栏双段式（D1）：创建 CTA / 迷你签到 / 最近对话 / 「更多」折叠
+   ---------------------------------------------------------------------------
+   滚动布局取舍（任务给了两案，这里选 B 案·单滚动上下文）：.sb-scroll 仍是
+   唯一滚动容器，主导航 + 最近对话 + 「更多」按自然流排布 —— 「更多」展开
+   （21 条长尾）在矮视口下必然超高，若把会话列表做成独立内滚区（A 案），
+   展开的「更多」自己就会滚出视口，双滚动条观感反而更糟。B 案上叠一点弹性：
+   .sb-scroll 转 flex 纵列，.sb-more-wrap 吃 margin-top:auto —— 内容不满时
+   「更多」沉底、会话区自然吃掉中段留白；内容超高时 auto 边距归零、整体
+   照常滚动。零 blur、零 keyframes，动画只有 transition（时长令牌在
+   reduced-motion 下自动归零）。
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── 创建主 CTA：act 实底（侧栏唯一实色块），替代旧底部「发布作品」行 ── */
+html:not([data-app="1"]) .sb-create {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--lg-control-min);           /* 44px 触控 */
+  margin: 0 0 10px;
+  border-radius: var(--lg-r-control);
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background var(--lg-dur-state) var(--lg-ease),
+    transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .sb-create:hover {
+  background: color-mix(in srgb, var(--lg-act) 86%, #000);  /* 深一档 */
+  color: var(--lg-act-ink);
+}
+html:not([data-app="1"]) .sb-create:active { transform: scale(0.985); }
+html:not([data-app="1"]) .sidebar.collapsed .sb-create { padding: 0; gap: 0; }
+
+/* ── 迷你签到钮（wallet-mini 行尾）：28px 圆钮三态 ─────────────────────── */
+html:not([data-app="1"]) .sb-checkin {
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border: 0;
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-act-soft);
+  color: var(--lg-act);
+  cursor: pointer;
+  transition:
+    background var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease),
+    transform var(--lg-dur-press) var(--lg-ease);
+}
+html:not([data-app="1"]) .sb-checkin:hover:not(:disabled) { transform: scale(1.08); }
+html:not([data-app="1"]) .sb-checkin:active:not(:disabled) { transform: scale(0.94); }
+html:not([data-app="1"]) .sb-checkin:disabled { cursor: default; }
+/* 已签态：jade 语义（成功/签到），无 jade-soft 令牌 → color-mix 现调 */
+html:not([data-app="1"]) .sb-checkin.done {
+  background: color-mix(in srgb, var(--lg-jade) 14%, transparent);
+  color: var(--lg-jade);
+}
+/* busy 态（可签但请求中）压暗示意 */
+html:not([data-app="1"]) .sb-checkin:disabled:not(.done) { opacity: 0.55; }
+
+/* ── .sb-scroll 弹性纵列（B 案）：collapsed 平铺不受影响 ───────────────── */
+html:not([data-app="1"]) .sidebar:not(.collapsed) .sb-scroll {
+  display: flex;
+  flex-direction: column;
+}
+html:not([data-app="1"]) .sidebar:not(.collapsed) .sb-primary,
+html:not([data-app="1"]) .sidebar:not(.collapsed) .sb-recent { flex: none; }
+html:not([data-app="1"]) .sidebar:not(.collapsed) .sb-more-wrap { margin-top: auto; }
+
+/* ── 「最近对话」段标题行 ──────────────────────────────────────────────── */
+html:not([data-app="1"]) .sb-recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 13px 4px;
+  font-size: var(--lg-type-meta);
+  color: var(--lg-ink-3);
+}
+html:not([data-app="1"]) .sb-recent-head a {
+  color: var(--lg-act);
+  font-size: 12px;
+  text-decoration: none;
+}
+html:not([data-app="1"]) .sb-recent-head a:hover { text-decoration: underline; }
+
+/* ── 会话行：头像 + 名字 + 最后一句 ───────────────────────────────────── */
+html:not([data-app="1"]) .sbc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+html:not([data-app="1"]) .sbc-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 5px 10px;
+  border-radius: var(--lg-r-control);
+  color: var(--lg-ink);
+  text-decoration: none;
+  transition: background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .sbc-item:hover {
+  background: color-mix(in srgb, var(--lg-act) 8%, transparent);
+}
+html:not([data-app="1"]) .sbc-item.active { background: var(--lg-act-soft); }
+/* 激活指示：左缘 2px act 短条（与 nav-item 药丸语言并存的轻量变体） */
+html:not([data-app="1"]) .sbc-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 26%;
+  bottom: 26%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--lg-act);
+}
+html:not([data-app="1"]) .sbc-tx {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 1px;
+}
+html:not([data-app="1"]) .sbc-item b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lg-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html:not([data-app="1"]) .sbc-tx > span {
+  font-size: 12px;
+  color: var(--lg-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── collapsed 态：前 5 个 32px 头像纵排 ──────────────────────────────── */
+html:not([data-app="1"]) .sbc-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+html:not([data-app="1"]) .sbc-rail .nav-divider { align-self: stretch; }
+html:not([data-app="1"]) .sbc-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 40px;
+  border-radius: var(--lg-r-control);
+  transition: background var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .sbc-mini:hover {
+  background: color-mix(in srgb, var(--lg-act) 8%, transparent);
+}
+html:not([data-app="1"]) .sbc-mini.active { background: var(--lg-act-soft); }
+
+/* ── 「更多」折叠组 ────────────────────────────────────────────────────── */
+/* toggle 是 <button class="nav-item …">：补 button 元素级复位（桌面侧栏的
+   .nav-item 平常是 NavLink，button 复位只在 .mnav-scroll 有旧约） */
+html:not([data-app="1"]) .sb-more-toggle {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+html:not([data-app="1"]) .sb-more-toggle .sb-more-chev {
+  transition: transform var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .sb-more-toggle.open .sb-more-chev { transform: rotate(90deg); }
+/* 收起且有未读：行尾 8px 圆点（盖掉 .nav-badge 的数字胶囊几何） */
+html:not([data-app="1"]) .sb-more-toggle .nav-badge.sb-more-dot {
+  width: 8px;
+  height: 8px;
+  min-width: 0;
+  padding: 0;
+  border-radius: var(--lg-r-pill);
+}
+/* 折叠区：grid-template-rows 0fr↔1fr 过渡（内容常驻 DOM，收起时 inert） */
+html:not([data-app="1"]) .sb-more {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--lg-dur-state) var(--lg-ease);
+}
+html:not([data-app="1"]) .sb-more.open { grid-template-rows: 1fr; }
+html:not([data-app="1"]) .sb-more-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── 焦点外环：新交互件点名重申（与 §0 chrome 名单同配方） ─────────────── */
+html:not([data-app="1"]) .sb-create:focus-visible,
+html:not([data-app="1"]) .sb-checkin:focus-visible,
+html:not([data-app="1"]) .sb-more-toggle:focus-visible,
+html:not([data-app="1"]) .sb-recent-head a:focus-visible,
+html:not([data-app="1"]) .sbc-item:focus-visible,
+html:not([data-app="1"]) .sbc-mini:focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: 2px;
+}
+html:not([data-app="1"]) .sbc-item:focus-visible,
+html:not([data-app="1"]) .sb-more-toggle:focus-visible {
+  outline-offset: -2px;
+}
