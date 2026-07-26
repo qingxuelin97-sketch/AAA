@@ -55,11 +55,11 @@ html[data-app="1"] .qa-wallet-v4__balance {
   background:
     radial-gradient(88% 62% at 88% -4%, color-mix(in srgb, var(--lg-gold) 52%, transparent), transparent 56%),
     var(--lg-finance);
-  color: var(--qa-finance-ink);
+  color: var(--lg-finance-ink);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), 0 18px 38px rgb(0 0 0 / 24%);
 }
 
-html[data-app="1"] .qa-wallet-v4__balance-head span { color: var(--qa-finance-ink); }
+html[data-app="1"] .qa-wallet-v4__balance-head span { color: var(--lg-finance-ink); }
 
 html[data-app="1"] .qa-wallet-v4__recharge.qa-button {
   border-color: transparent !important;
@@ -149,12 +149,12 @@ html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout {
 
 html[data-app="1"] .qa-wallet-v4__checkout span,
 html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout span {
-  color: color-mix(in srgb, var(--qa-finance-ink) 62%, transparent);
+  color: color-mix(in srgb, var(--lg-finance-ink) 62%, transparent);
 }
 
 html[data-app="1"] .qa-wallet-v4__checkout strong,
 html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout strong {
-  color: var(--qa-finance-ink);
+  color: var(--lg-finance-ink);
 }
 
 /* 健康检查未过 → 禁用态写明原因（文案在 DOM），材质换石墨上的白玻璃 */
@@ -162,8 +162,8 @@ html[data-app="1"] .qa-wallet-v4__checkout .qa-button:disabled,
 html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout .qa-button:disabled {
   border-color: rgb(255 255 255 / 22%) !important;
   background: rgb(255 255 255 / 13%) !important;
-  color: var(--qa-finance-ink) !important;
-  -webkit-text-fill-color: var(--qa-finance-ink) !important;
+  color: var(--lg-finance-ink) !important;
+  -webkit-text-fill-color: var(--lg-finance-ink) !important;
 }
 
 /* ── s22 SVIP · 单一金属实体卡（渐变仅限实体材质，SPEC §2 允许） ─────────── */

@@ -50,7 +50,7 @@ html[data-app="1"] .qa-onboard-mask {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: var(--qa-scrim);
+  background: var(--lg-scrim);
 }
 
 html[data-app="1"] .qa-onboard {
@@ -664,7 +664,7 @@ html[data-app="1"] .qa-press-mask {
   position: fixed;
   inset: 0;
   z-index: 470;
-  background: color-mix(in srgb, var(--qa-scrim) 55%, transparent);
+  background: color-mix(in srgb, var(--lg-scrim) 55%, transparent);
 }
 
 html[data-app="1"] .qa-press-menu {

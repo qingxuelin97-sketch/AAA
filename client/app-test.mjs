@@ -251,7 +251,7 @@ assert.ok(
 assert.match(runtimeCss, /\.topbar h1,[\s\S]*word-break:\s*keep-all/, 'narrow App topbar titles must not stack vertically');
 assert.match(runtimeCss, /\.topbar\s*\{[^}]*flex-wrap:\s*wrap;[^}]*row-gap:\s*10px;/, 'dense narrow App topbars must wrap whole controls without horizontal overflow');
 assert.match(runtimeCss, /\.vm-plans\s*\{\s*padding-top:\s*12px/, 'VIP plans must reserve space for the raised badge');
-assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--qa-glass-chrome-blur\)/, 'App Dock must use the Liuli chrome glass material on high and balanced tiers');
+assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--lg-blur\)/, 'App Dock must use the Lumen chrome blur authority directly on high and balanced tiers');
 assert.match(runtimeCss, /\[data-perf="lite"\]\s*\.app-tabbar\s*\{[^}]*backdrop-filter:\s*none/s, 'lite tier must drop the Dock blur and fall back to an opaque surface');
 
 assert.ok(
@@ -293,7 +293,23 @@ const lumenTokensForGlass = await readFile(new URL('./src/styles/lumen-glass-tok
 assert.match(lumenTokensForGlass, /--lg-blur:\s*blur\(/, 'the Lumen glass token authority must define the primary blur material');
 assert.match(lumenTokensForGlass, /--lg-blur-s:\s*blur\(/, 'the Lumen glass token authority must define the small blur material');
 assert.match(lumenTokensForGlass, /\[data-perf="lite"\][\s\S]*--lg-blur:\s*none/, 'lite tier must resolve every glass blur to none at the token layer');
-assert.match(quietTokens, /--qa-glass-chrome-blur:\s*var\(--lg-blur\)/, 'the qa shim must route legacy chrome glass through the Lumen authority');
+assert.doesNotMatch(quietTokens, /--qa-glass-chrome-blur\s*:/, 'pure aliases must never flow back into the residual shim (blur is lg-authority-direct now)');
+/* S7-G8：全 App 层 var(--qa-*) 引用必须 ⊆ 残余 shim 定义集（迁移不许半途） */
+{
+  const residualDefs = new Set([...quietTokens.matchAll(/(--qa-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+  const s7LayerCss = [quietControls, quietPages, quietExperience, higForLg, runtimeCss,
+    await readFile(new URL('./src/styles/app-elevated.css', import.meta.url), 'utf8'),
+    await readFile(new URL('./src/styles/app-shell.css', import.meta.url), 'utf8'),
+    await readFile(new URL('./src/styles/app-renov.css', import.meta.url), 'utf8'),
+    await readFile(new URL('./src/chat/chat-app.css', import.meta.url), 'utf8'),
+    lumenStageCss,
+    await readFile(new URL('./src/styles/app-lumen-s6.css', import.meta.url), 'utf8'),
+    await readFile(new URL('./src/ui.jsx', import.meta.url), 'utf8'),
+  ].join('\n');
+  const qaRefs = new Set([...s7LayerCss.matchAll(/var\((--qa-[a-z0-9-]+)/g)].map((m) => m[1]));
+  assert.deepEqual([...qaRefs].filter((name) => !residualDefs.has(name)), [],
+    'every remaining --qa-* reference must resolve in the residual shim — pure aliases live as --lg-* only');
+}
 const elevatedCss = await readFile(new URL('./src/styles/app-elevated.css', import.meta.url), 'utf8');
 assert.doesNotMatch(elevatedCss, /--gl-halo/, 'glass cards must not restore accent/dusk halo washes');
 assert.doesNotMatch(elevatedCss, /#22d3ee/i, 'the Liuli glass system must not reintroduce the cyan neon edge');

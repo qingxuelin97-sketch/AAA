@@ -522,10 +522,10 @@ html[data-app="1"] {
   --gl-1-bg: var(--qa-glass-thin-bg);
   --gl-2-bg: var(--qa-glass-chrome-bg);
   --gl-3-bg: var(--qa-glass-sheet-bg);
-  --gl-1-blur: var(--qa-glass-thin-blur);
-  --gl-2-blur: var(--qa-glass-chrome-blur);
-  --gl-3-blur: var(--qa-glass-sheet-blur);
-  --gl-border: var(--qa-glass-hairline);
+  --gl-1-blur: var(--lg-blur-s);
+  --gl-2-blur: var(--lg-blur);
+  --gl-3-blur: var(--lg-blur);
+  --gl-border: var(--lg-hairline);
   --gl-border-in: var(--qa-glass-specular);
   --gl-shadow: var(--qa-glass-shadow);
   /* —— 高光条：玻璃边缘反射 —— */
@@ -654,7 +654,7 @@ html[data-app="1"][data-perf="lite"] .ah-sc-ic {
 }
 
 /* —— 快捷入口色调轮换：底色改为强调色 mix，玻璃透出更纯 —— */
-html[data-app="1"] .ah-sc .ah-sc-ic { background: color-mix(in srgb, var(--qa-brand-fill, var(--accent)) 12%, var(--qa-surface, #fff)); color: var(--qa-brand-fill, var(--accent)); }
+html[data-app="1"] .ah-sc .ah-sc-ic { background: color-mix(in srgb, var(--lg-act, var(--accent)) 12%, var(--qa-surface, #fff)); color: var(--lg-act, var(--accent)); }
 
 /* —— 精选卡：内嵌玻璃标签「今日精选」+ CTA 玻璃钮 —— */
 html[data-app="1"] .ah-hc-tag {

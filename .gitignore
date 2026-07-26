@@ -27,3 +27,4 @@ server/sec-test.tmp.sqlite*
 server/sec-test.interceptor.mjs
 server/diagnostic.tmp.sqlite*
 client/*-smoke.png
+client/appdiff.tmp/

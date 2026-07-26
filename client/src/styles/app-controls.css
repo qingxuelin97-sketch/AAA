@@ -21,7 +21,7 @@ html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button)::after {
 
 /* UI kit 焦点契约：3px act 55% 外环，仅 :focus-visible（e2e 断言 outline 可见） */
 html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--qa-focus) 55%, transparent) !important;
+  outline: 3px solid color-mix(in srgb, var(--lg-focus) 55%, transparent) !important;
   outline-offset: 2px;
 }
 
@@ -32,34 +32,34 @@ html[data-app="1"] .qa-button {
   min-height: var(--qa-control-min);
   align-items: center;
   justify-content: center;
-  gap: var(--qa-space-2);
-  padding: 0 var(--qa-space-4);
+  gap: var(--lg-space-2);
+  padding: 0 var(--lg-space-4);
   border: 1px solid transparent;
   /* UI kit AppButton：胶囊 999 · 600 字重 · 15px */
   border-radius: var(--lg-r-pill);
   background: var(--qa-surface);
-  color: var(--qa-ink);
+  color: var(--lg-ink);
   box-shadow: none;
   font-size: 15px;
   font-weight: 600;
   line-height: 1;
   transition:
-    transform var(--qa-duration-press) var(--qa-ease-out),
-    background-color var(--qa-duration-state) var(--qa-ease-out),
-    border-color var(--qa-duration-state) var(--qa-ease-out),
-    color var(--qa-duration-state) var(--qa-ease-out),
-    box-shadow var(--qa-duration-state) var(--qa-ease-out);
+    transform var(--lg-dur-press) var(--lg-ease),
+    background-color var(--lg-dur-state) var(--lg-ease),
+    border-color var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease);
 }
 
 html[data-app="1"] .qa-button--sm {
   min-height: var(--qa-control-min);
-  padding-inline: var(--qa-space-3);
+  padding-inline: var(--lg-space-3);
   font-size: 13px;
 }
 
 html[data-app="1"] .qa-button--lg {
   min-height: var(--qa-control-submit);
-  padding-inline: var(--qa-space-5);
+  padding-inline: var(--lg-space-5);
   font-size: 15px;
 }
 
@@ -121,7 +121,7 @@ html[data-app="1"] .qa-icon-button__content {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--qa-space-2);
+  gap: var(--lg-space-2);
 }
 
 html[data-app="1"] :where(.qa-button, .qa-icon-button)[data-loading]
@@ -155,13 +155,13 @@ html[data-app="1"] .qa-icon-button {
   /* UI kit AppIconButton：圆钮（44 触区） */
   border-radius: var(--lg-r-pill);
   background: transparent;
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
   box-shadow: none;
   transition:
-    transform var(--qa-duration-press) var(--qa-ease-out),
-    background-color var(--qa-duration-state) var(--qa-ease-out),
-    border-color var(--qa-duration-state) var(--qa-ease-out),
-    color var(--qa-duration-state) var(--qa-ease-out);
+    transform var(--lg-dur-press) var(--lg-ease),
+    background-color var(--lg-dur-state) var(--lg-ease),
+    border-color var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease);
 }
 
 html[data-app="1"] .qa-icon-button svg {
@@ -208,17 +208,17 @@ html[data-app="1"] .qa-tab-button {
   flex-direction: column;
   gap: 3px;
   padding: 3px 4px;
-  border-radius: var(--qa-radius-control);
+  border-radius: var(--lg-r-control);
   background: transparent;
-  color: var(--qa-ink-tertiary);
+  color: var(--lg-ink-3);
   font-size: 10px;
   font-weight: 650;
   line-height: 1.1;
   transition:
-    transform var(--qa-duration-press) var(--qa-ease-out),
-    background-color var(--qa-duration-state) var(--qa-ease-out),
-    box-shadow var(--qa-duration-state) var(--qa-ease-out),
-    color var(--qa-duration-state) var(--qa-ease-out);
+    transform var(--lg-dur-press) var(--lg-ease),
+    background-color var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease);
 }
 
 html[data-app="1"] .qa-tab-button__icon {
@@ -257,7 +257,7 @@ html[data-app="1"] .qa-tab-button__badge {
   justify-content: center;
   padding: 0 4px;
   border: 2px solid transparent;
-  border-radius: var(--qa-radius-pill);
+  border-radius: var(--lg-r-pill);
   background: var(--lg-coral);
   color: var(--qa-unread-ink);
   font-size: 9px;
@@ -280,7 +280,7 @@ html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):disabled 
 
 html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):active:not(:disabled):not([aria-disabled="true"]) {
   transform: scale(0.97) !important;
-  transition-duration: var(--qa-duration-press);
+  transition-duration: var(--lg-dur-press);
 }
 
 html[data-app="1"] .qa-button--primary:active:not(:disabled),
@@ -302,9 +302,9 @@ html[data-app="1"] .app-dock {
   position: fixed;
   z-index: 260;
   left: 50%;
-  bottom: var(--qa-dock-bottom);
+  bottom: var(--lg-dock-bottom);
   width: min(calc(100% - 36px), 390px);
-  height: var(--qa-dock-height);
+  height: var(--lg-dock-height);
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -369,7 +369,7 @@ html[data-app="1"] .app-dock .app-tab {
   min-width: 0;
   height: 54px !important;
   padding: 3px !important;
-  color: var(--qa-ink-tertiary) !important;
+  color: var(--lg-ink-3) !important;
   font-weight: 500;
 }
 
@@ -458,7 +458,7 @@ html[data-app="1"] .app-root:has(.atl-read-page) .app-dock {
 /* Create sheet: one material and one accent language. */
 html[data-app="1"] .app-sheet-mask {
   z-index: 420;
-  background: var(--qa-scrim);
+  background: var(--lg-scrim);
 }
 
 /* SPEC §1/§4：Sheet = L2 玻璃（发丝边+内高光在 shadow-2 里；细化由 hig-v5 经
@@ -466,9 +466,9 @@ html[data-app="1"] .app-sheet-mask {
 html[data-app="1"] .app-sheet {
   padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
   border: 1px solid transparent;
-  border-radius: var(--qa-radius-sheet) var(--qa-radius-sheet) 0 0;
+  border-radius: var(--lg-r-sheet) var(--lg-r-sheet) 0 0;
   background: var(--qa-overlay) !important;
-  color: var(--qa-ink);
+  color: var(--lg-ink);
   box-shadow: var(--lg-glass-shadow-2);
   -webkit-backdrop-filter: var(--lg-blur);
   backdrop-filter: var(--lg-blur);
@@ -479,12 +479,12 @@ html[data-app="1"] .app-sheet-head {
   min-height: 52px;
   align-items: center;
   justify-content: space-between;
-  gap: var(--qa-space-3);
+  gap: var(--lg-space-3);
 }
 
 html[data-app="1"] .app-sheet-title {
   margin: 0;
-  color: var(--qa-ink);
+  color: var(--lg-ink);
   font-size: 18px;
   letter-spacing: -0.02em;
 }
@@ -494,7 +494,7 @@ html[data-app="1"] .app-sheet-grip {
   width: 38px;
   height: 5px;
   margin: 0 auto 4px;
-  border-radius: var(--qa-radius-pill);
+  border-radius: var(--lg-r-pill);
   background: color-mix(in srgb, var(--lg-ink-3) 45%, transparent);
 }
 
@@ -507,7 +507,7 @@ html[data-app="1"] .app-create-row {
   border: 1px solid transparent !important;
   border-radius: 16px !important;
   background: var(--qa-surface) !important;
-  color: var(--qa-ink) !important;
+  color: var(--lg-ink) !important;
   box-shadow: none !important;
   text-align: left;
 }
@@ -523,9 +523,9 @@ html[data-app="1"] .app-create-row .ac-ic {
   height: 42px;
   place-items: center;
   flex: 0 0 42px;
-  border-radius: var(--qa-radius-control);
-  background: var(--qa-action-soft) !important;
-  color: var(--qa-action-fill) !important;
+  border-radius: var(--lg-r-control);
+  background: var(--lg-act-soft) !important;
+  color: var(--lg-act) !important;
 }
 
 html[data-app="1"] .app-create-row .ac-tx {
@@ -536,19 +536,19 @@ html[data-app="1"] .app-create-row .ac-tx {
 }
 
 html[data-app="1"] .app-create-row .ac-tx b {
-  color: var(--qa-ink);
+  color: var(--lg-ink);
   font-size: 15px;
 }
 
 html[data-app="1"] .app-create-row .ac-tx small {
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
   font-size: 12px;
 }
 
 /* Today controls: opaque surfaces, fixed semantic states, no rainbow index. */
 html[data-app="1"] .apphome {
-  background: var(--qa-canvas);
-  color: var(--qa-ink);
+  background: var(--lg-canvas);
+  color: var(--lg-ink);
 }
 
 html[data-app="1"] .aht-acts {
@@ -557,11 +557,11 @@ html[data-app="1"] .aht-acts {
 }
 
 html[data-app="1"] .aht-acts .qa-icon-button {
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
 }
 
 html[data-app="1"] .aht-acts .aht-nb {
-  background: var(--qa-unread);
+  background: var(--lg-coral);
   color: var(--qa-unread-ink);
 }
 
@@ -572,44 +572,44 @@ html[data-app="1"] .ah-avatar.qa-icon-button {
 }
 
 html[data-app="1"] .ah-wallet {
-  gap: var(--qa-space-2);
+  gap: var(--lg-space-2);
 }
 
 html[data-app="1"] .ah-coin.qa-button {
   min-height: var(--qa-control-min);
-  padding-inline: var(--qa-space-3);
-  border: 1px solid var(--qa-hairline) !important;
+  padding-inline: var(--lg-space-3);
+  border: 1px solid var(--lg-hairline) !important;
   background: var(--qa-surface) !important;
-  color: var(--qa-ink) !important;
-  box-shadow: var(--qa-shadow-1);
+  color: var(--lg-ink) !important;
+  box-shadow: var(--lg-glass-shadow-1);
 }
 
 html[data-app="1"] .ah-checkin.qa-button {
   min-height: var(--qa-control-min);
-  background: var(--qa-action-fill) !important;
-  color: var(--qa-action-ink) !important;
+  background: var(--lg-act) !important;
+  color: var(--lg-act-ink) !important;
   box-shadow: none !important;
 }
 
 html[data-app="1"] .ah-checkin.qa-button.done {
-  border-color: color-mix(in srgb, var(--qa-success) 24%, transparent) !important;
+  border-color: color-mix(in srgb, var(--lg-jade) 24%, transparent) !important;
   background: var(--qa-success-soft) !important;
-  color: var(--qa-success) !important;
+  color: var(--lg-jade) !important;
 }
 
 html[data-app="1"] .ah-shortcuts {
-  gap: var(--qa-space-2);
+  gap: var(--lg-space-2);
 }
 
 html[data-app="1"] .ah-sc.qa-button {
   min-width: 0;
   min-height: 82px;
   padding: 10px 4px;
-  border: 1px solid var(--qa-hairline) !important;
-  border-radius: var(--qa-radius-card) !important;
+  border: 1px solid var(--lg-hairline) !important;
+  border-radius: var(--lg-r-card) !important;
   background: var(--qa-surface) !important;
-  color: var(--qa-ink-secondary) !important;
-  box-shadow: var(--qa-shadow-1) !important;
+  color: var(--lg-ink-2) !important;
+  box-shadow: var(--lg-glass-shadow-1) !important;
   font-size: 11px;
 }
 
@@ -624,8 +624,8 @@ html[data-app="1"] .ah-sc .ah-sc-ic {
   height: 38px;
   place-items: center;
   border-radius: 13px;
-  background: var(--qa-action-soft) !important;
-  color: var(--qa-action-fill) !important;
+  background: var(--lg-act-soft) !important;
+  color: var(--lg-act) !important;
   box-shadow: none !important;
 }
 
@@ -635,15 +635,15 @@ html[data-app="1"] .ah-sc .ah-sc-ic::after {
 
 html[data-app="1"] .ah-more.qa-button {
   min-height: var(--qa-control-min);
-  padding-inline: var(--qa-space-3);
+  padding-inline: var(--lg-space-3);
   background: transparent !important;
-  color: var(--qa-action-fill) !important;
+  color: var(--lg-act) !important;
 }
 
 /* Authentication: segmented semantics stay owned by the integration markup. */
 html[data-app="1"] .auth-wrap {
-  background: var(--qa-canvas);
-  color: var(--qa-ink);
+  background: var(--lg-canvas);
+  color: var(--lg-ink);
 }
 
 html[data-app="1"] .auth-orbs {
@@ -651,9 +651,9 @@ html[data-app="1"] .auth-orbs {
 }
 
 html[data-app="1"] .auth-card {
-  border: 1px solid var(--qa-hairline) !important;
+  border: 1px solid var(--lg-hairline) !important;
   background: var(--qa-surface) !important;
-  box-shadow: var(--qa-shadow-2) !important;
+  box-shadow: var(--lg-glass-shadow-2) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -674,13 +674,13 @@ html[data-app="1"] .auth-tabs .qa-button {
   flex: 1;
   border-radius: var(--lg-r-pill);
   background: transparent !important;
-  color: var(--qa-ink-secondary) !important;
+  color: var(--lg-ink-2) !important;
   box-shadow: none !important;
 }
 
 html[data-app="1"] .auth-tabs .qa-button[data-selected] {
   background: var(--lg-glass-sel) !important;
-  color: var(--qa-ink) !important;
+  color: var(--lg-ink) !important;
   box-shadow: var(--lg-glass-shadow-1) !important;
 }
 
@@ -691,14 +691,14 @@ html[data-app="1"] .auth-tab-ink {
 html[data-app="1"] .affix-btn.qa-icon-button {
   width: var(--qa-control-min);
   height: var(--qa-control-min);
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
 }
 
 html[data-app="1"] .auth-submit.qa-button {
   min-height: var(--qa-control-submit) !important;
   border: 0 !important;
-  background: var(--qa-action-fill) !important;
-  color: var(--qa-action-ink) !important;
+  background: var(--lg-act) !important;
+  color: var(--lg-act-ink) !important;
   box-shadow: none !important;
 }
 
@@ -707,14 +707,14 @@ html[data-app="1"] .auth-submit::after {
 }
 
 html[data-app="1"] .auth-explore {
-  gap: var(--qa-space-2);
+  gap: var(--lg-space-2);
 }
 
 html[data-app="1"] .auth-explore-btn.qa-button {
   min-height: var(--qa-control-min);
-  border: 1px solid var(--qa-hairline);
+  border: 1px solid var(--lg-hairline);
   background: var(--qa-surface);
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
 }
 
 /* Chat chrome only; bubbles and message content intentionally remain untouched. */
@@ -733,8 +733,8 @@ html[data-app="1"] .chat-tools {
 }
 
 html[data-app="1"] .chat-tool.qa-icon-button.on {
-  background: var(--qa-action-soft) !important;
-  color: var(--qa-action-fill) !important;
+  background: var(--lg-act-soft) !important;
+  color: var(--lg-act) !important;
 }
 
 html[data-app="1"] .chat-tool.qa-icon-button::after {
@@ -763,12 +763,12 @@ html[data-app="1"] .chat-input-bar .act-btn.qa-icon-button {
   margin: 0 !important;
   padding: 0 !important;
   background: transparent !important;
-  color: var(--qa-ink-secondary) !important;
+  color: var(--lg-ink-2) !important;
 }
 
 html[data-app="1"] .chat-input-bar .act-btn.qa-icon-button.on {
-  background: var(--qa-action-soft) !important;
-  color: var(--qa-action-fill) !important;
+  background: var(--lg-act-soft) !important;
+  color: var(--lg-act) !important;
 }
 
 html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button {
@@ -780,20 +780,20 @@ html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button {
   margin: 0 !important;
   /* UI kit 输入岛：发送 = act 实底圆钮 */
   border-radius: 50% !important;
-  background: var(--qa-action-fill) !important;
-  color: var(--qa-action-ink) !important;
+  background: var(--lg-act) !important;
+  color: var(--lg-act-ink) !important;
   box-shadow: none !important;
   animation: none !important;
 }
 
 html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button.stop {
-  background: var(--qa-danger) !important;
+  background: var(--lg-coral) !important;
   color: var(--qa-danger-ink) !important;
 }
 
 html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button:disabled {
-  background: var(--qa-grouped) !important;
-  color: var(--qa-ink-tertiary) !important;
+  background: var(--lg-grouped) !important;
+  color: var(--lg-ink-3) !important;
   opacity: 1;
 }
 
@@ -801,8 +801,8 @@ html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button:disabled {
 html[data-app="1"] .qa-gallery {
   min-height: 100%;
   padding: max(18px, env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
-  background: var(--qa-canvas);
-  color: var(--qa-ink);
+  background: var(--lg-canvas);
+  color: var(--lg-ink);
 }
 
 html[data-app="1"] .qa-gallery__frame {
@@ -828,15 +828,15 @@ html[data-app="1"] .qa-gallery__header h1 {
 html[data-app="1"] .qa-gallery__section {
   margin: 12px 0;
   padding: 16px;
-  border: 1px solid var(--qa-hairline);
-  border-radius: var(--qa-radius-card);
+  border: 1px solid var(--lg-hairline);
+  border-radius: var(--lg-r-card);
   background: var(--qa-surface);
-  box-shadow: var(--qa-shadow-1);
+  box-shadow: var(--lg-glass-shadow-1);
 }
 
 html[data-app="1"] .qa-gallery__section h2 {
   margin: 0 0 12px;
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -846,7 +846,7 @@ html[data-app="1"] .qa-gallery__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--qa-space-2);
+  gap: var(--lg-space-2);
 }
 
 html[data-app="1"] .qa-gallery__tabs {
@@ -864,7 +864,7 @@ html[data-app="1"] .qa-gallery__tabs {
 
 html[data-app="1"] .qa-gallery__note {
   margin: 10px 0 0;
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -872,27 +872,27 @@ html[data-app="1"] .qa-gallery__note {
 html[data-app="1"] .qa-gallery__swatches {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--qa-space-2);
+  gap: var(--lg-space-2);
 }
 
 html[data-app="1"] .qa-gallery__swatch {
   min-height: 58px;
-  padding: var(--qa-space-2);
-  border: 1px solid var(--qa-hairline);
-  border-radius: var(--qa-radius-control);
+  padding: var(--lg-space-2);
+  border: 1px solid var(--lg-hairline);
+  border-radius: var(--lg-r-control);
   background: var(--qa-surface);
-  color: var(--qa-ink);
+  color: var(--lg-ink);
   font-size: 10px;
 }
 
-html[data-app="1"] .qa-gallery__swatch--canvas { background: var(--qa-canvas); }
-html[data-app="1"] .qa-gallery__swatch--grouped { background: var(--qa-grouped); }
+html[data-app="1"] .qa-gallery__swatch--canvas { background: var(--lg-canvas); }
+html[data-app="1"] .qa-gallery__swatch--grouped { background: var(--lg-grouped); }
 html[data-app="1"] .qa-gallery__swatch--surface { background: var(--qa-surface); }
-html[data-app="1"] .qa-gallery__swatch--action { background: var(--qa-action-fill); color: var(--qa-action-ink); }
-html[data-app="1"] .qa-gallery__swatch--danger { background: var(--qa-danger); color: var(--qa-danger-ink); }
-html[data-app="1"] .qa-gallery__swatch--success { background: var(--qa-success); color: var(--qa-success-ink); }
-html[data-app="1"] .qa-gallery__swatch--reward { background: var(--qa-reward); color: var(--qa-reward-ink); }
-html[data-app="1"] .qa-gallery__swatch--unread { background: var(--qa-unread); color: var(--qa-unread-ink); }
+html[data-app="1"] .qa-gallery__swatch--action { background: var(--lg-act); color: var(--lg-act-ink); }
+html[data-app="1"] .qa-gallery__swatch--danger { background: var(--lg-coral); color: var(--qa-danger-ink); }
+html[data-app="1"] .qa-gallery__swatch--success { background: var(--lg-jade); color: var(--qa-success-ink); }
+html[data-app="1"] .qa-gallery__swatch--reward { background: var(--lg-gold); color: var(--qa-reward-ink); }
+html[data-app="1"] .qa-gallery__swatch--unread { background: var(--lg-coral); color: var(--qa-unread-ink); }
 
 /* Lite is intentionally opaque. Balanced retains one sampled navigation layer
    so the control plane still responds to moving content beneath it. */

@@ -935,7 +935,7 @@ html[data-app="1"] .app-create-row { border-radius: 18px; transition: transform 
 html[data-app="1"] .app-create-row:active { transform: scale(0.97); background: var(--bg-2); }
 html[data-app="1"] .ac-ic { border-radius: 15px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 5px 14px rgba(13,74,88,0.12); }
 /* Liuli v5：创建面板图标不再按位置染彩虹；语义 tone 由 JSX data-tone + 后层规则表达。 */
-html[data-app="1"] .app-create-row .ac-ic { background: var(--qa-brand-soft); color: var(--qa-brand-fill); box-shadow: none; }
+html[data-app="1"] .app-create-row .ac-ic { background: var(--lg-act-soft); color: var(--lg-act); box-shadow: none; }
 
 /* ---- 今日页：问候卡资产行玻璃胶囊 + 签到连击徽章 ---- */
 html[data-app="1"] .ah-coin { border-radius: 999px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -2045,7 +2045,7 @@ html[data-app="1"] :where(.input, .textarea, .select):focus {
 
 /* —— 设置：青色胶囊玻璃开关（分组卡已由 .card 白名单成玻璃）—— */
 html[data-app="1"] .switch input:checked + .track {
-  background: var(--qa-action-fill, var(--accent)); box-shadow: 0 3px 8px rgba(29,95,219,0.28);
+  background: var(--lg-act, var(--accent)); box-shadow: 0 3px 8px rgba(29,95,219,0.28);
 }
 
 /* —— 角色详情（cvx 沉浸态）：图标/收藏统一青色，去除杂色 —— */

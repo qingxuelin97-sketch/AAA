@@ -242,7 +242,7 @@ html[data-app="1"] .chat-main .starter-chip.on { border-color: var(--chat-accent
 
 /* ── 8. 悬浮输入岛 —— 单层玻璃、圆角浮起、送出键就绪呼吸/形变 ── */
 html[data-app="1"] .chat-main {
-  --hy-cg-blur: var(--qa-glass-chrome-blur, blur(18px) saturate(150%));
+  --hy-cg-blur: var(--lg-blur, blur(18px) saturate(150%));
   --hy-cg-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(246, 248, 252, 0.68));
   --hy-cg-bg-solid: #f5f7fa;
   --hy-cg-brd: var(--border-2);

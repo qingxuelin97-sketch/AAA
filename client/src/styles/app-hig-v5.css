@@ -12,23 +12,23 @@
 
 /* ── 1. 排版：App 内标题一律 UI 字体（压过 base.css 的展示字体继承） ── */
 html[data-app="1"] :where(h1, h2, h3, h4, h5) {
-  font-family: var(--qa-font-ui);
+  font-family: var(--lg-font-ui);
   letter-spacing: -0.015em;
   font-weight: 700;
 }
 html[data-app="1"] .page h1,
 html[data-app="1"] .topbar h1 {
-  font-size: var(--qa-type-title);
+  font-size: var(--lg-type-title);
   line-height: 1.25;
 }
 html[data-app="1"] :where(.brand b, .stat-row .s b, .empty .big) {
-  font-family: var(--qa-font-ui);
+  font-family: var(--lg-font-ui);
 }
 /* 大标题式样：四个一级 Tab 页首屏标题 34px/800，随内容自然滚走 */
 html[data-app="1"] :where(.qa3-today, .qa3-messages, .qa3-profile) > :where(h1, header h1),
 html[data-app="1"] .msgs > h1,
 html[data-app="1"] .qa-messages-page > h1 {
-  font-size: var(--qa-type-large-title);
+  font-size: var(--lg-type-hero);
   font-weight: 800;
   letter-spacing: -0.022em;
   line-height: 1.18;
@@ -38,16 +38,16 @@ html[data-app="1"] :where(.bal-num, .qa-wallet-v4__asset b, .stat-row .s b, .msg
   font-variant-numeric: tabular-nums;
 }
 /* 次级信息层级统一 */
-html[data-app="1"] :where(.muted, .hint, .sub) { color: var(--qa-ink-secondary); }
-html[data-app="1"] :where(.faint) { color: var(--qa-ink-tertiary); }
+html[data-app="1"] :where(.muted, .hint, .sub) { color: var(--lg-ink-2); }
+html[data-app="1"] :where(.faint) { color: var(--lg-ink-3); }
 
 /* ── 2. 内容面材质：不透明 + 发丝边 + 短阴影（压过遗留渐变/玻璃卡面） ── */
 html[data-app="1"] :where(.card, .set-card, .noti-item, .room-row, .gm-row,
   .friend-card, .wb-card, .script-card, .draw-tile, .lb-row) {
   background: var(--qa-surface);
-  border: 1px solid var(--qa-hairline);
-  box-shadow: var(--qa-shadow-1);
-  border-radius: var(--qa-radius-card);
+  border: 1px solid var(--lg-hairline);
+  box-shadow: var(--lg-glass-shadow-1);
+  border-radius: var(--lg-r-card);
 }
 html[data-app="1"] :where(.card, .set-card):active {
   box-shadow: 0 1px 2px rgb(15 18 26 / 8%);
@@ -55,18 +55,18 @@ html[data-app="1"] :where(.card, .set-card):active {
 /* 卡内分隔线 = 发丝，左端对齐内容缩进（iOS inset separator） */
 html[data-app="1"] :where(.card, .set-card) :where(hr, .divider) {
   border: none;
-  border-top: 1px solid var(--qa-hairline);
-  margin: 4px 0 4px var(--qa-space-4);
+  border-top: 1px solid var(--lg-hairline);
+  margin: 4px 0 4px var(--lg-space-4);
 }
 
 /* ── 3. inset-grouped 列表（设置 / 隐私 / 通知偏好 / 帮助） ── */
 html[data-app="1"] .qa-settings-root {
-  background: var(--qa-grouped);
+  background: var(--lg-grouped);
   min-height: 100dvh;
 }
 /* 组容器透明；标签在卡外（iOS 13px 次级说明）；列表才是白卡 */
 html[data-app="1"] .qa-settings-group {
-  margin: 0 var(--qa-space-4) var(--qa-space-5);
+  margin: 0 var(--lg-space-4) var(--lg-space-5);
   padding: 0;
   background: none;
   border: none;
@@ -75,26 +75,26 @@ html[data-app="1"] .qa-settings-group {
   overflow: visible;
 }
 html[data-app="1"] .qa-settings-group > h2 {
-  margin: 0 0 7px var(--qa-space-4);
-  font-size: var(--qa-type-meta);
+  margin: 0 0 7px var(--lg-space-4);
+  font-size: var(--lg-type-meta);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
 }
 html[data-app="1"] .qa-settings-list {
-  border-radius: var(--qa-radius-row);
+  border-radius: var(--lg-r-row);
   background: var(--qa-surface);
-  border: 1px solid var(--qa-hairline);
+  border: 1px solid var(--lg-hairline);
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 html[data-app="1"] .qa-settings-row {
   min-height: 56px; /* UI kit 设置行高 */
-  padding: 10px var(--qa-space-4);
+  padding: 10px var(--lg-space-4);
   display: flex;
   align-items: center;
-  gap: var(--qa-space-3);
+  gap: var(--lg-space-3);
   background: transparent;
   border: none;
   border-radius: 0;
@@ -104,12 +104,12 @@ html[data-app="1"] .qa-settings-row + .qa-settings-row::before {
   content: '';
   position: absolute;
   top: 0;
-  left: calc(var(--qa-space-4) + 28px + var(--qa-space-3));
+  left: calc(var(--lg-space-4) + 28px + var(--lg-space-3));
   right: 0;
   height: 1px;
-  background: var(--qa-hairline);
+  background: var(--lg-hairline);
 }
-html[data-app="1"] .qa-settings-row:active { background: var(--qa-grouped); }
+html[data-app="1"] .qa-settings-row:active { background: var(--lg-grouped); }
 html[data-app="1"] .qa-settings-row-icon {
   width: 28px;
   height: 28px;
@@ -119,37 +119,37 @@ html[data-app="1"] .qa-settings-row-icon {
   flex: none;
 }
 html[data-app="1"] .qa-settings-row-copy b {
-  font-size: var(--qa-type-section);
+  font-size: var(--lg-type-section);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 html[data-app="1"] .qa-settings-row-copy small {
-  font-size: var(--qa-type-meta);
-  color: var(--qa-ink-secondary);
+  font-size: var(--lg-type-meta);
+  color: var(--lg-ink-2);
 }
 html[data-app="1"] .qa-settings-row-chevron {
   margin-left: auto;
-  color: var(--qa-ink-tertiary);
+  color: var(--lg-ink-3);
   flex: none;
 }
 html[data-app="1"] .qa-settings-intro {
-  padding: 4px var(--qa-space-5) var(--qa-space-3);
-  font-size: var(--qa-type-meta);
-  color: var(--qa-ink-secondary);
+  padding: 4px var(--lg-space-5) var(--lg-space-3);
+  font-size: var(--lg-type-meta);
+  color: var(--lg-ink-2);
 }
 /* 通用表单卡的 group 化（角色/世界书编辑等沿用 .card + .field 的页面） */
-html[data-app="1"] .field { margin-bottom: var(--qa-space-4); }
+html[data-app="1"] .field { margin-bottom: var(--lg-space-4); }
 html[data-app="1"] .field > label {
   display: block;
-  font-size: var(--qa-type-meta);
+  font-size: var(--lg-type-meta);
   font-weight: 600;
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
   margin-bottom: 6px;
   letter-spacing: 0.01em;
 }
 html[data-app="1"] .hint {
   font-size: 12px;
-  color: var(--qa-ink-tertiary);
+  color: var(--lg-ink-3);
   margin-top: 5px;
 }
 
@@ -157,23 +157,23 @@ html[data-app="1"] .hint {
 html[data-app="1"] .topbar {
   min-height: calc(44px + env(safe-area-inset-top));
   padding-top: max(6px, env(safe-area-inset-top));
-  border-bottom: 1px solid var(--qa-glass-hairline);
+  border-bottom: 1px solid var(--lg-hairline);
 }
 html[data-app="1"] .topbar h1 {
-  font-size: var(--qa-type-section);
+  font-size: var(--lg-type-section);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 html[data-app="1"] .topbar .sub {
   font-size: 12px;
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
 }
 /* 返回按钮统一为无底色 chevron 热区 */
 html[data-app="1"] .topbar > :where(button, .btn):first-child:not(.primary) {
   background: none;
   border: none;
   box-shadow: none;
-  color: var(--qa-brand-fill);
+  color: var(--lg-act);
 }
 
 /* ── 5. 分段控件（UI kit）：胶囊槽 --lg-glass-1 + 发丝内衬；选中片 --lg-glass-sel + shadow-1 + 600 ── */
@@ -182,7 +182,7 @@ html[data-app="1"] :where(.seg, .tabs-bar:not(.qa-character-editor__tabs)) {
   align-items: stretch;
   gap: 2px;
   padding: 3px;
-  border-radius: var(--qa-radius-pill);
+  border-radius: var(--lg-r-pill);
   background: var(--lg-glass-1);
   box-shadow: inset 0 0 0 1px var(--lg-hairline);
   border: none;
@@ -192,16 +192,16 @@ html[data-app="1"] :where(.seg, .tabs-bar) > :where(button, .tab) {
   background: none;
   min-height: 34px;
   padding: 6px 14px;
-  border-radius: var(--qa-radius-pill);
+  border-radius: var(--lg-r-pill);
   font-size: 13px;
   font-weight: 400;
-  color: var(--qa-ink-secondary);
-  transition: background var(--qa-duration-state) var(--qa-ease-out),
-    color var(--qa-duration-state) var(--qa-ease-out);
+  color: var(--lg-ink-2);
+  transition: background var(--lg-dur-state) var(--lg-ease),
+    color var(--lg-dur-state) var(--lg-ease);
 }
 html[data-app="1"] :where(.seg, .tabs-bar) > :where(button, .tab):where(.active, .on, [aria-selected="true"]) {
   background: var(--lg-glass-sel);
-  color: var(--qa-ink);
+  color: var(--lg-ink);
   font-weight: 600;
   box-shadow: var(--lg-glass-shadow-1);
 }
@@ -212,7 +212,7 @@ html[data-app="1"] .switch .track {
   height: 31px;
   border-radius: 999px;
   background: var(--lg-hairline);
-  transition: background var(--qa-duration-state) var(--qa-ease-out);
+  transition: background var(--lg-dur-state) var(--lg-ease);
 }
 html[data-app="1"] .switch .track::after {
   width: 27px;
@@ -220,18 +220,18 @@ html[data-app="1"] .switch .track::after {
   top: 2px;
   left: 2px;
   box-shadow: 0 2px 6px rgb(0 0 0 / 28%);
-  transition: transform var(--qa-duration-state) var(--qa-ease-spring);
+  transition: transform var(--lg-dur-state) var(--lg-ease);
 }
-html[data-app="1"] .switch input:checked + .track { background: var(--qa-action-fill); }
+html[data-app="1"] .switch input:checked + .track { background: var(--lg-act); }
 html[data-app="1"] .switch input:checked + .track::after { transform: translateX(20px); }
 
 /* ── 7. Sheet / Modal：抓手 + 玻璃材质 + 层级圆角 ── */
 html[data-app="1"] :where(.app-sheet, .vm-sheet) {
-  border-radius: var(--qa-radius-sheet) var(--qa-radius-sheet) 0 0;
+  border-radius: var(--lg-r-sheet) var(--lg-r-sheet) 0 0;
   background: var(--qa-glass-sheet-bg);
-  -webkit-backdrop-filter: var(--qa-glass-sheet-blur);
-  backdrop-filter: var(--qa-glass-sheet-blur);
-  border: 1px solid var(--qa-glass-hairline);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  border: 1px solid var(--lg-hairline);
   border-bottom: none;
   box-shadow: var(--qa-glass-specular), 0 -18px 48px rgb(12 16 24 / 18%);
 }
@@ -244,34 +244,34 @@ html[data-app="1"] .app-sheet-grip {
   opacity: 1;
 }
 html[data-app="1"] :where(.app-sheet-mask, .modal-backdrop) {
-  background: var(--qa-scrim);
+  background: var(--lg-scrim);
 }
 html[data-app="1"] .modal {
-  border-radius: var(--qa-radius-panel);
+  border-radius: var(--lg-r-panel);
   background: var(--qa-overlay);
-  -webkit-backdrop-filter: var(--qa-glass-sheet-blur);
-  backdrop-filter: var(--qa-glass-sheet-blur);
-  border: 1px solid var(--qa-glass-hairline);
-  box-shadow: var(--qa-shadow-3);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  border: 1px solid var(--lg-hairline);
+  box-shadow: var(--lg-glass-shadow-2);
 }
 
 /* ── 8. 控件按压：统一 80ms 下压 / 350ms 弹簧回弹，无发光 ── */
 html[data-app="1"] :where(.btn, button.primary, .qa-button, .chip, .tag) {
-  transition: transform var(--qa-duration-press) ease-out,
-    background var(--qa-duration-state) var(--qa-ease-out),
-    box-shadow var(--qa-duration-state) var(--qa-ease-out);
+  transition: transform var(--lg-dur-press) ease-out,
+    background var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease);
 }
 html[data-app="1"] :where(.btn, button.primary, .chip):active {
   transform: scale(0.97);
 }
 html[data-app="1"] .btn.primary,
 html[data-app="1"] button.primary {
-  border-radius: var(--qa-radius-control);
+  border-radius: var(--lg-r-control);
   font-weight: 600;
 }
 /* 危险动作永远实色红，不随 accent */
 html[data-app="1"] :where(.btn.danger, .qa-button--danger) {
-  background: var(--qa-danger);
+  background: var(--lg-coral);
   color: var(--qa-danger-ink);
 }
 
@@ -293,22 +293,22 @@ html[data-app="1"] .chat-main .msg-daydivider span {
 
 /* ── 10. 表单输入（UI kit）：圆角 12 · 焦点 = 1.6px act 描边（1px 边框 + 0.6px 内衬合成） ── */
 html[data-app="1"] :where(.input, .textarea, .select, textarea, select) {
-  border-radius: var(--qa-radius-control);
-  font-size: var(--qa-type-body);
-  color: var(--qa-ink);
+  border-radius: var(--lg-r-control);
+  font-size: var(--lg-type-body);
+  color: var(--lg-ink);
   background: var(--qa-surface);
-  border: 1px solid var(--qa-hairline);
+  border: 1px solid var(--lg-hairline);
   box-shadow: none;
-  transition: border-color var(--qa-duration-state) var(--qa-ease-out),
-    box-shadow var(--qa-duration-state) var(--qa-ease-out);
+  transition: border-color var(--lg-dur-state) var(--lg-ease),
+    box-shadow var(--lg-dur-state) var(--lg-ease);
 }
 html[data-app="1"] :where(.input, .textarea, .select, textarea, select):focus {
-  border-color: var(--qa-focus);
-  box-shadow: inset 0 0 0 0.6px var(--qa-focus);
+  border-color: var(--lg-focus);
+  box-shadow: inset 0 0 0 0.6px var(--lg-focus);
   outline: none;
 }
 html[data-app="1"] :where(.input, .textarea)::placeholder {
-  color: var(--qa-ink-tertiary);
+  color: var(--lg-ink-3);
 }
 
 /* ── 11. 空态：静止插画 + 说明 + 单一 CTA（PNG 插槽见 .qa5-empty） ── */
@@ -316,26 +316,26 @@ html[data-app="1"] .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--qa-space-3);
-  padding: 44px var(--qa-space-6);
+  gap: var(--lg-space-3);
+  padding: 44px var(--lg-space-6);
   text-align: center;
-  color: var(--qa-ink-secondary);
+  color: var(--lg-ink-2);
 }
 html[data-app="1"] .empty .big {
-  font-size: var(--qa-type-section);
+  font-size: var(--lg-type-section);
   font-weight: 600;
-  color: var(--qa-ink);
+  color: var(--lg-ink);
 }
 html[data-app="1"] .qa5-empty-art {
   width: min(230px, 62vw);
   height: auto;
-  border-radius: var(--qa-radius-card);
+  border-radius: var(--lg-r-card);
 }
 
 /* ── 12. 因果动效：入场一次性、跟随导航方向；减弱动效全撤 ── */
 html[data-app="1"] .route-fade.tab-pane .pane-enter {
-  animation-duration: var(--qa-duration-nav);
-  animation-timing-function: var(--qa-ease-spring);
+  animation-duration: var(--lg-dur-push);
+  animation-timing-function: var(--lg-ease);
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] :where(.btn, button.primary, .qa-button, .chip, .tag, .switch .track, .switch .track::after) {
@@ -347,12 +347,12 @@ html[data-app="1"] .route-fade.tab-pane .pane-enter {
 }
 
 /* ── 13. 创建面板语义 tone（P4 JSX 落 data-tone 后生效；缺省中性群青软底） ── */
-html[data-app="1"] .app-create-row[data-tone="indigo"] .ac-ic { background: var(--qa-semantic-indigo-soft); color: var(--qa-semantic-indigo); }
-html[data-app="1"] .app-create-row[data-tone="gold"] .ac-ic { background: var(--qa-semantic-gold-soft); color: var(--qa-semantic-gold); }
-html[data-app="1"] .app-create-row[data-tone="coral"] .ac-ic { background: var(--qa-semantic-coral-soft); color: var(--qa-semantic-coral); }
-html[data-app="1"] .app-create-row[data-tone="blue"] .ac-ic { background: var(--qa-semantic-blue-soft); color: var(--qa-semantic-blue); }
-html[data-app="1"] .app-create-row[data-tone="rose"] .ac-ic { background: var(--qa-semantic-rose-soft); color: var(--qa-semantic-rose); }
-html[data-app="1"] .app-create-row[data-tone="success"] .ac-ic { background: var(--qa-success-soft); color: var(--qa-success); }
+html[data-app="1"] .app-create-row[data-tone="indigo"] .ac-ic { background: var(--qa-semantic-indigo-soft); color: var(--lg-violet); }
+html[data-app="1"] .app-create-row[data-tone="gold"] .ac-ic { background: var(--qa-semantic-gold-soft); color: var(--lg-gold); }
+html[data-app="1"] .app-create-row[data-tone="coral"] .ac-ic { background: var(--qa-semantic-coral-soft); color: var(--lg-coral); }
+html[data-app="1"] .app-create-row[data-tone="blue"] .ac-ic { background: var(--qa-semantic-blue-soft); color: var(--lg-azure); }
+html[data-app="1"] .app-create-row[data-tone="rose"] .ac-ic { background: var(--qa-semantic-rose-soft); color: var(--lg-rose); }
+html[data-app="1"] .app-create-row[data-tone="success"] .ac-ic { background: var(--qa-success-soft); color: var(--lg-jade); }
 html[data-app="1"] .app-create-row .ac-ic {
   border-radius: 12px;
   box-shadow: none;
@@ -362,21 +362,21 @@ html[data-app="1"] .app-create-row .ac-ic {
 html[data-app="1"][data-theme="dark"] :where(.card, .set-card, .noti-item, .room-row, .gm-row,
   .friend-card, .wb-card, .script-card, .draw-tile, .lb-row) {
   background: var(--qa-surface);
-  border-color: var(--qa-hairline);
-  box-shadow: var(--qa-shadow-1);
+  border-color: var(--lg-hairline);
+  box-shadow: var(--lg-glass-shadow-1);
 }
 /* 分段/开关的暗色形态由 --lg-glass-1/--lg-glass-sel/--lg-hairline 令牌自动翻转 */
 html[data-app="1"][data-theme="dark"] :where(.input, .textarea, .select, textarea, select) {
   background: var(--qa-surface);
-  border-color: var(--qa-hairline);
+  border-color: var(--lg-hairline);
 }
-html[data-app="1"][data-theme="dark"] .qa-settings-root { background: var(--qa-canvas); }
+html[data-app="1"][data-theme="dark"] .qa-settings-root { background: var(--lg-canvas); }
 /* 组容器两主题一致透明：面材质只属于组内列表卡，标题后不留亮条 */
 html[data-app="1"][data-theme="dark"] .qa-settings-group {
   background: none;
   border-color: transparent;
 }
-html[data-app="1"][data-theme="dark"] .qa-settings-row:active { background: var(--qa-grouped); }
+html[data-app="1"][data-theme="dark"] .qa-settings-row:active { background: var(--lg-grouped); }
 
 /* 加载图标旋转（状态循环，随加载态出现与消失） */
 html[data-app="1"] .qa5-spin { animation: qa5Spin 0.9s linear infinite; }
@@ -412,11 +412,11 @@ html[data-app="1"] .qa-chat-main.has-bg .qa-chat-composer.chat-input-bar {
   right: 10px !important;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
   padding: 10px !important;
-  border: 1px solid var(--qa-glass-hairline) !important;
+  border: 1px solid var(--lg-hairline) !important;
   border-radius: 26px !important;
   background: var(--qa-glass-chrome-bg) !important;
-  -webkit-backdrop-filter: var(--qa-glass-chrome-blur) !important;
-  backdrop-filter: var(--qa-glass-chrome-blur) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  backdrop-filter: var(--lg-blur) !important;
   box-shadow: var(--qa-glass-specular), 0 14px 40px rgb(12 16 24 / 20%) !important;
 }
 /* 沉浸立绘语境：墨色玻璃 tint（浅玻璃压在暗立绘上会发奶白） */
@@ -450,6 +450,6 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
 /* 焦点 = 1.6px act 描边（1px 边框 + 0.6px 内衬合成，同表单契约） */
 html[data-app="1"] .qa-chat-main .qa-chat-input-island.box:focus-within,
 html[data-app="1"] .chat-main .chat-input-bar .box:focus-within {
-  border-color: var(--qa-focus) !important;
-  box-shadow: inset 0 0 0 0.6px var(--qa-focus) !important;
+  border-color: var(--lg-focus) !important;
+  box-shadow: inset 0 0 0 0.6px var(--lg-focus) !important;
 }
