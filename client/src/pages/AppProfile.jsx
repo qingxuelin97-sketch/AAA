@@ -9,6 +9,7 @@ import { useToast, Avatar, CoinIcon, DiamondIcon, IdentityBadges, CountUp } from
 import { fmtNum } from '../util.js';
 import { CoverArt, EmptyArt, QuietAquaCharacterArt, isLegacyMonogramCover } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import WhatsNewSheet from '../components/WhatsNewSheet.jsx';
 import { isAppMode } from '../appmode.js';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
@@ -90,6 +91,7 @@ export default function AppProfile() {
   const appMode = isAppMode();
   const [stats, setStats] = useState(null);
   const [unread, setUnread] = useState(0);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false); // S7-G10 新功能 Sheet
   const [tab, setTab] = useState('chars'); // chars | favs
   const [chars, setChars] = useState(null);
   const [favs, setFavs] = useState(null);
@@ -354,10 +356,12 @@ export default function AppProfile() {
 
       <div className="pf-foot">
         {user?.is_gm && <AppButton className="pf-foot-btn" variant="secondary" onClick={() => nav('/admin')}><Shield size={15} /> 管理后台</AppButton>}
+        <AppButton className="pf-foot-btn" variant="secondary" onClick={() => setWhatsNewOpen(true)}><Megaphone size={15} /> 新功能</AppButton>
         <AppButton className="pf-foot-btn" variant="secondary" onClick={() => nav('/help')}><LifeBuoy size={15} /> 帮助中心</AppButton>
         {installReady && <AppButton className="pf-foot-btn" variant="secondary" onClick={install}><Download size={15} /> 安装到桌面</AppButton>}
         <AppButton className="pf-foot-btn danger" variant="danger" tone="danger" onClick={logout}><LogOut size={15} /> 退出登录</AppButton>
       </div>
+      {whatsNewOpen && <WhatsNewSheet onClose={() => setWhatsNewOpen(false)} />}
     </div>
   );
 }

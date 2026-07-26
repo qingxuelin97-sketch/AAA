@@ -318,6 +318,16 @@ assert.match(leaderboardSource, /tab === 'authors' && data\?\.me &&[\s\S]*qa-lb-
 assert.match(gesturesSource, /huanyu_haptics'\) === '0'\) return;/, 'tick() must honour the haptics opt-out before vibrating');
 const settingsPageSource = await readFile(new URL('./src/pages/Settings.jsx', import.meta.url), 'utf8');
 assert.match(settingsPageSource, /app && \([\s\S]*qa-haptics-row/, 'the haptics switch must stay App-only');
+/* ---- S7-G10 搜索分类 / 任务全领 / 新功能 Sheet ---- */
+const searchSource = await readFile(new URL('./src/pages/Search.jsx', import.meta.url), 'utf8');
+assert.match(searchSource, /app && !res && !loading && cats\.length > 0[\s\S]*qa-search-cats/, 'hot category chips must stay App-only on the empty panel');
+assert.match(searchSource, /tabOverride: 'character'/, 'category chips must search as characters regardless of the active tab');
+const eventsSource = await readFile(new URL('./src/pages/Events.jsx', import.meta.url), 'utf8');
+assert.match(eventsSource, /claimAllTasks[\s\S]*单条失败不拦后续|单条失败不拦后续[\s\S]*claimAllTasks/, 'claim-all must tolerate per-task races');
+assert.match(eventsSource, /app && tasks\.filter\(t => t\.done && !t\.claimed\)\.length >= 2/, 'the claim-all button must stay App-only and appear from two claimables');
+const whatsNewSource = await readFile(new URL('./src/components/WhatsNewSheet.jsx', import.meta.url), 'utf8');
+assert.match(whatsNewSource, /isolate: appPortal[\s\S]*createPortal\(sheet/, 'the whats-new sheet must keep the App overlay isolation contract');
+assert.match(appProfileSource, /WhatsNewSheet onClose/, 'the profile footer must open the whats-new sheet');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(

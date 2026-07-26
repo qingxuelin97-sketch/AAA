@@ -125,6 +125,94 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 我的页 · 新功能 Sheet ---- */
+html[data-app="1"] .qa-whatsnew {
+  max-height: min(78dvh, 640px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+html[data-app="1"] .qa-whatsnew-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--lg-ink);
+}
+
+html[data-app="1"] .qa-whatsnew-head p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--lg-ink-3);
+}
+
+html[data-app="1"] .qa-whatsnew-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 4px;
+  padding-right: 2px;
+}
+
+html[data-app="1"] .qa-whatsnew-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: calc(var(--lg-r-card) - 8px);
+}
+
+html[data-app="1"] .qa-whatsnew-ic {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--lg-act) 10%, transparent);
+  color: var(--lg-act);
+}
+
+html[data-app="1"] .qa-whatsnew-tx {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+html[data-app="1"] .qa-whatsnew-tx b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lg-ink);
+}
+
+html[data-app="1"] .qa-whatsnew-tx span {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--lg-ink-2);
+}
+
+html[data-app="1"] .qa-whatsnew-done {
+  flex-shrink: 0;
+}
+
+/* ---- 搜索 · 热门分类 chips ---- */
+html[data-app="1"] .qa-search-cats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+html[data-app="1"] .qa-search-cats-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+}
+
 /* ---- 排行榜 · 我的名次常驻行 ---- */
 html[data-app="1"] .qa-lb-mine {
   display: flex;

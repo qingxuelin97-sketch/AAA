@@ -7,7 +7,7 @@ import { pid, parsePid } from '../assets.jsx';
 import { AppEmptyArt, EmptyArt, CoverArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { Search as SearchIcon, Drama, ScrollText, Play, User, X, History, ArrowLeft } from 'lucide-react';
+import { Search as SearchIcon, Drama, ScrollText, Play, User, X, History, ArrowLeft, Sparkles } from 'lucide-react';
 
 const TABS = [
   { k: 'user', label: '用户', ph: '用户 ID（如 U3）或用户名 / 昵称' },
@@ -30,6 +30,7 @@ export default function Search() {
   const [res, setRes] = useState(null);
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState(loadRecent);
+  const [cats, setCats] = useState([]); // S7-G10 热门分类 chips（App 空面板）
   const nav = useNavigate();
   const toast = useToast();
   const inputRef = useRef(null);
@@ -39,10 +40,14 @@ export default function Search() {
     setRecent(prev => { const next = [query, ...prev.filter(x => x !== query)].slice(0, 8); saveRecent(next); return next; });
   };
 
-  const run = async (query = q.trim(), { manual = false } = {}) => {
+  useEffect(() => {
+    if (app) api('/meta/categories').then(d => setCats((d.categories || []).slice(0, 8))).catch(() => {});
+  }, [app]);
+
+  const run = async (query = q.trim(), { manual = false, tabOverride } = {}) => {
     if (!query) { if (manual) toast('请输入搜索内容', 'err'); return; }
     const parsed = parsePid(query);
-    const useTab = parsed?.type || tab;     // prefixed id (U/C/S) auto-selects the tab
+    const useTab = parsed?.type || tabOverride || tab; // prefixed id (U/C/S) auto-selects the tab
     const eff = parsed?.type ? parsed.n : query;
     const numeric = /^\d+$/.test(eff);
     if (parsed?.type && parsed.type !== tab) setTab(parsed.type);
@@ -131,6 +136,18 @@ export default function Search() {
             ))}
             <AppIconButton className="pressable" label="清空最近搜索" onClick={() => { setRecent([]); saveRecent([]); }} aria-label="清空最近搜索"
               style={{ border: 0, background: 'transparent', color: 'var(--faint)', cursor: 'pointer', padding: 4, display: 'grid', placeItems: 'center' }}><X size={13} /></AppIconButton>
+          </div>
+        )}
+
+        {/* S7-G10 热门分类：空面板给零输入的人一条起跑线（App 专属，点即按角色搜该分类） */}
+        {app && !res && !loading && cats.length > 0 && (
+          <div className="stagger-in qa-search-cats" aria-label="热门分类">
+            <span className="muted qa-search-cats-label"><Sparkles size={13} /> 热门分类</span>
+            {cats.map(c => (
+              <AppButton key={c.slug} className="tag-chip pressable" onClick={() => { setTab('character'); setQ(c.name); run(c.name, { manual: true, tabOverride: 'character' }); }}>
+                {c.icon ? `${c.icon} ` : ''}{c.name}
+              </AppButton>
+            ))}
           </div>
         )}
 
