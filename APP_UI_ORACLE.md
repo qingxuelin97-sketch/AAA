@@ -399,3 +399,8 @@ node scripts/appdiff.mjs   # 样式/令牌重构时：改前 --baseline 录基�
 
 每行的 e2e 场景名都在 app-test 的场景守卫清单里锁死；boundary 指
 `server/s7-boundary.test.mjs`（七组验值）。
+
+（10.8 表补行）| 抽卡晒卡 | Gacha 结果第三动作 → character 模板 | App-only / 模板路由 | 手测 + 分享卡族 e2e |
+| 收藏筛选 | Favorites `.qa-fav-cats`（分类自推导） | App-only / ≥2 类 / 空档说明 | 手测切换 |
+| 公告 NEW | `huanyu_ann_seen` 账本（钳 100） | App 门控 / 有界 / 徽标 App-only | 手测两次进入 |
+| 阅读进度 | NovelReader `huanyu_read_<id>` + 2px 条 | 门控 / 端点复位 / 字号域 | 手测 0.50 往返 |

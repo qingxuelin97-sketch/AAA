@@ -22,6 +22,20 @@ export default function Announcements() {
   const load = () => api('/announcements').then(d => { setList(d.announcements); setIsGm(d.is_gm); }).catch(e => { toast(e.message, 'err'); setErr(true); }).finally(() => setLoading(false));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
+  // S7-G10 已读记忆（仅 App）：首次见到的公告标 NEW；本次浏览即记为已读，
+  // 徽标只活一屏——下次进来不再打扰。id 列表钳 100 防无限膨胀。
+  const [newIds, setNewIds] = useState(() => new Set());
+  useEffect(() => {
+    if (!app || loading || list.length === 0) return;
+    let seen = [];
+    try { seen = JSON.parse(localStorage.getItem('huanyu_ann_seen') || '[]'); } catch { /* */ }
+    const seenSet = new Set(seen);
+    setNewIds(new Set(list.filter(a => !seenSet.has(a.id)).map(a => a.id)));
+    try {
+      localStorage.setItem('huanyu_ann_seen', JSON.stringify([...new Set([...seen, ...list.map(a => a.id)])].slice(-100)));
+    } catch { /* */ }
+  }, [app, loading, list]);
+
   const publish = async () => {
     if (!form.title.trim()) return toast('请填写标题', 'err');
     setBusy(true);
@@ -57,7 +71,11 @@ export default function Announcements() {
               const ItemRoot = app ? 'article' : 'div';
               return (
               <ItemRoot key={a.id} className={'ann-item' + (app ? ' qa-announcements-item' : '') + (a.pinned ? ' pinned' : '')}>
-                <h3>{a.pinned ? <span className="pin"><Pin size={11} style={{ verticalAlign: -1 }} /> 置顶</span> : null}{a.title}</h3>
+                <h3>
+                  {a.pinned ? <span className="pin"><Pin size={11} style={{ verticalAlign: -1 }} /> 置顶</span> : null}
+                  {a.title}
+                  {app && newIds.has(a.id) && <span className="qa-ann-new" aria-label="新公告">NEW</span>}
+                </h3>
                 <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, margin: 0, color: 'var(--text)' }}>{a.body}</p>
                 <div className="meta" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span>{a.author_name || '官方'} · {String(a.created_at || '').slice(0, 16)}</span>

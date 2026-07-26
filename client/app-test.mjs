@@ -273,6 +273,11 @@ assert.match(gachaSource, /isAppMode\(\) && shareOpen && result &&[\s\S]*kind="c
 const favoritesSource = await readFile(new URL('./src/pages/Favorites.jsx', import.meta.url), 'utf8');
 assert.match(favoritesSource, /app && !loading && cats\.length >= 2[\s\S]*qa-fav-cats/, 'favorite category chips must stay App-only and need two categories');
 assert.match(favoritesSource, /该分类下暂无收藏/, 'an emptied favorite filter must explain itself');
+/* ---- S7-G10 公告已读记忆 ---- */
+const announcementsSource = await readFile(new URL('./src/pages/Announcements.jsx', import.meta.url), 'utf8');
+assert.match(announcementsSource, /if \(!app \|\| loading \|\| list\.length === 0\) return;[\s\S]*huanyu_ann_seen/, 'announcement read-memory must stay App-gated');
+assert.match(announcementsSource, /\.slice\(-100\)/, 'the seen-id ledger must stay bounded');
+assert.match(announcementsSource, /app && newIds\.has\(a\.id\) && <span className="qa-ann-new"/, 'unseen announcements must badge only inside the App shell');
 /* ---- S7-G10 星轨年鉴卡契约 ---- */
 assert.match(shareCardSource, /renderInsightsCard/, 'the compositor must offer the insights annual-card template');
 assert.match(shareSheetSource, /kind === 'insights'[\s\S]*renderInsightsCard/, 'the share sheet must route the insights kind to its template');
@@ -530,4 +535,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 263/263 passed');
+console.log('app invariants: 266/266 passed');
