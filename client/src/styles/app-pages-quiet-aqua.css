@@ -1144,7 +1144,7 @@ html[data-app="1"] .qa-friends-page .fr-add-row .qa-button {
   min-width: 84px;
   min-height: 44px;
   padding-inline: 10px;
-  border-radius: 13px;
+  border-radius: var(--qa-radius-pill); /* UI kit CTA 胶囊 */
 }
 
 html[data-app="1"] .qa-friends-page .fr-scroll {
@@ -2649,7 +2649,7 @@ html[data-app="1"] .qa-wallet .exch-out {
 
 html[data-app="1"] .qa-wallet .btn.qa-button {
   min-height: 48px;
-  border-radius: var(--qa-radius-control) !important;
+  border-radius: var(--qa-radius-pill) !important; /* UI kit CTA 胶囊 */
 }
 
 html[data-app="1"] .qa-wallet .vip-entry.qa-button {
@@ -3090,7 +3090,7 @@ html[data-app="1"] .qa-settings-actions {
 
 html[data-app="1"] .qa-settings-detail :where(.qa-settings-save, .qa-settings-secondary, .qa-settings-data-action).qa-button {
   min-height: 44px;
-  border-radius: var(--qa-radius-control);
+  border-radius: var(--qa-radius-pill); /* UI kit CTA 胶囊 */
   font-size: 13.5px;
 }
 
@@ -3572,7 +3572,7 @@ html[data-app="1"] .qa-groups-create-actions {
 
 html[data-app="1"] .qa-groups-create-actions .qa-button {
   min-height: 48px;
-  border-radius: var(--qa-radius-control);
+  border-radius: var(--qa-radius-pill); /* UI kit CTA 胶囊 */
 }
 
 html[data-app="1"] .qa-groups-create-actions .qa-button--primary {

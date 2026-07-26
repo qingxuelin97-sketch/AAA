@@ -90,7 +90,7 @@ html[data-app="1"] .qa-settings-list {
   flex-direction: column;
 }
 html[data-app="1"] .qa-settings-row {
-  min-height: 52px;
+  min-height: 56px; /* UI kit 设置行高 */
   padding: 10px var(--qa-space-4);
   display: flex;
   align-items: center;
@@ -104,16 +104,16 @@ html[data-app="1"] .qa-settings-row + .qa-settings-row::before {
   content: '';
   position: absolute;
   top: 0;
-  left: calc(var(--qa-space-4) + 29px + var(--qa-space-3));
+  left: calc(var(--qa-space-4) + 28px + var(--qa-space-3));
   right: 0;
   height: 1px;
   background: var(--qa-hairline);
 }
 html[data-app="1"] .qa-settings-row:active { background: var(--qa-grouped); }
 html[data-app="1"] .qa-settings-row-icon {
-  width: 29px;
-  height: 29px;
-  border-radius: 7px;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
   display: grid;
   place-items: center;
   flex: none;
@@ -176,40 +176,42 @@ html[data-app="1"] .topbar > :where(button, .btn):first-child:not(.primary) {
   color: var(--qa-brand-fill);
 }
 
-/* ── 5. 分段控件：iOS segmented（2px 内衬轨 + 白色滑块投影） ── */
+/* ── 5. 分段控件（UI kit）：胶囊槽 --lg-glass-1 + 发丝内衬；选中片 --lg-glass-sel + shadow-1 + 600 ── */
 html[data-app="1"] :where(.seg, .tabs-bar:not(.qa-character-editor__tabs)) {
   display: inline-flex;
   align-items: stretch;
   gap: 2px;
-  padding: 2px;
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--qa-ink) 6%, var(--qa-grouped));
+  padding: 3px;
+  border-radius: var(--qa-radius-pill);
+  background: var(--lg-glass-1);
+  box-shadow: inset 0 0 0 1px var(--lg-hairline);
   border: none;
 }
 html[data-app="1"] :where(.seg, .tabs-bar) > :where(button, .tab) {
   border: none;
   background: none;
-  min-height: 32px;
+  min-height: 34px;
   padding: 6px 14px;
-  border-radius: 7px;
-  font-size: 13.5px;
-  font-weight: 600;
+  border-radius: var(--qa-radius-pill);
+  font-size: 13px;
+  font-weight: 400;
   color: var(--qa-ink-secondary);
   transition: background var(--qa-duration-state) var(--qa-ease-out),
     color var(--qa-duration-state) var(--qa-ease-out);
 }
 html[data-app="1"] :where(.seg, .tabs-bar) > :where(button, .tab):where(.active, .on, [aria-selected="true"]) {
-  background: var(--qa-surface);
+  background: var(--lg-glass-sel);
   color: var(--qa-ink);
-  box-shadow: 0 1px 3px rgb(15 18 26 / 12%), 0 0 0 0.5px rgb(15 18 26 / 4%);
+  font-weight: 600;
+  box-shadow: var(--lg-glass-shadow-1);
 }
 
-/* ── 6. 开关：iOS 51×31 轨 + 27px 滑块 ── */
+/* ── 6. 开关（UI kit）：51×31 轨（off = 发丝色）+ 27px 白滑块 ── */
 html[data-app="1"] .switch .track {
   width: 51px;
   height: 31px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--qa-ink) 12%, var(--qa-grouped));
+  background: var(--lg-hairline);
   transition: background var(--qa-duration-state) var(--qa-ease-out);
 }
 html[data-app="1"] .switch .track::after {
@@ -217,7 +219,7 @@ html[data-app="1"] .switch .track::after {
   height: 27px;
   top: 2px;
   left: 2px;
-  box-shadow: 0 3px 8px rgb(15 18 26 / 15%), 0 0 0 0.5px rgb(15 18 26 / 4%);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 28%);
   transition: transform var(--qa-duration-state) var(--qa-ease-spring);
 }
 html[data-app="1"] .switch input:checked + .track { background: var(--qa-action-fill); }
@@ -233,11 +235,12 @@ html[data-app="1"] :where(.app-sheet, .vm-sheet) {
   border-bottom: none;
   box-shadow: var(--qa-glass-specular), 0 -18px 48px rgb(12 16 24 / 18%);
 }
+/* UI kit grabber：38×5 · ink3 45%（令牌随主题翻转，无需暗色特例） */
 html[data-app="1"] .app-sheet-grip {
-  width: 36px;
+  width: 38px;
   height: 5px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--qa-ink) 18%, transparent);
+  background: color-mix(in srgb, var(--lg-ink-3) 45%, transparent);
   opacity: 1;
 }
 html[data-app="1"] :where(.app-sheet-mask, .modal-backdrop) {
@@ -272,12 +275,12 @@ html[data-app="1"] :where(.btn.danger, .qa-button--danger) {
   color: var(--qa-danger-ink);
 }
 
-/* ── 9. 会话几何：iOS 气泡不对称圆角 + 工具图标标准化 ── */
+/* ── 9. 会话几何（UI kit）：气泡 20 · 锚角 6 + 工具图标标准化 ── */
 html[data-app="1"] .chat-main .msg.assistant .bubble {
-  border-radius: 18px 18px 18px 5px;
+  border-radius: 20px 20px 20px 6px;
 }
 html[data-app="1"] .chat-main .msg.user .bubble {
-  border-radius: 18px 18px 5px 18px;
+  border-radius: 20px 20px 6px 20px;
 }
 html[data-app="1"] .chat-main :where(.chat-tool, .chat-back, .chat-menu) svg {
   width: 22px;
@@ -288,9 +291,9 @@ html[data-app="1"] .chat-main .msg-daydivider span {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── 10. 表单输入：iOS 圆角场 + 群青聚焦环 ── */
+/* ── 10. 表单输入（UI kit）：圆角 12 · 焦点 = 1.6px act 描边（1px 边框 + 0.6px 内衬合成） ── */
 html[data-app="1"] :where(.input, .textarea, .select, textarea, select) {
-  border-radius: var(--qa-radius-sm);
+  border-radius: var(--qa-radius-control);
   font-size: var(--qa-type-body);
   color: var(--qa-ink);
   background: var(--qa-surface);
@@ -301,7 +304,7 @@ html[data-app="1"] :where(.input, .textarea, .select, textarea, select) {
 }
 html[data-app="1"] :where(.input, .textarea, .select, textarea, select):focus {
   border-color: var(--qa-focus);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--qa-focus) 18%, transparent);
+  box-shadow: inset 0 0 0 0.6px var(--qa-focus);
   outline: none;
 }
 html[data-app="1"] :where(.input, .textarea)::placeholder {
@@ -362,16 +365,7 @@ html[data-app="1"][data-theme="dark"] :where(.card, .set-card, .noti-item, .room
   border-color: var(--qa-hairline);
   box-shadow: var(--qa-shadow-1);
 }
-html[data-app="1"][data-theme="dark"] :where(.seg, .tabs-bar) {
-  background: color-mix(in srgb, #ffffff 7%, var(--qa-grouped));
-}
-html[data-app="1"][data-theme="dark"] :where(.seg, .tabs-bar) > :where(button, .tab):where(.active, .on, [aria-selected="true"]) {
-  background: var(--qa-surface-raised);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 40%);
-}
-html[data-app="1"][data-theme="dark"] .switch .track {
-  background: color-mix(in srgb, #ffffff 16%, var(--qa-grouped));
-}
+/* 分段/开关的暗色形态由 --lg-glass-1/--lg-glass-sel/--lg-hairline 令牌自动翻转 */
 html[data-app="1"][data-theme="dark"] :where(.input, .textarea, .select, textarea, select) {
   background: var(--qa-surface);
   border-color: var(--qa-hairline);
@@ -382,9 +376,6 @@ html[data-app="1"][data-theme="dark"] .qa-settings-group {
   border-color: var(--qa-hairline);
 }
 html[data-app="1"][data-theme="dark"] .qa-settings-row:active { background: var(--qa-grouped); }
-html[data-app="1"][data-theme="dark"] .app-sheet-grip {
-  background: color-mix(in srgb, #ffffff 28%, transparent);
-}
 
 /* 加载图标旋转（状态循环，随加载态出现与消失） */
 html[data-app="1"] .qa5-spin { animation: qa5Spin 0.9s linear infinite; }
@@ -438,13 +429,14 @@ html[data-app="1"][data-perf="lite"] .qa-chat-main.has-bg .qa-chat-composer.chat
 html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar {
   background: rgb(23 27 34 / 96%) !important;
 }
-/* 内层输入岛转透明：玻璃只有一层，输入框由发丝边界定 */
+/* 内层输入位（UI kit）：普通 inset —— --lg-glass-1 淡染 + 发丝内衬 r19，
+   不叠第二层玻璃（无 blur）；玻璃只有外层岛一层 */
 html[data-app="1"] .qa-chat-main .qa-chat-input-island.box,
 html[data-app="1"] .qa-chat-main.has-bg .qa-chat-input-island.box,
 html[data-app="1"] .chat-main .chat-input-bar .box {
-  background: color-mix(in srgb, var(--qa-surface) 46%, transparent) !important;
-  border: 1px solid var(--qa-hairline) !important;
-  border-radius: 20px !important;
+  background: var(--lg-glass-1) !important;
+  border: 1px solid var(--lg-hairline) !important;
+  border-radius: 19px !important;
   box-shadow: none !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
@@ -454,8 +446,9 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
   background: rgb(255 255 255 / 10%) !important;
   border-color: rgb(255 255 255 / 16%) !important;
 }
+/* 焦点 = 1.6px act 描边（1px 边框 + 0.6px 内衬合成，同表单契约） */
 html[data-app="1"] .qa-chat-main .qa-chat-input-island.box:focus-within,
 html[data-app="1"] .chat-main .chat-input-bar .box:focus-within {
-  border-color: color-mix(in srgb, var(--qa-brand-fill) 45%, transparent) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--qa-brand-fill) 12%, transparent) !important;
+  border-color: var(--qa-focus) !important;
+  box-shadow: inset 0 0 0 0.6px var(--qa-focus) !important;
 }

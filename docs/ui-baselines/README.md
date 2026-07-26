@@ -37,3 +37,15 @@ Do not treat a single screenshot as release evidence. Store regenerated images w
 ## manual-v6（琉璃 Liuli v5）
 - 由重构会话生成：390×844 浅色/深色/lite ×（today/discover/messages/me/wallet/vip/settings/chat），另 360×800 与 412×915 的 today 帧。
 - 生成条件：build:static + mock 登录（huanyu_token=tok.1）+ perf=high（lite 组除外）。
+
+## manual-v7（曜光玻璃 Lumen Glass v1.0）
+- S1–S6 迁移完成后的 390×844 浅/深基线（today / discover / messages / me / settings / wallet / vip / chat）。
+- 生成条件同 v6：build:static + mock 登录（huanyu_token=tok.1）+ perf=high。
+
+## manual-v8（Lumen UI kit 组件对齐）
+- 依据 `docs/design/lumen-glass-ui-kit.html`（逐组件 × 逐状态基准）对齐后的重拍：
+  AppButton 胶囊 999 / 600 字重 / 焦点环 3px act 55%、secondary=--lg-glass-2、
+  danger 1.6px 珊瑚描边、分段胶囊槽 + 选中片、开关 51×31、输入焦点 1.6px act、
+  设置行 56 / 会话行 72、气泡 20/20/20/6 + 锚角 6、toast 玻璃胶囊、grabber 38×5、
+  Dock 创建钮 50 + act 35% 柔影、沉浸 CTA 白胶囊。
+- 路由与生成条件同 v7。

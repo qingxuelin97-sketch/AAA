@@ -171,7 +171,7 @@ html[data-app="1"] .qa3-messages .msgs-conv-group {
   box-shadow: var(--lg-glass-shadow-1) !important;
 }
 html[data-app="1"] .qa3-messages .msgs-conv--app {
-  min-height: 76px !important;
+  min-height: 72px !important; /* UI kit 会话行 */
   border-bottom: 1px solid var(--lg-hairline) !important;
   background: transparent !important;
 }
@@ -179,7 +179,7 @@ html[data-app="1"] .qa3-messages .msgs-conv--app:last-child {
   border-bottom: 0 !important;
 }
 html[data-app="1"] .qa3-messages .msgs-conv-main {
-  min-height: 76px;
+  min-height: 72px;
 }
 
 /* 未读三重编码：数字角标（珊瑚）+ 珊瑚点 + 标题加粗 */

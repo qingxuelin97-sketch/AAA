@@ -147,7 +147,8 @@ html[data-app="1"] .qa-chat-main.has-bg.ba-clear .msg.user .bubble {
   border: 0 !important;
   background: var(--lg-act) !important;
   color: var(--lg-act-ink) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 24%), 0 8px 22px rgb(8 10 14 / 22%) !important;
+  /* UI kit 用户气泡：顶部内高光 28% */
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 28%), 0 8px 22px rgb(8 10 14 / 22%) !important;
 }
 /* 斜体动作文降亮：次级墨色，不抢正文；act 色只留一道极淡左缘示意 */
 html[data-app="1"] .qa-chat-main .msg .bubble .rp-act,
@@ -155,9 +156,9 @@ html[data-app="1"] .qa-chat-main.has-bg .msg.assistant .bubble .rp-act {
   color: var(--lg-ink-2) !important;
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--lg-act) 38%, transparent);
 }
-/* 时间分隔胶囊：暗域小玻璃 */
+/* 时间分隔胶囊（UI kit）：暗域 40% 小玻璃 */
 html[data-app="1"] .qa-chat-main.has-bg .msg-daydivider span {
-  background: rgb(8 10 14 / 46%);
+  background: rgb(14 17 25 / 40%);
   color: rgb(255 255 255 / 82%);
   -webkit-backdrop-filter: var(--lg-blur-s);
   backdrop-filter: var(--lg-blur-s);
@@ -166,9 +167,10 @@ html[data-app="1"] .qa-chat-main.has-bg .msg-daydivider span {
    在「少量可视元素可用 --lg-blur-s」的额度内）。lite 由 app-shell 既有
    规则回落深实底，令牌同时把 blur 置 none。 */
 html[data-app="1"] .qa-chat-main.has-bg .starter-chip {
-  border: 1px solid rgb(255 255 255 / 18%);
-  background: rgb(255 255 255 / 12%);
-  color: #fff;
+  /* UI kit 建议芯片：白系 10% + 内衬 14% */
+  border: 1px solid rgb(255 255 255 / 14%);
+  background: rgb(255 255 255 / 10%);
+  color: rgb(255 255 255 / 85%);
   -webkit-backdrop-filter: var(--lg-blur-s);
   backdrop-filter: var(--lg-blur-s);
 }

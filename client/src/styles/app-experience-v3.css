@@ -1612,16 +1612,15 @@ html[data-app="1"] .qa3-discover .fd2-cta {
   padding-right: 0 !important;
 }
 
+/* UI kit 沉浸页 CTA：媒体上用固定白胶囊（两主题一致），不再用蓝玻璃 */
 html[data-app="1"] .qa3-discover .fd2-enter.qa-button {
   min-height: 52px !important;
-  border: 1px solid rgb(255 255 255 / 25%) !important;
-  border-radius: 20px !important;
-  background: color-mix(in srgb, #3b74e8 82%, transparent) !important;
-  color: #fff !important;
-  box-shadow: 0 11px 26px rgb(3 50 49 / 30%) !important;
+  border: 0 !important;
+  border-radius: var(--lg-r-pill) !important;
+  background: rgb(255 255 255 / 90%) !important;
+  color: rgb(8 10 14 / 92%) !important;
+  box-shadow: 0 10px 26px rgb(8 10 14 / 18%) !important;
   font-size: 15px !important;
-  -webkit-backdrop-filter: blur(16px) saturate(1.18);
-  backdrop-filter: blur(16px) saturate(1.18);
 }
 
 html[data-app="1"] .qa3-discover .fd2-call.qa-icon-button {
@@ -3064,7 +3063,7 @@ html[data-app="1"] .qa-wallet-v4__exchange-result {
 }
 
 html[data-app="1"] .qa-wallet-v4__exchange-result strong { color: var(--qa-semantic-indigo); font-size: 15px; }
-html[data-app="1"] .qa-wallet-v4__panel > .qa-button { width: 100%; min-height: 50px; border-radius: 16px !important; }
+html[data-app="1"] .qa-wallet-v4__panel > .qa-button { width: 100%; min-height: 50px; border-radius: var(--lg-r-pill) !important; }
 
 html[data-app="1"] .qa-wallet-v4__ledger { padding-block: 16px 4px; }
 
@@ -3129,7 +3128,7 @@ html[data-app="1"] .qa-wallet-v4__packages > button {
   row-gap: 3px;
   padding: 10px 8px 11px;
   border: 1px solid var(--wallet-glass-edge);
-  border-radius: 17px;
+  border-radius: 18px; /* UI kit 套餐卡 r-card */
   background: var(--wallet-glass);
   color: var(--qa3-ink);
   font: inherit;
@@ -3141,8 +3140,9 @@ html[data-app="1"] .qa-wallet-v4__packages > button {
 }
 
 html[data-app="1"] .qa-wallet-v4__packages > button:active { transform: scale(.97); }
-html[data-app="1"] .qa-wallet-v4__packages > button:focus-visible { outline: 3px solid color-mix(in srgb, var(--qa-semantic-blue) 52%, transparent); outline-offset: 2px; }
-html[data-app="1"] .qa-wallet-v4__packages > button.selected { border-color: color-mix(in srgb, var(--qa-semantic-blue) 72%, var(--wallet-glass-edge)); background: color-mix(in srgb, var(--qa-semantic-blue-soft) 48%, var(--wallet-glass-strong)); box-shadow: 0 1px 0 rgb(255 255 255 / 88%) inset, 0 0 0 2px color-mix(in srgb, var(--qa-semantic-blue) 10%, transparent), 0 12px 26px rgb(42 105 143 / 13%); transform: translateY(-2px); }
+html[data-app="1"] .qa-wallet-v4__packages > button:focus-visible { outline: 3px solid color-mix(in srgb, var(--lg-act) 55%, transparent); outline-offset: 2px; }
+/* UI kit 套餐卡选中：act 1.6px 描边 + 选中片底 */
+html[data-app="1"] .qa-wallet-v4__packages > button.selected { border-color: var(--lg-act); background: color-mix(in srgb, var(--lg-act-soft) 48%, var(--wallet-glass-strong)); box-shadow: 0 1px 0 rgb(255 255 255 / 88%) inset, 0 0 0 0.6px var(--lg-act), 0 12px 26px rgb(8 10 14 / 13%); transform: translateY(-2px); }
 
 html[data-app="1"] .qa-wallet-v4__packages em {
   position: absolute;
@@ -3164,7 +3164,7 @@ html[data-app="1"] .qa-wallet-v4__packages strong small { margin-left: 4px; colo
 html[data-app="1"] .qa-wallet-v4__packages > button > span:not(.qa-wallet-v4__gem) { color: var(--qa3-muted); font-size: 10px; }
 html[data-app="1"] .qa-wallet-v4__packages > button > span.reward { color: var(--qa-semantic-gold); font-weight: 700; }
 html[data-app="1"] .qa-wallet-v4__packages > button > b { margin-top: 3px; color: var(--qa3-ink); font-size: 13px; line-height: 1.15; white-space: nowrap; }
-html[data-app="1"] .qa-wallet-v4__packages > button.selected::after { content: '✓'; position: absolute; top: 8px; left: 8px; display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; background: var(--qa-semantic-blue); color: #fff; font-size: 12px; font-weight: 800; }
+html[data-app="1"] .qa-wallet-v4__packages > button.selected::after { content: '✓'; position: absolute; top: 8px; left: 8px; display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; background: var(--lg-act); color: var(--lg-act-ink); font-size: 12px; font-weight: 800; }
 html[data-app="1"] .qa-wallet-v4__packages-empty { display: grid; min-height: 112px; grid-column: 1 / -1; place-items: center; align-content: center; gap: 8px; border: 1px dashed var(--qa3-line); border-radius: 16px; color: var(--qa3-muted); font-size: 12px; }
 
 html[data-app="1"] .qa-wallet-v4__payment-list { margin-top: 12px; overflow: hidden; border: 1px solid var(--wallet-glass-edge); border-radius: 15px; background: var(--wallet-glass); box-shadow: var(--wallet-glass-shadow); -webkit-backdrop-filter: blur(20px) saturate(1.16); backdrop-filter: blur(20px) saturate(1.16); }
@@ -3222,7 +3222,7 @@ html[data-app="1"] .qa-wallet-v4__checkout {
 html[data-app="1"] .qa-wallet-v4__checkout > div { display: grid; gap: 1px; padding-left: 4px; }
 html[data-app="1"] .qa-wallet-v4__checkout span { color: var(--qa3-muted); font-size: 9.5px; }
 html[data-app="1"] .qa-wallet-v4__checkout strong { color: var(--qa3-ink); font-size: 18px; }
-html[data-app="1"] .qa-wallet-v4__checkout .qa-button { width: 100%; min-width: 0; min-height: 50px; border-radius: 16px !important; }
+html[data-app="1"] .qa-wallet-v4__checkout .qa-button { width: 100%; min-width: 0; min-height: 50px; border-radius: var(--lg-r-pill) !important; }
 html[data-app="1"] .qa-wallet-v4__checkout .qa-button:disabled {
   opacity: 1 !important;
   border-color: rgb(255 255 255 / 30%) !important;
@@ -3403,7 +3403,7 @@ html[data-app="1"] .qa-vip .vm-sheet {
   box-shadow: var(--qa3-shadow-short) !important;
 }
 
-html[data-app="1"] .qa-vip .vm-plan.qa-button { border-radius: 14px !important; background: color-mix(in srgb, var(--qa3-canvas-deep) 82%, transparent) !important; box-shadow: none !important; }
+html[data-app="1"] .qa-vip .vm-plan.qa-button { border-radius: var(--lg-r-card) !important; background: color-mix(in srgb, var(--qa3-canvas-deep) 82%, transparent) !important; box-shadow: none !important; }
 html[data-app="1"] .qa-vip .vm-plan.qa-button[data-selected] { border-color: color-mix(in srgb, #ac772d 62%, transparent) !important; background: color-mix(in srgb, #d9b469 18%, var(--qa3-canvas)) !important; color: var(--qa3-ink) !important; }
 html[data-app="1"] .qa-vip .vm-go.qa-button { border: 1px solid #a46f27 !important; background: #c69447 !important; color: #2d1c08 !important; box-shadow: 0 1px 0 rgb(255 255 255 / 35%) inset, 0 8px 18px rgb(111 73 19 / 18%) !important; }
 html[data-app="1"] .qa-vip .vm-go::before { display: none !important; }
@@ -3499,7 +3499,7 @@ html[data-app="1"] .qa-atelier-skeleton-cover { width: 96px !important; height: 
 html[data-app="1"] .qa-atelier-card-copy { min-width: 0; padding: 3px 0 !important; }
 html[data-app="1"] .qa-atelier-card-title h2 { color: var(--qa3-ink) !important; font-size: 18px !important; line-height: 1.24; }
 html[data-app="1"] .qa-atelier-card-copy > p { color: var(--qa3-muted) !important; }
-html[data-app="1"] .qa-atelier-open.qa-button { width: auto !important; min-width: 96px; align-self: end; border-radius: 12px !important; background: var(--qa3-teal) !important; box-shadow: none !important; }
+html[data-app="1"] .qa-atelier-open.qa-button { width: auto !important; min-width: 96px; align-self: end; border-radius: var(--lg-r-pill) !important; background: var(--qa3-teal) !important; box-shadow: none !important; }
 
 /* Settings — native inset groups with one strong notification summary. */
 html[data-app="1"] .qa-settings-page.page {
@@ -3545,7 +3545,7 @@ html[data-app="1"] .qa-settings-notifications-badge { display: grid; min-width: 
 html[data-app="1"] .qa-settings-group { margin: 0 !important; }
 html[data-app="1"] .qa-settings-group > h2 { margin: 0 0 7px 12px !important; color: var(--qa3-muted) !important; font-size: 12px !important; font-weight: 660 !important; letter-spacing: .02em !important; }
 html[data-app="1"] .qa-settings-list { padding: 0 14px !important; overflow: hidden; border: 1px solid var(--qa3-line) !important; border-radius: 17px !important; background: color-mix(in srgb, var(--qa3-material) 78%, var(--qa3-canvas)) !important; box-shadow: var(--qa3-shadow-short) !important; }
-html[data-app="1"] .qa-settings-row.qa-button { min-height: 66px !important; padding: 9px 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: var(--qa3-ink) !important; box-shadow: none !important; }
+html[data-app="1"] .qa-settings-row.qa-button { min-height: 56px !important; padding: 9px 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: var(--qa3-ink) !important; box-shadow: none !important; }
 html[data-app="1"] .qa-settings-row.qa-button:not(:last-child) { border-bottom: 1px solid var(--qa3-line) !important; }
 html[data-app="1"] .qa-settings-row-icon { width: 36px !important; height: 36px !important; border: 0 !important; border-radius: 11px !important; background: var(--qa3-teal-soft) !important; color: var(--qa3-teal) !important; box-shadow: none !important; }
 html[data-app="1"] .qa-settings-row-copy b { color: var(--qa3-ink) !important; }
@@ -3608,18 +3608,19 @@ html[data-app="1"] .qa-auth-card .auth-card-badge { display: inline-flex !import
 html[data-app="1"] .qa-auth-card h2 { margin: 0 0 5px !important; color: var(--qa3-ink) !important; font-size: 30px !important; font-weight: 800 !important; letter-spacing: -.05em !important; }
 html[data-app="1"] .qa-auth-card > .muted { color: var(--qa3-muted) !important; }
 
+/* UI kit 分段：胶囊槽 --lg-glass-1 + 发丝内衬 */
 html[data-app="1"] .qa-auth-mode-switch.auth-tabs {
   min-height: 46px !important;
   margin: 22px 0 20px !important;
   padding: 3px !important;
-  border: 1px solid var(--qa3-line) !important;
-  border-radius: 14px !important;
-  background: var(--qa3-canvas-deep) !important;
-  box-shadow: 0 1px 2px rgb(10 45 42 / 4%) inset !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--lg-r-pill) !important;
+  background: var(--lg-glass-1) !important;
+  box-shadow: inset 0 0 0 1px var(--lg-hairline) !important;
 }
 
-html[data-app="1"] .qa-auth-mode-tab.qa-button { min-height: 40px !important; border: 0 !important; border-radius: 11px !important; background: transparent !important; color: var(--qa3-muted) !important; box-shadow: none !important; }
-html[data-app="1"] .qa-auth-mode-tab.qa-button[data-selected] { color: var(--qa3-ink) !important; }
+html[data-app="1"] .qa-auth-mode-tab.qa-button { min-height: 40px !important; border: 0 !important; border-radius: var(--lg-r-pill) !important; background: transparent !important; color: var(--qa3-muted) !important; box-shadow: none !important; }
+html[data-app="1"] .qa-auth-mode-tab.qa-button[data-selected] { background: var(--lg-glass-sel) !important; box-shadow: var(--lg-glass-shadow-1) !important; color: var(--qa3-ink) !important; font-weight: 600; }
 html[data-app="1"] .qa-auth-mode-switch .auth-tab-ink { inset-block: 3px !important; border: 1px solid var(--qa3-line) !important; border-radius: 11px !important; background: color-mix(in srgb, var(--qa3-material) 90%, var(--qa3-canvas)) !important; box-shadow: var(--qa3-shadow-short) !important; transition: transform 260ms var(--qa3-spring-soft) !important; }
 html[data-app="1"] .qa-auth-form .field { margin-bottom: 14px !important; }
 html[data-app="1"] .qa-auth-form .field > label { margin: 0 0 7px 3px !important; color: var(--qa3-ink) !important; font-size: 13px !important; }
@@ -3627,10 +3628,10 @@ html[data-app="1"] .qa-auth-form :where(.input, .qa-auth-password-field) { min-h
 html[data-app="1"] .qa-auth-form .input:focus { border-color: color-mix(in srgb, var(--qa3-teal) 58%, transparent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--qa3-teal) 14%, transparent) !important; }
 html[data-app="1"] .qa-auth-password-field .input { border: 0 !important; background: transparent !important; box-shadow: none !important; }
 html[data-app="1"] .qa-auth-code-row { min-height: 52px; }
-html[data-app="1"] .qa-auth-code-request.qa-button { min-width: 112px; min-height: 52px !important; border-radius: 14px !important; }
-html[data-app="1"] .qa-auth-submit.qa-button { min-height: 50px !important; margin-top: 10px !important; border: 0 !important; border-radius: 15px !important; background: var(--qa3-teal) !important; color: #fff !important; box-shadow: 0 9px 20px color-mix(in srgb, var(--qa3-teal) 22%, transparent) !important; }
+html[data-app="1"] .qa-auth-code-request.qa-button { min-width: 112px; min-height: 52px !important; border-radius: var(--lg-r-pill) !important; }
+html[data-app="1"] .qa-auth-submit.qa-button { min-height: 50px !important; margin-top: 10px !important; border: 0 !important; border-radius: var(--lg-r-pill) !important; background: var(--qa3-teal) !important; color: #fff !important; box-shadow: 0 9px 20px color-mix(in srgb, var(--qa3-teal) 22%, transparent) !important; }
 html[data-app="1"] .qa-auth-help-actions { gap: 8px !important; }
-html[data-app="1"] .qa-auth-help-button.qa-button { min-height: 44px !important; border-color: var(--qa3-line) !important; border-radius: 13px !important; background: transparent !important; color: var(--qa3-muted) !important; box-shadow: none !important; }
+html[data-app="1"] .qa-auth-help-button.qa-button { min-height: 44px !important; border-color: var(--qa3-line) !important; border-radius: var(--lg-r-pill) !important; background: transparent !important; color: var(--qa3-muted) !important; box-shadow: none !important; }
 
 /* Group room — cool white conversation plus a manipulable participant strip. */
 html[data-app="1"] .qa-group-room,
@@ -3821,7 +3822,7 @@ html[data-app="1"] .qa-character-editor__loading-state { display: grid; width: m
 html[data-app="1"] .qa-character-editor__loading-state .skel { height: 96px; border-radius: 18px; }
 
 html[data-app="1"] .qa-character-editor__savebar.app-savebar { width: min(calc(100% - 24px), 430px) !important; min-height: 68px !important; right: 12px !important; bottom: 0 !important; left: 12px !important; margin: 0 auto !important; padding: 8px 9px calc(8px + env(safe-area-inset-bottom)) 14px !important; border: 1px solid var(--qa3-line) !important; border-bottom: 0 !important; border-radius: 21px 21px 0 0 !important; background: color-mix(in srgb, var(--qa3-material) 90%, var(--qa3-canvas)) !important; box-shadow: var(--qa3-shadow-float) !important; transform: none !important; -webkit-backdrop-filter: blur(22px) saturate(1.18); backdrop-filter: blur(22px) saturate(1.18); }
-html[data-app="1"] .qa-character-editor__savebar .qa-character-editor__save.qa-button { min-height: 48px !important; border: 0 !important; border-radius: 15px !important; background: var(--qa3-teal) !important; color: #fff !important; box-shadow: none !important; }
+html[data-app="1"] .qa-character-editor__savebar .qa-character-editor__save.qa-button { min-height: 48px !important; border: 0 !important; border-radius: var(--lg-r-pill) !important; background: var(--qa3-teal) !important; color: #fff !important; box-shadow: none !important; }
 
 html[data-app="1"][data-theme="dark"] .qa-group-room,
 html[data-app="1"][data-theme="dark"] .qa-group-room-loading,

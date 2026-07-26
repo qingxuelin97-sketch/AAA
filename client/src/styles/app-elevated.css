@@ -1005,13 +1005,15 @@ html[data-app="1"] .call-actions {
    Toast 与 CommandPalette：玻璃升级
    ========================================================================== */
 /* Toast：深实体面语义（--lg-finance），一道内高光 + 短阴影，无 Liuli 字面色 */
+/* UI kit toast：--lg-glass-2 玻璃胶囊 + shadow-2，墨色文字（随主题翻转） */
 html[data-app="1"] .toast {
-  background: color-mix(in srgb, var(--lg-finance) 86%, transparent);
+  border-radius: var(--lg-r-pill);
+  background: var(--lg-glass-2);
   border: 1px solid transparent;
-  color: var(--lg-finance-ink);
-  backdrop-filter: var(--lg-blur-s);
-  -webkit-backdrop-filter: var(--lg-blur-s);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--lg-finance-ink) 14%, transparent), 0 10px 40px var(--lg-scrim);
+  color: var(--lg-ink);
+  backdrop-filter: var(--lg-blur);
+  -webkit-backdrop-filter: var(--lg-blur);
+  box-shadow: var(--lg-glass-shadow-2);
 }
 html[data-app="1"] .cmdk,
 html[data-app="1"] .cmdk-panel {

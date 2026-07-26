@@ -26,8 +26,8 @@ html[data-app="1"] .chat-main {
   --chat-accent-2: var(--lg-act);                                  /* 主动作 */
   --chat-accent-ink: color-mix(in oklab, var(--lg-act) 84%, #000000);
   --chat-accent-soft: var(--lg-act-soft);
-  --chat-glass-radius: 22px;
-  --chat-anchor-radius: 9px;       /* run-start 锚角 */
+  --chat-glass-radius: 20px;       /* UI kit 气泡圆角 */
+  --chat-anchor-radius: 6px;       /* run-start 锚角（UI kit） */
   --chat-ease: cubic-bezier(.22, .61, .36, 1);
 }
 
