@@ -9,12 +9,14 @@ import { shareUrl } from '../util.js';
 import { CoverArt } from '../art.jsx';
 import ReportButton from '../components/ReportButton.jsx';
 import { useAppOverlay } from '../overlay.jsx';
+import { isAppMode } from '../appmode.js';
 
 export default function Profile() {
   const { id } = useParams();
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
+  const appMode = isAppMode(); // App 壳专用视觉钩子；Web DOM 保持零差异
   const targetId = id || user?.id;
   const isMe = String(targetId) === String(user?.id);
   const [data, setData] = useState(null);
@@ -85,9 +87,9 @@ export default function Profile() {
         )}
       </div>
 
-      <div className="page">
+      <div className={appMode ? 'page qa-user-home' : 'page'}>
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ height: 150, background: u.banner ? `url(${u.banner}) center/cover` : 'linear-gradient(135deg, #e7d8c0, #d8c3a4)' }} />
+          <div className={appMode ? 'qa-user-banner' : undefined} style={{ height: 150, background: u.banner ? `url(${u.banner}) center/cover` : 'linear-gradient(135deg, #e7d8c0, #d8c3a4)' }} />
           <div style={{ padding: '0 24px 22px', marginTop: -42 }}>
             <div className="profile-head" style={{ alignItems: 'flex-end' }}>
               <div style={{ border: '4px solid var(--panel)', borderRadius: '50%' }}><Avatar src={u.avatar} name={u.display_name} size={84} /></div>

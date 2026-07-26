@@ -3,11 +3,13 @@ import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
 import { useToast } from '../ui.jsx';
 import { CoverArt } from '../art.jsx';
+import { isAppMode } from '../appmode.js';
 import { Drama, ScrollText, Users, ArrowRight, Globe } from 'lucide-react';
 
 export default function Publish() {
   const nav = useNavigate();
   const toast = useToast();
+  const appMode = isAppMode(); // App 壳视觉钩子；Web DOM 零差异
   const [mine, setMine] = useState([]);
 
   const load = () => api('/characters/mine').then(d => setMine(d.characters)).catch(() => {});
@@ -27,7 +29,7 @@ export default function Publish() {
   return (
     <>
       <div className="topbar"><div style={{ flex: 1 }}><h1>发布作品</h1><div className="sub">把你的创意带给整个幻域社区</div></div></div>
-      <div className="page" style={{ maxWidth: 900 }}>
+      <div className={appMode ? 'page qa-publish' : 'page'} style={{ maxWidth: 900 }}>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
           {OPTS.map(o => (
             <div key={o.t} className="card" style={{ cursor: 'pointer' }} onClick={() => nav(o.to)}>

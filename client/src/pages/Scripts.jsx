@@ -4,6 +4,7 @@ import { api, assetUrl } from '../api.jsx';
 import { useToast, GridSkeleton, CoinIcon } from '../ui.jsx';
 import { ScrollText, Play, Plus, Inbox } from 'lucide-react';
 import { CategoryIcon } from '../assets.jsx';
+import { isAppMode } from '../appmode.js';
 
 function ScriptCard({ s, nav, extra }) {
   return (
@@ -29,6 +30,7 @@ function ScriptCard({ s, nav, extra }) {
 export default function Scripts() {
   const nav = useNavigate();
   const toast = useToast();
+  const appMode = isAppMode(); // App 壳视觉钩子；Web DOM 零差异
   const [tab, setTab] = useState('plaza');
   const [cats, setCats] = useState([]);
   const [cat, setCat] = useState('all');
@@ -77,7 +79,7 @@ export default function Scripts() {
         <button className="btn primary" onClick={() => nav('/script/new')}><Plus size={16} style={{ verticalAlign: 'middle' }} /> 创建剧本</button>
       </div>
 
-      <div className="page">
+      <div className={appMode ? 'page qa-scripts-market' : 'page'}>
         <div className="seg" style={{ marginBottom: 18 }}>
           <button className={tab === 'plaza' ? 'active' : ''} onClick={() => setTab('plaza')}>广场</button>
           <button className={tab === 'created' ? 'active' : ''} onClick={() => setTab('created')}>我创建的</button>

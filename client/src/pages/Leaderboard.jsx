@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
-import { api, assetUrl } from '../api.jsx';
+import { api, assetUrl, useAuth } from '../api.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
@@ -10,6 +10,7 @@ export default function Leaderboard() {
   const nav = useNavigate();
   const toast = useToast();
   const appMode = isAppMode();
+  const { user } = useAuth();
   const [tab, setTab] = useState('characters');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -87,23 +88,54 @@ export default function Leaderboard() {
           ) : rows.length === 0 ? (
             <section className="qa-leaderboard-empty"><Trophy size={34} /><h2>{emptyText}</h2><p>榜单正在等待新的名字。</p></section>
           ) : (
-            <section className="qa-leaderboard-list" aria-label={tab === 'characters' ? '角色排行榜' : tab === 'scripts' ? '剧本排行榜' : '创作者排行榜'}>
-              {rows.map((row, index) => {
-                const rank = index + 1;
-                return (
-                  <AppButton className={`qa-leaderboard-row${rank <= 3 ? ' is-top' : ''}${rank === 1 ? ' is-first' : ''}`} key={row.id} variant="tertiary" onClick={() => nav(row.to)}>
-                    <span className="qa-leaderboard-rank">{rank === 1 && <Crown size={14} />}{rank}</span>
-                    <span className="qa-leaderboard-thumb"><AppThumb row={row} size={48} /></span>
-                    <span className="qa-leaderboard-copy">
-                      <b>{row.name}{row.vTier != null && <CreatorV tier={row.vTier} size={13} />}</b>
-                      <small>{row.sub}</small>
-                    </span>
-                    <span className="qa-leaderboard-metric">{row.metric}</span>
-                    <ChevronRight className="qa-leaderboard-chevron" size={17} />
-                  </AppButton>
-                );
-              })}
-            </section>
+            <>
+              {/* 领奖台：2 · 1 · 3 排列，冠军居中最高（S5 曜光玻璃 · s26） */}
+              {podiumOrder.length > 0 && (
+                <section className="qa-leaderboard-podium" aria-label="领奖台 · 前三名">
+                  {podiumOrder.map(({ r, place }) => {
+                    const isYou = !!user && r.to === '/user/' + user.id;
+                    return (
+                      <AppButton
+                        key={r.id}
+                        className={'qa-leaderboard-pod is-p' + place + (isYou ? ' is-you' : '')}
+                        variant="tertiary"
+                        aria-label={`第 ${place} 名，${r.name}`}
+                        onClick={() => nav(r.to)}
+                      >
+                        <span className="qa-leaderboard-pod-media" aria-hidden="true">
+                          {place === 1 && <Crown className="qa-leaderboard-pod-crown" size={15} />}
+                          <AppThumb row={r} size={place === 1 ? 62 : 50} />
+                          <i>{place}</i>
+                        </span>
+                        <b>{r.name}{r.vTier != null && <CreatorV tier={r.vTier} size={12} />}</b>
+                        <small>{r.metric}</small>
+                        {isYou && <span className="qa-leaderboard-you">你的位置</span>}
+                      </AppButton>
+                    );
+                  })}
+                </section>
+              )}
+              {rest.length > 0 && (
+                <section className="qa-leaderboard-list" aria-label={tab === 'characters' ? '角色排行榜' : tab === 'scripts' ? '剧本排行榜' : '创作者排行榜'}>
+                  {rest.map((row, index) => {
+                    const rank = index + 4;
+                    const isYou = !!user && row.to === '/user/' + user.id;
+                    return (
+                      <AppButton className={'qa-leaderboard-row' + (isYou ? ' is-you' : '')} key={row.id} variant="tertiary" onClick={() => nav(row.to)}>
+                        <span className="qa-leaderboard-rank">{rank}</span>
+                        <span className="qa-leaderboard-thumb"><AppThumb row={row} size={48} /></span>
+                        <span className="qa-leaderboard-copy">
+                          <b>{row.name}{row.vTier != null && <CreatorV tier={row.vTier} size={13} />}{isYou && <span className="qa-leaderboard-you">你</span>}</b>
+                          <small>{row.sub}</small>
+                        </span>
+                        <span className="qa-leaderboard-metric">{row.metric}</span>
+                        <ChevronRight className="qa-leaderboard-chevron" size={17} />
+                      </AppButton>
+                    );
+                  })}
+                </section>
+              )}
+            </>
           )}
         </div>
       </main>
