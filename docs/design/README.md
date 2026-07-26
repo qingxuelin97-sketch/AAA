@@ -3,6 +3,7 @@
 这个文件夹（docs/design/）应完整放入仓库 `qingxuelin97-sketch/AAA` 的相同路径下。
 
 ## 内容
+- `lumen-glass-mockup.html` — 50 屏可交互视觉稿（单文件离线版，双击即开）
 - `lumen-glass-tokens.css` — 全套 --lg-* 设计令牌（浅/深/强调色/lite）
 - `LUMEN_GLASS_SPEC.md` — 设计规范 + 50 屏逐屏实施表
 - `CLAUDE_CODE_PROMPT.md` — 给 Claude Code 的实施指令（复制横线内整段发送）
