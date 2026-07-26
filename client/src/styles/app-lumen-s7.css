@@ -125,6 +125,14 @@ html[data-app="1"] .qa-weekly-comp em {
   flex-shrink: 0;
 }
 
+/* ---- 钱包 · 流水筛选 chips ---- */
+html[data-app="1"] .qa-wallet-v4__tx-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 10px;
+}
+
 /* ---- 消息页 · 草稿标记 ---- */
 html[data-app="1"] .msgs-draft {
   margin-right: 4px;

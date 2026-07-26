@@ -1263,6 +1263,23 @@ async function walletCalendarAssertions(browser, base) {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('.qa-cal'), { timeout: 5000 });
 
+  // 流水筛选：支出档不得出现正向金额行；空档必须给出说明而不是塌缩
+  await page.evaluate(() => { document.getElementById('wallet-ledger')?.scrollIntoView({ block: 'center' }); });
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.qa-wallet-v4__tx-filter .qa-button')]
+      .find((button) => button.textContent.includes('支出'))?.click();
+  });
+  await page.waitForFunction(() => {
+    const rows = [...document.querySelectorAll('.qa-wallet-v4__tx')];
+    const empty = document.querySelector('.qa-wallet-v4__empty');
+    return (rows.length > 0 && rows.every((row) => !row.querySelector('.positive'))) || Boolean(empty);
+  }, { timeout: 5000 });
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.qa-wallet-v4__tx-filter .qa-button')]
+      .find((button) => button.textContent.includes('全部'))?.click();
+  });
+  await page.waitForSelector('.qa-wallet-v4__tx', { timeout: 5000 });
+
   assert(page.__qaErrors.length === 0, '钱包日历流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
   await page.close();
 }

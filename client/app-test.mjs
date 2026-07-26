@@ -296,6 +296,11 @@ assert.match(theaterRoomSource, /appMode && quoteShare[\s\S]*kind="quote"[\s\S]*
 const groupRoomSource = await readFile(new URL('./src/pages/GroupRoom.jsx', import.meta.url), 'utf8');
 assert.match(groupRoomSource, /app \? bindMsgPress\(pressPayload\) : \{\}/, 'group bubbles must bind long-press only inside the App shell');
 assert.match(groupRoomSource, /label: `@\$\{pressMsg\.nm\}`/, 'the group press menu must offer an @-mention insert');
+/* ---- S7-G10 钱包流水筛选 ---- */
+const walletSource = await readFile(new URL('./src/pages/Wallet.jsx', import.meta.url), 'utf8');
+assert.match(walletSource, /qa-wallet-v4__tx-filter" role="group"/, 'the App ledger filter must expose group semantics');
+assert.match(walletSource, /txFilter === 'checkin' \? t\.kind === 'checkin'/, 'the checkin filter must select by transaction kind, not sign');
+assert.match(walletSource, /该类别暂无记录/, 'an emptied filter view must explain itself instead of collapsing');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(

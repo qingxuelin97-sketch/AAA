@@ -55,6 +55,7 @@ export default function Wallet() {
   const [appSection, setAppSection] = useState('wallet');
   const [appPanel, setAppPanel] = useState('');
   const [calOpen, setCalOpen] = useState(false);
+  const [txFilter, setTxFilter] = useState('all'); // App 流水筛选：all | in | out | checkin
   const walletStreakRef = useRef(null);
   const [selectedPackageId, setSelectedPackageId] = useState('');
   const actionLockRef = useRef('');
@@ -247,9 +248,23 @@ export default function Wallet() {
 
             <section className="qa-wallet-v4__ledger" id="wallet-ledger" aria-labelledby="wallet-ledger-title">
               <div className="qa-wallet-v4__section-head"><div><h2 id="wallet-ledger-title">最近明细</h2><p>充值、兑换与奖励记录</p></div><ReceiptText size={20} /></div>
-              {transactions.length === 0 ? (
-                <div className="qa-wallet-v4__empty"><WalletIcon size={28} /><span>暂无交易记录</span></div>
-              ) : transactions.map(t => (
+              <div className="qa-wallet-v4__tx-filter" role="group" aria-label="按类别筛选流水">
+                {[['all', '全部'], ['in', '收入'], ['out', '支出'], ['checkin', '签到']].map(([key, label]) => (
+                  <AppButton key={key} size="sm" variant="tertiary" selected={txFilter === key} pressed={txFilter === key}
+                    onClick={() => setTxFilter(key)}>
+                    {label}
+                  </AppButton>
+                ))}
+              </div>
+              {(() => {
+                const shown = transactions.filter(t => txFilter === 'all' ? true
+                  : txFilter === 'checkin' ? t.kind === 'checkin'
+                    : txFilter === 'in' ? ((t.gold || 0) > 0 || (t.diamond || 0) > 0)
+                      : ((t.gold || 0) < 0 || (t.diamond || 0) < 0));
+                if (shown.length === 0) {
+                  return <div className="qa-wallet-v4__empty"><WalletIcon size={28} /><span>{txFilter === 'all' ? '暂无交易记录' : '该类别暂无记录'}</span></div>;
+                }
+                return shown.map(t => (
                 <article key={t.id} className="qa-wallet-v4__tx">
                   <span className={'qa-wallet-v4__tx-icon ' + (t.diamond ? 'diamond' : 'gold')}>
                     <img src={t.diamond ? diamondCurrencyArtUrl : coinCurrencyArtUrl} alt="" aria-hidden="true" />
@@ -260,7 +275,8 @@ export default function Wallet() {
                     {!!t.diamond && <strong className={t.diamond > 0 ? 'positive' : 'negative'}>{t.diamond > 0 ? '+' : ''}{fmt(t.diamond)}<small>钻石</small></strong>}
                   </div>
                 </article>
-              ))}
+                ));
+              })()}
             </section>
           </div>
         ) : (
