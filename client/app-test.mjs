@@ -213,6 +213,14 @@ const calendarSheetSource = await readFile(new URL('./src/components/CheckinCale
 assert.match(calendarSheetSource, /checkin\/calendar[\s\S]*role="grid"/, 'the calendar sheet must render the server-derived history as an accessible grid');
 assert.match(calendarSheetSource, /isolate:\s*appPortal[\s\S]*createPortal\(sheet/, 'the calendar sheet must keep the App overlay isolation contract');
 assert.match(e2eSourceForS7, /todayRitualAssertions/, 'the e2e suite must keep exercising the check-in ritual');
+/* ---- S7-G5 成就 2.0 契约 ---- */
+const achievementsSource = await readFile(new URL('./src/pages/Achievements.jsx', import.meta.url), 'utf8');
+assert.match(achievementsSource, /data-medal=\{medalOf\(achievement\.reward\)\}/, 'App achievement rarity must derive from the shared reward formula');
+assert.match(achievementsSource, /data-honor[\s\S]*荣誉/, 'honor achievements must surface the badge semantics');
+assert.match(achievementsSource, /achievement\.honor[\s\S]*已铭刻/, 'unlocked honor achievements must never expose a claim button');
+assert.match(achievementsSource, /qa-ach-wall[\s\S]*aria-valuenow/, 'the badge wall must expose per-category completion as progressbars');
+assert.match(achievementsSource, /setCelebrating[\s\S]*setTimeout/, 'the claim celebration must be one-shot and self-clearing');
+assert.match(e2eSourceForS7, /achievementsAssertions/, 'the e2e suite must keep exercising achievements 2.0');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(

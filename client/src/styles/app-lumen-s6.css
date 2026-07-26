@@ -462,6 +462,141 @@ html[data-app="1"] .qa-cal-error button {
   font-weight: 600;
 }
 
+/* ── S7-G5 · 成就 2.0：徽章墙 / 稀有度 / 荣誉 / 领取庆祝 ── */
+html[data-app="1"] .qa-ach-wall {
+  padding: 14px;
+  border-radius: var(--lg-r-card);
+  background: var(--lg-glass-1);
+  box-shadow: var(--lg-glass-shadow-1);
+  -webkit-backdrop-filter: var(--lg-blur-s);
+  backdrop-filter: var(--lg-blur-s);
+}
+
+html[data-app="1"] .qa-ach-wall-rings {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+/* 静态 conic 完成环：--p 为百分比，无动画（数值变化即状态变化） */
+html[data-app="1"] .qa-ach-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px 6px;
+}
+
+html[data-app="1"] .qa-ach-ring b {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--lg-r-pill);
+  background:
+    radial-gradient(closest-side, var(--qa-surface) 74%, transparent 75% 100%),
+    conic-gradient(var(--lg-act) calc(var(--p) * 1%), var(--lg-hairline) 0);
+  color: var(--lg-ink);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-ach-ring b small {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--lg-ink-3);
+}
+
+html[data-app="1"] .qa-ach-ring > span {
+  color: var(--lg-ink-2);
+  font-size: 11px;
+}
+
+html[data-app="1"] .qa-ach-medals {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  box-shadow: inset 0 1px 0 var(--lg-hairline);
+}
+
+html[data-app="1"] .qa-ach-medals span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lg-ink-2);
+}
+
+html[data-app="1"] .qa-ach-medals span[data-medal="gold"] svg { color: var(--lg-gold); }
+html[data-app="1"] .qa-ach-medals span[data-medal="silver"] svg { color: var(--lg-ink-3); }
+html[data-app="1"] .qa-ach-medals span[data-medal="bronze"] svg { color: color-mix(in srgb, var(--lg-gold) 55%, var(--lg-ink-3)); }
+
+/* 稀有度：奖章色只作左缘细带 + 图标染色（无发光、无渐变字） */
+html[data-app="1"] .qa-achievements-card[data-medal="gold"].is-unlocked {
+  box-shadow: inset 3px 0 0 var(--lg-gold), var(--lg-glass-shadow-1);
+}
+
+html[data-app="1"] .qa-achievements-card[data-medal="gold"].is-unlocked .qa-achievements-card-icon {
+  color: var(--lg-gold);
+}
+
+html[data-app="1"] .qa-achievements-card[data-medal="silver"].is-unlocked {
+  box-shadow: inset 3px 0 0 var(--lg-ink-3), var(--lg-glass-shadow-1);
+}
+
+html[data-app="1"] .qa-achievements-card[data-medal="bronze"].is-unlocked {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--lg-gold) 55%, var(--lg-ink-3)), var(--lg-glass-shadow-1);
+}
+
+html[data-app="1"] .qa-ach-honor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--lg-r-pill);
+  background: color-mix(in srgb, var(--lg-gold) 18%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lg-gold);
+  color: var(--lg-gold);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+html[data-app="1"] .qa-achievements-reward.is-honor {
+  color: var(--lg-gold);
+}
+
+/* 一次性领取庆祝：卡片轻抬 + 印章闪落（700ms 自净，无循环） */
+html[data-app="1"] .qa-ach-claimfx {
+  position: relative;
+  animation: qaAchClaimLift 480ms var(--lg-ease);
+}
+
+html[data-app="1"] .qa-ach-claimfx::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--lg-gold) 16%, transparent);
+  animation: qaAchClaimStamp 620ms var(--lg-ease) both;
+  pointer-events: none;
+}
+
+@keyframes qaAchClaimLift {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes qaAchClaimStamp {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* ── S7-G4 · 今日任务行内领取 ── */
 html[data-app="1"] .ah-task.qa-task-claimable {
   display: flex;
@@ -488,6 +623,11 @@ html[data-app="1"] .qa-task-claim.qa-button {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .qa-ach-claimfx,
+  html[data-app="1"] .qa-ach-claimfx::after {
+    animation: none !important;
+  }
+
   html[data-app="1"] .qa-error-state {
     animation: none !important;
     transition: none !important;

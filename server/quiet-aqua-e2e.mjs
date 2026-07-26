@@ -1136,6 +1136,84 @@ async function detailErrorStateAssertions(browser, base) {
   await page.close();
 }
 
+// S7-G5 · 成就 2.0：徽章墙五环数值一致 → 稀有度三档并存 → 荣誉条目无领取钮
+// → 领取一次性庆祝后金币上涨 → reduced-motion 下庆祝归零。
+async function achievementsAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  await visit(page, '/achievements', '.qa-ach-wall');
+  const wall = await page.evaluate(() => {
+    const rings = [...document.querySelectorAll('.qa-ach-ring')];
+    const ringsOk = rings.length === 5 && rings.every((ring) => {
+      const now = Number(ring.getAttribute('aria-valuenow'));
+      const [done, total] = ring.querySelector('b').textContent.split('/').map((n) => Number(n));
+      return Number.isFinite(now) && total > 0
+        && Math.abs(now - Math.round((done / total) * 100)) <= 1;
+    });
+    const medals = new Set([...document.querySelectorAll('.qa-achievements-card')]
+      .map((card) => card.getAttribute('data-medal')));
+    const honor = document.querySelector('.qa-achievements-card[data-honor]');
+    return {
+      ringsOk,
+      medalTiers: [...medals].sort().join(','),
+      honorPresent: Boolean(honor),
+      honorHasClaim: Boolean(honor?.querySelector('.qa-button.qa-button--primary')),
+      honorBadge: honor?.querySelector('.qa-ach-honor-badge')?.textContent || '',
+    };
+  });
+  assert(wall.ringsOk, '徽章墙五环数值与分类完成度不一致', JSON.stringify(wall));
+  assert(wall.medalTiers === 'bronze,gold,silver', '稀有度三档未同时呈现', wall.medalTiers);
+  assert(wall.honorPresent && !wall.honorHasClaim && wall.honorBadge.includes('荣誉'),
+    '荣誉成就的拒领语义缺失', JSON.stringify(wall));
+  await saveScreenshot(page, 'achievements-wall-390x844-light.png');
+
+  const hasClaimable = await page.evaluate(() => Boolean(document.querySelector('.qa-achievements-card .qa-button.qa-button--primary')));
+  if (hasClaimable) {
+    const goldBefore = await page.evaluate(() => {
+      try {
+        const db = JSON.parse(localStorage.getItem('huanyu_db_v7') || '{}');
+        return (db.users || []).find((u) => u.id === 1)?.gold || 0;
+      } catch { return 0; }
+    });
+    await page.evaluate(() => {
+      [...document.querySelectorAll('.qa-achievements-card')]
+        .find((card) => card.querySelector('.qa-button.qa-button--primary'))
+        ?.querySelector('.qa-button.qa-button--primary')?.click();
+    });
+    await page.waitForSelector('.qa-ach-claimfx', { timeout: 5000 });
+    await page.waitForFunction(() => !document.querySelector('.qa-ach-claimfx'), { timeout: 5000 });
+    await page.waitForFunction((prev) => {
+      try {
+        const db = JSON.parse(localStorage.getItem('huanyu_db_v7') || '{}');
+        return ((db.users || []).find((u) => u.id === 1)?.gold || 0) > prev;
+      } catch { return false; }
+    }, { timeout: 8000 }, goldBefore);
+  }
+
+  assert(page.__qaErrors.length === 0, '成就 2.0 流产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+
+  // 减弱动效：领取庆祝动画必须归零
+  const rmPage = await preparePage(browser, base, {
+    app: true, token: true, theme: 'light', perf: 'auto', reducedMotion: true,
+  });
+  await rmPage.goto(`${base}/?app=1#/achievements`, { waitUntil: 'networkidle0', timeout: 30000 });
+  await rmPage.waitForSelector('.qa-achievements-card', { visible: true, timeout: 8000 });
+  const rmFx = await rmPage.evaluate(() => {
+    const card = document.querySelector('.qa-achievements-card');
+    card.classList.add('qa-ach-claimfx');
+    return getComputedStyle(card).animationDuration;
+  });
+  assert(rmFx === '0s', '减弱动效下领取庆祝仍有动画', rmFx);
+  await rmPage.close();
+}
+
 // S7-G4 · 今日签到仪式：streak 周点 → 签到成功转 done + 点亮 → 日历 sheet
 // 数据一致 → 「完成每日签到」任务行内领取 → 金币上涨。
 async function todayRitualAssertions(browser, base) {
@@ -1412,6 +1490,7 @@ async function run() {
     await insightsRecoveryAssertions(browser, base);
     await onboardingAssertions(browser, base);
     await todayRitualAssertions(browser, base);
+    await achievementsAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);
