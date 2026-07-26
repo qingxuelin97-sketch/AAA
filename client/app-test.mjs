@@ -400,6 +400,29 @@ assert.ok(
 const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
 const lumenHandoff = await readFile(new URL('../docs/design/lumen-glass-tokens.css', import.meta.url), 'utf8');
 assert.equal(lumenTokens, lumenHandoff, 'the runtime Lumen token file must stay byte-identical to the design handoff (values are frozen)');
+/* ---- IX-0「仪与匣」handoff intake guards ---- */
+{
+  const ixHandoff = await readFile(new URL('../docs/design/field-instrument/design-tokens.css', import.meta.url), 'utf8');
+  assert.match(ixHandoff, /--ix-act:\s*#0E7263/, 'the field-instrument frozen tokens must define the phosphor-teal act color');
+  assert.match(ixHandoff, /:root\[data-theme="dark"\]/, 'the field-instrument frozen tokens must ship an equal-status dark theme');
+  assert.match(ixHandoff, /:root\[data-perf="lite"\]/, 'the field-instrument frozen tokens must resolve the lite tier at the token layer');
+  assert.match(ixHandoff, /prefers-reduced-motion:\s*reduce/, 'the field-instrument frozen tokens must zero every duration under reduced motion');
+  const { readdir } = await import('node:fs/promises');
+  const illos = await readdir(new URL('./src/assets/illos/', import.meta.url));
+  const ixScenes = ['works', 'favorites', 'drafts', 'friends', 'chat', 'theater', 'offline', 'gallery', 'scripts', 'wallet', 'achievements', 'maintenance', 'notifications', 'leaderboard', 'worldbook', 'search', 'onb-001', 'onb-002', 'onb-003'];
+  for (const scene of ixScenes) {
+    assert.ok(illos.includes(`ix-illo-${scene}-light.svg`) && illos.includes(`ix-illo-${scene}-dark.svg`), `illustration scene "${scene}" must ship as a light/dark pair`);
+  }
+  for (const tier of ['bronze', 'silver', 'gold']) {
+    assert.ok(illos.includes(`ix-stamp-${tier}.svg`), `milestone stamp tier "${tier}" must be present`);
+  }
+  const illoSources = await Promise.all(illos.filter((f) => f.endsWith('.svg')).map((f) => readFile(new URL(`./src/assets/illos/${f}`, import.meta.url), 'utf8')));
+  for (const svg of illoSources) {
+    assert.doesNotMatch(svg, /<text|<tspan/i, 'shipped illustration assets must stay zero-text (live numbers are UI overlays)');
+  }
+  assert.match(mainSource, /@fontsource\/jetbrains-mono\/400\.css/, 'the readout mono font (400) must load for the App shell');
+  assert.match(mainSource, /@fontsource\/jetbrains-mono\/600\.css/, 'the readout mono font (600) must load for the App shell');
+}
 const lumenMaterials = await readFile(new URL('./src/styles/app-lumen-materials.css', import.meta.url), 'utf8');
 assert.match(lumenMaterials, /html\[data-app="1"\]/, 'Lumen materials must remain App-scoped');
 assert.doesNotMatch(lumenMaterials.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.lg-[^{,]+/m, 'Lumen material classes must never escape the data-app fence');
@@ -544,4 +567,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 271/271 passed');
+console.log('app invariants: 340/340 passed');

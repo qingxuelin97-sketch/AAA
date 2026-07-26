@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#101116}
+a{color:#C8CBD8;text-decoration-color:rgb(200 203 216/45%)}
+a:hover{color:#FFFFFF}
+::selection{background:rgb(216 168 75/30%)}
+</style>
+</helmet>
+<div style="font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;background:#101116;color:#ECEDF2;-webkit-font-smoothing:antialiased">
+
+  <!-- ═══ 提案封面 ═══ -->
+  <section data-screen-label="提案封面与总览" style="background:#101116;padding:84px 24px 64px">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.22em;color:#8A8FA3">HUANYU · APP 视觉重改版提案 · 2026.07 · 仅移动端</div>
+      <h1 style="margin:20px 0 0;font:900 46px/1.25 'Noto Serif SC',serif;letter-spacing:.01em;color:#F4F5F9">纸与朱 · 幕与灯 · 仪与匣</h1>
+      <p style="margin:22px 0 0;max-width:720px;font-size:15.5px;line-height:1.9;color:#B9BDCC">现行「曜光玻璃」：iOS 质感、群青主动作、玻璃只住在导航层、瓷白与墨灰内容底、浅深双主题。本轮不做修补——三个方向<strong style="color:#F4F5F9;font-weight:700">全部主动放弃「群青 + 玻璃」这组记忆点</strong>，分别用纸、灯、仪器三种世界观，重写「陪伴感 · 故事感 · 收藏欲 · 每日仪式」。基准 390×844，浅深双主题、reduced-motion 与 lite 档均给降级答案。</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:26px">
+        <div style="font-size:12px;color:#7E8296;border:1px solid rgb(255 255 255/14%);border-radius:999px;padding:5px 12px;text-decoration:line-through">AI 味青紫霓虹渐变</div>
+        <div style="font-size:12px;color:#7E8296;border:1px solid rgb(255 255 255/14%);border-radius:999px;padding:5px 12px;text-decoration:line-through">彩虹色卡片阵列</div>
+        <div style="font-size:12px;color:#7E8296;border:1px solid rgb(255 255 255/14%);border-radius:999px;padding:5px 12px;text-decoration:line-through">无意义粒子与呼吸光晕</div>
+        <div style="font-size:12px;color:#7E8296;border:1px solid rgb(255 255 255/14%);border-radius:999px;padding:5px 12px;text-decoration:line-through">扁平化 2.0</div>
+      </div>
+      <div style="margin-top:44px;border-top:1px solid rgb(255 255 255/12%)">
+        <div style="display:grid;grid-template-columns:96px 1fr 1fr 1fr;gap:0 16px;padding:14px 0 12px;border-bottom:1px solid rgb(255 255 255/12%)">
+          <div style="font-size:12px;color:#7E8296;letter-spacing:.1em">维度</div>
+          <div style="font:700 15px 'Noto Serif SC',serif;color:#E08A66">一 · 纸与朱</div>
+          <div style="font:700 15px 'Noto Serif SC',serif;color:#D8A84B">二 · 幕与灯</div>
+          <div style="font:700 15px 'Noto Serif SC',serif;color:#3FD2B4">三 · 仪与匣</div>
+        </div>
+        <div style="display:grid;grid-template-columns:96px 1fr 1fr 1fr;gap:0 16px;padding:12px 0;border-bottom:1px solid rgb(255 255 255/8%);font-size:13.5px;line-height:1.65;color:#C4C8D6">
+          <div style="color:#7E8296">材质基调</div><div>纸 · 布面 · 烫金箔</div><div>绒 · 黄铜 · 钨丝灯</div><div>铝 · 石墨 · 表盘玻璃</div>
+        </div>
+        <div style="display:grid;grid-template-columns:96px 1fr 1fr 1fr;gap:0 16px;padding:12px 0;border-bottom:1px solid rgb(255 255 255/8%);font-size:13.5px;line-height:1.65;color:#C4C8D6">
+          <div style="color:#7E8296">光的逻辑</div><div>无源光：压凹与烫印的反射</div><div>有源光：舞台灯，点状、有因果</div><div>指示灯：毫米级 LED，零泛光</div>
+        </div>
+        <div style="display:grid;grid-template-columns:96px 1fr 1fr 1fr;gap:0 16px;padding:12px 0;border-bottom:1px solid rgb(255 255 255/8%);font-size:13.5px;line-height:1.65;color:#C4C8D6">
+          <div style="color:#7E8296">主题权重</div><div>浅色优先，深色是「夜读」</div><div>深色优先，浅色是「日场」</div><div>浅深等权的两块面板</div>
+        </div>
+        <div style="display:grid;grid-template-columns:96px 1fr 1fr 1fr;gap:0 16px;padding:12px 0;border-bottom:1px solid rgb(255 255 255/8%);font-size:13.5px;line-height:1.65;color:#C4C8D6">
+          <div style="color:#7E8296">字体气质</div><div>宋体标题 · 旧体数字</div><div>海报宋体 · 节目单小字</div><div>中性无衬线 · 等宽读数</div>
+        </div>
+        <div style="display:grid;grid-template-columns:96px 1fr 1fr 1fr;gap:0 16px;padding:12px 0;border-bottom:1px solid rgb(255 255 255/8%);font-size:13.5px;line-height:1.65;color:#C4C8D6">
+          <div style="color:#7E8296">招牌仪式</div><div>落一枚日戳</div><div>点亮一盏灯</div><div>拨杆，翻一张牌</div>
+        </div>
+        <div style="display:grid;grid-template-columns:96px 1fr 1fr 1fr;gap:0 16px;padding:12px 0;font-size:13.5px;line-height:1.65;color:#C4C8D6">
+          <div style="color:#7E8296">圆角性格</div><div>2–10，印刷直角</div><div>12–24，拱与票券</div><div>6–14，机加工一致</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 方向一 · 纸与朱 ═══ -->
+  <sc-if value="{{ showA }}" hint-placeholder-val="{{ true }}">
+  <section id="dir-a" data-screen-label="方向一 纸与朱" style="background:#F3EDE2;color:#26201A;padding:76px 24px 72px">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.22em;color:#B5402A">方向一 · THE PRIVATE BINDING</div>
+          <h2 style="margin:12px 0 0;font:900 46px/1.2 'Noto Serif SC',serif;color:#26201A">纸与朱<span style="font-size:20px;font-weight:700;color:#988E7E;margin-left:14px">私藏装帧</span></h2>
+          <p style="margin:16px 0 0;font:600 18px/1.75 'Noto Serif SC',serif;color:#6A6153;max-width:640px">把每一次相遇装订成一部只属于你的书——纸承故事，墨定内容，朱只记你的日子。</p>
+        </div>
+        <div style="flex:0 0 auto;width:76px;height:76px;border:2.5px solid #B5402A;border-radius:999px;display:grid;place-items:center;transform:rotate(-8deg);color:#B5402A;font:700 15px/1.3 'Noto Serif SC',serif;text-align:center;opacity:.9">七月<br>廿七</div>
+      </div>
+
+      <div style="margin:56px 0 14px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B5402A">01</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#6A6153">色彩体系 · 纸、墨、朱三色而已</div></div>
+      <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#6A6153;max-width:720px">整个系统只有三种角色：纸（底与面）、墨（文字三阶）、朱砂（唯一主强调）。烫金 <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px">#9C7A2F</span> 只许出现在徽章与分享卡烫印，靛青 <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px">#33506F</span> 留给消息与链接语义。</p>
+      <div style="background:#F3EDE2;border-radius:12px;padding:16px 16px 14px;box-shadow:inset 0 0 0 1px rgb(38 32 26/14%)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:#26201A">浅色 · 晨读</div><div style="font-size:11.5px;color:#988E7E">默认主题</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:10px">
+          <div><div style="height:42px;border-radius:6px;background:#F3EDE2;box-shadow:inset 0 0 0 1px rgb(38 32 26/16%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#6A6153">页面底 · 米纸</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#988E7E">#F3EDE2</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#EAE2D3;box-shadow:inset 0 0 0 1px rgb(38 32 26/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#6A6153">分组底 · 衬纸</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#988E7E">#EAE2D3</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#FCFAF4;box-shadow:inset 0 0 0 1px rgb(38 32 26/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#6A6153">内容面 · 道林纸</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#988E7E">#FCFAF4</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#B5402A;display:grid;place-items:center;color:#FCFAF4;font:700 14px 'Noto Serif SC',serif">Aa</div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#6A6153">主强调 · 朱砂</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#988E7E">#B5402A</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#26201A"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#6A6153">文字一阶 · 浓墨</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#988E7E">#26201A</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#6A6153"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#6A6153">文字二阶 · 淡墨</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#988E7E">#6A6153</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#988E7E"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#6A6153">文字三阶 · 灰墨</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#988E7E">#988E7E</div></div>
+        </div>
+      </div>
+      <div style="background:#16120D;border-radius:12px;padding:16px 16px 14px;box-shadow:inset 0 0 0 1px rgb(255 255 255/12%);margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:#F1EADA">深色 · 夜读</div><div style="font-size:11.5px;color:#837A66">灯下的烟墨纸，暖而不冷</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:10px">
+          <div><div style="height:42px;border-radius:6px;background:#16120D;box-shadow:inset 0 0 0 1px rgb(255 255 255/14%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#B3A78F">页面底 · 烟墨</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#837A66">#16120D</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#1E1913;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#B3A78F">分组底</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#837A66">#1E1913</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#272117;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#B3A78F">内容面 · 灯下纸</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#837A66">#272117</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#E5754F;display:grid;place-items:center;color:#16120D;font:700 14px 'Noto Serif SC',serif">Aa</div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#B3A78F">主强调 · 火朱</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#837A66">#E5754F</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#F1EADA"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#B3A78F">文字一阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#837A66">#F1EADA</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#B3A78F"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#B3A78F">文字二阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#837A66">#B3A78F</div></div>
+          <div><div style="height:42px;border-radius:6px;background:#837A66"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#B3A78F">文字三阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#837A66">#837A66</div></div>
+        </div>
+      </div>
+
+      <div style="margin:52px 0 6px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B5402A">02</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#6A6153">材质与光影 · 全反射，零玻璃</div></div>
+      <div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13px;font-weight:700;color:#B5402A">背景层</div><div style="font-size:14px;line-height:1.8;color:#3D362D">米纸实体，纤维噪点 ≤3%，无光斑、无渐变。夜读换烟墨纸，同一张纸的两种灯光。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13px;font-weight:700;color:#B5402A">内容层</div><div style="font-size:14px;line-height:1.8;color:#3D362D">道林纸卡：不透明、近直角、影子薄得像纸自身的厚度（0 1px 0 发丝 + 0 2px 10px 墨 4%）。卡不叠卡，选中态是 letterpress 压凹而非浮起。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13px;font-weight:700;color:#B5402A">导航层</div><div style="font-size:14px;line-height:1.8;color:#3D362D">浆糊白实体条（夜读为烟墨实体），上缘一条发丝。不用玻璃、不用模糊——书没有玻璃。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13px;font-weight:700;color:#B5402A">收藏物</div><div style="font-size:14px;line-height:1.8;color:#3D362D">成就殿堂 = 烫金箔与钢印：金属渐变只许出现在徽章本体与分享卡烫印；银 = 哑银箔、铜 = 赤铜。五种 1080×1440 分享卡统一为「书页 + 钢印 + 藏书票」制式。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13px;font-weight:700;color:#B5402A">发光许可</div><div style="font-size:14px;line-height:1.8;color:#3D362D">全系统唯一的「光」：夜读模式落章瞬间的一圈灯晕，540ms 一次即灭。其余一律反射。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(38 32 26/12%);border-bottom:1px solid rgb(38 32 26/12%)"><div style="font-size:13px;font-weight:700;color:#B5402A">可读性</div><div style="font-size:14px;line-height:1.8;color:#3D362D">全实体不透明，正文永远是墨上纸。发现页媒体上的文字一律垫「藏书票」纸质标签，不做透明渐变遮罩。</div></div>
+      </div>
+
+      <div style="margin:52px 0 14px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B5402A">03</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#6A6153">字体 · 圆角 · 间距</div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px">
+        <div style="background:#FCFAF4;border-radius:10px;padding:18px 20px;box-shadow:inset 0 0 0 1px rgb(38 32 26/10%)">
+          <div style="font:700 34px/1.3 'Noto Serif SC',serif;color:#26201A">大标题 34</div>
+          <div style="font:700 22px/1.4 'Noto Serif SC',serif;color:#26201A">页面标题 22</div>
+          <div style="font-size:17px;font-weight:700;line-height:1.6;color:#26201A;margin-top:4px">分区标题 17</div>
+          <div style="font-size:15px;line-height:1.8;color:#3D362D">正文 15 / 行高 1.8</div>
+          <div style="font-size:13px;line-height:1.7;color:#988E7E">元数据 13</div>
+          <div style="margin-top:10px;font-size:12.5px;line-height:1.75;color:#6A6153">标题与日期 = 思源宋体 700；UI 正文 = 苹方/YaHei；仪式数字用衬线旧体，金额仍 tabular-nums。</div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#6A6153;margin-bottom:10px">圆角 · 印刷直角</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#EAE2D3;box-shadow:inset 0 0 0 1px rgb(38 32 26/14%);border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#26201A">2</div><div style="font-size:10.5px;color:#988E7E">控件</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#EAE2D3;box-shadow:inset 0 0 0 1px rgb(38 32 26/14%);border-radius:4px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#26201A">4</div><div style="font-size:10.5px;color:#988E7E">行</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#EAE2D3;box-shadow:inset 0 0 0 1px rgb(38 32 26/14%);border-radius:6px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#26201A">6</div><div style="font-size:10.5px;color:#988E7E">卡</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#EAE2D3;box-shadow:inset 0 0 0 1px rgb(38 32 26/14%);border-radius:10px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#26201A">10</div><div style="font-size:10.5px;color:#988E7E">面板</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#EAE2D3;box-shadow:inset 0 0 0 1px rgb(38 32 26/14%);border-radius:16px 16px 4px 4px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#26201A">16</div><div style="font-size:10.5px;color:#988E7E">Sheet 顶</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#EAE2D3;box-shadow:inset 0 0 0 1px rgb(38 32 26/14%);border-radius:999px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#26201A">999</div><div style="font-size:10.5px;color:#988E7E">印章</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#6A6153;margin:20px 0 10px">间距 · 书页留白</div>
+          <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+            <div><div style="height:10px;width:10px;background:#B5402A;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#26201A">4</div></div>
+            <div><div style="height:10px;width:20px;background:#B5402A;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#26201A">8</div></div>
+            <div><div style="height:10px;width:30px;background:#B5402A;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#26201A">12</div></div>
+            <div><div style="height:10px;width:40px;background:#B5402A;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#26201A">16</div></div>
+            <div><div style="height:10px;width:60px;background:#B5402A;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#26201A">24</div></div>
+            <div><div style="height:10px;width:80px;background:#B5402A;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#26201A">32</div></div>
+          </div>
+          <div style="margin-top:12px;font-size:12.5px;line-height:1.75;color:#6A6153">页边 20（比现行 16 更宽——书的天头地脚），段落间 32，触控 ≥44，提交 ≥48。</div>
+        </div>
+      </div>
+
+      <div style="margin:52px 0 6px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B5402A">04</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#6A6153">动效哲学 · 纸的物理，一次即止</div></div>
+      <div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13.5px;font-weight:700;color:#26201A">落章</div><div style="font-size:14px;line-height:1.75;color:#3D362D">签到/收藏/购买成功：章体 1.15→1.0 压下，边缘渗开一圈淡墨晕。<br><span style="font-size:12.5px;color:#988E7E">reduced-motion：章直接盖好，仅 120ms 透明度；触感保留。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#988E7E;text-align:right">240ms<br>一次</div></div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13.5px;font-weight:700;color:#26201A">翻页</div><div style="font-size:14px;line-height:1.75;color:#3D362D">页面推入/返回：横移 24px + 纸影加深，方向一致，cubic-bezier(.3,.7,.3,1)。<br><span style="font-size:12.5px;color:#988E7E">reduced-motion：溶解切换。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#988E7E;text-align:right">320ms</div></div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13.5px;font-weight:700;color:#26201A">墨渗</div><div style="font-size:14px;line-height:1.75;color:#3D362D">新消息/新内容到达：文字从 88% 墨度渗到 100%，零位移。<br><span style="font-size:12.5px;color:#988E7E">reduced-motion：直接出现。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#988E7E;text-align:right">200ms</div></div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(38 32 26/12%);border-bottom:1px solid rgb(38 32 26/12%)"><div style="font-size:13.5px;font-weight:700;color:#26201A">永不</div><div style="font-size:14px;line-height:1.75;color:#3D362D">循环动画为零：骨架屏用静态纸纹占位，不 shimmer；没有任何东西在你不碰它时动。</div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#988E7E;text-align:right">0</div></div>
+      </div>
+
+      <div style="margin:52px 0 14px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B5402A">05</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#6A6153">闭眼渲染 · 今日页（浅色 · 晨）</div></div>
+      <div style="background:#FCFAF4;border-radius:10px;padding:28px 30px;box-shadow:inset 0 0 0 1px rgb(38 32 26/10%),0 2px 10px rgb(38 32 26/5%)">
+        <p style="margin:0 0 16px;font:15.5px/2.05 'Noto Serif SC',serif;color:#26201A">打开的一瞬没有任何光效：整屏就是一张微暖的米纸，带一点几乎不可见的纤维灰。顶部大标题不是「今日」，而是宋体 34px 的<strong>「七月二十七日」</strong>，右下缀一行 13px 朱砂小字「宜 · 重逢」，像黄历的眉批。状态栏之下没有顶栏——标题即页面。</p>
+        <p style="margin:0 0 16px;font:15.5px/2.05 'Noto Serif SC',serif;color:#26201A">往下 24px，第一张卡是道林纸白，近直角，影子薄得像纸自身的厚度。卡右上是今天的日戳位：88px 的朱砂虚线圆框，框心两个小字「未签」；卡左侧「连签 23 天」，数字用衬线旧体。卡下沿一行 7 个 32px 方格是本周——已签的格子向纸里压凹一线，格心一粒朱点；周与周之间只隔一条发丝。再往下是「本周与你相伴」：17px 宋体标题，两行 15px 正文（「你和 4 位角色说了 612 句话」），右上角一枚烫金小徽记斜贴 8°，像一张藏书票。最底部，导航条是一条浆糊白的实体纸条，四个墨色图标，选中者转为朱砂。</p>
+        <p style="margin:0;font:15.5px/2.05 'Noto Serif SC',serif;color:#26201A">指尖落在日戳上——章体以 1.15 倍落下，240ms 压实，边缘渗开一圈极淡墨晕，「未签」翻为<strong style="color:#B5402A">「七月廿七」</strong>；下方方格同步压凹、点朱，手机给一次短促的钝触感。整页自始至终只有三种颜色：纸、墨、朱。</p>
+      </div>
+
+      <sc-if value="{{ showRisks }}" hint-placeholder-val="{{ true }}">
+      <div style="margin:52px 0 6px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B5402A">06</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#6A6153">最大风险与规避</div></div>
+      <div>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:13px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13.5px;font-weight:700;color:#26201A">纸感滑向怀旧拟物</div><div style="font-size:14px;line-height:1.8;color:#3D362D">规避 → 噪点 ≤3%、卡片零纹理贴图；UI 骨架全部现代无衬线，衬线只给标题与仪式；版式参照当代印刷杂志而非古籍，留白就是现代感本身。</div></div>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:13px 0;border-top:1px solid rgb(38 32 26/12%)"><div style="font-size:13.5px;font-weight:700;color:#26201A">朱砂与危险语义相撞</div><div style="font-size:14px;line-height:1.8;color:#3D362D">规避 → 朱砂只表「仪式与主动作」；危险/删除改用深赭 #7A2E1F 且必带图标 + 二次确认的双编码，色弱场景靠形状与文案兜底。</div></div>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:13px 0;border-top:1px solid rgb(38 32 26/12%);border-bottom:1px solid rgb(38 32 26/12%)"><div style="font-size:13.5px;font-weight:700;color:#26201A">沉浸媒体页与纸世界断裂</div><div style="font-size:14px;line-height:1.8;color:#3D362D">规避 → 发现瀑布保持全屏媒体；信息以「藏书票标签」贴角呈现，转场用翻页——媒体是这本书的「插图页」，世界观自洽。</div></div>
+      </div>
+      </sc-if>
+    </div>
+  </section>
+  </sc-if>
+
+  <!-- ═══ 方向二 · 幕与灯 ═══ -->
+  <sc-if value="{{ showB }}" hint-placeholder-val="{{ true }}">
+  <section id="dir-b" data-screen-label="方向二 幕与灯" style="background:#0F1311;color:#F0EEE2;padding:76px 24px 72px">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.22em;color:#D8A84B">方向二 · HOUSE LIGHTS DOWN</div>
+          <h2 style="margin:12px 0 0;font:900 46px/1.2 'Noto Serif SC',serif;color:#F0EEE2">幕与灯<span style="font-size:20px;font-weight:700;color:#6E7870;margin-left:14px">夜场剧院</span></h2>
+          <p style="margin:16px 0 0;font:600 18px/1.75 'Noto Serif SC',serif;color:#A6AFA4;max-width:640px">App 是一座只为你开演的小剧场：灯是因果，幕是层级，每晚点一盏灯，就是开演。</p>
+        </div>
+        <div style="flex:0 0 auto;display:flex;gap:7px;align-items:center;padding-top:14px">
+          <div style="width:13px;height:13px;border-radius:999px;background:#D8A84B;box-shadow:inset 0 -2px 3px rgb(0 0 0/25%),0 0 6px rgb(216 168 75/55%)"></div>
+          <div style="width:13px;height:13px;border-radius:999px;background:#D8A84B;box-shadow:inset 0 -2px 3px rgb(0 0 0/25%),0 0 6px rgb(216 168 75/55%)"></div>
+          <div style="width:13px;height:13px;border-radius:999px;background:#D8A84B;box-shadow:inset 0 -2px 3px rgb(0 0 0/25%),0 0 6px rgb(216 168 75/55%)"></div>
+          <div style="width:13px;height:13px;border-radius:999px;background:#D8A84B;box-shadow:inset 0 -2px 3px rgb(0 0 0/25%),0 0 6px rgb(216 168 75/55%)"></div>
+          <div style="width:13px;height:13px;border-radius:999px;background:#D8A84B;box-shadow:inset 0 -2px 3px rgb(0 0 0/25%),0 0 6px rgb(216 168 75/55%)"></div>
+          <div style="width:13px;height:13px;border-radius:999px;background:#D8A84B;box-shadow:inset 0 -2px 3px rgb(0 0 0/25%),0 0 6px rgb(216 168 75/55%)"></div>
+          <div style="width:13px;height:13px;border-radius:999px;background:transparent;box-shadow:inset 0 0 0 1.5px rgb(216 168 75/45%)"></div>
+        </div>
+      </div>
+
+      <div style="margin:56px 0 14px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#D8A84B">01</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#A6AFA4">色彩体系 · 绒、铜、金，红只给幕布</div></div>
+      <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#A6AFA4;max-width:720px">深绒绿是幕布与场馆，鎏金是唯一主强调（单屏面积 ≤5%），幕布红 <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px">#C86A5D / #A5443A</span> 只给 LIVE、未读与危险。没有第四种彩色。</p>
+      <div style="background:#0F1311;border-radius:14px;padding:16px 16px 14px;box-shadow:inset 0 0 0 1px rgb(216 168 75/22%)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:#F0EEE2">深色 · 夜场</div><div style="font-size:11.5px;color:#6E7870">默认主题</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:10px">
+          <div><div style="height:42px;border-radius:10px;background:#0F1311;box-shadow:inset 0 0 0 1px rgb(255 255 255/14%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#A6AFA4">页面底 · 绒幕</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7870">#0F1311</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#161C18;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#A6AFA4">分组底 · 侧幕</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7870">#161C18</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#1D2520;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#A6AFA4">内容面 · 舞台板</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7870">#1D2520</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#D8A84B;display:grid;place-items:center;color:#161307;font:700 14px 'Noto Serif SC',serif">Aa</div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#A6AFA4">主强调 · 鎏金</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7870">#D8A84B</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#F0EEE2"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#A6AFA4">文字一阶 · 台词白</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7870">#F0EEE2</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#A6AFA4"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#A6AFA4">文字二阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7870">#A6AFA4</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#6E7870"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#A6AFA4">文字三阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7870">#6E7870</div></div>
+        </div>
+      </div>
+      <div style="background:#EFE9DC;border-radius:14px;padding:16px 16px 14px;box-shadow:inset 0 0 0 1px rgb(29 27 20/14%);margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:#1D1B14">浅色 · 日场</div><div style="font-size:11.5px;color:#8E8A78">独立设计的后台白昼，不是反色</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:10px">
+          <div><div style="height:42px;border-radius:10px;background:#EFE9DC;box-shadow:inset 0 0 0 1px rgb(29 27 20/14%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#5F5C4D">页面底 · 象牙</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8E8A78">#EFE9DC</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#E4DCCA;box-shadow:inset 0 0 0 1px rgb(29 27 20/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#5F5C4D">分组底</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8E8A78">#E4DCCA</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#FAF6EB;box-shadow:inset 0 0 0 1px rgb(29 27 20/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#5F5C4D">内容面 · 场刊纸</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8E8A78">#FAF6EB</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#8A6414;display:grid;place-items:center;color:#FAF6EB;font:700 14px 'Noto Serif SC',serif">Aa</div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#5F5C4D">主强调 · 深鎏金</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8E8A78">#8A6414</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#1D1B14"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#5F5C4D">文字一阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8E8A78">#1D1B14</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#5F5C4D"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#5F5C4D">文字二阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8E8A78">#5F5C4D</div></div>
+          <div><div style="height:42px;border-radius:10px;background:#8E8A78"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#5F5C4D">文字三阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8E8A78">#8E8A78</div></div>
+        </div>
+      </div>
+
+      <div style="margin:52px 0 6px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#D8A84B">02</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#A6AFA4">材质与光影 · 光必须有理由</div></div>
+      <div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13px;font-weight:700;color:#D8A84B">背景层</div><div style="font-size:14px;line-height:1.8;color:#C9CFC5">绒幕：深绒绿实体带 2% 布纹；顶檐一道 80px 暖光渐隐——全页唯一环境光，静止不动。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13px;font-weight:700;color:#D8A84B">内容层</div><div style="font-size:14px;line-height:1.8;color:#C9CFC5">舞台面板实体 #1D2520，边缘一条 1px 铜色发丝。正文永不放在发光体上。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13px;font-weight:700;color:#D8A84B">导航层</div><div style="font-size:14px;line-height:1.8;color:#C9CFC5">Dock = 深色实体 + 黄铜描边，高 64 + safe-area。全系统唯一玻璃：1:1 对话与通话页的「字幕机」控件（黑 42% + blur 18px）——因为舞台上本来就有字幕机。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13px;font-weight:700;color:#D8A84B">收藏物</div><div style="font-size:14px;line-height:1.8;color:#C9CFC5">奖章 = 铸铜三档，同一造型、三种金属。角色卡与五种分享卡统一「戏票」制式：右缘打孔、场次号、座位排（星轨卡 = 巡演路线图）。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13px;font-weight:700;color:#D8A84B">发光许可</div><div style="font-size:14px;line-height:1.8;color:#C9CFC5">点状钨丝灯珠（≤18px）与选中态提亮。禁止大面积泛光、扫光循环、呼吸。灯亮必须有一个用户动作作为「电闸」。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(240 238 226/12%);border-bottom:1px solid rgb(240 238 226/12%)"><div style="font-size:13px;font-weight:700;color:#D8A84B">可读性</div><div style="font-size:14px;line-height:1.8;color:#C9CFC5">发现瀑布/对话立绘压暗 56–72% + 底部实体「节目单条」承载文字；字幕玻璃内文字 ≥15px 纯白，对比 ≥4.5:1。</div></div>
+      </div>
+
+      <div style="margin:52px 0 14px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#D8A84B">03</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#A6AFA4">字体 · 圆角 · 间距</div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px">
+        <div style="background:#1D2520;border-radius:16px;padding:18px 20px;box-shadow:inset 0 0 0 1px rgb(216 168 75/18%)">
+          <div style="font:900 36px/1.2 'Noto Serif SC',serif;color:#F0EEE2">海报标题 36</div>
+          <div style="font:700 22px/1.45 'Noto Serif SC',serif;color:#F0EEE2">页面标题 22</div>
+          <div style="font-size:17px;font-weight:700;line-height:1.6;color:#F0EEE2;margin-top:4px">分区标题 17</div>
+          <div style="font-size:15px;line-height:1.8;color:#C9CFC5">正文 15 · 无衬线</div>
+          <div style="font-size:13px;line-height:1.7;color:#6E7870">元数据 13</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;color:#D8A84B;margin-top:8px">ACT II · 第 203 夜 · 节目单小字 11</div>
+          <div style="margin-top:10px;font-size:12.5px;line-height:1.75;color:#A6AFA4">海报字 = 宋体特粗、行高 1.2、字距 +1%；剧场正文沿用衬线 16/1.95 阅读流。</div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#A6AFA4;margin-bottom:10px">圆角 · 拱与票券</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#1D2520;box-shadow:inset 0 0 0 1px rgb(216 168 75/25%);border-radius:12px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#F0EEE2">12</div><div style="font-size:10.5px;color:#6E7870">控件</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#1D2520;box-shadow:inset 0 0 0 1px rgb(216 168 75/25%);border-radius:16px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#F0EEE2">16</div><div style="font-size:10.5px;color:#6E7870">卡 · 票券</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#1D2520;box-shadow:inset 0 0 0 1px rgb(216 168 75/25%);border-radius:23px 23px 6px 6px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#F0EEE2">24</div><div style="font-size:10.5px;color:#6E7870">Sheet 顶拱</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#1D2520;box-shadow:inset 0 0 0 1px rgb(216 168 75/25%);border-radius:999px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#F0EEE2">999</div><div style="font-size:10.5px;color:#6E7870">灯珠 · 胶囊</div></div>
+          </div>
+          <div style="margin-top:10px;font-size:12.5px;line-height:1.75;color:#A6AFA4">票券卡在右缘 1/3 处做半圆切口 + 打孔虚线，是本方向的几何签名。</div>
+          <div style="font-size:12px;font-weight:700;color:#A6AFA4;margin:18px 0 10px">间距</div>
+          <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+            <div><div style="height:10px;width:10px;background:#D8A84B;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#F0EEE2">4</div></div>
+            <div><div style="height:10px;width:20px;background:#D8A84B;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#F0EEE2">8</div></div>
+            <div><div style="height:10px;width:30px;background:#D8A84B;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#F0EEE2">12</div></div>
+            <div><div style="height:10px;width:40px;background:#D8A84B;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#F0EEE2">16</div></div>
+            <div><div style="height:10px;width:50px;background:#D8A84B;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#F0EEE2">20</div></div>
+            <div><div style="height:10px;width:70px;background:#D8A84B;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#F0EEE2">28</div></div>
+          </div>
+          <div style="margin-top:12px;font-size:12.5px;line-height:1.75;color:#A6AFA4">页边 16；触控 ≥44、提交 ≥48；Dock 64 + safe-area。</div>
+        </div>
+      </div>
+
+      <div style="margin:52px 0 6px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#D8A84B">04</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#A6AFA4">动效哲学 · 灯光因果，一次即稳</div></div>
+      <div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13.5px;font-weight:700;color:#F0EEE2">灯亮</div><div style="font-size:14px;line-height:1.75;color:#C9CFC5">进场/选中/签到点灯：灯丝暗红→金亮，末尾单次微闪即稳；面板亮度 70→100% 一次。<br><span style="font-size:12.5px;color:#6E7870">reduced-motion：亮度直切，无闪。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6E7870;text-align:right">120ms</div></div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13.5px;font-weight:700;color:#F0EEE2">幕起</div><div style="font-size:14px;line-height:1.75;color:#C9CFC5">Sheet/Modal：底幕上升，cubic-bezier(.2,.9,.25,1)，grabber 即幕绳。<br><span style="font-size:12.5px;color:#6E7870">reduced-motion：80ms 淡入。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6E7870;text-align:right">380ms</div></div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13.5px;font-weight:700;color:#F0EEE2">聚光</div><div style="font-size:14px;line-height:1.75;color:#C9CFC5">列表选中/焦点移动：选中片被「打光」——面板提亮 6%，光位平移跟随。<br><span style="font-size:12.5px;color:#6E7870">reduced-motion：状态直切。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6E7870;text-align:right">260ms</div></div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(240 238 226/12%);border-bottom:1px solid rgb(240 238 226/12%)"><div style="font-size:13.5px;font-weight:700;color:#F0EEE2">谢幕</div><div style="font-size:14px;line-height:1.75;color:#C9CFC5">删除/离场：元素向下 8px 并变暗离场。永不：扫光循环、大面积泛光、呼吸灯。<br><span style="font-size:12.5px;color:#6E7870">reduced-motion：直接消失。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6E7870;text-align:right">220ms</div></div>
+      </div>
+
+      <div style="margin:52px 0 14px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#D8A84B">05</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#A6AFA4">闭眼渲染 · 今日页（深色 · 夜场）</div></div>
+      <div style="background:#1D2520;border-radius:16px;padding:28px 30px;box-shadow:inset 0 0 0 1px rgb(216 168 75/20%)">
+        <p style="margin:0 0 16px;font:15.5px/2.05 'Noto Serif SC',serif;color:#F0EEE2">进来就是夜场：整屏深绒绿，唯一的环境光是顶檐洒下的一道 80px 暖光，静止不动。大标题<strong>「今夜」</strong>34px 米白宋体特粗，右侧一枚黄铜色小场次号「第 203 夜」。</p>
+        <p style="margin:0 0 16px;font:15.5px/2.05 'Noto Serif SC',serif;color:#F0EEE2">第一块面板是『点灯』：舞台板上嵌一排 7 颗 18px 灯珠，前 6 颗亮着钨丝暖金，第 7 颗暗着，像后台在等你合闸。面板左下「连签 23」用鎏金数字，右下一行 11px 加宽小字「MARQUEE · 七月」。下方月历是一张节目单：日期一行一行排，演过的日子行尾一个票孔；第 7、30、100 天印着铜色场次章。周报卡叫「本周场刊」：深面板白字三行，右上角一枚打了孔的票根角标。Dock 是黄铜描边的深色实体条浮在幕布上，选中图标金亮，未读是幕布红的小点。</p>
+        <p style="margin:0;font:15.5px/2.05 'Noto Serif SC',serif;color:#F0EEE2">按下第 7 颗灯——灯丝 120ms 从暗红烧到金亮，轻闪一次即稳；连签数字翻为 <strong style="color:#D8A84B">24</strong>，顶檐那道暖光短暂加深 6% 又回落，像全场灯光为你压了一下。除了这排灯与选中态，页面再无发光体。</p>
+      </div>
+
+      <sc-if value="{{ showRisks }}" hint-placeholder-val="{{ true }}">
+      <div style="margin:52px 0 6px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#D8A84B">06</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#A6AFA4">最大风险与规避</div></div>
+      <div>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:13px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13.5px;font-weight:700;color:#F0EEE2">浅色主题沦为反色赠品</div><div style="font-size:14px;line-height:1.8;color:#C9CFC5">规避 → 浅色 =「日场/后台」独立设计：象牙纸 + 深鎏金，灯珠换成不发光也好看的黄铜壳物件；验收要求浅色截图单独过审，不许由深色反推。</div></div>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:13px 0;border-top:1px solid rgb(240 238 226/12%)"><div style="font-size:13.5px;font-weight:700;color:#F0EEE2">金色滥用成「土豪金」</div><div style="font-size:14px;line-height:1.8;color:#C9CFC5">规避 → 鎏金只许出现在主强调、奖章、灯丝三处，单屏金色面积 ≤5%；大面积永远是绒与灰，金属渐变仅限奖章本体。</div></div>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:13px 0;border-top:1px solid rgb(240 238 226/12%);border-bottom:1px solid rgb(240 238 226/12%)"><div style="font-size:13.5px;font-weight:700;color:#F0EEE2">深绒绿低端屏发闷</div><div style="font-size:14px;line-height:1.8;color:#C9CFC5">规避 → 绒面亮度守住 L ≥ 0.12，层级靠 1px 铜发丝而非更黑的底；唯一玻璃（字幕机）在 lite 档退化为 82% 实体黑，布纹关闭。</div></div>
+      </div>
+      </sc-if>
+    </div>
+  </section>
+  </sc-if>
+
+  <!-- ═══ 方向三 · 仪与匣 ═══ -->
+  <sc-if value="{{ showC }}" hint-placeholder-val="{{ true }}">
+  <section id="dir-c" data-screen-label="方向三 仪与匣" style="background:#E8EBE9;color:#181D1B;padding:76px 24px 72px">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.22em;color:#0E7263">方向三 · THE FIELD INSTRUMENT</div>
+          <h2 style="margin:12px 0 0;font:900 46px/1.2 'Noto Serif SC',serif;color:#181D1B">仪与匣<span style="font-size:20px;font-weight:700;color:#87918B;margin-left:14px">旅装观测仪</span></h2>
+          <p style="margin:16px 0 0;font:600 18px/1.75 'Noto Serif SC',serif;color:#566059;max-width:640px">陪伴不必喧哗——把和角色度过的日子，变成可拨动、可读数、可装匣收藏的随身仪器。</p>
+        </div>
+        <div style="flex:0 0 auto;background:#0F1312;border-radius:10px;padding:8px 14px;box-shadow:inset 0 0 0 1px rgb(255 255 255/12%)">
+          <div style="font-family:'JetBrains Mono',monospace;font:600 26px/1.1 'JetBrains Mono',monospace;color:#ECF1EF;border-bottom:1px solid rgb(255 255 255/22%);padding-bottom:3px">24</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:5px"><div style="width:5px;height:5px;border-radius:999px;background:#3FD2B4"></div><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;color:#6B756F">DAYS</div></div>
+        </div>
+      </div>
+
+      <div style="margin:56px 0 14px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#0E7263">01</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#566059">色彩体系 · 铝白与石墨，磷光青只做读数</div></div>
+      <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#566059;max-width:720px">冷中性双面板，磷光青是唯一主强调（表盘指针、LED、选中态）。信号琥珀 <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px">#A87614 / #E0A83E</span> 给货币与警示，记录红 <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px">#C24536 / #F2705C</span> 只给未读与危险。人像与立绘是系统里唯一的暖色开窗。</p>
+      <div style="background:#E8EBE9;border-radius:12px;padding:16px 16px 14px;box-shadow:inset 0 0 0 1px rgb(24 29 27/14%)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:#181D1B">浅色 · 铝白面板</div><div style="font-size:11.5px;color:#87918B">与深色等权</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:10px">
+          <div><div style="height:42px;border-radius:8px;background:#E8EBE9;box-shadow:inset 0 0 0 1px rgb(24 29 27/16%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#566059">页面底 · 铝白</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#87918B">#E8EBE9</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#DCE1DE;box-shadow:inset 0 0 0 1px rgb(24 29 27/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#566059">分组底 · 沟槽</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#87918B">#DCE1DE</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#F6F8F7;box-shadow:inset 0 0 0 1px rgb(24 29 27/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#566059">内容面 · 面板</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#87918B">#F6F8F7</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#0E7263;display:grid;place-items:center;color:#F6F8F7;font:700 14px 'Noto Sans SC',sans-serif">Aa</div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#566059">主强调 · 磷光青</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#87918B">#0E7263</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#181D1B"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#566059">文字一阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#87918B">#181D1B</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#566059"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#566059">文字二阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#87918B">#566059</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#87918B"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#566059">文字三阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#87918B">#87918B</div></div>
+        </div>
+      </div>
+      <div style="background:#0F1312;border-radius:12px;padding:16px 16px 14px;box-shadow:inset 0 0 0 1px rgb(255 255 255/12%);margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:#ECF1EF">深色 · 石墨仪表台</div><div style="font-size:11.5px;color:#6B756F">读数在暗处最清晰</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:10px">
+          <div><div style="height:42px;border-radius:8px;background:#0F1312;box-shadow:inset 0 0 0 1px rgb(255 255 255/14%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#9FAAA5">页面底 · 石墨</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B756F">#0F1312</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#161B1A;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#9FAAA5">分组底</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B756F">#161B1A</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#1D2321;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#9FAAA5">内容面 · 面板</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B756F">#1D2321</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#3FD2B4;display:grid;place-items:center;color:#06211B;font:700 14px 'Noto Sans SC',sans-serif">Aa</div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#9FAAA5">主强调 · 磷光青</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B756F">#3FD2B4</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#ECF1EF"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#9FAAA5">文字一阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B756F">#ECF1EF</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#9FAAA5"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#9FAAA5">文字二阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B756F">#9FAAA5</div></div>
+          <div><div style="height:42px;border-radius:8px;background:#6B756F"></div><div style="margin-top:6px;font-size:11px;font-weight:600;color:#9FAAA5">文字三阶</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B756F">#6B756F</div></div>
+        </div>
+      </div>
+
+      <div style="margin:52px 0 6px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#0E7263">02</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#566059">材质与光影 · 面板、表盖、LED</div></div>
+      <div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13px;font-weight:700;color:#0E7263">背景层</div><div style="font-size:14px;line-height:1.8;color:#2E3532">石墨/铝白实体面板，零渐变。分区靠 1px 刻线与 8px 沟槽，不靠色块。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13px;font-weight:700;color:#0E7263">内容层</div><div style="font-size:14px;line-height:1.8;color:#2E3532">仪表面板实体。全系统唯一玻璃 =「表盖」：星轨/钱包/周报的数据表盘上覆一道 45° 静态高光，永不模糊正文。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13px;font-weight:700;color:#0E7263">导航层</div><div style="font-size:14px;line-height:1.8;color:#2E3532">机身条实体，上缘倒角 14px；四颗按键 = 实体键帽，按下沉 1px；选中键上方一粒常亮 LED。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13px;font-weight:700;color:#0E7263">收藏物</div><div style="font-size:14px;line-height:1.8;color:#2E3532">角色 = 装匣标本卡：圆形开窗 + 拉丝铭牌 + 编号。奖章 = 滚花边缘的金属圆牌三档。五种分享卡统一「观测记录单」制式：读数 + 铭牌 + 圆窗。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13px;font-weight:700;color:#0E7263">发光许可</div><div style="font-size:14px;line-height:1.8;color:#2E3532">LED 指示点 4–8px（未读/在线/录制中），纯色，光晕封顶 1px。无粒子、无泛光、无呼吸。</div></div>
+        <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-top:1px solid rgb(24 29 27/12%);border-bottom:1px solid rgb(24 29 27/12%)"><div style="font-size:13px;font-weight:700;color:#0E7263">可读性</div><div style="font-size:14px;line-height:1.8;color:#2E3532">图像永远在「开窗」里、文字永远在面板上，二者不叠加；发现瀑布的媒体窗全屏化，信息条是窗下的实体铭牌。</div></div>
+      </div>
+
+      <div style="margin:52px 0 14px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#0E7263">03</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#566059">字体 · 圆角 · 间距</div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px">
+        <div style="background:#F6F8F7;border-radius:10px;padding:18px 20px;box-shadow:inset 0 0 0 1px rgb(24 29 27/10%)">
+          <div style="font-size:34px;font-weight:700;letter-spacing:-.01em;line-height:1.3;color:#181D1B">大标题 34</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;line-height:1.4;color:#0E7263">2,048 读数 28</div>
+          <div style="font-size:17px;font-weight:700;line-height:1.6;color:#181D1B;margin-top:2px">分区标题 17</div>
+          <div style="font-size:15px;line-height:1.8;color:#2E3532">正文 15 · 中性无衬线</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#87918B">2026-07-27 · W30 · 元数据 13</div>
+          <div style="margin-top:10px;font-size:12.5px;line-height:1.75;color:#566059">UI = 系统无衬线 500/600、字距 -1%；一切读数/时间/单位 = 等宽字；中文永不套等宽，读数与中文之间固定 4px。</div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#566059;margin-bottom:10px">圆角 · 机加工三档，不随层级增大</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#DCE1DE;box-shadow:inset 0 0 0 1px rgb(24 29 27/14%);border-radius:6px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#181D1B">6</div><div style="font-size:10.5px;color:#87918B">控件 · 键帽</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#DCE1DE;box-shadow:inset 0 0 0 1px rgb(24 29 27/14%);border-radius:10px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#181D1B">10</div><div style="font-size:10.5px;color:#87918B">卡 · 开窗</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#DCE1DE;box-shadow:inset 0 0 0 1px rgb(24 29 27/14%);border-radius:14px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#181D1B">14</div><div style="font-size:10.5px;color:#87918B">面板 · 机身</div></div>
+            <div style="text-align:center"><div style="width:46px;height:46px;background:#DCE1DE;box-shadow:inset 0 0 0 1px rgb(24 29 27/14%);border-radius:999px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:5px;color:#181D1B">999</div><div style="font-size:10.5px;color:#87918B">表盘 · 头像窗</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#566059;margin:20px 0 10px">间距 · 严格 8 点网格</div>
+          <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+            <div><div style="height:10px;width:20px;background:#0E7263;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#181D1B">8</div></div>
+            <div><div style="height:10px;width:40px;background:#0E7263;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#181D1B">16</div></div>
+            <div><div style="height:10px;width:60px;background:#0E7263;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#181D1B">24</div></div>
+            <div><div style="height:10px;width:80px;background:#0E7263;border-radius:2px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;margin-top:4px;color:#181D1B">32</div></div>
+          </div>
+          <div style="margin-top:12px;font-size:12.5px;line-height:1.75;color:#566059">局部辅 4/12；页边 16；触控 ≥44；机身条 64 + safe-area。刻度即进度：进度条一律以刻线呈现。</div>
+        </div>
+      </div>
+
+      <div style="margin:52px 0 6px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#0E7263">04</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#566059">动效哲学 · 机械确定性，快进慢停</div></div>
+      <div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13.5px;font-weight:700;color:#181D1B">翻牌</div><div style="font-size:14px;line-height:1.75;color:#2E3532">连签/金额/计数变化：split-flap 上半页 130ms + 下半页 130ms，多位数错峰 40ms。<br><span style="font-size:12.5px;color:#87918B">reduced-motion：数字直接替换。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#87918B;text-align:right">260ms</div></div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13.5px;font-weight:700;color:#181D1B">拨杆</div><div style="font-size:14px;line-height:1.75;color:#2E3532">开关/签到：120ms 到位，端点零回弹，伴 LED 点亮与一次干脆触感。<br><span style="font-size:12.5px;color:#87918B">reduced-motion：直切 + LED 直亮，触感保留。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#87918B;text-align:right">120ms</div></div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13.5px;font-weight:700;color:#181D1B">指针</div><div style="font-size:14px;line-height:1.75;color:#2E3532">星轨/周报仪表入场：0→读数一次到位，过冲 2° 回正，仅首次进入触发。<br><span style="font-size:12.5px;color:#87918B">reduced-motion：指针直达读数。</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#87918B;text-align:right">540ms</div></div>
+        <div style="display:grid;grid-template-columns:110px 1fr 96px;gap:14px;padding:13px 0;border-top:1px solid rgb(24 29 27/12%);border-bottom:1px solid rgb(24 29 27/12%)"><div style="font-size:13.5px;font-weight:700;color:#181D1B">步进</div><div style="font-size:14px;line-height:1.75;color:#2E3532">页面/列表位移：220ms，cubic-bezier(.4,0,.2,1)，无弹性无果冻。永不：粒子、光晕、循环。</div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#87918B;text-align:right">220ms</div></div>
+      </div>
+
+      <div style="margin:52px 0 14px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#0E7263">05</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#566059">闭眼渲染 · 今日页（深色 · 仪表台）</div></div>
+      <div style="background:#1D2321;border-radius:14px;padding:28px 30px;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)">
+        <p style="margin:0 0 16px;font-size:15.5px;line-height:2.05;color:#ECF1EF">整屏是石墨仪表台，分区靠刻线不靠色块。顶部等宽大字<strong style="font-family:'JetBrains Mono',monospace">「DAY 203」</strong>，右侧一行 11px 读数「2026-07-27 · W30 · 第 24 次记录待写入」。</p>
+        <p style="margin:0 0 16px;font-size:15.5px;line-height:2.05;color:#ECF1EF">第一台设备是『计数器』：面板上开一扇圆角 10px 的窗，窗里是机械翻牌的「23」；右侧一支 44px 高的拨杆，杆帽拉丝银。面板下沿是一条水平刻度带——每天一根短刻线，签过的加粗、顶端一粒 4px 磷光青 LED；第 7、30、100 天的刻线加高，旁边等宽小字标注。周报是一张读数卡：三个 28px 等宽大数「42 · 3 · 1」（对话 / 新角色 / 剧场），每个数字下压一条 2px 基线，基线右端小字注单位。唯一的暖色，是精选角色那一枚圆形开窗头像，像仪表台上贴着的一张随行照片。底部机身条实体，四颗键帽，选中键上方一粒常亮 LED。</p>
+        <p style="margin:0;font-size:15.5px;line-height:2.05;color:#ECF1EF">拇指把拨杆拨下——120ms 到位，「23」的上牌片啪地翻落成<strong style="color:#3FD2B4;font-family:'JetBrains Mono',monospace">「24」</strong>，LED 亮起，刻度带前进一格，机身给一次干脆的触感。没有光晕，没有粒子：只有一次确定的机械应答。</p>
+      </div>
+
+      <sc-if value="{{ showRisks }}" hint-placeholder-val="{{ true }}">
+      <div style="margin:52px 0 6px;display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#0E7263">06</span><div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#566059">最大风险与规避</div></div>
+      <div>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:13px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13.5px;font-weight:700;color:#181D1B">仪器感冷，伤陪伴感</div><div style="font-size:14px;line-height:1.8;color:#2E3532">规避 → 一切「人」的内容（头像/台词/立绘）走圆形与大圆角暖色开窗，仪器语言只包数据外壳；文案人格化：「今天也记下了你们的 42 句话」。</div></div>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:13px 0;border-top:1px solid rgb(24 29 27/12%)"><div style="font-size:13.5px;font-weight:700;color:#181D1B">中文无等宽，混排乱</div><div style="font-size:14px;line-height:1.8;color:#2E3532">规避 → 等宽只用于数字/拉丁/单位，中文永远无衬线；读数与中文之间固定 4px 间距规则，禁止整句套等宽。</div></div>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:13px 0;border-top:1px solid rgb(24 29 27/12%);border-bottom:1px solid rgb(24 29 27/12%)"><div style="font-size:13.5px;font-weight:700;color:#181D1B">刻度沦为无意义装饰</div><div style="font-size:14px;line-height:1.8;color:#2E3532">规避 → 立铁律：每一根刻线必须绑定一个真实数据点，装饰性网格零容忍；评审时可指着任一刻度问「这是什么数」。</div></div>
+      </div>
+      </sc-if>
+    </div>
+  </section>
+  </sc-if>
+
+  <!-- ═══ 收束 ═══ -->
+  <section data-screen-label="拉开程度自检与下一步" style="background:#101116;padding:72px 24px 96px">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.22em;color:#8A8FA3">为什么这三个方向拉得开</div>
+      <div style="margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+        <div style="border:1px solid rgb(255 255 255/12%);border-radius:12px;padding:18px 20px"><div style="font-size:15px;font-weight:700;color:#F4F5F9">光的来源互斥</div><div style="margin-top:8px;font-size:14px;line-height:1.8;color:#B9BDCC">反射（压凹烫印）· 舞台光（钨丝有因果）· 指示灯（毫米级 LED）——把三个方向的任意两屏并排，永远认得出谁是谁。</div></div>
+        <div style="border:1px solid rgb(255 255 255/12%);border-radius:12px;padding:18px 20px"><div style="font-size:15px;font-weight:700;color:#F4F5F9">温度与主题权重错开</div><div style="margin-top:8px;font-size:14px;line-height:1.8;color:#B9BDCC">暖 · 浅色优先 / 暖 · 深色优先 / 冷 · 浅深等权；三套色彩没有一个共享的强调色相，且全部远离现行群青。</div></div>
+        <div style="border:1px solid rgb(255 255 255/12%);border-radius:12px;padding:18px 20px"><div style="font-size:15px;font-weight:700;color:#F4F5F9">仪式动词不同</div><div style="margin-top:8px;font-size:14px;line-height:1.8;color:#B9BDCC">盖章 · 点灯 · 拨杆——同一个签到，在三个世界里是三种肌肉记忆；这决定了动效、触感与音效的全部分野。</div></div>
+      </div>
+      <div style="margin-top:44px;border-top:1px solid rgb(255 255 255/12%);padding-top:28px">
+        <div style="font-size:15px;font-weight:700;color:#F4F5F9">下一步</div>
+        <p style="margin:10px 0 0;font-size:14.5px;line-height:1.9;color:#B9BDCC;max-width:720px">选定一个方向（或指定两个进入 PK），我用同一套真实内容做<strong style="color:#F4F5F9">「今日 + 1:1 对话」双页高保真对照稿</strong>，390×844、浅深双主题同屏；确认后再 token 化并铺开到发现、成就殿堂、星轨、剧场与五种分享卡。</p>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;focusDirection&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;全部&quot;,&quot;一 · 纸与朱&quot;,&quot;二 · 幕与灯&quot;,&quot;三 · 仪与匣&quot;],&quot;default&quot;:&quot;全部&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;查看&quot;},&quot;showRisks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;查看&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const f = this.props.focusDirection ?? '全部';
+    const all = f === '全部';
+    return {
+      showA: all || f.indexOf('纸') >= 0,
+      showB: all || f.indexOf('幕') >= 0,
+      showC: all || f.indexOf('仪') >= 0,
+      showRisks: this.props.showRisks ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>

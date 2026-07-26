@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>html,body{margin:0;padding:0;background:#0C0D11}a{color:#C8CBD8}a:hover{color:#fff}</style>
+</helmet>
+<div style="font-family:'Noto Sans SC','PingFang SC',sans-serif;background:#0C0D11;color:#ECEDF2;padding:56px 40px 100px;-webkit-font-smoothing:antialiased">
+  <div style="max-width:1280px;margin:0 auto">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.22em;color:#8A8FA3">仪与匣 · 插画全集 · 41 个 SVG 已交付 assets/illos/ · 透明底 · 零文字零按钮</div>
+    <h1 style="margin:14px 0 0;font-size:26px;font-weight:700;color:#F4F5F9">「工作台上的小仪器」 · 16 空态 + 引导三屏 + 印章三档</h1>
+    <p style="margin:10px 0 0;font-size:13px;color:#9CA0B0">命名 ix-illo-{scene}-{light|dark}.svg / ix-stamp-{tier}.svg，每格左浅右深。</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:26px">
+      <sc-for list="{{ items }}" as="it" hint-placeholder-count="6">
+        <div data-screen-label="插画 {{ it.n }}" style="border:1px solid rgb(255 255 255/12%);border-radius:12px;padding:12px">
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;background:#E8EBE9;border-radius:8px;display:grid;place-items:center;padding:8px"><img src="assets/illos/ix-illo-{{ it.k }}-light.svg" alt="{{ it.n }} 浅色" style="width:104px;height:104px;display:block"></div>
+            <div style="flex:1;background:#0F1312;border-radius:8px;display:grid;place-items:center;padding:8px;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"><img src="assets/illos/ix-illo-{{ it.k }}-dark.svg" alt="{{ it.n }} 深色" style="width:104px;height:104px;display:block"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px"><span style="font-size:12.5px;font-weight:600;color:#ECEDF2">{{ it.n }}</span><span style="font:600 9px 'JetBrains Mono',monospace;color:#8A8FA3">{{ it.k }}</span></div>
+        </div>
+      </sc-for>
+      <div data-screen-label="印章三档" style="border:1px solid rgb(224 168 62/35%);border-radius:12px;padding:12px">
+        <div style="display:flex;gap:8px">
+          <div style="flex:1;background:#E8EBE9;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px"><img src="assets/illos/ix-stamp-bronze.svg" alt="铜" style="width:52px;height:52px"><img src="assets/illos/ix-stamp-silver.svg" alt="银" style="width:60px;height:60px"><img src="assets/illos/ix-stamp-gold.svg" alt="金" style="width:72px;height:72px"></div>
+          <div style="flex:1;background:#0F1312;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"><img src="assets/illos/ix-stamp-bronze.svg" alt="铜" style="width:52px;height:52px"><img src="assets/illos/ix-stamp-silver.svg" alt="银" style="width:60px;height:60px"><img src="assets/illos/ix-stamp-gold.svg" alt="金" style="width:72px;height:72px"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px"><span style="font-size:12.5px;font-weight:600;color:#ECEDF2">连签印章 · 基础铜 / 30 天银 / 100 天金（单资产双主题）</span><span style="font:600 9px 'JetBrains Mono',monospace;color:#8A8FA3">stamp</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return { items: [
+      { k:'chat', n:'无对话 · 待点亮的星' },
+      { k:'favorites', n:'无收藏 · 空标本匣' },
+      { k:'search', n:'搜索无结果 · 空刻度' },
+      { k:'achievements', n:'无成就 · 空奖章托座' },
+      { k:'theater', n:'剧场未开演 · 熄灯圆窗' },
+      { k:'leaderboard', n:'排行榜空 · 三档空台座' },
+      { k:'notifications', n:'无通知 · 静默信号灯柱' },
+      { k:'friends', n:'无好友 · 未连的接口' },
+      { k:'drafts', n:'无草稿 · 空白记录带' },
+      { k:'works', n:'无作品 · 待装配零件盘' },
+      { k:'worldbook', n:'无世界书 · 空环形书档' },
+      { k:'wallet', n:'钱包无流水 · 归零计数器' },
+      { k:'scripts', n:'无剧本 · 空票夹' },
+      { k:'gallery', n:'绘廊空 · 空画框' },
+      { k:'offline', n:'断网 · 断开的天线' },
+      { k:'maintenance', n:'维护中 · 拆开的表盖' },
+      { k:'onb-001', n:'引导 001 · 月门' },
+      { k:'onb-002', n:'引导 002 · 三台小仪器' },
+      { k:'onb-003', n:'引导 003 · 罗盘校准' }
+    ] };
+  }
+}
+</script>
+</body>
+</html>
