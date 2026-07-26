@@ -4,6 +4,9 @@ import { useToast, Modal, CoinIcon } from '../ui.jsx';
 import { STYLE_PRESETS, SIZE_OPTS, composePrompt, generateImage, downloadImage } from '../imagegen.js';
 import { isAppMode } from '../appmode.js';
 import { AppEmptyArt } from '../art.jsx';
+import AppPressMenu from '../components/AppPressMenu.jsx';
+import { useLongPress } from '../chat/hooks.js';
+import { tick } from '../appgestures.js';
 import { Sparkles, Wand2, Download, Trash2, Copy, ImageIcon, Crown, Info, X } from 'lucide-react';
 
 // AI 绘图 — text-to-image studio. The image API is configured by GM in the admin
@@ -22,6 +25,10 @@ export default function Draw() {
   const [discount, setDiscount] = useState(1);
   const [viewing, setViewing] = useState(null);
   const stageRef = useRef(null);
+  // S7-G10 画廊长按（仅 App）：下载 / 复用提示词 / 删除
+  const app = isAppMode();
+  const [tilePress, setTilePress] = useState(null); // { h, at }
+  const bindTilePress = useLongPress((payload) => { tick(8); setTilePress(payload()); });
 
   const load = () => api('/ai/images').then(d => { setHistory(d.images || []); setFee(d.fee); setReady(d.ready); })
     .catch(e => toast(e.message, 'err'));
@@ -136,7 +143,17 @@ export default function Draw() {
         ) : (
           <div className="draw-gallery">
             {history.map(h => (
-              <figure key={h.id} className="draw-tile" onClick={() => setViewing(h)}>
+              <figure
+                key={h.id}
+                className="draw-tile"
+                id={app ? 'drawtile-' + h.id : undefined}
+                onClick={() => setViewing(h)}
+                {...(app ? bindTilePress(() => {
+                  const el = document.getElementById('drawtile-' + h.id);
+                  const rect = el?.getBoundingClientRect();
+                  return { h, at: rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : { x: 195, y: 420 } };
+                }) : {})}
+              >
                 <img src={assetUrl(h.url)} alt={h.prompt} loading="lazy" />
                 <figcaption>{h.prompt}</figcaption>
                 <div className="draw-tile-acts" onClick={e => e.stopPropagation()}>
@@ -151,6 +168,17 @@ export default function Draw() {
       </div>
       </div>
 
+      {app && tilePress && (
+        <AppPressMenu
+          at={tilePress.at}
+          onClose={() => setTilePress(null)}
+          items={[
+            { label: '下载图片', onSelect: () => downloadImage(tilePress.h.url) },
+            { label: '再次使用提示词', onSelect: () => reuse(tilePress.h) },
+            { label: '删除作品', danger: true, onSelect: () => del(tilePress.h.id) },
+          ]}
+        />
+      )}
       {viewing && (
         <Modal onClose={() => setViewing(null)}>
           <button className="modal-x" onClick={() => setViewing(null)} aria-label="关闭"><X size={18} /></button>

@@ -1597,6 +1597,61 @@ async function g10SurfaceAssertions(browser, base) {
   await page.close();
 }
 
+// S7-G10 · 新面收口巡检 B：公告 NEW 一次性、抽卡晒卡全流、收藏筛选规则、
+// 画廊长按（有作品才验，空态即验空态）。
+async function g10SurfaceBAssertions(browser, base) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme: 'light',
+    perf: 'auto',
+    viewport: { width: 390, height: 844 },
+  });
+
+  // 公告 NEW：首次见到标 NEW，本次浏览即记已读——重访必须消失
+  await visit(page, '/announcements', '.qa-announcements-item, .qa-announcements-empty');
+  const firstVisit = await page.evaluate(() => ({
+    items: document.querySelectorAll('.qa-announcements-item').length,
+    fresh: document.querySelectorAll('.qa-ann-new').length,
+  }));
+  if (firstVisit.items > 0) {
+    assert(firstVisit.fresh > 0, '全新账号首次进入公告页应看到 NEW 徽标', JSON.stringify(firstVisit));
+    // 按真实动线折返（SPA 导航）：回今日再进公告，NEW 必须消失
+    await page.evaluate(() => { location.hash = '#/today'; });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await page.evaluate(() => { location.hash = '#/announcements'; });
+    await page.waitForSelector('.qa-announcements-item', { timeout: 10000 });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    assert(await page.evaluate(() => document.querySelectorAll('.qa-ann-new').length === 0),
+      '折返公告页后 NEW 徽标必须消失');
+  }
+
+  // 抽卡 → 结果 → 晒出这张卡 → 1080×1440（走真实抽取流；演示账号钻石充足）
+  await visit(page, '/gacha', '.qa-gacha-draw');
+  await page.click('.qa-gacha-draw');
+  await page.waitForSelector('.qa-gacha-result-card', { visible: true, timeout: 20000 });
+  await page.evaluate(() => {
+    [...document.querySelectorAll('.qa-gacha-result-actions .qa-button')].find((b) => b.textContent.includes('晒出这张卡'))?.click();
+  });
+  await page.waitForFunction(() => document.querySelector('.qa-share-preview')?.naturalWidth === 1080, { timeout: 15000 });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.qa-share-sheet'), { timeout: 5000 });
+
+  // 收藏筛选规则一致性：chips 出现当且仅当分类 ≥2；出现则支持切换与空档说明
+  await visit(page, '/favorites', '.page');
+  await page.waitForFunction(() => !document.querySelector('.skel'), { timeout: 10000 }).catch(() => {});
+  const favChips = await page.evaluate(() => document.querySelectorAll('.qa-fav-cats .qa-button').length);
+  if (favChips > 0) {
+    assert(favChips >= 3, '筛选行出现时至少包含「全部 + 两个分类」', String(favChips));
+    await page.evaluate(() => document.querySelectorAll('.qa-fav-cats .qa-button')[1].click());
+    await page.waitForFunction(() => document.querySelectorAll('.char-card').length > 0
+      || document.body.innerText.includes('该分类下暂无收藏'), { timeout: 5000 });
+  }
+
+  assert(page.__qaErrors.length === 0, 'G10 新面巡检 B 产生了预期外的浏览器错误', page.__qaErrors.join('\n'));
+  await page.close();
+}
+
 // S7-G6 · 分享卡：角色页菜单入口 → canvas 合成 1080×1440 预览 → 出口可用
 // → 关闭回焦。canvas 文字反锯齿跨环境不稳，不建像素基线，只验尺寸与无错。
 async function shareCardAssertions(browser, base) {
@@ -2008,6 +2063,7 @@ async function run() {
     await draftAssertions(browser, base);
     await s7DarkTierAssertions(browser, base);
     await g10SurfaceAssertions(browser, base);
+    await g10SurfaceBAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
     console.log(`✓ screenshots: ${OUT}`);

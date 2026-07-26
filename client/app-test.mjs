@@ -275,13 +275,18 @@ assert.match(favoritesSource, /app && !loading && cats\.length >= 2[\s\S]*qa-fav
 assert.match(favoritesSource, /该分类下暂无收藏/, 'an emptied favorite filter must explain itself');
 /* ---- S7-G10 公告已读记忆 ---- */
 const announcementsSource = await readFile(new URL('./src/pages/Announcements.jsx', import.meta.url), 'utf8');
-assert.match(announcementsSource, /if \(!app \|\| loading \|\| list\.length === 0\) return;[\s\S]*huanyu_ann_seen/, 'announcement read-memory must stay App-gated');
+assert.match(announcementsSource, /if \(app\) \{[\s\S]*huanyu_ann_seen/, 'announcement read-memory must stay App-gated');
+assert.match(announcementsSource, /setNewIds\(new Set\(\(d\.announcements \|\| \[\]\)\.filter/, 'NEW badges must be computed in lockstep with the fetched data, not a trailing effect');
 assert.match(announcementsSource, /\.slice\(-100\)/, 'the seen-id ledger must stay bounded');
 assert.match(announcementsSource, /app && newIds\.has\(a\.id\) && <span className="qa-ann-new"/, 'unseen announcements must badge only inside the App shell');
 /* ---- S7-G10 群聊分段 ---- */
 const groupsSource = await readFile(new URL('./src/pages/Groups.jsx', import.meta.url), 'utf8');
 assert.match(groupsSource, /groups\.some\(g => g\.joined\) && groups\.some\(g => !g\.joined\)[\s\S]*qa-groups-seg/, 'the join-state segment must appear only when both sides exist');
 assert.match(groupsSource, /seg === 'joined' \? g\.joined : !g\.joined/, 'segment filtering must partition by joined state');
+/* ---- S7-G10 画廊长按 ---- */
+const drawSource = await readFile(new URL('./src/pages/Draw.jsx', import.meta.url), 'utf8');
+assert.match(drawSource, /app \? bindTilePress\(/, 'gallery tiles must bind long-press only inside the App shell');
+assert.match(drawSource, /label: '删除作品', danger: true/, 'the gallery press menu must mark deletion as destructive');
 /* ---- S7-G10 星轨年鉴卡契约 ---- */
 assert.match(shareCardSource, /renderInsightsCard/, 'the compositor must offer the insights annual-card template');
 assert.match(shareSheetSource, /kind === 'insights'[\s\S]*renderInsightsCard/, 'the share sheet must route the insights kind to its template');
@@ -303,7 +308,7 @@ assert.match(messagesSource, /toggleConvMark[\s\S]*取消置顶[\s\S]*免打扰/
 assert.match(messagesSource, /msgs-draft[\s\S]*草稿/, 'the conversation row must surface an unsent draft first');
 assert.match(chatSource, /if \(!app \|\| !id \|\| loc\.state\?\.draft\) return;/, 'draft restore must stay App-gated and yield to one-shot prefills');
 assert.match(chatSource, /localStorage\.setItem\('huanyu_draft_' \+ id, input\);[\s\S]*localStorage\.removeItem\('huanyu_draft_' \+ id\);/, 'an emptied composer must delete its stored draft');
-for (const scenario of ['weeklyRecapAssertions', 'walletCalendarAssertions', 'quoteCardAssertions', 'galleryS7Assertions', 'conversationMarksAssertions', 'draftAssertions', 's7DarkTierAssertions', 'g10SurfaceAssertions']) {
+for (const scenario of ['weeklyRecapAssertions', 'walletCalendarAssertions', 'quoteCardAssertions', 'galleryS7Assertions', 'conversationMarksAssertions', 'draftAssertions', 's7DarkTierAssertions', 'g10SurfaceAssertions', 'g10SurfaceBAssertions']) {
   assert.ok(new RegExp(`await ${scenario}\\(browser, base\\)`).test(e2eSourceForS7), `the e2e suite must keep running ${scenario}`);
 }
 /* ---- S7-G10 剧场台词卡与群聊长按 ---- */
@@ -539,4 +544,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 266/266 passed');
+console.log('app invariants: 271/271 passed');

@@ -19,22 +19,24 @@ export default function Announcements() {
   const toast = useToast();
   const nav = useNavigate();
 
-  const load = () => api('/announcements').then(d => { setList(d.announcements); setIsGm(d.is_gm); }).catch(e => { toast(e.message, 'err'); setErr(true); }).finally(() => setLoading(false));
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
-
   // S7-G10 已读记忆（仅 App）：首次见到的公告标 NEW；本次浏览即记为已读，
-  // 徽标只活一屏——下次进来不再打扰。id 列表钳 100 防无限膨胀。
+  // 徽标只活一屏——下次进来不再打扰。与数据同步计算（不依赖 effect 时序），
+  // id 账本钳 100 防无限膨胀。
   const [newIds, setNewIds] = useState(() => new Set());
-  useEffect(() => {
-    if (!app || loading || list.length === 0) return;
-    let seen = [];
-    try { seen = JSON.parse(localStorage.getItem('huanyu_ann_seen') || '[]'); } catch { /* */ }
-    const seenSet = new Set(seen);
-    setNewIds(new Set(list.filter(a => !seenSet.has(a.id)).map(a => a.id)));
-    try {
-      localStorage.setItem('huanyu_ann_seen', JSON.stringify([...new Set([...seen, ...list.map(a => a.id)])].slice(-100)));
-    } catch { /* */ }
-  }, [app, loading, list]);
+  const load = () => api('/announcements').then(d => {
+    setList(d.announcements);
+    setIsGm(d.is_gm);
+    if (app) {
+      let seen = [];
+      try { seen = JSON.parse(localStorage.getItem('huanyu_ann_seen') || '[]'); } catch { /* */ }
+      const seenSet = new Set(seen);
+      setNewIds(new Set((d.announcements || []).filter(a => !seenSet.has(a.id)).map(a => a.id)));
+      try {
+        localStorage.setItem('huanyu_ann_seen', JSON.stringify([...new Set([...seen, ...(d.announcements || []).map(a => a.id)])].slice(-100)));
+      } catch { /* */ }
+    }
+  }).catch(e => { toast(e.message, 'err'); setErr(true); }).finally(() => setLoading(false));
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   const publish = async () => {
     if (!form.title.trim()) return toast('请填写标题', 'err');
