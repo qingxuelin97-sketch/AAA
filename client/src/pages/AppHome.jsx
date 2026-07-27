@@ -177,6 +177,13 @@ export default function AppHome() {
         <div className="aht-copy">
           <span className="aht-eyebrow">{greeting()}，{displayName}</span>
           <h1 className="aht-brand" aria-label="幻域首页">幻域</h1>
+          {/* 仪与匣：大标题下的 mono 日期读数行（读数=等宽，中文不套等宽） */}
+          <time className="aht-date" dateTime={new Date().toISOString().slice(0, 10)}>
+            {(() => {
+              const d = new Date();
+              return `${d.getMonth() + 1}月${d.getDate()}日 周${'日一二三四五六'[d.getDay()]}`;
+            })()}
+          </time>
         </div>
         <div className="aht-acts">
           <AppIconButton label="搜索" onClick={openCmdk}><Search size={20} /></AppIconButton>

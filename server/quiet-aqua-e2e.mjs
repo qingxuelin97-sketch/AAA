@@ -447,9 +447,14 @@ async function dockAndOverlayAssertions(page, expectedPerf) {
     return {
       links: nav?.querySelectorAll('a').length || 0,
       fabOutside: Boolean(nav && fab && !nav.contains(fab)),
-      // Lumen：Dock 是悬浮玻璃条（底距 12px），内容从玻璃下穿过是设计语义；
-      // 首屏故事卡允许伸入不超过悬浮底距（12px+1 容差），滚动可完全露出。
-      storyClearsDock: !storyRect || !navRect || storyRect.bottom <= navRect.top + 13,
+      // 仪与匣：Dock 是全宽机身玻璃条，内容从玻璃下穿过是设计语义；卡面允许
+      // 伸入条下，但可交互的铭牌 CTA 必须完整落在机身条上缘之上（1px 容差）。
+      storyClearsDock: (() => {
+        if (!storyRect || !navRect) return true;
+        const cta = document.querySelector('.ah-hc-cta');
+        const bottom = cta ? cta.getBoundingClientRect().bottom : storyRect.bottom;
+        return bottom <= navRect.top + 1;
+      })(),
       storyBottom: storyRect?.bottom || null,
       dockTop: navRect?.top || null,
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,

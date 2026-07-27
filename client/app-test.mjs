@@ -397,7 +397,8 @@ assert.ok(
     && mainSource.indexOf('app-lumen-materials.css') < mainSource.indexOf('app-ix-tokens.css')
     && mainSource.indexOf('app-ix-tokens.css') < mainSource.indexOf('app-ix-accents.css')
     && mainSource.indexOf('app-ix-accents.css') < mainSource.indexOf('app-ix-bridge.css')
-    && mainSource.indexOf('app-ix-bridge.css') < mainSource.indexOf('app-ix-core.css'),
+    && mainSource.indexOf('app-ix-bridge.css') < mainSource.indexOf('app-ix-core.css')
+    && mainSource.indexOf('app-ix-core.css') < mainSource.indexOf('app-ix-pages-a.css'),
   'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer, Lumen materials and the IX (field-instrument) stack must load in cascade order after the runtime layer',
 );
 /* ---- IX-1「仪与匣」token twin + bridge guards ---- */
@@ -436,6 +437,17 @@ assert.ok(
   assert.match(ixCore, /prefers-reduced-motion/, 'the IX core layer must stop its shimmer loop under reduced motion');
   const coreAnimations = [...ixCoreClean.matchAll(/animation:\s*([a-z-]+)/g)].map((m) => m[1]).filter((n) => n !== 'none');
   assert.deepEqual([...new Set(coreAnimations)], ['ix-shimmer'], 'the skeleton shimmer is the only loop the core layer may run (it stops when data arrives)');
+  /* ---- IX-3 primary-pages contract ---- */
+  const ixPagesA = await readFile(new URL('./src/styles/app-ix-pages-a.css', import.meta.url), 'utf8');
+  const ixPagesAClean = ixPagesA.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(ixPagesAClean, /^\s*\.[a-z-]+[^{,]*\{/m, 'every IX pages-a selector must stay behind the data-app fence');
+  assert.doesNotMatch(ixPagesAClean, /nth-(?:child|of-type)/, 'the IX pages-a layer must not style by position');
+  assert.doesNotMatch(ixPagesAClean, /var\(--(?:lg|qa)-/, 'the IX pages-a layer must consume --ix-* only');
+  assert.match(ixPagesA, /\.ah-checkin\.qa-button\s*\{[^}]*#3FD2B4/s, 'the vault check-in key must stay the fixed bright teal (never follows user accent)');
+  assert.match(ixPagesA, /\.ah-hero::before\s*\{[^}]*var\(--ix-glare\)/s, 'the vault card must wear its static 45° glare cap');
+  assert.match(ixPagesA, /\.qa-weekly-bar i\s*\{[^}]*var\(--ix-act\)[^}]*opacity:\s*\.3/s, 'weekly history bars must be the same hue at 30% (single-hue chart discipline)');
+  const appHomeForDate = await readFile(new URL('./src/pages/AppHome.jsx', import.meta.url), 'utf8');
+  assert.match(appHomeForDate, /className="aht-date"/, 'the today header must carry the mono date readout line');
 }
 /* ---- Lumen Glass token authority guards ---- */
 const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
@@ -608,4 +620,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 364/364 passed');
+console.log('app invariants: 372/372 passed');

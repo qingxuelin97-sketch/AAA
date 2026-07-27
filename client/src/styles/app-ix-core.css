@@ -311,6 +311,8 @@ html[data-app="1"] .app-sheet::before {
   border-radius: var(--ix-r-dial);
   background: var(--ix-hairline-strong);
 }
+/* 部分 Sheet 自带旧 grip 元素：::before grabber 已是标准件，旧的隐去防双杠 */
+html[data-app="1"] .app-sheet .app-sheet-grip { display: none !important; }
 html[data-app="1"] .app-create-row {
   min-height: var(--ix-hit-min);
   border-radius: var(--ix-r-key) !important;

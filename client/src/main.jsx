@@ -61,6 +61,9 @@ import './styles/app-ix-bridge.css';
 // IX-2 控件层：按钮/分段/拨杆/输入/Dock/顶栏/Sheet/长按菜单/Toast/骨架，
 // 对照 field-instrument ui-kit 契约，只换材质不换 DOM。
 import './styles/app-ix-core.css';
+// IX-3 一级四页：今日金融舱卡/键帽宫格/周报柱、发现沉浸 chrome、消息入口行
+// 与会话行、我的读数卡（mockup ①②④⑫）。
+import './styles/app-ix-pages-a.css';
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {
