@@ -396,7 +396,8 @@ assert.ok(
     && mainSource.indexOf('app-lumen-s7.css') < mainSource.indexOf('app-lumen-materials.css')
     && mainSource.indexOf('app-lumen-materials.css') < mainSource.indexOf('app-ix-tokens.css')
     && mainSource.indexOf('app-ix-tokens.css') < mainSource.indexOf('app-ix-accents.css')
-    && mainSource.indexOf('app-ix-accents.css') < mainSource.indexOf('app-ix-bridge.css'),
+    && mainSource.indexOf('app-ix-accents.css') < mainSource.indexOf('app-ix-bridge.css')
+    && mainSource.indexOf('app-ix-bridge.css') < mainSource.indexOf('app-ix-core.css'),
   'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer, Lumen materials and the IX (field-instrument) stack must load in cascade order after the runtime layer',
 );
 /* ---- IX-1「仪与匣」token twin + bridge guards ---- */
@@ -423,6 +424,18 @@ assert.ok(
   }
   assert.match(ixBridge, /\[data-accent\]\s*\{[^}]*--lg-act:\s*var\(--ix-act\)/, 'the bridge must recapture accented act back onto the ix authority');
   assert.match(ixBridge, /--lg-glass-1:\s*var\(--ix-surface\)/, 'legacy L1 content glass must land on the opaque instrument surface');
+  /* ---- IX-2 control-layer contract ---- */
+  const ixCore = await readFile(new URL('./src/styles/app-ix-core.css', import.meta.url), 'utf8');
+  const ixCoreClean = ixCore.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(ixCoreClean, /^\s*\.[a-z-]+[^{,]*\{/m, 'every IX core selector must stay behind the data-app fence');
+  assert.doesNotMatch(ixCoreClean, /nth-(?:child|of-type)/, 'the IX core layer must not style by position');
+  assert.doesNotMatch(ixCoreClean, /var\(--(?:lg|qa)-/, 'the IX core layer writes the new system and must consume --ix-* only');
+  assert.match(ixCore, /\.qa-button:active[^{]*\{[^}]*translateY\(var\(--ix-key-travel\)\)/, 'pressed keycaps must travel 1px down instead of scaling');
+  assert.match(ixCore, /\.qa-tab-button\.active \.qa-tab-button__icon::before\s*\{[^}]*var\(--ix-act\)/s, 'the selected Dock key must light its LED from the act authority');
+  assert.match(ixCore, /\.app-sheet::before\s*\{[^}]*width:\s*36px[^}]*height:\s*4px/s, 'sheets must carry the 36×4 grabber');
+  assert.match(ixCore, /prefers-reduced-motion/, 'the IX core layer must stop its shimmer loop under reduced motion');
+  const coreAnimations = [...ixCoreClean.matchAll(/animation:\s*([a-z-]+)/g)].map((m) => m[1]).filter((n) => n !== 'none');
+  assert.deepEqual([...new Set(coreAnimations)], ['ix-shimmer'], 'the skeleton shimmer is the only loop the core layer may run (it stops when data arrives)');
 }
 /* ---- Lumen Glass token authority guards ---- */
 const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
@@ -595,4 +608,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 356/356 passed');
+console.log('app invariants: 364/364 passed');

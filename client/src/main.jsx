@@ -58,6 +58,9 @@ import './styles/app-lumen-materials.css';
 import './styles/app-ix-tokens.css';
 import './styles/app-ix-accents.css';
 import './styles/app-ix-bridge.css';
+// IX-2 控件层：按钮/分段/拨杆/输入/Dock/顶栏/Sheet/长按菜单/Toast/骨架，
+// 对照 field-instrument ui-kit 契约，只换材质不换 DOM。
+import './styles/app-ix-core.css';
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {
