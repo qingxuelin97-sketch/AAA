@@ -36,6 +36,11 @@ import onboardTuneUrl from './assets/app/qa5-onboard-tune@2x.png?url';
 import streakSealAssetUrl from './assets/app/qa5-streak-seal@2x.png?url';
 import streakSeal30AssetUrl from './assets/app/qa5-streak-seal-30@2x.png?url';
 import streakSeal100AssetUrl from './assets/app/qa5-streak-seal-100@2x.png?url';
+// 仪与匣（IX-5）：纪念印章三档换设计交付 SVG（铜单环/银双环短芒/金三环长芒；
+// 透明底零文字，数字由 UI 活文本叠加）。旧 PNG 章随 IX-7 清收退役。
+import ixStampBronzeUrl from './assets/illos/ix-stamp-bronze.svg?url';
+import ixStampSilverUrl from './assets/illos/ix-stamp-silver.svg?url';
+import ixStampGoldUrl from './assets/illos/ix-stamp-gold.svg?url';
 
 const APP_EMPTY_ART = {
   chat: emptyChatUrl,
@@ -58,9 +63,11 @@ const APP_EMPTY_ART = {
 
 // S7 内容媒体出口：引导三屏与连签印章（消费方：AppOnboarding / 签到日历 / 分享卡）。
 export const onboardArtUrls = { world: onboardWorldUrl, craft: onboardCraftUrl, tune: onboardTuneUrl };
-export const streakSealUrl = streakSealAssetUrl;
-// 里程碑印章分档：≥100 金冠双环，≥30 玉桂环，其余基础焰章。
-export const streakSealForTier = (streak) => (streak >= 100 ? streakSeal100AssetUrl : streak >= 30 ? streakSeal30AssetUrl : streakSealAssetUrl);
+export const streakSealUrl = ixStampBronzeUrl;
+// 里程碑印章分档（仪与匣三档）：≥100 金三环长芒，≥30 银双环短芒，其余铜单环。
+export const streakSealForTier = (streak) => (streak >= 100 ? ixStampGoldUrl : streak >= 30 ? ixStampSilverUrl : ixStampBronzeUrl);
+// 旧 PNG 章仅供留档对照（IX-7 清收时随资产退役；引用保持避免 tree-shake 前的误删）
+export const legacyStreakSeals = [streakSealAssetUrl, streakSeal30AssetUrl, streakSeal100AssetUrl];
 
 // App 空态：审阅过的 PNG 内容媒体（懒加载、无文字、说明与 CTA 保持活 DOM）。
 export function AppEmptyArt({ kind = 'generic', size = 132, className }) {

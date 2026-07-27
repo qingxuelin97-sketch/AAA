@@ -13,6 +13,7 @@ import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia, streakSealForTi
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import CheckinCalendarSheet from '../components/CheckinCalendarSheet.jsx';
 import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import IxFlip from '../components/IxFlip.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppTabActive } from '../appTabActivity.js';
 import { burst } from '../fx.js';
@@ -212,7 +213,7 @@ export default function AppHome() {
               onClick={() => nav('/wallet')}
               aria-label={`金币 ${fmtNum(user?.gold)}`}
             >
-              <CoinIcon size={15} /> <span className="ah-balance-value">{fmtNum(user?.gold)}</span>
+              <CoinIcon size={15} /> <span className="ah-balance-value"><IxFlip value={fmtNum(user?.gold)} /></span>
             </AppButton>
             <AppButton
               className="ah-coin di"
@@ -220,7 +221,7 @@ export default function AppHome() {
               onClick={() => nav('/wallet')}
               aria-label={`钻石 ${fmtNum(user?.diamond)}`}
             >
-              <DiamondIcon size={15} /> <span className="ah-balance-value">{fmtNum(user?.diamond)}</span>
+              <DiamondIcon size={15} /> <span className="ah-balance-value"><IxFlip value={fmtNum(user?.diamond)} /></span>
             </AppButton>
             <AppButton
               ref={checkinBtnRef}
