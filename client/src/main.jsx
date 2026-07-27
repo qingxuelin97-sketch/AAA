@@ -64,6 +64,8 @@ import './styles/app-ix-core.css';
 // IX-3 一级四页：今日金融舱卡/键帽宫格/周报柱、发现沉浸 chrome、消息入口行
 // 与会话行、我的读数卡（mockup ①②④⑫）。
 import './styles/app-ix-pages-a.css';
+// IX-4 沉浸与会话：对话气泡/输入岛/建议芯片、群聊、剧场阅读流（mockup ③⑮⑯）。
+import './styles/app-ix-pages-b.css';
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {

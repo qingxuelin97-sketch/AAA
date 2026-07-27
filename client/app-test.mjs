@@ -398,7 +398,8 @@ assert.ok(
     && mainSource.indexOf('app-ix-tokens.css') < mainSource.indexOf('app-ix-accents.css')
     && mainSource.indexOf('app-ix-accents.css') < mainSource.indexOf('app-ix-bridge.css')
     && mainSource.indexOf('app-ix-bridge.css') < mainSource.indexOf('app-ix-core.css')
-    && mainSource.indexOf('app-ix-core.css') < mainSource.indexOf('app-ix-pages-a.css'),
+    && mainSource.indexOf('app-ix-core.css') < mainSource.indexOf('app-ix-pages-a.css')
+    && mainSource.indexOf('app-ix-pages-a.css') < mainSource.indexOf('app-ix-pages-b.css'),
   'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer, Lumen materials and the IX (field-instrument) stack must load in cascade order after the runtime layer',
 );
 /* ---- IX-1「仪与匣」token twin + bridge guards ---- */
@@ -448,6 +449,16 @@ assert.ok(
   assert.match(ixPagesA, /\.qa-weekly-bar i\s*\{[^}]*var\(--ix-act\)[^}]*opacity:\s*\.3/s, 'weekly history bars must be the same hue at 30% (single-hue chart discipline)');
   const appHomeForDate = await readFile(new URL('./src/pages/AppHome.jsx', import.meta.url), 'utf8');
   assert.match(appHomeForDate, /className="aht-date"/, 'the today header must carry the mono date readout line');
+  /* ---- IX-4 immersive/conversation contract ---- */
+  const ixPagesB = await readFile(new URL('./src/styles/app-ix-pages-b.css', import.meta.url), 'utf8');
+  const ixPagesBClean = ixPagesB.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(ixPagesBClean, /^\s*\.[a-z-]+[^{,]*\{/m, 'every IX pages-b selector must stay behind the data-app fence');
+  assert.doesNotMatch(ixPagesBClean, /nth-(?:child|of-type)/, 'the IX pages-b layer must not style by position');
+  assert.doesNotMatch(ixPagesBClean, /var\(--(?:lg|qa)-/, 'the IX pages-b layer must consume --ix-* only');
+  assert.match(ixPagesB, /\.msg\.assistant \.bubble\s*\{[^}]*var\(--ix-surface\)/s, 'character bubbles must sit on the opaque instrument surface (body text never rides glass)');
+  assert.match(ixPagesB, /has-bg \.msg\.assistant \.bubble\s*\{[^}]*var\(--ix-surface\)/s, 'immersive portrait mode must keep character bubbles opaque');
+  assert.match(ixPagesB, /\.send-btn\s*\{[^}]*width:\s*40px[^}]*var\(--ix-act\)/s, 'the send key must be the 40px act circle');
+  assert.match(ixPagesB, /\.ch-dot\s*\{[^}]*var\(--ix-led-halo\)/s, 'online presence must speak LED, not glow washes');
 }
 /* ---- Lumen Glass token authority guards ---- */
 const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
@@ -620,4 +631,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 372/372 passed');
+console.log('app invariants: 382/382 passed');
