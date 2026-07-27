@@ -1,0 +1,22 @@
+/*
+ * 仪与匣 · 用户强调色伴随层（冻结件 design-tokens.css 之外的唯一 --ix-act 来源）
+ * SPEC §8：「accent 机制保留，仅改 --ix-act」。默认磷光青 = 无 data-accent 属性，
+ * 即冻结件基线；本文件只为 accent.js 会落到 DOM 的五个 id（dusk/teal/forest/
+ * rose/amber）定义 --ix-act / --ix-act-ink / --ix-act-soft / --ix-focus。
+ * 语义色（danger/success/gold/dia/badge）与 vault 舱体永不随强调色漂移。
+ * 全部值经 AA 校验：act×act-ink ≥4.5，act×canvas 浅 ≥3 / 深 ≥4.5。
+ */
+
+/* ── 浅色（铝白面板上的深仪器色） ─────────────────────── */
+html[data-app="1"][data-accent="dusk"]   { --ix-act: #5C50B4; --ix-act-soft: rgb(92 80 180 / 10%);  --ix-focus: #5C50B4; }
+html[data-app="1"][data-accent="teal"]   { --ix-act: #0E6E93; --ix-act-soft: rgb(14 110 147 / 10%); --ix-focus: #0E6E93; }
+html[data-app="1"][data-accent="forest"] { --ix-act: #3E7C33; --ix-act-soft: rgb(62 124 51 / 10%);  --ix-focus: #3E7C33; }
+html[data-app="1"][data-accent="rose"]   { --ix-act: #A83262; --ix-act-soft: rgb(168 50 98 / 10%);  --ix-focus: #A83262; }
+html[data-app="1"][data-accent="amber"]  { --ix-act: #8A5A12; --ix-act-soft: rgb(138 90 18 / 10%);  --ix-focus: #8A5A12; }
+
+/* ── 深色（石墨面板上的亮读数色 + 各自的深墨） ─────────── */
+html[data-app="1"][data-theme="dark"][data-accent="dusk"]   { --ix-act: #B3A6F0; --ix-act-ink: #191046; --ix-act-soft: rgb(179 166 240 / 16%); --ix-focus: #C4BAF4; }
+html[data-app="1"][data-theme="dark"][data-accent="teal"]   { --ix-act: #56C4EA; --ix-act-ink: #05222D; --ix-act-soft: rgb(86 196 234 / 16%);  --ix-focus: #74D0F0; }
+html[data-app="1"][data-theme="dark"][data-accent="forest"] { --ix-act: #8FD07A; --ix-act-ink: #0D2408; --ix-act-soft: rgb(143 208 122 / 16%); --ix-focus: #A5DA93; }
+html[data-app="1"][data-theme="dark"][data-accent="rose"]   { --ix-act: #F290B8; --ix-act-ink: #330C1C; --ix-act-soft: rgb(242 144 184 / 16%); --ix-focus: #F5A8C7; }
+html[data-app="1"][data-theme="dark"][data-accent="amber"]  { --ix-act: #E4B04A; --ix-act-ink: #251A04; --ix-act-soft: rgb(228 176 74 / 16%);  --ix-focus: #EBC06B; }

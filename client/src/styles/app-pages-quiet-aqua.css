@@ -1901,8 +1901,8 @@ html[data-app="1"] .qa-character-view .cvx-fav.qa-icon-button[data-selected] {
 html[data-app="1"] .qa-character-view .cvx-go.qa-button {
   height: 50px;
   border-radius: 16px;
-  background: #7aa5ff;
-  color: #0a1730;
+  background: var(--lg-act);
+  color: var(--lg-act-ink);
   box-shadow: none;
 }
 
@@ -2191,8 +2191,8 @@ html[data-app="1"][data-theme="dark"] .apphome .ah-coin.qa-button {
 
 html[data-app="1"][data-theme="dark"] .apphome .ah-checkin.qa-button {
   border-color: rgb(255 255 255 / 14%) !important;
-  background: #7aa5ff !important;
-  color: #0a1730 !important;
+  background: var(--lg-act) !important;
+  color: var(--lg-act-ink) !important;
 }
 
 html[data-app="1"][data-theme="dark"] .apphome .ah-checkin.qa-button.done {

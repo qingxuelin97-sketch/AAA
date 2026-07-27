@@ -1,0 +1,120 @@
+/*
+ * 仪与匣 · lg→ix 桥接层（IX-1 → IX-7 期间的过渡权威，终局随旧层一并退役）
+ * 作用：把仍被存量层消费的 --lg-* 基础令牌整体重指到 --ix-* 新权威（SPEC §8
+ * 对照表），使全 App 一次落上铝白/石墨实体面板与新调色，存量组件零改动。
+ * 本文件只定义 --lg-*，绝不定义 --ix-*（accent 伴随层与冻结孪生是唯一来源）。
+ *
+ * 选择器 [data-app="1"][data-app] 是刻意的同属性二连：把特异性抬到 (0,2,1)，
+ * 使单一映射块在浅/深两主题下都压过 lumen 令牌文件里 (0,2,1) 的深色块与
+ * lite 块（同特异性、本文件更靠后），免去整套映射的深色副本。
+ */
+html[data-app="1"][data-app] {
+  /* 基面：玻璃承载 → 实体面板（内容面不透明是新系统第一铁律） */
+  --lg-canvas: var(--ix-canvas);
+  --lg-grouped: var(--ix-grouped);
+  --lg-ink: var(--ix-ink);
+  --lg-ink-2: var(--ix-ink-2);
+  --lg-ink-3: var(--ix-ink-3);
+  --lg-hairline: var(--ix-hairline);
+  --lg-finance: var(--ix-vault);
+  --lg-finance-ink: var(--ix-vault-ink);
+
+  /* 玻璃三层：L1/L2 → 不透明面板/浮起面；L3 导航玻璃 → glass-nav（唯一 blur 区） */
+  --lg-glass-1: var(--ix-surface);
+  --lg-glass-2: var(--ix-raise);
+  --lg-glass-3: var(--ix-glass-nav);
+  --lg-glass-sel: var(--ix-surface);
+  --lg-blur: var(--ix-blur);
+  --lg-blur-s: var(--ix-blur-s);
+  --lg-glass-shadow-1: var(--ix-shadow-1);
+  --lg-glass-shadow-2: var(--ix-shadow-2);
+  --lg-glass-shadow-3: var(--ix-shadow-3);
+
+  /* 环境光晕：实体面板零渐变，四路光斑全灭（分区改靠刻线与沟槽） */
+  --lg-ambient: none;
+  --lg-ambient-warm: none;
+  --lg-ambient-cool: none;
+  --lg-ambient-rose: none;
+
+  /* 主动作与焦点（accent 变体由下方 [data-accent] 行统一接管） */
+  --lg-act: var(--ix-act);
+  --lg-act-ink: var(--ix-act-ink);
+  --lg-act-soft: var(--ix-act-soft);
+  --lg-focus: var(--ix-focus);
+
+  /* 内容语义（色相冻结）：金/钻/珊瑚→危险/玉→成功。azure/violet/rose 三条
+   * lumen 内容语义无 ix 对应位，保留原值，页面阶段逐屏收归。 */
+  --lg-gold: var(--ix-gold);
+  --lg-dia: var(--ix-dia);
+  --lg-coral: var(--ix-danger);
+  --lg-jade: var(--ix-success);
+
+  /* 占位/骨架/遮罩/字体 */
+  --lg-ph: var(--ix-ph);
+  --lg-skeleton: var(--ix-skeleton);
+  --lg-scrim: var(--ix-scrim);
+  --lg-font-ui: var(--ix-font-ui);
+
+  /* 几何：机加工五档收编（12–26 递增制 → 4/6/10/14/999 恒定制） */
+  --lg-r-xs: var(--ix-r-key);
+  --lg-r-sm: var(--ix-r-card);
+  --lg-r-control: var(--ix-r-key);
+  --lg-r-row: var(--ix-r-card);
+  --lg-r-card: var(--ix-r-card);
+  --lg-r-panel: var(--ix-r-panel);
+  --lg-r-sheet: var(--ix-r-panel);
+  --lg-r-pill: var(--ix-r-dial);
+  --lg-control-min: var(--ix-hit-min);
+  --lg-control-submit: var(--ix-hit-submit);
+  --lg-dock-height: var(--ix-dock-height);
+  --lg-dock-bottom: var(--ix-dock-bottom);
+
+  /* 字阶（同值令牌换源，消费可追溯；display 28 无 ix 文本位，保留原值） */
+  --lg-type-hero: var(--ix-type-hero);
+  --lg-type-title: var(--ix-type-title);
+  --lg-type-section: var(--ix-type-section);
+  --lg-type-body: var(--ix-type-body);
+  --lg-type-meta: var(--ix-type-meta);
+
+  /* 史前 --accent 家族（App 层仍有百余处消费，Web 端同名系统不受此围栏影响）：
+   * 整族收归 act 权威；--grad 品牌渐变压平为实色（实体面板零渐变铁律）。 */
+  --accent: var(--ix-act);
+  --accent-2: var(--ix-act);
+  --accent-soft: var(--ix-act-soft);
+  --accent-ring: var(--ix-act-soft);
+  --grad: linear-gradient(var(--ix-act), var(--ix-act));
+
+  /* 动效：机械确定性时基（240/320/380 → 180/220/300；一次性入场 → 指针 540） */
+  --lg-ease: var(--ix-ease);
+  --lg-dur-press: var(--ix-dur-press);
+  --lg-dur-state: var(--ix-dur-state);
+  --lg-dur-push: var(--ix-dur-push);
+  --lg-dur-sheet: var(--ix-dur-sheet);
+  --lg-dur-shared: var(--ix-dur-needle);
+  --lg-dur-entity: var(--ix-dur-needle);
+}
+
+/* lite：lumen 自己的 lite 块会把玻璃回落到 grouped，压回 ix 的回落语义
+ *（内容面=surface、导航=canvas；同特异性、本文件更靠后故胜出）。 */
+html[data-app="1"][data-perf="lite"] {
+  --lg-glass-1: var(--ix-surface);
+  --lg-glass-2: var(--ix-raise);
+  --lg-glass-3: var(--ix-glass-nav);
+  --lg-glass-sel: var(--ix-surface);
+}
+
+/* 强调色：lumen 令牌文件与 materials 别名层里的 [data-accent="…"] 行特异性
+ * 更高，会把 --lg-act 拽回 oklch 旧值；此处用同特异性的存在性匹配 + 更晚
+ * 顺序统一接管，act 族永远跟随 --ix-act（值由 app-ix-accents.css 决定）。 */
+html[data-app="1"][data-accent] {
+  --lg-act: var(--ix-act);
+  --lg-act-ink: var(--ix-act-ink);
+  --lg-act-soft: var(--ix-act-soft);
+  --lg-focus: var(--ix-focus);
+}
+html[data-app="1"][data-theme="dark"][data-accent] {
+  --lg-act: var(--ix-act);
+  --lg-act-ink: var(--ix-act-ink);
+  --lg-act-soft: var(--ix-act-soft);
+  --lg-focus: var(--ix-focus);
+}

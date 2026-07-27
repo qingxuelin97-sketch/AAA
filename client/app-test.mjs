@@ -393,9 +393,37 @@ assert.ok(
     && mainSource.indexOf('app-experience-v3.css') < mainSource.indexOf('app-hig-v5.css')
     && mainSource.indexOf('app-hig-v5.css') < mainSource.indexOf('app-lumen-s6.css')
     && mainSource.indexOf('app-lumen-s6.css') < mainSource.indexOf('app-lumen-s7.css')
-    && mainSource.indexOf('app-lumen-s7.css') < mainSource.indexOf('app-lumen-materials.css'),
-  'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer and Lumen materials must load in cascade order after the runtime layer',
+    && mainSource.indexOf('app-lumen-s7.css') < mainSource.indexOf('app-lumen-materials.css')
+    && mainSource.indexOf('app-lumen-materials.css') < mainSource.indexOf('app-ix-tokens.css')
+    && mainSource.indexOf('app-ix-tokens.css') < mainSource.indexOf('app-ix-accents.css')
+    && mainSource.indexOf('app-ix-accents.css') < mainSource.indexOf('app-ix-bridge.css'),
+  'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer, Lumen materials and the IX (field-instrument) stack must load in cascade order after the runtime layer',
 );
+/* ---- IX-1「仪与匣」token twin + bridge guards ---- */
+{
+  const ixTwin = await readFile(new URL('./src/styles/app-ix-tokens.css', import.meta.url), 'utf8');
+  const ixFrozen = await readFile(new URL('../docs/design/field-instrument/design-tokens.css', import.meta.url), 'utf8');
+  const ixReversed = ixTwin
+    .replaceAll('html[data-app="1"][data-theme="dark"]', ':root[data-theme="dark"]')
+    .replaceAll('html[data-app="1"][data-perf="lite"]', ':root[data-perf="lite"]')
+    .replace(/html\[data-app="1"\](\s*\{)/g, ':root$1');
+  assert.equal(ixReversed, ixFrozen, 'the runtime IX token twin must equal the frozen handoff byte-for-byte modulo the App-fence selector rewrite');
+  assert.doesNotMatch(ixTwin, /(^|\n):root/, 'the IX token twin must never leak an unfenced :root block into the Web bundle');
+  const ixAccents = await readFile(new URL('./src/styles/app-ix-accents.css', import.meta.url), 'utf8');
+  const accentDefs = new Set([...ixAccents.matchAll(/(--ix-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+  assert.deepEqual([...accentDefs].sort(), ['--ix-act', '--ix-act-ink', '--ix-act-soft', '--ix-focus'], 'the accent companion may only vary the act family (semantic colors and vault never follow accent)');
+  assert.ok(ixAccents.split('\n').filter((l) => l.includes('--ix-act:')).every((l) => l.includes('[data-accent=')), 'accent act overrides must stay behind an explicit data-accent match (default stays the frozen phosphor teal)');
+  for (const id of ['dusk', 'teal', 'forest', 'rose', 'amber']) {
+    assert.ok(ixAccents.includes(`[data-accent="${id}"]`), `accent id "${id}" from accent.js must resolve in the IX accent companion`);
+  }
+  const ixBridge = await readFile(new URL('./src/styles/app-ix-bridge.css', import.meta.url), 'utf8');
+  assert.deepEqual([...ixBridge.matchAll(/(--ix-[a-z0-9-]+)\s*:[^;]/g)].map((m) => m[1]), [], 'the bridge maps lg onto ix and must never define an --ix-* token itself');
+  for (const wash of ['--lg-ambient', '--lg-ambient-warm', '--lg-ambient-cool', '--lg-ambient-rose']) {
+    assert.match(ixBridge, new RegExp(`${wash}:\\s*none`), `the bridge must extinguish the legacy ambient wash ${wash} (solid panels carry zero gradients)`);
+  }
+  assert.match(ixBridge, /\[data-accent\]\s*\{[^}]*--lg-act:\s*var\(--ix-act\)/, 'the bridge must recapture accented act back onto the ix authority');
+  assert.match(ixBridge, /--lg-glass-1:\s*var\(--ix-surface\)/, 'legacy L1 content glass must land on the opaque instrument surface');
+}
 /* ---- Lumen Glass token authority guards ---- */
 const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
 const lumenHandoff = await readFile(new URL('../docs/design/lumen-glass-tokens.css', import.meta.url), 'utf8');
@@ -567,4 +595,4 @@ assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must
 assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 340/340 passed');
+console.log('app invariants: 356/356 passed');

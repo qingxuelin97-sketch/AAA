@@ -475,7 +475,7 @@ html[data-app="1"] .qa3-today .ah-hc-cta.qa-button {
   min-height: 44px !important;
   border: 1px solid rgb(255 255 255 / 34%) !important;
   border-radius: 999px !important;
-  background: color-mix(in srgb, #2e6ae4 86%, transparent) !important;
+  background: color-mix(in srgb, var(--lg-act) 86%, transparent) !important;
   color: #fff !important;
   box-shadow: 0 9px 22px rgb(4 50 48 / 24%) !important;
   -webkit-backdrop-filter: blur(14px) saturate(1.2);

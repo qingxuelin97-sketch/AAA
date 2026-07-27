@@ -728,7 +728,7 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
 }
 /* 聚焦反馈只留极弱的边框变化 —— 青蓝描边+3px 外发光是真机反馈的"蓝框"之一 */
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box:focus-within {
-  border-color: rgba(122, 165, 255, 0.30);
+  border-color: color-mix(in srgb, var(--lg-focus) 30%, transparent);
   box-shadow: var(--hy-cg-sh);
 }
 html[data-app="1"] .chat-main.has-bg .send-btn:not(.stop) {

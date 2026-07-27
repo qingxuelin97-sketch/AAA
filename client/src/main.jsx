@@ -51,8 +51,13 @@ import './styles/app-lumen-s6.css';
 // exhibits for the S7 component family).
 import './styles/app-lumen-s7.css';
 // Lumen Glass material composition layer: glass classes, ambient washes and
-// legacy accent-id aliasing. Loads last as the final App authority.
+// legacy accent-id aliasing.
 import './styles/app-lumen-materials.css';
+// 仪与匣 The Field Instrument（阶段四换代）：--ix-* 冻结令牌孪生 → accent 伴随层 →
+// lg→ix 桥接（存量层整体换源）。IX 系列是新的末位权威，旧 lumen 层随 IX-7 退役。
+import './styles/app-ix-tokens.css';
+import './styles/app-ix-accents.css';
+import './styles/app-ix-bridge.css';
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {
