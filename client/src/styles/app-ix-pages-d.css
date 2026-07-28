@@ -1,0 +1,555 @@
+/*
+ * 仪与匣 · IX-6 长尾、首启与状态层
+ * 覆盖设计稿 ⑧⑩⑰⑱ 以及尚未收口的 App-only 页面族。
+ * 这是 IX 末位页面权威：所有选择器从 html[data-app="1"] 开始，
+ * 只消费 --ix-*；内容面不透明，玻璃只留给导航/临时层。
+ */
+
+/* ═══ 共用内容插画 / 空态 / 错误态 ═══ */
+html[data-app="1"] .ix-illustration {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  overflow: hidden;
+  vertical-align: middle;
+}
+html[data-app="1"] .ix-illustration > img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+html[data-app="1"] .ix-illustration__dark { display: none !important; }
+html[data-app="1"][data-theme="dark"] .ix-illustration__light { display: none !important; }
+html[data-app="1"][data-theme="dark"] .ix-illustration__dark { display: block !important; }
+html[data-app="1"] .qa5-empty-art {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  border-radius: 0;
+}
+html[data-app="1"] .qa-error-state {
+  min-height: 260px;
+  padding: var(--ix-space-6) var(--ix-space-4);
+  gap: var(--ix-space-2);
+  color: var(--ix-ink-2);
+}
+html[data-app="1"] .qa-error-state__title {
+  margin-top: var(--ix-space-1);
+  color: var(--ix-ink);
+  font-size: var(--ix-type-section);
+  font-weight: 700;
+}
+html[data-app="1"] .qa-error-state__copy {
+  max-width: 32ch;
+  color: var(--ix-ink-2);
+  font-size: var(--ix-type-body);
+  line-height: var(--ix-lh-body);
+}
+html[data-app="1"] .qa-error-state__code {
+  color: var(--ix-ink-3);
+  font: 600 var(--ix-type-micro)/1 var(--ix-font-mono);
+  letter-spacing: var(--ix-track-label);
+}
+html[data-app="1"] .qa-error-state__acts {
+  gap: var(--ix-space-2);
+  margin-top: var(--ix-space-2);
+}
+html[data-app="1"] :where(.empty, .qa-atelier-empty, .qa-library-empty) {
+  color: var(--ix-ink-2);
+}
+html[data-app="1"] .empty .big {
+  color: var(--ix-ink);
+}
+
+/* ═══ ⑧ 首启：玻璃临时层 + 仪器插画 + 48px 提交键 ═══ */
+html[data-app="1"] .qa-onboard-mask {
+  background: var(--ix-scrim);
+}
+html[data-app="1"] .qa-onboard {
+  max-width: 430px;
+  padding: var(--ix-space-4) 0 calc(var(--ix-space-3) + env(safe-area-inset-bottom));
+  border-radius: var(--ix-r-panel) var(--ix-r-panel) 0 0;
+  background: var(--ix-glass-temp);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  animation-duration: var(--ix-dur-sheet);
+  animation-timing-function: var(--ix-ease-stop);
+}
+html[data-app="1"] .qa-onboard-screen {
+  gap: var(--ix-space-2);
+  padding-inline: var(--ix-space-4);
+}
+html[data-app="1"] .qa-onboard-art {
+  width: min(290px, 74vw);
+  height: auto;
+  margin-bottom: var(--ix-space-2);
+}
+html[data-app="1"] .qa-onboard-art.ix-illustration {
+  height: min(193px, 50vw);
+}
+html[data-app="1"] .qa-onboard-eyebrow {
+  padding: 5px 10px;
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+  font: 600 var(--ix-type-meta)/1.2 var(--ix-font-ui);
+}
+html[data-app="1"] .qa-onboard-screen h2 {
+  color: var(--ix-ink);
+  font-size: var(--ix-type-title);
+  line-height: var(--ix-lh-heading);
+}
+html[data-app="1"] .qa-onboard-screen > p {
+  color: var(--ix-ink-2);
+  font-size: var(--ix-type-body);
+  line-height: var(--ix-lh-body);
+}
+html[data-app="1"] .qa-onboard-feats li {
+  min-height: 56px;
+  padding: 8px 12px;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+html[data-app="1"] .qa-onboard-feat-ic {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ix-r-key);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+}
+html[data-app="1"] .qa-onboard-feats b { color: var(--ix-ink); }
+html[data-app="1"] .qa-onboard-feats small { color: var(--ix-ink-2); }
+html[data-app="1"] .qa-onboard-chip.qa-button {
+  min-height: var(--ix-hit-min);
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-surface);
+  box-shadow: inset 0 0 0 1px var(--ix-hairline);
+  color: var(--ix-ink-2);
+}
+html[data-app="1"] .qa-onboard-chip.qa-button[data-selected],
+html[data-app="1"] .qa-onboard-chip.qa-button[aria-pressed="true"] {
+  background: var(--ix-act-soft);
+  box-shadow: inset 0 0 0 1.5px var(--ix-act);
+  color: var(--ix-act);
+}
+html[data-app="1"] .qa-onboard-dots { gap: 6px; }
+html[data-app="1"] .qa-onboard-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--ix-hairline);
+}
+html[data-app="1"] .qa-onboard-dot.on {
+  width: 18px;
+  background: var(--ix-act);
+}
+html[data-app="1"] .qa-onboard-acts {
+  gap: var(--ix-space-2);
+  padding-inline: var(--ix-space-4);
+}
+html[data-app="1"] .qa-onboard-acts .qa-button--lg {
+  min-height: var(--ix-hit-submit);
+  border-radius: var(--ix-r-key);
+}
+
+/* ═══ ⑩ 分享卡 Sheet ═══ */
+html[data-app="1"] .qa-share-sheet {
+  max-height: min(82dvh, 660px);
+  background: var(--ix-glass-temp);
+  border-radius: var(--ix-r-panel) var(--ix-r-panel) 0 0;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+html[data-app="1"] .qa-share-stage { padding: var(--ix-space-2) 0 var(--ix-space-3); }
+html[data-app="1"] .qa-share-preview,
+html[data-app="1"] .qa-share-skel {
+  width: min(270px, 68vw);
+  border-radius: var(--ix-r-key);
+  box-shadow: var(--ix-shadow-3);
+}
+html[data-app="1"] .qa-share-acts {
+  gap: var(--ix-space-2);
+  padding-inline: var(--ix-space-2);
+}
+html[data-app="1"] .qa-share-acts .qa-button { min-height: var(--ix-hit-min); }
+html[data-app="1"] .qa-share-failed {
+  color: var(--ix-danger);
+  font-size: var(--ix-type-body);
+}
+
+/* ═══ ⑰ 创作工坊 / 发布 / 资源库：标本匣陈列 ═══ */
+html[data-app="1"] :where(.qa-atelier, .qa-library-page, .qa-publish) {
+  min-width: 0;
+  min-height: 100%;
+  background: var(--ix-canvas) !important;
+  color: var(--ix-ink);
+  font-family: var(--ix-font-ui);
+}
+html[data-app="1"] :where(.qa-atelier-head, .qa-library-topbar.topbar, .qa-publish .topbar) {
+  background: var(--ix-glass-nav) !important;
+  border-bottom: 1px solid var(--ix-hairline);
+  box-shadow: var(--ix-shadow-2);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+html[data-app="1"] :where(.qa-atelier-head-title h1, .qa-library-topbar h1, .qa-publish h1) {
+  color: var(--ix-ink);
+  font-size: var(--ix-type-section);
+}
+html[data-app="1"] .qa-atelier-body,
+html[data-app="1"] .qa-library-content.page,
+html[data-app="1"] .qa-publish {
+  max-width: 760px;
+  padding-inline: var(--ix-page-margin);
+}
+html[data-app="1"] .qa-atelier-intro {
+  border: 0;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+html[data-app="1"] .qa-atelier-intro-icon {
+  border-radius: var(--ix-r-key);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+}
+html[data-app="1"] .qa-atelier-tabs,
+html[data-app="1"] .qa-library-filters {
+  border: 0;
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-grouped);
+}
+html[data-app="1"] :where(.qa-atelier-tab.qa-button, .qa-library-filters .qa-button) {
+  min-height: var(--ix-hit-min);
+  border-radius: var(--ix-r-dial);
+  color: var(--ix-ink-2);
+}
+html[data-app="1"] :where(.qa-atelier-tab.qa-button[data-selected], .qa-library-filters .qa-button[data-selected]) {
+  background: var(--ix-surface) !important;
+  color: var(--ix-act) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] :where(.qa-atelier-card, .qa-atelier-skeleton, .qa-library-card.char-card, .qa-publish .card, .qa-publish .char-card) {
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] :where(.qa-atelier-cover, .qa-atelier-skeleton-cover, .qa-library-card .qa-library-cover.cover) {
+  border-radius: var(--ix-r-key);
+  background: var(--ix-grouped) !important;
+  box-shadow: none;
+}
+html[data-app="1"] .qa-atelier-genre,
+html[data-app="1"] .qa-library-card .pill-pub {
+  border-radius: var(--ix-r-micro);
+  background: var(--ix-ink) !important;
+  color: var(--ix-ink-inverse);
+  backdrop-filter: none;
+}
+html[data-app="1"] :where(.qa-atelier-card-title h2, .qa-library-card .qa-library-meta h3) {
+  color: var(--ix-ink);
+}
+html[data-app="1"] :where(.qa-atelier-card-copy > p, .qa-atelier-meta, .qa-library-card .qa-library-meta p, .qa-library-card .foot) {
+  color: var(--ix-ink-2);
+}
+html[data-app="1"] :where(.qa-atelier-open.qa-button, .qa-library-card .qa-button--primary, .qa-publish .qa-button--primary) {
+  min-height: var(--ix-hit-min);
+  border-radius: var(--ix-r-key);
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
+}
+html[data-app="1"] .qa-atelier-empty,
+html[data-app="1"] .qa-library-empty {
+  border: 1px dashed var(--ix-hairline-strong);
+  border-radius: var(--ix-r-card);
+  background: transparent;
+  box-shadow: none;
+}
+html[data-app="1"] .qa-atelier-empty-icon {
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+}
+html[data-app="1"] .qa-atelier-create-modal.modal {
+  border: 0;
+  border-radius: var(--ix-r-panel);
+  background: var(--ix-raise);
+  box-shadow: var(--ix-shadow-3);
+}
+html[data-app="1"] .qa-atelier-create-actions,
+html[data-app="1"] :where(.qa-character-editor__savebar.app-savebar, .qa-worldbook-editor__savebar, .qa-script-editor-v4__savebar) {
+  border-top: 1px solid var(--ix-hairline);
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* ═══ ⑱ 设置：inset 分组、性能档与强调色圆点 ═══ */
+html[data-app="1"] .qa-settings-topbar {
+  min-height: 52px;
+  border-bottom-color: var(--ix-hairline);
+  background: var(--ix-glass-nav);
+  color: var(--ix-ink);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+html[data-app="1"] .qa-settings-page.page {
+  max-width: 760px;
+  padding: var(--ix-space-2) var(--ix-page-margin) calc(var(--ix-dock-height) + env(safe-area-inset-bottom) + var(--ix-space-5));
+  background: var(--ix-canvas);
+  color: var(--ix-ink);
+}
+html[data-app="1"] .qa-settings-root { gap: var(--ix-space-4); }
+html[data-app="1"] .qa-settings-intro,
+html[data-app="1"] .qa-settings-group > h2 { color: var(--ix-ink-2); }
+html[data-app="1"] .qa-settings-list,
+html[data-app="1"] .qa-settings-detail > .card {
+  border: 0;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+html[data-app="1"] .qa-settings-row.qa-button {
+  min-height: 56px;
+  color: var(--ix-ink);
+}
+html[data-app="1"] .qa-settings-row.qa-button:not(:last-child) { border-bottom-color: var(--ix-hairline); }
+html[data-app="1"] .qa-settings-row-icon,
+html[data-app="1"] .qa-settings-detail .priv-ic {
+  border-radius: var(--ix-r-key);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+}
+html[data-app="1"] .qa-settings-row-copy b,
+html[data-app="1"] .qa-settings-detail .section-title h2 { color: var(--ix-ink); }
+html[data-app="1"] .qa-settings-row-copy small,
+html[data-app="1"] .qa-settings-detail :where(.hint, .muted) { color: var(--ix-ink-2); }
+html[data-app="1"] .qa-settings-detail :where(.input, .select, .textarea) {
+  border-color: var(--ix-hairline);
+  border-radius: var(--ix-r-key);
+  background: var(--ix-grouped);
+  color: var(--ix-ink);
+  box-shadow: var(--ix-shadow-dial);
+}
+html[data-app="1"] .qa-settings-detail :where(.input, .select, .textarea):focus {
+  border-color: var(--ix-act);
+  outline: 2px solid var(--ix-focus-ring);
+}
+html[data-app="1"] .qa-settings-detail :where(.seg, .theme-seg) {
+  min-height: var(--ix-hit-min);
+  border: 0;
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-grouped);
+}
+html[data-app="1"] .qa-settings-detail :where(.seg, .theme-seg) button {
+  min-height: 36px;
+  border-radius: var(--ix-r-dial);
+  color: var(--ix-ink-2);
+}
+html[data-app="1"] .qa-settings-detail :where(.seg, .theme-seg) button.active {
+  background: var(--ix-surface);
+  color: var(--ix-act);
+  box-shadow: var(--ix-shadow-1);
+}
+html[data-app="1"] .qa-settings-detail .accent-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ix-r-dial);
+  box-shadow: none;
+}
+html[data-app="1"] .qa-settings-detail .accent-dot.on {
+  box-shadow: 0 0 0 2px var(--ix-surface), 0 0 0 3.5px var(--ix-act);
+}
+html[data-app="1"] .qa-settings-detail .qa-settings-save.qa-button {
+  min-height: var(--ix-hit-min);
+  border-radius: var(--ix-r-key);
+  background: var(--ix-act);
+  color: var(--ix-act-ink);
+}
+html[data-app="1"] .qa-settings-detail .qa-settings-danger.qa-button {
+  border-color: var(--ix-danger);
+  background: var(--ix-danger-soft);
+  color: var(--ix-danger);
+}
+
+/* ═══ 长尾列表 / 详情共用实体面板语言 ═══ */
+html[data-app="1"] :where(.qa-notifications-page, .qa-friends-page, .qa-groups-page, .qa-search-page, .qa-announcements-page, .qa-events-page, .qa-worldbooks-page, .qa-worldbooks-view, .qa-leaderboard-page, .qa-gacha-page, .draw-screen, .qa-theater-page) {
+  background: var(--ix-canvas) !important;
+  color: var(--ix-ink);
+}
+html[data-app="1"] :where(.qa-notifications-page .noti-item, .qa-friends-page .friend-card, .qa-groups-page .gm-row, .qa-announcements-page .ann-card, .qa-events-page .ev-card, .qa-worldbooks-page .wb-card, .qa-leaderboard-page .lb-row, .qa-gacha-page .gacha-card, .draw-screen .draw-panel, .draw-screen .draw-stage) {
+  border: 0;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+html[data-app="1"] :where(.qa-notifications-page .topbar, .qa-friends-page .topbar, .qa-groups-page .topbar, .qa-search-page .topbar, .qa-announcements-page .topbar, .qa-events-page .topbar, .qa-worldbooks-page .topbar, .qa-leaderboard-page .topbar, .qa-gacha-page .topbar) {
+  background: var(--ix-glass-nav);
+  border-bottom: 1px solid var(--ix-hairline);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+html[data-app="1"] :where(.qa-theater-room .inovel-book, .qa-worldbook-editor, .qa-character-editor, .qa-script-editor-v4, .qa-novel-workspace) {
+  color: var(--ix-ink);
+}
+html[data-app="1"] :where(.qa-theater-room .inovel-narr-wrap, .qa-theater-room .inovel-dlg, .qa-novel-page.atl-ms-inner) {
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+/* IX-5 后补帧：钱包充值健康检查、VIP 舱和「我的」创作分组。 */
+html[data-app="1"] .qa-wallet {
+  min-height: 100%;
+  padding-bottom: calc(var(--ix-dock-height) + var(--ix-space-6) + env(safe-area-inset-bottom));
+  background: var(--ix-canvas);
+  color: var(--ix-ink);
+}
+html[data-app="1"] .qa-wallet-head {
+  background: var(--ix-glass-nav);
+  border-bottom: 1px solid var(--ix-hairline);
+  color: var(--ix-ink);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+html[data-app="1"] .qa-wallet-v4__recharge-balance {
+  background: var(--ix-vault) !important;
+  border-radius: var(--ix-r-panel) !important;
+  color: var(--ix-vault-ink) !important;
+  box-shadow: inset 0 0 0 1px var(--ix-vault-line) !important;
+}
+html[data-app="1"] .qa-wallet-v4__recharge-balance strong,
+html[data-app="1"] .qa-wallet-v4__packages strong,
+html[data-app="1"] .qa-wallet-v4__checkout strong {
+  color: var(--ix-vault-gold);
+  font-family: var(--ix-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+html[data-app="1"] .qa-wallet-v4__recharge-section,
+html[data-app="1"] .qa-wallet-v4__recharge-note,
+html[data-app="1"] .qa-wallet-v4__checkout {
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+html[data-app="1"] .qa-wallet-v4__packages > button {
+  min-height: 76px;
+  border: 0;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-vault-2);
+  color: var(--ix-vault-ink);
+  box-shadow: inset 0 0 0 1px var(--ix-vault-line);
+}
+html[data-app="1"] .qa-wallet-v4__packages > button.selected { box-shadow: inset 0 0 0 2px var(--ix-act), var(--ix-shadow-1); }
+html[data-app="1"] .qa-wallet-v4__packages > button em { background: var(--ix-gold); color: var(--ix-gold-ink); }
+html[data-app="1"] .qa-wallet-v4__packages > button .qa-wallet-v4__gem,
+html[data-app="1"] .qa-wallet-v4__pay-icon {
+  color: var(--ix-dia);
+  background: var(--ix-grouped);
+  border-radius: var(--ix-r-key);
+}
+html[data-app="1"] .qa-wallet-v4__payment-list {
+  border-radius: var(--ix-r-card);
+  background: var(--ix-grouped);
+  color: var(--ix-ink-2);
+}
+html[data-app="1"] .qa-wallet-v4__payment-list > div { min-height: 56px; border-bottom: 1px solid var(--ix-hairline); }
+html[data-app="1"] .qa-wallet-v4__payment-list > div:last-child { border-bottom: 0; }
+html[data-app="1"] .qa-wallet-v4__payment-list[aria-disabled="true"] { opacity: .82; }
+html[data-app="1"] .qa-wallet-v4__recharge-note {
+  color: var(--ix-ink-2);
+  border: 1px solid var(--ix-gold-soft);
+}
+html[data-app="1"] .qa-wallet-v4__recharge-note svg { color: var(--ix-gold); }
+html[data-app="1"] .qa-wallet-v4__checkout > .qa-button { min-height: var(--ix-hit-submit); border-radius: var(--ix-r-key); }
+html[data-app="1"] .qa-wallet-v4__checkout > .qa-button:disabled {
+  background: var(--ix-grouped) !important;
+  color: var(--ix-ink-3) !important;
+  box-shadow: inset 0 0 0 1px var(--ix-hairline) !important;
+}
+html[data-app="1"] .qa-vip { min-height: 100%; background: var(--ix-canvas); color: var(--ix-ink); }
+html[data-app="1"] .qa-vip .vm-card {
+  overflow: hidden;
+  background: var(--ix-vault) !important;
+  border: 1px solid var(--ix-vault-line);
+  border-radius: var(--ix-r-panel);
+  color: var(--ix-vault-ink);
+  box-shadow: var(--ix-shadow-2);
+}
+html[data-app="1"] .qa-vip .vm-card-pat,
+html[data-app="1"] .qa-vip .vm-card-shine,
+html[data-app="1"] .qa-vip .vm-card-deco { opacity: 0 !important; }
+html[data-app="1"] .qa-vip .vm-word { color: var(--ix-gold); }
+html[data-app="1"] .qa-vip .vm-card-sub,
+html[data-app="1"] .qa-vip .vm-perk-tx small,
+html[data-app="1"] .qa-vip .vm-renew { color: var(--ix-vault-ink-2); }
+html[data-app="1"] .qa-vip .vm-sheet,
+html[data-app="1"] .qa-vip .vm-perk { border-color: var(--ix-hairline); background: var(--ix-surface); color: var(--ix-ink); }
+html[data-app="1"] .qa-vip .vm-plan {
+  min-height: 76px;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-vault-2);
+  color: var(--ix-vault-ink);
+}
+html[data-app="1"] .qa-vip .vm-plan.on { box-shadow: inset 0 0 0 2px var(--ix-act); }
+html[data-app="1"] .qa-vip .vm-plan-price,
+html[data-app="1"] .qa-vip .vm-plan-rec { color: var(--ix-gold); }
+html[data-app="1"] .qa-vip .vm-go { min-height: var(--ix-hit-submit); background: var(--ix-gold) !important; color: var(--ix-gold-ink) !important; }
+html[data-app="1"] .qa-profile { min-height: 100%; background: var(--ix-canvas); color: var(--ix-ink); }
+html[data-app="1"] .qa-profile .pf-vip,
+html[data-app="1"] .qa-profile .pf-assets,
+html[data-app="1"] .qa-profile .pf-group,
+html[data-app="1"] .qa-profile .qa-glance {
+  border: 0;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+html[data-app="1"] .qa-profile .pf-vip { background: var(--ix-vault); color: var(--ix-vault-ink); }
+html[data-app="1"] .qa-profile .pf-vip-glow,
+html[data-app="1"] .qa-profile .pf-vip-mark { color: var(--ix-gold); }
+html[data-app="1"] .qa-profile .pf-group-title,
+html[data-app="1"] .qa-profile .pf-cell { color: var(--ix-ink); }
+html[data-app="1"] .qa-profile .pf-cell-ic,
+html[data-app="1"] .qa-profile .qa-glance-ring { background: var(--ix-act-soft); color: var(--ix-act); }
+html[data-app="1"] .qa-profile .pf-cell,
+html[data-app="1"] .qa-profile .qa-glance-cell { min-height: var(--ix-hit-min); }
+html[data-app="1"] .qa-profile .pf-empty { border-color: var(--ix-hairline-strong); background: transparent; }
+html[data-app="1"] .qa-character-view .cvx-body,
+html[data-app="1"] .qa-character-view .cvx-row-wrap,
+html[data-app="1"] .qa-character-view .qa-bond {
+  border-color: var(--ix-hairline);
+  background: var(--ix-surface);
+  color: var(--ix-ink);
+  box-shadow: var(--ix-shadow-1);
+}
+html[data-app="1"] .qa-character-view .cvx-intro,
+html[data-app="1"] .qa-character-view .cvx-tags span { color: var(--ix-ink-2); }
+html[data-app="1"] .qa-character-view .qa-bond-cta,
+html[data-app="1"] .qa-character-view .cvx-go { min-height: var(--ix-hit-submit); }
+html[data-app="1"] .qa-theater-room .inovel-book,
+html[data-app="1"] .qa-theater-room .inovel-narr,
+html[data-app="1"] .qa-theater-room .inovel-dlg {
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 16px;
+  line-height: 1.95;
+}
+
+/* lite：所有临时层回落不透明；reduced-motion：只保留终值。 */
+html[data-app="1"][data-perf="lite"] :where(.qa-onboard, .qa-share-sheet, .qa-atelier-head, .qa-library-topbar.topbar, .qa-settings-topbar, .qa-theater-room .qa-theater-room-head, .qa-theater-room .qa-theater-composer, .qa-atelier-create-actions, .qa-character-editor__savebar.app-savebar, .qa-worldbook-editor__savebar, .qa-script-editor-v4__savebar) {
+  background: var(--ix-surface) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] :where(.qa-onboard, .qa-onboard-track, .qa-onboard-dot, .qa-share-sheet, .qa-settings-page *, .qa-atelier *, .qa-library-page *, .qa-publish *, .qa-theater-room *) {
+    animation: none !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

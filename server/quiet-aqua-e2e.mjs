@@ -834,12 +834,16 @@ async function detailRouteAssertions(browser, base) {
     identity: document.querySelector('.qa-group-room-identity b')?.textContent.trim() || '',
     log: document.querySelector('.qa-group-room-scroll')?.getAttribute('role'),
     messages: document.querySelectorAll('.qa-group-room .group-message').length,
+    tones: [...document.querySelectorAll('.qa-group-room .who[data-ix-tone]')].map((node) => node.dataset.ixTone),
+    legacyToneNodes: document.querySelectorAll('.qa-group-room .who[data-lg-tone]').length,
     composer: Boolean(document.querySelector('.qa-group-room-composer textarea')),
     emptySendDisabled: Boolean(document.querySelector('.qa-group-room-send')?.disabled),
     dock: Boolean(document.querySelector('.app-tabbar')),
   }));
   assert(group.identity && group.log === 'log' && group.messages > 0 && group.composer,
     'GroupRoom did not render its identity, message log, seeded thread, and composer', JSON.stringify(group));
+  assert(group.tones.length > 0 && group.tones.every((tone) => ['act', 'dia', 'gold', 'success'].includes(tone))
+    && group.legacyToneNodes === 0, 'GroupRoom speaker semantic mapping escaped the IX tone set', JSON.stringify(group));
   assert(group.emptySendDisabled && !group.dock, 'GroupRoom empty-send or detail-route Dock contract regressed', JSON.stringify(group));
   await saveScreenshot(page, 'group-room-390x844-light.png');
 
@@ -860,10 +864,14 @@ async function detailRouteAssertions(browser, base) {
     passages: document.querySelectorAll('.qa-theater-room .inovel-passage').length,
     cast: document.querySelectorAll('.qa-theater-room .inovel-cast-tag').length,
     composer: Boolean(document.querySelector('.qa-theater-room .inovel-input, .qa-theater-room textarea')),
+    inputIsland: Boolean(document.querySelector('.qa-theater-room .qa-theater-input-island')),
+    roomHead: Boolean(document.querySelector('.qa-theater-room .qa-theater-room-head')),
     dock: Boolean(document.querySelector('.app-tabbar')),
   }));
   assert(theater.title && theater.passages > 0 && theater.cast > 0 && theater.composer,
     'TheaterRoom did not render its title, seeded prose, cast, and action composer', JSON.stringify(theater));
+  assert(theater.inputIsland && theater.roomHead,
+    'TheaterRoom did not expose the IX input island and room header surfaces', JSON.stringify(theater));
   assert(!theater.dock, 'TheaterRoom detail route rendered the primary Dock', JSON.stringify(theater));
   await saveScreenshot(page, 'theater-room-390x844-light.png');
 
@@ -1868,6 +1876,13 @@ async function onboardingAssertions(browser, base) {
 
   await page.goto(`${base}/?app=1#/today`, { waitUntil: 'networkidle0', timeout: 30000 });
   await appModalAssertions(page, '.qa-onboard', 'onboarding dialog');
+  const onboardingArt = await page.evaluate(() => ({
+    scenes: [...document.querySelectorAll('.qa-onboard .ix-onboard-art[data-ix-scene]')].map((node) => node.dataset.ixScene),
+    light: document.querySelectorAll('.qa-onboard .ix-onboard-art .ix-illustration__light').length,
+    dark: document.querySelectorAll('.qa-onboard .ix-onboard-art .ix-illustration__dark').length,
+  }));
+  assert(onboardingArt.scenes.length === 3 && onboardingArt.light === 3 && onboardingArt.dark === 3,
+    'Onboarding must mount the current IX light/dark illustration pair for the visible step', JSON.stringify(onboardingArt));
   await saveScreenshot(page, 'onboarding-world-390x844-light.png');
 
   const clickAct = (label) => page.evaluate((text) => {

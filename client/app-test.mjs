@@ -400,7 +400,8 @@ assert.ok(
     && mainSource.indexOf('app-ix-bridge.css') < mainSource.indexOf('app-ix-core.css')
     && mainSource.indexOf('app-ix-core.css') < mainSource.indexOf('app-ix-pages-a.css')
     && mainSource.indexOf('app-ix-pages-a.css') < mainSource.indexOf('app-ix-pages-b.css')
-    && mainSource.indexOf('app-ix-pages-b.css') < mainSource.indexOf('app-ix-pages-c.css'),
+    && mainSource.indexOf('app-ix-pages-b.css') < mainSource.indexOf('app-ix-pages-c.css')
+    && mainSource.indexOf('app-ix-pages-c.css') < mainSource.indexOf('app-ix-pages-d.css'),
   'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer, Lumen materials and the IX (field-instrument) stack must load in cascade order after the runtime layer',
 );
 /* ---- IX-1「仪与匣」token twin + bridge guards ---- */
@@ -475,6 +476,21 @@ assert.ok(
   assert.match(ixFlipSource, /data-ch=/, 'IxFlip must pass the old value through data-ch, never as a text node');
   const appHomeForFlip = await readFile(new URL('./src/pages/AppHome.jsx', import.meta.url), 'utf8');
   assert.match(appHomeForFlip, /<IxFlip value=\{fmtNum\(user\?\.gold\)\}/, 'the vault gold readout must flip through IxFlip');
+  /* ---- IX-6 长尾/后补帧契约 ---- */
+  const ixPagesD = await readFile(new URL('./src/styles/app-ix-pages-d.css', import.meta.url), 'utf8');
+  const ixPagesDClean = ixPagesD.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(ixPagesDClean, /^\s*\.[a-z-]+[^{,]*\{/m, 'every IX pages-d selector must stay behind the data-app fence');
+  assert.doesNotMatch(ixPagesDClean, /nth-(?:child|of-type)/, 'the IX pages-d layer must not style by position');
+  assert.doesNotMatch(ixPagesDClean, /var\(--(?:lg|qa)-/, 'the IX pages-d layer must consume --ix-* only');
+  assert.doesNotMatch(ixPagesDClean, /animation:[^;]*infinite/, 'IX-6 status motion must not introduce decorative loops');
+  assert.match(ixPagesD, /\.qa-settings-page[\s\S]*--ix-canvas/, 'settings must use the instrument canvas');
+  assert.match(ixPagesD, /\.qa-atelier-card[\s\S]*--ix-surface/, 'atelier cards must use opaque specimen surfaces');
+  assert.match(ixPagesD, /\.qa-character-editor__savebar[\s\S]*--ix-glass-nav/, 'editor save bars must use the instrument body rail');
+  assert.match(ixPagesD, /\.qa-error-state__code/, 'error states must expose a sanitized diagnostic code');
+  assert.match(mainSource, /app-ix-pages-c\.css[\s\S]*app-ix-pages-d\.css/, 'IX-6 pages-d must be the final IX cascade layer');
+  assert.match(groupRoomSource, /data-ix-tone=\{app \? ixNameTone/, 'group speaker tones must be IX semantic and App-only');
+  assert.doesNotMatch(groupRoomSource, /data-lg-tone|lgNameTone/, 'group speaker tones must not retain the Lumen namespace');
+  assert.match(ixPagesB, /data-ix-tone="(?:act|dia|gold|success)"/, 'group speaker mapping must expose all four fixed semantic tones');
 }
 /* ---- Lumen Glass token authority guards ---- */
 const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
@@ -637,14 +653,15 @@ for (const name of appAssetNames) {
   assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${name} must be a valid PNG`);
   assert.ok(png.length <= 300 * 1024, `${name} must stay under the 300KB content-media ceiling`);
 }
-assert.match(artSource, /qa5-empty-generic[\s\S]*AppEmptyArt/, 'the App empty states must ship the generated content media with a generic fallback');
-for (const kind of ['achievements', 'theater', 'atelier', 'leaderboard', 'events', 'worldbooks', 'insights', 'noresult', 'group']) {
-  assert.match(artSource, new RegExp(`qa5-empty-${kind}@2x`), `the S7 empty-art kind "${kind}" must stay wired into the App art map`);
+assert.match(artSource, /ix-illo-offline-light\.svg\?url[\s\S]*AppEmptyArt/, 'the App empty states must ship the IX SVG fallback');
+for (const scene of ['chat', 'favorites', 'search', 'achievements', 'theater', 'leaderboard', 'notifications', 'friends', 'drafts', 'works', 'worldbook', 'wallet', 'scripts', 'gallery', 'offline', 'maintenance']) {
+  assert.match(artSource, new RegExp(`ix-illo-${scene}-light\\.svg\\?url`), `the IX empty-art scene "${scene}" must be wired into the App art map`);
 }
-assert.match(artSource, /onboardArtUrls[\s\S]*streakSealUrl/, 'the onboarding screens and streak seal must export reviewed content media');
+assert.match(artSource, /ix-illo-onb-001-light\.svg\?url[\s\S]*IxOnboardingArt/, 'onboarding must use the reviewed IX SVG media');
+assert.match(artSource, /ix-stamp-bronze\.svg\?url[\s\S]*streakSealForTier/, 'streak seals must use the reviewed IX SVG media');
 const capacitorConfig = await readFile(new URL('../capacitor.config.json', import.meta.url), 'utf8');
 assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must not return to the purple-navy splash');
-assert.match(capacitorConfig, /"backgroundColor":\s*"#EDEFF6"/, 'native launch colours must match the Lumen canvas');
+assert.match(capacitorConfig, /"backgroundColor":\s*"#E8EBE9"/, 'native launch colours must match the IX canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: 394/394 passed');
+console.log('app invariants: IX-6 guards passed');

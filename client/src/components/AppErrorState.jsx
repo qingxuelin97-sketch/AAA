@@ -15,6 +15,7 @@ export default function AppErrorState({
   retryLabel = '重试',
   secondaryTo,
   secondaryLabel,
+  code = 'LOAD_FAILED',
   busy = false,
 }) {
   const nav = useNav();
@@ -23,6 +24,7 @@ export default function AppErrorState({
       <AppEmptyArt kind={kind} size={124} />
       <b className="qa-error-state__title">{title}</b>
       <p className="qa-error-state__copy">{message}</p>
+      {code && <span className="qa-error-state__code">ERR · {String(code).replace(/[^A-Z0-9_-]/gi, '').slice(0, 24)}</span>}
       <div className="qa-error-state__acts">
         {onRetry && (
           <AppButton variant="primary" loading={busy} disabled={busy} onClick={onRetry}>

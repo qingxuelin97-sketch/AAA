@@ -10,7 +10,7 @@ import { api, useAuth } from '../api.jsx';
 import { useToast } from '../ui.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { isAppMode } from '../appmode.js';
-import { onboardArtUrls } from '../art.jsx';
+import { IxOnboardingArt } from '../art.jsx';
 import { AppButton } from './AppControls.jsx';
 import { tick } from '../appgestures.js';
 
@@ -114,13 +114,13 @@ export default function AppOnboarding() {
       <div ref={rootRef} className="qa-onboard" role="dialog" aria-modal="true" aria-label="欢迎引导" tabIndex={-1}>
         <div className="qa-onboard-track" style={{ transform: `translateX(-${step * 100}%)` }}>
           <section className="qa-onboard-screen" aria-hidden={step !== 0} inert={step !== 0 || undefined}>
-            <img className="qa-onboard-art" src={onboardArtUrls.world} width={290} height={193} alt="" draggable="false" />
+            <IxOnboardingArt step={0} size={290} className="qa-onboard-art" />
             <span className="qa-onboard-eyebrow"><Sparkles size={14} /> 欢迎来到幻域</span>
             <h2>把你脑海里的故事，写成会呼吸的角色</h2>
             <p>穿过月门，这里的每一次对话都是一段新的旅程。</p>
           </section>
           <section className="qa-onboard-screen" aria-hidden={step !== 1} inert={step !== 1 || undefined}>
-            <img className="qa-onboard-art" src={onboardArtUrls.craft} width={290} height={193} alt="" draggable="false" />
+            <IxOnboardingArt step={1} size={290} className="qa-onboard-art" />
             <h2>三件事，从这里开始</h2>
             <ul className="qa-onboard-feats">
               {FEATURES.map(({ Icon, title, copy }) => (
@@ -129,7 +129,7 @@ export default function AppOnboarding() {
             </ul>
           </section>
           <section className="qa-onboard-screen" aria-hidden={step !== 2} inert={step !== 2 || undefined}>
-            <img className="qa-onboard-art" src={onboardArtUrls.tune} width={290} height={193} alt="" draggable="false" />
+            <IxOnboardingArt step={2} size={290} className="qa-onboard-art" />
             <h2>{personalizeOn ? '挑几个你喜欢的题材' : '推荐已按你的偏好关闭'}</h2>
             {personalizeOn ? (
               <>

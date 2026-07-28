@@ -69,6 +69,8 @@ import './styles/app-ix-pages-b.css';
 // IX-5 价值与身份：钱包/成就/星轨/月历/VIP 舱体系 + split-flap 翻牌与指针入场
 // 仪式动效（mockup ⑤⑥⑦⑨⑪⑬⑭）。
 import './styles/app-ix-pages-c.css';
+// IX-6 后补帧与长尾页面：创作工坊、设置详情、全局空错态、首启和分享壳。
+import './styles/app-ix-pages-d.css';
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {

@@ -109,37 +109,53 @@ html[data-app="1"] .group-thread .group-message-body {
   border-radius: var(--ix-r-card) var(--ix-r-card) var(--ix-r-card) var(--ix-r-micro);
   box-shadow: var(--ix-shadow-1);
 }
+/* 发言人颜色按成员 id 稳定散列；四种颜色均为冻结语义色。 */
+html[data-app="1"] .qa-group-room .who { font-weight: 650 !important; }
+html[data-app="1"] .qa-group-room .who[data-ix-tone="act"] { color: var(--ix-act) !important; }
+html[data-app="1"] .qa-group-room .who[data-ix-tone="dia"] { color: var(--ix-dia) !important; }
+html[data-app="1"] .qa-group-room .who[data-ix-tone="gold"] { color: var(--ix-gold) !important; }
+html[data-app="1"] .qa-group-room .who[data-ix-tone="success"] { color: var(--ix-success) !important; }
 
 /* ═══ ⑮ 剧场 · 阅读流on不透明面板（衬线保留）+ 指挥键帽横轨 + 玻璃输入岛 ═══ */
-html[data-app="1"] .theater-room .stage {
+html[data-app="1"] .qa-theater-room .inovel-book,
+html[data-app="1"] .qa-theater-room .inovel-stage,
+html[data-app="1"] .qa-theater-room .stage {
   background: var(--ix-surface) !important;
   border: 0 !important;
   border-radius: var(--ix-r-card) !important;
   box-shadow: var(--ix-shadow-1) !important;
 }
-html[data-app="1"] .theater-quick-actions button,
-html[data-app="1"] .theater-passage-actions button {
+html[data-app="1"] .qa-theater-room .qa-theater-quick-actions .qa-button,
+html[data-app="1"] .qa-theater-room .qa-theater-action-hints .qa-button,
+html[data-app="1"] .qa-theater-room .inovel-quick button {
   background: var(--ix-surface);
   border: 0;
   border-radius: var(--ix-r-key);
   box-shadow: var(--ix-shadow-1);
   color: var(--ix-ink);
 }
-html[data-app="1"] .theater-quick-actions button:active,
-html[data-app="1"] .theater-passage-actions button:active {
+html[data-app="1"] .qa-theater-room .qa-theater-quick-actions .qa-button:active,
+html[data-app="1"] .qa-theater-room .qa-theater-action-hints .qa-button:active,
+html[data-app="1"] .qa-theater-room .inovel-quick button:active {
   transform: translateY(var(--ix-key-travel));
   box-shadow: var(--ix-shadow-key-down);
 }
-html[data-app="1"] .theater-input-island,
-html[data-app="1"] .theater-composer {
+html[data-app="1"] .qa-theater-room .qa-theater-input-island,
+html[data-app="1"] .qa-theater-room .qa-theater-composer {
   background: var(--ix-glass-nav) !important;
   -webkit-backdrop-filter: var(--ix-blur);
   backdrop-filter: var(--ix-blur);
   border-top: 1px solid var(--ix-hairline) !important;
 }
-html[data-app="1"] .theater-room-head {
+html[data-app="1"] .qa-theater-room .qa-theater-room-head {
   background: var(--ix-glass-nav) !important;
   -webkit-backdrop-filter: var(--ix-blur);
   backdrop-filter: var(--ix-blur);
   border-bottom: 1px solid var(--ix-hairline) !important;
+}
+html[data-app="1"] .qa-theater-room .qa-theater-input-island textarea {
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  border-color: var(--ix-hairline) !important;
+  box-shadow: var(--ix-shadow-dial) !important;
 }
