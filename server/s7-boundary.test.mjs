@@ -94,6 +94,10 @@ try {
   console.log('  ✅ 周报：周一起始 + 北京周界归桶正确');
 
   /* ── 3. 会话整理：mark-only PATCH 不 bump updated_at；置顶列表先行 ── */
+  // SQLite datetime('now') is second-granular. Anchor the fixture in the past
+  // so a fast local run still distinguishes mark-only from a substantive edit.
+  db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?')
+    .run('2000-01-01 00:00:00', convId);
   const before = db.prepare('SELECT updated_at FROM conversations WHERE id = ?').get(convId).updated_at;
   await j(`/chat/conversations/${convId}`, { method: 'PATCH', body: JSON.stringify({ pinned: 1, muted: 1 }) });
   const afterMark = db.prepare('SELECT updated_at, pinned, muted FROM conversations WHERE id = ?').get(convId);

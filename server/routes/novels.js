@@ -423,7 +423,7 @@ router.post('/runs/:rid/write', authRequired, aiLimiter, async (req, res) => {
   const settings = getSettings(req.user.id);
   const directive = clampStr(req.body?.directive, 2000).trim();
   const beats = db.prepare('SELECT * FROM novel_beats WHERE run_id = ? ORDER BY seq, id').all(r.id);
-  await streamWrite(res, { run: r, novel, settings, directive, beats, userId: req.user.id });
+  await streamWrite(req, res, { run: r, novel, settings, directive, beats, userId: req.user.id });
 });
 
 // Rewrite an existing beat with an instruction (e.g. polish, shorten, intensify).
@@ -435,10 +435,10 @@ router.post('/runs/:rid/beats/:bid/rewrite', authRequired, aiLimiter, async (req
   const settings = getSettings(req.user.id);
   const instruction = clampStr(req.body?.instruction, 600).trim();
   const before = db.prepare('SELECT * FROM novel_beats WHERE run_id = ? AND seq < ? ORDER BY seq, id').all(r.id, beat.seq);
-  await streamWrite(res, { run: r, novel, settings, beats: before, userId: req.user.id, rewrite: beat, instruction });
+  await streamWrite(req, res, { run: r, novel, settings, beats: before, userId: req.user.id, rewrite: beat, instruction });
 });
 
-async function streamWrite(res, { run, novel, settings, directive, beats, userId, rewrite, instruction }) {
+async function streamWrite(req, res, { run, novel, settings, directive, beats, userId, rewrite, instruction }) {
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(userId);
   const eff = effectiveLLM(settings);
   if (eff && !eff.platform) { try { assertPublicUrl(eff.base_url); } catch (e) { return res.status(400).json({ error: e.message }); } }

@@ -13,6 +13,7 @@ import { CoverArt, QuietAquaCharacterArt, resolveCharacterMedia, streakSealForTi
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import CheckinCalendarSheet from '../components/CheckinCalendarSheet.jsx';
 import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import IxFlip from '../components/IxFlip.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppTabActive } from '../appTabActivity.js';
 // 数据层（问候/天光、续读轨/任务/精选加载）抽到 home/shared.js，与 Web 端
@@ -145,6 +146,13 @@ export default function AppHome() {
         <div className="aht-copy">
           <span className="aht-eyebrow">{greeting()}，{displayName}</span>
           <h1 className="aht-brand" aria-label="幻域首页">幻域</h1>
+          {/* 仪与匣：大标题下的 mono 日期读数行（读数=等宽，中文不套等宽） */}
+          <time className="aht-date" dateTime={new Date().toISOString().slice(0, 10)}>
+            {(() => {
+              const d = new Date();
+              return `${d.getMonth() + 1}月${d.getDate()}日 周${'日一二三四五六'[d.getDay()]}`;
+            })()}
+          </time>
         </div>
         <div className="aht-acts">
           <AppIconButton label="搜索" onClick={openCmdk}><Search size={20} /></AppIconButton>
@@ -173,7 +181,7 @@ export default function AppHome() {
               onClick={() => nav('/wallet')}
               aria-label={`金币 ${fmtNum(user?.gold)}`}
             >
-              <CoinIcon size={15} /> <span className="ah-balance-value">{fmtNum(user?.gold)}</span>
+              <CoinIcon size={15} /> <span className="ah-balance-value"><IxFlip value={fmtNum(user?.gold)} /></span>
             </AppButton>
             <AppButton
               className="ah-coin di"
@@ -181,7 +189,7 @@ export default function AppHome() {
               onClick={() => nav('/wallet')}
               aria-label={`钻石 ${fmtNum(user?.diamond)}`}
             >
-              <DiamondIcon size={15} /> <span className="ah-balance-value">{fmtNum(user?.diamond)}</span>
+              <DiamondIcon size={15} /> <span className="ah-balance-value"><IxFlip value={fmtNum(user?.diamond)} /></span>
             </AppButton>
             <AppButton
               ref={checkinBtnRef}

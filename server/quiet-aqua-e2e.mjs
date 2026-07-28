@@ -70,6 +70,15 @@ async function resolveChrome() {
   return chromium.executablePath();
 }
 
+function launchTestBrowser(executablePath) {
+  return puppeteer.launch({
+    executablePath,
+    headless: true,
+    protocolTimeout: 300_000,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', '--force-color-profile=srgb'],
+  });
+}
+
 function startStaticServer() {
   assert(fs.existsSync(path.join(DIST, 'index.html')), '缺少 client/dist；请先运行 npm run build:static');
   const server = createServer((req, res) => {
@@ -404,6 +413,7 @@ async function galleryAssertions(page, expectedPerf) {
       selected: Boolean(selected),
       selectedPressed: document.querySelector('[aria-pressed="true"]')?.hasAttribute('data-selected') || false,
       focusOutline: focusStyle ? `${focusStyle.outlineStyle} ${focusStyle.outlineWidth}` : '',
+      focusRing: focusStyle ? focusStyle.boxShadow : '',
     };
   });
   assert(result.app === '1', '控件页未进入 App 模式', JSON.stringify(result));
@@ -413,7 +423,14 @@ async function galleryAssertions(page, expectedPerf) {
   assert(result.unnamedIcons.length === 0, '存在无可访问名称的图标按钮', result.unnamedIcons.join('\n'));
   assert(result.disabled?.aria === 'true' && result.disabled?.tabIndex === -1, '不可用链接仍可聚焦或缺少 aria-disabled');
   assert(result.selected && result.selectedPressed, 'selected / pressed 状态联系表不完整');
-  assert(!result.focusOutline.startsWith('none') && !result.focusOutline.endsWith('0px'), 'focus-visible 外环不可见', result.focusOutline);
+  // 仪与匣：焦点环 = --ix-focus-ring 双圈 box-shadow（外圈 canvas 隔离 + 内圈 focus 色）；
+  // 兼容旧 outline 方案（任一可见即过）。双圈判据：至少两段 0 偏移 spread 环。
+  const ringLayers = (result.focusRing.match(/0px 0px 0px [1-9]/g) || []).length;
+  assert(
+    (!result.focusOutline.startsWith('none') && !result.focusOutline.endsWith('0px')) || ringLayers >= 2,
+    'focus-visible 外环不可见',
+    `${result.focusOutline} | ${result.focusRing}`,
+  );
 
   const beforeHash = await page.evaluate(() => location.hash);
   await page.click('[data-testid="disabled-control-link"]');
@@ -439,18 +456,28 @@ async function dockAndOverlayAssertions(page, expectedPerf) {
     return {
       links: nav?.querySelectorAll('a').length || 0,
       fabOutside: Boolean(nav && fab && !nav.contains(fab)),
-      // Lumen：Dock 是悬浮玻璃条（底距 12px），内容从玻璃下穿过是设计语义；
-      // 首屏故事卡允许伸入不超过悬浮底距（12px+1 容差），滚动可完全露出。
-      storyClearsDock: !storyRect || !navRect || storyRect.bottom <= navRect.top + 13,
+      // 仪与匣：Dock 是全宽机身玻璃条，内容从玻璃下穿过是设计语义；卡面允许
+      // 伸入条下，但可交互的铭牌 CTA 必须完整落在机身条上缘之上（1px 容差）。
+      storyClearsDock: (() => {
+        if (!storyRect || !navRect) return true;
+        const cta = document.querySelector('.ah-hc-cta');
+        const bottom = cta ? cta.getBoundingClientRect().bottom : storyRect.bottom;
+        return bottom <= navRect.top + 1;
+      })(),
       storyBottom: storyRect?.bottom || null,
       dockTop: navRect?.top || null,
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       backdrop: style?.backdropFilter || style?.webkitBackdropFilter || '',
       tabbarBackdrop: (() => {
-        const bar = document.querySelector('.app-tabbar');
-        if (!bar) return '';
-        const cs = getComputedStyle(bar);
-        return cs.backdropFilter || cs.webkitBackdropFilter || '';
+        // 仪与匣：玻璃在机身条 .app-dock 本体上（tabbar 退为纯布局，防双层玻璃）；
+        // 兼容旧结构，两者任一带 blur 即算 chrome 玻璃在场。
+        const parts = [document.querySelector('.app-dock'), document.querySelector('.app-tabbar')];
+        return parts.map((el) => {
+          if (!el) return '';
+          const cs = getComputedStyle(el);
+          const bf = cs.backdropFilter || cs.webkitBackdropFilter || '';
+          return bf === 'none' ? '' : bf;
+        }).filter(Boolean).join(' ');
       })(),
       headingFont: (() => {
         const h = document.querySelector('.aht-brand, .apphome h2, .apphome h1');
@@ -819,12 +846,16 @@ async function detailRouteAssertions(browser, base) {
     identity: document.querySelector('.qa-group-room-identity b')?.textContent.trim() || '',
     log: document.querySelector('.qa-group-room-scroll')?.getAttribute('role'),
     messages: document.querySelectorAll('.qa-group-room .group-message').length,
+    tones: [...document.querySelectorAll('.qa-group-room .who[data-ix-tone]')].map((node) => node.dataset.ixTone),
+    legacyToneNodes: document.querySelectorAll('.qa-group-room .who[data-lg-tone]').length,
     composer: Boolean(document.querySelector('.qa-group-room-composer textarea')),
     emptySendDisabled: Boolean(document.querySelector('.qa-group-room-send')?.disabled),
     dock: Boolean(document.querySelector('.app-tabbar')),
   }));
   assert(group.identity && group.log === 'log' && group.messages > 0 && group.composer,
     'GroupRoom did not render its identity, message log, seeded thread, and composer', JSON.stringify(group));
+  assert(group.tones.length > 0 && group.tones.every((tone) => ['act', 'dia', 'gold', 'success'].includes(tone))
+    && group.legacyToneNodes === 0, 'GroupRoom speaker semantic mapping escaped the IX tone set', JSON.stringify(group));
   assert(group.emptySendDisabled && !group.dock, 'GroupRoom empty-send or detail-route Dock contract regressed', JSON.stringify(group));
   await saveScreenshot(page, 'group-room-390x844-light.png');
 
@@ -845,10 +876,14 @@ async function detailRouteAssertions(browser, base) {
     passages: document.querySelectorAll('.qa-theater-room .inovel-passage').length,
     cast: document.querySelectorAll('.qa-theater-room .inovel-cast-tag').length,
     composer: Boolean(document.querySelector('.qa-theater-room .inovel-input, .qa-theater-room textarea')),
+    inputIsland: Boolean(document.querySelector('.qa-theater-room .qa-theater-input-island')),
+    roomHead: Boolean(document.querySelector('.qa-theater-room .qa-theater-room-head')),
     dock: Boolean(document.querySelector('.app-tabbar')),
   }));
   assert(theater.title && theater.passages > 0 && theater.cast > 0 && theater.composer,
     'TheaterRoom did not render its title, seeded prose, cast, and action composer', JSON.stringify(theater));
+  assert(theater.inputIsland && theater.roomHead,
+    'TheaterRoom did not expose the IX input island and room header surfaces', JSON.stringify(theater));
   assert(!theater.dock, 'TheaterRoom detail route rendered the primary Dock', JSON.stringify(theater));
   await saveScreenshot(page, 'theater-room-390x844-light.png');
 
@@ -1356,12 +1391,17 @@ async function galleryS7Assertions(browser, base) {
   await page.waitForFunction(() => document.querySelector('.qa-error-state .qa-button[disabled], .qa-error-state .qa-button[data-loading="true"], .qa-error-state .qa-button[aria-busy="true"]'), { timeout: 5000 });
   await page.waitForFunction(() => !document.querySelector('.qa-error-state .qa-button[disabled], .qa-error-state .qa-button[data-loading="true"], .qa-error-state .qa-button[aria-busy="true"]'), { timeout: 8000 });
 
-  // 长按演示 → role=menu 三条目。先等图片装载完（上方空态 PNG 异步
-  // 落位会推移版面），再在触摸前的最后一刻取坐标，避免测完即漂移。
-  await page.evaluate(() => Promise.all(
-    [...document.images].filter((img) => !img.complete)
-      .map((img) => new Promise((resolve) => { img.onload = img.onerror = resolve; })),
-  ));
+  // 长按演示 → role=menu 三条目。先等当前主题的可见空态 SVG 装载完
+  // （隐藏主题的 lazy 图片不参与），再在触摸前取坐标，避免版面漂移。
+  await page.waitForFunction(
+    () => {
+      const images = [...document.querySelectorAll('.qa-gallery__art img')]
+        .filter((image) => image.getClientRects().length > 0);
+      return images.length > 0
+        && images.every((image) => image.complete && image.naturalWidth > 0);
+    },
+    { timeout: 15000 },
+  );
   await page.evaluate(() => {
     document.querySelector('section[aria-labelledby="gallery-s7-press"] .qa-button')
       .scrollIntoView({ block: 'center', behavior: 'instant' });
@@ -1853,6 +1893,13 @@ async function onboardingAssertions(browser, base) {
 
   await page.goto(`${base}/?app=1#/today`, { waitUntil: 'networkidle0', timeout: 30000 });
   await appModalAssertions(page, '.qa-onboard', 'onboarding dialog');
+  const onboardingArt = await page.evaluate(() => ({
+    scenes: [...document.querySelectorAll('.qa-onboard .ix-onboard-art[data-ix-scene]')].map((node) => node.dataset.ixScene),
+    light: document.querySelectorAll('.qa-onboard .ix-onboard-art .ix-illustration__light').length,
+    dark: document.querySelectorAll('.qa-onboard .ix-onboard-art .ix-illustration__dark').length,
+  }));
+  assert(onboardingArt.scenes.length === 3 && onboardingArt.light === 3 && onboardingArt.dark === 3,
+    'Onboarding must mount the current IX light/dark illustration pair for the visible step', JSON.stringify(onboardingArt));
   await saveScreenshot(page, 'onboarding-world-390x844-light.png');
 
   const clickAct = (label) => page.evaluate((text) => {
@@ -1999,11 +2046,7 @@ async function run() {
   try {
     const executablePath = await resolveChrome();
     console.log(`Quiet Aqua browser: ${executablePath}`);
-    browser = await puppeteer.launch({
-      executablePath,
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', '--force-color-profile=srgb'],
-    });
+    browser = await launchTestBrowser(executablePath);
 
     if (WALLET_ONLY) {
       await walletAssertions(browser, base);
@@ -2041,6 +2084,11 @@ async function run() {
       await page.close();
       console.log(`✓ ${scenario.width}x${scenario.height} ${scenario.theme} ${scenario.expectedPerf}`);
     }
+
+    // Keep viewport emulation and its renderer/service-worker state isolated
+    // from the long-tail route assertions that follow.
+    await browser.close();
+    browser = await launchTestBrowser(executablePath);
 
     const reduced = await preparePage(browser, base, { reducedMotion: true });
     await visit(reduced, '/app-controls', '.qa-gallery');

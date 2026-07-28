@@ -1,6 +1,5 @@
-// Six persisted accent palettes. An unset HTTP App-shell preview starts with
-// Quiet Aqua; ordinary Web keeps the established clay default.
-import { isAppMode } from './appmode.js';
+// Six persisted accent palettes. An unset App shell uses the frozen IX action
+// authority; ordinary Web keeps the established clay default.
 
 const KEY = 'huanyu_accent';
 
@@ -16,13 +15,13 @@ export const ACCENTS = [
 export function getAccent() {
   const v = localStorage.getItem(KEY);
   if (ACCENTS.some(a => a.id === v)) return v;
-  // Lumen Glass：App 默认走 clay（= 无 data-accent 属性 → 令牌基线 iris 主动作色）；
-  // Web 默认不变。用户显式选择的 id 仍按 App 端别名映射到 Lumen 五色。
+  // An unset data-accent keeps each shell's own baseline. Explicit persisted
+  // ids are mapped by the App-fenced IX accent companion without changing Web.
   return 'clay';
 }
 
 export function applyAccent(id = getAccent()) {
-  // 默认色不落属性，CSS 基线即黏土橙；其余色靠 [data-accent=…] 覆盖变量。
+  // The default writes no attribute; each shell retains its own CSS baseline.
   if (id === 'clay') delete document.documentElement.dataset.accent;
   else document.documentElement.dataset.accent = id;
   try { window.dispatchEvent(new Event('huanyu-accent')); } catch { /* */ }

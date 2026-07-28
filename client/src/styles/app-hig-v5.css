@@ -7,28 +7,28 @@
    规则：全部选择器从 html[data-app="1"] 出发；Web 零视觉/行为差异。
    动效纪律：无循环装饰动画；时长 80-460ms；press = scale(.97)。
    材质纪律：内容面不透明 + 发丝边 + 短阴影；玻璃只属于 chrome 层
-   （Dock / 顶栏 / 输入岛 / Sheet / Modal / 分段浮层），由 --qa-glass-* 驱动。
+   （Dock / 顶栏 / 输入岛 / Sheet / Modal / 分段浮层），由 IX material tokens 驱动。
    ========================================================================== */
 
 /* ── 1. 排版：App 内标题一律 UI 字体（压过 base.css 的展示字体继承） ── */
 html[data-app="1"] :where(h1, h2, h3, h4, h5) {
-  font-family: var(--lg-font-ui);
+  font-family: var(--ix-font-ui);
   letter-spacing: -0.015em;
   font-weight: 700;
 }
 html[data-app="1"] .page h1,
 html[data-app="1"] .topbar h1 {
-  font-size: var(--lg-type-title);
+  font-size: var(--ix-type-title);
   line-height: 1.25;
 }
 html[data-app="1"] :where(.brand b, .stat-row .s b, .empty .big) {
-  font-family: var(--lg-font-ui);
+  font-family: var(--ix-font-ui);
 }
 /* 大标题式样：四个一级 Tab 页首屏标题 34px/800，随内容自然滚走 */
 html[data-app="1"] :where(.qa3-today, .qa3-messages, .qa3-profile) > :where(h1, header h1),
 html[data-app="1"] .msgs > h1,
 html[data-app="1"] .qa-messages-page > h1 {
-  font-size: var(--lg-type-hero);
+  font-size: var(--ix-type-hero);
   font-weight: 800;
   letter-spacing: -0.022em;
   line-height: 1.18;
@@ -38,16 +38,16 @@ html[data-app="1"] :where(.bal-num, .qa-wallet-v4__asset b, .stat-row .s b, .msg
   font-variant-numeric: tabular-nums;
 }
 /* 次级信息层级统一 */
-html[data-app="1"] :where(.muted, .hint, .sub) { color: var(--lg-ink-2); }
-html[data-app="1"] :where(.faint) { color: var(--lg-ink-3); }
+html[data-app="1"] :where(.muted, .hint, .sub) { color: var(--ix-ink-2); }
+html[data-app="1"] :where(.faint) { color: var(--ix-ink-3); }
 
 /* ── 2. 内容面材质：不透明 + 发丝边 + 短阴影（压过遗留渐变/玻璃卡面） ── */
 html[data-app="1"] :where(.card, .set-card, .noti-item, .room-row, .gm-row,
   .friend-card, .wb-card, .script-card, .draw-tile, .lb-row) {
-  background: var(--qa-surface);
-  border: 1px solid var(--lg-hairline);
-  box-shadow: var(--lg-glass-shadow-1);
-  border-radius: var(--lg-r-card);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
+  box-shadow: var(--ix-shadow-1);
+  border-radius: var(--ix-r-card);
 }
 html[data-app="1"] :where(.card, .set-card):active {
   box-shadow: 0 1px 2px rgb(15 18 26 / 8%);
@@ -55,18 +55,18 @@ html[data-app="1"] :where(.card, .set-card):active {
 /* 卡内分隔线 = 发丝，左端对齐内容缩进（iOS inset separator） */
 html[data-app="1"] :where(.card, .set-card) :where(hr, .divider) {
   border: none;
-  border-top: 1px solid var(--lg-hairline);
-  margin: 4px 0 4px var(--lg-space-4);
+  border-top: 1px solid var(--ix-hairline);
+  margin: 4px 0 4px var(--ix-space-4);
 }
 
 /* ── 3. inset-grouped 列表（设置 / 隐私 / 通知偏好 / 帮助） ── */
 html[data-app="1"] .qa-settings-root {
-  background: var(--lg-grouped);
+  background: var(--ix-grouped);
   min-height: 100dvh;
 }
 /* 组容器透明；标签在卡外（iOS 13px 次级说明）；列表才是白卡 */
 html[data-app="1"] .qa-settings-group {
-  margin: 0 var(--lg-space-4) var(--lg-space-5);
+  margin: 0 var(--ix-space-4) var(--ix-space-5);
   padding: 0;
   background: none;
   border: none;
@@ -75,26 +75,26 @@ html[data-app="1"] .qa-settings-group {
   overflow: visible;
 }
 html[data-app="1"] .qa-settings-group > h2 {
-  margin: 0 0 7px var(--lg-space-4);
-  font-size: var(--lg-type-meta);
+  margin: 0 0 7px var(--ix-space-4);
+  font-size: var(--ix-type-meta);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--lg-ink-2);
+  color: var(--ix-ink-2);
 }
 html[data-app="1"] .qa-settings-list {
-  border-radius: var(--lg-r-row);
-  background: var(--qa-surface);
-  border: 1px solid var(--lg-hairline);
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 html[data-app="1"] .qa-settings-row {
   min-height: 56px; /* UI kit 设置行高 */
-  padding: 10px var(--lg-space-4);
+  padding: 10px var(--ix-space-4);
   display: flex;
   align-items: center;
-  gap: var(--lg-space-3);
+  gap: var(--ix-space-3);
   background: transparent;
   border: none;
   border-radius: 0;
@@ -104,12 +104,12 @@ html[data-app="1"] .qa-settings-row + .qa-settings-row::before {
   content: '';
   position: absolute;
   top: 0;
-  left: calc(var(--lg-space-4) + 28px + var(--lg-space-3));
+  left: calc(var(--ix-space-4) + 28px + var(--ix-space-3));
   right: 0;
   height: 1px;
-  background: var(--lg-hairline);
+  background: var(--ix-hairline);
 }
-html[data-app="1"] .qa-settings-row:active { background: var(--lg-grouped); }
+html[data-app="1"] .qa-settings-row:active { background: var(--ix-grouped); }
 html[data-app="1"] .qa-settings-row-icon {
   width: 28px;
   height: 28px;
@@ -119,37 +119,37 @@ html[data-app="1"] .qa-settings-row-icon {
   flex: none;
 }
 html[data-app="1"] .qa-settings-row-copy b {
-  font-size: var(--lg-type-section);
+  font-size: var(--ix-type-section);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 html[data-app="1"] .qa-settings-row-copy small {
-  font-size: var(--lg-type-meta);
-  color: var(--lg-ink-2);
+  font-size: var(--ix-type-meta);
+  color: var(--ix-ink-2);
 }
 html[data-app="1"] .qa-settings-row-chevron {
   margin-left: auto;
-  color: var(--lg-ink-3);
+  color: var(--ix-ink-3);
   flex: none;
 }
 html[data-app="1"] .qa-settings-intro {
-  padding: 4px var(--lg-space-5) var(--lg-space-3);
-  font-size: var(--lg-type-meta);
-  color: var(--lg-ink-2);
+  padding: 4px var(--ix-space-5) var(--ix-space-3);
+  font-size: var(--ix-type-meta);
+  color: var(--ix-ink-2);
 }
 /* 通用表单卡的 group 化（角色/世界书编辑等沿用 .card + .field 的页面） */
-html[data-app="1"] .field { margin-bottom: var(--lg-space-4); }
+html[data-app="1"] .field { margin-bottom: var(--ix-space-4); }
 html[data-app="1"] .field > label {
   display: block;
-  font-size: var(--lg-type-meta);
+  font-size: var(--ix-type-meta);
   font-weight: 600;
-  color: var(--lg-ink-2);
+  color: var(--ix-ink-2);
   margin-bottom: 6px;
   letter-spacing: 0.01em;
 }
 html[data-app="1"] .hint {
   font-size: 12px;
-  color: var(--lg-ink-3);
+  color: var(--ix-ink-3);
   margin-top: 5px;
 }
 
@@ -157,34 +157,34 @@ html[data-app="1"] .hint {
 html[data-app="1"] .topbar {
   min-height: calc(44px + env(safe-area-inset-top));
   padding-top: max(6px, env(safe-area-inset-top));
-  border-bottom: 1px solid var(--lg-hairline);
+  border-bottom: 1px solid var(--ix-hairline);
 }
 html[data-app="1"] .topbar h1 {
-  font-size: var(--lg-type-section);
+  font-size: var(--ix-type-section);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 html[data-app="1"] .topbar .sub {
   font-size: 12px;
-  color: var(--lg-ink-2);
+  color: var(--ix-ink-2);
 }
 /* 返回按钮统一为无底色 chevron 热区 */
 html[data-app="1"] .topbar > :where(button, .btn):first-child:not(.primary) {
   background: none;
   border: none;
   box-shadow: none;
-  color: var(--lg-act);
+  color: var(--ix-act);
 }
 
-/* ── 5. 分段控件（UI kit）：胶囊槽 --lg-glass-1 + 发丝内衬；选中片 --lg-glass-sel + shadow-1 + 600 ── */
+/* ── 5. 分段控件（UI kit）：胶囊槽 --ix-surface + 发丝内衬；选中片 --ix-surface + shadow-1 + 600 ── */
 html[data-app="1"] :where(.seg, .tabs-bar:not(.qa-character-editor__tabs)) {
   display: inline-flex;
   align-items: stretch;
   gap: 2px;
   padding: 3px;
-  border-radius: var(--lg-r-pill);
-  background: var(--lg-glass-1);
-  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-surface);
+  box-shadow: inset 0 0 0 1px var(--ix-hairline);
   border: none;
 }
 html[data-app="1"] :where(.seg, .tabs-bar) > :where(button, .tab) {
@@ -192,18 +192,18 @@ html[data-app="1"] :where(.seg, .tabs-bar) > :where(button, .tab) {
   background: none;
   min-height: 34px;
   padding: 6px 14px;
-  border-radius: var(--lg-r-pill);
+  border-radius: var(--ix-r-dial);
   font-size: 13px;
   font-weight: 400;
-  color: var(--lg-ink-2);
-  transition: background var(--lg-dur-state) var(--lg-ease),
-    color var(--lg-dur-state) var(--lg-ease);
+  color: var(--ix-ink-2);
+  transition: background var(--ix-dur-state) var(--ix-ease),
+    color var(--ix-dur-state) var(--ix-ease);
 }
 html[data-app="1"] :where(.seg, .tabs-bar) > :where(button, .tab):where(.active, .on, [aria-selected="true"]) {
-  background: var(--lg-glass-sel);
-  color: var(--lg-ink);
+  background: var(--ix-surface);
+  color: var(--ix-ink);
   font-weight: 600;
-  box-shadow: var(--lg-glass-shadow-1);
+  box-shadow: var(--ix-shadow-1);
 }
 
 /* ── 6. 开关（UI kit）：51×31 轨（off = 发丝色）+ 27px 白滑块 ── */
@@ -211,8 +211,8 @@ html[data-app="1"] .switch .track {
   width: 51px;
   height: 31px;
   border-radius: 999px;
-  background: var(--lg-hairline);
-  transition: background var(--lg-dur-state) var(--lg-ease);
+  background: var(--ix-hairline);
+  transition: background var(--ix-dur-state) var(--ix-ease);
 }
 html[data-app="1"] .switch .track::after {
   width: 27px;
@@ -220,59 +220,59 @@ html[data-app="1"] .switch .track::after {
   top: 2px;
   left: 2px;
   box-shadow: 0 2px 6px rgb(0 0 0 / 28%);
-  transition: transform var(--lg-dur-state) var(--lg-ease);
+  transition: transform var(--ix-dur-state) var(--ix-ease);
 }
-html[data-app="1"] .switch input:checked + .track { background: var(--lg-act); }
+html[data-app="1"] .switch input:checked + .track { background: var(--ix-act); }
 html[data-app="1"] .switch input:checked + .track::after { transform: translateX(20px); }
 
 /* ── 7. Sheet / Modal：抓手 + 玻璃材质 + 层级圆角 ── */
 html[data-app="1"] :where(.app-sheet, .vm-sheet) {
-  border-radius: var(--lg-r-sheet) var(--lg-r-sheet) 0 0;
-  background: var(--qa-glass-sheet-bg);
-  -webkit-backdrop-filter: var(--lg-blur);
-  backdrop-filter: var(--lg-blur);
-  border: 1px solid var(--lg-hairline);
+  border-radius: var(--ix-r-panel) var(--ix-r-panel) 0 0;
+  background: var(--ix-glass-temp);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  border: 1px solid var(--ix-hairline);
   border-bottom: none;
-  box-shadow: var(--qa-glass-specular), 0 -18px 48px rgb(12 16 24 / 18%);
+  box-shadow: var(--ix-shadow-1), 0 -18px 48px rgb(12 16 24 / 18%);
 }
 /* UI kit grabber：38×5 · ink3 45%（令牌随主题翻转，无需暗色特例） */
 html[data-app="1"] .app-sheet-grip {
   width: 38px;
   height: 5px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--lg-ink-3) 45%, transparent);
+  background: color-mix(in srgb, var(--ix-ink-3) 45%, transparent);
   opacity: 1;
 }
 html[data-app="1"] :where(.app-sheet-mask, .modal-backdrop) {
-  background: var(--lg-scrim);
+  background: var(--ix-scrim);
 }
 html[data-app="1"] .modal {
-  border-radius: var(--lg-r-panel);
-  background: var(--qa-overlay);
-  -webkit-backdrop-filter: var(--lg-blur);
-  backdrop-filter: var(--lg-blur);
-  border: 1px solid var(--lg-hairline);
-  box-shadow: var(--lg-glass-shadow-2);
+  border-radius: var(--ix-r-panel);
+  background: var(--ix-glass-temp);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  border: 1px solid var(--ix-hairline);
+  box-shadow: var(--ix-shadow-2);
 }
 
 /* ── 8. 控件按压：统一 80ms 下压 / 350ms 弹簧回弹，无发光 ── */
 html[data-app="1"] :where(.btn, button.primary, .qa-button, .chip, .tag) {
-  transition: transform var(--lg-dur-press) ease-out,
-    background var(--lg-dur-state) var(--lg-ease),
-    box-shadow var(--lg-dur-state) var(--lg-ease);
+  transition: transform var(--ix-dur-press) ease-out,
+    background var(--ix-dur-state) var(--ix-ease),
+    box-shadow var(--ix-dur-state) var(--ix-ease);
 }
 html[data-app="1"] :where(.btn, button.primary, .chip):active {
   transform: scale(0.97);
 }
 html[data-app="1"] .btn.primary,
 html[data-app="1"] button.primary {
-  border-radius: var(--lg-r-control);
+  border-radius: var(--ix-r-key);
   font-weight: 600;
 }
 /* 危险动作永远实色红，不随 accent */
 html[data-app="1"] :where(.btn.danger, .qa-button--danger) {
-  background: var(--lg-coral);
-  color: var(--qa-danger-ink);
+  background: var(--ix-danger);
+  color: var(--ix-danger-ink);
 }
 
 /* ── 9. 会话几何（UI kit）：气泡 20 · 锚角 6 + 工具图标标准化 ── */
@@ -293,22 +293,22 @@ html[data-app="1"] .chat-main .msg-daydivider span {
 
 /* ── 10. 表单输入（UI kit）：圆角 12 · 焦点 = 1.6px act 描边（1px 边框 + 0.6px 内衬合成） ── */
 html[data-app="1"] :where(.input, .textarea, .select, textarea, select) {
-  border-radius: var(--lg-r-control);
-  font-size: var(--lg-type-body);
-  color: var(--lg-ink);
-  background: var(--qa-surface);
-  border: 1px solid var(--lg-hairline);
+  border-radius: var(--ix-r-key);
+  font-size: var(--ix-type-body);
+  color: var(--ix-ink);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
   box-shadow: none;
-  transition: border-color var(--lg-dur-state) var(--lg-ease),
-    box-shadow var(--lg-dur-state) var(--lg-ease);
+  transition: border-color var(--ix-dur-state) var(--ix-ease),
+    box-shadow var(--ix-dur-state) var(--ix-ease);
 }
 html[data-app="1"] :where(.input, .textarea, .select, textarea, select):focus {
-  border-color: var(--lg-focus);
-  box-shadow: inset 0 0 0 0.6px var(--lg-focus);
+  border-color: var(--ix-focus);
+  box-shadow: inset 0 0 0 0.6px var(--ix-focus);
   outline: none;
 }
 html[data-app="1"] :where(.input, .textarea)::placeholder {
-  color: var(--lg-ink-3);
+  color: var(--ix-ink-3);
 }
 
 /* ── 11. 空态：静止插画 + 说明 + 单一 CTA（PNG 插槽见 .qa5-empty） ── */
@@ -316,26 +316,26 @@ html[data-app="1"] .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--lg-space-3);
-  padding: 44px var(--lg-space-6);
+  gap: var(--ix-space-3);
+  padding: 44px var(--ix-space-6);
   text-align: center;
-  color: var(--lg-ink-2);
+  color: var(--ix-ink-2);
 }
 html[data-app="1"] .empty .big {
-  font-size: var(--lg-type-section);
+  font-size: var(--ix-type-section);
   font-weight: 600;
-  color: var(--lg-ink);
+  color: var(--ix-ink);
 }
 html[data-app="1"] .qa5-empty-art {
   width: min(230px, 62vw);
   height: auto;
-  border-radius: var(--lg-r-card);
+  border-radius: var(--ix-r-card);
 }
 
 /* ── 12. 因果动效：入场一次性、跟随导航方向；减弱动效全撤 ── */
 html[data-app="1"] .route-fade.tab-pane .pane-enter {
-  animation-duration: var(--lg-dur-push);
-  animation-timing-function: var(--lg-ease);
+  animation-duration: var(--ix-dur-push);
+  animation-timing-function: var(--ix-ease);
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] :where(.btn, button.primary, .qa-button, .chip, .tag, .switch .track, .switch .track::after) {
@@ -347,12 +347,12 @@ html[data-app="1"] .route-fade.tab-pane .pane-enter {
 }
 
 /* ── 13. 创建面板语义 tone（P4 JSX 落 data-tone 后生效；缺省中性群青软底） ── */
-html[data-app="1"] .app-create-row[data-tone="indigo"] .ac-ic { background: var(--qa-semantic-indigo-soft); color: var(--lg-violet); }
-html[data-app="1"] .app-create-row[data-tone="gold"] .ac-ic { background: var(--qa-semantic-gold-soft); color: var(--lg-gold); }
-html[data-app="1"] .app-create-row[data-tone="coral"] .ac-ic { background: var(--qa-semantic-coral-soft); color: var(--lg-coral); }
-html[data-app="1"] .app-create-row[data-tone="blue"] .ac-ic { background: var(--qa-semantic-blue-soft); color: var(--lg-azure); }
-html[data-app="1"] .app-create-row[data-tone="rose"] .ac-ic { background: var(--qa-semantic-rose-soft); color: var(--lg-rose); }
-html[data-app="1"] .app-create-row[data-tone="success"] .ac-ic { background: var(--qa-success-soft); color: var(--lg-jade); }
+html[data-app="1"] .app-create-row[data-tone="indigo"] .ac-ic { background: var(--ix-act-soft); color: var(--ix-act); }
+html[data-app="1"] .app-create-row[data-tone="gold"] .ac-ic { background: var(--ix-gold-soft); color: var(--ix-gold); }
+html[data-app="1"] .app-create-row[data-tone="coral"] .ac-ic { background: var(--ix-danger-soft); color: var(--ix-danger); }
+html[data-app="1"] .app-create-row[data-tone="blue"] .ac-ic { background: var(--ix-dia-soft); color: var(--ix-dia); }
+html[data-app="1"] .app-create-row[data-tone="rose"] .ac-ic { background: var(--ix-danger-soft); color: var(--ix-danger); }
+html[data-app="1"] .app-create-row[data-tone="success"] .ac-ic { background: var(--ix-success-soft); color: var(--ix-success); }
 html[data-app="1"] .app-create-row .ac-ic {
   border-radius: 12px;
   box-shadow: none;
@@ -361,49 +361,27 @@ html[data-app="1"] .app-create-row .ac-ic {
 /* ── 14. 暗色对齐：材质/分隔/投影在墨色域中保持同一层级语言 ── */
 html[data-app="1"][data-theme="dark"] :where(.card, .set-card, .noti-item, .room-row, .gm-row,
   .friend-card, .wb-card, .script-card, .draw-tile, .lb-row) {
-  background: var(--qa-surface);
-  border-color: var(--lg-hairline);
-  box-shadow: var(--lg-glass-shadow-1);
+  background: var(--ix-surface);
+  border-color: var(--ix-hairline);
+  box-shadow: var(--ix-shadow-1);
 }
-/* 分段/开关的暗色形态由 --lg-glass-1/--lg-glass-sel/--lg-hairline 令牌自动翻转 */
+/* 分段/开关的暗色形态由 --ix-surface/--ix-surface/--ix-hairline 令牌自动翻转 */
 html[data-app="1"][data-theme="dark"] :where(.input, .textarea, .select, textarea, select) {
-  background: var(--qa-surface);
-  border-color: var(--lg-hairline);
+  background: var(--ix-surface);
+  border-color: var(--ix-hairline);
 }
-html[data-app="1"][data-theme="dark"] .qa-settings-root { background: var(--lg-canvas); }
+html[data-app="1"][data-theme="dark"] .qa-settings-root { background: var(--ix-canvas); }
 /* 组容器两主题一致透明：面材质只属于组内列表卡，标题后不留亮条 */
 html[data-app="1"][data-theme="dark"] .qa-settings-group {
   background: none;
   border-color: transparent;
 }
-html[data-app="1"][data-theme="dark"] .qa-settings-row:active { background: var(--lg-grouped); }
+html[data-app="1"][data-theme="dark"] .qa-settings-row:active { background: var(--ix-grouped); }
 
 /* 加载图标旋转（状态循环，随加载态出现与消失） */
 html[data-app="1"] .qa5-spin { animation: qa5Spin 0.9s linear infinite; }
 @keyframes qa5Spin { to { transform: rotate(360deg); } }
 
-/* ── 15. SVIP 卡织纹材质（PNG 内容媒体，叠加于测试钉住的实体底色之上） ── */
-html[data-app="1"] .qa-vip .vm-card {
-  position: relative;
-  overflow: hidden;
-}
-html[data-app="1"] .qa-vip .vm-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: url('../assets/app/qa5-vip-weave@2x.png');
-  background-size: cover;
-  opacity: 0.5;
-  border-radius: inherit;
-}
-html[data-app="1"] .qa-vip .vm-card > * { position: relative; z-index: 1; }
-
-/* ── 16. 会话输入栏：整栏全玻璃悬浮岛（覆盖 v3 的全宽拍平方案） ──
-   v3 曾把外层 composer 拍平为全宽渐变承托、玻璃内收到小岛；按产品决策
-   恢复「整栏悬浮玻璃」：外层是唯一玻璃层（chrome 档材质），内岛转透明
-   （单层玻璃原则）。lite 档由 --qa-glass-* 令牌自动回落不透明无 blur。 */
 html[data-app="1"] .chat-main .chat-input-bar,
 html[data-app="1"] .chat-main.has-bg .chat-input-bar,
 html[data-app="1"] .qa-chat-main .qa-chat-composer.chat-input-bar,
@@ -412,12 +390,12 @@ html[data-app="1"] .qa-chat-main.has-bg .qa-chat-composer.chat-input-bar {
   right: 10px !important;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
   padding: 10px !important;
-  border: 1px solid var(--lg-hairline) !important;
+  border: 1px solid var(--ix-hairline) !important;
   border-radius: 26px !important;
-  background: var(--qa-glass-chrome-bg) !important;
-  -webkit-backdrop-filter: var(--lg-blur) !important;
-  backdrop-filter: var(--lg-blur) !important;
-  box-shadow: var(--qa-glass-specular), 0 14px 40px rgb(12 16 24 / 20%) !important;
+  background: var(--ix-glass-nav) !important;
+  -webkit-backdrop-filter: var(--ix-blur) !important;
+  backdrop-filter: var(--ix-blur) !important;
+  box-shadow: var(--ix-shadow-1), 0 14px 40px rgb(12 16 24 / 20%) !important;
 }
 /* 沉浸立绘语境：墨色玻璃 tint（浅玻璃压在暗立绘上会发奶白） */
 html[data-app="1"] .qa-chat-main.has-bg .qa-chat-composer.chat-input-bar,
@@ -430,13 +408,13 @@ html[data-app="1"][data-perf="lite"] .qa-chat-main.has-bg .qa-chat-composer.chat
 html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar {
   background: rgb(23 27 34 / 96%) !important;
 }
-/* 内层输入位（UI kit）：普通 inset —— --lg-glass-1 淡染 + 发丝内衬 r19，
+/* 内层输入位（UI kit）：普通 inset —— --ix-surface 淡染 + 发丝内衬 r19，
    不叠第二层玻璃（无 blur）；玻璃只有外层岛一层 */
 html[data-app="1"] .qa-chat-main .qa-chat-input-island.box,
 html[data-app="1"] .qa-chat-main.has-bg .qa-chat-input-island.box,
 html[data-app="1"] .chat-main .chat-input-bar .box {
-  background: var(--lg-glass-1) !important;
-  border: 1px solid var(--lg-hairline) !important;
+  background: var(--ix-surface) !important;
+  border: 1px solid var(--ix-hairline) !important;
   border-radius: 19px !important;
   box-shadow: none !important;
   -webkit-backdrop-filter: none !important;
@@ -450,6 +428,6 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
 /* 焦点 = 1.6px act 描边（1px 边框 + 0.6px 内衬合成，同表单契约） */
 html[data-app="1"] .qa-chat-main .qa-chat-input-island.box:focus-within,
 html[data-app="1"] .chat-main .chat-input-bar .box:focus-within {
-  border-color: var(--lg-focus) !important;
-  box-shadow: inset 0 0 0 0.6px var(--lg-focus) !important;
+  border-color: var(--ix-focus) !important;
+  box-shadow: inset 0 0 0 0.6px var(--ix-focus) !important;
 }

@@ -15,15 +15,15 @@ import { isAppMode } from '../appmode.js';
 import { AppEmptyArt } from '../art.jsx';
 import { Send, ArrowLeft, Users, LogOut, MessageCircle, X } from 'lucide-react';
 
-// 曜光玻璃 s09：发言人名固定内容语义色 —— 按成员 id 稳定散列到
-// 蓝/紫/金/玉（--lg-azure/violet/gold/jade，见 app-lumen-s4.css）。
-// 禁 nth 位次配色：同一成员在任何会话、任何排序下颜色恒定。
-const LG_NAME_TONES = ['azure', 'violet', 'gold', 'jade'];
-function lgNameTone(id) {
+// 仪与匣：发言人名固定内容语义色 —— 按成员 id 稳定散列到
+// act/dia/gold/success。禁止按列表位置配色：同一成员在任何会话、
+// 任何排序下颜色恒定；Web 分支不落该属性。
+const IX_NAME_TONES = ['act', 'dia', 'gold', 'success'];
+function ixNameTone(id) {
   const s = String(id ?? '');
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return LG_NAME_TONES[h % LG_NAME_TONES.length];
+  return IX_NAME_TONES[h % IX_NAME_TONES.length];
 }
 
 export default function GroupRoom() {
@@ -253,8 +253,8 @@ export default function GroupRoom() {
               <div key={key} className={'msg group-message ' + (mine ? 'user' : 'assistant')}>
                 <Avatar src={av} name={nm} size={36} />
                 <div className="group-message-body">
-                  {/* data-lg-tone 仅 App 壳落 DOM：Web（?app=0）保持零差异 */}
-                  <div className="who" data-lg-tone={app ? lgNameTone(m.user_id) : undefined}>{nm}</div>
+                  {/* data-ix-tone 仅 App 壳落 DOM：Web（?app=0）保持零差异 */}
+                  <div className="who" data-ix-tone={app ? ixNameTone(m.user_id) : undefined}>{nm}</div>
                   <div
                     className="bubble"
                     id={app ? 'grm-' + key : undefined}

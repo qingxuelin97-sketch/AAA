@@ -1,9 +1,9 @@
 /* Native App final material/performance layer. Never affects the web UI. */
 html[data-app="1"] {
-  --app-ink: var(--lg-act);
-  --app-cyan: color-mix(in oklab, var(--lg-act) 82%, #ffffff);
-  --app-coral: var(--lg-coral);
-  --app-gold: var(--lg-gold);
+  --app-ink: var(--ix-act);
+  --app-cyan: color-mix(in oklab, var(--ix-act) 82%, #ffffff);
+  --app-coral: var(--ix-danger);
+  --app-gold: var(--ix-gold);
   --app-depth-border: color-mix(in srgb, var(--text) 10%, var(--border));
   --app-depth-shadow: 0 1px 0 rgba(255,255,255,0.72) inset,
     0 5px 14px rgba(15,18,26,0.06), 0 18px 42px rgba(15,18,26,0.06);
@@ -34,8 +34,8 @@ html[data-app="1"][data-theme="dark"] {
     0 7px 18px rgba(0,0,0,0.25), 0 22px 48px rgba(0,0,0,0.20);
   --app-depth-shadow-raised: 0 1px 0 rgba(255,255,255,0.08) inset,
     0 10px 24px rgba(0,0,0,0.32), 0 28px 62px rgba(0,0,0,0.26);
-  --app-surface: var(--qa-surface, #161a20);
-  --app-surface-raised: var(--qa-surface-raised, #1d222a);
+  --app-surface: var(--ix-surface, #161a20);
+  --app-surface-raised: var(--ix-raise, #1d222a);
 }
 
 /* Static depth is cheaper and clearer than stacking translucent blur layers. */
@@ -60,13 +60,13 @@ html[data-app="1"][data-theme="dark"] :where(.input, textarea, select, .chat-inp
   box-shadow: 0 1px 0 rgba(255,255,255,0.045) inset, 0 3px 9px rgba(0,0,0,0.22) inset;
 }
 html[data-app="1"] :where(.btn.primary, .send-btn) {
-  background: var(--lg-act, var(--app-ink));
+  background: var(--ix-act, var(--app-ink));
   box-shadow: 0 1px 0 rgba(255,255,255,0.20) inset, 0 6px 16px rgba(29,95,219,0.20);
 }
 html[data-app="1"] .section-title::before {
   content: '';
   width: 4px; height: 1.05em; border-radius: 999px;
-  background: var(--lg-act, var(--app-ink));
+  background: var(--ix-act, var(--app-ink));
 }
 html[data-app="1"] :where(.badge, .tag, .gm-owner) {
   border-color: color-mix(in srgb, var(--app-coral) 24%, var(--border));
@@ -99,10 +99,10 @@ html[data-app="1"][data-perf="balanced"] .msg.user .bubble::before {
 /* Liuli：balanced 保留 chrome 层真玻璃（Dock/顶栏/分类条是导航材质，
    内容卡才是被剥掉 blur 的对象）。lite 由 tokens 的 lite 块回落不透明。 */
 html[data-app="1"][data-perf="balanced"] :where(.app-tabbar, .topbar, .tabs-bar, .cat-bar) {
-  background: var(--qa-glass-chrome-bg) !important;
-  -webkit-backdrop-filter: var(--lg-blur);
-  backdrop-filter: var(--lg-blur);
-  box-shadow: 0 -1px 0 var(--lg-hairline) inset;
+  background: var(--ix-glass-nav) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  box-shadow: 0 -1px 0 var(--ix-hairline) inset;
 }
 
 /* Group chat has its own two-sided conversation geometry. The old page placed
@@ -131,7 +131,7 @@ html[data-app="1"] .group-thread .group-message.assistant .bubble {
   border: 1px solid var(--app-depth-border);
 }
 html[data-app="1"] .group-thread .group-message.user .bubble {
-  background: var(--lg-act, #1d5fdb);
+  background: var(--ix-act, #1d5fdb);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -163,7 +163,7 @@ html[data-app="1"] .app-bootstrap-mark {
   color: #fff;
   background: var(--accent);
   box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 28%, transparent);
-  font: 700 24px/1 var(--lg-font-ui, var(--sans));
+  font: 700 24px/1 var(--ix-font-ui, var(--sans));
 }
 html[data-app="1"] :where(.app-bootstrap, .app-route-loading, .app-session-recovery) small,
 html[data-app="1"] .app-session-recovery p { max-width: 320px; color: var(--faint); font-size: 13px; }
@@ -239,12 +239,12 @@ html[data-app="1"] .vm-plans { padding-top: 12px; }
    every blur and returns to an opaque surface with unchanged hierarchy. */
 html[data-app="1"] .app-tabbar,
 html[data-app="1"][data-perf="balanced"] .app-tabbar {
-  background: var(--qa-glass-chrome-bg) !important;
-  -webkit-backdrop-filter: var(--lg-blur);
-  backdrop-filter: var(--lg-blur);
+  background: var(--ix-glass-nav) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
 }
 html[data-app="1"][data-perf="lite"] .app-tabbar {
-  background: var(--qa-surface) !important;
+  background: var(--ix-surface) !important;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }

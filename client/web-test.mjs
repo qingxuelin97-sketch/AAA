@@ -103,13 +103,18 @@ for (const decl of [
   ok(tokensCss.includes(decl), `web tokens must carry the frozen value verbatim: "${decl}"`);
 }
 
-/* ---- 4. accent 奇偶校验：dusk/teal/forest/amber 有块且值同 App 别名；rose/clay 无块 ---- */
-const appMaterials = await read('./src/styles/app-lumen-materials.css');
-for (const id of ['teal', 'dusk', 'forest', 'amber']) {
-  const appLine = appMaterials.match(new RegExp(`data-accent="${id}"\\]\\s*\\{([^}]+)\\}`));
+/* ---- 4. Web 强调色保持冻结 Lumen 值；IX App 使用独立色板 ---- */
+const frozenAccentAliases = new Map([
+  ['teal', 'azure'],
+  ['dusk', 'violet'],
+  ['forest', 'jade'],
+  ['amber', 'clay'],
+]);
+for (const [id, frozenId] of frozenAccentAliases) {
+  const frozenLine = handoff.match(new RegExp(`html\\[data-app="1"\\]\\[data-accent="${frozenId}"\\]\\s*\\{([^}]+)\\}`));
   const webLine = tokensCss.match(new RegExp(`html:not\\(\\[data-app="1"\\]\\)\\[data-accent="${id}"\\]\\s*\\{([^}]+)\\}`));
-  ok(appLine && webLine, `accent "${id}" must exist on both shells`);
-  equal(webLine[1].trim(), appLine[1].trim(), `accent "${id}" light values must mirror the App alias verbatim`);
+  ok(frozenLine && webLine, `Web accent "${id}" and frozen Lumen alias "${frozenId}" must both exist`);
+  equal(webLine[1].trim(), frozenLine[1].trim(), `Web accent "${id}" must preserve its frozen Lumen values`);
 }
 doesNotMatch(tokensCss, /data-accent="rose"/, 'rose is a content semantic — it must fall back to the iris baseline (no block)');
 doesNotMatch(tokensCss, /data-accent="clay"/, 'clay is the unset baseline (no attribute is stamped) — a block would be dead code hiding drift');
@@ -181,7 +186,8 @@ for (const to of ['/discover', '/messages', '/vip']) {
   ok(layoutSource.includes(`'${to}'`) || layoutSource.includes(`"${to}"`), `the web sidebar must link ${to}`);
 }
 const themeSource = await read('./src/theme.js');
-match(themeSource, /'#0A0C12' : '#EDEFF6'/, 'web meta theme-color must ride the Lumen canvas');
+match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#E8EBE9' : '#EDEFF6'/,
+  'the Web branch of the dual-shell meta theme-color must retain the Lumen canvas');
 doesNotMatch(themeSource, /#f4f2ec|#15120e/, 'the retired warm meta colors must not linger');
 const indexHtml = await read('../client/index.html');
 match(indexHtml, /<meta name="theme-color" content="#EDEFF6" \/>/, 'index.html must boot on the Lumen canvas color');

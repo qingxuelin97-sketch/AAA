@@ -728,7 +728,7 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
 }
 /* 聚焦反馈只留极弱的边框变化 —— 青蓝描边+3px 外发光是真机反馈的"蓝框"之一 */
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box:focus-within {
-  border-color: rgba(122, 165, 255, 0.30);
+  border-color: color-mix(in srgb, var(--ix-focus) 30%, transparent);
   box-shadow: var(--hy-cg-sh);
 }
 html[data-app="1"] .chat-main.has-bg .send-btn:not(.stop) {
@@ -935,7 +935,7 @@ html[data-app="1"] .app-create-row { border-radius: 18px; transition: transform 
 html[data-app="1"] .app-create-row:active { transform: scale(0.97); background: var(--bg-2); }
 html[data-app="1"] .ac-ic { border-radius: 15px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 5px 14px rgba(13,74,88,0.12); }
 /* Liuli v5：创建面板图标不再按位置染彩虹；语义 tone 由 JSX data-tone + 后层规则表达。 */
-html[data-app="1"] .app-create-row .ac-ic { background: var(--lg-act-soft); color: var(--lg-act); box-shadow: none; }
+html[data-app="1"] .app-create-row .ac-ic { background: var(--ix-act-soft); color: var(--ix-act); box-shadow: none; }
 
 /* ---- 今日页：问候卡资产行玻璃胶囊 + 签到连击徽章 ---- */
 html[data-app="1"] .ah-coin { border-radius: 999px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -1661,37 +1661,37 @@ html[data-app="1"] .feed-card:not(.cur) .fd2-call { background: rgba(255,255,255
 
 /* —— 1. 设计 tokens：Liuli 群青 accent 设为 App 默认 + 瓷白中性底 ——
    注意：html[data-app="1"] 特异性 (0,1,1) 恒压过全站 [data-accent] (0,1,0)，
-   因此 App 内的遗留 --accent 家族始终由本块钉住（qa-* 控件走 --qa-action-*）。 */
+   因此 App 内的遗留 --accent 家族始终由本块钉住（qa-* 控件走 IX action tokens）。 */
 html[data-app="1"] {
-  --accent: var(--lg-act);
-  --accent-2: color-mix(in oklab, var(--lg-act) 82%, #ffffff);
-  --accent-soft: var(--lg-act-soft);
-  --accent-ring: var(--lg-act-soft);
-  --grad: linear-gradient(135deg, color-mix(in oklab, var(--lg-act) 82%, #ffffff), var(--lg-act));
-  --dusk: var(--lg-violet);
+  --accent: var(--ix-act);
+  --accent-2: color-mix(in oklab, var(--ix-act) 82%, #ffffff);
+  --accent-soft: var(--ix-act-soft);
+  --accent-ring: var(--ix-act-soft);
+  --grad: linear-gradient(135deg, color-mix(in oklab, var(--ix-act) 82%, #ffffff), var(--ix-act));
+  --dusk: var(--ix-act);
   /* 中性墨字与光晕画布底 */
-  --text: var(--lg-ink);
-  --muted: var(--lg-ink-2);
-  --faint: var(--lg-ink-3);
-  --bg: var(--lg-canvas);
-  --bg-2: var(--lg-grouped);
-  --border: var(--lg-hairline);
-  --border-2: color-mix(in srgb, var(--lg-ink) 16%, transparent);
+  --text: var(--ix-ink);
+  --muted: var(--ix-ink-2);
+  --faint: var(--ix-ink-3);
+  --bg: var(--ix-canvas);
+  --bg-2: var(--ix-grouped);
+  --border: var(--ix-hairline);
+  --border-2: color-mix(in srgb, var(--ix-ink) 16%, transparent);
   /* 标题优先真衬线（已在 main.jsx 加载 500/600/700） */
   --serif: "Noto Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
   /* —— 设计玻璃配方变量（--hyd- 前缀，避开既有 --hy-glass-*）—— */
-  --hyd-mist: linear-gradient(135deg, var(--lg-act-soft), var(--lg-act-soft));
-  --hyd-chip: var(--lg-act-soft);
-  --hyd-coral: var(--lg-coral);
+  --hyd-mist: linear-gradient(135deg, var(--ix-act-soft), var(--ix-act-soft));
+  --hyd-chip: var(--ix-act-soft);
+  --hyd-coral: var(--ix-danger);
   --hyd-gold-a: #F0D488; --hyd-gold-b: #D2A64A; --hyd-gold-ink: #7A5A16;
   --hyd-r-card: 22px;
-  --hyd-btn-sh: 0 1px 2px rgb(18 24 44 / 8%), 0 6px 16px color-mix(in srgb, var(--lg-act) 22%, transparent);
-  --hyd-badge-sh: 0 2px 8px color-mix(in srgb, var(--lg-act) 18%, transparent);
+  --hyd-btn-sh: 0 1px 2px rgb(18 24 44 / 8%), 0 6px 16px color-mix(in srgb, var(--ix-act) 22%, transparent);
+  --hyd-badge-sh: 0 2px 8px color-mix(in srgb, var(--ix-act) 18%, transparent);
 }
 
 /* —— 2. 页面底：瓷白（浅色屏），沉浸页各自覆盖 —— */
-html[data-app="1"] body { background: var(--lg-canvas); }
-html[data-app="1"] .app-root { background-color: var(--lg-canvas); background-image: var(--lg-ambient); background-attachment: fixed; }
+html[data-app="1"] body { background: var(--ix-canvas); }
+html[data-app="1"] .app-root { background-color: var(--ix-canvas); background-image: var(--ix-ambient-none); background-attachment: fixed; }
 
 /* —— 3. 标准玻璃卡：列表 / 信息卡 / 面板 / 弹层 ——
    玻璃分两级（对话页气泡早已走过同样的收敛，列表页这次补课）：
@@ -2045,7 +2045,7 @@ html[data-app="1"] :where(.input, .textarea, .select):focus {
 
 /* —— 设置：青色胶囊玻璃开关（分组卡已由 .card 白名单成玻璃）—— */
 html[data-app="1"] .switch input:checked + .track {
-  background: var(--lg-act, var(--accent)); box-shadow: 0 3px 8px rgba(29,95,219,0.28);
+  background: var(--ix-act, var(--accent)); box-shadow: 0 3px 8px rgba(29,95,219,0.28);
 }
 
 /* —— 角色详情（cvx 沉浸态）：图标/收藏统一青色，去除杂色 —— */
@@ -2111,7 +2111,7 @@ html[data-app="1"] .app-savebar {
   display: flex; align-items: center; justify-content: flex-end; gap: 14px;
   padding: 10px 16px;
   background: color-mix(in srgb, var(--panel) 94%, transparent);
-  border-top: 1px solid var(--gl-border);
+  border-top: 1px solid var(--ix-hairline);
   box-shadow: 0 -8px 30px rgba(0,0,0,0.10);
 }
 html[data-app="1"] .app-savebar .btn.primary { flex: 1; max-width: 260px; height: 46px; border-radius: 999px; font-size: 15.5px; }
@@ -2122,7 +2122,7 @@ html[data-app="1"] .editor-grid { padding-bottom: 84px; }
 html[data-app="1"] .cat-chip {
   border-radius: 999px; padding: 7px 14px; font-size: 13.5px; font-weight: 600;
   background: color-mix(in srgb, var(--panel) 82%, transparent);
-  border: 1px solid var(--gl-border);
+  border: 1px solid var(--ix-hairline);
   transition: transform 0.15s var(--hy-spring), background 0.2s, color 0.2s;
 }
 html[data-app="1"] .cat-chip.active {
@@ -2137,5 +2137,5 @@ html[data-app="1"] .tag.tag-link { border-radius: 999px; padding: 4px 11px; }
 /* ---- ④ 阅读器/工作台头条玻璃化（与 app 其余 chrome 一致的材质） ---- */
 html[data-app="1"] .atl-read-bar, html[data-app="1"] .atl-ws-head {
   background: color-mix(in srgb, var(--panel) 92%, transparent);
-  border-bottom: 1px solid var(--gl-border);
+  border-bottom: 1px solid var(--ix-hairline);
 }

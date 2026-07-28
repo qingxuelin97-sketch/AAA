@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#0C0D11}
+a{color:#C8CBD8}a:hover{color:#fff}
+</style>
+</helmet>
+<div style="font-family:'Noto Sans SC','PingFang SC',sans-serif;background:#0C0D11;color:#ECEDF2;padding:56px 40px 100px;-webkit-font-smoothing:antialiased">
+  <div style="max-width:1420px;margin:0 auto">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.22em;color:#8A8FA3">仪与匣 · UI-KIT · 逐组件 × 逐状态 · 全部取值 = design-tokens.css</div>
+    <h1 style="margin:14px 0 0;font-size:28px;font-weight:700;color:#F4F5F9">组件契约</h1>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(620px,1fr));gap:20px;margin-top:24px">
+
+      <!-- ═══ 浅色列 ═══ -->
+      <div data-screen-label="UI-KIT 浅色" style="background:#E8EBE9;border-radius:16px;padding:24px;color:#181D1B;box-shadow:inset 0 0 0 1px rgb(255 255 255/30%)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:700">浅色 · 铝白面板</span><span style="font:600 10px 'JetBrains Mono',monospace;color:#87918B">:root</span></div>
+
+        <div style="margin:20px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#566059">01 按钮 BUTTON · 44H / 提交 48H</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#0E7263;color:#F6F8F7;display:flex;align-items:center;font-size:14px;font-weight:700;box-shadow:inset 0 1px 0 rgb(255 255 255/25%)">主按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">默认</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#0C6356;color:#F6F8F7;display:flex;align-items:center;font-size:14px;font-weight:700;box-shadow:inset 0 1px 3px rgb(0 0 0/28%);transform:translateY(1px)">主按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">按压 · 下沉1px</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#0E7263;color:#F6F8F7;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700"><span style="width:14px;height:14px;border-radius:99px;border:2px solid rgb(255 255 255/35%);border-top-color:#F6F8F7"></span>保存中</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">loading · 原宽</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#0E7263;color:#F6F8F7;display:flex;align-items:center;font-size:14px;font-weight:700;opacity:.55">主按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">禁用 · 附原因文案</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#0E7263;color:#F6F8F7;display:flex;align-items:center;font-size:14px;font-weight:700;box-shadow:0 0 0 2px #E8EBE9,0 0 0 4px #0E7263">主按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">焦点环</div></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin-top:12px">
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#F6F8F7;color:#181D1B;display:flex;align-items:center;font-size:14px;font-weight:600;box-shadow:inset 0 1px 0 rgb(255 255 255/80%),inset 0 0 0 1px rgb(24 29 27/12%),0 1px 2px rgb(24 29 27/6%)">次按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">secondary 键帽</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#F6F8F7;color:#181D1B;display:flex;align-items:center;font-size:14px;font-weight:600;box-shadow:inset 0 1px 3px rgb(24 29 27/22%);transform:translateY(1px)">次按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">按压</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 10px;display:flex;align-items:center;font-size:14px;font-weight:700;color:#0E7263">弱按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">tertiary 文字</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;color:#B03427;display:flex;align-items:center;font-size:14px;font-weight:700;box-shadow:inset 0 0 0 1.5px #B03427">删除</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">danger 描边</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#B03427;color:#fff;display:flex;align-items:center;font-size:14px;font-weight:700">确认删除</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">danger 确认后实底</div></div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#566059">02 图标按钮 · 分段 · 输入 · 拨杆</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+          <span style="width:44px;height:44px;border-radius:99px;display:grid;place-items:center;color:#566059;font-size:20px;font-weight:300">＋</span>
+          <span style="width:44px;height:44px;border-radius:99px;background:#F6F8F7;box-shadow:inset 0 1px 0 rgb(255 255 255/80%),inset 0 0 0 1px rgb(24 29 27/12%);display:grid;place-items:center;color:#566059;font-size:20px;font-weight:300">＋</span>
+          <span style="width:44px;height:44px;border-radius:99px;background:#0E7263;color:#F6F8F7;display:grid;place-items:center;font-size:20px;font-weight:300">＋</span>
+          <span style="display:flex;background:#DCE1DE;border-radius:999px;padding:3px"><span style="height:30px;line-height:30px;padding:0 16px;border-radius:999px;background:#F6F8F7;box-shadow:inset 0 1px 0 rgb(255 255 255/80%),inset 0 0 0 1px rgb(24 29 27/10%);font-size:12.5px;font-weight:700">推荐</span><span style="height:30px;line-height:30px;padding:0 16px;font-size:12.5px;color:#566059">新作</span></span>
+          <span style="width:52px;height:28px;border-radius:8px;background:#DCE1DE;box-shadow:inset 0 1px 2px rgb(24 29 27/14%);position:relative;display:inline-block"><span style="position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:6px;background:#F6F8F7;box-shadow:0 1px 2px rgb(24 29 27/20%)"></span></span>
+          <span style="width:52px;height:28px;border-radius:8px;background:#0E7263;position:relative;display:inline-block"><span style="position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:6px;background:#F6F8F7;display:grid;place-items:center"><span style="width:5px;height:5px;border-radius:99px;background:#0E7263;box-shadow:0 0 3px #0E7263"></span></span></span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <div style="flex:1;min-width:150px"><div style="height:44px;border-radius:8px;background:#E8EBE9;box-shadow:inset 0 2px 6px rgb(24 29 27/14%);display:flex;align-items:center;padding:0 12px;font-size:13px;color:#87918B">角色名称…</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">输入 · inset 表窗</div></div>
+          <div style="flex:1;min-width:150px"><div style="height:44px;border-radius:8px;background:#E8EBE9;box-shadow:inset 0 2px 6px rgb(24 29 27/14%),0 0 0 2px #E8EBE9,0 0 0 4px #0E7263;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#181D1B">临渊</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:5px">focus</div></div>
+          <div style="flex:1;min-width:150px"><div style="height:44px;border-radius:8px;background:#E8EBE9;box-shadow:inset 0 2px 6px rgb(24 29 27/14%),inset 0 0 0 1.5px #B03427;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#181D1B">临</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#B03427;margin-top:5px">error · 至少 2 字</div></div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#566059">03 列表行 56 · 会话行 72</div>
+        <div style="background:#F6F8F7;border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/80%),inset 0 0 0 1px rgb(24 29 27/10%),0 1px 2px rgb(24 29 27/6%);padding:0 14px">
+          <div style="display:flex;align-items:center;gap:12px;height:56px"><span style="width:30px;height:30px;border-radius:8px;background:rgb(14 114 99/10%);display:grid;place-items:center"><span style="width:12px;height:12px;border:1.5px solid #0E7263;border-radius:99px;display:block"></span></span><span style="flex:1;font-size:14px;font-weight:600">通知设置</span><span style="font-size:12.5px;color:#87918B">每日 21:00</span><span style="color:#87918B">›</span></div>
+          <div style="display:flex;align-items:center;gap:12px;height:72px;border-top:1px solid rgb(24 29 27/10%)"><span style="width:44px;height:44px;border-radius:99px;background:repeating-linear-gradient(135deg,#D9CDBB 0 5px,#CFC2AE 5px 10px);position:relative;flex:0 0 auto"><span style="position:absolute;right:0;bottom:0;width:9px;height:9px;border-radius:99px;background:#2E7C3F;box-shadow:0 0 0 2px #F6F8F7"></span></span><div style="flex:1;min-width:0"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:15px;font-weight:700">临渊</span><span style="font-size:9px;font-weight:700;color:#0E7263;background:rgb(14 114 99/10%);border-radius:4px;padding:1.5px 5px">顶</span></div><div style="font-size:12.5px;color:#87918B;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">「今晚的星象，有点不寻常。」</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span style="font:600 10.5px 'JetBrains Mono',monospace;color:#87918B">21:52</span><span style="min-width:18px;height:18px;border-radius:99px;background:#D6452C;color:#fff;font:700 11px/18px 'JetBrains Mono',monospace;text-align:center;padding:0 5px;box-sizing:border-box">3</span></div></div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#566059">04 聊天气泡 · TOAST</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:8px;align-items:flex-end"><span style="width:28px;height:28px;border-radius:99px;background:repeating-linear-gradient(135deg,#D9CDBB 0 4px,#CFC2AE 4px 8px)"></span><div style="max-width:70%;background:#F6F8F7;border-radius:10px 10px 10px 4px;box-shadow:inset 0 1px 0 rgb(255 255 255/80%),inset 0 0 0 1px rgb(24 29 27/10%);padding:10px 13px"><div style="font-size:14px;line-height:1.7">「你来了。」<div style="font-size:12.5px;color:#87918B;font-style:italic;margin-top:4px">他合上手账。</div></div></div></div>
+          <div style="align-self:flex-end;max-width:70%;background:#0E7263;color:#F6F8F7;border-radius:10px 10px 4px 10px;padding:10px 13px;font-size:14px">带我看看猎户座。</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="background:#FDFEFD;border-radius:10px;box-shadow:inset 0 0 0 1px rgb(24 29 27/10%),0 10px 28px rgb(24 29 27/16%);padding:10px 16px;display:flex;align-items:center;gap:10px"><span style="width:6px;height:6px;border-radius:99px;background:#2E7C3F;box-shadow:0 0 3px #2E7C3F"></span><span style="font-size:13px;font-weight:600">已保存草稿</span></div>
+            <div style="background:#FDFEFD;border-radius:10px;box-shadow:inset 0 0 0 1px rgb(24 29 27/10%),0 10px 28px rgb(24 29 27/16%);padding:10px 16px;display:flex;align-items:center;gap:10px"><span style="width:6px;height:6px;border-radius:99px;background:#B03427;box-shadow:0 0 3px #B03427"></span><span style="font-size:13px;font-weight:600">发送失败 · 网络中断</span><span style="font-size:12.5px;font-weight:700;color:#0E7263">重试</span></div>
+          </div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#566059">05 SHEET · 长按菜单（玻璃临时层）</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+          <div style="flex:1.4;min-width:230px;background:rgb(250 252 251/88%);backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%);border-radius:14px 14px 0 0;box-shadow:inset 0 1px 0 rgb(255 255 255/85%),inset 0 0 0 1px rgb(24 29 27/10%),0 -10px 28px rgb(24 29 27/16%);padding:8px 16px 14px"><div style="width:36px;height:4px;border-radius:99px;background:rgb(24 29 27/20%);margin:4px auto 10px"></div><div style="font-size:15px;font-weight:700">确认购买《雾都疑云》</div><div style="font-size:12.5px;color:#566059;margin-top:4px">支付 600 金币 · 30 分钟内可退</div><div style="display:flex;gap:8px;margin-top:12px"><span style="flex:1;height:44px;border-radius:8px;background:#F6F8F7;box-shadow:inset 0 0 0 1px rgb(24 29 27/12%);display:grid;place-items:center;font-size:13.5px;font-weight:600">取消</span><span style="flex:1;height:44px;border-radius:8px;background:#0E7263;color:#F6F8F7;display:grid;place-items:center;font-size:13.5px;font-weight:700">支付 600</span></div></div>
+          <div style="width:180px;background:rgb(250 252 751/88%);background:rgb(250 252 251/88%);backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%);border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/85%),inset 0 0 0 1px rgb(24 29 27/10%),0 10px 28px rgb(24 29 27/16%);padding:4px"><div style="height:42px;display:flex;align-items:center;padding:0 12px;font-size:13.5px;font-weight:600;border-radius:6px">置顶会话</div><div style="height:42px;display:flex;align-items:center;padding:0 12px;font-size:13.5px;font-weight:600;border-top:1px solid rgb(24 29 27/8%)">免打扰</div><div style="height:42px;display:flex;align-items:center;padding:0 12px;font-size:13.5px;font-weight:700;color:#B03427;border-top:1px solid rgb(24 29 27/8%)">删除会话</div></div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#566059">06 日历格四态 · 周报条形 · 奖章 · 印章</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+          <div style="display:flex;gap:6px"><span style="width:38px;height:38px;border-radius:8px;background:#0E7263;display:grid;place-items:center;font:600 11px 'JetBrains Mono',monospace;color:#F6F8F7">12</span><span style="width:38px;height:38px;border-radius:8px;box-shadow:inset 0 0 0 1.5px #0E7263;display:grid;place-items:center;font:700 11px 'JetBrains Mono',monospace;color:#0E7263">27</span><span style="width:38px;height:38px;border-radius:8px;background:#DCE1DE;display:grid;place-items:center;font:600 11px 'JetBrains Mono',monospace;color:#87918B">5</span><span style="width:38px;height:38px;border-radius:8px;display:grid;place-items:center;font:600 11px 'JetBrains Mono',monospace;color:#87918B">30</span></div>
+          <div style="display:flex;align-items:flex-end;gap:5px;height:44px"><span style="width:12px;height:16px;background:rgb(14 114 99/30%);border-radius:3px 3px 0 0"></span><span style="width:12px;height:28px;background:rgb(14 114 99/30%);border-radius:3px 3px 0 0"></span><span style="width:12px;height:20px;background:rgb(14 114 99/30%);border-radius:3px 3px 0 0"></span><span style="width:12px;height:38px;background:#0E7263;border-radius:3px 3px 0 0"></span></div>
+          <div style="display:flex;gap:8px"><span style="width:34px;height:34px;border-radius:999px;background:radial-gradient(circle at 35% 30%,#F6DFA0,#D9A93F 55%,#A67818);box-shadow:inset 0 0 0 1.5px rgb(255 255 255/45%)"></span><span style="width:34px;height:34px;border-radius:999px;background:radial-gradient(circle at 35% 30%,#F3F6F8,#C4CDD3 55%,#8D989F);box-shadow:inset 0 0 0 1.5px rgb(255 255 255/55%)"></span><span style="width:34px;height:34px;border-radius:999px;background:radial-gradient(circle at 35% 30%,#EBC09A,#C68B57 55%,#8F5B2E);box-shadow:inset 0 0 0 1.5px rgb(255 255 255/40%)"></span></div>
+          <div style="display:flex;gap:8px">
+            <svg width="44" height="44" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="41" fill="#C68B57" stroke="#8F5B2E" stroke-width="3"></circle><circle cx="60" cy="60" r="6" fill="#8F5B2E"></circle></svg>
+            <svg width="44" height="44" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="41" fill="#C4CDD3" stroke="#8D989F" stroke-width="3"></circle><circle cx="60" cy="60" r="31" stroke="#8D989F" stroke-width="2"></circle><circle cx="60" cy="60" r="6" fill="#8D989F"></circle><line x1="60" y1="44" x2="60" y2="52" stroke="#8D989F" stroke-width="3" stroke-linecap="round"></line><line x1="60" y1="68" x2="60" y2="76" stroke="#8D989F" stroke-width="3" stroke-linecap="round"></line><line x1="44" y1="60" x2="52" y2="60" stroke="#8D989F" stroke-width="3" stroke-linecap="round"></line><line x1="68" y1="60" x2="76" y2="60" stroke="#8D989F" stroke-width="3" stroke-linecap="round"></line></svg>
+            <svg width="44" height="44" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="47" stroke="#8A600A" stroke-width="3" stroke-dasharray="2 3.5"></circle><circle cx="60" cy="60" r="41" fill="#E0A83E" stroke="#8A600A" stroke-width="3"></circle><circle cx="60" cy="60" r="31" stroke="#8A600A" stroke-width="2"></circle><circle cx="60" cy="60" r="6" fill="#8A600A"></circle><line x1="60" y1="40" x2="60" y2="50" stroke="#8A600A" stroke-width="3" stroke-linecap="round"></line><line x1="60" y1="70" x2="60" y2="80" stroke="#8A600A" stroke-width="3" stroke-linecap="round"></line><line x1="40" y1="60" x2="50" y2="60" stroke="#8A600A" stroke-width="3" stroke-linecap="round"></line><line x1="70" y1="60" x2="80" y2="60" stroke="#8A600A" stroke-width="3" stroke-linecap="round"></line></svg>
+          </div>
+        </div>
+        <div style="font:600 9px 'JetBrains Mono',monospace;color:#87918B;margin-top:6px">已签 / 今日 / 缺签 / 未来 · 历史30%今日实心 · 金银铜（渐变仅限奖章本体） · 印章三档：铜单环 / 银双环 / 金滚花+芒</div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#566059">07 空态 · 错误态样板</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:230px;background:#F6F8F7;border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/80%),inset 0 0 0 1px rgb(24 29 27/10%);padding:22px;text-align:center">
+            <svg width="88" height="88" viewBox="0 0 120 120" fill="none" style="display:block;margin:0 auto"><circle cx="60" cy="62" r="46" stroke="#2E3532" stroke-width="1.5" stroke-dasharray="2 6" opacity=".45"></circle><circle cx="60" cy="62" r="30" fill="#E8EBE9" stroke="#2E3532" stroke-width="2.5"></circle><line x1="60" y1="62" x2="78" y2="44" stroke="#0E7263" stroke-width="2.5" stroke-linecap="round"></line><circle cx="60" cy="62" r="3.2" fill="#2E3532"></circle><circle cx="94" cy="26" r="3.2" fill="#0E7263"></circle></svg>
+            <div style="font-size:14px;font-weight:700;margin-top:12px">还没有对话</div>
+            <div style="font-size:12.5px;color:#566059;margin-top:4px">第一句话，就在那颗星的方向。</div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:14px"><span style="height:36px;padding:0 16px;border-radius:8px;background:#0E7263;color:#F6F8F7;display:flex;align-items:center;font-size:12.5px;font-weight:700">去发现角色</span><span style="height:36px;padding:0 16px;border-radius:8px;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:#0E7263">看看剧场</span></div>
+          </div>
+          <div style="flex:1;min-width:230px;background:#F6F8F7;border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/80%),inset 0 0 0 1px rgb(24 29 27/10%);padding:22px;text-align:center">
+            <span style="width:10px;height:10px;border-radius:99px;background:#B03427;box-shadow:0 0 3px #B03427;display:inline-block"></span>
+            <div style="font-size:14px;font-weight:700;margin-top:10px">这一页没能加载出来</div>
+            <div style="font-size:12.5px;color:#566059;margin-top:4px">网络似乎断开了，稍后再试一次。</div>
+            <div style="font:600 10px 'JetBrains Mono',monospace;color:#87918B;margin-top:6px">ERR NET-408 · 21:52:07</div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:14px"><span style="height:36px;padding:0 16px;border-radius:8px;background:#0E7263;color:#F6F8F7;display:flex;align-items:center;font-size:12.5px;font-weight:700">重试</span><span style="height:36px;padding:0 16px;border-radius:8px;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:#0E7263">检查网络</span></div>
+          </div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#566059">08 分享卡通用框架 1080×1440</div>
+        <div style="display:flex;gap:14px;align-items:center">
+          <div style="width:180px;height:240px;background:#182028;border-radius:8px;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;box-shadow:inset 0 0 0 1px rgb(255 255 255/12%)">
+            <div style="height:8px;width:70%;background:rgb(159 176 182/40%);border-radius:2px"></div>
+            <div style="height:76px;background:rgb(255 255 255/8%);border-radius:6px;margin-top:8px;box-shadow:inset 0 0 0 1px rgb(255 255 255/14%)"></div>
+            <div style="height:12px;width:55%;background:rgb(237 243 244/70%);border-radius:2px;margin-top:10px"></div>
+            <div style="display:flex;gap:6px;margin-top:8px"><span style="height:10px;flex:1;background:rgb(63 210 180/50%);border-radius:2px"></span><span style="height:10px;flex:1;background:rgb(237 243 244/40%);border-radius:2px"></span><span style="height:10px;flex:1;background:rgb(224 168 62/50%);border-radius:2px"></span></div>
+            <div style="margin-top:auto;border-top:1px solid rgb(255 255 255/12%);padding-top:8px;display:flex;align-items:center;gap:6px"><span style="height:8px;width:26px;background:rgb(237 243 244/70%);border-radius:2px"></span><span style="height:6px;flex:1;background:rgb(159 176 182/35%);border-radius:2px"></span><span style="width:16px;height:16px;border-radius:3px;box-shadow:inset 0 0 0 1px rgb(255 255 255/25%)"></span></div>
+          </div>
+          <div style="font-size:12.5px;line-height:1.9;color:#566059;flex:1;min-width:200px">固定骨架五区：① 铭牌行（mono 小字）② 主视觉区 ③ 大标题 ④ mono 数据组（≤3 项，语义着色）⑤ 品牌页脚（幻域 + HUANYU.APP·2026 + 码位）。舱底 #182028 深浅共用；圆角 10（合成时 40px）；零按钮、全部活文本绘制。</div>
+        </div>
+      </div>
+      <!-- ═══ 深色列 ═══ -->
+      <div data-screen-label="UI-KIT 深色" style="background:#0F1312;border-radius:16px;padding:24px;color:#ECF1EF;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:700">深色 · 石墨仪表台</span><span style="font:600 10px 'JetBrains Mono',monospace;color:#6B756F">[data-theme="dark"]</span></div>
+
+        <div style="margin:20px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#9FAAA5">01 按钮 BUTTON · 44H / 提交 48H</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#3FD2B4;color:#06211B;display:flex;align-items:center;font-size:14px;font-weight:700;box-shadow:inset 0 1px 0 rgb(255 255 255/35%)">主按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">默认</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#35BCA1;color:#06211B;display:flex;align-items:center;font-size:14px;font-weight:700;box-shadow:inset 0 1px 3px rgb(0 0 0/35%);transform:translateY(1px)">主按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">按压 · 下沉1px</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#3FD2B4;color:#06211B;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700"><span style="width:14px;height:14px;border-radius:99px;border:2px solid rgb(6 33 27/30%);border-top-color:#06211B"></span>保存中</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">loading · 原宽</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#3FD2B4;color:#06211B;display:flex;align-items:center;font-size:14px;font-weight:700;opacity:.55">主按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">禁用 · 附原因文案</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#3FD2B4;color:#06211B;display:flex;align-items:center;font-size:14px;font-weight:700;box-shadow:0 0 0 2px #0F1312,0 0 0 4px #58E0C4">主按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">焦点环</div></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin-top:12px">
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#1D2321;color:#ECF1EF;display:flex;align-items:center;font-size:14px;font-weight:600;box-shadow:inset 0 1px 0 rgb(255 255 255/8%),inset 0 0 0 1px rgb(255 255 255/10%),0 1px 2px rgb(0 0 0/30%)">次按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">secondary 键帽</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#1D2321;color:#ECF1EF;display:flex;align-items:center;font-size:14px;font-weight:600;box-shadow:inset 0 1px 3px rgb(0 0 0/45%);transform:translateY(1px)">次按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">按压</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 10px;display:flex;align-items:center;font-size:14px;font-weight:700;color:#3FD2B4">弱按钮</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">tertiary 文字</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;color:#F2705C;display:flex;align-items:center;font-size:14px;font-weight:700;box-shadow:inset 0 0 0 1.5px #F2705C">删除</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">danger 描边</div></div>
+          <div style="text-align:center"><div style="height:44px;padding:0 18px;border-radius:8px;background:#F2705C;color:#2B0D08;display:flex;align-items:center;font-size:14px;font-weight:700">确认删除</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">danger 确认后实底</div></div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#9FAAA5">02 图标按钮 · 分段 · 输入 · 拨杆</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+          <span style="width:44px;height:44px;border-radius:99px;display:grid;place-items:center;color:#9FAAA5;font-size:20px;font-weight:300">＋</span>
+          <span style="width:44px;height:44px;border-radius:99px;background:#1D2321;box-shadow:inset 0 1px 0 rgb(255 255 255/8%),inset 0 0 0 1px rgb(255 255 255/10%);display:grid;place-items:center;color:#9FAAA5;font-size:20px;font-weight:300">＋</span>
+          <span style="width:44px;height:44px;border-radius:99px;background:#3FD2B4;color:#06211B;display:grid;place-items:center;font-size:20px;font-weight:300">＋</span>
+          <span style="display:flex;background:#161B1A;border-radius:999px;padding:3px"><span style="height:30px;line-height:30px;padding:0 16px;border-radius:999px;background:#1D2321;box-shadow:inset 0 1px 0 rgb(255 255 255/10%),inset 0 0 0 1px rgb(255 255 255/10%);font-size:12.5px;font-weight:700">推荐</span><span style="height:30px;line-height:30px;padding:0 16px;font-size:12.5px;color:#9FAAA5">新作</span></span>
+          <span style="width:52px;height:28px;border-radius:8px;background:#161B1A;box-shadow:inset 0 1px 2px rgb(0 0 0/40%);position:relative;display:inline-block"><span style="position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:6px;background:#242B29;box-shadow:0 1px 2px rgb(0 0 0/40%)"></span></span>
+          <span style="width:52px;height:28px;border-radius:8px;background:#3FD2B4;position:relative;display:inline-block"><span style="position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:6px;background:#0F1312;display:grid;place-items:center"><span style="width:5px;height:5px;border-radius:99px;background:#3FD2B4;box-shadow:0 0 3px #3FD2B4"></span></span></span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <div style="flex:1;min-width:150px"><div style="height:44px;border-radius:8px;background:#0F1312;box-shadow:inset 0 2px 6px rgb(0 0 0/40%);display:flex;align-items:center;padding:0 12px;font-size:13px;color:#6B756F">角色名称…</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">输入 · inset 表窗</div></div>
+          <div style="flex:1;min-width:150px"><div style="height:44px;border-radius:8px;background:#0F1312;box-shadow:inset 0 2px 6px rgb(0 0 0/40%),0 0 0 2px #0F1312,0 0 0 4px #58E0C4;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#ECF1EF">临渊</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:5px">focus</div></div>
+          <div style="flex:1;min-width:150px"><div style="height:44px;border-radius:8px;background:#0F1312;box-shadow:inset 0 2px 6px rgb(0 0 0/40%),inset 0 0 0 1.5px #F2705C;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#ECF1EF">临</div><div style="font:600 9px 'JetBrains Mono',monospace;color:#F2705C;margin-top:5px">error · 至少 2 字</div></div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#9FAAA5">03 列表行 56 · 会话行 72</div>
+        <div style="background:#1D2321;border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/8%),inset 0 0 0 1px rgb(255 255 255/9%),0 1px 2px rgb(0 0 0/30%);padding:0 14px">
+          <div style="display:flex;align-items:center;gap:12px;height:56px"><span style="width:30px;height:30px;border-radius:8px;background:rgb(63 210 180/16%);display:grid;place-items:center"><span style="width:12px;height:12px;border:1.5px solid #3FD2B4;border-radius:99px;display:block"></span></span><span style="flex:1;font-size:14px;font-weight:600">通知设置</span><span style="font-size:12.5px;color:#6B756F">每日 21:00</span><span style="color:#6B756F">›</span></div>
+          <div style="display:flex;align-items:center;gap:12px;height:72px;border-top:1px solid rgb(236 241 239/10%)"><span style="width:44px;height:44px;border-radius:99px;background:repeating-linear-gradient(135deg,#343028 0 5px,#3C362D 5px 10px);position:relative;flex:0 0 auto"><span style="position:absolute;right:0;bottom:0;width:9px;height:9px;border-radius:99px;background:#7BD08D;box-shadow:0 0 0 2px #1D2321"></span></span><div style="flex:1;min-width:0"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:15px;font-weight:700">临渊</span><span style="font-size:9px;font-weight:700;color:#3FD2B4;background:rgb(63 210 180/16%);border-radius:4px;padding:1.5px 5px">顶</span></div><div style="font-size:12.5px;color:#6B756F;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">「今晚的星象，有点不寻常。」</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span style="font:600 10.5px 'JetBrains Mono',monospace;color:#6B756F">21:52</span><span style="min-width:18px;height:18px;border-radius:99px;background:#D6452C;color:#fff;font:700 11px/18px 'JetBrains Mono',monospace;text-align:center;padding:0 5px;box-sizing:border-box">3</span></div></div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#9FAAA5">04 聊天气泡 · TOAST</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:8px;align-items:flex-end"><span style="width:28px;height:28px;border-radius:99px;background:repeating-linear-gradient(135deg,#343028 0 4px,#3C362D 4px 8px)"></span><div style="max-width:70%;background:#1D2321;border-radius:10px 10px 10px 4px;box-shadow:inset 0 1px 0 rgb(255 255 255/8%),inset 0 0 0 1px rgb(255 255 255/9%);padding:10px 13px"><div style="font-size:14px;line-height:1.7">「你来了。」<div style="font-size:12.5px;color:#6B756F;font-style:italic;margin-top:4px">他合上手账。</div></div></div></div>
+          <div style="align-self:flex-end;max-width:70%;background:#3FD2B4;color:#06211B;border-radius:10px 10px 4px 10px;padding:10px 13px;font-size:14px;font-weight:500">带我看看猎户座。</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="background:#242B29;border-radius:10px;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%),0 12px 32px rgb(0 0 0/45%);padding:10px 16px;display:flex;align-items:center;gap:10px"><span style="width:6px;height:6px;border-radius:99px;background:#7BD08D;box-shadow:0 0 3px #7BD08D"></span><span style="font-size:13px;font-weight:600">已保存草稿</span></div>
+            <div style="background:#242B29;border-radius:10px;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%),0 12px 32px rgb(0 0 0/45%);padding:10px 16px;display:flex;align-items:center;gap:10px"><span style="width:6px;height:6px;border-radius:99px;background:#F2705C;box-shadow:0 0 3px #F2705C"></span><span style="font-size:13px;font-weight:600">发送失败 · 网络中断</span><span style="font-size:12.5px;font-weight:700;color:#3FD2B4">重试</span></div>
+          </div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#9FAAA5">05 SHEET · 长按菜单（玻璃临时层）</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+          <div style="flex:1.4;min-width:230px;background:rgb(29 35 33/88%);backdrop-filter:blur(20px) saturate(130%);-webkit-backdrop-filter:blur(20px) saturate(130%);border-radius:14px 14px 0 0;box-shadow:inset 0 1px 0 rgb(255 255 255/10%),inset 0 0 0 1px rgb(255 255 255/10%),0 -10px 28px rgb(0 0 0/50%);padding:8px 16px 14px"><div style="width:36px;height:4px;border-radius:99px;background:rgb(236 241 239/22%);margin:4px auto 10px"></div><div style="font-size:15px;font-weight:700">确认购买《雾都疑云》</div><div style="font-size:12.5px;color:#9FAAA5;margin-top:4px">支付 600 金币 · 30 分钟内可退</div><div style="display:flex;gap:8px;margin-top:12px"><span style="flex:1;height:44px;border-radius:8px;background:#242B29;box-shadow:inset 0 0 0 1px rgb(255 255 255/12%);display:grid;place-items:center;font-size:13.5px;font-weight:600">取消</span><span style="flex:1;height:44px;border-radius:8px;background:#3FD2B4;color:#06211B;display:grid;place-items:center;font-size:13.5px;font-weight:700">支付 600</span></div></div>
+          <div style="width:180px;background:rgb(29 35 33/88%);backdrop-filter:blur(20px) saturate(130%);-webkit-backdrop-filter:blur(20px) saturate(130%);border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/10%),inset 0 0 0 1px rgb(255 255 255/10%),0 12px 32px rgb(0 0 0/50%);padding:4px"><div style="height:42px;display:flex;align-items:center;padding:0 12px;font-size:13.5px;font-weight:600;border-radius:6px">置顶会话</div><div style="height:42px;display:flex;align-items:center;padding:0 12px;font-size:13.5px;font-weight:600;border-top:1px solid rgb(236 241 239/8%)">免打扰</div><div style="height:42px;display:flex;align-items:center;padding:0 12px;font-size:13.5px;font-weight:700;color:#F2705C;border-top:1px solid rgb(236 241 239/8%)">删除会话</div></div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#9FAAA5">06 日历格四态 · 周报条形 · 奖章 · 印章</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+          <div style="display:flex;gap:6px"><span style="width:38px;height:38px;border-radius:8px;background:#3FD2B4;display:grid;place-items:center;font:600 11px 'JetBrains Mono',monospace;color:#06211B">12</span><span style="width:38px;height:38px;border-radius:8px;box-shadow:inset 0 0 0 1.5px #3FD2B4;display:grid;place-items:center;font:700 11px 'JetBrains Mono',monospace;color:#3FD2B4">27</span><span style="width:38px;height:38px;border-radius:8px;background:#161B1A;display:grid;place-items:center;font:600 11px 'JetBrains Mono',monospace;color:#6B756F">5</span><span style="width:38px;height:38px;border-radius:8px;display:grid;place-items:center;font:600 11px 'JetBrains Mono',monospace;color:#6B756F">30</span></div>
+          <div style="display:flex;align-items:flex-end;gap:5px;height:44px"><span style="width:12px;height:16px;background:rgb(63 210 180/30%);border-radius:3px 3px 0 0"></span><span style="width:12px;height:28px;background:rgb(63 210 180/30%);border-radius:3px 3px 0 0"></span><span style="width:12px;height:20px;background:rgb(63 210 180/30%);border-radius:3px 3px 0 0"></span><span style="width:12px;height:38px;background:#3FD2B4;border-radius:3px 3px 0 0"></span></div>
+          <div style="display:flex;gap:8px"><span style="width:34px;height:34px;border-radius:999px;background:radial-gradient(circle at 35% 30%,#F6DFA0,#D9A93F 55%,#A67818);box-shadow:inset 0 0 0 1.5px rgb(255 255 255/30%)"></span><span style="width:34px;height:34px;border-radius:999px;background:radial-gradient(circle at 35% 30%,#F3F6F8,#C4CDD3 55%,#8D989F);box-shadow:inset 0 0 0 1.5px rgb(255 255 255/35%)"></span><span style="width:34px;height:34px;border-radius:999px;background:radial-gradient(circle at 35% 30%,#EBC09A,#C68B57 55%,#8F5B2E);box-shadow:inset 0 0 0 1.5px rgb(255 255 255/25%)"></span></div>
+          <div style="display:flex;gap:8px">
+            <svg width="44" height="44" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="41" fill="#C68B57" stroke="#8F5B2E" stroke-width="3"></circle><circle cx="60" cy="60" r="6" fill="#8F5B2E"></circle></svg>
+            <svg width="44" height="44" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="41" fill="#C4CDD3" stroke="#8D989F" stroke-width="3"></circle><circle cx="60" cy="60" r="31" stroke="#8D989F" stroke-width="2"></circle><circle cx="60" cy="60" r="6" fill="#8D989F"></circle><line x1="60" y1="44" x2="60" y2="52" stroke="#8D989F" stroke-width="3" stroke-linecap="round"></line><line x1="60" y1="68" x2="60" y2="76" stroke="#8D989F" stroke-width="3" stroke-linecap="round"></line><line x1="44" y1="60" x2="52" y2="60" stroke="#8D989F" stroke-width="3" stroke-linecap="round"></line><line x1="68" y1="60" x2="76" y2="60" stroke="#8D989F" stroke-width="3" stroke-linecap="round"></line></svg>
+            <svg width="44" height="44" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="47" stroke="#E0A83E" stroke-width="3" stroke-dasharray="2 3.5"></circle><circle cx="60" cy="60" r="41" fill="#E0A83E" stroke="#8A600A" stroke-width="3"></circle><circle cx="60" cy="60" r="31" stroke="#8A600A" stroke-width="2"></circle><circle cx="60" cy="60" r="6" fill="#8A600A"></circle><line x1="60" y1="40" x2="60" y2="50" stroke="#8A600A" stroke-width="3" stroke-linecap="round"></line><line x1="60" y1="70" x2="60" y2="80" stroke="#8A600A" stroke-width="3" stroke-linecap="round"></line><line x1="40" y1="60" x2="50" y2="60" stroke="#8A600A" stroke-width="3" stroke-linecap="round"></line><line x1="70" y1="60" x2="80" y2="60" stroke="#8A600A" stroke-width="3" stroke-linecap="round"></line></svg>
+          </div>
+        </div>
+        <div style="font:600 9px 'JetBrains Mono',monospace;color:#6B756F;margin-top:6px">已签 / 今日 / 缺签 / 未来 · 历史30%今日实心 · 金银铜（渐变仅限奖章本体） · 印章三档：铜单环 / 银双环 / 金滚花+芒</div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#9FAAA5">07 空态 · 错误态样板</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:230px;background:#1D2321;border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/8%),inset 0 0 0 1px rgb(255 255 255/9%);padding:22px;text-align:center">
+            <svg width="88" height="88" viewBox="0 0 120 120" fill="none" style="display:block;margin:0 auto"><circle cx="60" cy="62" r="46" stroke="#C9D2CE" stroke-width="1.5" stroke-dasharray="2 6" opacity=".4"></circle><circle cx="60" cy="62" r="30" fill="#0F1312" stroke="#C9D2CE" stroke-width="2.5"></circle><line x1="60" y1="62" x2="78" y2="44" stroke="#3FD2B4" stroke-width="2.5" stroke-linecap="round"></line><circle cx="60" cy="62" r="3.2" fill="#C9D2CE"></circle><circle cx="94" cy="26" r="3.2" fill="#3FD2B4"></circle></svg>
+            <div style="font-size:14px;font-weight:700;margin-top:12px">还没有对话</div>
+            <div style="font-size:12.5px;color:#9FAAA5;margin-top:4px">第一句话，就在那颗星的方向。</div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:14px"><span style="height:36px;padding:0 16px;border-radius:8px;background:#3FD2B4;color:#06211B;display:flex;align-items:center;font-size:12.5px;font-weight:700">去发现角色</span><span style="height:36px;padding:0 16px;border-radius:8px;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:#3FD2B4">看看剧场</span></div>
+          </div>
+          <div style="flex:1;min-width:230px;background:#1D2321;border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/8%),inset 0 0 0 1px rgb(255 255 255/9%);padding:22px;text-align:center">
+            <span style="width:10px;height:10px;border-radius:99px;background:#F2705C;box-shadow:0 0 3px #F2705C;display:inline-block"></span>
+            <div style="font-size:14px;font-weight:700;margin-top:10px">这一页没能加载出来</div>
+            <div style="font-size:12.5px;color:#9FAAA5;margin-top:4px">网络似乎断开了，稍后再试一次。</div>
+            <div style="font:600 10px 'JetBrains Mono',monospace;color:#6B756F;margin-top:6px">ERR NET-408 · 21:52:07</div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:14px"><span style="height:36px;padding:0 16px;border-radius:8px;background:#3FD2B4;color:#06211B;display:flex;align-items:center;font-size:12.5px;font-weight:700">重试</span><span style="height:36px;padding:0 16px;border-radius:8px;display:flex;align-items:center;font-size:12.5px;font-weight:700;color:#3FD2B4">检查网络</span></div>
+          </div>
+        </div>
+
+        <div style="margin:22px 0 8px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:#9FAAA5">08 分享卡通用框架 1080×1440</div>
+        <div style="display:flex;gap:14px;align-items:center">
+          <div style="width:180px;height:240px;background:#182028;border-radius:8px;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;box-shadow:inset 0 0 0 1px rgb(255 255 255/12%)">
+            <div style="height:8px;width:70%;background:rgb(159 176 182/40%);border-radius:2px"></div>
+            <div style="height:76px;background:rgb(255 255 255/8%);border-radius:6px;margin-top:8px;box-shadow:inset 0 0 0 1px rgb(255 255 255/14%)"></div>
+            <div style="height:12px;width:55%;background:rgb(237 243 244/70%);border-radius:2px;margin-top:10px"></div>
+            <div style="display:flex;gap:6px;margin-top:8px"><span style="height:10px;flex:1;background:rgb(63 210 180/50%);border-radius:2px"></span><span style="height:10px;flex:1;background:rgb(237 243 244/40%);border-radius:2px"></span><span style="height:10px;flex:1;background:rgb(224 168 62/50%);border-radius:2px"></span></div>
+            <div style="margin-top:auto;border-top:1px solid rgb(255 255 255/12%);padding-top:8px;display:flex;align-items:center;gap:6px"><span style="height:8px;width:26px;background:rgb(237 243 244/70%);border-radius:2px"></span><span style="height:6px;flex:1;background:rgb(159 176 182/35%);border-radius:2px"></span><span style="width:16px;height:16px;border-radius:3px;box-shadow:inset 0 0 0 1px rgb(255 255 255/25%)"></span></div>
+          </div>
+          <div style="font-size:12.5px;line-height:1.9;color:#9FAAA5;flex:1;min-width:200px">舱体深浅共用，故深色模式下分享卡与浅色完全一致——这是「收藏物不随环境变色」的刻意决定。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

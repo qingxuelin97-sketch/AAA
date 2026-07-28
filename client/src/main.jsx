@@ -15,10 +15,14 @@ import { installGlobalErrorCapture } from './logger.js';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/fraunces';
+// 仪与匣读数字体（JetBrains Mono · OFL）：--ix-font-mono 首选项，App 壳的等宽「读数」
+// 依赖它保证跨端一致；latin 子集 400/600 两档（读数只覆盖数字/拉丁/单位，中文永不套等宽），
+// 静态/APK 构建也需要（App 正是消费方），Web 仅注册 @font-face、无家族引用即零渲染影响。
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/600.css';
 import './styles.css';
-// Lumen Web 三件套（令牌 → 桥接 → 材质）：Web 壳的 Lumen Glass 权威。全部选择器
-// 围栏在 html:not([data-app="1"])，与 App 围栏 DOM 互斥；桥接靠特异性取胜，
-// 不依赖 import 顺序，因此放在 styles.css 之后、App 层之前即可。
+// Web Lumen layers remain the Web-shell authority. Every selector is fenced
+// behind html:not([data-app="1"]), so the Web and IX App systems stay disjoint.
 import './styles/web-lumen-tokens.css';
 import './styles/web-lumen-bridge.css';
 import './styles/web-lumen-materials.css';
@@ -28,9 +32,8 @@ import './styles/web-lumen-pages.css';
 import './styles/web-lumen-states.css';
 import './styles/web-lumen-misc.css';
 import './styles/web-lumen-longtail.css';
-// App 层 CSS（chat-app + runtime + Lumen 全家，含 S7 的 s6/s7 层）自 W6 起按模式
-// 分包：静态 import 整体搬入 styles/app-entry.js（顺序逐行保持，顺序即级联权威），
-// isAppMode() 时在 render 前 await 动态加载 —— Web 用户不再下载 App 层 CSS。
+// The IX App cascade lives in styles/app-entry.js and loads before App render.
+// Web users therefore keep main's CSS split and never download the App bundle.
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 if (INSECURE_HTTP_TEST) {

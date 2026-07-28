@@ -162,7 +162,7 @@ export function Avatar({ src, name = '', size = 40, eager }) {
       <div className="avatar avatar-mono" style={{
         width: size, height: size, display: 'grid', placeItems: 'center',
         fontSize: size * 0.42, fontWeight: 700, color: 'rgba(22,24,29,0.72)',
-        fontFamily: 'var(--lg-font-ui, var(--sans))',
+        fontFamily: 'var(--ix-font-ui, var(--sans))',
         background: `linear-gradient(150deg, ${a}, ${b})`,
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.55)'
       }}>{initial}</div>

@@ -64,12 +64,13 @@ try {
   const origFetch = globalThis.fetch;
   globalThis.fetch = (url, opts = {}) => {
     mmReq = { url, auth: opts.headers?.Authorization, body: opts.body ? JSON.parse(opts.body) : null };
-    if (mmStrategy === 'httpErr') return Promise.resolve({ ok: false, status: 401, text: async () => 'unauthorized' });
-    if (mmStrategy === 'voiceNotFound') return Promise.resolve({ ok: true, status: 200, json: async () => ({ base_resp: { status_code: 1004, status_msg: 'voice_id not found' } }) });
-    return Promise.resolve({ ok: true, status: 200, json: async () => ({ data: { audio: fakeHex }, base_resp: { status_code: 0, status_msg: 'success' } }) });
+    const headers = new Headers({ 'content-type': 'application/json' });
+    if (mmStrategy === 'httpErr') return Promise.resolve({ ok: false, status: 401, headers, text: async () => 'unauthorized' });
+    if (mmStrategy === 'voiceNotFound') return Promise.resolve({ ok: true, status: 200, headers, json: async () => ({ base_resp: { status_code: 1004, status_msg: 'voice_id not found' } }) });
+    return Promise.resolve({ ok: true, status: 200, headers, json: async () => ({ data: { audio: fakeHex }, base_resp: { status_code: 0, status_msg: 'success' } }) });
   };
   try {
-    const MM = 'https://api.minimax.chat/v1'; // 公网域名过 SSRF；fetch 已被 mock 拦截不发真实请求
+    const MM = 'https://1.1.1.1/v1'; // public IP keeps the mocked adapter independent of DNS availability
     const r1 = await synthesize({ proto: 'minimax', base: `${MM}?GroupId=12345`, key: 'testapikey', model: 'speech-02-hd', voice: 'male-qn-qingse', text: '试听', speed: 1, pitch: 1 });
     if (!r1.ok || r1.contentType !== 'audio/mpeg' || r1.buffer[0] !== 0xFF) { failed++; console.log('  !!! MiniMax 合成失败或返回非 mp3'); }
     else if (!mmReq.url.includes('GroupId=12345') || mmReq.body?.output_format !== 'hex' || mmReq.auth !== 'Bearer testapikey') { failed++; console.log('  !!! MiniMax 请求构造错误'); }

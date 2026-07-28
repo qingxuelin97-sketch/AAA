@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 120 120" fill="none">
+<circle cx="52" cy="46" r="20" fill="#1D2321" stroke="#C9D2CE" stroke-width="2.5"></circle>
+<line x1="67" y1="61" x2="80" y2="74" stroke="#C9D2CE" stroke-width="3" stroke-linecap="round"></line>
+<line x1="30" y1="98" x2="30" y2="92" stroke="#C9D2CE" stroke-width="2" stroke-linecap="round" opacity=".55"></line>
+<line x1="38" y1="98" x2="38" y2="92" stroke="#C9D2CE" stroke-width="2" stroke-linecap="round" opacity=".55"></line>
+<line x1="46" y1="98" x2="46" y2="92" stroke="#C9D2CE" stroke-width="2" stroke-linecap="round" opacity=".55"></line>
+<line x1="74" y1="98" x2="74" y2="92" stroke="#C9D2CE" stroke-width="2" stroke-linecap="round" opacity=".55"></line>
+<line x1="82" y1="98" x2="82" y2="92" stroke="#C9D2CE" stroke-width="2" stroke-linecap="round" opacity=".55"></line>
+<line x1="90" y1="98" x2="90" y2="92" stroke="#C9D2CE" stroke-width="2" stroke-linecap="round" opacity=".55"></line>
+<line x1="52" y1="95" x2="68" y2="95" stroke="#3FD2B4" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 4"></line>
+<line x1="26" y1="102" x2="94" y2="102" stroke="#C9D2CE" stroke-width="1.5" stroke-linecap="round" opacity=".35"></line>
+</svg>

@@ -11,70 +11,127 @@
 import React from 'react';
 import { isAppMode } from './appmode.js';
 import quietAquaCharacterUrl from './assets/quiet-aqua-character-v3.png?url';
-// Liuli v5 · App 空态插画（scripts/render-app-assets.mjs 确定性生成的内容媒体，
-// 720×480 @2x；Web 保留原矢量 EmptyArt）。
-import emptyChatUrl from './assets/app/qa5-empty-chat@2x.png?url';
-import emptyFavoritesUrl from './assets/app/qa5-empty-favorites@2x.png?url';
-import emptyNotificationsUrl from './assets/app/qa5-empty-notifications@2x.png?url';
-import emptyFriendsUrl from './assets/app/qa5-empty-friends@2x.png?url';
-import emptySearchUrl from './assets/app/qa5-empty-search@2x.png?url';
-import emptyLibraryUrl from './assets/app/qa5-empty-library@2x.png?url';
-import emptyGenericUrl from './assets/app/qa5-empty-generic@2x.png?url';
-// S7 扩产：九幕新空态 + 首启引导三屏 + 连签印章（同一管线确定性生成）。
-import emptyAchievementsUrl from './assets/app/qa5-empty-achievements@2x.png?url';
-import emptyTheaterUrl from './assets/app/qa5-empty-theater@2x.png?url';
-import emptyAtelierUrl from './assets/app/qa5-empty-atelier@2x.png?url';
-import emptyLeaderboardUrl from './assets/app/qa5-empty-leaderboard@2x.png?url';
-import emptyEventsUrl from './assets/app/qa5-empty-events@2x.png?url';
-import emptyWorldbooksUrl from './assets/app/qa5-empty-worldbooks@2x.png?url';
-import emptyInsightsUrl from './assets/app/qa5-empty-insights@2x.png?url';
-import emptyNoresultUrl from './assets/app/qa5-empty-noresult@2x.png?url';
-import emptyGroupUrl from './assets/app/qa5-empty-group@2x.png?url';
-import onboardWorldUrl from './assets/app/qa5-onboard-world@2x.png?url';
-import onboardCraftUrl from './assets/app/qa5-onboard-craft@2x.png?url';
-import onboardTuneUrl from './assets/app/qa5-onboard-tune@2x.png?url';
-import streakSealAssetUrl from './assets/app/qa5-streak-seal@2x.png?url';
-import streakSeal30AssetUrl from './assets/app/qa5-streak-seal-30@2x.png?url';
-import streakSeal100AssetUrl from './assets/app/qa5-streak-seal-100@2x.png?url';
+// 仪与匣内容插画：每个场景都交付浅/深双线色 SVG，运行时不再把
+// Lumen/QA 位图当作 UI 皮肤。两张图同时挂载，由 IX CSS 按 data-theme 选版，
+// 因而主题切换无需重挂载页面。
+import ixChatLight from './assets/illos/ix-illo-chat-light.svg?url';
+import ixChatDark from './assets/illos/ix-illo-chat-dark.svg?url';
+import ixFavoritesLight from './assets/illos/ix-illo-favorites-light.svg?url';
+import ixFavoritesDark from './assets/illos/ix-illo-favorites-dark.svg?url';
+import ixSearchLight from './assets/illos/ix-illo-search-light.svg?url';
+import ixSearchDark from './assets/illos/ix-illo-search-dark.svg?url';
+import ixAchievementsLight from './assets/illos/ix-illo-achievements-light.svg?url';
+import ixAchievementsDark from './assets/illos/ix-illo-achievements-dark.svg?url';
+import ixTheaterLight from './assets/illos/ix-illo-theater-light.svg?url';
+import ixTheaterDark from './assets/illos/ix-illo-theater-dark.svg?url';
+import ixLeaderboardLight from './assets/illos/ix-illo-leaderboard-light.svg?url';
+import ixLeaderboardDark from './assets/illos/ix-illo-leaderboard-dark.svg?url';
+import ixNotificationsLight from './assets/illos/ix-illo-notifications-light.svg?url';
+import ixNotificationsDark from './assets/illos/ix-illo-notifications-dark.svg?url';
+import ixFriendsLight from './assets/illos/ix-illo-friends-light.svg?url';
+import ixFriendsDark from './assets/illos/ix-illo-friends-dark.svg?url';
+import ixDraftsLight from './assets/illos/ix-illo-drafts-light.svg?url';
+import ixDraftsDark from './assets/illos/ix-illo-drafts-dark.svg?url';
+import ixWorksLight from './assets/illos/ix-illo-works-light.svg?url';
+import ixWorksDark from './assets/illos/ix-illo-works-dark.svg?url';
+import ixWorldbookLight from './assets/illos/ix-illo-worldbook-light.svg?url';
+import ixWorldbookDark from './assets/illos/ix-illo-worldbook-dark.svg?url';
+import ixWalletLight from './assets/illos/ix-illo-wallet-light.svg?url';
+import ixWalletDark from './assets/illos/ix-illo-wallet-dark.svg?url';
+import ixScriptsLight from './assets/illos/ix-illo-scripts-light.svg?url';
+import ixScriptsDark from './assets/illos/ix-illo-scripts-dark.svg?url';
+import ixGalleryLight from './assets/illos/ix-illo-gallery-light.svg?url';
+import ixGalleryDark from './assets/illos/ix-illo-gallery-dark.svg?url';
+import ixOfflineLight from './assets/illos/ix-illo-offline-light.svg?url';
+import ixOfflineDark from './assets/illos/ix-illo-offline-dark.svg?url';
+import ixMaintenanceLight from './assets/illos/ix-illo-maintenance-light.svg?url';
+import ixMaintenanceDark from './assets/illos/ix-illo-maintenance-dark.svg?url';
+import ixOnb001Light from './assets/illos/ix-illo-onb-001-light.svg?url';
+import ixOnb001Dark from './assets/illos/ix-illo-onb-001-dark.svg?url';
+import ixOnb002Light from './assets/illos/ix-illo-onb-002-light.svg?url';
+import ixOnb002Dark from './assets/illos/ix-illo-onb-002-dark.svg?url';
+import ixOnb003Light from './assets/illos/ix-illo-onb-003-light.svg?url';
+import ixOnb003Dark from './assets/illos/ix-illo-onb-003-dark.svg?url';
+// 仪与匣（IX-5）：纪念印章三档换设计交付 SVG（铜单环/银双环短芒/金三环长芒；
+// 透明底零文字，数字由 UI 活文本叠加）。
+import ixStampBronzeUrl from './assets/illos/ix-stamp-bronze.svg?url';
+import ixStampSilverUrl from './assets/illos/ix-stamp-silver.svg?url';
+import ixStampGoldUrl from './assets/illos/ix-stamp-gold.svg?url';
 
-const APP_EMPTY_ART = {
-  chat: emptyChatUrl,
-  favorites: emptyFavoritesUrl,
-  notifications: emptyNotificationsUrl,
-  friends: emptyFriendsUrl,
-  search: emptySearchUrl,
-  library: emptyLibraryUrl,
-  generic: emptyGenericUrl,
-  achievements: emptyAchievementsUrl,
-  theater: emptyTheaterUrl,
-  atelier: emptyAtelierUrl,
-  leaderboard: emptyLeaderboardUrl,
-  events: emptyEventsUrl,
-  worldbooks: emptyWorldbooksUrl,
-  insights: emptyInsightsUrl,
-  noresult: emptyNoresultUrl,
-  group: emptyGroupUrl,
+const IX_ILLUSTRATIONS = {
+  chat: { light: ixChatLight, dark: ixChatDark },
+  favorites: { light: ixFavoritesLight, dark: ixFavoritesDark },
+  search: { light: ixSearchLight, dark: ixSearchDark },
+  achievements: { light: ixAchievementsLight, dark: ixAchievementsDark },
+  theater: { light: ixTheaterLight, dark: ixTheaterDark },
+  leaderboard: { light: ixLeaderboardLight, dark: ixLeaderboardDark },
+  notifications: { light: ixNotificationsLight, dark: ixNotificationsDark },
+  friends: { light: ixFriendsLight, dark: ixFriendsDark },
+  drafts: { light: ixDraftsLight, dark: ixDraftsDark },
+  works: { light: ixWorksLight, dark: ixWorksDark },
+  worldbook: { light: ixWorldbookLight, dark: ixWorldbookDark },
+  wallet: { light: ixWalletLight, dark: ixWalletDark },
+  scripts: { light: ixScriptsLight, dark: ixScriptsDark },
+  gallery: { light: ixGalleryLight, dark: ixGalleryDark },
+  offline: { light: ixOfflineLight, dark: ixOfflineDark },
+  maintenance: { light: ixMaintenanceLight, dark: ixMaintenanceDark },
 };
 
-// S7 内容媒体出口：引导三屏与连签印章（消费方：AppOnboarding / 签到日历 / 分享卡）。
-export const onboardArtUrls = { world: onboardWorldUrl, craft: onboardCraftUrl, tune: onboardTuneUrl };
-export const streakSealUrl = streakSealAssetUrl;
-// 里程碑印章分档：≥100 金冠双环，≥30 玉桂环，其余基础焰章。
-export const streakSealForTier = (streak) => (streak >= 100 ? streakSeal100AssetUrl : streak >= 30 ? streakSeal30AssetUrl : streakSealAssetUrl);
+// 旧调用方的 kind 名保持可用，但统一落到设计交付包中的 16 个场景。
+const IX_KIND_ALIASES = {
+  library: 'works',
+  atelier: 'works',
+  worldbooks: 'worldbook',
+  group: 'chat',
+  noresult: 'search',
+  events: 'maintenance',
+  insights: 'gallery',
+  generic: 'offline',
+};
 
-// App 空态：审阅过的 PNG 内容媒体（懒加载、无文字、说明与 CTA 保持活 DOM）。
+const IX_ONBOARD = {
+  world: { light: ixOnb001Light, dark: ixOnb001Dark },
+  craft: { light: ixOnb002Light, dark: ixOnb002Dark },
+  tune: { light: ixOnb003Light, dark: ixOnb003Dark },
+};
+
+// App 内容媒体出口：引导三屏与连签印章（消费方保持原有命名）。
+export const onboardArtUrls = IX_ONBOARD;
+export const streakSealUrl = ixStampBronzeUrl;
+// 里程碑印章分档（仪与匣三档）：≥100 金三环长芒，≥30 银双环短芒，其余铜单环。
+export const streakSealForTier = (streak) => (streak >= 100 ? ixStampGoldUrl : streak >= 30 ? ixStampSilverUrl : ixStampBronzeUrl);
+
+// App 空态：透明底 SVG，说明与 CTA 保持活 DOM；浅深两版同时存在，
+// CSS 只显示当前主题，保证系统主题切换时不丢失图片尺寸。
 export function AppEmptyArt({ kind = 'generic', size = 132, className }) {
+  const scene = IX_ILLUSTRATIONS[IX_KIND_ALIASES[kind] || kind] || IX_ILLUSTRATIONS.offline;
+  const classes = ['ix-illustration', className].filter(Boolean).join(' ');
   return (
-    <img
-      className={'qa5-empty-art' + (className ? ' ' + className : '')}
-      src={APP_EMPTY_ART[kind] || emptyGenericUrl}
-      width={Math.round(size * 1.21)}
-      height={Math.round(size * 0.807)}
-      alt=""
-      loading="lazy"
-      decoding="async"
-      draggable="false"
-    />
+    <span className={classes} data-ix-scene={IX_KIND_ALIASES[kind] || kind}
+      style={{ width: size, height: Math.round(size * 0.825) }} aria-hidden="true">
+      <img className="qa5-empty-art ix-illustration__light" src={scene.light}
+        width={size} height={Math.round(size * 0.825)} alt="" loading="lazy"
+        decoding="async" draggable="false" />
+      <img className="qa5-empty-art ix-illustration__dark" src={scene.dark}
+        width={size} height={Math.round(size * 0.825)} alt="" loading="lazy"
+        decoding="async" draggable="false" />
+    </span>
+  );
+}
+
+// 首启插画使用同一主题选择器，但不暴露内部资源结构给页面。
+export function IxOnboardingArt({ step, size = 290, className }) {
+  const key = step === 1 ? 'craft' : step === 2 ? 'tune' : 'world';
+  const scene = IX_ONBOARD[key];
+  const classes = ['ix-illustration', 'ix-onboard-art', className].filter(Boolean).join(' ');
+  return (
+    <span className={classes} data-ix-scene={`onb-00${step + 1}`}
+      style={{ width: size, height: Math.round(size * 0.666) }} aria-hidden="true">
+      <img className="ix-illustration__light" src={scene.light} width={size}
+        height={Math.round(size * 0.666)} alt="" draggable="false" />
+      <img className="ix-illustration__dark" src={scene.dark} width={size}
+        height={Math.round(size * 0.666)} alt="" draggable="false" />
+    </span>
   );
 }
 

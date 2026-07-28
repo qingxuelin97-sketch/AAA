@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#101116}
+a{color:#C8CBD8}a:hover{color:#fff}
+</style>
+</helmet>
+<div style="font-family:'Noto Sans SC','PingFang SC',sans-serif;background:#101116;color:#ECEDF2;padding:56px 24px 80px;-webkit-font-smoothing:antialiased">
+  <div style="max-width:1060px;margin:0 auto">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.22em;color:#8A8FA3">仪与匣 · DESIGN-TOKENS.CSS · 色板校样（值已与文件逐字一致）</div>
+    <h1 style="margin:14px 0 0;font-size:30px;font-weight:700;color:#F4F5F9">确认这一页，即冻结全部颜色</h1>
+    <p style="margin:12px 0 0;font-size:14px;line-height:1.8;color:#B9BDCC;max-width:760px">浅深为等价主题；语义色相冻结、仅明度补偿；未读角标与金融舱为深浅单值共用。关键组合已标注实测对比度。</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px;margin-top:28px">
+
+      <!-- ── 浅色 · 铝白面板 ── -->
+      <div data-screen-label="浅色色板" style="background:#E8EBE9;border-radius:14px;padding:22px;color:#181D1B;box-shadow:inset 0 0 0 1px rgb(255 255 255/30%)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:15px;font-weight:700">浅色 · 铝白面板</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#87918B">:root</div></div>
+
+        <div style="margin:16px 0 8px;font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#566059">基面与文字</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div><div style="height:36px;border-radius:6px;background:#E8EBE9;box-shadow:inset 0 0 0 1px rgb(24 29 27/16%)"></div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#566059">canvas</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#87918B">#E8EBE9</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#DCE1DE;box-shadow:inset 0 0 0 1px rgb(24 29 27/10%)"></div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#566059">grouped</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#87918B">#DCE1DE</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#F6F8F7;box-shadow:inset 0 0 0 1px rgb(24 29 27/10%)"></div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#566059">surface</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#87918B">#F6F8F7</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#FDFEFD;box-shadow:inset 0 0 0 1px rgb(24 29 27/10%)"></div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#566059">raise</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#87918B">#FDFEFD</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#181D1B;display:grid;place-items:center;color:#F6F8F7;font-size:12px;font-weight:700">正文</div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#566059">ink · 13.9:1</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#87918B">#181D1B</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#566059;display:grid;place-items:center;color:#F6F8F7;font-size:12px">次级</div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#566059">ink-2 · 6.0:1</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#87918B">#566059</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#87918B;display:grid;place-items:center;color:#181D1B;font-size:12px">辅助</div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#566059">ink-3 · ≤13px</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#87918B">#87918B</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#0E7263;display:grid;place-items:center;color:#F6F8F7;font-size:12px;font-weight:700">Aa</div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#566059">act · 白字 5.5:1</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#87918B">#0E7263</div></div>
+        </div>
+
+        <div style="margin:18px 0 8px;font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#566059">语义 · 色相冻结</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div><div style="height:36px;border-radius:6px;background:#B03427;display:grid;place-items:center;color:#fff;font-size:11.5px;font-weight:700">危险</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;margin-top:4px;color:#87918B">#B03427</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#2E7C3F;display:grid;place-items:center;color:#fff;font-size:11.5px;font-weight:700">成功</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;margin-top:4px;color:#87918B">#2E7C3F</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#8A600A;display:grid;place-items:center;color:#fff;font-size:11.5px;font-weight:700">金币</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;margin-top:4px;color:#87918B">#8A600A</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#33639B;display:grid;place-items:center;color:#fff;font-size:11.5px;font-weight:700">钻石</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;margin-top:4px;color:#87918B">#33639B</div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="flex:1;height:28px;border-radius:6px;background:rgb(176 52 39/10%);display:grid;place-items:center;color:#B03427;font-size:11px;font-weight:600">danger-soft</div>
+          <div style="flex:1;height:28px;border-radius:6px;background:rgb(46 124 63/10%);display:grid;place-items:center;color:#2E7C3F;font-size:11px;font-weight:600">success-soft</div>
+          <div style="flex:1;height:28px;border-radius:6px;background:rgb(138 96 10/12%);display:grid;place-items:center;color:#8A600A;font-size:11px;font-weight:600">gold-soft</div>
+          <div style="flex:1;height:28px;border-radius:6px;background:rgb(14 114 99/10%);display:grid;place-items:center;color:#0E7263;font-size:11px;font-weight:600">act-soft</div>
+        </div>
+
+        <div style="margin:18px 0 8px;font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#566059">材质样 · 面板 / 表盖高光 / 键帽 / LED</div>
+        <div style="display:flex;gap:8px">
+          <div style="flex:1.4;background:#F6F8F7;border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/80%),inset 0 0 0 1px rgb(24 29 27/10%),0 1px 2px rgb(24 29 27/6%);padding:10px 12px;position:relative;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgb(255 255 255/50%) 0%,rgb(255 255 255/10%) 32%,rgb(255 255 255/0%) 34%);pointer-events:none"></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;color:#87918B">STREAK</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:#181D1B;line-height:1.15">24<span style="font-size:11px;color:#566059;margin-left:4px">days</span></div>
+          </div>
+          <div style="flex:1;background:#F6F8F7;border-radius:6px;box-shadow:inset 0 1px 0 rgb(255 255 255/80%),inset 0 0 0 1px rgb(24 29 27/10%),0 1px 2px rgb(24 29 27/6%);display:grid;place-items:center;font-size:12px;font-weight:600;color:#181D1B">键帽</div>
+          <div style="flex:1;background:#F6F8F7;border-radius:6px;box-shadow:inset 0 1px 3px rgb(24 29 27/22%);display:grid;place-items:center;font-size:12px;color:#566059">按下</div>
+          <div style="flex:.9;background:#DCE1DE;border-radius:6px;display:grid;place-items:center"><div style="display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:999px;background:#2E7C3F;box-shadow:0 0 3px #2E7C3F"></div><div style="width:6px;height:6px;border-radius:999px;background:#0E7263;box-shadow:0 0 3px #0E7263"></div><div style="width:6px;height:6px;border-radius:999px;background:#D6452C;box-shadow:0 0 3px #D6452C"></div></div></div>
+        </div>
+      </div>
+
+      <!-- ── 深色 · 石墨仪表台 ── -->
+      <div data-screen-label="深色色板" style="background:#0F1312;border-radius:14px;padding:22px;color:#ECF1EF;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:15px;font-weight:700">深色 · 石墨仪表台</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6B756F">[data-theme="dark"]</div></div>
+
+        <div style="margin:16px 0 8px;font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#9FAAA5">基面与文字</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div><div style="height:36px;border-radius:6px;background:#0F1312;box-shadow:inset 0 0 0 1px rgb(255 255 255/14%)"></div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#9FAAA5">canvas</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6B756F">#0F1312</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#161B1A;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"></div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#9FAAA5">grouped</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6B756F">#161B1A</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#1D2321;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"></div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#9FAAA5">surface</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6B756F">#1D2321</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#242B29;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)"></div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#9FAAA5">raise</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6B756F">#242B29</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#ECF1EF;display:grid;place-items:center;color:#181D1B;font-size:12px;font-weight:700">正文</div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#9FAAA5">ink · 13.5:1</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6B756F">#ECF1EF</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#9FAAA5;display:grid;place-items:center;color:#0F1312;font-size:12px">次级</div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#9FAAA5">ink-2 · 6.2:1</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6B756F">#9FAAA5</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#6B756F;display:grid;place-items:center;color:#ECF1EF;font-size:12px">辅助</div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#9FAAA5">ink-3 · ≤13px</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6B756F">#6B756F</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#3FD2B4;display:grid;place-items:center;color:#06211B;font-size:12px;font-weight:700">Aa</div><div style="margin-top:4px;font-size:10.5px;font-weight:600;color:#9FAAA5">act · 墨字 8.7:1</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6B756F">#3FD2B4</div></div>
+        </div>
+
+        <div style="margin:18px 0 8px;font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#9FAAA5">语义 · 同色相，明度补偿</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div><div style="height:36px;border-radius:6px;background:#F2705C;display:grid;place-items:center;color:#2B0D08;font-size:11.5px;font-weight:700">危险</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;margin-top:4px;color:#6B756F">#F2705C</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#7BD08D;display:grid;place-items:center;color:#0A2410;font-size:11.5px;font-weight:700">成功</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;margin-top:4px;color:#6B756F">#7BD08D</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#E0A83E;display:grid;place-items:center;color:#241A05;font-size:11.5px;font-weight:700">金币</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;margin-top:4px;color:#6B756F">#E0A83E</div></div>
+          <div><div style="height:36px;border-radius:6px;background:#8FBCE8;display:grid;place-items:center;color:#0B1B2B;font-size:11.5px;font-weight:700">钻石</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;margin-top:4px;color:#6B756F">#8FBCE8</div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="flex:1;height:28px;border-radius:6px;background:rgb(242 112 92/16%);display:grid;place-items:center;color:#F2705C;font-size:11px;font-weight:600">danger-soft</div>
+          <div style="flex:1;height:28px;border-radius:6px;background:rgb(123 208 141/16%);display:grid;place-items:center;color:#7BD08D;font-size:11px;font-weight:600">success-soft</div>
+          <div style="flex:1;height:28px;border-radius:6px;background:rgb(224 168 62/16%);display:grid;place-items:center;color:#E0A83E;font-size:11px;font-weight:600">gold-soft</div>
+          <div style="flex:1;height:28px;border-radius:6px;background:rgb(63 210 180/16%);display:grid;place-items:center;color:#3FD2B4;font-size:11px;font-weight:600">act-soft</div>
+        </div>
+
+        <div style="margin:18px 0 8px;font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#9FAAA5">材质样 · 面板 / 表盖高光 / 键帽 / LED</div>
+        <div style="display:flex;gap:8px">
+          <div style="flex:1.4;background:#1D2321;border-radius:10px;box-shadow:inset 0 1px 0 rgb(255 255 255/8%),inset 0 0 0 1px rgb(255 255 255/9%),0 1px 2px rgb(0 0 0/30%);padding:10px 12px;position:relative;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgb(255 255 255/14%) 0%,rgb(255 255 255/3%) 32%,rgb(255 255 255/0%) 34%);pointer-events:none"></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;color:#6B756F">STREAK</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:#ECF1EF;line-height:1.15">24<span style="font-size:11px;color:#9FAAA5;margin-left:4px">days</span></div>
+          </div>
+          <div style="flex:1;background:#1D2321;border-radius:6px;box-shadow:inset 0 1px 0 rgb(255 255 255/8%),inset 0 0 0 1px rgb(255 255 255/9%),0 1px 2px rgb(0 0 0/30%);display:grid;place-items:center;font-size:12px;font-weight:600;color:#ECF1EF">键帽</div>
+          <div style="flex:1;background:#1D2321;border-radius:6px;box-shadow:inset 0 1px 3px rgb(0 0 0/45%);display:grid;place-items:center;font-size:12px;color:#9FAAA5">按下</div>
+          <div style="flex:.9;background:#161B1A;border-radius:6px;display:grid;place-items:center"><div style="display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:999px;background:#7BD08D;box-shadow:0 0 3px #7BD08D"></div><div style="width:6px;height:6px;border-radius:999px;background:#3FD2B4;box-shadow:0 0 3px #3FD2B4"></div><div style="width:6px;height:6px;border-radius:999px;background:#D6452C;box-shadow:0 0 3px #D6452C"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 深浅共用单值 ── -->
+    <div data-screen-label="深浅共用单值" style="margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px">
+      <div style="background:#182028;border-radius:14px;padding:20px 22px;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:14px;font-weight:700;color:#EDF3F4">金融面 · 仪表舱（深浅共用，不覆盖）</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#9FB0B6">--ix-vault #182028</div></div>
+        <div style="display:flex;gap:14px;margin-top:14px;align-items:stretch">
+          <div style="flex:1;background:#1F2A33;border-radius:10px;padding:10px 14px;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;color:#9FB0B6">GOLD</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:#E0A83E">12,480</div>
+          </div>
+          <div style="flex:1;background:#1F2A33;border-radius:10px;padding:10px 14px;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;color:#9FB0B6">DIAMOND</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:#8FBCE8">86</div>
+          </div>
+          <div style="flex:1.2;display:flex;flex-direction:column;justify-content:center;gap:5px;font-size:11.5px;line-height:1.6;color:#9FB0B6">舱内亮金 #E0A83E<br>舱面文字 #EDF3F4 · 12.4:1<br>舱线 rgb(255 255 255/10%)</div>
+        </div>
+      </div>
+      <div style="background:#17181D;border-radius:14px;padding:20px 22px;box-shadow:inset 0 0 0 1px rgb(255 255 255/10%)">
+        <div style="font-size:14px;font-weight:700;color:#F4F5F9">未读角标 · 单值双主题 &nbsp;<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:400;color:#8A8FA3">--ix-badge #D6452C</span></div>
+        <div style="display:flex;gap:12px;margin-top:14px;align-items:center">
+          <div style="background:#F6F8F7;border-radius:8px;padding:10px 16px;display:flex;align-items:center;gap:10px"><span style="font-size:12.5px;color:#181D1B">浅色会话行</span><span style="min-width:18px;height:18px;border-radius:999px;background:#D6452C;color:#fff;font:700 11px/18px 'JetBrains Mono',monospace;text-align:center;padding:0 5px;box-sizing:border-box">3</span></div>
+          <div style="background:#1D2321;border-radius:8px;padding:10px 16px;display:flex;align-items:center;gap:10px"><span style="font-size:12.5px;color:#ECF1EF">深色会话行</span><span style="min-width:18px;height:18px;border-radius:999px;background:#D6452C;color:#fff;font:700 11px/18px 'JetBrains Mono',monospace;text-align:center;padding:0 5px;box-sizing:border-box">3</span></div>
+        </div>
+        <div style="margin-top:12px;font-size:11.5px;line-height:1.7;color:#8A8FA3">角标数字 ≥11px/700/tabular；对底 ≥3:1 两主题均达标。危险语义另用 danger（浅 #B03427 / 深 #F2705C），与角标分权。</div>
+      </div>
+    </div>
+
+    <div style="margin-top:22px;font-size:12.5px;line-height:1.8;color:#8A8FA3;border-top:1px solid rgb(255 255 255/12%);padding-top:16px">lite 档回落已写入令牌：blur→none、玻璃→不透明 raise/canvas、表盖高光/拉丝/LED 光晕→关、骨架静态化；层级/语义/间距/对比不变。reduced-motion 下全部时长归零，翻牌与指针直达终值。<br>色彩确认后，我按此文件逐字引用产出 mockup.html（20+ 屏 × 浅深）、ui-kit.html（组件 × 状态）与 SPEC.md。</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

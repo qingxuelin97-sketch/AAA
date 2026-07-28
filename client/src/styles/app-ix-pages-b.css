@@ -1,0 +1,161 @@
+/*
+ * 仪与匣 · IX-4 沉浸与会话（mockup ③ 对话 / ⑮ 剧场 / ⑯ 群聊）
+ * 语法：角色气泡=不透明面板（左下角 4px 定位角）；用户气泡=act 实底；
+ * 建议芯片=act-soft；输入岛=导航玻璃 + inset 输入位 + act 发送键；
+ * 在线=LED；状态行=mono。媒体沉浸页（has-bg）保留唯一的底部渐隐遮罩。
+ * 全围栏 html[data-app="1"]，只消费 --ix-*（剧场衬线按 SPEC 保留）。
+ */
+
+/* ═══ ③ 对话 · 身份栏（开窗头像 + 在线 LED + mono 状态行） ═══ */
+html[data-app="1"] .chat-head {
+  background: var(--ix-glass-nav) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  border-bottom: 1px solid var(--ix-hairline) !important;
+}
+html[data-app="1"] .chat-head .ch-status {
+  font-family: var(--ix-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: var(--ix-ink-2);
+}
+html[data-app="1"] .chat-head .ch-dot {
+  width: var(--ix-led-sm);
+  height: var(--ix-led-sm);
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-success);
+  box-shadow: var(--ix-led-halo) var(--ix-success);
+}
+
+/* ═══ ③ 对话 · 气泡（角色=面板 · 用户=act 实底 · 动作文=斜体三阶墨） ═══ */
+html[data-app="1"] .chat-main .msg.assistant .bubble {
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) var(--ix-r-card) var(--ix-r-card) var(--ix-r-micro) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .chat-main .msg.user .bubble {
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) var(--ix-r-card) var(--ix-r-micro) var(--ix-r-card) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%) !important;
+}
+html[data-app="1"] .chat-main .msg.assistant .bubble :where(em, i) {
+  font-style: italic;
+  color: var(--ix-ink-3);
+}
+html[data-app="1"] .chat-main .msg.user .bubble :where(em, i) {
+  font-style: italic;
+  color: color-mix(in srgb, var(--ix-act-ink) 78%, transparent);
+}
+/* 沉浸立绘态：气泡浮在媒体上时保持面板实体（正文永远在面板上，不上玻璃） */
+html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble {
+  background: var(--ix-surface) !important;
+}
+html[data-app="1"] .chat-main .msg-name {
+  font-size: var(--ix-type-meta);
+  color: var(--ix-ink-2);
+}
+/* 日分隔 = mono 铭牌小字 */
+html[data-app="1"] .chat-main .msg-daydivider span {
+  font-family: var(--ix-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--ix-track-label);
+  color: var(--ix-ink-3);
+}
+
+/* ═══ ③ 对话 · 建议芯片 = act-soft 胶囊 ═══ */
+html[data-app="1"] .chat-main .starter-chip {
+  background: var(--ix-act-soft) !important;
+  color: var(--ix-act) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-dial) !important;
+  font-weight: 600;
+}
+html[data-app="1"] .chat-main .starter-chip:active { transform: translateY(var(--ix-key-travel)); }
+
+/* ═══ ③ 对话 · 输入岛（玻璃 + inset 输入位 + act 发送键 40） ═══ */
+html[data-app="1"] .chat-input-bar {
+  background: var(--ix-glass-nav) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  border-top: 1px solid var(--ix-hairline) !important;
+}
+html[data-app="1"] .chat-input-bar .box {
+  background: var(--ix-surface) !important;
+  border: 1px solid var(--ix-hairline) !important;
+  border-radius: var(--ix-r-panel) !important;
+  box-shadow: var(--ix-shadow-dial) !important;
+}
+html[data-app="1"] .chat-input-bar .send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ix-r-dial) !important;
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
+  border: 0 !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%) !important;
+}
+html[data-app="1"] .chat-input-bar .send-btn:active { transform: translateY(var(--ix-key-travel)); }
+
+/* ═══ ⑯ 群聊 · 同对话语法（@提及 = act） ═══ */
+html[data-app="1"] .group-thread .gr-mention { color: var(--ix-act); font-weight: 700; }
+html[data-app="1"] .group-thread .group-message-body {
+  background: var(--ix-surface);
+  border-radius: var(--ix-r-card) var(--ix-r-card) var(--ix-r-card) var(--ix-r-micro);
+  box-shadow: var(--ix-shadow-1);
+}
+/* 发言人颜色按成员 id 稳定散列；四种颜色均为冻结语义色。 */
+html[data-app="1"] .qa-group-room .who { font-weight: 650 !important; }
+html[data-app="1"] .qa-group-room .who[data-ix-tone="act"] { color: var(--ix-act) !important; }
+html[data-app="1"] .qa-group-room .who[data-ix-tone="dia"] { color: var(--ix-dia) !important; }
+html[data-app="1"] .qa-group-room .who[data-ix-tone="gold"] { color: var(--ix-gold) !important; }
+html[data-app="1"] .qa-group-room .who[data-ix-tone="success"] { color: var(--ix-success) !important; }
+
+/* ═══ ⑮ 剧场 · 阅读流on不透明面板（衬线保留）+ 指挥键帽横轨 + 玻璃输入岛 ═══ */
+html[data-app="1"] .qa-theater-room .inovel-book,
+html[data-app="1"] .qa-theater-room .inovel-stage,
+html[data-app="1"] .qa-theater-room .stage {
+  background: var(--ix-surface) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa-theater-room .qa-theater-quick-actions .qa-button,
+html[data-app="1"] .qa-theater-room .qa-theater-action-hints .qa-button,
+html[data-app="1"] .qa-theater-room .inovel-quick button {
+  background: var(--ix-surface);
+  border: 0;
+  border-radius: var(--ix-r-key);
+  box-shadow: var(--ix-shadow-1);
+  color: var(--ix-ink);
+}
+html[data-app="1"] .qa-theater-room .qa-theater-quick-actions .qa-button:active,
+html[data-app="1"] .qa-theater-room .qa-theater-action-hints .qa-button:active,
+html[data-app="1"] .qa-theater-room .inovel-quick button:active {
+  transform: translateY(var(--ix-key-travel));
+  box-shadow: var(--ix-shadow-key-down);
+}
+html[data-app="1"] .qa-theater-room .qa-theater-input-island,
+html[data-app="1"] .qa-theater-room .qa-theater-composer {
+  background: var(--ix-glass-nav) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  border-top: 1px solid var(--ix-hairline) !important;
+}
+html[data-app="1"] .qa-theater-room .qa-theater-room-head {
+  background: var(--ix-glass-nav) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  border-bottom: 1px solid var(--ix-hairline) !important;
+}
+html[data-app="1"] .qa-theater-room .qa-theater-input-island textarea {
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  border-color: var(--ix-hairline) !important;
+  box-shadow: var(--ix-shadow-dial) !important;
+}

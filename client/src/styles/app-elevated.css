@@ -55,8 +55,8 @@ html[data-app="1"] .aht-acts button:hover { color: var(--text); }
 /* 未读角标 = 珊瑚内容语义（Lumen：禁无语义渐变与外发光） */
 html[data-app="1"] .aht-nb {
   font-size: 10px; padding: 0 4px; min-width: 16px; height: 16px; border-radius: 9px;
-  background: var(--lg-coral);
-  box-shadow: 0 0 0 2px var(--lg-canvas);
+  background: var(--ix-danger);
+  box-shadow: 0 0 0 2px var(--ix-canvas);
   letter-spacing: 0;
 }
 
@@ -269,7 +269,7 @@ html[data-app="1"] .msgs-entry-ic.grp { background: linear-gradient(140deg, #a27
 html[data-app="1"] .msgs-entry-tx b { font-size: 15px; letter-spacing: -0.005em; }
 html[data-app="1"] .msgs-badge {
   min-width: 22px; height: 20px; padding: 0 7px; border-radius: 12px; font-size: 11.5px;
-  background: var(--lg-coral);
+  background: var(--ix-danger);
   box-shadow: none;
 }
 html[data-app="1"] .msgs-conv {
@@ -515,21 +515,13 @@ html[data-app="1"] .msgs-skel-row {
    仅在 html[data-app="1"] 生效，Web/mobile-web 视觉不受影响。
    ========================================================================== */
 
-/* Liuli v5：--gl-* 是遗留消费别名，全部改由 tokens 文件的 --qa-glass-* 驱动。
+/* Liuli v5：local glass aliases 是遗留消费别名，全部改由 tokens 文件的 IX material tokens 驱动。
    厚度语义保持：1=薄纱（thin）/ 2=磨砂（chrome）/ 3=厚玻璃（sheet）。
    光环（halo）与青紫描边已按「无因果装饰归零」原则移除。 */
 html[data-app="1"] {
-  --gl-1-bg: var(--qa-glass-thin-bg);
-  --gl-2-bg: var(--qa-glass-chrome-bg);
-  --gl-3-bg: var(--qa-glass-sheet-bg);
-  --gl-1-blur: var(--lg-blur-s);
-  --gl-2-blur: var(--lg-blur);
-  --gl-3-blur: var(--lg-blur);
-  --gl-border: var(--lg-hairline);
-  --gl-border-in: var(--qa-glass-specular);
-  --gl-shadow: var(--qa-glass-shadow);
+  --ix-hairline-in: var(--ix-shadow-1);
   /* —— 高光条：玻璃边缘反射 —— */
-  --gl-sheen: linear-gradient(115deg,
+  --ix-sheen: linear-gradient(115deg,
     color-mix(in srgb, #fff 22%, transparent) 0%,
     color-mix(in srgb, #fff 0%, transparent) 40%);
 }
@@ -537,25 +529,25 @@ html[data-app="1"] {
 /* —— 玻璃通用类（同时给关键既有类补上真玻璃观感） —— */
 html[data-app="1"] .glass,
 html[data-app="1"] .glass-1 {
-  background: var(--gl-1-bg);
-  border: 1px solid var(--gl-border);
-  backdrop-filter: var(--gl-1-blur);
-  -webkit-backdrop-filter: var(--gl-1-blur);
-  box-shadow: var(--gl-border-in), var(--gl-shadow);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
+  backdrop-filter: var(--ix-blur-s);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  box-shadow: var(--ix-hairline-in), var(--ix-shadow-2);
 }
 html[data-app="1"] .glass-2 {
-  background: var(--gl-2-bg);
-  border: 1px solid var(--gl-border);
-  backdrop-filter: var(--gl-2-blur);
-  -webkit-backdrop-filter: var(--gl-2-blur);
-  box-shadow: var(--gl-border-in), var(--gl-shadow);
+  background: var(--ix-glass-nav);
+  border: 1px solid var(--ix-hairline);
+  backdrop-filter: var(--ix-blur);
+  -webkit-backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-hairline-in), var(--ix-shadow-2);
 }
 html[data-app="1"] .glass-3 {
-  background: var(--gl-3-bg);
-  border: 1px solid var(--gl-border);
-  backdrop-filter: var(--gl-3-blur);
-  -webkit-backdrop-filter: var(--gl-3-blur);
-  box-shadow: var(--gl-border-in), var(--gl-shadow);
+  background: var(--ix-glass-temp);
+  border: 1px solid var(--ix-hairline);
+  backdrop-filter: var(--ix-blur);
+  -webkit-backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-hairline-in), var(--ix-shadow-2);
 }
 
 /* —— 玻璃高光条：任意 .glass* 元素加 .sheen 即触发（伪元素浮层） —— */
@@ -564,7 +556,7 @@ html[data-app="1"] .glass-2, html[data-app="1"] .glass-3 { position: relative; }
 html[data-app="1"] .glass::after, html[data-app="1"] .glass-1::after,
 html[data-app="1"] .glass-2::after, html[data-app="1"] .glass-3::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: var(--gl-sheen);
+  background: var(--ix-sheen);
   opacity: 0.55; border-radius: inherit; mix-blend-mode: soft-light;
 }
 
@@ -582,10 +574,10 @@ html[data-app="1"][data-theme="light"] .glass-noise::before { opacity: 0.05; }
    ========================================================================== */
 
 /* —— Dock / FAB（Liuli v5 玻璃块已删）——
-   Lumen S2：Dock=L3 玻璃（--lg-glass-3 + --lg-blur + shadow-3）、FAB=act 实底
+   Lumen S2：Dock=L3 玻璃（--ix-glass-nav + --ix-blur + shadow-3）、FAB=act 实底
    圆钮，唯一权威在 app-controls.css。此处原有的噪点/高光条伪元素与 accent
    外发光违反「一层玻璃+发丝边+内高光、禁外发光」硬规则，一并移除；lite 回
-   落由 lumen 令牌与 app-runtime 统一处理。 */
+   落由 IX 令牌与 app-runtime 统一处理。 */
 
 /* —— 今日页头行：磨砂胶囊 hover 沁光 —— */
 html[data-app="1"] .aht-acts button {
@@ -597,7 +589,7 @@ html[data-app="1"] .aht-acts button {
 }
 html[data-app="1"] .aht-acts button:hover {
   background: color-mix(in srgb, var(--panel) 44%, transparent);
-  border-color: var(--gl-border);
+  border-color: var(--ix-hairline);
 }
 html[data-app="1"][data-perf="lite"] .aht-acts button {
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -639,9 +631,9 @@ html[data-app="1"][data-perf="lite"] .ah-hero .ah-coin {
 
 /* —— 快捷入口磁贴：玻璃底 + 高光反射 —— */
 html[data-app="1"] .ah-sc-ic {
-  background: var(--gl-1-bg);
-  border: 1px solid var(--gl-border);
-  box-shadow: var(--gl-border-in), 0 4px 14px rgba(0,0,0,0.10);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
+  box-shadow: var(--ix-hairline-in), 0 4px 14px rgba(0,0,0,0.10);
   position: relative; overflow: hidden;
 }
 html[data-app="1"] .ah-sc-ic::after {
@@ -654,7 +646,7 @@ html[data-app="1"][data-perf="lite"] .ah-sc-ic {
 }
 
 /* —— 快捷入口色调轮换：底色改为强调色 mix，玻璃透出更纯 —— */
-html[data-app="1"] .ah-sc .ah-sc-ic { background: color-mix(in srgb, var(--lg-act, var(--accent)) 12%, var(--qa-surface, #fff)); color: var(--lg-act, var(--accent)); }
+html[data-app="1"] .ah-sc .ah-sc-ic { background: color-mix(in srgb, var(--ix-act, var(--accent)) 12%, var(--ix-surface, #fff)); color: var(--ix-act, var(--accent)); }
 
 /* —— 精选卡：内嵌玻璃标签「今日精选」+ CTA 玻璃钮 —— */
 html[data-app="1"] .ah-hc-tag {
@@ -674,9 +666,9 @@ html[data-app="1"] .ah-hc-cta {
 
 /* —— 任务卡：玻璃层 —— */
 html[data-app="1"] .ah-task {
-  background: var(--gl-1-bg);
-  border: 1px solid var(--gl-border);
-  box-shadow: var(--gl-border-in), 0 4px 14px rgba(0,0,0,0.08);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
+  box-shadow: var(--ix-hairline-in), 0 4px 14px rgba(0,0,0,0.08);
 }
 html[data-app="1"][data-perf="lite"] .ah-task {
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -685,8 +677,8 @@ html[data-app="1"][data-perf="lite"] .ah-task {
 
 /* —— 「为你挑选」两列卡：玻璃盒 —— */
 html[data-app="1"] .ah-pick {
-  background: var(--gl-1-bg);
-  border: 1px solid var(--gl-border);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
 }
 html[data-app="1"][data-perf="lite"] .ah-pick {
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -695,8 +687,8 @@ html[data-app="1"][data-perf="lite"] .ah-pick {
 
 /* —— 「继续故事」rail 与「空态」CTA 玻璃化 —— */
 html[data-app="1"] .ah-empty {
-  background: var(--gl-1-bg);
-  border-color: color-mix(in srgb, var(--accent) 32%, var(--gl-border));
+  background: var(--ix-surface);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--ix-hairline));
 }
 
 /* ============================================================================
@@ -789,9 +781,9 @@ html[data-app="1"] .fd2-say-call, html[data-app="1"] .fd2-say-go {
    ========================================================================== */
 /* Lumen S2：Sheet = L2 单层玻璃（材质在 app-controls 基线 + hig-v5 shim 收口）。
    此处原有的 mask 二次 blur、sheet 顶部高光条伪元素、行图标玻璃胶囊
-   （玻璃叠玻璃）均违反单层玻璃硬规则，已删；scrim 用 --lg-scrim。 */
+   （玻璃叠玻璃）均违反单层玻璃硬规则，已删；scrim 用 --ix-scrim。 */
 html[data-app="1"] .app-sheet-mask {
-  background: var(--lg-scrim);
+  background: var(--ix-scrim);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -808,10 +800,10 @@ html[data-app="1"] .ac-ic {
 /* 头部（分段控件）玻璃底 */
 html[data-app="1"] .msgs-head {
   padding: 10px 16px 12px;
-  border-bottom: 1px solid var(--gl-border);
-  background: var(--gl-1-bg);
-  backdrop-filter: var(--gl-1-blur);
-  -webkit-backdrop-filter: var(--gl-1-blur);
+  border-bottom: 1px solid var(--ix-hairline);
+  background: var(--ix-surface);
+  backdrop-filter: var(--ix-blur-s);
+  -webkit-backdrop-filter: var(--ix-blur-s);
   margin: 0 -16px 8px;
   border-radius: 0;
 }
@@ -824,14 +816,14 @@ html[data-app="1"][data-perf="lite"] .msgs-head {
 html[data-app="1"] .msgs-entry,
 html[data-app="1"] .msgs-conv {
   background: color-mix(in srgb, var(--panel) 90%, transparent);
-  border: 1px solid var(--gl-border);
+  border: 1px solid var(--ix-hairline);
   transition: background 0.2s, transform 0.15s var(--hy-spring), box-shadow 0.2s;
-  box-shadow: var(--gl-border-in);
+  box-shadow: var(--ix-hairline-in);
 }
 html[data-app="1"] .msgs-entry:hover,
 html[data-app="1"] .msgs-conv:hover {
-  background: var(--gl-2-bg);
-  box-shadow: var(--gl-border-in), 0 6px 20px rgba(0,0,0,0.14);
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-hairline-in), 0 6px 20px rgba(0,0,0,0.14);
 }
 html[data-app="1"][data-perf="lite"] .msgs-entry,
 html[data-app="1"][data-perf="lite"] .msgs-conv {
@@ -844,9 +836,9 @@ html[data-app="1"] .msgs-badge {
 
 /* 我的页 · 资料卡 & VIP 横幅 & 资产卡：玻璃 */
 html[data-app="1"] .pf-assets {
-  background: var(--gl-1-bg);
-  border: 1px solid var(--gl-border);
-  box-shadow: var(--gl-border-in);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
+  box-shadow: var(--ix-hairline-in);
 }
 html[data-app="1"][data-perf="lite"] .pf-assets {
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -856,8 +848,8 @@ html[data-app="1"][data-perf="lite"] .pf-assets {
    模糊），底色本就近实底，模糊感知为零、GPU 白算 */
 html[data-app="1"] .pf-cell {
   background: color-mix(in srgb, var(--panel) 88%, transparent);
-  border: 1px solid var(--gl-border);
-  box-shadow: var(--gl-border-in);
+  border: 1px solid var(--ix-hairline);
+  box-shadow: var(--ix-hairline-in);
 }
 html[data-app="1"][data-perf="lite"] .pf-cell,
 html[data-app="1"][data-perf="lite"] .pf-cell-ic,
@@ -870,8 +862,8 @@ html[data-app="1"] .pf-vip-go {
 }
 /* 底部功能按钮玻璃化 */
 html[data-app="1"] .pf-foot-btn {
-  background: var(--gl-1-bg);
-  border: 1px solid var(--gl-border);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
 }
 html[data-app="1"][data-perf="lite"] .pf-foot-btn {
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -940,10 +932,10 @@ html[data-app="1"][data-perf="lite"] .pf-foot-btn {
    注：既有规则里已有 .has-bg 场景的玻璃，这里再补齐无背景的常态。
    ========================================================================== */
 html[data-app="1"] .chat-main .chat-head {
-  background: var(--gl-1-bg);
-  border-bottom: 1px solid var(--gl-border);
-  backdrop-filter: var(--gl-1-blur);
-  -webkit-backdrop-filter: var(--gl-1-blur);
+  background: var(--ix-surface);
+  border-bottom: 1px solid var(--ix-hairline);
+  backdrop-filter: var(--ix-blur-s);
+  -webkit-backdrop-filter: var(--ix-blur-s);
 }
 html[data-app="1"][data-perf="lite"] .chat-main .chat-head {
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -961,18 +953,18 @@ html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-head {
 /* Lumen S2：输入岛是单层玻璃 —— 外层玻璃条（hig-v5 经 shim 收口）+ 内层普通
    inset 输入位，内层不再挂 blur/玻璃（原双层玻璃块已删）。 */
 html[data-app="1"] .chat-main .chat-input-bar .box {
-  background: var(--qa-surface);
-  border: 1px solid var(--lg-hairline);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-hairline);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: none;
 }
 html[data-app="1"] .msg.assistant .bubble {
-  background: var(--gl-2-bg);
-  border: 1px solid var(--gl-border);
-  backdrop-filter: var(--gl-1-blur);
-  -webkit-backdrop-filter: var(--gl-1-blur);
-  box-shadow: var(--gl-border-in), 0 4px 14px rgba(0,0,0,0.14);
+  background: var(--ix-glass-nav);
+  border: 1px solid var(--ix-hairline);
+  backdrop-filter: var(--ix-blur-s);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  box-shadow: var(--ix-hairline-in), 0 4px 14px rgba(0,0,0,0.14);
 }
 html[data-app="1"][data-perf="lite"] .msg.assistant .bubble {
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -994,32 +986,32 @@ html[data-app="1"] .msg.user .bubble::before {
 html[data-app="1"] .call-tools,
 html[data-app="1"] .call-toolbar,
 html[data-app="1"] .call-actions {
-  background: var(--gl-2-bg);
-  border: 1px solid var(--gl-border);
-  backdrop-filter: var(--gl-2-blur);
-  -webkit-backdrop-filter: var(--gl-2-blur);
-  box-shadow: var(--gl-border-in);
+  background: var(--ix-glass-nav);
+  border: 1px solid var(--ix-hairline);
+  backdrop-filter: var(--ix-blur);
+  -webkit-backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-hairline-in);
 }
 
 /* ============================================================================
    Toast 与 CommandPalette：玻璃升级
    ========================================================================== */
-/* Toast：深实体面语义（--lg-finance），一道内高光 + 短阴影，无 Liuli 字面色 */
-/* UI kit toast：--lg-glass-2 玻璃胶囊 + shadow-2，墨色文字（随主题翻转） */
+/* Toast：深实体面语义（--ix-vault），一道内高光 + 短阴影，无 Liuli 字面色 */
+/* UI kit toast：--ix-raise 玻璃胶囊 + shadow-2，墨色文字（随主题翻转） */
 html[data-app="1"] .toast {
-  border-radius: var(--lg-r-pill);
-  background: var(--lg-glass-2);
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-raise);
   border: 1px solid transparent;
-  color: var(--lg-ink);
-  backdrop-filter: var(--lg-blur);
-  -webkit-backdrop-filter: var(--lg-blur);
-  box-shadow: var(--lg-glass-shadow-2);
+  color: var(--ix-ink);
+  backdrop-filter: var(--ix-blur);
+  -webkit-backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-shadow-2);
 }
 html[data-app="1"] .cmdk,
 html[data-app="1"] .cmdk-panel {
-  background: var(--gl-3-bg);
-  backdrop-filter: var(--lg-blur);
-  -webkit-backdrop-filter: var(--lg-blur);
+  background: var(--ix-glass-temp);
+  backdrop-filter: var(--ix-blur);
+  -webkit-backdrop-filter: var(--ix-blur);
 }
 html[data-app="1"][data-perf="lite"] .toast,
 html[data-app="1"][data-perf="lite"] .cmdk,
@@ -1031,10 +1023,10 @@ html[data-app="1"][data-perf="lite"] .cmdk-panel {
    顶栏（沉浸次级页 .topbar）：真玻璃化
    ========================================================================== */
 html[data-app="1"] .topbar {
-  background: var(--gl-2-bg);
-  border-bottom: 1px solid var(--gl-border);
-  backdrop-filter: var(--gl-2-blur);
-  -webkit-backdrop-filter: var(--gl-2-blur);
+  background: var(--ix-glass-nav);
+  border-bottom: 1px solid var(--ix-hairline);
+  backdrop-filter: var(--ix-blur);
+  -webkit-backdrop-filter: var(--ix-blur);
   box-shadow: 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
 }
 html[data-app="1"][data-perf="lite"] .topbar {
@@ -1125,7 +1117,7 @@ html[data-app="1"][data-theme="dark"] .ah-pick,
 html[data-app="1"][data-theme="dark"] .pf-cell,
 html[data-app="1"][data-theme="dark"] .pf-assets,
 html[data-app="1"][data-theme="dark"] .pf-foot-btn {
-  box-shadow: var(--gl-border-in), 0 6px 20px rgba(0,0,0,0.32);
+  box-shadow: var(--ix-hairline-in), 0 6px 20px rgba(0,0,0,0.32);
 }
 
 /* ============================================================================
@@ -1168,5 +1160,4 @@ html[data-app="1"] .cvx-cta {
    曾经的 transform 居中合并补丁随旧布局一并退役（.app-dock 围栏内由
    app-controls 以 transform:none !important 钉死）。
    ========================================================================== */
-
 

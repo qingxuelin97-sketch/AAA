@@ -1,0 +1,253 @@
+/*
+ * 仪与匣 · IX-5 价值与身份（mockup ⑤ 成就 / ⑥ 钱包 / ⑦ 星轨 / ⑨ 月历 / ⑪ 角色详情 / ⑬⑭ 充值与 VIP）
+ * + 仪式动效（split-flap 翻牌 / 指针入场，一次即止；reduced-motion 由时长令牌归零直达）。
+ * 全围栏 html[data-app="1"]，只消费 --ix-*；vault 舱内金读数 #E0A83E / 亮青 #3FD2B4 /
+ * 钻读数 #8FBCE8 是 HANDOFF 硬约束 6 的字面契约（舱体深浅共用，语义色相冻结）。
+ * 货币图标本体不动（用户特批）。
+ */
+
+/* ═══ ⑥ 钱包 · 舱卡（App 分支 = qa-wallet-v4；40px mono 主读数 + 舱内 CTA） ═══ */
+html[data-app="1"] .qa-wallet-v4__balance {
+  position: relative;
+  overflow: hidden;
+  background: var(--ix-vault) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-panel) !important;
+  box-shadow: inset 0 0 0 1px var(--ix-vault-line) !important;
+  color: var(--ix-vault-ink) !important;
+}
+html[data-app="1"] .qa-wallet-v4__balance::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ix-glare);
+  pointer-events: none;
+}
+html[data-app="1"] .qa-wallet-v4__balance-head > div > span { color: var(--ix-vault-ink); }
+html[data-app="1"] .qa-wallet-v4__balance-head small { color: var(--ix-vault-ink-2); }
+/* 双列并排资产：用 28px 读数档（40px 主读数档留给单读数舱面，360px 视口不溢出） */
+html[data-app="1"] .qa-wallet-v4__asset strong {
+  font-family: var(--ix-font-mono);
+  font-size: var(--ix-type-readout);
+  font-weight: 600;
+  line-height: var(--ix-lh-tight);
+  font-variant-numeric: tabular-nums;
+}
+/* 金/钻读数各归其色（:has 定位，禁 nth；货币图标本体原样保留） */
+html[data-app="1"] .qa-wallet-v4__asset:has(.qa-wallet-v4__asset-icon.gold) strong { color: var(--ix-vault-gold); }
+html[data-app="1"] .qa-wallet-v4__asset:has(.qa-wallet-v4__asset-icon.diamond) strong { color: #8FBCE8; }
+html[data-app="1"] .qa-wallet-v4__asset small { color: var(--ix-vault-ink-2); }
+html[data-app="1"] .qa-wallet-v4__asset-icon {
+  background: var(--ix-vault-2) !important;
+  box-shadow: inset 0 0 0 1px var(--ix-vault-line) !important;
+  border-radius: var(--ix-r-card) !important;
+}
+/* 舱内充值 CTA：固定亮青（不随用户 accent） */
+html[data-app="1"] .qa-wallet-v4__recharge.qa-button {
+  background: #3FD2B4 !important;
+  color: #06211B !important;
+  border: 0 !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%) !important;
+}
+html[data-app="1"] .qa-wallet-v4__membership {
+  background: var(--ix-vault-2) !important;
+  border: 1px solid var(--ix-vault-line) !important;
+  border-radius: var(--ix-r-card) !important;
+  color: var(--ix-vault-gold) !important;
+}
+/* 面板组与流水：surface 实体 + tabular 金额；快捷图标退中性 */
+html[data-app="1"] :where(.qa-wallet-v4__panel, .qa-wallet-v4__checkin, .qa-wallet-v4__ledger) {
+  background: var(--ix-surface) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa-wallet-v4__tx-amount {
+  font-family: var(--ix-font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+html[data-app="1"] .qa-wallet-v4__quick-icon {
+  background: var(--ix-grouped) !important;
+  color: var(--ix-ink-2) !important;
+}
+
+/* ═══ ⑤ 成就殿堂（App 分支 = qa-achievements-*）· 金属牌只在奖章本体 ═══ */
+html[data-app="1"] .qa-achievements-summary {
+  background: var(--ix-surface) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa-achievements-summary h2 {
+  font-family: var(--ix-font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+html[data-app="1"] .qa-achievements-progress { background: var(--ix-grouped); border-radius: 1px; overflow: hidden; }
+html[data-app="1"] .qa-achievements-progress span { background: var(--ix-act) !important; border-radius: 0 !important; }
+html[data-app="1"] .qa-ach-wall {
+  background: var(--ix-surface) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa-ach-ring b {
+  font-family: var(--ix-font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+/* 奖章计数芯片：金属只以文字语义色呈现（radial 只许在奖章本体上） */
+html[data-app="1"] .qa-ach-medals span[data-medal="gold"] { color: var(--ix-gold); }
+html[data-app="1"] .qa-ach-medals span[data-medal="silver"] { color: var(--ix-ink-2); }
+html[data-app="1"] .qa-ach-medals span[data-medal="bronze"] { color: #8F5B2E; }
+html[data-app="1"][data-theme="dark"] .qa-ach-medals span[data-medal="bronze"] { color: #C68B57; }
+/* 三档金属圆牌：SPEC §4 指定的三组 radial（全系统仅奖章/印章可用金属渐变） */
+html[data-app="1"] .qa-achievements-card.is-unlocked[data-medal="gold"] .qa-achievements-card-icon {
+  background: radial-gradient(circle at 34% 30%, #F6DFA0, #D9A93F 58%, #A67818) !important;
+  color: #5A3E06 !important;
+}
+html[data-app="1"] .qa-achievements-card.is-unlocked[data-medal="silver"] .qa-achievements-card-icon {
+  background: radial-gradient(circle at 34% 30%, #F3F6F8, #C4CDD3 58%, #8D989F) !important;
+  color: #3E4A52 !important;
+}
+html[data-app="1"] .qa-achievements-card.is-unlocked[data-medal="bronze"] .qa-achievements-card-icon {
+  background: radial-gradient(circle at 34% 30%, #EBC09A, #C68B57 58%, #8F5B2E) !important;
+  color: #4A2C12 !important;
+}
+html[data-app="1"] .qa-achievements-card {
+  background: var(--ix-surface) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+/* 一键领取 = 48h 金色提交键（奖励金语义，非 act） */
+html[data-app="1"] .qa-achievements-claim-all.qa-button {
+  min-height: var(--ix-hit-submit) !important;
+  background: var(--ix-gold) !important;
+  color: var(--ix-gold-ink) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 28%) !important;
+}
+
+/* ═══ ⑦ 星轨 · 舱 hero + 读数宫格 + 单色相图表 ═══ */
+html[data-app="1"] .ins-hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--ix-vault) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-panel) !important;
+  box-shadow: inset 0 0 0 1px var(--ix-vault-line) !important;
+  color: var(--ix-vault-ink);
+}
+html[data-app="1"] .ins-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ix-glare);
+  pointer-events: none;
+}
+html[data-app="1"] .ins-kpi b,
+html[data-app="1"] .ins-made b,
+html[data-app="1"] .ins-eco b {
+  font-family: var(--ix-font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+html[data-app="1"] :where(.ins-card, .ins-comp, .ins-grid > *) {
+  background: var(--ix-surface);
+  border: 0;
+  border-radius: var(--ix-r-card);
+  box-shadow: var(--ix-shadow-1);
+}
+/* 柱状图：当前实心 act，历史同色 30%；入场指针一次（540ms 过冲回正） */
+html[data-app="1"] .ins-chart i {
+  background: var(--ix-act) !important;
+  opacity: .3;
+  border-radius: 1px !important;
+  transform-origin: bottom;
+  animation: ix-needle-in var(--ix-dur-needle) var(--ix-ease-stop) 1 both;
+}
+html[data-app="1"] .ins-chart .today i,
+html[data-app="1"] .ins-chart i.today { opacity: 1; }
+
+/* ═══ ⑨ 签到月历 · 玻璃 Sheet 内的四态格 + 印章三档 ═══ */
+html[data-app="1"] .qa-cal {
+  background: var(--ix-glass-temp) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  border-radius: var(--ix-r-panel) var(--ix-r-panel) 0 0 !important;
+}
+html[data-app="1"] .qa-cal-mask { background: var(--ix-scrim) !important; }
+html[data-app="1"] .qa-cal-month {
+  font-family: var(--ix-font-mono);
+  font-weight: 600;
+  letter-spacing: .08em;
+}
+html[data-app="1"] .qa-cal-wd {
+  font-family: var(--ix-font-mono);
+  font-size: 10px;
+  color: var(--ix-ink-3);
+}
+/* 四态：已签=act 实心 r8 反白 · 今日=1.5px act 描环 · 缺签=沟槽底三阶墨 · 未来=纯三阶墨
+ *（r8 为 SPEC §4 对日历格的显式指定，是五档之外唯一的例外值） */
+html[data-app="1"] .qa-cal-cell { border-radius: 8px !important; color: var(--ix-ink-3); }
+html[data-app="1"] .qa-cal-cell.on {
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
+  font-weight: 700;
+}
+html[data-app="1"] .qa-cal-cell.today:not(.on) {
+  background: transparent !important;
+  box-shadow: inset 0 0 0 1.5px var(--ix-act) !important;
+  color: var(--ix-act) !important;
+  font-weight: 700;
+}
+/* 缺签（过去且未签）：沟槽底；未来：纯三阶墨无底 */
+html[data-app="1"] .qa-cal-cell:not(.on):not(.today):not(.future):not(.pad) { background: var(--ix-grouped) !important; }
+html[data-app="1"] .qa-cal-cell.future { background: transparent !important; color: var(--ix-ink-3) !important; }
+html[data-app="1"] .qa-cal-streak b {
+  font-family: var(--ix-font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══ ⑪ 角色详情 / ⑭ VIP · 面板化与金属章 ═══ */
+html[data-app="1"] .qa-character-view .cvx-go.qa-button {
+  border-radius: var(--ix-r-key);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%);
+}
+html[data-app="1"] .vm-card-shine { display: none !important; }
+html[data-app="1"] .vm-card-pat { opacity: .5; }
+
+/* ═══ 仪式动效 · split-flap 翻牌（IxFlip 组件的样式契约） ═══ */
+html[data-app="1"] .ix-flip { display: inline-flex; }
+html[data-app="1"] .ix-flip-cell {
+  position: relative;
+  display: inline-block;
+  perspective: 240px;
+}
+/* 新值下半页展开：130ms 后半程，按位错峰 40ms */
+html[data-app="1"] .ix-flip-cell.turn .ix-flip-ch {
+  animation: ix-flip-bottom var(--ix-dur-flip-half) var(--ix-ease) 1 both;
+  animation-delay: calc(var(--ix-dur-flip-half) + var(--ix-flip-i, 0) * var(--ix-dur-stagger));
+}
+/* 旧值上半页折下：内容走 CSS content（不进文本流，读屏与 e2e 只见新值） */
+html[data-app="1"] .ix-flip-old {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 0 46% 0);
+  transform-origin: center 54%;
+  animation: ix-flip-top var(--ix-dur-flip-half) var(--ix-ease) 1 both;
+  animation-delay: calc(var(--ix-flip-i, 0) * var(--ix-dur-stagger));
+}
+html[data-app="1"] .ix-flip-old::before { content: attr(data-ch); }
+@keyframes ix-flip-top { from { transform: rotateX(0); opacity: 1; } to { transform: rotateX(-88deg); opacity: 0; } }
+@keyframes ix-flip-bottom { from { transform: rotateX(88deg); opacity: 0; } to { transform: rotateX(0); opacity: 1; } }
+@keyframes ix-needle-in { from { transform: scaleY(.04); } 82% { transform: scaleY(1.02); } to { transform: scaleY(1); } }
+
+/* reduced-motion：三条 keyframes 全部只跑一次且时长令牌归零；双保险直接停 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .ix-flip-old,
+  html[data-app="1"] .ix-flip-cell.turn .ix-flip-ch,
+  html[data-app="1"] .ins-chart i { animation: none; }
+}

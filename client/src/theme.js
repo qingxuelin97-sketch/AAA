@@ -1,5 +1,7 @@
 // Theme controller — light / dark / system, persisted in localStorage so it applies
 // before React mounts (no flash) and works even on the login screen.
+import { isAppMode } from './appmode.js';
+
 const KEY = 'huanyu_theme';
 const mq = () => window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -14,11 +16,14 @@ export function resolveTheme(mode = getThemeMode()) {
 export function applyTheme(mode = getThemeMode()) {
   const resolved = resolveTheme(mode);
   document.documentElement.dataset.theme = resolved;
-  // Keep system chrome in sync with the active shell. Both shells now share the
-  // Lumen canvas (Web adopted Lumen Glass in the web major update).
+  // Keep system chrome in sync with each shell: Web retains its Lumen canvas,
+  // while the native/App preview uses the frozen IX canvas.
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute('content', resolved === 'dark' ? '#0A0C12' : '#EDEFF6');
+    const app = isAppMode();
+    meta.setAttribute('content', resolved === 'dark'
+      ? (app ? '#0F1312' : '#0A0C12')
+      : (app ? '#E8EBE9' : '#EDEFF6'));
   }
   try { window.dispatchEvent(new Event('huanyu-theme')); } catch { /* */ }
 }
