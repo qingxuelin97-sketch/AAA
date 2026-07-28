@@ -33,8 +33,8 @@ export async function syncStatusBar() {
     // Style.Dark = dark background w/ light icons; Style.Light = light background w/ dark icons.
     await StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light });
     if (Capacitor.getPlatform() === 'android') {
-      // App 浅色主题（白+青）底色对齐 --bg #eefbfd，而非旧 Web 奶白，避免与页面顶部形成色差。
-      await StatusBar.setBackgroundColor({ color: dark ? '#0c0c0e' : '#eefbfd' });
+      // Native system chrome follows the IX App canvas; Web keeps its own palette.
+      await StatusBar.setBackgroundColor({ color: dark ? '#0F1312' : '#E8EBE9' });
     }
   } catch { /* plugin not available */ }
 }

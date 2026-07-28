@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom';
 import { NavLink, useNavigate, useLocation, useNavigationType } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
-import bootMarkUrl from '../assets/app/qa5-boot-mark@2x.png?url';
+import { IxOnboardingArt } from '../art.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import WelcomePopup from './WelcomePopup.jsx';
 import AppOnboarding from './AppOnboarding.jsx';
@@ -394,7 +394,7 @@ export default function AppLayout({ children }) {
       {boot && (
         <div className="app-boot" aria-hidden="true">
           <div className="app-boot-inner">
-            <img className="app-boot-logo" src={bootMarkUrl} width={88} height={88} alt="" draggable="false" />
+            <IxOnboardingArt step={0} size={88} className="app-boot-logo" />
             <b className="app-boot-name">幻域</b>
             <span className="app-boot-sub">与你创造的角色一同呼吸</span>
           </div>

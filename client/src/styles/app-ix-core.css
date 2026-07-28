@@ -6,6 +6,17 @@
  * Dock/顶栏/Sheet/长按菜单；按下=下沉 1px 非缩放；发光只属于 LED。
  */
 
+/* IX-7 composition aliases live outside the frozen token twin. */
+html[data-app="1"] {
+  --ix-act-pressed: color-mix(in oklab, var(--ix-act) 86%, #000000);
+  --ix-ambient-none: none;
+  --ix-editor-chrome: calc(72px + env(safe-area-inset-top));
+}
+html[data-app="1"][data-theme="dark"] {
+  --ix-act-pressed: color-mix(in oklab, var(--ix-act) 86%, #FFFFFF);
+}
+
+
 /* ═══ 0 · 基元工具类（读数/铭牌/LED/刻度带，供各页阶段复用） ═══ */
 html[data-app="1"] .ix-readout {
   font-family: var(--ix-font-mono);

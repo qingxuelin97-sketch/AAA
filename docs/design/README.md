@@ -26,4 +26,12 @@ S1–S7 阶段的设计权威，视觉层被「仪与匣」替代后归档保留
 - `lumen-glass-mockup.html` / `lumen-glass-ui-kit.html` — 50 屏视觉稿与组件库
 - `LUMEN_S7_SPEC.md` / `lumen-s7-ui-kit.html` — S7「仪式与相伴」规格与组件家族（**产品契约仍现行**：周报/月历/分享卡/长按系统/本机数据键清单）
 - `LUMEN_MIGRATION_PLAN.md` — S1–S6 迁移记录
-- `CLAUDE_CODE_PROMPT.md` — 当年的实施指令存档
+- `CLAUDE_CODE_PROMPT.md` (archived implementation prompt)
+
+## IX-6 / IX-7 completion
+
+The production App is now frozen on the Field Instrument stack. See
+`field-instrument/IX-6-7_STATUS.md` for the machine-readable completion
+record, retired runtime layers, SVG media policy, and verification contract.
+The Lumen documents listed above remain an archive only; they are not loaded
+by the runtime.

@@ -308,8 +308,8 @@ export default function CallScreen({ character, onClose }) {
   const videoOn = mode === 'video' && !!bg;
   const toggleMode = () => { if (!bg) return; touchedMode.current = true; setMode(m => (m === 'video' ? 'voice' : 'video')); };
   // 曜光玻璃 s08（仅 App 壳）：语音形态背景 = 同立绘 46px 深模糊 + 压暗
-  //（CSS 见 app-lumen-s4.css）。背景是视频时取头像作静帧；Web 端 DOM 零差异。
-  const lumenArt = char?.background_type === 'video' ? (char?.avatar || null) : (bg || char?.avatar || null);
+  //（CSS 见 app-ix-pages-d.css）。背景是视频时取头像作静帧；Web 端 DOM 零差异。
+  const callArt = char?.background_type === 'video' ? (char?.avatar || null) : (bg || char?.avatar || null);
 
   const screen = (
     <div ref={callRootRef} className={'call-screen' + (videoOn ? ' video' : '')} style={{ '--call-hue': hue }} role="dialog" aria-modal="true" aria-label={`与${char?.name || '角色'}通话`} tabIndex={-1}>
@@ -321,8 +321,8 @@ export default function CallScreen({ character, onClose }) {
           </div>
         : (
           <div className="call-bg">
-            {appPortal && lumenArt ? (
-              <img className="call-bg-art" src={assetUrl(lumenArt)} alt="" aria-hidden="true" decoding="async" />
+            {appPortal && callArt ? (
+              <img className="call-bg-art" src={assetUrl(callArt)} alt="" aria-hidden="true" decoding="async" />
             ) : null}
           </div>
         )}

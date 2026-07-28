@@ -1,7 +1,7 @@
-/* Lumen Glass v1.0 controls (S2 换装). Every selector is fenced to the App
-   shell. 材质权威 = lumen-glass-tokens.css（--lg-*）；遗留 --qa-* 经 shim 指向
-   同一权威。硬规则：同一对象一层玻璃 + 发丝边 + 内高光（全部含在
-   --lg-glass-shadow-* 里），禁外发光。 */
+/* Field Instrument controls. Every selector is fenced to the App shell.
+   材质权威 = app-ix-tokens.css（IX core tokens），无运行时兼容 shim。
+   硬规则：同一对象一层玻璃 + 发丝边 + 内高光（全部含在
+   IX shadow tokens 里），禁外发光。 */
 html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button) {
   -webkit-tap-highlight-color: transparent;
   appearance: none;
@@ -21,73 +21,73 @@ html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button)::after {
 
 /* UI kit 焦点契约：3px act 55% 外环，仅 :focus-visible（e2e 断言 outline 可见） */
 html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--lg-focus) 55%, transparent) !important;
+  outline: 3px solid color-mix(in srgb, var(--ix-focus) 55%, transparent) !important;
   outline-offset: 2px;
 }
 
 html[data-app="1"] .qa-button {
   position: relative;
   display: inline-flex;
-  min-width: var(--qa-control-min);
-  min-height: var(--qa-control-min);
+  min-width: var(--ix-hit-min);
+  min-height: var(--ix-hit-min);
   align-items: center;
   justify-content: center;
-  gap: var(--lg-space-2);
-  padding: 0 var(--lg-space-4);
+  gap: var(--ix-space-2);
+  padding: 0 var(--ix-space-4);
   border: 1px solid transparent;
   /* UI kit AppButton：胶囊 999 · 600 字重 · 15px */
-  border-radius: var(--lg-r-pill);
-  background: var(--qa-surface);
-  color: var(--lg-ink);
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-surface);
+  color: var(--ix-ink);
   box-shadow: none;
   font-size: 15px;
   font-weight: 600;
   line-height: 1;
   transition:
-    transform var(--lg-dur-press) var(--lg-ease),
-    background-color var(--lg-dur-state) var(--lg-ease),
-    border-color var(--lg-dur-state) var(--lg-ease),
-    color var(--lg-dur-state) var(--lg-ease),
-    box-shadow var(--lg-dur-state) var(--lg-ease);
+    transform var(--ix-dur-press) var(--ix-ease),
+    background-color var(--ix-dur-state) var(--ix-ease),
+    border-color var(--ix-dur-state) var(--ix-ease),
+    color var(--ix-dur-state) var(--ix-ease),
+    box-shadow var(--ix-dur-state) var(--ix-ease);
 }
 
 html[data-app="1"] .qa-button--sm {
-  min-height: var(--qa-control-min);
-  padding-inline: var(--lg-space-3);
+  min-height: var(--ix-hit-min);
+  padding-inline: var(--ix-space-3);
   font-size: 13px;
 }
 
 html[data-app="1"] .qa-button--lg {
-  min-height: var(--qa-control-submit);
-  padding-inline: var(--lg-space-5);
+  min-height: var(--ix-hit-submit);
+  padding-inline: var(--ix-space-5);
   font-size: 15px;
 }
 
 /* SPEC §4：primary = act 实底胶囊 */
 html[data-app="1"] .qa-button--primary {
-  border-radius: var(--lg-r-pill);
-  background: var(--lg-act);
-  color: var(--lg-act-ink);
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-act);
+  color: var(--ix-act-ink);
 }
 
-/* UI kit：secondary = --lg-glass-2 玻璃 + shadow-1（小档 blur），按下提亮为选中片 */
+/* UI kit：secondary = --ix-raise 玻璃 + shadow-1（小档 blur），按下提亮为选中片 */
 html[data-app="1"] .qa-button--secondary {
   border-color: transparent;
-  background: var(--lg-glass-2);
-  color: var(--lg-ink);
-  box-shadow: var(--lg-glass-shadow-1);
-  -webkit-backdrop-filter: var(--lg-blur-s);
-  backdrop-filter: var(--lg-blur-s);
+  background: var(--ix-raise);
+  color: var(--ix-ink);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
 }
 
 html[data-app="1"] .qa-button--secondary:active:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--lg-glass-sel);
+  background: var(--ix-surface);
 }
 
 /* SPEC §4：tertiary = 纯文字 act 色 */
 html[data-app="1"] .qa-button--tertiary {
   background: transparent;
-  color: var(--lg-act);
+  color: var(--ix-act);
 }
 
 /* UI kit：danger = 珊瑚 1.6px 描边默认；确认（data-confirming）或按压时实底 */
@@ -95,8 +95,8 @@ html[data-app="1"] .qa-button--danger,
 html[data-app="1"] .qa-button.qa-tone--danger {
   border-color: transparent;
   background: transparent;
-  box-shadow: inset 0 0 0 1.6px var(--lg-coral);
-  color: var(--lg-coral);
+  box-shadow: inset 0 0 0 1.6px var(--ix-danger);
+  color: var(--ix-danger);
 }
 
 html[data-app="1"] .qa-button--danger[data-confirming],
@@ -104,16 +104,16 @@ html[data-app="1"] .qa-button.qa-tone--danger[data-confirming],
 html[data-app="1"] .qa-button--danger:active:not(:disabled):not([aria-disabled="true"]),
 html[data-app="1"] .qa-button.qa-tone--danger:active:not(:disabled):not([aria-disabled="true"]) {
   border-color: transparent;
-  background: var(--lg-coral);
+  background: var(--ix-danger);
   box-shadow: none;
-  color: var(--qa-danger-ink);
+  color: var(--ix-danger-ink);
 }
 
 /* UI kit 筛选芯片选中态：act 软底 + 1px act 描边 */
 html[data-app="1"] .qa-button[data-selected] {
-  border-color: var(--lg-act);
-  background: var(--lg-act-soft);
-  color: var(--lg-act);
+  border-color: var(--ix-act);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
 }
 
 html[data-app="1"] .qa-button__content,
@@ -121,7 +121,7 @@ html[data-app="1"] .qa-icon-button__content {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--lg-space-2);
+  gap: var(--ix-space-2);
 }
 
 html[data-app="1"] :where(.qa-button, .qa-icon-button)[data-loading]
@@ -144,24 +144,24 @@ html[data-app="1"] .qa-spinner {
 html[data-app="1"] .qa-icon-button {
   position: relative;
   display: inline-flex;
-  width: var(--qa-control-min);
-  height: var(--qa-control-min);
-  min-width: var(--qa-control-min);
-  min-height: var(--qa-control-min);
+  width: var(--ix-hit-min);
+  height: var(--ix-hit-min);
+  min-width: var(--ix-hit-min);
+  min-height: var(--ix-hit-min);
   align-items: center;
   justify-content: center;
   padding: 0;
   border: 1px solid transparent;
   /* UI kit AppIconButton：圆钮（44 触区） */
-  border-radius: var(--lg-r-pill);
+  border-radius: var(--ix-r-dial);
   background: transparent;
-  color: var(--lg-ink-2);
+  color: var(--ix-ink-2);
   box-shadow: none;
   transition:
-    transform var(--lg-dur-press) var(--lg-ease),
-    background-color var(--lg-dur-state) var(--lg-ease),
-    border-color var(--lg-dur-state) var(--lg-ease),
-    color var(--lg-dur-state) var(--lg-ease);
+    transform var(--ix-dur-press) var(--ix-ease),
+    background-color var(--ix-dur-state) var(--ix-ease),
+    border-color var(--ix-dur-state) var(--ix-ease),
+    color var(--ix-dur-state) var(--ix-ease);
 }
 
 html[data-app="1"] .qa-icon-button svg {
@@ -169,56 +169,56 @@ html[data-app="1"] .qa-icon-button svg {
   height: 20px;
 }
 
-/* UI kit：AppIconButton = ghost（基态透明）/ secondary（--lg-glass-2 玻璃）/ filled（act 实底） */
+/* UI kit：AppIconButton = ghost（基态透明）/ secondary（--ix-raise 玻璃）/ filled（act 实底） */
 html[data-app="1"] .qa-icon-button--secondary {
   border-color: transparent;
-  background: var(--lg-glass-2);
-  color: var(--lg-ink);
-  box-shadow: var(--lg-glass-shadow-1);
-  -webkit-backdrop-filter: var(--lg-blur-s);
-  backdrop-filter: var(--lg-blur-s);
+  background: var(--ix-raise);
+  color: var(--ix-ink);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
 }
 
 html[data-app="1"] .qa-icon-button--filled {
-  background: var(--lg-act);
-  color: var(--lg-act-ink);
+  background: var(--ix-act);
+  color: var(--ix-act-ink);
 }
 
 html[data-app="1"] .qa-icon-button[data-selected] {
-  background: var(--lg-act-soft);
-  color: var(--lg-act);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
 }
 
 html[data-app="1"] .qa-icon-button.qa-tone--danger {
-  color: var(--lg-coral);
+  color: var(--ix-danger);
 }
 
 html[data-app="1"] .qa-icon-button--filled.qa-tone--danger {
-  background: var(--lg-coral);
-  color: var(--qa-danger-ink);
+  background: var(--ix-danger);
+  color: var(--ix-danger-ink);
 }
 
 html[data-app="1"] .qa-tab-button {
   position: relative;
   display: flex;
-  min-width: var(--qa-control-min);
+  min-width: var(--ix-hit-min);
   min-height: 52px;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   gap: 3px;
   padding: 3px 4px;
-  border-radius: var(--lg-r-control);
+  border-radius: var(--ix-r-key);
   background: transparent;
-  color: var(--lg-ink-3);
+  color: var(--ix-ink-3);
   font-size: 10px;
   font-weight: 650;
   line-height: 1.1;
   transition:
-    transform var(--lg-dur-press) var(--lg-ease),
-    background-color var(--lg-dur-state) var(--lg-ease),
-    box-shadow var(--lg-dur-state) var(--lg-ease),
-    color var(--lg-dur-state) var(--lg-ease);
+    transform var(--ix-dur-press) var(--ix-ease),
+    background-color var(--ix-dur-state) var(--ix-ease),
+    box-shadow var(--ix-dur-state) var(--ix-ease),
+    color var(--ix-dur-state) var(--ix-ease);
 }
 
 html[data-app="1"] .qa-tab-button__icon {
@@ -238,12 +238,12 @@ html[data-app="1"] .qa-tab-button__label {
   white-space: nowrap;
 }
 
-/* SPEC §4 分段语义：选中片 = --lg-glass-sel + shadow-1（切换走 --lg-dur-state 240ms，
+/* SPEC §4 分段语义：选中片 = --ix-surface + shadow-1（切换走 --ix-dur-state 240ms，
    落在 180–380ms 区间内；Dock 内由 dock-ink 滑片承担，本规则被围栏覆盖）。 */
 html[data-app="1"] .qa-tab-button[data-selected] {
-  background: var(--lg-glass-sel);
-  box-shadow: var(--lg-glass-shadow-1);
-  color: var(--lg-act);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  color: var(--ix-act);
 }
 
 html[data-app="1"] .qa-tab-button__badge {
@@ -257,9 +257,9 @@ html[data-app="1"] .qa-tab-button__badge {
   justify-content: center;
   padding: 0 4px;
   border: 2px solid transparent;
-  border-radius: var(--lg-r-pill);
-  background: var(--lg-coral);
-  color: var(--qa-unread-ink);
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-danger);
+  color: var(--ix-badge-ink);
   font-size: 9px;
   font-style: normal;
   font-weight: 800;
@@ -280,12 +280,12 @@ html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):disabled 
 
 html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):active:not(:disabled):not([aria-disabled="true"]) {
   transform: scale(0.97) !important;
-  transition-duration: var(--lg-dur-press);
+  transition-duration: var(--ix-dur-press);
 }
 
 html[data-app="1"] .qa-button--primary:active:not(:disabled),
 html[data-app="1"] .qa-icon-button--filled:active:not(:disabled) {
-  background: var(--qa-action-pressed);
+  background: var(--ix-act-pressed);
 }
 
 html[data-app="1"] :where(.qa-button, .qa-icon-button, .qa-tab-button):active * {
@@ -302,9 +302,9 @@ html[data-app="1"] .app-dock {
   position: fixed;
   z-index: 260;
   left: 50%;
-  bottom: var(--lg-dock-bottom);
+  bottom: var(--ix-dock-bottom);
   width: min(calc(100% - 36px), 390px);
-  height: var(--lg-dock-height);
+  height: var(--ix-dock-height);
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -321,11 +321,11 @@ html[data-app="1"] .app-dock .app-tabbar {
   padding: 6px !important;
   /* SPEC §4 Dock：L3 玻璃悬浮条，发丝边与内高光都在 shadow-3 里，圆角 26 */
   border: 1px solid transparent !important;
-  border-radius: var(--lg-r-sheet) !important;
-  background: var(--lg-glass-3) !important;
-  box-shadow: var(--lg-glass-shadow-3) !important;
-  -webkit-backdrop-filter: var(--lg-blur);
-  backdrop-filter: var(--lg-blur);
+  border-radius: var(--ix-r-panel) !important;
+  background: var(--ix-glass-nav) !important;
+  box-shadow: var(--ix-shadow-3) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
   transform: none !important;
   pointer-events: auto;
 }
@@ -342,23 +342,23 @@ html[data-app="1"] .app-dock-gap {
   pointer-events: none;
 }
 
-/* 选中滑片 = 分段「选中片」语言：--lg-glass-sel + shadow-1，无第二层玻璃 */
+/* 选中滑片 = 分段「选中片」语言：--ix-surface + shadow-1，无第二层玻璃 */
 html[data-app="1"] .app-dock .dock-ink {
   position: absolute;
   z-index: 0;
   left: 0;
   display: block !important;
   border: 0;
-  border-radius: var(--lg-r-card);
-  background: var(--lg-glass-sel);
-  box-shadow: var(--lg-glass-shadow-1);
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
   opacity: 0;
   transition:
-    transform 320ms var(--lg-ease),
-    width 320ms var(--lg-ease),
-    height 240ms var(--lg-ease),
-    top 240ms var(--lg-ease),
-    opacity 160ms var(--lg-ease);
+    transform 320ms var(--ix-ease),
+    width 320ms var(--ix-ease),
+    height 240ms var(--ix-ease),
+    top 240ms var(--ix-ease),
+    opacity 160ms var(--ix-ease);
   pointer-events: none;
 }
 
@@ -369,13 +369,13 @@ html[data-app="1"] .app-dock .app-tab {
   min-width: 0;
   height: 54px !important;
   padding: 3px !important;
-  color: var(--lg-ink-3) !important;
+  color: var(--ix-ink-3) !important;
   font-weight: 500;
 }
 
 /* SPEC §4：四目的地选中 = act 色 + 600 字重（选中片由 dock-ink 承担） */
 html[data-app="1"] .app-dock .app-tab.active {
-  color: var(--lg-act) !important;
+  color: var(--ix-act) !important;
   background: transparent !important;
   box-shadow: none !important;
   font-weight: 600;
@@ -386,7 +386,7 @@ html[data-app="1"] .app-dock .app-tab.active .qa-tab-button__glyph {
 }
 
 html[data-app="1"] .app-dock .qa-tab-button__glyph {
-  transition: transform 320ms var(--lg-ease);
+  transition: transform 320ms var(--ix-ease);
 }
 
 html[data-app="1"] .app-dock .app-tab::before,
@@ -415,16 +415,16 @@ html[data-app="1"] .app-dock .app-fab {
   margin: 0 !important;
   border: 0 !important;
   border-radius: 50% !important;
-  background: var(--lg-act) !important;
-  color: var(--lg-act-ink) !important;
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--lg-act) 35%, transparent) !important;
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--ix-act) 35%, transparent) !important;
   transform: translateX(-50%) !important;
   pointer-events: auto;
 }
 
 html[data-app="1"] .app-dock .app-fab:active {
-  background: var(--qa-action-pressed) !important;
-  color: var(--lg-act-ink) !important;
+  background: var(--ix-act-pressed) !important;
+  color: var(--ix-act-ink) !important;
   transform: translateX(-50%) scale(0.97) !important;
 }
 
@@ -434,9 +434,9 @@ html[data-app="1"] .app-dock .app-fab.open {
 
 html[data-app="1"] .app-dock .app-fab:not(:active) {
   transition:
-    transform var(--lg-dur-push) var(--lg-ease),
-    background-color var(--lg-dur-state) var(--lg-ease),
-    box-shadow var(--lg-dur-state) var(--lg-ease);
+    transform var(--ix-dur-push) var(--ix-ease),
+    background-color var(--ix-dur-state) var(--ix-ease),
+    box-shadow var(--ix-dur-state) var(--ix-ease);
 }
 
 html[data-app="1"] .app-dock .app-fab svg {
@@ -458,20 +458,20 @@ html[data-app="1"] .app-root:has(.atl-read-page) .app-dock {
 /* Create sheet: one material and one accent language. */
 html[data-app="1"] .app-sheet-mask {
   z-index: 420;
-  background: var(--lg-scrim);
+  background: var(--ix-scrim);
 }
 
 /* SPEC §1/§4：Sheet = L2 玻璃（发丝边+内高光在 shadow-2 里；细化由 hig-v5 经
-   --qa-glass-* shim 收口，此处是同一材质的基线） */
+   IX material tokens shim 收口，此处是同一材质的基线） */
 html[data-app="1"] .app-sheet {
   padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
   border: 1px solid transparent;
-  border-radius: var(--lg-r-sheet) var(--lg-r-sheet) 0 0;
-  background: var(--qa-overlay) !important;
-  color: var(--lg-ink);
-  box-shadow: var(--lg-glass-shadow-2);
-  -webkit-backdrop-filter: var(--lg-blur);
-  backdrop-filter: var(--lg-blur);
+  border-radius: var(--ix-r-panel) var(--ix-r-panel) 0 0;
+  background: var(--ix-glass-temp) !important;
+  color: var(--ix-ink);
+  box-shadow: var(--ix-shadow-2);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
 }
 
 html[data-app="1"] .app-sheet-head {
@@ -479,12 +479,12 @@ html[data-app="1"] .app-sheet-head {
   min-height: 52px;
   align-items: center;
   justify-content: space-between;
-  gap: var(--lg-space-3);
+  gap: var(--ix-space-3);
 }
 
 html[data-app="1"] .app-sheet-title {
   margin: 0;
-  color: var(--lg-ink);
+  color: var(--ix-ink);
   font-size: 18px;
   letter-spacing: -0.02em;
 }
@@ -494,8 +494,8 @@ html[data-app="1"] .app-sheet-grip {
   width: 38px;
   height: 5px;
   margin: 0 auto 4px;
-  border-radius: var(--lg-r-pill);
-  background: color-mix(in srgb, var(--lg-ink-3) 45%, transparent);
+  border-radius: var(--ix-r-dial);
+  background: color-mix(in srgb, var(--ix-ink-3) 45%, transparent);
 }
 
 html[data-app="1"] .app-create-row {
@@ -506,8 +506,8 @@ html[data-app="1"] .app-create-row {
   padding: 8px 10px;
   border: 1px solid transparent !important;
   border-radius: 16px !important;
-  background: var(--qa-surface) !important;
-  color: var(--lg-ink) !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
   box-shadow: none !important;
   text-align: left;
 }
@@ -523,9 +523,9 @@ html[data-app="1"] .app-create-row .ac-ic {
   height: 42px;
   place-items: center;
   flex: 0 0 42px;
-  border-radius: var(--lg-r-control);
-  background: var(--lg-act-soft) !important;
-  color: var(--lg-act) !important;
+  border-radius: var(--ix-r-key);
+  background: var(--ix-act-soft) !important;
+  color: var(--ix-act) !important;
 }
 
 html[data-app="1"] .app-create-row .ac-tx {
@@ -536,19 +536,19 @@ html[data-app="1"] .app-create-row .ac-tx {
 }
 
 html[data-app="1"] .app-create-row .ac-tx b {
-  color: var(--lg-ink);
+  color: var(--ix-ink);
   font-size: 15px;
 }
 
 html[data-app="1"] .app-create-row .ac-tx small {
-  color: var(--lg-ink-2);
+  color: var(--ix-ink-2);
   font-size: 12px;
 }
 
 /* Today controls: opaque surfaces, fixed semantic states, no rainbow index. */
 html[data-app="1"] .apphome {
-  background: var(--lg-canvas);
-  color: var(--lg-ink);
+  background: var(--ix-canvas);
+  color: var(--ix-ink);
 }
 
 html[data-app="1"] .aht-acts {
@@ -557,12 +557,12 @@ html[data-app="1"] .aht-acts {
 }
 
 html[data-app="1"] .aht-acts .qa-icon-button {
-  color: var(--lg-ink-2);
+  color: var(--ix-ink-2);
 }
 
 html[data-app="1"] .aht-acts .aht-nb {
-  background: var(--lg-coral);
-  color: var(--qa-unread-ink);
+  background: var(--ix-danger);
+  color: var(--ix-badge-ink);
 }
 
 html[data-app="1"] .ah-avatar.qa-icon-button {
@@ -572,44 +572,44 @@ html[data-app="1"] .ah-avatar.qa-icon-button {
 }
 
 html[data-app="1"] .ah-wallet {
-  gap: var(--lg-space-2);
+  gap: var(--ix-space-2);
 }
 
 html[data-app="1"] .ah-coin.qa-button {
-  min-height: var(--qa-control-min);
-  padding-inline: var(--lg-space-3);
-  border: 1px solid var(--lg-hairline) !important;
-  background: var(--qa-surface) !important;
-  color: var(--lg-ink) !important;
-  box-shadow: var(--lg-glass-shadow-1);
+  min-height: var(--ix-hit-min);
+  padding-inline: var(--ix-space-3);
+  border: 1px solid var(--ix-hairline) !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  box-shadow: var(--ix-shadow-1);
 }
 
 html[data-app="1"] .ah-checkin.qa-button {
-  min-height: var(--qa-control-min);
-  background: var(--lg-act) !important;
-  color: var(--lg-act-ink) !important;
+  min-height: var(--ix-hit-min);
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
   box-shadow: none !important;
 }
 
 html[data-app="1"] .ah-checkin.qa-button.done {
-  border-color: color-mix(in srgb, var(--lg-jade) 24%, transparent) !important;
-  background: var(--qa-success-soft) !important;
-  color: var(--lg-jade) !important;
+  border-color: color-mix(in srgb, var(--ix-success) 24%, transparent) !important;
+  background: var(--ix-success-soft) !important;
+  color: var(--ix-success) !important;
 }
 
 html[data-app="1"] .ah-shortcuts {
-  gap: var(--lg-space-2);
+  gap: var(--ix-space-2);
 }
 
 html[data-app="1"] .ah-sc.qa-button {
   min-width: 0;
   min-height: 82px;
   padding: 10px 4px;
-  border: 1px solid var(--lg-hairline) !important;
-  border-radius: var(--lg-r-card) !important;
-  background: var(--qa-surface) !important;
-  color: var(--lg-ink-2) !important;
-  box-shadow: var(--lg-glass-shadow-1) !important;
+  border: 1px solid var(--ix-hairline) !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink-2) !important;
+  box-shadow: var(--ix-shadow-1) !important;
   font-size: 11px;
 }
 
@@ -624,8 +624,8 @@ html[data-app="1"] .ah-sc .ah-sc-ic {
   height: 38px;
   place-items: center;
   border-radius: 13px;
-  background: var(--lg-act-soft) !important;
-  color: var(--lg-act) !important;
+  background: var(--ix-act-soft) !important;
+  color: var(--ix-act) !important;
   box-shadow: none !important;
 }
 
@@ -634,16 +634,16 @@ html[data-app="1"] .ah-sc .ah-sc-ic::after {
 }
 
 html[data-app="1"] .ah-more.qa-button {
-  min-height: var(--qa-control-min);
-  padding-inline: var(--lg-space-3);
+  min-height: var(--ix-hit-min);
+  padding-inline: var(--ix-space-3);
   background: transparent !important;
-  color: var(--lg-act) !important;
+  color: var(--ix-act) !important;
 }
 
 /* Authentication: segmented semantics stay owned by the integration markup. */
 html[data-app="1"] .auth-wrap {
-  background: var(--lg-canvas);
-  color: var(--lg-ink);
+  background: var(--ix-canvas);
+  color: var(--ix-ink);
 }
 
 html[data-app="1"] .auth-orbs {
@@ -651,37 +651,37 @@ html[data-app="1"] .auth-orbs {
 }
 
 html[data-app="1"] .auth-card {
-  border: 1px solid var(--lg-hairline) !important;
-  background: var(--qa-surface) !important;
-  box-shadow: var(--lg-glass-shadow-2) !important;
+  border: 1px solid var(--ix-hairline) !important;
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-2) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-/* UI kit 分段控件：胶囊槽 = --lg-glass-1 + 发丝内衬；选中片 = --lg-glass-sel + shadow-1 */
+/* UI kit 分段控件：胶囊槽 = --ix-surface + 发丝内衬；选中片 = --ix-surface + shadow-1 */
 html[data-app="1"] .auth-tabs {
   min-height: 52px;
   padding: 3px;
   border: 1px solid transparent;
-  border-radius: var(--lg-r-pill);
-  background: var(--lg-glass-1);
-  box-shadow: inset 0 0 0 1px var(--lg-hairline);
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-surface);
+  box-shadow: inset 0 0 0 1px var(--ix-hairline);
 }
 
 html[data-app="1"] .auth-tabs .qa-button {
   z-index: 1;
-  min-height: var(--qa-control-min);
+  min-height: var(--ix-hit-min);
   flex: 1;
-  border-radius: var(--lg-r-pill);
+  border-radius: var(--ix-r-dial);
   background: transparent !important;
-  color: var(--lg-ink-2) !important;
+  color: var(--ix-ink-2) !important;
   box-shadow: none !important;
 }
 
 html[data-app="1"] .auth-tabs .qa-button[data-selected] {
-  background: var(--lg-glass-sel) !important;
-  color: var(--lg-ink) !important;
-  box-shadow: var(--lg-glass-shadow-1) !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  box-shadow: var(--ix-shadow-1) !important;
 }
 
 html[data-app="1"] .auth-tab-ink {
@@ -689,16 +689,16 @@ html[data-app="1"] .auth-tab-ink {
 }
 
 html[data-app="1"] .affix-btn.qa-icon-button {
-  width: var(--qa-control-min);
-  height: var(--qa-control-min);
-  color: var(--lg-ink-2);
+  width: var(--ix-hit-min);
+  height: var(--ix-hit-min);
+  color: var(--ix-ink-2);
 }
 
 html[data-app="1"] .auth-submit.qa-button {
-  min-height: var(--qa-control-submit) !important;
+  min-height: var(--ix-hit-submit) !important;
   border: 0 !important;
-  background: var(--lg-act) !important;
-  color: var(--lg-act-ink) !important;
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
   box-shadow: none !important;
 }
 
@@ -707,23 +707,23 @@ html[data-app="1"] .auth-submit::after {
 }
 
 html[data-app="1"] .auth-explore {
-  gap: var(--lg-space-2);
+  gap: var(--ix-space-2);
 }
 
 html[data-app="1"] .auth-explore-btn.qa-button {
-  min-height: var(--qa-control-min);
-  border: 1px solid var(--lg-hairline);
-  background: var(--qa-surface);
-  color: var(--lg-ink-2);
+  min-height: var(--ix-hit-min);
+  border: 1px solid var(--ix-hairline);
+  background: var(--ix-surface);
+  color: var(--ix-ink-2);
 }
 
 /* Chat chrome only; bubbles and message content intentionally remain untouched. */
 html[data-app="1"] .chat-head .chat-back.qa-icon-button,
 html[data-app="1"] .chat-tools .qa-icon-button {
-  width: var(--qa-control-min) !important;
-  height: var(--qa-control-min) !important;
-  min-width: var(--qa-control-min);
-  min-height: var(--qa-control-min);
+  width: var(--ix-hit-min) !important;
+  height: var(--ix-hit-min) !important;
+  min-width: var(--ix-hit-min);
+  min-height: var(--ix-hit-min);
   margin: 0 !important;
   padding: 0 !important;
 }
@@ -733,8 +733,8 @@ html[data-app="1"] .chat-tools {
 }
 
 html[data-app="1"] .chat-tool.qa-icon-button.on {
-  background: var(--lg-act-soft) !important;
-  color: var(--lg-act) !important;
+  background: var(--ix-act-soft) !important;
+  color: var(--ix-act) !important;
 }
 
 html[data-app="1"] .chat-tool.qa-icon-button::after {
@@ -748,52 +748,52 @@ html[data-app="1"] .chat-head .ch-av .avatar {
 /* 输入岛 = L3 系统玻璃基线（会话语境的悬浮岛细化由 hig-v5 经 shim 收口） */
 html[data-app="1"] .chat-input-bar {
   border-color: transparent !important;
-  background: var(--qa-chrome) !important;
-  box-shadow: var(--lg-glass-shadow-3) !important;
-  -webkit-backdrop-filter: var(--lg-blur);
-  backdrop-filter: var(--lg-blur);
+  background: var(--ix-glass-nav) !important;
+  box-shadow: var(--ix-shadow-3) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
 }
 
 html[data-app="1"] .chat-input-bar .act-btn.qa-icon-button {
-  width: var(--qa-control-min) !important;
-  height: var(--qa-control-min) !important;
-  min-width: var(--qa-control-min);
-  min-height: var(--qa-control-min);
-  flex: 0 0 var(--qa-control-min) !important;
+  width: var(--ix-hit-min) !important;
+  height: var(--ix-hit-min) !important;
+  min-width: var(--ix-hit-min);
+  min-height: var(--ix-hit-min);
+  flex: 0 0 var(--ix-hit-min) !important;
   margin: 0 !important;
   padding: 0 !important;
   background: transparent !important;
-  color: var(--lg-ink-2) !important;
+  color: var(--ix-ink-2) !important;
 }
 
 html[data-app="1"] .chat-input-bar .act-btn.qa-icon-button.on {
-  background: var(--lg-act-soft) !important;
-  color: var(--lg-act) !important;
+  background: var(--ix-act-soft) !important;
+  color: var(--ix-act) !important;
 }
 
 html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button {
-  width: var(--qa-control-min) !important;
-  height: var(--qa-control-min) !important;
-  min-width: var(--qa-control-min);
-  min-height: var(--qa-control-min);
-  flex: 0 0 var(--qa-control-min) !important;
+  width: var(--ix-hit-min) !important;
+  height: var(--ix-hit-min) !important;
+  min-width: var(--ix-hit-min);
+  min-height: var(--ix-hit-min);
+  flex: 0 0 var(--ix-hit-min) !important;
   margin: 0 !important;
   /* UI kit 输入岛：发送 = act 实底圆钮 */
   border-radius: 50% !important;
-  background: var(--lg-act) !important;
-  color: var(--lg-act-ink) !important;
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
   box-shadow: none !important;
   animation: none !important;
 }
 
 html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button.stop {
-  background: var(--lg-coral) !important;
-  color: var(--qa-danger-ink) !important;
+  background: var(--ix-danger) !important;
+  color: var(--ix-danger-ink) !important;
 }
 
 html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button:disabled {
-  background: var(--lg-grouped) !important;
-  color: var(--lg-ink-3) !important;
+  background: var(--ix-grouped) !important;
+  color: var(--ix-ink-3) !important;
   opacity: 1;
 }
 
@@ -801,8 +801,8 @@ html[data-app="1"] .chat-input-bar .send-btn.qa-icon-button:disabled {
 html[data-app="1"] .qa-gallery {
   min-height: 100%;
   padding: max(18px, env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
-  background: var(--lg-canvas);
-  color: var(--lg-ink);
+  background: var(--ix-canvas);
+  color: var(--ix-ink);
 }
 
 html[data-app="1"] .qa-gallery__frame {
@@ -828,15 +828,15 @@ html[data-app="1"] .qa-gallery__header h1 {
 html[data-app="1"] .qa-gallery__section {
   margin: 12px 0;
   padding: 16px;
-  border: 1px solid var(--lg-hairline);
-  border-radius: var(--lg-r-card);
-  background: var(--qa-surface);
-  box-shadow: var(--lg-glass-shadow-1);
+  border: 1px solid var(--ix-hairline);
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
 }
 
 html[data-app="1"] .qa-gallery__section h2 {
   margin: 0 0 12px;
-  color: var(--lg-ink-2);
+  color: var(--ix-ink-2);
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -846,7 +846,7 @@ html[data-app="1"] .qa-gallery__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--lg-space-2);
+  gap: var(--ix-space-2);
 }
 
 html[data-app="1"] .qa-gallery__tabs {
@@ -855,16 +855,16 @@ html[data-app="1"] .qa-gallery__tabs {
   gap: 6px;
   width: 100%;
   padding: 6px;
-  border-radius: var(--lg-r-pill);
-  background: var(--lg-glass-1);
-  box-shadow: var(--lg-glass-shadow-1);
-  -webkit-backdrop-filter: var(--lg-blur);
-  backdrop-filter: var(--lg-blur);
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
 }
 
 html[data-app="1"] .qa-gallery__note {
   margin: 10px 0 0;
-  color: var(--lg-ink-2);
+  color: var(--ix-ink-2);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -872,27 +872,27 @@ html[data-app="1"] .qa-gallery__note {
 html[data-app="1"] .qa-gallery__swatches {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--lg-space-2);
+  gap: var(--ix-space-2);
 }
 
 html[data-app="1"] .qa-gallery__swatch {
   min-height: 58px;
-  padding: var(--lg-space-2);
-  border: 1px solid var(--lg-hairline);
-  border-radius: var(--lg-r-control);
-  background: var(--qa-surface);
-  color: var(--lg-ink);
+  padding: var(--ix-space-2);
+  border: 1px solid var(--ix-hairline);
+  border-radius: var(--ix-r-key);
+  background: var(--ix-surface);
+  color: var(--ix-ink);
   font-size: 10px;
 }
 
-html[data-app="1"] .qa-gallery__swatch--canvas { background: var(--lg-canvas); }
-html[data-app="1"] .qa-gallery__swatch--grouped { background: var(--lg-grouped); }
-html[data-app="1"] .qa-gallery__swatch--surface { background: var(--qa-surface); }
-html[data-app="1"] .qa-gallery__swatch--action { background: var(--lg-act); color: var(--lg-act-ink); }
-html[data-app="1"] .qa-gallery__swatch--danger { background: var(--lg-coral); color: var(--qa-danger-ink); }
-html[data-app="1"] .qa-gallery__swatch--success { background: var(--lg-jade); color: var(--qa-success-ink); }
-html[data-app="1"] .qa-gallery__swatch--reward { background: var(--lg-gold); color: var(--qa-reward-ink); }
-html[data-app="1"] .qa-gallery__swatch--unread { background: var(--lg-coral); color: var(--qa-unread-ink); }
+html[data-app="1"] .qa-gallery__swatch--canvas { background: var(--ix-canvas); }
+html[data-app="1"] .qa-gallery__swatch--grouped { background: var(--ix-grouped); }
+html[data-app="1"] .qa-gallery__swatch--surface { background: var(--ix-surface); }
+html[data-app="1"] .qa-gallery__swatch--action { background: var(--ix-act); color: var(--ix-act-ink); }
+html[data-app="1"] .qa-gallery__swatch--danger { background: var(--ix-danger); color: var(--ix-danger-ink); }
+html[data-app="1"] .qa-gallery__swatch--success { background: var(--ix-success); color: var(--ix-success-ink); }
+html[data-app="1"] .qa-gallery__swatch--reward { background: var(--ix-gold); color: var(--ix-gold-ink); }
+html[data-app="1"] .qa-gallery__swatch--unread { background: var(--ix-danger); color: var(--ix-badge-ink); }
 
 /* Lite is intentionally opaque. Balanced retains one sampled navigation layer
    so the control plane still responds to moving content beneath it. */
@@ -905,23 +905,23 @@ html[data-app="1"][data-perf="lite"] .chat-input-bar {
 
 @media (hover: hover) and (pointer: fine) {
   html[data-app="1"] .qa-button--primary:hover:not(:disabled):not([aria-disabled="true"]) {
-    background: color-mix(in srgb, var(--lg-act) 90%, var(--lg-ink));
+    background: color-mix(in srgb, var(--ix-act) 90%, var(--ix-ink));
   }
 
   html[data-app="1"] .qa-button--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
-    background: var(--lg-glass-2);
+    background: var(--ix-raise);
   }
 
   html[data-app="1"] .qa-button--danger:hover:not(:disabled):not([aria-disabled="true"]),
   html[data-app="1"] .qa-button.qa-tone--danger:hover:not(:disabled):not([aria-disabled="true"]) {
-    background: color-mix(in srgb, var(--lg-coral) 10%, transparent);
+    background: color-mix(in srgb, var(--ix-danger) 10%, transparent);
   }
 
   html[data-app="1"] .qa-button--tertiary:hover:not(:disabled):not([aria-disabled="true"]),
   html[data-app="1"] .qa-icon-button:hover:not(:disabled):not([aria-disabled="true"]),
   html[data-app="1"] .qa-tab-button:hover:not(:disabled):not([aria-disabled="true"]) {
-    background: var(--lg-act-soft);
-    color: var(--lg-act);
+    background: var(--ix-act-soft);
+    color: var(--ix-act);
   }
 }
 

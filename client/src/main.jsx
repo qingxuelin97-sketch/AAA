@@ -27,49 +27,20 @@ import './chat/chat-app.css';
 // PR4 native material and balanced-performance overrides. Quiet Aqua loads
 // immediately after it and preserves the same balanced/lite performance gate.
 import './styles/app-runtime.css';
-// Lumen Glass v1.0 token authority (verbatim from docs/design, values frozen),
-// followed by the --qa-* compatibility shim that maps the legacy namespace.
-import './styles/lumen-glass-tokens.css';
-import './styles/app-quiet-aqua-tokens.css';
-import './styles/app-controls.css';
-import './styles/app-pages-quiet-aqua.css';
-// V3 experience layer: page composition and motion only. It is App-scoped and
-// intentionally loads last so legacy page rules cannot flatten the new shell.
-import './styles/app-experience-v3.css';
-// Liuli v5 HIG re-skin: typography, grouped lists, segmented controls, sheets,
-// causal motion and dark parity. App-fenced only.
-import './styles/app-hig-v5.css';
-// Lumen Glass per-stage screen layers (S3 primary tabs / S4 immersive+chat /
-// S5 identity+creation), then the material composition layer as final authority.
-import './styles/app-lumen-s3.css';
-import './styles/app-lumen-s4.css';
-import './styles/app-lumen-s5.css';
-// S7「仪式与相伴」new-component layer (error states, onboarding, check-in
-// calendar, achievements 2.0, share cards, press menus).
-import './styles/app-lumen-s6.css';
-// S7-G10「相伴加深」layer (weekly recap card, quote share entry, gallery
-// exhibits for the S7 component family).
-import './styles/app-lumen-s7.css';
-// Lumen Glass material composition layer: glass classes, ambient washes and
-// legacy accent-id aliasing.
-import './styles/app-lumen-materials.css';
-// 仪与匣 The Field Instrument（阶段四换代）：--ix-* 冻结令牌孪生 → accent 伴随层 →
-// lg→ix 桥接（存量层整体换源）。IX 系列是新的末位权威，旧 lumen 层随 IX-7 退役。
+// IX runtime authority: every App layer consumes the frozen --ix-* namespace directly.
 import './styles/app-ix-tokens.css';
 import './styles/app-ix-accents.css';
-import './styles/app-ix-bridge.css';
-// IX-2 控件层：按钮/分段/拨杆/输入/Dock/顶栏/Sheet/长按菜单/Toast/骨架，
-// 对照 field-instrument ui-kit 契约，只换材质不换 DOM。
+import './styles/app-controls.css';
+import './styles/app-pages-quiet-aqua.css';
+// Shared App composition and HIG rules remain fenced; IX pages are the final cascade.
+import './styles/app-experience-v3.css';
+import './styles/app-hig-v5.css';
+// Historical S3-S7 composition is folded into the IX page tail; no runtime bridge remains.
 import './styles/app-ix-core.css';
-// IX-3 一级四页：今日金融舱卡/键帽宫格/周报柱、发现沉浸 chrome、消息入口行
-// 与会话行、我的读数卡（mockup ①②④⑫）。
 import './styles/app-ix-pages-a.css';
-// IX-4 沉浸与会话：对话气泡/输入岛/建议芯片、群聊、剧场阅读流（mockup ③⑮⑯）。
 import './styles/app-ix-pages-b.css';
-// IX-5 价值与身份：钱包/成就/星轨/月历/VIP 舱体系 + split-flap 翻牌与指针入场
-// 仪式动效（mockup ⑤⑥⑦⑨⑪⑬⑭）。
 import './styles/app-ix-pages-c.css';
-// IX-6 后补帧与长尾页面：创作工坊、设置详情、全局空错态、首启和分享壳。
+// IX-6/IX-7 tail: long-tail pages, states, and migrated stage composition.
 import './styles/app-ix-pages-d.css';
 
 const INSECURE_HTTP_TEST = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';

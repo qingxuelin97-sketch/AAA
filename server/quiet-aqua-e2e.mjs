@@ -70,6 +70,15 @@ async function resolveChrome() {
   return chromium.executablePath();
 }
 
+function launchTestBrowser(executablePath) {
+  return puppeteer.launch({
+    executablePath,
+    headless: true,
+    protocolTimeout: 300_000,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', '--force-color-profile=srgb'],
+  });
+}
+
 function startStaticServer() {
   assert(fs.existsSync(path.join(DIST, 'index.html')), '缺少 client/dist；请先运行 npm run build:static');
   const server = createServer((req, res) => {
@@ -1379,12 +1388,17 @@ async function galleryS7Assertions(browser, base) {
   await page.waitForFunction(() => document.querySelector('.qa-error-state .qa-button[disabled], .qa-error-state .qa-button[data-loading="true"], .qa-error-state .qa-button[aria-busy="true"]'), { timeout: 5000 });
   await page.waitForFunction(() => !document.querySelector('.qa-error-state .qa-button[disabled], .qa-error-state .qa-button[data-loading="true"], .qa-error-state .qa-button[aria-busy="true"]'), { timeout: 8000 });
 
-  // 长按演示 → role=menu 三条目。先等图片装载完（上方空态 PNG 异步
-  // 落位会推移版面），再在触摸前的最后一刻取坐标，避免测完即漂移。
-  await page.evaluate(() => Promise.all(
-    [...document.images].filter((img) => !img.complete)
-      .map((img) => new Promise((resolve) => { img.onload = img.onerror = resolve; })),
-  ));
+  // 长按演示 → role=menu 三条目。先等当前主题的可见空态 SVG 装载完
+  // （隐藏主题的 lazy 图片不参与），再在触摸前取坐标，避免版面漂移。
+  await page.waitForFunction(
+    () => {
+      const images = [...document.querySelectorAll('.qa-gallery__art img')]
+        .filter((image) => image.getClientRects().length > 0);
+      return images.length > 0
+        && images.every((image) => image.complete && image.naturalWidth > 0);
+    },
+    { timeout: 15000 },
+  );
   await page.evaluate(() => {
     document.querySelector('section[aria-labelledby="gallery-s7-press"] .qa-button')
       .scrollIntoView({ block: 'center', behavior: 'instant' });
@@ -2029,11 +2043,7 @@ async function run() {
   try {
     const executablePath = await resolveChrome();
     console.log(`Quiet Aqua browser: ${executablePath}`);
-    browser = await puppeteer.launch({
-      executablePath,
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', '--force-color-profile=srgb'],
-    });
+    browser = await launchTestBrowser(executablePath);
 
     if (WALLET_ONLY) {
       await walletAssertions(browser, base);
@@ -2071,6 +2081,11 @@ async function run() {
       await page.close();
       console.log(`✓ ${scenario.width}x${scenario.height} ${scenario.theme} ${scenario.expectedPerf}`);
     }
+
+    // Keep viewport emulation and its renderer/service-worker state isolated
+    // from the long-tail route assertions that follow.
+    await browser.close();
+    browser = await launchTestBrowser(executablePath);
 
     const reduced = await preparePage(browser, base, { reducedMotion: true });
     await visit(reduced, '/app-controls', '.qa-gallery');

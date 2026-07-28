@@ -15,17 +15,17 @@
 
    曜光玻璃 S4（s07）注：本文件在 import 链里位于 app-experience-v3.css 之前，
    而 v3 的会话规则带 !important；沉浸皮肤（60–78% 压暗 scrim、单层玻璃气泡、
-   rp-act 降亮、白玻璃建议芯片）的末位收口落在 styles/app-lumen-s4.css。
+   rp-act 降亮、白玻璃建议芯片）的末位收口落在 styles/app-ix-pages-d.css。
    本文件保留：白名单动画（chatCaret/chatTyping/chatKenBurns 一次性）、
    长按面板、搜索胶囊、抽屉与性能纪律注释 —— 均仍生效。
    ========================================================================== */
 
 /* ── 0. 对话作用域令牌（集中青色，收敛历史硬编码 #22d3ee/#0e9cb8/#2BD0BF/#0e7490）── */
 html[data-app="1"] .chat-main {
-  --chat-accent: color-mix(in oklab, var(--lg-act) 84%, #ffffff); /* 主动作亮端 */
-  --chat-accent-2: var(--lg-act);                                  /* 主动作 */
-  --chat-accent-ink: color-mix(in oklab, var(--lg-act) 84%, #000000);
-  --chat-accent-soft: var(--lg-act-soft);
+  --chat-accent: color-mix(in oklab, var(--ix-act) 84%, #ffffff); /* 主动作亮端 */
+  --chat-accent-2: var(--ix-act);                                  /* 主动作 */
+  --chat-accent-ink: color-mix(in oklab, var(--ix-act) 84%, #000000);
+  --chat-accent-soft: var(--ix-act-soft);
   --chat-glass-radius: 20px;       /* UI kit 气泡圆角 */
   --chat-anchor-radius: 6px;       /* run-start 锚角（UI kit） */
   --chat-ease: cubic-bezier(.22, .61, .36, 1);
@@ -242,7 +242,7 @@ html[data-app="1"] .chat-main .starter-chip.on { border-color: var(--chat-accent
 
 /* ── 8. 悬浮输入岛 —— 单层玻璃、圆角浮起、送出键就绪呼吸/形变 ── */
 html[data-app="1"] .chat-main {
-  --hy-cg-blur: var(--lg-blur, blur(18px) saturate(150%));
+  --hy-cg-blur: var(--ix-blur, blur(18px) saturate(150%));
   --hy-cg-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(246, 248, 252, 0.68));
   --hy-cg-bg-solid: #f5f7fa;
   --hy-cg-brd: var(--border-2);

@@ -1,3 +1,3147 @@
+/* IX-7 migrated IX page composition. Historical S3-S7 rules are folded here. */
+
+/* IX-7 migrated composition: s3 */
+/* 曜光玻璃 Lumen Glass v1.0 · 阶段文件（s3）。全部选择器从 html[data-app="1"] 开始；
+   只用 var(--ix-*)/var(--ix-*) 令牌；禁新增颜色/nth 彩虹/循环装饰动画/渐变字。 */
+
+/* ============================================================================
+   S3 · 一级四页 + 创建 Sheet（设计稿 s01–s05，SPEC §6 表 01–05 行）
+   材质纪律（SPEC §1）：同一对象只允许一层玻璃 + 一层发丝边 + 一道内高光
+   （发丝边与内高光都封装在 --ix-glass-shadow-* 令牌里，故本文件一律 border: 0）。
+   颜色字面仅使用允许的两类例外：白系玻璃 rgb(255 255 255 / x%) 与
+   黑系可读性遮罩 rgb(0 0 0 / x%)；其余全部走 var(--ix-*)/var(--ix-*)。
+   ========================================================================== */
+
+/* ──────────────────────────────────────────────────────────────────────────
+   s01 今日（/today · AppHome）
+   页面底层露出 App 壳的默认 iris 光晕（壳 .app-root 已挂 renov 层），
+   页面自身不再铺不透明画布。
+   ────────────────────────────────────────────────────────────────────────── */
+html[data-app="1"] .qa3-today.apphome {
+  background: transparent !important;
+}
+
+/* 大标题 34px（--ix-type-hero / 700 / -2% 字距，SPEC §3 字阶） */
+html[data-app="1"] .qa3-today .aht-brand {
+  font-size: var(--ix-type-hero) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* 身份/资产条：深实体面（L0）——var(--ix-vault) + var(--ix-vault-ink)。
+   条内金额/签到胶囊维持白系玻璃（沉浸控件例外），金额等宽。 */
+html[data-app="1"] .qa3-today .ah-hero {
+  border-radius: var(--ix-r-panel) !important;
+  background: var(--ix-vault) !important;
+  color: var(--ix-vault-ink) !important;
+  box-shadow: var(--ix-shadow-2) !important;
+}
+html[data-app="1"] .qa3-today .ah-name {
+  color: var(--ix-vault-ink) !important;
+}
+html[data-app="1"] .qa3-today .ah-balance-value {
+  font-variant-numeric: tabular-nums;
+}
+/* 签到 CTA = 主动作实底胶囊（act 唯一随用户 accent 漂移）；
+   done 态由 v3 的白系玻璃规则（更高特异度）接管。 */
+html[data-app="1"] .qa3-today .ah-checkin.qa-button {
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
+}
+
+/* 快捷组：整组一层 L1 玻璃（发丝边在 shadow-1 内，border 归零防双描边） */
+html[data-app="1"] .qa3-today .ah-shortcuts {
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-shadow-1) !important;
+}
+
+/* 编辑精选卡：容器换 L1 玻璃框（媒体仍是唯一内容层，圆角 --ix-r-card） */
+html[data-app="1"] .qa3-today .ah-hero-card {
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-shadow-1) !important;
+}
+
+/* 续读轨：每张续读卡 = 一层 L1 玻璃 */
+html[data-app="1"] .qa3-today .ah-resume {
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-shadow-1) !important;
+  color: var(--ix-ink) !important;
+}
+html[data-app="1"] .qa3-today .ah-resume:active {
+  box-shadow: var(--ix-shadow-1) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   s02 发现（/ · DiscoverFeed）
+   沉浸流媒体不动；控件层换白系玻璃 rgb(255 255 255 / 10–14%) + --ix-blur-s；
+   底部信息遮罩改为纯黑可读性梯度（保 4.5:1）。
+   ────────────────────────────────────────────────────────────────────────── */
+html[data-app="1"] .qa3-discover .feed-modes {
+  border: 1px solid rgb(255 255 255 / 14%) !important;
+  background: rgb(255 255 255 / 10%) !important;
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+html[data-app="1"] .qa3-discover .feed-mode.on.qa-button {
+  background: rgb(255 255 255 / 14%) !important;
+}
+html[data-app="1"] .qa3-discover .feed-search.qa-icon-button,
+html[data-app="1"] .qa3-discover .feed-history.qa-icon-button {
+  border: 1px solid rgb(255 255 255 / 14%);
+  background: rgb(255 255 255 / 12%);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+html[data-app="1"] .qa3-discover .fd2-act {
+  background: rgb(255 255 255 / 12%) !important;
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+html[data-app="1"] .qa3-discover .fd2-greet {
+  border: 1px solid rgb(255 255 255 / 14%) !important;
+  background: rgb(255 255 255 / 10%) !important;
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+/* 底部信息遮罩：可读性梯度（黑系遮罩例外），信息栈落点处 ≥4.5:1 */
+html[data-app="1"] .qa3-discover .feed-scrim {
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 26%), transparent 24%),
+    linear-gradient(0deg, rgb(0 0 0 / 90%) 0%, rgb(0 0 0 / 60%) 30%, transparent 64%);
+}
+
+/* lite 档：blur-s 归零后白系玻璃 10–14% 压不住媒体，回落黑系遮罩底保可读 */
+html[data-app="1"][data-perf="lite"] .qa3-discover .feed-modes,
+html[data-app="1"][data-perf="lite"] .qa3-discover .fd2-act,
+html[data-app="1"][data-perf="lite"] .qa3-discover .fd2-greet {
+  background: rgb(0 0 0 / 44%) !important;
+}
+html[data-app="1"][data-perf="lite"] .qa3-discover .feed-search.qa-icon-button,
+html[data-app="1"][data-perf="lite"] .qa3-discover .feed-history.qa-icon-button {
+  background: rgb(0 0 0 / 44%);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   s03 消息（/messages · Messages）
+   根元素加 cool 光晕；分组列表「整组一层玻璃」：组容器 L1，行保持透明，
+   行与行发丝分隔（--ix-hairline），行高进入 76 区间；未读三重编码。
+   ────────────────────────────────────────────────────────────────────────── */
+html[data-app="1"] .qa3-messages.msgs {
+  background-color: var(--ix-canvas);
+  background-image: var(--ix-ambient-none);
+  background-attachment: fixed;
+}
+
+/* 入口分组（互动消息/好友私信/群聊房间）：组容器 = 一层 L1 玻璃 */
+html[data-app="1"] .qa3-messages .msgs-entry-group {
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa3-messages .msgs-entry {
+  border-bottom: 1px solid var(--ix-hairline) !important;
+}
+html[data-app="1"] .qa3-messages .msgs-entry:last-child {
+  border-bottom: 0 !important;
+}
+
+/* 会话/收藏分组：整组一层 L1 玻璃，行内不再套卡 */
+html[data-app="1"] .qa3-messages .msgs-conv-group {
+  overflow: hidden !important;
+  margin: 0 0 14px !important;
+  padding: 2px 12px !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa3-messages .msgs-conv--app {
+  min-height: 72px !important; /* UI kit 会话行 */
+  border-bottom: 1px solid var(--ix-hairline) !important;
+  background: transparent !important;
+}
+html[data-app="1"] .qa3-messages .msgs-conv--app:last-child {
+  border-bottom: 0 !important;
+}
+html[data-app="1"] .qa3-messages .msgs-conv-main {
+  min-height: 72px;
+}
+
+/* 未读三重编码：数字角标（珊瑚）+ 珊瑚点 + 标题加粗 */
+html[data-app="1"] .qa3-messages .msgs-badge {
+  background: var(--ix-danger) !important;
+  color: var(--ix-badge-ink) !important;
+  font-variant-numeric: tabular-nums;
+}
+html[data-app="1"] .qa3-messages .msgs-entry-ic {
+  position: relative;
+}
+html[data-app="1"] .qa3-messages .msgs-entry:has(.msgs-badge) .msgs-entry-ic::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-danger);
+}
+html[data-app="1"] .qa3-messages .msgs-entry:has(.msgs-badge) .msgs-entry-tx b {
+  font-weight: 800 !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   s04 我的（/me · AppProfile）
+   根元素 warm 光晕；石墨资产仪表 = L0 实体（--ix-vault）+ 一处暖金光点
+   （--ix-gold，一次性入场、非循环）；四计数组与「全部功能」分组 = L1 玻璃。
+   ────────────────────────────────────────────────────────────────────────── */
+html[data-app="1"] .qa3-profile.pf {
+  background-color: var(--ix-canvas);
+  background-image: var(--ix-ambient-none);
+  background-attachment: fixed;
+}
+
+/* 石墨资产仪表：实体面，不透明、绝对可读 */
+html[data-app="1"] .qa3-profile .pf-assets {
+  position: relative;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: var(--ix-r-panel) !important;
+  background: var(--ix-vault) !important;
+  color: var(--ix-vault-ink) !important;
+  box-shadow: var(--ix-shadow-2) !important;
+  isolation: isolate;
+}
+html[data-app="1"] .qa3-profile .pf-assets > * {
+  position: relative;
+  z-index: 1;
+}
+/* 暖金光点：一次性入场（--ix-dur-needle，一遍即停），reduced-motion 下时长归零 */
+html[data-app="1"] .qa3-profile .pf-assets::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: -34px;
+  right: -22px;
+  width: 148px;
+  height: 148px;
+  border-radius: var(--ix-r-dial);
+  background: radial-gradient(circle, color-mix(in srgb, var(--ix-gold) 34%, transparent), transparent 68%);
+  animation: ixS3AssetGlow var(--ix-dur-needle) var(--ix-ease) both;
+  pointer-events: none;
+}
+@keyframes ixS3AssetGlow {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: none; }
+}
+html[data-app="1"][data-perf="lite"] .qa3-profile .pf-assets::before {
+  display: none;
+}
+html[data-app="1"] .qa3-profile .pf-asset-bal {
+  color: var(--ix-vault-ink-2) !important;
+}
+html[data-app="1"] .qa3-profile .pf-asset-bal b {
+  color: var(--ix-vault-ink) !important;
+  font-variant-numeric: tabular-nums;
+}
+html[data-app="1"] .qa3-profile .pf-asset-acts .qa-button {
+  background: rgb(255 255 255 / 12%) !important;
+  color: var(--ix-vault-ink) !important;
+}
+
+/* 四计数组（角色/剧本/粉丝/关注）：一层 L1 玻璃，计数间保留发丝分隔 */
+html[data-app="1"] .qa3-profile .pf-stats {
+  margin-top: 12px;
+  padding: 5px 2px !important;
+  border-top: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa3-profile .pf-stats button {
+  border-right: 1px solid var(--ix-hairline) !important;
+}
+html[data-app="1"] .qa3-profile .pf-stats button:last-child {
+  border-right: 0 !important;
+}
+
+/* 创作/探索分组（全部功能宫格）：分组容器 = 一层 L1 玻璃 */
+html[data-app="1"] .qa3-profile .pf-group {
+  padding: 12px 12px 10px !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-shadow-1) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   s05 创建 Sheet（Dock 动作 · AppLayout/CreateSheet）
+   面板 = 一层 L2 玻璃（圆角 --ix-r-panel）；行透明不再套卡；
+   五个入口图标位 = 内容语义软底 color-mix(… 13%, transparent)：
+   创作紫 violet / 蓝 azure / 金 gold / 珊瑚 coral / 玉 jade（发布=成功语义）。
+   ────────────────────────────────────────────────────────────────────────── */
+html[data-app="1"] #app-create-sheet.app-sheet {
+  border: 0;
+  border-radius: var(--ix-r-panel) var(--ix-r-panel) 0 0 !important;
+  background: var(--ix-raise) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  box-shadow: var(--ix-shadow-2) !important;
+  color: var(--ix-ink);
+}
+/* 面板已是唯一玻璃层：撤掉遗留层的顶部反光条与行图标玻璃（单层玻璃原则） */
+html[data-app="1"] #app-create-sheet.app-sheet::before {
+  content: none;
+}
+html[data-app="1"] #app-create-sheet .app-create-row {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+html[data-app="1"] #app-create-sheet .app-create-row:active {
+  background: color-mix(in srgb, var(--ix-ink) 6%, transparent) !important;
+}
+html[data-app="1"] #app-create-sheet .app-create-row .ac-ic {
+  border: 0;
+  border-radius: var(--ix-r-key);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="indigo"] .ac-ic {
+  background: color-mix(in srgb, var(--ix-act) 13%, transparent) !important;
+  color: var(--ix-act) !important;
+}
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="blue"] .ac-ic {
+  background: color-mix(in srgb, var(--ix-dia) 13%, transparent) !important;
+  color: var(--ix-dia) !important;
+}
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="gold"] .ac-ic {
+  background: color-mix(in srgb, var(--ix-gold) 13%, transparent) !important;
+  color: var(--ix-gold) !important;
+}
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="coral"] .ac-ic {
+  background: color-mix(in srgb, var(--ix-danger) 13%, transparent) !important;
+  color: var(--ix-danger) !important;
+}
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="success"] .ac-ic {
+  background: color-mix(in srgb, var(--ix-success) 13%, transparent) !important;
+  color: var(--ix-success) !important;
+}
+
+
+/* IX-7 migrated composition: s4 */
+/* 曜光玻璃 Lumen Glass v1.0 · 阶段文件（s4）。全部选择器从 html[data-app="1"] 开始；
+   只用 var(--ix-*)/var(--ix-*) 令牌；禁新增颜色/nth 彩虹/循环装饰动画/渐变字。 */
+
+/* ============================================================================
+   S4 · 沉浸与会话（设计稿 s06–s12）
+   ----------------------------------------------------------------------------
+   为什么 chat 规则也落在本文件：chat/chat-app.css 在 import 链里位于
+   app-experience-v3.css 之前，而 v3 的会话规则带 !important；同特异性下
+   只有「更后加载」才能收口。本文件在 v3 / hig-v5 之后加载，是 S4 屏的
+   末位权威。hig-v5 §16 的「整栏悬浮玻璃输入岛」结构与 lite 回落原样保留。
+   材质纪律：同一对象一层玻璃；发丝边+内高光都收在 --ix-glass-shadow-* 里，
+   凡用 shadow 令牌处一律去 border，避免双发丝。
+   ========================================================================== */
+
+/* ── s06 · 角色详情（CharacterView）——简介/世界书行 L1 玻璃 + 白胶囊主 CTA ── */
+/* 简介行：v3 的「无底透明段落」升为 L1 承载玻璃（不挂 backdrop-filter：
+   身下是不透明 canvas，实时模糊零收益，层次由发丝+内高光+短阴影承担）。 */
+html[data-app="1"] .qa-character-view .cvx-intro {
+  margin: 14px 0 0 !important;
+  padding: 13px 36px 13px 14px !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa-character-view .cvx-intro p { color: var(--ix-ink) !important; }
+html[data-app="1"] .qa-character-view .cvx-intro-more {
+  right: 8px;
+  bottom: 10px;
+  color: var(--ix-ink-2) !important;
+  background: none !important;
+}
+/* 世界书条目 + 语音说明行：同为 L1 玻璃行 */
+html[data-app="1"] .qa-character-view :where(.cvx-note, .cvx-wb .wb-item) {
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+/* 吸底行动条 = 系统 chrome（L3）；主 CTA = 白实底胶囊（按稿），文字固定
+   墨色（白底上不随主题翻转，黑系文字允许值）。 */
+html[data-app="1"] .qa-character-view .cvx-cta {
+  border-top: 0 !important;
+  background: var(--ix-glass-nav) !important;
+  box-shadow: var(--ix-shadow-3) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+html[data-app="1"] .qa-character-view .cvx-go.qa-button {
+  border-radius: var(--ix-r-dial) !important;
+  background: rgb(255 255 255 / 96%) !important;
+  color: rgb(8 10 14 / 92%) !important;
+  font-weight: 700;
+  box-shadow: 0 10px 26px rgb(8 10 14 / 18%) !important;
+}
+
+/* ── s07 · 私聊沉浸（qa-chat-main）——立绘压暗 60–78%，气泡单层玻璃 ────── */
+/* 舞台基面与立绘：v3 的浅色水洗改为曜光的深色沉浸。压暗全部由 scrim 承担，
+   立绘本体回满透明度（v3 曾 .78），避免「双重减光」超出 60–78% 区间。 */
+html[data-app="1"] .qa-chat-main.chat-main.has-bg,
+html[data-app="1"][data-theme="dark"] .qa-chat-main.chat-main.has-bg { background: rgb(8 10 14) !important; }
+html[data-app="1"] .qa-chat-main .chat-bg { background: rgb(8 10 14); }
+html[data-app="1"] .qa-chat-main.has-bg .chat-bg > img,
+html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .chat-bg > img {
+  opacity: 1;
+  filter: saturate(.94);
+}
+/* 媒体可读性遮罩（SPEC §2 允许的渐变类别）：全程停留在 60–78% 压暗区间，
+   顶部为悬浮头部、底部为输入岛再各加深一档。 */
+html[data-app="1"] .qa-chat-main.has-bg .chat-bg::after,
+html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .chat-bg::after {
+  background: linear-gradient(180deg,
+    rgb(8 10 14 / 72%) 0%,
+    rgb(8 10 14 / 60%) 26%,
+    rgb(8 10 14 / 62%) 58%,
+    rgb(8 10 14 / 78%) 100%) !important;
+}
+/* 顶部状态区渐隐（媒体可读性遮罩的上缘补充） */
+html[data-app="1"] .qa-chat-main.chat-main.has-bg::before {
+  height: 132px;
+  background: linear-gradient(180deg, rgb(8 10 14 / 45%), transparent) !important;
+}
+
+/* 沉浸头部：白系玻璃 10%（SPEC §1 沉浸页控件配方），白字 */
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-header.chat-head {
+  border-bottom: 0 !important;
+  background: rgb(255 255 255 / 10%) !important;
+  color: #fff !important;
+  box-shadow: inset 0 -1px 0 rgb(255 255 255 / 12%) !important;
+  -webkit-backdrop-filter: var(--ix-blur-s) !important;
+  backdrop-filter: var(--ix-blur-s) !important;
+}
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-header .qa-chat-back.qa-icon-button,
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-header .qa-chat-header-button.qa-icon-button { color: #fff !important; }
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-header .qa-chat-identity.ch-idpill { color: #fff !important; }
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-header .qa-chat-identity .nm b { color: #fff !important; }
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-header .qa-chat-identity .ch-status { color: rgb(255 255 255 / 72%) !important; }
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-header .ch-dot { background: var(--ix-success); }
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-header .ch-av .avatar { border-color: rgb(255 255 255 / 62%) !important; }
+html[data-app="1"] .qa-chat-main.has-bg .chat-ai-mark {
+  color: rgb(255 255 255 / 55%);
+  text-shadow: 0 1px 3px rgb(8 10 14 / 40%);
+}
+/* lite：头部无 blur 时白玻璃 10% 撑不起可读性，回落深实底 */
+html[data-app="1"][data-perf="lite"] .qa-chat-main.has-bg .qa-chat-header.chat-head {
+  background: rgb(8 10 14 / 82%) !important;
+}
+
+/* 气泡 2.0（性能纪律不变：气泡不挂 backdrop-filter —— 同屏几十条实时模糊
+   是 865 级真机最大常驻开销；玻璃感由发丝+内高光+短阴影承担）。
+   无立绘：助手气泡 = L1 白玻璃原值。 */
+html[data-app="1"] .qa-chat-main .msg.assistant .bubble {
+  border: 0 !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+/* 有立绘（浅色主题）：glass-1 系白玻璃提到 86% 不透明——立绘内容不可控，
+   58% 原值压不住花底，正文对比必须 ≥4.5:1。 */
+html[data-app="1"] .qa-chat-main.has-bg .msg.assistant .bubble,
+html[data-app="1"] .qa-chat-main.has-bg.ba-solid .msg.assistant .bubble,
+html[data-app="1"] .qa-chat-main.has-bg.ba-mid .msg.assistant .bubble,
+html[data-app="1"] .qa-chat-main.has-bg.ba-clear .msg.assistant .bubble {
+  border: 0 !important;
+  background: rgb(255 255 255 / 86%) !important;
+  color: var(--ix-ink) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+  text-shadow: none;
+}
+/* 深色主题：白玻璃回到暗域配方（白 9%），墨色令牌自动翻转为浅字 */
+html[data-app="1"][data-theme="dark"] .qa-chat-main .msg.assistant .bubble,
+html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .msg.assistant .bubble,
+html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg.ba-solid .msg.assistant .bubble,
+html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg.ba-mid .msg.assistant .bubble,
+html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg.ba-clear .msg.assistant .bubble {
+  border: 0 !important;
+  background: rgb(255 255 255 / 9%) !important;
+  color: var(--ix-ink) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+/* 用户气泡：主动作 --ix-act 实底（唯一随用户强调色漂移的语义） */
+html[data-app="1"] .qa-chat-main .msg.user .bubble,
+html[data-app="1"] .qa-chat-main.has-bg .msg.user .bubble,
+html[data-app="1"] .qa-chat-main.has-bg.ba-clear .msg.user .bubble {
+  border: 0 !important;
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
+  /* UI kit 用户气泡：顶部内高光 28% */
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 28%), 0 8px 22px rgb(8 10 14 / 22%) !important;
+}
+/* 斜体动作文降亮：次级墨色，不抢正文；act 色只留一道极淡左缘示意 */
+html[data-app="1"] .qa-chat-main .msg .bubble .rp-act,
+html[data-app="1"] .qa-chat-main.has-bg .msg.assistant .bubble .rp-act {
+  color: var(--ix-ink-2) !important;
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--ix-act) 38%, transparent);
+}
+/* 时间分隔胶囊（UI kit）：暗域 40% 小玻璃 */
+html[data-app="1"] .qa-chat-main.has-bg .msg-daydivider span {
+  background: rgb(14 17 25 / 40%);
+  color: rgb(255 255 255 / 82%);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+/* 建议芯片（starter-chip）：沉浸页白系玻璃 12% + 小档 blur（可视数量少，
+   在「少量可视元素可用 --ix-blur-s」的额度内）。lite 由 app-shell 既有
+   规则回落深实底，令牌同时把 blur 置 none。 */
+html[data-app="1"] .qa-chat-main.has-bg .starter-chip {
+  /* UI kit 建议芯片：白系 10% + 内衬 14% */
+  border: 1px solid rgb(255 255 255 / 14%);
+  background: rgb(255 255 255 / 10%);
+  color: rgb(255 255 255 / 85%);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+/* ── s08 · 通话（CallScreen）——同立绘 46px 深模糊底 + 字幕 L1 + 珊瑚挂断 ── */
+/* 语音形态背景：同立绘一次性 CSS filter 深模糊（静态光栅，非 backdrop 实时
+   采样）；负 inset 外扩吃掉模糊边缘。压暗 = brightness + scrim 合成。 */
+html[data-app="1"] .call-screen .call-bg { overflow: hidden; background: rgb(8 10 14); }
+html[data-app="1"] .call-screen .call-bg-art {
+  position: absolute;
+  inset: -34px;
+  width: calc(100% + 68px);
+  height: calc(100% + 68px);
+  object-fit: cover;
+  filter: blur(46px) saturate(1.15) brightness(.6);
+}
+html[data-app="1"] .call-screen:not(.video) .call-scrim {
+  background: linear-gradient(180deg,
+    rgb(8 10 14 / 46%), rgb(8 10 14 / 22%) 30%,
+    rgb(8 10 14 / 26%) 60%, rgb(8 10 14 / 58%));
+}
+/* 字幕 = L1 玻璃卡（白系 12% + 发丝 + 内高光 + 短阴影，小档 blur） */
+html[data-app="1"] .call-caption p {
+  border: 0;
+  border-radius: var(--ix-r-card);
+  background: rgb(255 255 255 / 12%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 16%), inset 0 1px 0 rgb(255 255 255 / 24%), 0 6px 18px rgb(8 10 14 / 28%);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+/* 控件对齐沉浸配方（白玻璃 10–14%）；角色 hue 彩虹在 App 壳内退位给固定语义 */
+html[data-app="1"] .call-ctrl-ic { background: rgb(255 255 255 / 12%); border-color: rgb(255 255 255 / 16%); }
+html[data-app="1"] .call-ctrl.active .call-ctrl-ic {
+  background: var(--ix-act);
+  color: var(--ix-act-ink);
+  box-shadow: 0 0 0 5px var(--ix-act-soft);
+}
+/* 挂断：--ix-danger 实底 64px 圆钮（≥44 触控契约自然满足） */
+html[data-app="1"] .call-hangup .call-ctrl-ic {
+  width: 64px;
+  height: 64px;
+  background: var(--ix-danger);
+  border-color: transparent;
+  box-shadow: 0 8px 24px rgb(8 10 14 / 42%);
+}
+html[data-app="1"] .call-key-send { background: var(--ix-act); color: var(--ix-act-ink); }
+html[data-app="1"] .call-ring { border-color: rgb(255 255 255 / 40%); }
+html[data-app="1"] .call-orb.listening .call-ring { border-color: rgb(255 255 255 / 62%); }
+html[data-app="1"] .call-orb.speaking .call-ring { border-color: rgb(255 255 255 / 52%); }
+html[data-app="1"] .call-avatar { box-shadow: 0 10px 40px rgb(8 10 14 / 55%), 0 0 0 3px rgb(255 255 255 / 14%); }
+html[data-app="1"] .call-pip.speaking { border-color: var(--ix-act); box-shadow: 0 0 0 3px var(--ix-act-soft), 0 6px 22px rgb(8 10 14 / 50%); }
+html[data-app="1"] .call-pip.listening { border-color: var(--ix-success); }
+/* lite：深模糊立绘退成低透明度环境底；玻璃件去 blur 回深实底 */
+html[data-app="1"][data-perf="lite"] .call-screen .call-bg-art { filter: none; opacity: .32; }
+html[data-app="1"][data-perf="lite"] .call-caption p {
+  background: rgb(8 10 14 / 74%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html[data-app="1"][data-perf="lite"] :where(.call-ctrl-ic, .call-modeswitch, .call-keys input) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── s09 · 群聊（GroupRoom）——冷白内容面 + 成员条并入导航玻璃 + 语义色人名 ── */
+html[data-app="1"] .qa-group-room,
+html[data-app="1"] .qa-group-room-loading,
+html[data-app="1"][data-theme="dark"] .qa-group-room,
+html[data-app="1"][data-theme="dark"] .qa-group-room-loading { background: var(--ix-canvas) !important; }
+/* 冷白内容面 = canvas + 冷调环境光晕（消息语义，SPEC §1；lite 令牌自动置 none） */
+html[data-app="1"] .qa-group-room-main,
+html[data-app="1"][data-theme="dark"] .qa-group-room-main {
+  background-color: var(--ix-canvas) !important;
+  background-image: var(--ix-ambient-none) !important;
+  background-attachment: fixed !important;
+}
+html[data-app="1"] .qa-group-room-scroll,
+html[data-app="1"][data-theme="dark"] .qa-group-room-scroll { background: transparent !important; }
+
+/* 顶部导航 + 成员条：同一条 L3 系统玻璃带（成员条并入导航；有成员条时
+   发丝下移到成员条底缘，视觉上是一块玻璃） */
+html[data-app="1"] .qa-group-room-header,
+html[data-app="1"][data-theme="dark"] .qa-group-room-header {
+  border-bottom: 1px solid var(--ix-hairline) !important;
+  background: var(--ix-glass-nav) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+html[data-app="1"] .qa-group-room-header:has(+ .qa-group-room-roster) { border-bottom: 0 !important; }
+html[data-app="1"] .qa-group-room-roster,
+html[data-app="1"][data-theme="dark"] .qa-group-room-roster {
+  border-bottom: 1px solid var(--ix-hairline);
+  background: var(--ix-glass-nav) !important; /* v3 深色档同名规则带 !important */
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+html[data-app="1"] .qa-group-room-roster-avatar .avatar { border-color: rgb(255 255 255 / 85%); }
+html[data-app="1"] .qa-group-room-roster-avatar i { border-color: rgb(255 255 255 / 85%); background: var(--ix-success); }
+html[data-app="1"][data-theme="dark"] .qa-group-room-roster-avatar .avatar,
+html[data-app="1"][data-theme="dark"] .qa-group-room-roster-avatar i { border-color: rgb(255 255 255 / 25%); }
+html[data-app="1"] .qa-group-room-loading-head {
+  border-bottom-color: var(--ix-hairline) !important;
+  background: var(--ix-glass-nav) !important;
+}
+
+/* 群气泡：他人 = L1 白玻璃（发丝/内高光收在 shadow 令牌，故去 border）；
+   自己 = --ix-act 实底。冷白平面身后无媒体，不挂 backdrop-filter。 */
+html[data-app="1"] .qa-group-room .bubble,
+html[data-app="1"][data-theme="dark"] .qa-group-room .bubble {
+  border: 0 !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa-group-room .group-message.user .bubble {
+  border: 0 !important;
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 24%), 0 7px 17px rgb(8 10 14 / 18%) !important;
+}
+
+/* 发言人名：按成员 id 稳定散列到固定内容语义色（JSX 写 data-lg-tone，
+   蓝/紫/金/玉四色循环禁 nth——同一成员任何时刻同色）。 */
+html[data-app="1"] .qa-group-room .who { font-weight: 650 !important; }
+html[data-app="1"] .qa-group-room .who[data-lg-tone="azure"] { color: var(--ix-dia) !important; }
+html[data-app="1"] .qa-group-room .who[data-lg-tone="violet"] { color: var(--ix-act) !important; }
+html[data-app="1"] .qa-group-room .who[data-lg-tone="gold"] { color: var(--ix-gold) !important; }
+html[data-app="1"] .qa-group-room .who[data-lg-tone="jade"] { color: var(--ix-success) !important; }
+
+/* lite：并入导航的玻璃带去 blur（底色由 lite 令牌回落为不透明分组底） */
+html[data-app="1"][data-perf="lite"] .qa-group-room-roster {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── s10 · 剧场房间（TheaterRoom）——纸/墨阅读流 + 指挥芯片 + 输入岛 ────── */
+/* 纸面接到 Lumen 实体面：v3 的 --ix-composition-paper* 全部改由 --ix-* 供值
+   （浅=lg-grouped 不透明纸底，深主题令牌自动翻转），v3 内所有引用即刻换装。 */
+html[data-app="1"] .qa-theater-room,
+html[data-app="1"] .qa-theater-room-loading,
+html[data-app="1"][data-theme="dark"] .qa-theater-room,
+html[data-app="1"][data-theme="dark"] .qa-theater-room-loading {
+  --ix-composition-paper: var(--ix-grouped);
+  --ix-composition-paper-ink: var(--ix-ink);
+  --ix-composition-paper-muted: var(--ix-ink-2);
+}
+/* 顶部导航 = L3 系统玻璃 */
+html[data-app="1"] .qa-theater-room-head {
+  border-bottom: 1px solid var(--ix-hairline) !important;
+  background: var(--ix-glass-nav) !important;
+  -webkit-backdrop-filter: var(--ix-blur) !important;
+  backdrop-filter: var(--ix-blur) !important;
+}
+html[data-app="1"] .qa-theater-room .inovel-scene-tag {
+  border: 0 !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink-2) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa-theater-room .inovel-rule::before,
+html[data-app="1"] .qa-theater-room .inovel-rule::after { background: var(--ix-hairline) !important; }
+html[data-app="1"] .qa-theater-room .inovel-dlg { border-top-color: var(--ix-hairline) !important; }
+
+/* 叙事正文中文衬线（SPEC §3：16–18px / 行高 1.95–2.05）。衬线只跟随读者
+   的「衬线字体」开关（.sans 保持 UI 字体）；字号档位经 --inovel-fs 缩放后
+   clamp 回规范区间。 */
+html[data-app="1"] .qa-theater-room .inovel-book:not(.sans) :where(
+  .inovel-narr, .inovel-say, .inovel-me p, .inovel-title,
+  .inovel-chapter-title, .inovel-logline, .inovel-rule span
+) {
+  font-family: var(--ix-font-ui);
+}
+html[data-app="1"] .qa-theater-room .inovel-narr {
+  font-size: clamp(16px, calc(17px * var(--inovel-fs, 1)), 18px) !important;
+  line-height: 2 !important;
+}
+html[data-app="1"] .qa-theater-room .inovel-say {
+  font-size: clamp(16px, calc(16.5px * var(--inovel-fs, 1)), 18px) !important;
+  line-height: 1.95 !important;
+}
+html[data-app="1"] .qa-theater-room .inovel-me p {
+  font-size: clamp(16px, calc(16.5px * var(--inovel-fs, 1)), 18px);
+  line-height: 1.95;
+}
+
+/* 指挥芯片横轨：芯片浮在 hig §16 的 L3 玻璃岛上——选中片材质做芯片面
+   （发丝+内高光在 shadow-1 令牌里），主芯片 = act 实底。 */
+html[data-app="1"] .qa-theater-quick-actions .qa-button {
+  border: 0 !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+html[data-app="1"] .qa-theater-quick-actions .qa-button[data-variant="primary"] {
+  background: var(--ix-act) !important;
+  color: var(--ix-act-ink) !important;
+  box-shadow: none !important;
+}
+/* 行动建议：更安静的 L1 面 + 发丝 */
+html[data-app="1"] .qa-theater-action-hints .qa-button {
+  border: 0 !important;
+  background: var(--ix-surface) !important;
+  color: var(--ix-ink-2) !important;
+  box-shadow: inset 0 0 0 1px var(--ix-hairline) !important;
+}
+/* 输入岛内位：普通 inset（玻璃只在外层岛，单层玻璃纪律） */
+html[data-app="1"] .qa-theater-input-island {
+  border: 1px solid var(--ix-hairline) !important;
+  background: rgb(255 255 255 / 58%) !important;
+  box-shadow: none !important;
+}
+html[data-app="1"][data-theme="dark"] .qa-theater-input-island {
+  border-color: rgb(255 255 255 / 14%) !important;
+  background: rgb(255 255 255 / 9%) !important;
+}
+
+/* ── s12 · 小说阅读（NovelReader）——不透明纸面 + 可隐藏 L3 工具条 + Aa Sheet ── */
+/* .qa-novel-read 仅在 App 壳由 JSX 附加；Web 保持既有固定条布局零差异 */
+html[data-app="1"] .qa-novel-read.atl-read-page {
+  position: relative;
+  background: var(--ix-grouped);
+  color: var(--ix-ink);
+}
+/* 工具条改为悬浮 L3 玻璃（正文从其下滚过）；点正文空白处隐藏/唤回 */
+html[data-app="1"] .qa-novel-read .atl-read-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  border-bottom: 1px solid var(--ix-hairline);
+  background: var(--ix-glass-nav);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  transition: transform var(--ix-dur-push) var(--ix-ease),
+    opacity var(--ix-dur-push) var(--ix-ease),
+    visibility 0s linear;
+}
+html[data-app="1"] .qa-novel-read.is-chrome-hidden .atl-read-bar {
+  transform: translateY(-104%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform var(--ix-dur-push) var(--ix-ease),
+    opacity var(--ix-dur-push) var(--ix-ease),
+    visibility 0s linear var(--ix-dur-push);
+}
+html[data-app="1"] .qa-novel-read .atl-read-scroll { padding-top: calc(74px + env(safe-area-inset-top)); }
+html[data-app="1"] .qa-novel-read .atl-read-bar :where(.btn, button) { min-width: 44px; min-height: 44px; }
+html[data-app="1"] .qa-novel-read .atl-read-bar-title { color: var(--ix-ink-2); }
+/* 阅读面：不透明纸底上的衬线正文（字号走 Aa Sheet 的行内 style） */
+html[data-app="1"] .qa-novel-read .atl-reader-page { color: var(--ix-ink); }
+html[data-app="1"] .qa-novel-read :where(.atl-reader-para, .atl-reader-page h1, .atl-read-end) {
+  font-family: var(--ix-font-ui);
+}
+html[data-app="1"] .qa-novel-read .atl-reader-para { line-height: 2.02; }
+/* Aa Sheet（现有 Modal/Sheet 机制，L2 材质由 hig §7 供给）：只补内容排版 */
+html[data-app="1"] .qa-novel-aa-sheet .qa-novel-aa-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: var(--ix-type-section);
+}
+html[data-app="1"] .qa-novel-aa-sheet .qa-novel-aa-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 14px 0 18px;
+}
+html[data-app="1"] .qa-novel-aa-sheet .qa-novel-aa-row button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ix-grouped);
+  color: var(--ix-ink);
+  box-shadow: inset 0 0 0 1px var(--ix-hairline);
+  cursor: pointer;
+}
+html[data-app="1"] .qa-novel-aa-sheet .qa-novel-aa-row button:active { transform: scale(.94); }
+html[data-app="1"] .qa-novel-aa-sheet .qa-novel-aa-row b {
+  min-width: 72px;
+  text-align: center;
+  font-size: var(--ix-type-section);
+  font-variant-numeric: tabular-nums;
+}
+html[data-app="1"] .qa-novel-aa-sheet .qa-novel-aa-preview {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-grouped);
+  color: var(--ix-ink);
+  font-family: var(--ix-font-ui);
+  line-height: 2;
+}
+
+/* ── 降级：reduced-motion 撤掉本层新增过渡 ── */
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .qa-novel-read .atl-read-bar { transition: none; }
+}
+
+/* ── 修复：输入岛内的 textarea 被通用表单规则涂成不透明白（hig §10 的
+   --ix-surface）。岛内输入位 = 透明内嵌，玻璃只属于外层岛（单层原则）：
+   文字/占位符按沉浸与主题语境取色。 ── */
+html[data-app="1"] .chat-main .chat-input-bar .box :where(textarea, input, .qa-chat-textarea),
+html[data-app="1"] .qa-chat-main .qa-chat-input-island.box :where(textarea, input, .qa-chat-textarea) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--ix-ink);
+}
+html[data-app="1"] .chat-main .chat-input-bar .box :where(textarea, .qa-chat-textarea)::placeholder {
+  color: var(--ix-ink-3);
+}
+/* 沉浸立绘语境：白字 + 半透明白占位；岛内辅助图标同步提亮 */
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box :where(textarea, input, .qa-chat-textarea),
+html[data-app="1"] .qa-chat-main.has-bg .qa-chat-input-island.box :where(textarea, input, .qa-chat-textarea) {
+  color: rgb(255 255 255 / 94%);
+}
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box :where(textarea, .qa-chat-textarea)::placeholder {
+  color: rgb(255 255 255 / 55%);
+}
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { color: rgb(255 255 255 / 88%); }
+
+
+/* IX-7 migrated composition: s5 */
+/* 曜光玻璃 Lumen Glass v1.0 · 阶段文件（s5）。全部选择器从 html[data-app="1"] 开始；
+   只用 var(--ix-*)/var(--ix-*) 令牌；禁新增颜色/nth 彩虹/循环装饰动画/渐变字。 */
+
+/* ============================================================================
+   S5 · 身份 / 价值 / 创作（SPEC §6 s20–s34 + s11 剧场大厅）
+   ----------------------------------------------------------------------------
+   本层只做「材质重调」：把既有 Quiet Aqua / v3 结构接到 Lumen 三层玻璃 +
+   实体面上。层叠约定：本文件在 app-pages / app-experience-v3 / app-hig-v5
+   之后加载，同特异度即可覆盖；对方带 !important 的声明按同名 !important 覆盖。
+   blur 一律走 var(--ix-blur[-s])——lite 档由令牌自动归零，不额外设门。
+   衍生色只允许 color-mix(令牌, #fff/#000/transparent)；无新颜色字面量。
+   ========================================================================== */
+
+/* ── s20 钱包 · 环境光晕（warm）+ 玻璃变量重定向 ─────────────────────────── */
+html[data-app="1"] .qa-wallet-v4 {
+  --ix-wallet-glass: var(--ix-surface);
+  --ix-wallet-glass-strong: var(--ix-surface);
+  --ix-wallet-glass-edge: transparent; /* 发丝边由 --ix-glass-shadow-* 承担，避免双线 */
+  --ix-wallet-glass-shadow: var(--ix-shadow-1);
+  background-color: var(--ix-canvas) !important;
+  background-image: var(--ix-ambient-none) !important;
+}
+
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4 {
+  --ix-wallet-glass: var(--ix-surface);
+  --ix-wallet-glass-strong: var(--ix-surface);
+  --ix-wallet-glass-edge: transparent;
+  --ix-wallet-glass-shadow: var(--ix-shadow-1);
+  background-color: var(--ix-canvas) !important;
+  background-image: var(--ix-ambient-none) !important;
+}
+
+/* 顶栏 = L3 系统玻璃（e2e：balanced 档 computed backdrop 必须含 blur() */
+html[data-app="1"] .qa-wallet-v4 .qa-wallet-head,
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4 .qa-wallet-head {
+  border-bottom-color: var(--ix-hairline);
+  background: var(--ix-glass-nav) !important;
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-wallet-v4 .qa-wallet-head > .qa-icon-button {
+  border-color: transparent !important;
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+/* 资产仪表 = L0 实体（--ix-vault）+ 一处暖金光点（--ix-gold）。
+   qa3WalletLight 入场光线（760ms 一次性）与 backdrop 契约保持原样。 */
+html[data-app="1"] .qa-wallet-v4__balance {
+  border-color: rgb(255 255 255 / 14%);
+  background:
+    radial-gradient(88% 62% at 88% -4%, color-mix(in srgb, var(--ix-gold) 52%, transparent), transparent 56%),
+    var(--ix-vault);
+  color: var(--ix-vault-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), 0 18px 38px rgb(0 0 0 / 24%);
+}
+
+html[data-app="1"] .qa-wallet-v4__balance-head span { color: var(--ix-vault-ink); }
+
+html[data-app="1"] .qa-wallet-v4__recharge.qa-button {
+  border-color: transparent !important;
+  background: rgb(255 255 255 / 94%) !important;
+  color: var(--ix-vault) !important;
+  box-shadow: 0 7px 18px rgb(0 0 0 / 22%) !important;
+}
+
+/* 金额一律 tabular-nums */
+html[data-app="1"] .qa-wallet-v4__asset strong,
+html[data-app="1"] .qa-wallet-v4__exchange-result strong,
+html[data-app="1"] .qa-wallet-v4__recharge-balance strong,
+html[data-app="1"] .qa-wallet-v4__packages strong,
+html[data-app="1"] .qa-wallet-v4__packages > button > b,
+html[data-app="1"] .qa-wallet-v4__checkout strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 会员行 / 通知行 / 签到行语义重调：金=会员奖励 · 玉=签到 */
+html[data-app="1"] .qa-wallet-v4__membership { color: color-mix(in srgb, var(--ix-gold) 52%, #fff); }
+html[data-app="1"] .qa-wallet-v4__notice-icon {
+  background: color-mix(in srgb, var(--ix-gold) 15%, transparent);
+  color: var(--ix-gold);
+}
+html[data-app="1"] .qa-wallet-v4__checkin-icon {
+  background: color-mix(in srgb, var(--ix-success) 13%, transparent);
+  color: var(--ix-success);
+}
+html[data-app="1"] .qa-wallet-v4__tx-icon.gold {
+  background: color-mix(in srgb, var(--ix-gold) 14%, transparent);
+  color: var(--ix-gold);
+}
+
+/* 快捷四钮 = L1 玻璃（e2e：computed backdrop 必须含 blur() */
+html[data-app="1"] .qa-wallet-v4__quick .qa-button {
+  border-color: transparent !important;
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-wallet-v4__notice.qa-button,
+html[data-app="1"] .qa-wallet-v4__checkin.qa-button {
+  border-color: transparent !important;
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .qa-wallet-v4__panel,
+html[data-app="1"] .qa-wallet-v4__ledger {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4__quick .qa-button,
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4__notice.qa-button,
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkin.qa-button,
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4__panel,
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4__ledger {
+  background: var(--ix-surface) !important;
+}
+
+/* ── s21 充值 · 石墨结算条（fixed + blur 是 e2e 契约，只换材质） ─────────── */
+html[data-app="1"] .qa-wallet-v4__recharge-note {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ix-gold) 11%, var(--ix-surface));
+  color: var(--ix-gold);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .qa-wallet-v4__checkout,
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout {
+  border-color: rgb(255 255 255 / 14%);
+  background: color-mix(in srgb, var(--ix-vault) 86%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), 0 20px 46px rgb(0 0 0 / 30%);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-wallet-v4__checkout span,
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout span {
+  color: color-mix(in srgb, var(--ix-vault-ink) 62%, transparent);
+}
+
+html[data-app="1"] .qa-wallet-v4__checkout strong,
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout strong {
+  color: var(--ix-vault-ink);
+}
+
+/* 健康检查未过 → 禁用态写明原因（文案在 DOM），材质换石墨上的白玻璃 */
+html[data-app="1"] .qa-wallet-v4__checkout .qa-button:disabled,
+html[data-app="1"][data-theme="dark"] .qa-wallet-v4__checkout .qa-button:disabled {
+  border-color: rgb(255 255 255 / 22%) !important;
+  background: rgb(255 255 255 / 13%) !important;
+  color: var(--ix-vault-ink) !important;
+  -webkit-text-fill-color: var(--ix-vault-ink) !important;
+}
+
+/* ── s22 SVIP · 单一金属实体卡（渐变仅限实体材质，SPEC §2 允许） ─────────── */
+html[data-app="1"] .qa-vip.vm {
+  background-color: var(--ix-canvas) !important;
+  background-image: var(--ix-ambient-none) !important;
+}
+
+html[data-app="1"] .qa-vip .vm-top {
+  background: var(--ix-glass-nav) !important;
+  box-shadow: var(--ix-shadow-3) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* 金属体全部由 --ix-gold 与白/黑 color-mix 派生；入场光线 qa3VipMetalPass
+   （820ms 一次性）沿用，不循环。 */
+html[data-app="1"] .qa-vip .vm-card,
+html[data-app="1"] .qa-vip .vm-card.svip {
+  border: 1px solid color-mix(in srgb, var(--ix-gold) 52%, rgb(0 0 0 / 40%)) !important;
+  border-radius: var(--ix-r-panel) !important;
+  background:
+    radial-gradient(circle at 86% 10%, rgb(255 255 255 / 58%), transparent 26%),
+    repeating-linear-gradient(118deg, rgb(255 255 255 / 0%) 0 8px, rgb(255 255 255 / 8%) 9px 10px),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--ix-gold) 78%, #000) 0%,
+      color-mix(in srgb, var(--ix-gold) 52%, #fff) 42%,
+      color-mix(in srgb, var(--ix-gold) 88%, #000) 71%,
+      color-mix(in srgb, var(--ix-gold) 62%, #fff) 100%) !important;
+  color: color-mix(in srgb, var(--ix-gold) 26%, #000) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 55%), 0 19px 34px rgb(0 0 0 / 24%) !important;
+}
+
+html[data-app="1"] .qa-vip .vm-word {
+  color: color-mix(in srgb, var(--ix-gold) 26%, #000) !important;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 38%);
+}
+
+html[data-app="1"] .qa-vip .vm-card-sub {
+  color: color-mix(in srgb, color-mix(in srgb, var(--ix-gold) 28%, #000) 78%, transparent) !important;
+}
+
+html[data-app="1"] .qa-vip .vm-card-deco {
+  color: color-mix(in srgb, var(--ix-gold) 48%, #000) !important;
+}
+
+/* 权益 = inset 清单，整组一层 L1 玻璃；行间发丝分隔保持 */
+html[data-app="1"] .qa-vip .vm-perks {
+  margin: 0 2px 26px !important;
+  padding: 4px 14px !important;
+  border-top: 0;
+  border-bottom: 0;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .qa-vip .vm-perk { border-bottom-color: var(--ix-hairline) !important; }
+
+html[data-app="1"] .qa-vip .vm-perk-ic {
+  background: color-mix(in srgb, var(--ix-gold) 14%, transparent) !important;
+  color: var(--ix-gold) !important;
+}
+
+html[data-app="1"] .qa-vip .vm-sheet {
+  border-color: transparent !important;
+  border-radius: var(--ix-r-panel) !important;
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .qa-vip .vm-plan.qa-button {
+  background: color-mix(in srgb, var(--ix-grouped) 72%, transparent) !important;
+}
+
+html[data-app="1"] .qa-vip .vm-plan.qa-button[data-selected] {
+  border-color: color-mix(in srgb, var(--ix-gold) 55%, transparent) !important;
+  background: color-mix(in srgb, var(--ix-gold) 15%, transparent) !important;
+}
+
+html[data-app="1"] .qa-vip .vm-plan .vm-plan-price { font-variant-numeric: tabular-nums; }
+
+html[data-app="1"] .qa-vip .vm-go.qa-button {
+  border-color: color-mix(in srgb, var(--ix-gold) 62%, rgb(0 0 0 / 30%)) !important;
+  background: var(--ix-gold) !important;
+  color: color-mix(in srgb, var(--ix-gold) 18%, #000) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 32%), 0 8px 18px rgb(0 0 0 / 16%) !important;
+}
+
+html[data-app="1"] .qa-vip .vm-ledger.qa-button {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+/* balanced 档保留玻璃（Lumen 只在 lite 关 blur；令牌在 lite 自动归 none） */
+html[data-app="1"][data-perf="balanced"] .qa-vip .vm-top {
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* ── s23 主页（/profile · /user/:id）· 横幅渐隐 + L1 承载卡 ──────────────── */
+html[data-app="1"] .qa-user-home .qa-user-banner {
+  -webkit-mask-image: linear-gradient(180deg, rgb(0 0 0) 40%, rgb(0 0 0 / 42%) 76%, transparent 100%);
+  mask-image: linear-gradient(180deg, rgb(0 0 0) 40%, rgb(0 0 0 / 42%) 76%, transparent 100%);
+}
+
+html[data-app="1"] .qa-user-home > .card {
+  border-color: transparent;
+  border-radius: var(--ix-r-panel);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+/* 金额徽（仅本人页出现）：金/钻语义 + tabular */
+html[data-app="1"] .qa-user-home .coin { font-variant-numeric: tabular-nums; }
+html[data-app="1"] .qa-user-home .coin.gold { color: var(--ix-gold); }
+html[data-app="1"] .qa-user-home .coin.diamond { color: var(--ix-dia); }
+
+/* ── s24 成就 · 金=已解锁；进行中走 act（不提前给金） ────────────────────── */
+html[data-app="1"] .qa-achievements-page {
+  background-color: var(--ix-canvas);
+  background-image: var(--ix-ambient-none);
+}
+
+html[data-app="1"] .qa-achievements-head {
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-achievements-summary,
+html[data-app="1"] .qa-achievements-card,
+html[data-app="1"] .qa-achievements-skeleton {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-achievements-summary {
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .qa-achievements-tabs .qa-button {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-achievements-tabs .qa-button[data-selected] {
+  border-color: color-mix(in srgb, var(--ix-act) 28%, transparent);
+  background: var(--ix-act-soft);
+  box-shadow: none;
+  color: var(--ix-act);
+}
+
+/* 已解锁 = 内容语义金；解锁勾保持玉（成功） */
+html[data-app="1"] .qa-achievements-card.is-unlocked .qa-achievements-card-icon {
+  background: color-mix(in srgb, var(--ix-gold) 15%, transparent);
+  color: var(--ix-gold);
+}
+
+html[data-app="1"] .qa-achievements-card-icon > i { border-color: var(--ix-canvas); }
+html[data-app="1"] .qa-achievements-reward { font-variant-numeric: tabular-nums; }
+html[data-app="1"] .qa-achievements-card-progress small { font-variant-numeric: tabular-nums; }
+
+/* ── s25 洞察（星轨）· 单色柱状 = act 的 color-mix 透明度阶；去网格装饰 ──── */
+html[data-app="1"] .ins-hero {
+  border: 0;
+  border-radius: var(--ix-r-panel);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .ins-streak {
+  background: color-mix(in srgb, var(--ix-success) 13%, transparent);
+  color: var(--ix-success);
+}
+
+html[data-app="1"] .ins-kpi,
+html[data-app="1"] .ins-card {
+  border: 0;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .ins-kpi .k-value { font-variant-numeric: tabular-nums; }
+
+/* 柱状图：单一 act 色相，透明度分档；峰值满饱和；零值退为发丝底。 */
+html[data-app="1"] .ins-chart { background: none; border: 0; box-shadow: none; }
+html[data-app="1"] .ins-bar i { background: color-mix(in srgb, var(--ix-act) 55%, transparent); }
+html[data-app="1"] .ins-bar:hover i,
+html[data-app="1"] .ins-bar:focus-visible i { background: var(--ix-act); filter: none; }
+html[data-app="1"] .ins-bar b { color: var(--ix-act); font-variant-numeric: tabular-nums; }
+html[data-app="1"] .ins-bar.zero i { background: var(--ix-hairline); }
+
+html[data-app="1"] .ins-made {
+  border: 0;
+  border-radius: var(--ix-r-card);
+  background: color-mix(in srgb, var(--ix-grouped) 78%, transparent);
+  color: var(--ix-ink);
+}
+html[data-app="1"] .ins-made svg { color: var(--ix-act); }
+html[data-app="1"] .ins-made b { font-variant-numeric: tabular-nums; }
+
+html[data-app="1"] .ins-comp-row .bar { background: var(--ix-hairline); }
+html[data-app="1"] .ins-comp-row .bar i { background: color-mix(in srgb, var(--ix-act) 48%, transparent); }
+html[data-app="1"] .ins-comp-row .v { font-variant-numeric: tabular-nums; }
+html[data-app="1"] .ins-eco .pill b { font-variant-numeric: tabular-nums; }
+
+/* ── s26 排行 · 领奖台 + 「你的位置」act 软底行 ─────────────────────────── */
+html[data-app="1"] .qa-leaderboard-page {
+  background-color: var(--ix-canvas);
+  background-image: var(--ix-ambient-none);
+}
+
+html[data-app="1"] .qa-leaderboard-head {
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-leaderboard-intro {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+/* 分段：胶囊槽（grouped inset）+ 选中片（glass-sel + shadow-1），SPEC §4 */
+html[data-app="1"] .qa-leaderboard-tabs {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ix-grouped) 82%, transparent);
+}
+
+html[data-app="1"] .qa-leaderboard-tabs .qa-button[data-selected] {
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  color: var(--ix-act);
+}
+
+/* 领奖台：冠军居中 L2 浮起，2/3 名 L1 */
+html[data-app="1"] .qa-leaderboard-podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+  margin: 2px 0 12px;
+}
+
+html[data-app="1"] .qa-leaderboard-pod.qa-button {
+  min-width: 0;
+  min-height: 138px;
+  padding: 12px 6px 11px;
+  border: 1px solid transparent;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  color: var(--ix-ink);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-leaderboard-pod .qa-button__content {
+  display: grid;
+  width: 100%;
+  justify-items: center;
+  gap: 5px;
+}
+
+html[data-app="1"] .qa-leaderboard-pod.is-p1.qa-button {
+  min-height: 162px;
+  border-radius: var(--ix-r-panel);
+  background: var(--ix-raise);
+  box-shadow: var(--ix-shadow-2);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-leaderboard-pod-media {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0;
+}
+
+html[data-app="1"] .qa-leaderboard-pod-media img,
+html[data-app="1"] .qa-leaderboard-pod-media .avatar {
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+html[data-app="1"] .qa-leaderboard-pod-crown {
+  position: absolute;
+  top: -13px;
+  color: var(--ix-gold);
+}
+
+html[data-app="1"] .qa-leaderboard-pod.is-p1 .qa-leaderboard-pod-media { padding-top: 8px; }
+
+html[data-app="1"] .qa-leaderboard-pod-media i {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ix-act);
+  color: var(--ix-act-ink);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 780;
+}
+
+html[data-app="1"] .qa-leaderboard-pod.is-p1 .qa-leaderboard-pod-media i { background: var(--ix-gold); color: rgb(255 255 255 / 96%); }
+
+html[data-app="1"] .qa-leaderboard-pod b {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 740;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+html[data-app="1"] .qa-leaderboard-pod small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ix-ink-3);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 「你的位置」：act 软底（--ix-act-soft），行与领奖台一致标注 */
+html[data-app="1"] .qa-leaderboard-you {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+  font-size: 9.5px;
+  font-weight: 760;
+}
+
+html[data-app="1"] .qa-leaderboard-row.qa-button {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-leaderboard-row.qa-button.is-you,
+html[data-app="1"] .qa-leaderboard-pod.qa-button.is-you {
+  border-color: color-mix(in srgb, var(--ix-act) 30%, transparent);
+  background: color-mix(in srgb, var(--ix-act-soft) 70%, var(--ix-surface));
+}
+
+html[data-app="1"] .qa-leaderboard-metric { font-variant-numeric: tabular-nums; }
+
+/* ── s27 角色编辑器 · tabpanel 视觉 + L3 保存条 ─────────────────────────── */
+html[data-app="1"] .qa-character-editor {
+  background-color: var(--ix-canvas);
+  background-image: var(--ix-ambient-none);
+}
+
+html[data-app="1"] .qa-character-editor__topbar.topbar {
+  border-bottom-color: var(--ix-hairline);
+  background: var(--ix-glass-nav) !important;
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* 分段 tab：胶囊槽 + glass-sel 选中片 */
+html[data-app="1"] .qa-character-editor__page > .tabs-bar {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ix-grouped) 85%, transparent) !important;
+  box-shadow: none;
+}
+
+html[data-app="1"] .qa-character-editor__page > .tabs-bar .qa-button:is(.active, [data-selected]) {
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+  color: var(--ix-act) !important;
+}
+
+/* 表单卡 = L1 承载（重复卡不叠 blur，画布平整时观感一致） */
+html[data-app="1"] .qa-character-editor__panel.editor-grid > div:first-child,
+html[data-app="1"] .qa-character-editor__panel.editor-grid > .card,
+html[data-app="1"] .qa-character-editor__panel:not(.editor-grid) > .field,
+html[data-app="1"] .qa-character-editor__world > .card {
+  border-color: transparent;
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-1);
+}
+
+/* 固定保存条 = L3 系统玻璃 */
+html[data-app="1"] .qa-character-editor__savebar.app-savebar {
+  border-color: transparent !important;
+  background: var(--ix-glass-nav) !important;
+  box-shadow: var(--ix-shadow-3) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* 当前编辑条目 = L2 浮起（焦点即当前，s27/s28 共用） */
+html[data-app="1"] .qa-character-editor__world .world-entry:focus-within,
+html[data-app="1"] .qa-worldbook-editor__page .world-entry:focus-within {
+  border-color: transparent;
+  background: var(--ix-raise);
+  box-shadow: var(--ix-shadow-2);
+}
+
+/* ── s28 世界书编辑器 · cool 光晕 + 条目 L1 / 当前 L2 + L3 保存条 ────────── */
+html[data-app="1"] .qa-worldbook-editor,
+html[data-app="1"][data-theme="dark"] .qa-worldbook-editor {
+  background-color: var(--ix-canvas) !important;
+  background-image: var(--ix-ambient-none) !important;
+}
+
+html[data-app="1"] .qa-worldbook-editor__topbar {
+  border-bottom-color: var(--ix-hairline);
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-worldbook-editor__page .world-entry {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-worldbook-editor__savebar,
+html[data-app="1"] .qa-script-editor-v4__savebar {
+  border-color: transparent;
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* ── s29 书架（Atelier）· 横轨书脊卡 L1 ─────────────────────────────────── */
+html[data-app="1"] .qa-atelier {
+  background-color: var(--ix-canvas) !important;
+  background-image: var(--ix-ambient-none) !important;
+}
+
+html[data-app="1"] .qa-atelier-head {
+  background: var(--ix-glass-nav) !important;
+  box-shadow: var(--ix-shadow-3) !important;
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-atelier-card,
+html[data-app="1"] .qa-atelier-skeleton {
+  border-color: transparent !important;
+  background: var(--ix-surface) !important;
+  box-shadow: var(--ix-shadow-1) !important;
+}
+
+/* ── s30 小说工作台 · 稿纸不透明纸面（L0 实体）+ AI 段落紫软底 ──────────── */
+html[data-app="1"] .qa-novel-page.atl-ms-inner {
+  border-color: transparent;
+  background: var(--ix-grouped); /* SPEC §1：小说稿纸 = 实体 --ix-grouped，不透明 */
+  box-shadow: var(--ix-shadow-1);
+}
+
+/* 叙事正文走中文衬线（SPEC §3；仅正文，UI 不变） */
+html[data-app="1"] .qa-novel-manuscript .atl-prose {
+  font-family: var(--ix-font-ui);
+  line-height: 1.95;
+}
+
+/* AI 生成语义 = 紫：指令签 + 生成中的段落软底（状态驱动，非循环动效） */
+html[data-app="1"] .qa-novel-beat .atl-beat-dir {
+  border-color: color-mix(in srgb, var(--ix-act) 28%, transparent);
+  background: color-mix(in srgb, var(--ix-act) 12%, transparent);
+  color: var(--ix-act);
+}
+
+html[data-app="1"] .qa-novel-beat.streaming .atl-prose {
+  margin-inline: -8px;
+  padding-inline: 8px;
+  border-radius: var(--ix-r-card);
+  background: color-mix(in srgb, var(--ix-act) 9%, transparent);
+  box-shadow: inset 3px 0 0 var(--ix-act);
+}
+
+html[data-app="1"] .qa-novel-composer.atl-composer {
+  border-top-color: var(--ix-hairline);
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* 输入岛单层：外层已是玻璃条，岛体内退为 inset 普通输入位（SPEC §1 硬规则） */
+html[data-app="1"] .qa-novel-input-island.atl-composer-bar {
+  border-color: var(--ix-hairline);
+  background: color-mix(in srgb, var(--ix-grouped) 68%, transparent);
+  box-shadow: none;
+}
+
+html[data-app="1"] .qa-novel-input-island.atl-composer-bar:focus-within {
+  border-color: var(--ix-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ix-focus) 18%, transparent);
+}
+
+/* ── s31 剧本市集 · 价格=金点+tabular；免费=玉 ──────────────────────────── */
+html[data-app="1"] .price-tag {
+  color: var(--ix-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .free-tag { color: var(--ix-success); }
+
+/* 封面上的悬浮「免费/已公开」徽走玉色实底（保证媒体上可读） */
+html[data-app="1"] .char-card .free-tag {
+  background: color-mix(in srgb, var(--ix-success) 62%, #000);
+  color: rgb(255 255 255 / 96%);
+}
+
+html[data-app="1"] .qa-scripts-market .char-card {
+  border-color: transparent;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-scripts-market .cat-chip.active {
+  border-color: color-mix(in srgb, var(--ix-act) 28%, transparent);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+}
+
+/* ── s32 剧本详情 · 封面渐隐已有；结算条常驻（sticky）+ L3 玻璃 ─────────── */
+html[data-app="1"] :where(.qa-script-detail-v4, .qa-script-editor-v4) {
+  --ix-script-indigo: var(--ix-act);
+  --ix-script-indigo-soft: color-mix(in srgb, var(--ix-act) 12%, transparent);
+  --ix-script-coral: var(--ix-danger);
+  --ix-script-coral-soft: color-mix(in srgb, var(--ix-danger) 13%, transparent);
+  --ix-script-gold: var(--ix-gold);
+  --ix-script-gold-soft: color-mix(in srgb, var(--ix-gold) 14%, transparent);
+}
+
+html[data-app="1"] .qa-script-detail-v4__topbar {
+  border-bottom-color: var(--ix-hairline);
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* 常驻结算条：滚动期间钉在视口底部，回到自然位后归位（结构不变） */
+html[data-app="1"] .qa-script-detail-v4__unlock {
+  position: sticky;
+  z-index: 45;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  border-color: transparent;
+  border-radius: var(--ix-r-panel);
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-script-detail-v4__unlock-icon {
+  background: color-mix(in srgb, var(--ix-gold) 14%, transparent);
+  color: var(--ix-gold);
+}
+
+html[data-app="1"] .qa-script-detail-v4__price {
+  background: color-mix(in srgb, var(--ix-gold) 13%, transparent);
+  color: var(--ix-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-script-detail-v4__ownerbar {
+  border-color: transparent;
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* ── s33 AI 绘图 · 从深青沉浸改为 rose 光晕玻璃工作室 ───────────────────── */
+html[data-app="1"] .draw-screen {
+  background-color: var(--ix-canvas);
+  background-image: var(--ix-ambient-none);
+  color: var(--ix-ink);
+}
+
+html[data-app="1"] .draw-screen::before { background: none; content: none; }
+
+html[data-app="1"] .draw-screen h1,
+html[data-app="1"] .draw-screen h2,
+html[data-app="1"] .draw-screen .section-title h2 { color: var(--ix-ink); }
+
+html[data-app="1"] .draw-screen .sub,
+html[data-app="1"] .draw-screen .field label,
+html[data-app="1"] .draw-screen .hint,
+html[data-app="1"] .draw-screen .draw-balance { color: var(--ix-ink-2); }
+
+/* 绘图 = 创作语义（紫） */
+html[data-app="1"] .draw-screen h1 svg { color: var(--ix-act) !important; }
+
+html[data-app="1"] .draw-screen .draw-panel,
+html[data-app="1"] .draw-screen .draw-stage,
+html[data-app="1"] .draw-screen .ann-banner {
+  border-color: transparent;
+  border-radius: var(--ix-r-panel);
+  background: var(--ix-surface);
+  color: var(--ix-ink);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+/* 玻璃卡内输入位退为 inset 普通面（不叠第二层玻璃） */
+html[data-app="1"] .draw-screen :where(.textarea, .input, .select) {
+  border-color: var(--ix-hairline);
+  background: color-mix(in srgb, var(--ix-grouped) 70%, transparent);
+  color: var(--ix-ink);
+  box-shadow: none;
+}
+
+html[data-app="1"] .draw-screen :where(.textarea, .input, .select)::placeholder { color: var(--ix-ink-3); }
+
+html[data-app="1"] .draw-screen :where(.textarea, .input, .select):focus {
+  border-color: var(--ix-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ix-focus) 18%, transparent);
+}
+
+html[data-app="1"] .draw-screen .draw-chip {
+  border-color: var(--ix-hairline);
+  background: color-mix(in srgb, var(--ix-grouped) 70%, transparent);
+  color: var(--ix-ink-2);
+}
+
+html[data-app="1"] .draw-screen .draw-chip.on {
+  border-color: color-mix(in srgb, var(--ix-act) 30%, transparent);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+  box-shadow: none;
+}
+
+html[data-app="1"] .draw-screen .seg { background: color-mix(in srgb, var(--ix-grouped) 82%, transparent); }
+html[data-app="1"] .draw-screen .seg button { color: var(--ix-ink-2); }
+
+html[data-app="1"] .draw-screen .seg button.active {
+  background: var(--ix-surface);
+  color: var(--ix-act);
+  box-shadow: var(--ix-shadow-1);
+}
+
+/* 费用明示：金点徽 + tabular；余额不足=珊瑚 */
+html[data-app="1"] .draw-screen .draw-cost-badge {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ix-gold) 13%, transparent);
+  color: var(--ix-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .draw-screen .draw-vip { color: var(--ix-gold); }
+html[data-app="1"] .draw-screen .draw-balance b { color: var(--ix-ink); font-variant-numeric: tabular-nums; }
+html[data-app="1"] .draw-screen .draw-warn { color: var(--ix-danger); }
+
+/* 生成按钮：act 实底；loading 原位 spinner（.draw-spin 状态循环允许） */
+html[data-app="1"] .draw-screen .draw-go {
+  background: var(--ix-act);
+  color: var(--ix-act-ink);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--ix-act) 26%, transparent);
+}
+
+html[data-app="1"] .draw-screen .draw-ph,
+html[data-app="1"] .draw-screen .draw-loader { color: var(--ix-act); }
+
+html[data-app="1"] .draw-screen .draw-stage-empty p,
+html[data-app="1"] .draw-screen .empty { color: var(--ix-ink-2); }
+
+html[data-app="1"] .draw-screen .draw-tile {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .draw-screen .draw-tile figcaption { color: var(--ix-ink-2); }
+
+/* ── s34 发布中心 · 清单行玻璃组 ────────────────────────────────────────── */
+html[data-app="1"] .qa-publish .card,
+html[data-app="1"] .qa-publish .char-card {
+  border-color: transparent;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-publish .char-card .meta {
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── s11 剧场大厅 · rose 光晕；LIVE 主舞台卡 L2 + 行列表 L1 ─────────────── */
+html[data-app="1"] .qa-theater-page {
+  background-color: var(--ix-canvas);
+  background-image: var(--ix-ambient-none);
+}
+
+html[data-app="1"] .qa-theater-head {
+  background: var(--ix-glass-nav);
+  box-shadow: var(--ix-shadow-3);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* balanced 档保留玻璃（qa-pages 的 balanced 守卫特异度更高，需同位覆盖） */
+html[data-app="1"][data-perf="balanced"] .qa-theater-head {
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-theater-intro {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .qa-theater-search {
+  border-color: var(--ix-hairline);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-theater-card,
+html[data-app="1"] .qa-theater-skeleton {
+  border-color: transparent;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+}
+
+/* 榜首即当前主舞台：L2 浮起（层级语义，非配色；SPEC s11 主舞台卡） */
+html[data-app="1"] .qa-theater-shelf .qa-theater-card:first-child {
+  border-radius: var(--ix-r-panel);
+  background: var(--ix-raise);
+  box-shadow: var(--ix-shadow-2);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-theater-meta { font-variant-numeric: tabular-nums; }
+
+/* ── 集成修复：仪表内充值钮内容层被白墨规则染白；金额禁截断 ─────────── */
+html[data-app="1"] .qa-wallet-v4__recharge.qa-button .qa-button__content {
+  color: var(--ix-vault) !important;
+}
+html[data-app="1"] .qa-wallet-v4__asset { min-width: 0; }
+html[data-app="1"] .qa-wallet-v4__asset strong {
+  font-size: clamp(20px, 6vw, 24px);
+  overflow: visible !important;
+  text-overflow: clip;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================================
+   S6 · 长尾屏（s13–s19 / s35–s46）快速对齐：组容器 L1、语义光晕、状态复位
+   ========================================================================== */
+/* 通知/好友/群组/世界书：cool 光晕（消息族语义） */
+html[data-app="1"] :where(.noti-page, .friends-layout, .rooms-page, .wb-page) {
+  background-color: var(--ix-canvas);
+  background-image: var(--ix-ambient-none);
+  background-attachment: fixed;
+}
+/* 活动/公告：warm；社区/资料库/搜索：默认 iris 由壳层提供 */
+html[data-app="1"] :where(.events-page, .ann-page) {
+  background-color: var(--ix-canvas);
+  background-image: var(--ix-ambient-none);
+  background-attachment: fixed;
+}
+/* 长尾内容卡统一 L1 玻璃（组容器一层玻璃原则；行内不再套卡） */
+html[data-app="1"] :where(.noti-item, .friend-card, .room-row, .wb-card, .script-card,
+  .ev-card, .ann-card, .cm-post, .gx-card, .lb-row) {
+  background: var(--ix-surface);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  border: 0;
+  box-shadow: var(--ix-shadow-1);
+  border-radius: var(--ix-r-card);
+}
+/* s47 骨架：统一 Lumen 占位纹理 */
+html[data-app="1"] :where(.skel, .msgs-skel-row, .ah-hero-skel, .ah-pick-skel, .ah-rail-skel, .pf-cc-skel) {
+  background: var(--ix-skeleton);
+  background-size: 200% 100%;
+}
+/* s49 危险确认：警示卡珊瑚语义（默认焦点在取消由 overlay 逻辑保证） */
+html[data-app="1"] .modal [role="alertdialog"] .btn.danger,
+html[data-app="1"] .app-sheet .btn.danger { background: var(--ix-danger); color: #ffffff; }
+
+
+/* IX-7 migrated composition: s6 */
+/* ============================================================================
+   曜光玻璃 · S7「仪式与相伴」新组件层（app-ix-pages-d.css）
+   ----------------------------------------------------------------------------
+   本层承载 S7 全部新组件样式：错误态 / 首启引导 / 签到日历与连签 /
+   成就 2.0 / 分享卡 / 长按菜单。载入位置：app-ix-pages-d.css 之后、
+   app-ix-pages-d.css 之前（materials 保持末位权威）。
+   纪律：全部选择器 html[data-app="1"] 围栏；只消费 --ix-* 与残余 --ix-* 令牌；
+   动画一律一次性入场 / 状态动画（无 infinite 装饰循环）；无发光无彩虹。
+   ========================================================================== */
+
+/* ── S7-G2 · 统一错误态（ORACLE §7.2 恢复出口） ── */
+html[data-app="1"] .qa-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--ix-ink-2);
+}
+
+html[data-app="1"] .qa-error-state__title {
+  margin-top: 6px;
+  color: var(--ix-ink);
+  font-size: var(--ix-type-section);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+html[data-app="1"] .qa-error-state__copy {
+  margin: 0;
+  max-width: 30ch;
+  color: var(--ix-ink-2);
+  font-size: var(--ix-type-meta);
+  line-height: 1.6;
+}
+
+html[data-app="1"] .qa-error-state__acts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* ── S7-G3 · 首启引导（三屏 pager；一次性位移，无循环动画） ── */
+html[data-app="1"] .qa-onboard-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 480;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--ix-scrim);
+}
+
+html[data-app="1"] .qa-onboard {
+  width: 100%;
+  max-width: 430px;
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 0 calc(14px + env(safe-area-inset-bottom));
+  border-radius: var(--ix-r-panel) var(--ix-r-panel) 0 0;
+  background: var(--ix-raise);
+  box-shadow: var(--ix-shadow-2);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  animation: qaOnboardRise var(--ix-dur-sheet) var(--ix-ease) both;
+}
+
+@keyframes qaOnboardRise {
+  from { transform: translateY(26px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+html[data-app="1"] .qa-onboard-track {
+  display: flex;
+  width: 100%;
+  transition: transform 380ms var(--ix-ease);
+}
+
+html[data-app="1"] .qa-onboard-screen {
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 26px 8px;
+  text-align: center;
+}
+
+html[data-app="1"] .qa-onboard-screen[aria-hidden="true"] {
+  visibility: hidden;
+}
+
+html[data-app="1"] .qa-onboard-art {
+  width: min(290px, 72vw);
+  height: auto;
+  margin-bottom: 4px;
+}
+
+html[data-app="1"] .qa-onboard-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+html[data-app="1"] .qa-onboard-screen h2 {
+  margin: 2px 0 0;
+  color: var(--ix-ink);
+  font-size: var(--ix-type-title);
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+html[data-app="1"] .qa-onboard-screen > p {
+  margin: 0;
+  max-width: 32ch;
+  color: var(--ix-ink-2);
+  font-size: var(--ix-type-meta);
+  line-height: 1.65;
+}
+
+html[data-app="1"] .qa-onboard-feats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+html[data-app="1"] .qa-onboard-feats li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: inset 0 0 0 1px var(--ix-hairline);
+}
+
+html[data-app="1"] .qa-onboard-feat-ic {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+}
+
+html[data-app="1"] .qa-onboard-feats b {
+  display: block;
+  color: var(--ix-ink);
+  font-size: 14px;
+}
+
+html[data-app="1"] .qa-onboard-feats small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ix-ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+html[data-app="1"] .qa-onboard-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+html[data-app="1"] .qa-onboard-chip.qa-button {
+  min-height: 38px;
+  padding-inline: 14px;
+  background: var(--ix-surface);
+  box-shadow: inset 0 0 0 1px var(--ix-hairline);
+  color: var(--ix-ink-2);
+  font-size: 13px;
+}
+
+html[data-app="1"] .qa-onboard-chip.qa-button[data-selected] {
+  background: var(--ix-act-soft);
+  box-shadow: inset 0 0 0 1px var(--ix-act);
+  color: var(--ix-act);
+  font-weight: 600;
+}
+
+html[data-app="1"] .qa-onboard-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin: 14px 0 4px;
+}
+
+html[data-app="1"] .qa-onboard-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-hairline);
+  transition: background var(--ix-dur-state) var(--ix-ease), width var(--ix-dur-state) var(--ix-ease);
+}
+
+html[data-app="1"] .qa-onboard-dot.on {
+  width: 20px;
+  background: var(--ix-act);
+}
+
+html[data-app="1"] .qa-onboard-acts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 20px 0;
+}
+
+html[data-app="1"] .qa-onboard-acts .qa-button--lg {
+  flex: 1;
+  max-width: 230px;
+}
+
+/* lite：令牌层已把 blur 归零；玻璃底回落不透明面 */
+html[data-app="1"][data-perf="lite"] .qa-onboard {
+  background: var(--ix-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── S7-G4 · 连签周视图（今日 hero 行下 + 钱包） ── */
+html[data-app="1"] .qa-streak {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--ix-r-card);
+  background: rgb(255 255 255 / 10%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 14%);
+  color: rgb(255 255 255 / 88%);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 首屏垂直预算：streak 行加入后，精选卡与快捷入口各让出一档，
+   保证 390×844 首屏故事卡 CTA 完整浮在 Dock 之上（e2e 几何闸）。 */
+html[data-app="1"] .qa3-today .ah-hero-card {
+  height: 186px;
+  min-height: 186px !important;
+}
+
+html[data-app="1"] .qa3-today .ah-shortcuts {
+  grid-template-rows: repeat(2, minmax(58px, auto));
+}
+
+html[data-app="1"] .qa3-today .ah-sc.qa-button {
+  min-height: 58px !important;
+}
+
+/* 360 级窄屏：垂直预算更紧，逐档再收 */
+@media (max-width: 374px) {
+  html[data-app="1"] .qa3-today .ah-hero-card {
+    height: 168px;
+    min-height: 168px !important;
+  }
+
+  html[data-app="1"] .qa3-today .ah-shortcuts {
+    grid-template-rows: repeat(2, minmax(52px, auto));
+  }
+
+  html[data-app="1"] .qa3-today .ah-sc.qa-button {
+    min-height: 52px !important;
+  }
+
+  html[data-app="1"] .qa-streak {
+    min-height: 32px;
+    margin-top: 6px;
+    padding: 4px 10px;
+  }
+}
+
+/* 钱包语境不在深色 hero 上：换 L1 玻璃与墨色令牌 */
+html[data-app="1"] .qa-streak--wallet {
+  margin-top: 0;
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  color: var(--ix-ink);
+}
+
+html[data-app="1"] .qa-streak-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+html[data-app="1"] .qa-streak-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--ix-r-dial);
+  background: rgb(255 255 255 / 22%);
+  transition: background var(--ix-dur-state) var(--ix-ease), transform var(--ix-dur-state) var(--ix-ease);
+}
+
+html[data-app="1"] .qa-streak--wallet .qa-streak-dot {
+  background: var(--ix-hairline);
+}
+
+html[data-app="1"] .qa-streak-dot.on {
+  background: var(--ix-gold);
+  transform: scale(1.12);
+}
+
+html[data-app="1"] .qa-streak-copy {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+html[data-app="1"] .qa-streak-cal {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* ── S7-G4 · 签到日历 Sheet ── */
+html[data-app="1"] .qa-cal {
+  max-height: min(72dvh, 560px);
+  overflow-y: auto;
+}
+
+html[data-app="1"] .qa-cal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 4px 12px;
+}
+
+html[data-app="1"] .qa-cal-seal {
+  flex: none;
+}
+
+html[data-app="1"] .qa-cal-head-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+html[data-app="1"] .qa-cal-head-copy b {
+  display: block;
+  color: var(--ix-ink);
+  font-size: var(--ix-type-section);
+  letter-spacing: -0.01em;
+}
+
+html[data-app="1"] .qa-cal-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  color: var(--ix-ink-2);
+  font-size: var(--ix-type-meta);
+}
+
+html[data-app="1"] .qa-cal-streak svg {
+  color: var(--ix-gold);
+}
+
+html[data-app="1"] .qa-cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+html[data-app="1"] .qa-cal-month {
+  min-width: 74px;
+  color: var(--ix-ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+html[data-app="1"] .qa-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px 2px;
+  padding: 4px 2px 8px;
+}
+
+html[data-app="1"] .qa-cal-wd {
+  padding: 4px 0;
+  color: var(--ix-ink-3);
+  font-size: 11px;
+  text-align: center;
+}
+
+html[data-app="1"] .qa-cal-cell {
+  display: grid;
+  place-items: center;
+  min-height: 40px;
+  border-radius: var(--ix-r-key);
+  color: var(--ix-ink-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-cal-cell.on {
+  background: var(--ix-act-soft);
+  color: var(--ix-act);
+  font-weight: 700;
+}
+
+html[data-app="1"] .qa-cal-cell.today {
+  box-shadow: inset 0 0 0 1.6px var(--ix-act);
+  color: var(--ix-ink);
+}
+
+html[data-app="1"] .qa-cal-cell.on.today {
+  color: var(--ix-act);
+}
+
+html[data-app="1"] .qa-cal-cell.future {
+  opacity: 0.38;
+}
+
+html[data-app="1"] .qa-cal-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  padding: 26px 0 30px;
+  color: var(--ix-ink-2);
+  font-size: var(--ix-type-meta);
+}
+
+html[data-app="1"] .qa-cal-error button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-act);
+  color: var(--ix-act-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── S7-G5 · 成就 2.0：徽章墙 / 稀有度 / 荣誉 / 领取庆祝 ── */
+html[data-app="1"] .qa-ach-wall {
+  padding: 14px;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .qa-ach-wall-rings {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+/* 静态 conic 完成环：--p 为百分比，无动画（数值变化即状态变化） */
+html[data-app="1"] .qa-ach-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px 6px;
+}
+
+html[data-app="1"] .qa-ach-ring b {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--ix-r-dial);
+  background:
+    radial-gradient(closest-side, var(--ix-surface) 74%, transparent 75% 100%),
+    conic-gradient(var(--ix-act) calc(var(--p) * 1%), var(--ix-hairline) 0);
+  color: var(--ix-ink);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-ach-ring b small {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--ix-ink-3);
+}
+
+html[data-app="1"] .qa-ach-ring > span {
+  color: var(--ix-ink-2);
+  font-size: 11px;
+}
+
+html[data-app="1"] .qa-ach-medals {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  box-shadow: inset 0 1px 0 var(--ix-hairline);
+}
+
+html[data-app="1"] .qa-ach-medals span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ix-ink-2);
+}
+
+html[data-app="1"] .qa-ach-medals span[data-medal="gold"] svg { color: var(--ix-gold); }
+html[data-app="1"] .qa-ach-medals span[data-medal="silver"] svg { color: var(--ix-ink-3); }
+html[data-app="1"] .qa-ach-medals span[data-medal="bronze"] svg { color: color-mix(in srgb, var(--ix-gold) 55%, var(--ix-ink-3)); }
+
+/* 稀有度：奖章色只作左缘细带 + 图标染色（无发光、无渐变字） */
+html[data-app="1"] .qa-achievements-card[data-medal="gold"].is-unlocked {
+  box-shadow: inset 3px 0 0 var(--ix-gold), var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-achievements-card[data-medal="gold"].is-unlocked .qa-achievements-card-icon {
+  color: var(--ix-gold);
+}
+
+html[data-app="1"] .qa-achievements-card[data-medal="silver"].is-unlocked {
+  box-shadow: inset 3px 0 0 var(--ix-ink-3), var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-achievements-card[data-medal="bronze"].is-unlocked {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--ix-gold) 55%, var(--ix-ink-3)), var(--ix-shadow-1);
+}
+
+html[data-app="1"] .qa-ach-honor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--ix-r-dial);
+  background: color-mix(in srgb, var(--ix-gold) 18%, transparent);
+  box-shadow: inset 0 0 0 1px var(--ix-gold);
+  color: var(--ix-gold);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+html[data-app="1"] .qa-achievements-reward.is-honor {
+  color: var(--ix-gold);
+}
+
+/* 一次性领取庆祝：卡片轻抬 + 印章闪落（700ms 自净，无循环） */
+html[data-app="1"] .qa-ach-claimfx {
+  position: relative;
+  animation: qaAchClaimLift 480ms var(--ix-ease);
+}
+
+html[data-app="1"] .qa-ach-claimfx::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--ix-gold) 16%, transparent);
+  animation: qaAchClaimStamp 620ms var(--ix-ease) both;
+  pointer-events: none;
+}
+
+@keyframes qaAchClaimLift {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes qaAchClaimStamp {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── S7-G6 · 分享卡 Sheet 与里程碑横幅 ── */
+html[data-app="1"] .qa-share-sheet {
+  max-height: min(78dvh, 620px);
+  overflow-y: auto;
+}
+
+html[data-app="1"] .qa-share-stage {
+  display: grid;
+  place-items: center;
+  padding: 8px 0 14px;
+}
+
+html[data-app="1"] .qa-share-preview {
+  width: min(252px, 62vw);
+  aspect-ratio: 3 / 4;
+  height: auto;
+  border-radius: var(--ix-r-card);
+  box-shadow: var(--ix-shadow-2);
+}
+
+html[data-app="1"] .qa-share-skel {
+  width: min(252px, 62vw);
+  aspect-ratio: 3 / 4;
+  border-radius: var(--ix-r-card);
+}
+
+html[data-app="1"] .qa-share-failed {
+  margin: 26px 0;
+  color: var(--ix-ink-2);
+  font-size: var(--ix-type-meta);
+}
+
+html[data-app="1"] .qa-share-acts {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 0 6px 4px;
+}
+
+html[data-app="1"] .qa-milestone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: var(--ix-r-card);
+  background: color-mix(in srgb, var(--ix-gold) 20%, transparent);
+  box-shadow: inset 0 0 0 1px var(--ix-gold);
+  color: rgb(255 255 255 / 92%);
+}
+
+html[data-app="1"] .qa-milestone-copy {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+html[data-app="1"] .qa-ach-share.qa-button {
+  padding-inline: 10px; /* 触区仍由 --ix-hit-min 保 44 */
+}
+
+/* ── S7-G7 · 长按上下文菜单 ── */
+html[data-app="1"] .qa-press-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 470;
+  background: color-mix(in srgb, var(--ix-scrim) 55%, transparent);
+}
+
+html[data-app="1"] .qa-press-menu {
+  position: fixed;
+  width: 232px;
+  overflow: hidden;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-raise);
+  box-shadow: var(--ix-shadow-2);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+  animation: qaPressIn 220ms var(--ix-ease) both;
+}
+
+@keyframes qaPressIn {
+  from { transform: scale(0.94); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+html[data-app="1"] .qa-press-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  background: none;
+  color: var(--ix-ink);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-press-item + .qa-press-item {
+  box-shadow: inset 0 1px 0 var(--ix-hairline);
+}
+
+html[data-app="1"] .qa-press-item:active {
+  background: var(--ix-surface);
+}
+
+html[data-app="1"] .qa-press-item.is-danger {
+  color: var(--ix-danger);
+}
+
+html[data-app="1"][data-perf="lite"] .qa-press-menu {
+  background: var(--ix-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── S7-G4 · 今日任务行内领取 ── */
+html[data-app="1"] .ah-task.qa-task-claimable {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+html[data-app="1"] .qa-task-main {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-task-claim.qa-button {
+  flex: none;
+  min-width: 64px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .qa-press-menu {
+    animation: none !important;
+  }
+
+  html[data-app="1"] .qa-ach-claimfx,
+  html[data-app="1"] .qa-ach-claimfx::after {
+    animation: none !important;
+  }
+
+  html[data-app="1"] .qa-error-state {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  html[data-app="1"] .qa-onboard {
+    animation: none !important;
+  }
+
+  html[data-app="1"] .qa-onboard-track {
+    transition: none !important;
+  }
+
+  html[data-app="1"] .qa-onboard-dot {
+    transition: none !important;
+  }
+}
+
+
+/* IX-7 migrated composition: s7 */
+/*
+ * Lumen S7-G10「相伴加深」层 —— 周报卡、台词卡入口、Gallery S7 展区。
+ * 规则全部围栏在 html[data-app="1"] 内；只消费 --ix-* 权威与残余 --ix-*；
+ * 无 infinite 装饰动画；lite/reduced-motion 逐条降级。
+ */
+
+/* ---- 今日页 · 本周与你相伴 ---- */
+html[data-app="1"] .qa-weekly-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .qa-weekly-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+  height: 72px;
+  padding: 2px 2px 0;
+}
+
+html[data-app="1"] .qa-weekly-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  height: 100%;
+  min-width: 0;
+}
+
+html[data-app="1"] .qa-weekly-bar i {
+  width: 12px;
+  min-height: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ix-act) 32%, transparent);
+}
+
+html[data-app="1"] .qa-weekly-bar.today i {
+  background: var(--ix-act);
+}
+
+html[data-app="1"] .qa-weekly-bar span {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ix-ink-3);
+}
+
+html[data-app="1"] .qa-weekly-bar.today span {
+  color: var(--ix-act);
+  font-weight: 600;
+}
+
+html[data-app="1"] .qa-weekly-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 12px;
+  color: var(--ix-ink-2);
+}
+
+html[data-app="1"] .qa-weekly-stats b {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ix-ink);
+  font-variant-numeric: tabular-nums;
+  margin-right: 2px;
+}
+
+html[data-app="1"] .qa-weekly-gold b {
+  color: var(--ix-gold);
+}
+
+html[data-app="1"] .qa-weekly-comp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--ix-hit-min);
+  padding: 8px 10px;
+  border: 0;
+  border-radius: calc(var(--ix-r-card) - 6px);
+  background: color-mix(in srgb, var(--ix-act) 8%, transparent);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-weekly-comp:active {
+  background: color-mix(in srgb, var(--ix-act) 14%, transparent);
+}
+
+html[data-app="1"] .qa-weekly-comp-tx {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+html[data-app="1"] .qa-weekly-comp-tx span {
+  font-size: 11px;
+  color: var(--ix-ink-3);
+}
+
+html[data-app="1"] .qa-weekly-comp-tx b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ix-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-app="1"] .qa-weekly-comp em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--ix-ink-2);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ---- 群聊 · 加入状态分段 chips ---- */
+html[data-app="1"] .qa-groups-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+/* ---- 公告 · NEW 徽标（本次浏览即读，徽标只活一屏） ---- */
+html[data-app="1"] .qa-ann-new {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: var(--ix-r-dial);
+  background: color-mix(in srgb, var(--ix-danger) 14%, transparent);
+  color: var(--ix-danger);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: 2px;
+}
+
+/* ---- 收藏 · 分类筛选 chips ---- */
+html[data-app="1"] .qa-fav-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+/* ---- 阅读页 · 顶部进度条 ---- */
+html[data-app="1"] .qa-read-progress {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  left: 0;
+  z-index: 30;
+  width: 100%;
+  height: 2px;
+  background: var(--ix-act);
+  transform-origin: left center;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+
+/* 进度条是滚动位置的直接映射（因果反馈），reduced-motion 无需额外处理 */
+html[data-app="1"] .qa-novel-read.is-chrome-hidden .qa-read-progress {
+  opacity: 0.55;
+}
+
+/* ---- 签到月历 · 里程碑地平线 ---- */
+html[data-app="1"] .qa-cal-horizon {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--ix-ink-3);
+}
+
+/* ---- 我的页 · 新功能未读点 ---- */
+html[data-app="1"] .pf-whatsnew-dot {
+  width: 7px;
+  height: 7px;
+  margin-left: 2px;
+  border-radius: var(--ix-r-dial);
+  background: var(--ix-danger);
+  flex-shrink: 0;
+}
+
+/* ---- 群聊 · @提及高亮 ---- */
+html[data-app="1"] .gr-mention {
+  color: var(--ix-act);
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* ---- 角色页 · 与 TA 的足迹 ---- */
+html[data-app="1"] .qa-bond {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--ix-r-card);
+  background: color-mix(in srgb, var(--ix-danger) 8%, transparent);
+}
+
+html[data-app="1"] .qa-bond-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ix-danger);
+}
+
+html[data-app="1"] .qa-bond-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12.5px;
+  color: var(--ix-ink-2);
+}
+
+html[data-app="1"] .qa-bond-row b {
+  font-weight: 700;
+  color: var(--ix-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-bond-cta {
+  justify-self: start;
+}
+
+/* ---- 我的页 · 相伴一览三格 ---- */
+html[data-app="1"] .qa-glance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+html[data-app="1"] .qa-glance-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--ix-hit-min);
+  padding: 8px 6px;
+  border: 0;
+  border-radius: calc(var(--ix-r-card) - 6px);
+  background: var(--ix-surface);
+  box-shadow: var(--ix-shadow-1);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+html[data-app="1"] .qa-glance-cell span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+  color: var(--ix-ink-3);
+  text-align: center;
+}
+
+html[data-app="1"] .qa-glance-cell b {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ix-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 静态 conic 完成环（--p 百分比，无动画，与成就墙同语言） */
+html[data-app="1"] .qa-glance-ring {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: var(--ix-r-dial);
+  background:
+    radial-gradient(closest-side, var(--ix-surface) 68%, transparent 69%),
+    conic-gradient(var(--ix-act) var(--p, 0%), color-mix(in srgb, var(--ix-act) 14%, transparent) 0);
+}
+
+html[data-app="1"][data-perf="lite"] .qa-glance-cell {
+  background: var(--ix-grouped);
+}
+
+/* ---- 我的页 · 新功能 Sheet ---- */
+html[data-app="1"] .qa-whatsnew {
+  max-height: min(78dvh, 640px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+html[data-app="1"] .qa-whatsnew-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ix-ink);
+}
+
+html[data-app="1"] .qa-whatsnew-head p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--ix-ink-3);
+}
+
+html[data-app="1"] .qa-whatsnew-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 4px;
+  padding-right: 2px;
+}
+
+html[data-app="1"] .qa-whatsnew-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: calc(var(--ix-r-card) - 8px);
+}
+
+html[data-app="1"] .qa-whatsnew-ic {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--ix-r-dial);
+  background: color-mix(in srgb, var(--ix-act) 10%, transparent);
+  color: var(--ix-act);
+}
+
+html[data-app="1"] .qa-whatsnew-tx {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+html[data-app="1"] .qa-whatsnew-tx b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ix-ink);
+}
+
+html[data-app="1"] .qa-whatsnew-tx span {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ix-ink-2);
+}
+
+html[data-app="1"] .qa-whatsnew-done {
+  flex-shrink: 0;
+}
+
+/* ---- 搜索 · 热门分类 chips ---- */
+html[data-app="1"] .qa-search-cats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+html[data-app="1"] .qa-search-cats-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+}
+
+/* ---- 排行榜 · 我的名次常驻行 ---- */
+html[data-app="1"] .qa-lb-mine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--ix-hit-min);
+  padding: 8px 14px;
+  border-radius: var(--ix-r-card);
+  background: color-mix(in srgb, var(--ix-act) 9%, transparent);
+  color: var(--ix-ink);
+}
+
+html[data-app="1"] .qa-lb-mine svg {
+  color: var(--ix-act);
+  flex-shrink: 0;
+}
+
+html[data-app="1"] .qa-lb-mine-copy {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ix-ink-2);
+}
+
+html[data-app="1"] .qa-lb-mine b {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app="1"] .qa-lb-mine small {
+  font-size: 12px;
+  color: var(--ix-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 今日 · 里程碑分档印章 ---- */
+html[data-app="1"] .qa-milestone-seal {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+}
+
+/* ---- 钱包 · 流水筛选 chips ---- */
+html[data-app="1"] .qa-wallet-v4__tx-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 10px;
+}
+
+/* ---- 消息页 · 草稿标记 ---- */
+html[data-app="1"] .msgs-draft {
+  margin-right: 4px;
+  color: var(--ix-danger);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ---- 消息页 · 会话整理标记（置顶 / 免打扰） ---- */
+html[data-app="1"] .msgs-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ix-ink-3);
+}
+
+html[data-app="1"] .msgs-marks [aria-label="已置顶"] {
+  color: var(--ix-act);
+}
+
+/* ---- 星轨页 · 年鉴卡入口（仅 App 分支渲染该节点） ---- */
+html[data-app="1"] .qa-ins-share {
+  margin-top: 12px;
+}
+
+/* ---- Controls Gallery · S7 展区 ---- */
+html[data-app="1"] .qa-gallery__art-row {
+  align-items: flex-start;
+}
+
+html[data-app="1"] .qa-gallery__art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+
+html[data-app="1"] .qa-gallery__art figcaption {
+  font-size: 11px;
+  color: var(--ix-ink-3);
+  font-family: ui-monospace, monospace;
+}
+
+html[data-app="1"] .qa-gallery__errdemo {
+  margin-top: 12px;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  overflow: hidden;
+}
+
+/* 展区里的连签行是 div 示例，补上按钮版式中来自控件的部分 */
+html[data-app="1"] .qa-gallery__streak {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+html[data-app="1"] .qa-gallery__cal {
+  max-width: 340px;
+}
+
+html[data-app="1"] .qa-gallery__medals {
+  margin-top: 0;
+}
+
+html[data-app="1"] .qa-gallery__weekly {
+  max-width: 420px;
+}
+
+html[data-app="1"] .qa-gallery__bond,
+html[data-app="1"] .qa-gallery__lbmine {
+  margin-bottom: 12px;
+  max-width: 420px;
+}
+
+html[data-app="1"] .qa-gallery__lbmine {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+/* lite：玻璃卡回落不透明 grouped 面（与全局 lite 材质策略一致） */
+html[data-app="1"][data-perf="lite"] .qa-weekly-card {
+  background: var(--ix-grouped);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+
 /*
  * 仪与匣 · IX-6 长尾、首启与状态层
  * 覆盖设计稿 ⑧⑩⑰⑱ 以及尚未收口的 App-only 页面族。
@@ -552,4 +3696,15 @@ html[data-app="1"][data-perf="lite"] :where(.qa-onboard, .qa-share-sheet, .qa-at
     transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* IX boot surface: the first-launch mark uses the reviewed onboarding SVG. */
+html[data-app="1"] .app-boot {
+  background: var(--ix-canvas) !important;
+}
+html[data-app="1"] .app-boot-logo {
+  width: 88px !important;
+  height: 59px !important;
+  border-radius: var(--ix-r-panel);
+  box-shadow: var(--ix-shadow-2);
 }

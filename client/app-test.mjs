@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { access, readFile, readdir } from 'node:fs/promises';
 import { registrationRequestHash as clientHash } from './src/playIntegrity.js';
 import { registrationRequestHash as serverHash } from '../server/integrity.js';
 import { mergeMessages, messageId } from './src/groupMessages.js';
@@ -122,7 +122,7 @@ const discoverSource = await readFile(new URL('./src/pages/DiscoverFeed.jsx', im
 const vipSource = await readFile(new URL('./src/pages/Vip.jsx', import.meta.url), 'utf8');
 const artSource = await readFile(new URL('./src/art.jsx', import.meta.url), 'utf8');
 const quietCharacterPng = await readFile(new URL('./src/assets/quiet-aqua-character-v3.png', import.meta.url));
-const quietTokens = await readFile(new URL('./src/styles/app-quiet-aqua-tokens.css', import.meta.url), 'utf8');
+const ixTokens = await readFile(new URL('./src/styles/app-ix-tokens.css', import.meta.url), 'utf8');
 const quietControls = await readFile(new URL('./src/styles/app-controls.css', import.meta.url), 'utf8');
 const quietPages = await readFile(new URL('./src/styles/app-pages-quiet-aqua.css', import.meta.url), 'utf8');
 const quietExperience = await readFile(new URL('./src/styles/app-experience-v3.css', import.meta.url), 'utf8');
@@ -234,9 +234,9 @@ assert.match(e2eSourceForS7, /todayRitualAssertions/, 'the e2e suite must keep e
 assert.match(appHomeSource, /\/me\/weekly'\)[\s\S]*catch\(\(\) => setWeekly\(null\)\)/, 'the weekly recap must hide silently on failure, never error the home');
 assert.match(appHomeSource, /weekly && weekly\.messages > 0 &&/, 'the weekly recap must only appear once there is a story to tell');
 assert.match(appHomeSource, /qa-weekly-bars"[\s\S]*role="img"[\s\S]*aria-label/, 'the weekly bars must expose a text alternative for the whole chart');
-const s7StageSource = await readFile(new URL('./src/styles/app-lumen-s7.css', import.meta.url), 'utf8');
-assert.match(s7StageSource, /\.qa-weekly-card/, 'the weekly recap card must land in the S7 stage layer');
-assert.match(s7StageSource, /\[data-perf="lite"\][\s\S]*\.qa-weekly-card[\s\S]*backdrop-filter:\s*none/, 'the weekly card must drop its blur on the lite tier');
+const ixTailSource = await readFile(new URL('./src/styles/app-ix-pages-d.css', import.meta.url), 'utf8');
+assert.match(ixTailSource, /\.qa-weekly-card/, 'the weekly recap card must land in the migrated IX page tail');
+assert.match(ixTailSource, /\[data-perf="lite"\][\s\S]*\.qa-weekly-card[\s\S]*backdrop-filter:\s*none/, 'the weekly card must drop its blur on the lite tier');
 /* ---- S7-G10 Gallery 展区契约 ---- */
 const gallerySource = await readFile(new URL('./src/pages/AppControlsGallery.jsx', import.meta.url), 'utf8');
 assert.match(gallerySource, /gallery-s7-empty[\s\S]*gallery-s7-streak[\s\S]*gallery-s7-medal[\s\S]*gallery-s7-weekly[\s\S]*gallery-s7-press/, 'the controls gallery must exhibit the full S7 component family');
@@ -327,7 +327,8 @@ assert.match(walletSource, /该类别暂无记录/, 'an emptied filter view must
 const artSourceForSeals = await readFile(new URL('./src/art.jsx', import.meta.url), 'utf8');
 assert.match(artSourceForSeals, /streakSealForTier = \(streak\) => \(streak >= 100[\s\S]*streak >= 30/, 'milestone seals must tier at 100 and 30 days');
 const renderScriptSource = await readFile(new URL('../scripts/render-app-assets.mjs', import.meta.url), 'utf8');
-assert.match(renderScriptSource, /qa5-streak-seal-30@2x[\s\S]*qa5-streak-seal-100@2x/, 'the asset pipeline must produce both milestone seal variants');
+assert.doesNotMatch(renderScriptSource, /qa5-(?:empty|onboard|streak-seal|boot-mark|vip-weave)/, 'the retired raster asset pipeline must not recreate Lumen empty, onboarding, stamp, boot, or VIP-weave assets');
+assert.match(renderScriptSource, /nativeJobs|NATIVE_JOBS/, 'the asset pipeline must retain the native resource entry point');
 assert.match(shareCardSource, /streakSealForTier\(Number\(streak\)/, 'the streak card must pick its seal by milestone tier');
 assert.match(appHomeSource, /qa-milestone-seal[\s\S]*streakSealForTier\(milestone\)/, 'the milestone banner must show the tiered seal');
 /* ---- S7-G10 排行榜我的名次双轨 ---- */
@@ -381,29 +382,25 @@ assert.ok(
 assert.match(runtimeCss, /\.topbar h1,[\s\S]*word-break:\s*keep-all/, 'narrow App topbar titles must not stack vertically');
 assert.match(runtimeCss, /\.topbar\s*\{[^}]*flex-wrap:\s*wrap;[^}]*row-gap:\s*10px;/, 'dense narrow App topbars must wrap whole controls without horizontal overflow');
 assert.match(runtimeCss, /\.vm-plans\s*\{\s*padding-top:\s*12px/, 'VIP plans must reserve space for the raised badge');
-assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--lg-blur\)/, 'App Dock must use the Lumen chrome blur authority directly on high and balanced tiers');
+assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--ix-blur\)/, 'App Dock must use the IX chrome blur authority directly on high and balanced tiers');
 assert.match(runtimeCss, /\[data-perf="lite"\]\s*\.app-tabbar\s*\{[^}]*backdrop-filter:\s*none/s, 'lite tier must drop the Dock blur and fall back to an opaque surface');
 
 assert.ok(
-  mainSource.indexOf('app-runtime.css') < mainSource.indexOf('lumen-glass-tokens.css')
-    && mainSource.indexOf('lumen-glass-tokens.css') < mainSource.indexOf('app-quiet-aqua-tokens.css')
-    && mainSource.indexOf('app-quiet-aqua-tokens.css') < mainSource.indexOf('app-controls.css')
+  mainSource.indexOf('app-runtime.css') < mainSource.indexOf('app-ix-tokens.css')
+    && mainSource.indexOf('app-ix-tokens.css') < mainSource.indexOf('app-ix-accents.css')
+    && mainSource.indexOf('app-ix-accents.css') < mainSource.indexOf('app-controls.css')
     && mainSource.indexOf('app-controls.css') < mainSource.indexOf('app-pages-quiet-aqua.css')
     && mainSource.indexOf('app-pages-quiet-aqua.css') < mainSource.indexOf('app-experience-v3.css')
     && mainSource.indexOf('app-experience-v3.css') < mainSource.indexOf('app-hig-v5.css')
-    && mainSource.indexOf('app-hig-v5.css') < mainSource.indexOf('app-lumen-s6.css')
-    && mainSource.indexOf('app-lumen-s6.css') < mainSource.indexOf('app-lumen-s7.css')
-    && mainSource.indexOf('app-lumen-s7.css') < mainSource.indexOf('app-lumen-materials.css')
-    && mainSource.indexOf('app-lumen-materials.css') < mainSource.indexOf('app-ix-tokens.css')
-    && mainSource.indexOf('app-ix-tokens.css') < mainSource.indexOf('app-ix-accents.css')
-    && mainSource.indexOf('app-ix-accents.css') < mainSource.indexOf('app-ix-bridge.css')
-    && mainSource.indexOf('app-ix-bridge.css') < mainSource.indexOf('app-ix-core.css')
+    && mainSource.indexOf('app-hig-v5.css') < mainSource.indexOf('app-ix-core.css')
     && mainSource.indexOf('app-ix-core.css') < mainSource.indexOf('app-ix-pages-a.css')
     && mainSource.indexOf('app-ix-pages-a.css') < mainSource.indexOf('app-ix-pages-b.css')
     && mainSource.indexOf('app-ix-pages-b.css') < mainSource.indexOf('app-ix-pages-c.css')
     && mainSource.indexOf('app-ix-pages-c.css') < mainSource.indexOf('app-ix-pages-d.css'),
-  'Lumen tokens, qa shim, control, page, v3, HIG, S7 layer, Lumen materials and the IX (field-instrument) stack must load in cascade order after the runtime layer',
+  'IX tokens, accents, controls, shared App layers, and IX pages must load in a deterministic cascade',
 );
+assert.doesNotMatch(mainSource, /(?:lumen-glass-tokens|app-quiet-aqua-tokens|app-lumen-s[3-7]|app-lumen-materials|app-ix-bridge)\.css/,
+  'runtime entry must not import retired Lumen, S3-S7, materials, or bridge layers');
 /* ---- IX-1「仪与匣」token twin + bridge guards ---- */
 {
   const ixTwin = await readFile(new URL('./src/styles/app-ix-tokens.css', import.meta.url), 'utf8');
@@ -421,13 +418,21 @@ assert.ok(
   for (const id of ['dusk', 'teal', 'forest', 'rose', 'amber']) {
     assert.ok(ixAccents.includes(`[data-accent="${id}"]`), `accent id "${id}" from accent.js must resolve in the IX accent companion`);
   }
-  const ixBridge = await readFile(new URL('./src/styles/app-ix-bridge.css', import.meta.url), 'utf8');
-  assert.deepEqual([...ixBridge.matchAll(/(--ix-[a-z0-9-]+)\s*:[^;]/g)].map((m) => m[1]), [], 'the bridge maps lg onto ix and must never define an --ix-* token itself');
-  for (const wash of ['--lg-ambient', '--lg-ambient-warm', '--lg-ambient-cool', '--lg-ambient-rose']) {
-    assert.match(ixBridge, new RegExp(`${wash}:\\s*none`), `the bridge must extinguish the legacy ambient wash ${wash} (solid panels carry zero gradients)`);
+  const retiredRuntimeFiles = [
+    'lumen-glass-tokens.css', 'app-quiet-aqua-tokens.css', 'app-ix-bridge.css',
+    'app-lumen-materials.css', 'app-lumen-s3.css', 'app-lumen-s4.css',
+    'app-lumen-s5.css', 'app-lumen-s6.css', 'app-lumen-s7.css',
+  ];
+  for (const name of retiredRuntimeFiles) {
+    await assert.rejects(access(new URL(`./src/styles/${name}`, import.meta.url)),
+      /ENOENT/, `retired runtime layer must be deleted: ${name}`);
   }
-  assert.match(ixBridge, /\[data-accent\]\s*\{[^}]*--lg-act:\s*var\(--ix-act\)/, 'the bridge must recapture accented act back onto the ix authority');
-  assert.match(ixBridge, /--lg-glass-1:\s*var\(--ix-surface\)/, 'legacy L1 content glass must land on the opaque instrument surface');
+  assert.doesNotMatch(runtimeSource, /(?:var\(\s*)?--(?:lg|qa)(?:[0-9-]|\*)/,
+    'all client runtime code must be free of the retired --lg/--qa namespaces');
+  assert.doesNotMatch(runtimeSource, /(?:var\(\s*)?--gl-/,
+    'all client runtime code must be free of the retired local glass aliases');
+  assert.doesNotMatch(runtimeSource, /(?:lumen-glass-tokens|app-quiet-aqua-tokens|app-lumen-s[3-7]|app-lumen-materials|app-ix-bridge)\.css/,
+    'client runtime must not reference retired style files');
   /* ---- IX-2 control-layer contract ---- */
   const ixCore = await readFile(new URL('./src/styles/app-ix-core.css', import.meta.url), 'utf8');
   const ixCoreClean = ixCore.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -492,73 +497,45 @@ assert.ok(
   assert.doesNotMatch(groupRoomSource, /data-lg-tone|lgNameTone/, 'group speaker tones must not retain the Lumen namespace');
   assert.match(ixPagesB, /data-ix-tone="(?:act|dia|gold|success)"/, 'group speaker mapping must expose all four fixed semantic tones');
 }
-/* ---- Lumen Glass token authority guards ---- */
-const lumenTokens = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
-const lumenHandoff = await readFile(new URL('../docs/design/lumen-glass-tokens.css', import.meta.url), 'utf8');
-assert.equal(lumenTokens, lumenHandoff, 'the runtime Lumen token file must stay byte-identical to the design handoff (values are frozen)');
-/* ---- IX-0「仪与匣」handoff intake guards ---- */
+/* ---- IX-7 frozen authority / migrated composition guards ---- */
 {
-  const ixHandoff = await readFile(new URL('../docs/design/field-instrument/design-tokens.css', import.meta.url), 'utf8');
-  assert.match(ixHandoff, /--ix-act:\s*#0E7263/, 'the field-instrument frozen tokens must define the phosphor-teal act color');
-  assert.match(ixHandoff, /:root\[data-theme="dark"\]/, 'the field-instrument frozen tokens must ship an equal-status dark theme');
-  assert.match(ixHandoff, /:root\[data-perf="lite"\]/, 'the field-instrument frozen tokens must resolve the lite tier at the token layer');
-  assert.match(ixHandoff, /prefers-reduced-motion:\s*reduce/, 'the field-instrument frozen tokens must zero every duration under reduced motion');
-  const { readdir } = await import('node:fs/promises');
-  const illos = await readdir(new URL('./src/assets/illos/', import.meta.url));
-  const ixScenes = ['works', 'favorites', 'drafts', 'friends', 'chat', 'theater', 'offline', 'gallery', 'scripts', 'wallet', 'achievements', 'maintenance', 'notifications', 'leaderboard', 'worldbook', 'search', 'onb-001', 'onb-002', 'onb-003'];
-  for (const scene of ixScenes) {
-    assert.ok(illos.includes(`ix-illo-${scene}-light.svg`) && illos.includes(`ix-illo-${scene}-dark.svg`), `illustration scene "${scene}" must ship as a light/dark pair`);
+  const ixTwin = await readFile(new URL('./src/styles/app-ix-tokens.css', import.meta.url), 'utf8');
+  const ixFrozen = await readFile(new URL('../docs/design/field-instrument/design-tokens.css', import.meta.url), 'utf8');
+  const ixReversed = ixTwin
+    .replaceAll('html[data-app="1"][data-theme="dark"]', ':root[data-theme="dark"]')
+    .replaceAll('html[data-app="1"][data-perf="lite"]', ':root[data-perf="lite"]')
+    .replace(/html\[data-app="1"\](\s*\{)/g, ':root$1');
+  assert.equal(ixReversed, ixFrozen, 'the runtime IX token twin must equal the frozen field-instrument handoff');
+  assert.doesNotMatch(ixTwin, /(^|\n):root/, 'the IX token twin must stay App-fenced');
+  const ixAccents = await readFile(new URL('./src/styles/app-ix-accents.css', import.meta.url), 'utf8');
+  const accentDefs = new Set([...ixAccents.matchAll(/(--ix-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+  assert.deepEqual([...accentDefs].sort(), ['--ix-act', '--ix-act-ink', '--ix-act-soft', '--ix-focus'], 'accent companion may only vary the act family');
+  for (const id of ['dusk', 'teal', 'forest', 'rose', 'amber']) assert.ok(ixAccents.includes('[data-accent="' + id + '"]'), 'accent id "' + id + '" must resolve');
+
+  const ixCore = await readFile(new URL('./src/styles/app-ix-core.css', import.meta.url), 'utf8');
+  const ixPagesA = await readFile(new URL('./src/styles/app-ix-pages-a.css', import.meta.url), 'utf8');
+  const ixPagesB = await readFile(new URL('./src/styles/app-ix-pages-b.css', import.meta.url), 'utf8');
+  const ixPagesC = await readFile(new URL('./src/styles/app-ix-pages-c.css', import.meta.url), 'utf8');
+  const ixPagesD = await readFile(new URL('./src/styles/app-ix-pages-d.css', import.meta.url), 'utf8');
+  const ixLayers = [ixCore, ixPagesA, ixPagesB, ixPagesC, ixPagesD];
+  for (const [name, css] of [['core', ixCore], ['pages-a', ixPagesA], ['pages-b', ixPagesB], ['pages-c', ixPagesC], ['pages-d', ixPagesD]]) {
+    const clean = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.doesNotMatch(clean, /var\(\s*--(?:lg|qa)-/, 'IX ' + name + ' layer must consume --ix-* only');
+    assert.doesNotMatch(clean, /nth-(?:child|of-type)/, 'IX ' + name + ' layer must not style by position');
   }
-  for (const tier of ['bronze', 'silver', 'gold']) {
-    assert.ok(illos.includes(`ix-stamp-${tier}.svg`), `milestone stamp tier "${tier}" must be present`);
-  }
-  const illoSources = await Promise.all(illos.filter((f) => f.endsWith('.svg')).map((f) => readFile(new URL(`./src/assets/illos/${f}`, import.meta.url), 'utf8')));
-  for (const svg of illoSources) {
-    assert.doesNotMatch(svg, /<text|<tspan/i, 'shipped illustration assets must stay zero-text (live numbers are UI overlays)');
-  }
-  assert.match(mainSource, /@fontsource\/jetbrains-mono\/400\.css/, 'the readout mono font (400) must load for the App shell');
-  assert.match(mainSource, /@fontsource\/jetbrains-mono\/600\.css/, 'the readout mono font (600) must load for the App shell');
-}
-const lumenMaterials = await readFile(new URL('./src/styles/app-lumen-materials.css', import.meta.url), 'utf8');
-assert.match(lumenMaterials, /html\[data-app="1"\]/, 'Lumen materials must remain App-scoped');
-assert.doesNotMatch(lumenMaterials.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.lg-[^{,]+/m, 'Lumen material classes must never escape the data-app fence');
-const lgDefinitions = new Set([...(lumenTokens + lumenMaterials).matchAll(/(--lg-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
-const lumenStageCss = (await Promise.all(['s3', 's4', 's5', 's6', 's7'].map((n) => readFile(new URL(`./src/styles/app-lumen-${n}.css`, import.meta.url), 'utf8')))).join('\n');
-const higForLg = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
-assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /^\s*\.(?:qa|lg)-[^{,]+/m, 'Lumen stage layers must never escape the data-app fence');
-assert.doesNotMatch(lumenStageCss.replace(/\/\*[\s\S]*?\*\//g, ''), /nth-(?:child|of-type)/, 'Lumen stage layers must not style by position');
-const lgUses = new Set([...(quietTokens + quietControls + quietPages + quietExperience + lumenMaterials + lumenStageCss + higForLg).matchAll(/var\((--lg-[a-z0-9-]+)/g)].map((m) => m[1]));
-assert.deepEqual([...lgUses].filter((name) => !lgDefinitions.has(name)), [], 'every Lumen token reference must resolve in the frozen token authority');
-const higCss = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
-const higNoComments = higCss.replace(/\/\*[\s\S]*?\*\//g, '');
-assert.match(higCss, /html\[data-app="1"\]/, 'the Liuli HIG layer must remain App-scoped');
-assert.doesNotMatch(higNoComments, /^\s*\.qa-[^{,]+/m, 'HIG selectors must never escape the data-app fence');
-assert.doesNotMatch(higNoComments, /nth-(?:child|of-type)/, 'the HIG layer must not assign styling by position');
-assert.match(higCss, /prefers-reduced-motion:\s*reduce/, 'the HIG layer must support reduced motion');
-assert.doesNotMatch(higNoComments, /backdrop-filter:[^;]*blur\([^;]*!important/, 'the HIG layer must not override the balanced/lite blur gate');
-assert.doesNotMatch(higNoComments.replaceAll('sans-serif', ''), /serif|Fraunces|Songti/i, 'App headings must never return to display serifs');
-assert.match(quietTokens, /--qa-control-min:\s*44px/, 'ordinary App controls must keep a 44px minimum target');
-assert.match(quietTokens, /--qa-control-submit:\s*48px/, 'authentication submit controls must remain 48px tall');
-const lumenTokensForGlass = await readFile(new URL('./src/styles/lumen-glass-tokens.css', import.meta.url), 'utf8');
-assert.match(lumenTokensForGlass, /--lg-blur:\s*blur\(/, 'the Lumen glass token authority must define the primary blur material');
-assert.match(lumenTokensForGlass, /--lg-blur-s:\s*blur\(/, 'the Lumen glass token authority must define the small blur material');
-assert.match(lumenTokensForGlass, /\[data-perf="lite"\][\s\S]*--lg-blur:\s*none/, 'lite tier must resolve every glass blur to none at the token layer');
-assert.doesNotMatch(quietTokens, /--qa-glass-chrome-blur\s*:/, 'pure aliases must never flow back into the residual shim (blur is lg-authority-direct now)');
-/* S7-G8：全 App 层 var(--qa-*) 引用必须 ⊆ 残余 shim 定义集（迁移不许半途） */
-{
-  const residualDefs = new Set([...quietTokens.matchAll(/(--qa-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
-  const s7LayerCss = [quietControls, quietPages, quietExperience, higForLg, runtimeCss,
-    await readFile(new URL('./src/styles/app-elevated.css', import.meta.url), 'utf8'),
-    await readFile(new URL('./src/styles/app-shell.css', import.meta.url), 'utf8'),
-    await readFile(new URL('./src/styles/app-renov.css', import.meta.url), 'utf8'),
-    await readFile(new URL('./src/chat/chat-app.css', import.meta.url), 'utf8'),
-    lumenStageCss,
-    await readFile(new URL('./src/styles/app-lumen-s6.css', import.meta.url), 'utf8'),
-    await readFile(new URL('./src/ui.jsx', import.meta.url), 'utf8'),
-  ].join('\n');
-  const qaRefs = new Set([...s7LayerCss.matchAll(/var\((--qa-[a-z0-9-]+)/g)].map((m) => m[1]));
-  assert.deepEqual([...qaRefs].filter((name) => !residualDefs.has(name)), [],
-    'every remaining --qa-* reference must resolve in the residual shim — pure aliases live as --lg-* only');
+  assert.match(ixPagesD, /IX-7 migrated composition/, 'pages-d must contain the folded S3-S7 composition');
+  const pagesDNonIxDefinitions = [...ixPagesD.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(?:^|[;{]\s*|\n\s*)(--[a-z0-9-]+)\s*:/gm)]
+    .map((match) => match[1])
+    .filter((name) => !name.startsWith('--ix-'));
+  assert.deepEqual([...new Set(pagesDNonIxDefinitions)], [], 'pages-d custom properties must live in the IX namespace');
+  assert.match(ixPagesD, /\.qa-settings-page[\s\S]*--ix-canvas/, 'settings must use the instrument canvas');
+  assert.match(ixPagesD, /\.qa-atelier-card[\s\S]*--ix-surface/, 'atelier cards must use opaque specimen surfaces');
+  assert.match(ixPagesD, /\.qa-character-editor__savebar[\s\S]*--ix-glass-nav/, 'editor save bars must use the instrument body rail');
+  assert.match(ixPagesD, /\.qa-error-state__code/, 'error states must expose a sanitized diagnostic code');
+  const layerText = ixLayers.join('\n');
+  assert.doesNotMatch(layerText, /(?:var\(\s*)?--(?:lg|qa)(?:[0-9-]|\*)/, 'IX layers must not contain legacy token spellings');
+  assert.match(ixCore, /--ix-act-pressed/, 'IX core must own migrated pressed-state aliases');
+  assert.match(ixCore, /--ix-editor-chrome/, 'IX core must own migrated editor chrome alias');
 }
 const elevatedCss = await readFile(new URL('./src/styles/app-elevated.css', import.meta.url), 'utf8');
 assert.doesNotMatch(elevatedCss, /--gl-halo/, 'glass cards must not restore accent/dusk halo washes');
@@ -599,10 +576,11 @@ assert.deepEqual(
 );
 assert.match(quietExperience, /html\[data-app="1"\] \.chat-main \.cps-item\.hue-call/, 'the chat plus-panel must keep its App-fenced semantic-tone override');
 assert.match(quietExperience, /html\[data-app="1"\] \.ins-star \{ display: none/, 'shared decorative star drift must stay hidden inside the App shell');
-const quietTokenDefinitions = new Set([...quietTokens.matchAll(/(--qa-[a-z0-9-]+)\s*:/g)].map((match) => match[1]));
-const higForTokens = await readFile(new URL('./src/styles/app-hig-v5.css', import.meta.url), 'utf8');
-const quietTokenUses = new Set([...(quietControls + quietPages + quietExperience + higForTokens).matchAll(/var\((--qa-[a-z0-9-]+)/g)].map((match) => match[1]));
-assert.deepEqual([...quietTokenUses].filter((name) => !quietTokenDefinitions.has(name)), [], 'every Quiet Aqua token reference must resolve in the single token authority');
+assert.doesNotMatch(
+  [quietControls, quietPages, quietExperience, runtimeCss].join('\n'),
+  /(?:var\(\s*)?--(?:lg|qa)(?:[0-9-]|\*)/,
+  'shared App layers must consume the IX namespace directly',
+);
 assert.match(quietControls, /html\[data-app="1"\]/, 'Quiet Aqua controls must remain App-scoped');
 assert.doesNotMatch(quietControls + quietPages, /^\s*\.qa-[^{,]+/m, 'Quiet Aqua class selectors must never escape the data-app fence');
 assert.doesNotMatch(quietControlsNoComments, /nth-(?:child|of-type)/, 'Quiet Aqua must not assign rainbow colours by position');
@@ -644,10 +622,11 @@ assert.match(vipSource, /immersive qa-vip[\s\S]*AppIconButton[\s\S]*AppButton/, 
 assert.match(quietPages, /\.qa-vip[\s\S]*:where\(\.vm-card-pat, \.vm-card-shine, \.vm-spark\)[\s\S]*display:\s*none/, 'the App membership page must remove campaign shine and spark effects');
 assert.match(quietPages, /\.qa-vip \.vm-card,[\s\S]*background:\s*#23272e/, 'membership gold must remain semantic instead of filling the App page');
 
-/* ---- Liuli v5 generated content-media assets ---- */
+/* ---- IX generated content-media assets ---- */
 const appAssetNames = (await readdir(new URL('./src/assets/app/', import.meta.url)))
   .filter((name) => name.endsWith('.png'));
-assert.ok(appAssetNames.length >= 20, 'the S7 asset catalog must stay fully generated (run scripts/render-app-assets.mjs)');
+assert.ok(appAssetNames.every((name) => !/^qa5-(?:empty-|onboard-|streak-seal|boot-mark|vip-weave)/.test(name)),
+  'retired Lumen raster assets must stay out of the runtime catalog');
 for (const name of appAssetNames) {
   const png = await readFile(new URL(`./src/assets/app/${name}`, import.meta.url));
   assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${name} must be a valid PNG`);
@@ -662,6 +641,11 @@ assert.match(artSource, /ix-stamp-bronze\.svg\?url[\s\S]*streakSealForTier/, 'st
 const capacitorConfig = await readFile(new URL('../capacitor.config.json', import.meta.url), 'utf8');
 assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must not return to the purple-navy splash');
 assert.match(capacitorConfig, /"backgroundColor":\s*"#E8EBE9"/, 'native launch colours must match the IX canvas');
+const nativeSource = await readFile(new URL('./src/native.js', import.meta.url), 'utf8');
+assert.match(nativeSource, /dark \? '#0F1312' : '#E8EBE9'/, 'native system chrome must follow the light/dark IX canvas');
+const themeSource = await readFile(new URL('./src/theme.js', import.meta.url), 'utf8');
+assert.match(themeSource, /app \? '#0F1312' : '#15120e'[\s\S]*app \? '#E8EBE9' : '#f4f2ec'/,
+  'App theme chrome must use IX while preserving the Web theme colours');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: IX-6 guards passed');
+console.log('app invariants: IX-6/IX-7 guards passed');
