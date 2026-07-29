@@ -24,3 +24,5 @@ import './app-ix-pages-b.css';
 import './app-ix-pages-c.css';
 // IX-6/IX-7 tail: long-tail pages, states, and migrated stage composition.
 import './app-ix-pages-d.css';
+// Liquid Glass · 猫箱风格 × iOS 26 改版（末位权威）
+import './app-liquid-glass.css';

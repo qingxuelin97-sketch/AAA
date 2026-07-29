@@ -71,6 +71,8 @@ export default function AppLayout({ children }) {
   const tabbarRef = useRef(null);
   const fabRef = useRef(null);
   const inkRef = useRef(null);
+  const dockRef = useRef(null);
+  const scrollState = useRef({ lastY: 0, ticking: false, hidden: false });
   // 启动品牌闪屏：每会话一次，尊重减弱动效 / 低端机档
   const [boot, setBoot] = useState(() => {
     try {
@@ -287,6 +289,35 @@ export default function AppLayout({ children }) {
     return () => window.removeEventListener('huanyu-noti-read', clear);
   }, []);
 
+  // Dock 滚动自动隐藏：下滑隐藏、上滑显示（iOS 26 风格）
+  useEffect(() => {
+    const dock = dockRef.current;
+    if (!dock) return;
+    const THRESHOLD = 12;
+    const HIDE_AT = 80;
+    const onScroll = () => {
+      const s = scrollState.current;
+      if (s.ticking) return;
+      s.ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const dy = y - s.lastY;
+        const goingDown = dy > THRESHOLD;
+        const goingUp = dy < -THRESHOLD;
+        const nearTop = y < HIDE_AT;
+        if (nearTop || goingUp) {
+          if (s.hidden) { dock.classList.remove('scrolling-down'); s.hidden = false; }
+        } else if (goingDown && !s.hidden && y > HIDE_AT) {
+          dock.classList.add('scrolling-down'); s.hidden = true;
+        }
+        s.lastY = y;
+        s.ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   // Gestures: swipe between top tabs, left-edge swipe-back, pull-to-refresh.
   const go = useNav();
   const swipeGo = (dir) => {
@@ -357,7 +388,7 @@ export default function AppLayout({ children }) {
       </main>
 
       {route.dock && (
-        <div className="app-dock">
+        <div className="app-dock" ref={dockRef}>
           <nav className="app-tabbar" ref={tabbarRef} aria-label="主导航">
             <span className="dock-ink" ref={inkRef} aria-hidden="true" />
             {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}

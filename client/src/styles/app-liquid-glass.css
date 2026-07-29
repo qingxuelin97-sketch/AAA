@@ -1,0 +1,1523 @@
+/* ============================================================================
+   液态玻璃 Liquid Glass · 猫箱风格 × iOS 26 改版（末位权威）
+   ----------------------------------------------------------------------------
+   本文件在 app-entry.js 末尾加载，覆盖 IX/Quiet Aqua 层：
+   设计令牌 → 全局基调 → Dock/FAB/Sheet → 控件 → 发现流 → 聊天 → 暗色模式
+   规则：全部选择器从 html[data-app="1"] 出发；Web 零影响。
+   材质纪律：内容面保持高不透明可读；Chrome 层（Dock/顶栏/输入岛/Sheet）全面液态玻璃；
+   lite 省电档模糊/高光归零，玻璃回落不透明面。
+   ========================================================================== */
+
+html[data-app="1"] {
+  /* ── Liquid Glass 色彩令牌 ───────────────────────────── */
+  --lg-canvas: #F2F2F7;
+  --lg-surface: rgba(255, 255, 255, 0.94);
+  --lg-surface-elevated: rgba(255, 255, 255, 0.98);
+
+  /* 猫箱明黄主色 */
+  --lg-accent: #FFCC00;
+  --lg-accent-hover: #FFD633;
+  --lg-accent-active: #E5B800;
+  --lg-accent-ink: #1A1A1A;
+  --lg-accent-soft: rgba(255, 204, 0, 0.15);
+
+  /* iOS 蓝次色 */
+  --lg-accent-2: #007AFF;
+  --lg-accent-2-soft: rgba(0, 122, 255, 0.12);
+
+  /* 文字 */
+  --lg-ink: #111111;
+  --lg-ink-2: #6B6B6B;
+  --lg-ink-3: #9E9E9E;
+  --lg-ink-inverse: #FFFFFF;
+
+  /* 语义色保持色相，微调明度与玻璃适配 */
+  --lg-danger: #FF3B30;
+  --lg-danger-soft: rgba(255, 59, 48, 0.12);
+  --lg-success: #34C759;
+  --lg-success-soft: rgba(52, 199, 89, 0.12);
+  --lg-gold: #FFB800;
+  --lg-gold-soft: rgba(255, 184, 0, 0.15);
+  --lg-dia: #007AFF;
+  --lg-badge: #FF3B30;
+
+  /* ── Liquid Glass 材质 ──────────────────────────────── */
+  --lg-glass-chrome: rgba(255, 255, 255, 0.72);
+  --lg-glass-surface: rgba(255, 255, 255, 0.82);
+  --lg-glass-thin: rgba(255, 255, 255, 0.58);
+  --lg-glass-ultra: rgba(255, 255, 255, 0.45);
+
+  --lg-blur: blur(28px) saturate(180%);
+  --lg-blur-strong: blur(40px) saturate(200%);
+  --lg-blur-light: blur(16px) saturate(150%);
+
+  /* 玻璃高光 */
+  --lg-glare: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 100%);
+  --lg-edge: 1px solid rgba(255, 255, 255, 0.55);
+  --lg-edge-strong: 1px solid rgba(255, 255, 255, 0.7);
+  --lg-edge-inner: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --lg-edge-inner-soft: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+  /* 阴影 */
+  --lg-shadow-chrome: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --lg-shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --lg-shadow-fab: 0 6px 20px rgba(255, 204, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.12);
+  --lg-shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+  /* ── 圆角（更圆润，同心适配） ──────────────────────── */
+  --lg-r-card: 16px;
+  --lg-r-control: 12px;
+  --lg-r-button: 12px;
+  --lg-r-dock: 22px;
+  --lg-r-sheet: 24px;
+  --lg-r-input: 18px;
+  --lg-r-bubble: 20px;
+  --lg-r-avatar: 999px;
+  --lg-r-pill: 999px;
+
+  /* ── 间距微调（更呼吸） ─────────────────────────────── */
+  --lg-space-2: 8px;
+  --lg-space-3: 12px;
+  --lg-space-4: 16px;
+  --lg-space-5: 20px;
+  --lg-space-6: 28px;
+
+  /* ── 动效（弹性流畅） ────────────────────────────────── */
+  --lg-ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --lg-ease-smooth: cubic-bezier(0.32, 0.72, 0, 1);
+  --lg-ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --lg-dur-fast: 200ms;
+  --lg-dur-normal: 300ms;
+  --lg-dur-morph: 420ms;
+  --lg-dur-slow: 500ms;
+
+  /* ── 覆盖 IX 旧令牌为新基调 ──────────────────────────── */
+  --ix-canvas: var(--lg-canvas);
+  --ix-grouped: #EBEBEF;
+  --ix-surface: #FFFFFF;
+  --ix-raise: #FFFFFF;
+  --ix-hairline: rgba(0, 0, 0, 0.08);
+  --ix-hairline-strong: rgba(0, 0, 0, 0.14);
+
+  --ix-ink: var(--lg-ink);
+  --ix-ink-2: var(--lg-ink-2);
+  --ix-ink-3: var(--lg-ink-3);
+  --ix-ink-inverse: #FFFFFF;
+
+  --ix-act: var(--lg-accent);
+  --ix-act-ink: var(--lg-accent-ink);
+  --ix-act-soft: var(--lg-accent-soft);
+  --ix-focus: var(--lg-accent);
+  --ix-focus-ring: 0 0 0 3px var(--lg-accent-soft);
+
+  --ix-danger: var(--lg-danger);
+  --ix-danger-soft: var(--lg-danger-soft);
+  --ix-success: var(--lg-success);
+  --ix-success-soft: var(--lg-success-soft);
+  --ix-gold: var(--lg-gold);
+  --ix-gold-soft: var(--lg-gold-soft);
+  --ix-dia: var(--lg-dia);
+  --ix-badge: var(--lg-badge);
+
+  /* 玻璃令牌接管 IX 玻璃层 */
+  --ix-glass-temp: var(--lg-glass-surface);
+  --ix-glass-nav: var(--lg-glass-chrome);
+  --ix-blur: var(--lg-blur);
+  --ix-blur-s: var(--lg-blur-light);
+  --ix-glare: var(--lg-glare);
+
+  /* 阴影更新 */
+  --ix-shadow-1: var(--lg-shadow-card);
+  --ix-shadow-2: var(--lg-shadow-pop);
+  --ix-shadow-3: var(--lg-shadow-chrome);
+
+  /* 圆角更新 */
+  --ix-r-micro: 6px;
+  --ix-r-key: var(--lg-r-control);
+  --ix-r-card: var(--lg-r-card);
+  --ix-r-panel: var(--lg-r-sheet);
+  --ix-r-dial: var(--lg-r-pill);
+
+  /* Dock 尺寸 */
+  --lg-dock-height: 68px;
+  --lg-dock-width: calc(100% - 20px);
+  --lg-dock-bottom: max(10px, env(safe-area-inset-bottom));
+
+  color-scheme: light;
+}
+
+/* app-bot 底部占位覆盖：悬浮玻璃胶囊 */
+html[data-app="1"] {
+  --app-bot: calc(var(--lg-dock-height) + var(--lg-dock-bottom) + 12px);
+}
+
+/* ── 全局基调：更柔和的背景 ────────────────────────────── */
+html[data-app="1"] body {
+  background: var(--lg-canvas);
+  color: var(--lg-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* app-root 背景 */
+html[data-app="1"] .app-root {
+  background: var(--lg-canvas);
+}
+
+/* ── lite 省电档：玻璃回落 ────────────────────────────── */
+html[data-app="1"][data-perf="lite"] {
+  --lg-blur: none;
+  --lg-blur-strong: none;
+  --lg-blur-light: none;
+  --lg-glass-chrome: rgba(255, 255, 255, 0.97);
+  --lg-glass-surface: rgba(255, 255, 255, 0.98);
+  --lg-glass-thin: rgba(255, 255, 255, 0.95);
+  --lg-glare: none;
+}
+
+/* ============================================================================
+   Dock / 底栏 · 悬浮液态玻璃胶囊（iOS 26 风格）
+   覆盖 app-ix-core.css 的全宽机身条样式
+   ========================================================================== */
+html[data-app="1"] .app-dock {
+  position: fixed !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  bottom: var(--lg-dock-bottom) !important;
+  width: var(--lg-dock-width) !important;
+  max-width: 420px !important;
+  padding: 0 !important;
+  z-index: 600 !important;
+  height: auto !important;
+  background: transparent !important;
+  border-top: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: none;
+  transition: transform var(--lg-dur-morph) var(--lg-ease-spring),
+              opacity var(--lg-dur-normal) var(--lg-ease-smooth);
+}
+
+html[data-app="1"] .app-dock.scrolling-down {
+  transform: translateX(-50%) translateY(calc(100% + 20px)) !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+html[data-app="1"] .app-dock .app-tabbar {
+  position: relative !important;
+  inset: auto !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--lg-glass-chrome) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  border-radius: var(--lg-r-dock) !important;
+  box-shadow: var(--lg-shadow-chrome), var(--lg-edge-inner) !important;
+  border: var(--lg-edge) !important;
+  padding: 5px 8px !important;
+  min-height: 58px;
+  gap: 2px;
+  width: 100% !important;
+  height: auto !important;
+  margin: 0 !important;
+  grid-template-columns: none !important;
+  pointer-events: auto;
+  transform: none !important;
+}
+
+html[data-app="1"] .app-dock .app-tabbar::before,
+html[data-app="1"] .app-dock .app-tabbar::after {
+  content: none !important;
+}
+
+html[data-app="1"] .app-dock .dock-ink {
+  display: none !important;
+}
+
+/* Dock gap 给 FAB 留位 */
+html[data-app="1"] .app-dock-gap {
+  width: 64px !important;
+  flex: none;
+  height: 1px;
+  pointer-events: none;
+  display: block !important;
+}
+
+/* Tab 按钮在 Dock 内样式 */
+html[data-app="1"] .app-dock .app-tab,
+html[data-app="1"] .app-dock .qa-tab-button {
+  position: relative !important;
+  z-index: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  background: none !important;
+  border: none !important;
+  padding: 6px 10px !important;
+  min-width: 48px !important;
+  width: auto !important;
+  height: 48px !important;
+  min-height: 0 !important;
+  border-radius: 16px !important;
+  color: var(--lg-ink-2) !important;
+  cursor: pointer;
+  transition: color var(--lg-dur-fast) var(--lg-ease-smooth),
+              transform var(--lg-dur-fast) var(--lg-ease-spring) !important;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+}
+
+html[data-app="1"] .app-dock .app-tab:active,
+html[data-app="1"] .app-dock .qa-tab-button:active {
+  transform: scale(0.9) !important;
+}
+
+html[data-app="1"] .app-dock .app-tab.active,
+html[data-app="1"] .app-dock .qa-tab-button.active,
+html[data-app="1"] .app-dock .qa-tab-button[data-selected="true"] {
+  color: var(--lg-accent-active) !important;
+  background: transparent !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+
+html[data-app="1"] .app-dock .app-tab::before,
+html[data-app="1"] .app-dock .app-tab::after,
+html[data-app="1"] .app-dock .qa-tab-button__icon::before {
+  content: none !important;
+  display: none !important;
+}
+
+html[data-app="1"] .app-dock .app-tab .qa-tab-button__glyph,
+html[data-app="1"] .app-dock .qa-tab-button .qa-tab-button__glyph,
+html[data-app="1"] .app-dock .qa-tab-button .qa-tab-button__icon {
+  width: 24px !important;
+  height: 24px !important;
+  display: grid !important;
+  place-items: center !important;
+  transition: transform var(--lg-dur-fast) var(--lg-ease-spring) !important;
+  transform: none !important;
+}
+
+html[data-app="1"] .app-dock .app-tab.active .qa-tab-button__glyph,
+html[data-app="1"] .app-dock .qa-tab-button.active .qa-tab-button__glyph,
+html[data-app="1"] .app-dock .qa-tab-button[data-selected="true"] .qa-tab-button__glyph {
+  transform: scale(1.08) !important;
+}
+
+html[data-app="1"] .app-dock .app-tab .qa-tab-button__label,
+html[data-app="1"] .app-dock .qa-tab-button .qa-tab-button__label {
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1 !important;
+}
+
+html[data-app="1"] .app-dock .app-tab .app-dot,
+html[data-app="1"] .app-dock .qa-tab-button .qa-tab-button__badge {
+  position: absolute !important;
+  top: 2px !important;
+  right: 6px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  padding: 0 4px !important;
+  background: var(--lg-badge) !important;
+  color: #fff !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  border-radius: 9px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1.5px solid rgba(255,255,255,0.9) !important;
+  box-shadow: 0 1px 3px rgba(255,59,48,0.4) !important;
+  font-variant-numeric: tabular-nums !important;
+  font-family: inherit !important;
+}
+
+/* ── FAB 中央创建按钮 · 猫箱黄色玻璃 ──────────────────── */
+html[data-app="1"] .app-dock .app-fab {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 610 !important;
+  width: 54px !important;
+  height: 54px !important;
+  min-width: 54px !important;
+  min-height: 54px !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  background: linear-gradient(145deg, var(--lg-accent) 0%, var(--lg-accent-active) 100%) !important;
+  color: var(--lg-accent-ink) !important;
+  border: none !important;
+  box-shadow: var(--lg-shadow-fab), var(--lg-edge-inner) !important;
+  display: grid !important;
+  place-items: center !important;
+  cursor: pointer;
+  transition: transform var(--lg-dur-morph) var(--lg-ease-spring),
+              box-shadow var(--lg-dur-normal) var(--lg-ease-smooth),
+              background var(--lg-dur-normal),
+              color var(--lg-dur-normal) !important;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto !important;
+}
+
+html[data-app="1"] .app-dock .app-fab:active {
+  transform: translate(-50%, -50%) scale(0.9) !important;
+  background: linear-gradient(145deg, var(--lg-accent-active) 0%, var(--lg-accent) 100%) !important;
+}
+
+html[data-app="1"] .app-dock .app-fab.open {
+  transform: translate(-50%, -50%) rotate(45deg) !important;
+  background: linear-gradient(145deg, #F0F0F0 0%, #D8D8D8 100%) !important;
+  color: var(--lg-ink) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8) !important;
+}
+
+html[data-app="1"] .app-dock .app-fab svg {
+  margin: 0 !important;
+  transform: none !important;
+  transition: transform var(--lg-dur-morph) var(--lg-ease-spring) !important;
+}
+
+html[data-app="1"] .app-fab-ai {
+  display: none !important;
+}
+
+/* 猫箱风格：沉浸式页面（发现流）保留 Dock 显示 */
+html[data-app="1"] .app-root:has(.immersive) .app-dock,
+html[data-app="1"] .app-root:has(.pl-immersive) .app-dock,
+html[data-app="1"] .app-root:has(.atl-ws) .app-dock,
+html[data-app="1"] .app-root:has(.atl-read-page) .app-dock {
+  display: block !important;
+}
+
+/* ============================================================================
+   Create Sheet · 玻璃升起菜单
+   ========================================================================== */
+html[data-app="1"] .app-sheet-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 700;
+  animation: lg-fade-in var(--lg-dur-normal) var(--lg-ease-smooth);
+}
+
+html[data-app="1"] .app-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--lg-glass-surface);
+  backdrop-filter: var(--lg-blur-strong);
+  -webkit-backdrop-filter: var(--lg-blur-strong);
+  border-radius: var(--lg-r-sheet) var(--lg-r-sheet) 0 0;
+  box-shadow: var(--lg-shadow-pop), var(--lg-edge-inner);
+  border-top: var(--lg-edge-strong);
+  padding: 8px var(--lg-space-4) calc(var(--lg-space-4) + env(safe-area-inset-bottom));
+  animation: lg-sheet-up var(--lg-dur-morph) var(--lg-ease-spring);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+html[data-app="1"] .app-sheet-grip {
+  width: 36px;
+  height: 5px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 3px;
+  margin: 4px auto 12px;
+}
+
+html[data-app="1"] .app-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+html[data-app="1"] .app-sheet-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--lg-ink);
+  letter-spacing: -0.02em;
+}
+
+/* 创建项按钮 */
+html[data-app="1"] .app-create-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: var(--lg-blur-light);
+  border: var(--lg-edge);
+  border-radius: var(--lg-r-card);
+  margin-bottom: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--lg-dur-fast) var(--lg-ease-spring),
+              background var(--lg-dur-fast);
+  animation: lg-create-in var(--lg-dur-normal) var(--lg-ease-smooth) both;
+  animation-delay: calc(var(--i) * 50ms);
+  -webkit-tap-highlight-color: transparent;
+}
+
+html[data-app="1"] .app-create-row:active {
+  transform: scale(0.98);
+  background: rgba(255,255,255,0.75);
+}
+
+html[data-app="1"] .app-create-row .ac-ic {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--lg-accent-soft);
+  color: var(--lg-accent-active);
+}
+
+html[data-app="1"] .app-create-row[data-tone="indigo"] .ac-ic {
+  background: rgba(88, 86, 214, 0.12);
+  color: #5856D6;
+}
+html[data-app="1"] .app-create-row[data-tone="coral"] .ac-ic {
+  background: rgba(255, 69, 58, 0.12);
+  color: #FF453A;
+}
+html[data-app="1"] .app-create-row[data-tone="gold"] .ac-ic {
+  background: var(--lg-gold-soft);
+  color: #B8860B;
+}
+html[data-app="1"] .app-create-row[data-tone="blue"] .ac-ic {
+  background: var(--lg-accent-2-soft);
+  color: var(--lg-accent-2);
+}
+html[data-app="1"] .app-create-row[data-tone="success"] .ac-ic {
+  background: var(--lg-success-soft);
+  color: #248A3D;
+}
+
+html[data-app="1"] .app-create-row .ac-tx {
+  flex: 1;
+  min-width: 0;
+}
+
+html[data-app="1"] .app-create-row .ac-tx b {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--lg-ink);
+}
+
+html[data-app="1"] .app-create-row .ac-tx small {
+  display: block;
+  font-size: 13px;
+  color: var(--lg-ink-2);
+  margin-top: 2px;
+}
+
+/* ============================================================================
+   通用控件升级
+   ========================================================================== */
+
+/* AppButton 基础玻璃风格 */
+html[data-app="1"] .btn,
+html[data-app="1"] .app-btn {
+  border-radius: var(--lg-r-button) !important;
+  font-weight: 600;
+  transition: transform var(--lg-dur-fast) var(--lg-ease-spring),
+              background var(--lg-dur-fast),
+              box-shadow var(--lg-dur-fast),
+              opacity var(--lg-dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+html[data-app="1"] .btn:active,
+html[data-app="1"] .app-btn:active {
+  transform: scale(0.96);
+}
+
+html[data-app="1"] .btn.primary,
+html[data-app="1"] .app-btn.primary,
+html[data-app="1"] .app-btn[data-variant="filled"] {
+  background: linear-gradient(145deg, var(--lg-accent) 0%, var(--lg-accent-active) 100%) !important;
+  color: var(--lg-accent-ink) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(255,204,0,0.35), var(--lg-edge-inner) !important;
+}
+
+html[data-app="1"] .btn.secondary,
+html[data-app="1"] .app-btn.secondary,
+html[data-app="1"] .app-btn[data-variant="secondary"] {
+  background: var(--lg-glass-thin) !important;
+  backdrop-filter: var(--lg-blur-light) !important;
+  -webkit-backdrop-filter: var(--lg-blur-light) !important;
+  color: var(--lg-ink) !important;
+  border: var(--lg-edge) !important;
+  box-shadow: var(--lg-edge-inner) !important;
+}
+
+html[data-app="1"] .btn.ghost,
+html[data-app="1"] .app-btn.ghost {
+  background: transparent !important;
+  color: var(--lg-accent-active) !important;
+  border: none !important;
+}
+
+html[data-app="1"] .btn.ghost:active,
+html[data-app="1"] .app-btn.ghost:active {
+  background: var(--lg-accent-soft) !important;
+}
+
+/* AppIconButton */
+html[data-app="1"] .app-icon-btn {
+  border-radius: 50% !important;
+  background: var(--lg-glass-thin);
+  backdrop-filter: var(--lg-blur-light);
+  -webkit-backdrop-filter: var(--lg-blur-light);
+  border: var(--lg-edge);
+  color: var(--lg-ink);
+  box-shadow: var(--lg-edge-inner);
+  transition: all var(--lg-dur-fast) var(--lg-ease-spring);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+}
+
+html[data-app="1"] .app-icon-btn:active {
+  transform: scale(0.9);
+}
+
+html[data-app="1"] .app-icon-btn[aria-pressed="true"],
+html[data-app="1"] .app-icon-btn.selected {
+  background: var(--lg-accent);
+  color: var(--lg-accent-ink);
+  border-color: transparent;
+}
+
+/* 输入框 */
+html[data-app="1"] input[type="text"],
+html[data-app="1"] input[type="search"],
+html[data-app="1"] textarea {
+  background: var(--lg-glass-surface) !important;
+  backdrop-filter: var(--lg-blur-light);
+  -webkit-backdrop-filter: var(--lg-blur-light);
+  border: var(--lg-edge) !important;
+  border-radius: var(--lg-r-input) !important;
+  padding: 12px 16px !important;
+  font-size: 16px !important;
+  color: var(--lg-ink);
+  box-shadow: var(--lg-edge-inner);
+  transition: all var(--lg-dur-fast) var(--lg-ease-smooth);
+}
+
+html[data-app="1"] input[type="text"]:focus,
+html[data-app="1"] input[type="search"]:focus,
+html[data-app="1"] textarea:focus {
+  outline: none;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px var(--lg-accent-soft), var(--lg-edge-inner);
+  border-color: var(--lg-accent) !important;
+}
+
+/* 卡片 */
+html[data-app="1"] .card,
+html[data-app="1"] .set-card {
+  background: #fff !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
+  border-radius: var(--lg-r-card) !important;
+  box-shadow: var(--lg-shadow-card) !important;
+}
+
+/* 分段控件 */
+html[data-app="1"] .seg,
+html[data-app="1"] .tabs-bar:not(.qa-character-editor__tabs) {
+  background: rgba(0,0,0,0.05) !important;
+  padding: 3px !important;
+  border-radius: var(--lg-r-pill) !important;
+  border: none !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+}
+
+html[data-app="1"] .seg > button,
+html[data-app="1"] .tabs-bar > .tab {
+  border-radius: var(--lg-r-pill) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
+  transition: all var(--lg-dur-normal) var(--lg-ease-smooth);
+}
+
+html[data-app="1"] .seg > button[aria-selected="true"],
+html[data-app="1"] .seg > button.active,
+html[data-app="1"] .tabs-bar > .tab.active {
+  background: #fff !important;
+  color: var(--lg-ink) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* ============================================================================
+   DiscoverFeed 发现流 · 猫箱抖音式大卡片
+   ========================================================================== */
+html[data-app="1"] .qa-discover-page,
+html[data-app="1"] .feed-wrap.qa-discover-page {
+  background: #000;
+}
+
+html[data-app="1"] .feed-root {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+html[data-app="1"] .feed-card {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+/* 角色立绘背景 */
+html[data-app="1"] .feed-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+html[data-app="1"] .feed-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top,
+    rgba(0,0,0,0.88) 0%,
+    rgba(0,0,0,0.45) 30%,
+    rgba(0,0,0,0.1) 55%,
+    transparent 75%);
+}
+
+/* 顶部分类条 — 猫箱式胶囊悬浮（高特异性覆盖） */
+html[data-app="1"] .feed-top,
+html[data-app="1"] .qa3-discover .feed-top,
+html[data-app="1"] .qa-discover-page .feed-top {
+  position: absolute !important;
+  top: calc(env(safe-area-inset-top) + 8px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 20 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 60px 0 16px !important;
+  pointer-events: none !important;
+}
+
+html[data-app="1"] .feed-modes,
+html[data-app="1"] .qa3-discover .feed-modes,
+html[data-app="1"] .qa-discover-page .feed-modes,
+html[data-app="1"][data-perf="lite"] .qa3-discover .feed-modes,
+html[data-app="1"][data-perf="lite"] .qa-discover-page .feed-modes {
+  display: flex !important;
+  gap: 4px !important;
+  background: rgba(255,255,255,0.18) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255,255,255,0.22) !important;
+  border-radius: 20px !important;
+  padding: 4px !important;
+  pointer-events: auto !important;
+}
+
+html[data-app="1"] .feed-mode,
+html[data-app="1"] .qa3-discover .feed-mode,
+html[data-app="1"] .qa-discover-page .feed-mode {
+  background: none !important;
+  border: none !important;
+  color: rgba(255,255,255,0.75) !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  padding: 7px 16px !important;
+  border-radius: 16px !important;
+  cursor: pointer !important;
+  transition: all var(--lg-dur-fast) var(--lg-ease-smooth) !important;
+}
+
+html[data-app="1"] .feed-mode.on,
+html[data-app="1"] .qa3-discover .feed-mode.on,
+html[data-app="1"] .qa-discover-page .feed-mode.on {
+  background: #fff !important;
+  color: #1a1a1a !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+
+html[data-app="1"] .feed-search,
+html[data-app="1"] .feed-history,
+html[data-app="1"] .qa3-discover .feed-search.qa-icon-button,
+html[data-app="1"] .qa3-discover .feed-history.qa-icon-button,
+html[data-app="1"][data-perf="lite"] .qa3-discover .feed-search.qa-icon-button,
+html[data-app="1"][data-perf="lite"] .qa3-discover .feed-history.qa-icon-button {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,0.2) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+html[data-app="1"] .feed-search:active,
+html[data-app="1"] .feed-history:active {
+  transform: scale(0.88);
+}
+
+/* AI 生成水印 */
+html[data-app="1"] .feed-ai-mark {
+  position: absolute;
+  left: 10px;
+  top: 20%;
+  z-index: 2;
+  writing-mode: vertical-rl;
+  letter-spacing: 5px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+/* 双击点赞层 */
+html[data-app="1"] .feed-tap {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+/* 爱心迸发 */
+html[data-app="1"] .feed-heart {
+  position: absolute;
+  z-index: 15;
+  color: #ff5d7e;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 4px 18px rgba(255,93,126,0.55));
+  animation: lg-heart-burst 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* 右侧竖排互动按钮（猫箱/抖音风格 — 半透明白色玻璃圆钮） */
+html[data-app="1"] .fd2-acts,
+html[data-app="1"] .qa3-discover .fd2-acts,
+html[data-app="1"] .qa-discover-page .fd2-acts {
+  position: absolute !important;
+  right: 10px !important;
+  bottom: calc(120px + env(safe-area-inset-bottom)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 20px !important;
+  z-index: 10 !important;
+}
+
+html[data-app="1"] .fd2-act,
+html[data-app="1"] .qa3-discover .fd2-act,
+html[data-app="1"] .qa-discover-page .fd2-act,
+html[data-app="1"][data-perf="lite"] .qa3-discover .fd2-act,
+html[data-app="1"][data-perf="lite"] .qa-discover-page .fd2-act {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 4px !important;
+  background: rgba(0,0,0,0.3) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  border-radius: 50% !important;
+  width: 48px !important;
+  height: 48px !important;
+  justify-content: center !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  -webkit-tap-highlight-color: transparent !important;
+  transition: transform var(--lg-dur-fast) var(--lg-ease-spring), background var(--lg-dur-fast) !important;
+  padding: 0 !important;
+  filter: none !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+}
+
+html[data-app="1"][data-perf="lite"] .qa3-discover .fd2-act,
+html[data-app="1"][data-perf="lite"] .qa-discover-page .fd2-act {
+  background: rgba(0,0,0,0.45) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-app="1"] .fd2-act:active,
+html[data-app="1"] .qa3-discover .fd2-act:active,
+html[data-app="1"] .qa-discover-page .fd2-act:active {
+  transform: scale(0.88) !important;
+  background: rgba(255,255,255,0.2) !important;
+}
+
+html[data-app="1"] .fd2-act svg,
+html[data-app="1"] .qa3-discover .fd2-act svg,
+html[data-app="1"] .qa-discover-page .fd2-act svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+html[data-app="1"] .fd2-act.on,
+html[data-app="1"] .qa3-discover .fd2-act.on {
+  background: rgba(254,44,85,0.85) !important;
+  border-color: rgba(255,255,255,0.3) !important;
+  color: #fff !important;
+}
+html[data-app="1"] .fd2-act.on svg,
+html[data-app="1"] .qa3-discover .fd2-act.on svg {
+  fill: #fff !important;
+}
+
+html[data-app="1"] .fd2-act.on.gold,
+html[data-app="1"] .qa3-discover .fd2-act.on.gold {
+  background: rgba(255,204,0,0.9) !important;
+  color: #1a1a1a !important;
+}
+html[data-app="1"] .fd2-act.on.gold svg,
+html[data-app="1"] .qa3-discover .fd2-act.on.gold svg {
+  fill: #1a1a1a !important;
+}
+
+html[data-app="1"] .fd2-act span,
+html[data-app="1"] .qa3-discover .fd2-act span {
+  display: none !important;
+}
+
+/* 底部信息栈 */
+html[data-app="1"] .fd2-stack {
+  position: absolute;
+  left: 0;
+  right: 76px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 10;
+  color: #fff;
+  padding: 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 开场白气泡 — 猫箱式白色玻璃气泡（高特异性覆盖，含 lite 模式） */
+html[data-app="1"] .fd2-greet,
+html[data-app="1"] .qa3-discover .fd2-greet,
+html[data-app="1"] .qa-discover-page .fd2-greet,
+html[data-app="1"][data-perf="lite"] .qa3-discover .fd2-greet,
+html[data-app="1"][data-perf="lite"] .qa-discover-page .fd2-greet {
+  display: inline-block !important;
+  align-self: flex-start !important;
+  background: rgba(255, 252, 246, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255,255,255,0.5) !important;
+  border-radius: 18px 18px 18px 6px !important;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  color: #241d18 !important;
+  max-width: 82% !important;
+  max-height: min(32vh, 280px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.25) !important;
+  transition: transform var(--lg-dur-fast) var(--lg-ease-spring);
+  cursor: pointer;
+  text-align: left !important;
+}
+
+html[data-app="1"] .fd2-greet:active,
+html[data-app="1"] .qa3-discover .fd2-greet:active,
+html[data-app="1"] .qa-discover-page .fd2-greet:active,
+html[data-app="1"][data-perf="lite"] .qa3-discover .fd2-greet:active,
+html[data-app="1"][data-perf="lite"] .qa-discover-page .fd2-greet:active {
+  transform: scale(0.98) !important;
+}
+
+/* lite 性能档：保留白色气泡但去掉 backdrop-filter 以提升性能 */
+html[data-app="1"][data-perf="lite"] .qa3-discover .fd2-greet,
+html[data-app="1"][data-perf="lite"] .qa-discover-page .fd2-greet {
+  background: rgba(255, 252, 246, 0.97) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 名字 + 作者 */
+html[data-app="1"] .fd2-meta {
+  display: flex;
+  align-items: flex-end;
+}
+
+html[data-app="1"] .fd2-id {
+  min-width: 0;
+  cursor: pointer;
+}
+
+html[data-app="1"] .fd2-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 14px rgba(0,0,0,0.5);
+  line-height: 1.1;
+}
+
+html[data-app="1"] .fd2-tagline {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 4px 0 0;
+  opacity: 0.88;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+}
+
+html[data-app="1"] .fd2-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.92;
+  margin-top: 6px;
+}
+
+html[data-app="1"] .fd2-author .avatar {
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.35);
+}
+
+html[data-app="1"] .fd2-author span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 38vw;
+}
+
+html[data-app="1"] .fd2-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.16);
+  backdrop-filter: blur(8px);
+}
+
+/* CTA 按钮区 — 猫箱珊瑚粉进入对话 + 通话 */
+html[data-app="1"] .fd2-cta,
+html[data-app="1"] .qa3-discover .fd2-cta,
+html[data-app="1"] .qa-discover-page .fd2-cta {
+  display: flex !important;
+  gap: 10px !important;
+  align-items: center !important;
+  margin-top: 4px !important;
+}
+
+html[data-app="1"] .fd2-enter,
+html[data-app="1"] .fd2-enter.qa-button,
+html[data-app="1"] .qa3-discover .fd2-enter,
+html[data-app="1"] .qa3-discover .fd2-enter.qa-button,
+html[data-app="1"] .qa-discover-page .fd2-enter,
+html[data-app="1"] .qa-discover-page .fd2-enter.qa-button,
+html[data-app="1"] .app-button.fd2-enter,
+html[data-app="1"] button.fd2-enter,
+html[data-app="1"] .qa-button.fd2-enter,
+html[data-app="1"] .qa-button--primary.fd2-enter {
+  flex: 1 !important;
+  height: 50px !important;
+  border-radius: 25px !important;
+  background: linear-gradient(135deg, #FF6B8A 0%, #FF8F6B 100%) !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(135deg, #FF6B8A 0%, #FF8F6B 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 24px rgba(255,107,138,0.45), inset 0 1px 0 rgba(255,255,255,0.35) !important;
+  gap: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  letter-spacing: 0.02em !important;
+}
+
+html[data-app="1"] .fd2-enter:active,
+html[data-app="1"] .fd2-enter.qa-button:active,
+html[data-app="1"] .qa3-discover .fd2-enter:active,
+html[data-app="1"] .qa3-discover .fd2-enter.qa-button:active,
+html[data-app="1"] .app-button.fd2-enter:active,
+html[data-app="1"] .qa-button.fd2-enter:active {
+  transform: scale(0.96) !important;
+}
+
+html[data-app="1"] .fd2-call,
+html[data-app="1"] .fd2-call.qa-icon-button,
+html[data-app="1"] .qa3-discover .fd2-call,
+html[data-app="1"] .qa3-discover .fd2-call.qa-icon-button,
+html[data-app="1"] .qa-discover-page .fd2-call,
+html[data-app="1"] .qa-discover-page .fd2-call.qa-icon-button,
+html[data-app="1"] .qa-icon-button.fd2-call,
+html[data-app="1"] .qa-icon-button--filled.fd2-call {
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,0.2) !important;
+  background-color: rgba(255,255,255,0.2) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1.5px solid rgba(255,255,255,0.3) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important;
+  flex: none !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+html[data-app="1"] .fd2-call:active,
+html[data-app="1"] .fd2-call.qa-icon-button:active,
+html[data-app="1"] .qa3-discover .fd2-call:active,
+html[data-app="1"] .qa3-discover .fd2-call.qa-icon-button:active,
+html[data-app="1"] .qa-icon-button.fd2-call:active {
+  transform: scale(0.9) !important;
+  background: rgba(255,255,255,0.35) !important;
+  background-color: rgba(255,255,255,0.35) !important;
+}
+
+/* 加载/到底提示 */
+html[data-app="1"] .feed-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 100px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* 双击爱心动画 */
+@keyframes lg-heart-burst {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+html[data-app="1"] .qa-heart-burst {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  font-size: 80px;
+  pointer-events: none;
+  animation: lg-heart-burst 700ms var(--lg-ease-spring) forwards;
+  z-index: 20;
+  filter: drop-shadow(0 4px 12px rgba(254,44,85,0.5));
+}
+
+/* ============================================================================
+   Chat 聊天页
+   ========================================================================== */
+html[data-app="1"] .chat-app {
+  background: var(--lg-canvas);
+}
+
+/* 聊天气泡 */
+html[data-app="1"] .bubble-ai,
+html[data-app="1"] .bubble-user {
+  border-radius: var(--lg-r-bubble) !important;
+  padding: 12px 16px !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  max-width: 78% !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+html[data-app="1"] .bubble-ai {
+  background: rgba(255,255,255,0.95) !important;
+  color: var(--lg-ink) !important;
+  border-bottom-left-radius: 6px !important;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+html[data-app="1"] .bubble-user {
+  background: linear-gradient(145deg, var(--lg-accent) 0%, var(--lg-accent-active) 100%) !important;
+  color: var(--lg-accent-ink) !important;
+  border-bottom-right-radius: 6px !important;
+  border: none;
+  box-shadow: 0 2px 8px rgba(255,204,0,0.3);
+}
+
+/* 动作表情行 */
+html[data-app="1"] .chat-action {
+  font-style: italic;
+  color: var(--lg-ink-2);
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* 输入栏 */
+html[data-app="1"] .chat-input-bar {
+  background: var(--lg-glass-chrome) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  border-top: var(--lg-edge) !important;
+  padding: 8px var(--lg-space-4) calc(8px + env(safe-area-inset-bottom)) !important;
+}
+
+html[data-app="1"] .chat-input-wrap {
+  background: rgba(255,255,255,0.9) !important;
+  border: var(--lg-edge) !important;
+  border-radius: var(--lg-r-input) !important;
+  padding: 8px 12px !important;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+html[data-app="1"] .chat-input-wrap textarea {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 6px 0 !important;
+  font-size: 16px !important;
+  max-height: 120px;
+  resize: none;
+}
+
+html[data-app="1"] .chat-send-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--lg-accent) !important;
+  color: var(--lg-accent-ink) !important;
+  border: none !important;
+  display: grid;
+  place-items: center;
+  flex: none;
+  cursor: pointer;
+  transition: transform var(--lg-dur-fast) var(--lg-ease-spring);
+}
+
+html[data-app="1"] .chat-send-btn:active {
+  transform: scale(0.9);
+}
+
+html[data-app="1"] .chat-send-btn:disabled {
+  background: rgba(0,0,0,0.1) !important;
+  color: var(--lg-ink-3) !important;
+}
+
+/* 快捷动作栏 */
+html[data-app="1"] .chat-quick-actions {
+  display: flex;
+  gap: 6px;
+  padding: 6px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+html[data-app="1"] .chat-quick-actions::-webkit-scrollbar {
+  display: none;
+}
+
+html[data-app="1"] .chat-quick-action {
+  flex: none;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: var(--lg-blur-light);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--lg-ink-2);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--lg-dur-fast);
+}
+
+html[data-app="1"] .chat-quick-action:active {
+  background: var(--lg-accent-soft);
+  color: var(--lg-accent-active);
+  transform: scale(0.96);
+}
+
+/* ============================================================================
+   顶栏 / 导航栏 · 滚动时液态玻璃
+   ========================================================================== */
+html[data-app="1"] .topbar {
+  background: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  min-height: calc(48px + env(safe-area-inset-top)) !important;
+  padding-top: max(8px, env(safe-area-inset-top)) !important;
+  transition: background var(--lg-dur-normal), backdrop-filter var(--lg-dur-normal), box-shadow var(--lg-dur-normal);
+  z-index: 100 !important;
+}
+
+html[data-app="1"] .topbar.scrolled {
+  background: var(--lg-glass-chrome) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  -webkit-backdrop-filter: var(--lg-blur) !important;
+  border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.04) !important;
+}
+
+html[data-app="1"] .topbar h1 {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================================
+   今日页 / AppHome
+   ========================================================================== */
+html[data-app="1"] .qa3-today {
+  padding-bottom: calc(var(--lg-dock-height) + var(--lg-dock-bottom) + 20px);
+}
+
+html[data-app="1"] .apphome-greeting {
+  padding: calc(env(safe-area-inset-top) + 16px) var(--lg-space-4) 8px;
+}
+
+html[data-app="1"] .apphome-greeting h1 {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--lg-ink);
+}
+
+html[data-app="1"] .apphome-greeting small {
+  font-size: 15px;
+  color: var(--lg-ink-2);
+}
+
+/* ============================================================================
+   消息页
+   ========================================================================== */
+html[data-app="1"] .msgs {
+  padding-bottom: calc(var(--lg-dock-height) + var(--lg-dock-bottom) + 20px);
+}
+
+html[data-app="1"] .msg-row {
+  background: #fff;
+  border-radius: var(--lg-r-card);
+  margin: 0 var(--lg-space-4) 8px;
+  padding: 12px var(--lg-space-4);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  transition: transform var(--lg-dur-fast);
+}
+
+html[data-app="1"] .msg-row:active {
+  transform: scale(0.99);
+}
+
+/* ============================================================================
+   我的页
+   ========================================================================== */
+html[data-app="1"] .pf,
+html[data-app="1"] .qa3-profile {
+  padding-bottom: calc(var(--lg-dock-height) + var(--lg-dock-bottom) + 20px);
+}
+
+html[data-app="1"] .pf-header {
+  padding: calc(env(safe-area-inset-top) + 20px) var(--lg-space-4) var(--lg-space-5);
+  background: linear-gradient(180deg, var(--lg-accent-soft) 0%, transparent 100%);
+}
+
+html[data-app="1"] .pf-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+/* 设置页 */
+html[data-app="1"] .qa-settings-root {
+  background: var(--lg-grouped);
+}
+
+html[data-app="1"] .qa-settings-list {
+  background: #fff !important;
+  border-radius: var(--lg-r-card) !important;
+  border: 1px solid rgba(0,0,0,0.05) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+}
+
+/* ============================================================================
+   动画关键帧
+   ========================================================================== */
+@keyframes lg-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lg-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes lg-create-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lg-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ============================================================================
+   暗色模式 · Liquid Glass Dark
+   ========================================================================== */
+html[data-app="1"][data-theme="dark"] {
+  --lg-canvas: #000000;
+  --lg-grouped: #0A0A0A;
+  --lg-surface: rgba(28, 28, 30, 0.92);
+  --lg-surface-elevated: rgba(36, 36, 38, 0.98);
+
+  --lg-ink: #FFFFFF;
+  --lg-ink-2: #98989D;
+  --lg-ink-3: #636366;
+
+  --lg-glass-chrome: rgba(28, 28, 30, 0.78);
+  --lg-glass-surface: rgba(36, 36, 38, 0.85);
+  --lg-glass-thin: rgba(44, 44, 46, 0.7);
+  --lg-glass-ultra: rgba(44, 44, 46, 0.55);
+
+  --lg-edge: 1px solid rgba(255, 255, 255, 0.12);
+  --lg-edge-strong: 1px solid rgba(255, 255, 255, 0.18);
+  --lg-edge-inner: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --lg-edge-inner-soft: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --lg-shadow-chrome: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+  --lg-shadow-card: 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+  --lg-shadow-pop: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+  --lg-shadow-fab: 0 6px 20px rgba(255,204,0,0.35), 0 2px 8px rgba(0,0,0,0.4);
+
+  --ix-canvas: #000;
+  --ix-grouped: #0A0A0A;
+  --ix-surface: #1C1C1E;
+  --ix-raise: #2C2C2E;
+  --ix-hairline: rgba(255,255,255,0.1);
+  --ix-hairline-strong: rgba(255,255,255,0.16);
+  --ix-ink: #fff;
+  --ix-ink-2: #98989D;
+  --ix-ink-3: #636366;
+
+  color-scheme: dark;
+}
+
+html[data-app="1"][data-theme="dark"] body {
+  background: #000;
+}
+
+html[data-app="1"][data-theme="dark"] .card,
+html[data-app="1"][data-theme="dark"] .set-card {
+  background: #1C1C1E !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+html[data-app="1"][data-theme="dark"] .bubble-ai {
+  background: rgba(44,44,46,0.95) !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+html[data-app="1"][data-theme="dark"] .seg,
+html[data-app="1"][data-theme="dark"] .tabs-bar {
+  background: rgba(255,255,255,0.1) !important;
+}
+
+html[data-app="1"][data-theme="dark"] .seg > button.active,
+html[data-app="1"][data-theme="dark"] .tabs-bar > .tab.active {
+  background: rgba(255,255,255,0.9) !important;
+  color: #000 !important;
+}
+
+html[data-app="1"][data-theme="dark"] .app-create-row {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.1);
+}
+
+html[data-app="1"][data-theme="dark"] .app-create-row .ac-tx b { color: #fff; }
+html[data-app="1"][data-theme="dark"] .app-create-row .ac-tx small { color: #98989D; }
+
+html[data-app="1"][data-theme="dark"] input[type="text"],
+html[data-app="1"][data-theme="dark"] input[type="search"],
+html[data-app="1"][data-theme="dark"] textarea {
+  background: rgba(44,44,46,0.8) !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+html[data-app="1"][data-theme="dark"] .qa-settings-list {
+  background: #1C1C1E !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+html[data-app="1"][data-theme="dark"] .dock-ink {
+  background: rgba(255,255,255,0.15);
+}
+
+html[data-app="1"][data-theme="dark"] .app-fab.open {
+  background: linear-gradient(145deg, #3A3A3C 0%, #2C2C2E 100%);
+  color: #fff;
+}
+
+html[data-app="1"][data-theme="dark"] .app-sheet-grip {
+  background: rgba(255,255,255,0.2);
+}
+
+/* 暗色发现流（保持全黑立绘沉浸） */
+html[data-app="1"][data-theme="dark"] .qa-discover-page {
+  background: #000;
+}
+
+html[data-app="1"][data-perf="lite"] .app-fab,
+html[data-app="1"][data-perf="lite"] .btn.primary {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
