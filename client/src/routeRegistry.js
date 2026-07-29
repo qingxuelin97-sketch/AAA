@@ -41,10 +41,9 @@ export const APP_ROUTE_REGISTRY = Object.freeze([
   }),
 
   R('/app-controls', { parent: '/today', tab: '/today', dock: false, refresh: 'none' }),
-  R('/chats/:id', {
-    parent: '/messages', tab: '/messages', material: 'clear', contentMaterial: 'standard',
-    referenceScreen: APP_REFERENCE_SCREENS.chat, statusBar: 'immersive',
-  }),
+  // Chat intentionally retains the main-branch surface. It still participates
+  // in the shared App shell, but does not opt into a Catbox reference skin.
+  R('/chats/:id', { parent: '/messages', tab: '/messages', statusBar: 'immersive' }),
   R('/chats', { parent: '/messages', tab: '/messages' }),
   R('/group/:id', { parent: '/groups', tab: '/messages' }),
   R('/groups', { parent: '/messages', tab: '/messages' }),

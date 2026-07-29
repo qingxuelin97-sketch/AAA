@@ -666,13 +666,15 @@ async function captureCatboxScreens(browser, base, {
     viewport: { width, height },
   });
   const screens = [
-    ['/today', '.apphome', 'today'],
-    ['/', '.qa-discover-page', 'discover'],
-    ['/messages', '.qa-messages-page', 'messages'],
-    ['/me', '.qa-profile', 'profile'],
-    ['/chats/1', '.catbox-chat-composer', 'chat'],
+    ['/today', '.apphome', 'today', true],
+    ['/', '.qa-discover-page', 'discover', true],
+    ['/messages', '.qa-messages-page', 'messages', true],
+    ['/me', '.qa-profile', 'profile', true],
+    // Chat is deliberately the main-branch surface; only the shared App shell
+    // semantics are asserted here.
+    ['/chats/1', '.qa-chat-composer', 'chat', false],
   ];
-  for (const [route, selector, name] of screens) {
+  for (const [route, selector, name, catboxReference] of screens) {
     await visit(page, route, selector);
     await settlePage(page);
     await pageQualityAssertions(page, `${name} ${width}x${height} ${theme}`);
@@ -684,7 +686,12 @@ async function captureCatboxScreens(browser, base, {
         contentMaterial: root?.dataset.appContentMaterial || '',
       };
     });
-    assert(semantics.reference.startsWith('catbox-'), `${name} 缺少 Catbox reference-screen 语义`, JSON.stringify(semantics));
+    if (catboxReference) {
+      assert(semantics.reference.startsWith('catbox-'), `${name} 缺少 Catbox reference-screen 语义`, JSON.stringify(semantics));
+    } else {
+      assert(!semantics.reference && semantics.material === 'standard' && semantics.contentMaterial === 'standard',
+        `${name} must retain the main-branch route material contract`, JSON.stringify(semantics));
+    }
     assert(semantics.material && semantics.contentMaterial, `${name} 缺少路由材质语义`, JSON.stringify(semantics));
     await saveScreenshot(page, `${name}-${width}x${height}-${theme}.png`);
   }

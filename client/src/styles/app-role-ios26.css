@@ -7,16 +7,12 @@
  * stable. Every selector is fenced to the native App shell.
  */
 
-html[data-app="1"] {
+html[data-app="1"] .app-root[data-reference-screen][data-app-material="standard"] .app-main,
+html[data-app="1"] .app-root[data-reference-screen][data-app-material="regular"] .app-main {
   background: var(--ix-canvas);
 }
 
-html[data-app="1"] .app-root[data-app-material="standard"] .app-main,
-html[data-app="1"] .app-root[data-app-material="regular"] .app-main {
-  background: var(--ix-canvas);
-}
-
-html[data-app="1"] .app-root[data-app-material="clear"] .app-main {
+html[data-app="1"] .app-root[data-reference-screen][data-app-material="clear"] .app-main {
   background: transparent;
 }
 
@@ -85,7 +81,7 @@ html[data-app="1"] .app-fab {
 }
 
 /* Sheets are functional chrome; their contents are standard surfaces. */
-html[data-app="1"] :where(.app-sheet, .msgs-delete-sheet, .chat-menu, .chat-details, .call-screen) {
+html[data-app="1"] :where(.app-sheet, .msgs-delete-sheet) {
   border: 1px solid var(--ix-material-line);
   background: var(--ix-material-regular);
   box-shadow: var(--ix-material-shadow);
@@ -279,31 +275,6 @@ html[data-app="1"] :where(.msgs-tabs, .pf-quick) {
   backdrop-filter: var(--ix-blur-s);
 }
 
-/* Chat: clear media header, stable standard message content, tactile actions. */
-html[data-app="1"] .qa-chat-page .qa-chat-header,
-html[data-app="1"] .qa-chat-page .qa-chat-header-actions {
-  border-color: rgb(255 255 255 / 22%);
-  background: rgb(6 12 14 / 34%);
-  -webkit-backdrop-filter: var(--ix-blur-s);
-  backdrop-filter: var(--ix-blur-s);
-}
-
-html[data-app="1"] .qa-chat-main .chat-scroll {
-  overscroll-behavior-y: contain;
-}
-
-html[data-app="1"] .qa-chat-main :where(.msg.assistant .bubble, .msg.user .bubble) {
-  box-shadow: 0 1px 0 rgb(255 255 255 / 18%) inset, 0 6px 18px rgb(0 0 0 / 12%);
-}
-
-html[data-app="1"] .qa-chat-main .msg-acts {
-  opacity: .82;
-}
-
-html[data-app="1"] .qa-chat-main .msg-acts :where(button, .speak):active {
-  transform: scale(var(--ix-press-scale));
-}
-
 /* System settings: remove optical effects, preserve hierarchy and contrast. */
 @media (prefers-reduced-transparency: reduce) {
   html[data-app="1"] :where(.qa-material, [data-app-material="regular"]:not(.app-root), .app-tabbar, .app-sheet, .msgs-tabs, .pf-quick) {
@@ -314,7 +285,7 @@ html[data-app="1"] .qa-chat-main .msg-acts :where(button, .speak):active {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-app="1"] :where(.app-tabbar .app-tab, .app-fab, .feed-action, .fd-action, .fd2-action, .msg-acts button) {
+  html[data-app="1"] :where(.app-tabbar .app-tab, .app-fab, .feed-action, .fd-action, .fd2-action) {
     transition: none !important;
   }
 }

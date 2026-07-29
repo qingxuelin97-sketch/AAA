@@ -10,10 +10,6 @@ export const APP_ROLE_GESTURES = Object.freeze({
   doubleTapLike: Object.freeze({
     maxIntervalMs: 320,
   }),
-  messageLongPress: Object.freeze({
-    ms: 450,
-    moveTol: 10,
-  }),
   cardHistoryPauseMs: 600,
 });
 
@@ -22,7 +18,6 @@ export const APP_REFERENCE_SCREENS = Object.freeze({
   discover: 'catbox-discover',
   messages: 'catbox-messages',
   profile: 'catbox-profile',
-  chat: 'catbox-chat',
   shell: 'catbox-shell',
 });
 

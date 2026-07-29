@@ -184,9 +184,9 @@
     {
       "id": "chat",
       "treatment": {
-        "structure": "rewrite",
-        "behavior": "port",
-        "approvedAssets": "reuse"
+        "structure": "main-baseline",
+        "behavior": "main-baseline",
+        "approvedAssets": "reference-only"
       },
       "apkClasses": [
         "com.story.ai.biz.botpartner.ui.BotPartnerActivity",
@@ -203,32 +203,12 @@
         {
           "path": "client/src/pages/Chat.jsx",
           "export": "Chat"
-        },
-        {
-          "path": "client/src/components/catbox/CatboxChat.jsx",
-          "export": "CatboxChatMediaHeader"
-        },
-        {
-          "path": "client/src/components/catbox/CatboxChat.jsx",
-          "export": "CatboxChatMessageFrame"
-        },
-        {
-          "path": "client/src/components/catbox/CatboxChat.jsx",
-          "export": "CatboxChatActionBar"
-        },
-        {
-          "path": "client/src/components/catbox/CatboxChat.jsx",
-          "export": "CatboxChatComposerSurface"
-        },
-        {
-          "path": "client/src/components/catbox/CatboxLottie.jsx",
-          "export": "CatboxLottie"
         }
       ],
       "tests": [
         {
           "path": "client/app-test.mjs",
-          "contract": "Chat long-press, action order, and media contracts"
+          "contract": "Main Chat long-press, draft, streaming, and message action contracts"
         },
         {
           "path": "client/apk-provenance-test.mjs",
@@ -236,7 +216,7 @@
         },
         {
           "path": "server/quiet-aqua-e2e.mjs",
-          "contract": "Media header, action order, composer, and viewport visual capture"
+          "contract": "Main Chat header, composer, and viewport visual capture"
         }
       ]
     },

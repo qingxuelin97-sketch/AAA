@@ -39,7 +39,8 @@ assert.equal(getAppRoute('/').material, 'clear', 'Discover must own a clear medi
 assert.equal(getAppRoute('/today').material, 'regular', 'Today must own regular navigation chrome');
 assert.equal(getAppRoute('/messages').material, 'regular', 'Messages must own regular navigation chrome');
 assert.equal(getAppRoute('/me').material, 'regular', 'Profile must own regular navigation chrome');
-assert.equal(chatRoute.material, 'clear', 'Chat media headers must own clear chrome');
+assert.equal(chatRoute.material, 'standard', 'Chat must retain the main-branch route material');
+assert.equal(chatRoute.contentMaterial, 'standard', 'Chat must retain standard content material from main');
 assert.deepEqual(
   [
     getAppRoute('/today').referenceScreen,
@@ -48,21 +49,20 @@ assert.deepEqual(
     getAppRoute('/me').referenceScreen,
     chatRoute.referenceScreen,
   ],
-  ['catbox-home', 'catbox-discover', 'catbox-messages', 'catbox-profile', 'catbox-chat'],
-  'the five routed Catbox-first surfaces must expose a stable reference-screen contract',
+  ['catbox-home', 'catbox-discover', 'catbox-messages', 'catbox-profile', null],
+  'the four Catbox-first routes must expose a stable reference-screen contract while Chat stays on main',
 );
 assert.deepEqual(
   [getAppRoute('/').contentMaterial, chatRoute.contentMaterial],
   ['clear', 'standard'],
-  'Discover stays full-bleed while immersive Chat keeps standard message content',
+  'Discover stays full-bleed while main Chat keeps standard message content',
 );
 assert.equal(APP_ROLE_GESTURES.doubleTapLike.maxIntervalMs, 320, 'role-feed double tap timing must remain deterministic');
-assert.equal(APP_ROLE_GESTURES.messageLongPress.ms, 450, 'message long press must remain touch-friendly');
 assert.deepEqual([...APP_DISCOVER_ACTIONS], ['like', 'favorite', 'comments', 'share', 'history'], 'role-feed action rail contract must stay ordered');
 assert.deepEqual(
   [...APP_CHAT_MESSAGE_ACTIONS],
   ['like', 'dislike', 'report', 'share', 'replay', 'chatShare'],
-  'ported chat message actions must retain the approved reference order',
+  'the archived APK chat action reference must retain its approved order',
 );
 assert.deepEqual(
   { parent: getAppRoute('/character/7/edit').parent, dirty: getAppRoute('/character/7/edit').dirty },
@@ -135,7 +135,6 @@ const overlayHooks = await readFile(new URL('./src/chat/hooks.js', import.meta.u
 const realtimeSource = await readFile(new URL('./src/realtime.jsx', import.meta.url), 'utf8');
 const layoutSource = await readFile(new URL('./src/components/AppLayout.jsx', import.meta.url), 'utf8');
 const catboxDockSource = await readFile(new URL('./src/components/catbox/CatboxDock.jsx', import.meta.url), 'utf8');
-const catboxChatSource = await readFile(new URL('./src/components/catbox/CatboxChat.jsx', import.meta.url), 'utf8');
 const catboxLottieSource = await readFile(new URL('./src/components/catbox/CatboxLottie.jsx', import.meta.url), 'utf8');
 const catboxHomeSource = await readFile(new URL('./src/components/catbox/HomeStoryDeck.jsx', import.meta.url), 'utf8');
 const catboxDiscoverRailSource = await readFile(new URL('./src/components/catbox/DiscoverActionRail.jsx', import.meta.url), 'utf8');
@@ -164,7 +163,6 @@ const quietControls = await readFile(new URL('./src/styles/app-controls.css', im
 const quietPages = await readFile(new URL('./src/styles/app-pages-quiet-aqua.css', import.meta.url), 'utf8');
 const quietExperience = await readFile(new URL('./src/styles/app-experience-v3.css', import.meta.url), 'utf8');
 const roleIosCss = await readFile(new URL('./src/styles/app-role-ios26.css', import.meta.url), 'utf8');
-const catboxChatCss = await readFile(new URL('./src/styles/app-catbox-chat.css', import.meta.url), 'utf8');
 const quietControlsNoComments = quietControls.replace(/\/\*[\s\S]*?\*\//g, '');
 const quietPagesNoComments = quietPages.replace(/\/\*[\s\S]*?\*\//g, '');
 const quietExperienceNoComments = quietExperience.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -371,15 +369,13 @@ assert.match(discoverSource, /<DiscoverActionRail/, 'Discover must render the mi
 assert.match(discoverSource, /<CatboxLottie[\s\S]*name="doubleTapLike"/, 'Discover must play the migrated double-tap animation');
 assert.doesNotMatch(discoverSource, /fd2-acts--legacy/, 'the obsolete Discover action rail must leave the App DOM');
 assert.match(catboxDiscoverRailSource, /className="fd2-acts cbx-action-rail"[\s\S]*className=\{`fd2-act/, 'the live Discover rail must preserve the fd2 action hooks');
-assert.match(chatSource, /HeaderSurface = app \? CatboxChatMediaHeader[\s\S]*<HeaderSurface/, 'immersive Chat must render the migrated media header');
-assert.match(chatSource, /ComposerSurface = app \? CatboxChatComposerSurface[\s\S]*<ComposerSurface/, 'immersive Chat must render the migrated composer');
-assert.match(chatSource, /MessageFrame = app \? CatboxChatMessageFrame[\s\S]*<MessageFrame/, 'immersive Chat must render migrated message cards');
-assert.match(chatSource, /<CatboxChatActionBar/, 'immersive Chat must render the APK-ordered action bar');
-assert.match(catboxChatSource, /variant="clear"[\s\S]*variant="regular"[\s\S]*variant="standard"/, 'Chat must map media, transient chrome, and messages to clear/regular/standard materials');
-assert.match(catboxChatSource, /APP_CHAT_MESSAGE_ACTIONS\.map/, 'the rendered Chat action bar must consume the APK-derived action order');
+assert.doesNotMatch(chatSource, /CatboxChat|CatboxLottie|APP_ROLE_GESTURES/, 'Chat must not opt into the Catbox migration layer after the main-branch restore');
+assert.match(chatSource, /const ChatHeader = app \? 'header' : 'div'[\s\S]*<ChatHeader/, 'Chat must retain the main header surface');
+assert.match(chatSource, /const ChatComposer = app \? 'footer' : 'div'[\s\S]*<ChatComposer/, 'Chat must retain the main composer surface');
+assert.match(chatSource, /onDoubleClick=\{m\.role === 'assistant' && m\.id \? \(\) => react\(m, '❤️'\)/, 'Chat must retain the main double-click reaction');
+assert.match(chatSource, /<div id=\{m\.id \? 'msg-' \+ m\.id : undefined\}[\s\S]*<div className="msg-acts">/, 'Chat must retain the main message frame and action row');
 assert.match(catboxLottieSource, /lottie_light[\s\S]*prefers-reduced-motion[\s\S]*fallback/, 'reference animation playback must use the light runtime and a reduced-motion fallback');
-assert.match(catboxChatCss, /min-(?:width|height): 44px/, 'Catbox Chat actions must preserve the 44px touch-target floor');
-for (const [name, css] of [['role', roleIosCss], ['chat', catboxChatCss], ['messages/profile', messageProfileCss]]) {
+for (const [name, css] of [['role', roleIosCss], ['messages/profile', messageProfileCss]]) {
   assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /(?:^|[;{]\s*|\n\s*)(--(?!ix-)[a-z0-9-]+)\s*:/gm, `Catbox ${name} CSS must consume the IX token authority rather than define a parallel token set`);
 }
 assert.match(chatSource, /if \(!app \|\| !id \|\| loc\.state\?\.draft\) return;/, 'draft restore must stay App-gated and yield to one-shot prefills');
@@ -692,7 +688,7 @@ assert.match(catboxDockSource, /AppMaterialSurface[\s\S]*variant="regular"/, 'Do
 assert.match(materialSurfaceSource, /standard.*regular.*clear/, 'material primitive must expose standard, regular, and clear variants');
 assert.match(materialSurfaceSource, /document\.documentElement\.dataset\.app === '1'/, 'material primitive must stay transparent outside the App shell');
 assert.match(discoverSource, /APP_ROLE_GESTURES\.doubleTapLike/, 'Discover must consume the migrated double-tap gesture contract');
-assert.match(chatSource, /APP_ROLE_GESTURES\.messageLongPress/, 'Chat must consume the migrated long-press gesture contract');
+assert.match(chatSource, /const bindLongPress = useLongPress\(\(m\) => \{[\s\S]*setSheetFor\(m\);[\s\S]*\}\);/, 'Chat must retain the main long-press handler');
 assert.match(roleIosCss, /html\[data-app="1"\]/, 'the role/iOS 26 layer must be App-scoped');
 assert.doesNotMatch(roleIosCss.replace(/\/\*[\s\S]*?\*\//g, ''), /(^|\})\s*:root\b/m, 'the role/iOS 26 layer must not leak a Web :root selector');
 const forbiddenReferencePattern = new RegExp(

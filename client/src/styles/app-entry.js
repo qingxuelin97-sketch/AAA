@@ -24,7 +24,5 @@ import './app-ix-pages-b.css';
 import './app-ix-pages-c.css';
 // IX-6/IX-7 tail: long-tail pages, states, and migrated stage composition.
 import './app-ix-pages-d.css';
-
 // Authorized role-discovery interaction reference + iOS 26 material layer.
 import './app-role-ios26.css';
-import './app-catbox-chat.css';

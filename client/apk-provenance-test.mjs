@@ -43,7 +43,7 @@ assert.ok(
 assert.deepEqual(
   chatActionConfig.actionBar.map(({ id, show }) => ({ id, show })),
   APP_CHAT_MESSAGE_ACTIONS.map((id) => ({ id, show: true })),
-  'runtime chat action order must agree with the verbatim APK config',
+  'archived chat action order must agree with the verbatim APK config',
 );
 
 for (const sample of provenance.selectedLotties) {
@@ -111,13 +111,16 @@ const minimumComponents = {
   discover: 5,
   messages: 2,
   profile: 2,
-  chat: 6,
+  chat: 1,
   shell: 4,
 };
 for (const surface of screenMapping.surfaces) {
+  const expectedTreatment = surface.id === 'chat'
+    ? { structure: 'main-baseline', behavior: 'main-baseline', approvedAssets: 'reference-only' }
+    : { structure: 'rewrite', behavior: 'port', approvedAssets: 'reuse' };
   assert.deepEqual(
     surface.treatment,
-    { structure: 'rewrite', behavior: 'port', approvedAssets: 'reuse' },
+    expectedTreatment,
     `${surface.id} must state the reuse/port/rewrite treatment`,
   );
   assert.ok(surface.apkClasses.length > 0, `${surface.id} must map at least one APK class`);

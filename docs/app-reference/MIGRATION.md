@@ -13,16 +13,24 @@ interaction boundary, but did not establish a reproducible APK asset trail.
 The current migration is gated by `client/app-test.mjs`,
 `client/apk-provenance-test.mjs`, and `docs/app-reference/apk-provenance.json`:
 it pins the APK SHA-256 and version, checks the allowlisted asset hashes,
-locks the chat action order, validates the six-surface class/layout/component
-mapping, and rejects APK/native/vendor artifact types and vendor namespaces
-from runtime source. The raw APK and DEX payloads remain outside the checkout.
+locks the archived chat action reference, validates the six-surface
+class/layout/component mapping, and rejects APK/native/vendor artifact types
+and vendor namespaces from runtime source. The raw APK and DEX payloads remain
+outside the checkout.
+
+The Chat surface is an explicit exception: it was restored byte-for-byte to
+the `main` branch implementation. Its Catbox wrapper, action rail, animation
+injection, and dedicated CSS were removed. The APK chat configuration remains
+in the provenance allowlist as reference evidence only and is not rendered by
+the App.
 
 ## Reuse / port boundary
 
 | Reference material | AAA treatment |
 | --- | --- |
 | Media-first role cards, action-rail ordering, story pacing | **Port** into the existing Discover flow |
-| Double-tap like, message long-press timing, and chat action ordering | **Reuse as sanitized behavior contracts** in `client/src/appReference.js` |
+| Discover double-tap timing and feed gestures | **Reuse as sanitized behavior contracts** in `client/src/appReference.js` |
+| Chat UI and behavior | **Keep the `main` baseline**; APK chat actions remain **reference-only** |
 | Seven allowlisted first-party Lottie JSON assets | **Reuse** in AAA, pinned by `apk-provenance.json` |
 | Default chat action JSON | **Reuse verbatim** in `client/src/assets/app-reference/`, with its APK path and hash pinned |
 | Selected compiled Android layouts | **Decode and index** outside Git as geometry evidence; **rewrite** into AAA components |
