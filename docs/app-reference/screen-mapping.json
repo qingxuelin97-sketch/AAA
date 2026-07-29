@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "surfaces": [
+    {
+      "id": "today",
+      "treatment": {
+        "structure": "rewrite",
+        "behavior": "port",
+        "approvedAssets": "reuse"
+      },
+      "apkClasses": [
+        "com.story.ai.biz.home.ui.HomeActivity",
+        "com.story.ai.biz.home.homepage.HomeFeedFragment"
+      ],
+      "apkLayouts": [
+        "res/layout/view_new_home_bar.xml",
+        "res/layout/home_moments_layout.xml",
+        "res/layout/home_fragment_feed_item_feedback.xml"
+      ],
+      "aaaComponents": [
+        {
+          "path": "client/src/pages/AppHome.jsx",
+          "export": "AppHome"
+        },
+        {
+          "path": "client/src/components/catbox/HomeStoryDeck.jsx",
+          "export": "HomeStoryDeck"
+        }
+      ],
+      "tests": [
+        {
+          "path": "client/app-test.mjs",
+          "contract": "Today interaction and content contracts"
+        },
+        {
+          "path": "client/apk-provenance-test.mjs",
+          "contract": "APK source and mapping integrity"
+        },
+        {
+          "path": "server/quiet-aqua-e2e.mjs",
+          "contract": "Today hierarchy, story entry, and viewport visual capture"
+        }
+      ]
+    },
+    {
+      "id": "discover",
+      "treatment": {
+        "structure": "rewrite",
+        "behavior": "port",
+        "approvedAssets": "reuse"
+      },
+      "apkClasses": [
+        "com.story.ai.biz.home.homepage.HomeFeedFragment",
+        "com.story.ai.biz.search.ui.SearchMainActivity",
+        "com.story.ai.biz.game_bot.home.StoryGameActivity",
+        "com.story.ai.biz.drama.detail.DramaActivity"
+      ],
+      "apkLayouts": [
+        "res/layout/search_discover_activity.xml",
+        "res/layout/search_discover_fragment.xml",
+        "res/layout/search_discover_header_view.xml",
+        "res/layout/search_discover_item.xml"
+      ],
+      "aaaComponents": [
+        {
+          "path": "client/src/pages/DiscoverFeed.jsx",
+          "export": "DiscoverFeed"
+        },
+        {
+          "path": "client/src/components/catbox/DiscoverActionRail.jsx",
+          "export": "DiscoverActionRail"
+        },
+        {
+          "path": "client/src/components/catbox/DiscoverCommentSheet.jsx",
+          "export": "DiscoverCommentSheet"
+        },
+        {
+          "path": "client/src/components/catbox/DiscoverShareSheet.jsx",
+          "export": "DiscoverShareSheet"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxLottie.jsx",
+          "export": "CatboxLottie"
+        }
+      ],
+      "tests": [
+        {
+          "path": "client/app-test.mjs",
+          "contract": "Discover gesture and action rail contracts"
+        },
+        {
+          "path": "client/apk-provenance-test.mjs",
+          "contract": "APK source and mapping integrity"
+        },
+        {
+          "path": "server/quiet-aqua-e2e.mjs",
+          "contract": "Double-tap, sheets, action rail, and viewport visual capture"
+        }
+      ]
+    },
+    {
+      "id": "messages",
+      "treatment": {
+        "structure": "rewrite",
+        "behavior": "port",
+        "approvedAssets": "reuse"
+      },
+      "apkClasses": [
+        "com.story.ai.biz.botpartner.ui.BotPartnerActivity",
+        "com.story.ai.biz.botpartner.ui.creating.ChatIMFragment"
+      ],
+      "apkLayouts": [
+        "res/layout/fragment_recent_chat.xml",
+        "res/layout/list_item_recent_chat.xml"
+      ],
+      "aaaComponents": [
+        {
+          "path": "client/src/pages/Messages.jsx",
+          "export": "Messages"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxMessageNoticeGroup.jsx",
+          "export": "CatboxMessageNoticeGroup"
+        }
+      ],
+      "tests": [
+        {
+          "path": "client/app-test.mjs",
+          "contract": "Messages rows, notices, ordering, and draft contracts"
+        },
+        {
+          "path": "client/apk-provenance-test.mjs",
+          "contract": "APK source and mapping integrity"
+        },
+        {
+          "path": "server/quiet-aqua-e2e.mjs",
+          "contract": "Segment, unread, long-press, and viewport visual capture"
+        }
+      ]
+    },
+    {
+      "id": "profile",
+      "treatment": {
+        "structure": "rewrite",
+        "behavior": "port",
+        "approvedAssets": "reuse"
+      },
+      "apkClasses": [
+        "com.story.ai.commercial.member.membercenter.view.MemberCenterActivity"
+      ],
+      "apkLayouts": [
+        "res/layout/user_profile_root_layout.xml",
+        "res/layout/user_profile_my_user_info_header_view.xml",
+        "res/layout/user_profile_item_jin_gang.xml",
+        "res/layout/member_center_layout.xml",
+        "res/layout/member_center_during_fragment_layout.xml",
+        "res/layout/member_center_expire_fragment_layout.xml"
+      ],
+      "aaaComponents": [
+        {
+          "path": "client/src/pages/AppProfile.jsx",
+          "export": "AppProfile"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxProfileQuickRail.jsx",
+          "export": "CatboxProfileQuickRail"
+        }
+      ],
+      "tests": [
+        {
+          "path": "client/app-test.mjs",
+          "contract": "Profile statistics, quick rail, and membership contracts"
+        },
+        {
+          "path": "client/apk-provenance-test.mjs",
+          "contract": "APK source and mapping integrity"
+        },
+        {
+          "path": "server/quiet-aqua-e2e.mjs",
+          "contract": "Profile hierarchy and viewport visual capture"
+        }
+      ]
+    },
+    {
+      "id": "chat",
+      "treatment": {
+        "structure": "rewrite",
+        "behavior": "port",
+        "approvedAssets": "reuse"
+      },
+      "apkClasses": [
+        "com.story.ai.biz.botpartner.ui.BotPartnerActivity",
+        "com.story.ai.biz.botpartner.ui.creating.ChatIMFragment",
+        "com.story.ai.biz.game_bot.home.StoryGameActivity"
+      ],
+      "apkLayouts": [
+        "res/layout/mxchat_activity_main.xml",
+        "res/layout/chat_max_root_fragment_layout.xml",
+        "res/layout/chat_mx_chat_list_layout.xml",
+        "res/layout/fragment_main_bot_im.xml"
+      ],
+      "aaaComponents": [
+        {
+          "path": "client/src/pages/Chat.jsx",
+          "export": "Chat"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxChat.jsx",
+          "export": "CatboxChatMediaHeader"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxChat.jsx",
+          "export": "CatboxChatMessageFrame"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxChat.jsx",
+          "export": "CatboxChatActionBar"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxChat.jsx",
+          "export": "CatboxChatComposerSurface"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxLottie.jsx",
+          "export": "CatboxLottie"
+        }
+      ],
+      "tests": [
+        {
+          "path": "client/app-test.mjs",
+          "contract": "Chat long-press, action order, and media contracts"
+        },
+        {
+          "path": "client/apk-provenance-test.mjs",
+          "contract": "APK source and mapping integrity"
+        },
+        {
+          "path": "server/quiet-aqua-e2e.mjs",
+          "contract": "Media header, action order, composer, and viewport visual capture"
+        }
+      ]
+    },
+    {
+      "id": "shell",
+      "treatment": {
+        "structure": "rewrite",
+        "behavior": "port",
+        "approvedAssets": "reuse"
+      },
+      "apkClasses": [
+        "com.story.ai.biz.home.ui.HomeActivity",
+        "com.story.ai.biz.creation.ui.UGCCreationActivity"
+      ],
+      "apkLayouts": [
+        "res/layout/home_splash_layout.xml"
+      ],
+      "aaaComponents": [
+        {
+          "path": "client/src/components/AppLayout.jsx",
+          "export": "AppLayout"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxDock.jsx",
+          "export": "CatboxDock"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxDock.jsx",
+          "export": "CatboxSheetFrame"
+        },
+        {
+          "path": "client/src/components/catbox/CatboxDock.jsx",
+          "export": "useCatboxChromeState"
+        }
+      ],
+      "tests": [
+        {
+          "path": "client/app-test.mjs",
+          "contract": "Dock, create sheet, route, and shell chrome contracts"
+        },
+        {
+          "path": "client/apk-provenance-test.mjs",
+          "contract": "APK source and mapping integrity"
+        },
+        {
+          "path": "server/quiet-aqua-e2e.mjs",
+          "contract": "Dock, create sheet, keyboard, safe area, and viewport visual capture"
+        }
+      ]
+    }
+  ]
+}

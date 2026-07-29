@@ -24,6 +24,8 @@ ios/
 *.apk
 *.aab
 *.ipa
+__pycache__/
+*.py[cod]
 server/sec-test.tmp.sqlite*
 server/sec-test.interceptor.mjs
 server/diagnostic.tmp.sqlite*

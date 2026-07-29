@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "sourceApk": {
+    "path": "C:\\Users\\linhy\\Downloads\\base().apk",
+    "sha256": "4947e594de9465d0e1be108f978bc84d5e7ce7130c611a905c18bff37effdb66",
+    "bytes": 179035901
+  },
+  "sourcePackage": {
+    "name": "com.parallel.odyssey",
+    "versionCode": "2190050",
+    "versionName": "2.19.0"
+  },
+  "launchableActivity": "com.story.ai.biz.home.ui.HomeActivity",
+  "extractionScript": "scripts/extract-maoxiang-apk-reference.py",
+  "licenseStatus": "authorized selected first-party UI and interaction migration",
+  "selectedAssets": [
+    {
+      "kind": "json-config",
+      "localPath": "client/src/assets/app-reference/chat-item-action-config-default.json",
+      "apkPath": "assets/chat_item_action_config_default.json",
+      "sha256": "91a0161a19c7afb07e272ddc22cc1b77f30add1fe1c2eee8c746841058fb85ca",
+      "bytes": 348
+    }
+  ],
+  "selectedLotties": [
+    {
+      "localPath": "client/public/reference-lottie/gesture-double-tap.json",
+      "apkPath": "assets/gesture_guide/doubleTap.json",
+      "sha256": "a48aff8ba13719174429219ca82d7216699f849436e2e5d80d7036d18bbee30b",
+      "bytes": 17017
+    },
+    {
+      "localPath": "client/public/reference-lottie/gesture-long-press.json",
+      "apkPath": "assets/gesture_guide/longPress.json",
+      "sha256": "eb87512e471a07e78b72e12be5f28b050fc1a74bdec3d0a17f1b14a8c4713c80",
+      "bytes": 11859
+    },
+    {
+      "localPath": "client/public/reference-lottie/gesture-swipe-left.json",
+      "apkPath": "assets/gesture_guide/swipeLeft.json",
+      "sha256": "216f59750455c898cc8c257f5595d8d916aabada770e96fdba8372021c56898e",
+      "bytes": 6692
+    },
+    {
+      "localPath": "client/public/reference-lottie/gesture-swipe-up.json",
+      "apkPath": "assets/gesture_guide/swipeUp.json",
+      "sha256": "a16945f9c57a608e0aadf7e37aa2a6b77daefd6e69c53caed6343ee6a1bc8366",
+      "bytes": 7313
+    },
+    {
+      "localPath": "client/public/reference-lottie/chat-bubble-like.json",
+      "apkPath": "assets/like/chat_bubble_like.json",
+      "sha256": "7063680eaaaac6e6bc6c38bf7f384aa96318894f540c383ea5bc7cb70586d64b",
+      "bytes": 4630
+    },
+    {
+      "localPath": "client/public/reference-lottie/chat-bubble-dislike.json",
+      "apkPath": "assets/like/chat_bubble_dislike.json",
+      "sha256": "ee167e45fe1f2d945d7fdec2440e74855f9936206b9ddf58bd17492c3e958d84",
+      "bytes": 4630
+    },
+    {
+      "localPath": "client/public/reference-lottie/double-tap-like.json",
+      "apkPath": "assets/like/double_tap_like.json",
+      "sha256": "becdcd27f4c8ba37c0c5011470deda9a9a545a6766dc94603dc04a48e7258f9d",
+      "bytes": 18895
+    }
+  ],
+  "selectedLayouts": [
+    {
+      "id": "home-bar",
+      "surface": "today",
+      "apkPath": "res/layout/view_new_home_bar.xml",
+      "workOutput": "selected-layouts/home-bar.xmltree.txt",
+      "compiledSha256": "9bf19c528442e1a689cd60227add1abc18916d57cf57511072414b932dd387f8",
+      "decodedSha256": "e9b8b0177fbf5bc94b6eb901d93445a109ac538ae33df68e04acda9d8a761b39"
+    },
+    {
+      "id": "home-moments",
+      "surface": "today",
+      "apkPath": "res/layout/home_moments_layout.xml",
+      "workOutput": "selected-layouts/home-moments.xmltree.txt",
+      "compiledSha256": "265611a18dad72edea066ec42c0de421c269421d00d052ed7f324933b61ce504",
+      "decodedSha256": "ed3a4ab37f6e7554209b859586f39e2daa2c2a08de28595794a9987de33cd9e6"
+    },
+    {
+      "id": "home-feedback",
+      "surface": "today",
+      "apkPath": "res/layout/home_fragment_feed_item_feedback.xml",
+      "workOutput": "selected-layouts/home-feedback.xmltree.txt",
+      "compiledSha256": "8a886be8ab7ab7c3eeef863b224d515fda2e4d5ffa614d3354a85578c5adea17",
+      "decodedSha256": "f2b0cac003c2710bbd7cfe15dde578c7dab6819daa56628eafecbdb2b8680ff0"
+    },
+    {
+      "id": "discover-activity",
+      "surface": "discover",
+      "apkPath": "res/layout/search_discover_activity.xml",
+      "workOutput": "selected-layouts/discover-activity.xmltree.txt",
+      "compiledSha256": "0e2341baba4377f472588fcbe950206d3b8f856ad9bce782b3b70395409d315c",
+      "decodedSha256": "e0bda19feba7c95a380ad4cab9eaf97d55a66caf2d3088853c67a0c5d2e93915"
+    },
+    {
+      "id": "discover-fragment",
+      "surface": "discover",
+      "apkPath": "res/layout/search_discover_fragment.xml",
+      "workOutput": "selected-layouts/discover-fragment.xmltree.txt",
+      "compiledSha256": "42dd947fc77442e41e9e5b23e14920034570adfac50b7ea71d7ac342dd8b4bb1",
+      "decodedSha256": "7f7a2bef97cc6ef29f986695ebb4cee319aeb1eb48ade57f8bc66327bc009e0c"
+    },
+    {
+      "id": "discover-header",
+      "surface": "discover",
+      "apkPath": "res/layout/search_discover_header_view.xml",
+      "workOutput": "selected-layouts/discover-header.xmltree.txt",
+      "compiledSha256": "0e0d7aad4af2e73cb574a4cdb3189c2c3fbcf585103e7c0bb6b7f1447baf6c16",
+      "decodedSha256": "767a1c13f33bb3a75727668e20fcc549cc2d66592a42a7a9e162c189e6b9862c"
+    },
+    {
+      "id": "discover-item",
+      "surface": "discover",
+      "apkPath": "res/layout/search_discover_item.xml",
+      "workOutput": "selected-layouts/discover-item.xmltree.txt",
+      "compiledSha256": "e12fc288f5d4919cf9d228069beec516e8afbb5a672f414493a949284df9c033",
+      "decodedSha256": "dd9e7429b24db81cd4b942e06e3d3c1a4bf0085cf2ac6c84bf3de73b5a9ddf20"
+    },
+    {
+      "id": "messages-recent-list",
+      "surface": "messages",
+      "apkPath": "res/layout/fragment_recent_chat.xml",
+      "workOutput": "selected-layouts/messages-recent-list.xmltree.txt",
+      "compiledSha256": "28d97c364b6d23b8095fae7871bd9e662c8f246ad1ed06058b5d37502439591a",
+      "decodedSha256": "8f734429d99ddeb83d1e305c0fbe720ecd1cbc837936140d7749051a9d6f2afc"
+    },
+    {
+      "id": "messages-recent-row",
+      "surface": "messages",
+      "apkPath": "res/layout/list_item_recent_chat.xml",
+      "workOutput": "selected-layouts/messages-recent-row.xmltree.txt",
+      "compiledSha256": "7bdcd186bab4f76da0742aac1917c01d68984722207bcbb06e8b3e4d8becb344",
+      "decodedSha256": "51a2508be8ced3dd8dc7dc2b39c54c60e04a23876a8cd415f950f8435ea790b2"
+    },
+    {
+      "id": "chat-activity",
+      "surface": "chat",
+      "apkPath": "res/layout/mxchat_activity_main.xml",
+      "workOutput": "selected-layouts/chat-activity.xmltree.txt",
+      "compiledSha256": "27ad5db67d590cf74d2ee5553256756fc48df1aedfae2b13db03c2e0545495e5",
+      "decodedSha256": "456a2247df304027dc6e6516ae05796aa3d003826435f15fbbd1e3877d1c4a75"
+    },
+    {
+      "id": "chat-root",
+      "surface": "chat",
+      "apkPath": "res/layout/chat_max_root_fragment_layout.xml",
+      "workOutput": "selected-layouts/chat-root.xmltree.txt",
+      "compiledSha256": "2bf713e2a49c618dcbef298b22dca74078d3b0aa967fc4621291d256969fb7a6",
+      "decodedSha256": "faa2249e5565d42a79580d2a7e18f87a673ddc8768a1d6f15c1072ea0e6fe693"
+    },
+    {
+      "id": "chat-list",
+      "surface": "chat",
+      "apkPath": "res/layout/chat_mx_chat_list_layout.xml",
+      "workOutput": "selected-layouts/chat-list.xmltree.txt",
+      "compiledSha256": "ccdd6c39a9e741a6a7dfa2bb4608c625d59dda208fcca143da402fe3f4d7f799",
+      "decodedSha256": "56c113ff5b4f658b08c53675d6c56f3e5ea91477f1ea0584ca29d7c30083435c"
+    },
+    {
+      "id": "chat-im-fragment",
+      "surface": "chat",
+      "apkPath": "res/layout/fragment_main_bot_im.xml",
+      "workOutput": "selected-layouts/chat-im-fragment.xmltree.txt",
+      "compiledSha256": "0058d8900a0b70284926d24c0c285ca304a75d6cb274a9f468b6e4944525c2ac",
+      "decodedSha256": "f7d0f63486ea0f4c44d0f3d5e1f7ec4a93c72dcb935d3e868567c3de651bb30f"
+    },
+    {
+      "id": "member-profile-root",
+      "surface": "profile",
+      "apkPath": "res/layout/user_profile_root_layout.xml",
+      "workOutput": "selected-layouts/member-profile-root.xmltree.txt",
+      "compiledSha256": "692fc8e4375d185e0051dafb4d638bd526dc6a6865e0b7a9de9bc45c607e6793",
+      "decodedSha256": "66d157ba7980d4f8c22e345384025cdd1f875cb8edfa0e546654a0f8609ddf45"
+    },
+    {
+      "id": "member-profile-header",
+      "surface": "profile",
+      "apkPath": "res/layout/user_profile_my_user_info_header_view.xml",
+      "workOutput": "selected-layouts/member-profile-header.xmltree.txt",
+      "compiledSha256": "e8217715583918afb7ba491e29e4ffa210ff7c9f39dca47cd160da8c0d95a42d",
+      "decodedSha256": "7595b6f149e408009986fcf6d7c22b4e0d70d9edbc2368e68a2d6ae51490ed6a"
+    },
+    {
+      "id": "member-profile-item",
+      "surface": "profile",
+      "apkPath": "res/layout/user_profile_item_jin_gang.xml",
+      "workOutput": "selected-layouts/member-profile-item.xmltree.txt",
+      "compiledSha256": "e300d529c792d05b3e6f1a3ce2804a043ef528f8b5d1e1d23f4c843203f46715",
+      "decodedSha256": "fb9748a258fa97970716219bb59192ceed983c0b04d166c044aa7d66dfc7fb7f"
+    },
+    {
+      "id": "member-center",
+      "surface": "profile",
+      "apkPath": "res/layout/member_center_layout.xml",
+      "workOutput": "selected-layouts/member-center.xmltree.txt",
+      "compiledSha256": "d00e1402ae1e537a97c571ab5dcbb82195e1255ae7bc6b26a2740005ff7e60d4",
+      "decodedSha256": "1edbd62b236b216404f3601ce514a65dd2fc2965113f9978b04d0ea5fba97dac"
+    },
+    {
+      "id": "member-center-active",
+      "surface": "profile",
+      "apkPath": "res/layout/member_center_during_fragment_layout.xml",
+      "workOutput": "selected-layouts/member-center-active.xmltree.txt",
+      "compiledSha256": "8bb9786cb78fa4d3ff5e440d4e0991691524fed6f19d4edb1c0101f52e2c1098",
+      "decodedSha256": "5ca52428b17416cecf005eb1177d3a8a7f0a069a9532f0ca726e63f3f7c40e65"
+    },
+    {
+      "id": "member-center-expired",
+      "surface": "profile",
+      "apkPath": "res/layout/member_center_expire_fragment_layout.xml",
+      "workOutput": "selected-layouts/member-center-expired.xmltree.txt",
+      "compiledSha256": "0094a95ecc8375167b2b201b77320fa066704e8039f7e6bc8a098048c2826c53",
+      "decodedSha256": "1f44589af01ae48bf0c955167cfe4c75a31c7fd2350d4733b27c1a77d85c56e7"
+    },
+    {
+      "id": "home-shell-splash",
+      "surface": "shell",
+      "apkPath": "res/layout/home_splash_layout.xml",
+      "workOutput": "selected-layouts/home-shell-splash.xmltree.txt",
+      "compiledSha256": "f4a9955f1f0b3a0f102458988c23ce7cba6a8baae5b6d91a8739820d5d7e508a",
+      "decodedSha256": "e0e5bdaf047a19a58af9da96be7e0f3a0c1481a4faed76b7565439965db09f92"
+    }
+  ],
+  "dexClasses": {
+    "workOutput": "dex-class-index.json",
+    "buildToolsRevision": "35.0.0",
+    "targets": [
+      {
+        "name": "HomeActivity",
+        "fqcn": "com.story.ai.biz.home.ui.HomeActivity",
+        "kind": "activity",
+        "manifestDeclared": true,
+        "buildToolsRevision": "35.0.0",
+        "dexEntry": "classes17.dex"
+      },
+      {
+        "name": "HomeFeedFragment",
+        "fqcn": "com.story.ai.biz.home.homepage.HomeFeedFragment",
+        "kind": "fragment",
+        "manifestDeclared": false,
+        "buildToolsRevision": "35.0.0",
+        "dexEntry": "classes17.dex"
+      },
+      {
+        "name": "BotPartnerActivity",
+        "fqcn": "com.story.ai.biz.botpartner.ui.BotPartnerActivity",
+        "kind": "activity",
+        "manifestDeclared": true,
+        "buildToolsRevision": "35.0.0",
+        "dexEntry": "classes16.dex"
+      },
+      {
+        "name": "ChatIMFragment",
+        "fqcn": "com.story.ai.biz.botpartner.ui.creating.ChatIMFragment",
+        "kind": "fragment",
+        "manifestDeclared": false,
+        "buildToolsRevision": "35.0.0",
+        "dexEntry": "classes16.dex"
+      },
+      {
+        "name": "StoryGameActivity",
+        "fqcn": "com.story.ai.biz.game_bot.home.StoryGameActivity",
+        "kind": "activity",
+        "manifestDeclared": true,
+        "buildToolsRevision": "35.0.0",
+        "dexEntry": "classes16.dex"
+      },
+      {
+        "name": "DramaActivity",
+        "fqcn": "com.story.ai.biz.drama.detail.DramaActivity",
+        "kind": "activity",
+        "manifestDeclared": true,
+        "buildToolsRevision": "35.0.0",
+        "dexEntry": "classes16.dex"
+      },
+      {
+        "name": "UGCCreationActivity",
+        "fqcn": "com.story.ai.biz.creation.ui.UGCCreationActivity",
+        "kind": "activity",
+        "manifestDeclared": true,
+        "buildToolsRevision": "35.0.0",
+        "dexEntry": "classes16.dex"
+      },
+      {
+        "name": "SearchMainActivity",
+        "fqcn": "com.story.ai.biz.search.ui.SearchMainActivity",
+        "kind": "activity",
+        "manifestDeclared": true,
+        "buildToolsRevision": "35.0.0",
+        "dexEntry": "classes17.dex"
+      },
+      {
+        "name": "MemberCenterActivity",
+        "fqcn": "com.story.ai.commercial.member.membercenter.view.MemberCenterActivity",
+        "kind": "activity",
+        "manifestDeclared": true,
+        "buildToolsRevision": "35.0.0",
+        "dexEntry": "classes19.dex"
+      }
+    ]
+  },
+  "screenMapping": "docs/app-reference/screen-mapping.json"
+}
