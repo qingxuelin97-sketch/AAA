@@ -20,11 +20,15 @@ import { shareUrl } from '../util.js';
 import { tick } from '../appgestures.js';
 import { APP_ROLE_GESTURES } from '../appReference.js';
 import CallScreen from '../components/CallScreen.jsx';
+import DiscoverActionRail from '../components/catbox/DiscoverActionRail.jsx';
+import DiscoverCommentSheet from '../components/catbox/DiscoverCommentSheet.jsx';
+import DiscoverShareSheet from '../components/catbox/DiscoverShareSheet.jsx';
+import CatboxLottie from '../components/catbox/CatboxLottie.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppOverlay } from '../overlay.jsx';
 import {
-  Heart, MessageCircle, Star, Share2, Drama, Loader2, ChevronUp,
+  Heart, MessageCircle, Star, Drama, Loader2, ChevronUp,
   ChevronRight, ScrollText, Maximize2, Phone, Search, History, X
 } from 'lucide-react';
 // Lumen Glass · Web 形态（每条选择器 fenced 在 html:not([data-app="1"])，App 零影响）
@@ -32,8 +36,6 @@ import '../styles/web-lumen-discover.css';
 
 // 开场白预览：*动作* 星号只是排版标记，流里展示时去掉更干净。
 const cleanGreeting = (t) => (t || '').replace(/\*/g, '').replace(/\n{2,}/g, '\n').trim();
-// 互动计数：过万转「1.2w」，与内容平台习惯一致。
-const fmtW = (n) => { n = n || 0; return n >= 10000 ? (n / 10000).toFixed(n >= 100000 ? 0 : 1) + 'w' : String(n); };
 // 「历史」浏览记录（与角色详情页共用同一份 recent_chars 本地存储）。
 const readRecent = () => { try { return JSON.parse(localStorage.getItem('recent_chars') || '[]'); } catch { return []; } };
 const pushRecent = (c) => {
@@ -67,6 +69,8 @@ export default function DiscoverFeed() {
   const [expandedId, setExpandedId] = useState(null); // 介绍卡展开态（每次只展开一张）
   const [enteringId, setEnteringId] = useState(null); // 正在建立对话的角色
   const [histOpen, setHistOpen] = useState(false); // 「历史」最近看过面板
+  const [commentChar, setCommentChar] = useState(null);
+  const [shareChar, setShareChar] = useState(null);
   useAppOverlay(histOpen, () => setHistOpen(false), { rootRef: historySheetRef });
   const [callChar, setCallChar] = useState(null);  // 通话中的角色（电话键落点）
   const containerRef = useRef(null);
@@ -334,35 +338,24 @@ export default function DiscoverFeed() {
               {/* 双击点赞层：盖住画面区域，按钮层在其上不受影响 */}
               <div className="feed-tap" onClick={e => cardTap(e, c)} />
               {burst && burst.id === c.id && (
-                <span key={burst.k} className="feed-heart" style={{ left: burst.x, top: burst.y }} aria-hidden="true">
-                  <Heart size={84} fill="currentColor" />
+                <span key={burst.k} className="feed-heart cbx-discover-like-burst" style={{ left: burst.x, top: burst.y }} aria-hidden="true">
+                  <CatboxLottie name="doubleTapLike" className="cbx-discover-like-burst__animation" />
+                  <Heart className="cbx-discover-like-burst__fallback" size={84} fill="currentColor" />
                 </span>
               )}
 
               {/* 方案B：右侧竖排互动条（玻璃圆钮），浮于画面右缘，脱离底部信息栈 */}
-              <div className="fd2-acts">
-                <button className={'fd2-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label={liked ? '取消本机心动标记' : '标记为心动，仅保存在本机'} aria-pressed={appMode ? liked : undefined}>
-                  <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
-                  <span>{liked ? '已心动' : '心动'}</span>
-                </button>
-                <button className={'fd2-act' + (faved ? ' on gold' : '')} onClick={() => fav(c)} aria-label="收藏" aria-pressed={appMode ? faved : undefined}>
-                  <Star size={24} fill={faved ? 'currentColor' : 'none'} />
-                  <span>{faved ? '已藏' : '收藏'}</span>
-                </button>
-                <button className="fd2-act" onClick={() => nav('/character/' + c.id)} aria-label={`查看角色详情，${c.uses || 0} 次对话`}>
-                  <MessageCircle size={24} />
-                  <span>{fmtW(c.uses)}</span>
-                </button>
-                <button className="fd2-act" onClick={() => share(c)} aria-label="分享">
-                  <Share2 size={24} />
-                  <span>分享</span>
-                </button>
-                <button className="fd2-act" onClick={() => setHistOpen(true)} aria-label="历史">
-                  <History size={24} />
-                  <span>历史</span>
-                </button>
-              </div>
-
+              <DiscoverActionRail
+                character={c}
+                liked={liked}
+                faved={faved}
+                uses={c.uses}
+                onLike={() => like(c)}
+                onFavorite={() => fav(c)}
+                onComments={() => setCommentChar(c)}
+                onShare={() => setShareChar(c)}
+                onHistory={() => setHistOpen(true)}
+              />
               <div className="fd2-stack">
                 {/* 简介保持两行阅读节奏；需要时可展开或进入完整详情。 */}
                 {!appMode && (c.intro || c.tagline) && (
@@ -516,6 +509,22 @@ export default function DiscoverFeed() {
             <AppButton className="fd2-hist-close" variant="tertiary" onClick={() => setHistOpen(false)}><X size={15} /> 关闭</AppButton>
           </div>
         </div>
+      )}
+
+      {commentChar && (
+        <DiscoverCommentSheet
+          character={commentChar}
+          onClose={() => setCommentChar(null)}
+          onStartChat={draft => { const c = commentChar; setCommentChar(null); chat(c, draft); }}
+        />
+      )}
+      {shareChar && (
+        <DiscoverShareSheet
+          character={shareChar}
+          onClose={() => setShareChar(null)}
+          onCopy={async () => { await share(shareChar); setShareChar(null); }}
+          onSystemShare={async () => { await share(shareChar); setShareChar(null); }}
+        />
       )}
 
       {/* 通话 —— 给角色打电话（沉浸式全屏） */}

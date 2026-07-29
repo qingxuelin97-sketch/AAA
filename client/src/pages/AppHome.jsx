@@ -14,7 +14,7 @@ import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import CheckinCalendarSheet from '../components/CheckinCalendarSheet.jsx';
 import ShareCardSheet from '../components/ShareCardSheet.jsx';
 import IxFlip from '../components/IxFlip.jsx';
-import { isAppMode } from '../appmode.js';
+import HomeStoryDeck from '../components/catbox/HomeStoryDeck.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
 // 数据层（问候/天光、续读轨/任务/精选加载）抽到 home/shared.js，与 Web 端
 // 合体首页（WebHome.jsx）共用；S7 签到仪式（粒子/触感/里程碑/任务联动）是
@@ -24,7 +24,7 @@ import { burst } from '../fx.js';
 import { tick } from '../appgestures.js';
 import {
   Check, Flame, MessagesSquare, ChevronRight, ThumbsUp,
-  Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell,
+  Drama, PartyPopper, Dices, Gift, Crown, Star, Search, Bell,
   ScrollText, Users, Trophy, CalendarCheck, Sparkles
 } from 'lucide-react';
 
@@ -270,46 +270,12 @@ export default function AppHome() {
         </article>
       )}
 
-      {/* continue your story */}
-      {resume === null ? (
-        <div className="ah-rail-skel" role="status" aria-label="正在加载故事" />
-      ) : resume.length > 0 ? (
-        <section className="ah-sec ah-resume-section" aria-labelledby="today-resume-title">
-          <div className="ah-sec-head"><h2 id="today-resume-title">继续你的故事</h2>
-            <AppButton
-              className="ah-more"
-              variant="tertiary"
-              size="sm"
-              onClick={() => nav(isAppMode() ? '/messages' : '/chats')}
-            >
-              全部 <ChevronRight size={14} />
-            </AppButton>
-          </div>
-          <div className="ah-rail" aria-label="最近对话">
-            {resume.map(cv => (
-              <button
-                key={cv.id}
-                type="button"
-                className="ah-resume"
-                onClick={() => nav('/chats/' + cv.id)}
-                aria-label={`继续与${cv.character_name || '角色'}的故事${cv.affinity ? `，好感度 ${cv.affinity}` : ''}`}
-              >
-                <Avatar src={cv.character_avatar} name={cv.character_name} size={56} />
-                <b>{cv.character_name}</b>
-                {cv.affinity
-                  ? <span className="ah-aff"><Flame size={11} aria-hidden="true" /> {cv.affinity}</span>
-                  : <span className="ah-aff dim">未开始</span>}
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : (
-        <button type="button" className="ah-empty" onClick={() => nav('/')}>
-          <Compass size={22} />
-          <div><b>还没有开始任何故事</b><span>去发现广场，挑一个角色聊聊吧</span></div>
-          <ChevronRight size={18} />
-        </button>
-      )}
+      <HomeStoryDeck
+        resume={resume}
+        picks={null}
+        onOpenChat={openChat}
+        onNavigate={nav}
+      />
 
       {/* daily tasks */}
       {tasks.length > 0 && (
@@ -395,26 +361,12 @@ export default function AppHome() {
         </section>
       )}
       {pick && pick.length > 0 && (
-        <section className="ah-sec">
-          <div className="ah-sec-head"><h2><ThumbsUp size={16} /> 为你挑选</h2>
-            <AppButton className="ah-more" variant="tertiary" size="sm" onClick={() => nav('/')}>
-              逛广场 <ChevronRight size={14} />
-            </AppButton>
-          </div>
-          <div className="ah-picks">
-            {pick.map(c => (
-              <button key={c.id} type="button" className="ah-pick" onClick={() => openChat(c)} aria-label={`与${c.name}开始对话`}>
-                <div className="ah-pick-av">
-                  {resolveCharacterMedia(c).src ? <img src={assetUrl(resolveCharacterMedia(c).src)} alt="" loading="lazy" /> : <div className="ah-pick-ph"><QuietAquaCharacterArt alt="" loading="lazy" /></div>}
-                </div>
-                <div className="ah-pick-tx">
-                  <b>{c.name}</b>
-                  <span>{c.tagline || c.intro || '一个等待开启的故事'}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
+        <HomeStoryDeck
+          includeResume={false}
+          picks={pick}
+          onOpenChat={openChat}
+          onNavigate={nav}
+        />
       )}
       {calOpen && <CheckinCalendarSheet onClose={() => setCalOpen(false)} returnFocusRef={streakRef} />}
       {streakShare && (

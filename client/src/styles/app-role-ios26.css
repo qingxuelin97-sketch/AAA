@@ -8,42 +8,12 @@
  */
 
 html[data-app="1"] {
-  --app26-content-bg: var(--ix-canvas);
-  --app26-content-surface: var(--ix-surface);
-  --app26-chrome-regular: var(--ix-glass-nav);
-  --app26-chrome-clear: color-mix(in srgb, #0b1012 24%, transparent);
-  --app26-chrome-line: color-mix(in srgb, var(--ix-ink-inverse) 18%, transparent);
-  --app26-chrome-shadow: 0 10px 28px rgb(8 15 17 / 16%);
-  --app26-media-scrim: linear-gradient(180deg, rgb(5 10 12 / 10%) 0%, rgb(5 10 12 / 38%) 72%, rgb(5 10 12 / 68%) 100%);
-  --app26-surface-shadow: var(--ix-shadow-1);
-  --app26-press-scale: .985;
-  background: var(--app26-content-bg);
-}
-
-html[data-app="1"][data-theme="dark"] {
-  --app26-chrome-regular: var(--ix-glass-nav);
-  --app26-chrome-clear: color-mix(in srgb, #000 38%, transparent);
-  --app26-chrome-line: color-mix(in srgb, #fff 18%, transparent);
-  --app26-chrome-shadow: 0 12px 32px rgb(0 0 0 / 34%);
-  --app26-surface-shadow: var(--ix-shadow-1);
-}
-
-/* Route-owned material semantics. */
-html[data-app="1"] .app-root[data-app-material="standard"] {
-  --app26-route-material: var(--app26-content-surface);
-}
-
-html[data-app="1"] .app-root[data-app-material="regular"] {
-  --app26-route-material: var(--app26-chrome-regular);
-}
-
-html[data-app="1"] .app-root[data-app-material="clear"] {
-  --app26-route-material: var(--app26-chrome-clear);
+  background: var(--ix-canvas);
 }
 
 html[data-app="1"] .app-root[data-app-material="standard"] .app-main,
 html[data-app="1"] .app-root[data-app-material="regular"] .app-main {
-  background: var(--app26-content-bg);
+  background: var(--ix-canvas);
 }
 
 html[data-app="1"] .app-root[data-app-material="clear"] .app-main {
@@ -52,25 +22,25 @@ html[data-app="1"] .app-root[data-app-material="clear"] .app-main {
 
 /* Shared material primitive: one layer, hairline, and a short shadow. */
 html[data-app="1"] :where(.qa-material, [data-app-material="regular"]:not(.app-root)) {
-  background: var(--app26-chrome-regular);
-  border-color: var(--app26-chrome-line);
-  box-shadow: var(--app26-chrome-shadow);
+  background: var(--ix-material-regular);
+  border-color: var(--ix-material-line);
+  box-shadow: var(--ix-material-shadow);
   -webkit-backdrop-filter: var(--ix-blur);
   backdrop-filter: var(--ix-blur);
 }
 
 html[data-app="1"] .qa-material--standard {
-  background: var(--app26-content-surface);
+  background: var(--ix-material-standard);
   border-color: var(--ix-hairline);
-  box-shadow: var(--app26-surface-shadow);
+  box-shadow: var(--ix-shadow-1);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 
 html[data-app="1"] .qa-material--clear {
-  background: var(--app26-chrome-clear);
-  border-color: var(--app26-chrome-line);
-  box-shadow: var(--app26-chrome-shadow);
+  background: var(--ix-material-clear);
+  border-color: var(--ix-material-line);
+  box-shadow: var(--ix-material-shadow);
   -webkit-backdrop-filter: var(--ix-blur);
   backdrop-filter: var(--ix-blur);
 }
@@ -83,10 +53,10 @@ html[data-app="1"] .app-dock {
 
 html[data-app="1"] .app-tabbar {
   min-height: var(--ix-dock-height);
-  border: 1px solid var(--app26-chrome-line);
+  border: 1px solid var(--ix-material-line);
   border-radius: 24px;
-  background: var(--app26-chrome-regular);
-  box-shadow: var(--app26-chrome-shadow);
+  background: var(--ix-material-regular);
+  box-shadow: var(--ix-material-shadow);
   -webkit-backdrop-filter: var(--ix-blur);
   backdrop-filter: var(--ix-blur);
 }
@@ -104,7 +74,7 @@ html[data-app="1"] .app-tabbar .app-tab {
 
 html[data-app="1"] .app-tabbar .app-tab:active,
 html[data-app="1"] .app-fab:active {
-  transform: scale(var(--app26-press-scale));
+  transform: scale(var(--ix-press-scale));
 }
 
 html[data-app="1"] .app-fab {
@@ -116,9 +86,9 @@ html[data-app="1"] .app-fab {
 
 /* Sheets are functional chrome; their contents are standard surfaces. */
 html[data-app="1"] :where(.app-sheet, .msgs-delete-sheet, .chat-menu, .chat-details, .call-screen) {
-  border: 1px solid var(--app26-chrome-line);
-  background: var(--app26-chrome-regular);
-  box-shadow: var(--app26-chrome-shadow);
+  border: 1px solid var(--ix-material-line);
+  background: var(--ix-material-regular);
+  box-shadow: var(--ix-material-shadow);
   -webkit-backdrop-filter: var(--ix-blur);
   backdrop-filter: var(--ix-blur);
 }
@@ -132,12 +102,12 @@ html[data-app="1"] .msgs-delete-mask {
 
 /* Today: keep the hero expressive, keep supporting cards opaque. */
 html[data-app="1"] .apphome {
-  background: var(--app26-content-bg);
+  background: var(--ix-canvas);
 }
 
 html[data-app="1"] .apphome :where(.ah-hero-card, .ah-resume, .ah-task, .qa-weekly-card, .ah-pick) {
   border-color: var(--ix-hairline);
-  box-shadow: var(--app26-surface-shadow);
+  box-shadow: var(--ix-shadow-1);
 }
 
 html[data-app="1"] .apphome .ah-hero-card {
@@ -145,8 +115,13 @@ html[data-app="1"] .apphome .ah-hero-card {
   border-radius: 24px;
 }
 
+html[data-app="1"] .qa3-today.apphome .ah-hc-body {
+  /* Two-line CJK character names need enough headroom for the migrated badge. */
+  bottom: 60px;
+}
+
 html[data-app="1"] .apphome .ah-hc-scrim {
-  background: var(--app26-media-scrim);
+  background: var(--ix-media-scrim);
 }
 
 /* Discover: media-first card, clear action rail, no opaque content veil. */
@@ -164,12 +139,123 @@ html[data-app="1"] :where(.feed-root, .qa3-discover) :where(.feed-actions, .feed
 }
 
 html[data-app="1"] :where(.feed-root, .qa3-discover) :where(.feed-action, .fd-action, .fd2-action):active {
-  transform: scale(var(--app26-press-scale));
+  transform: scale(var(--ix-press-scale));
+}
+
+/* Role-first interaction components. The media remains full bleed while
+   the action rail and sheets are explicit, reachable App surfaces. */
+html[data-app="1"] .cbx-action-rail {
+  isolation: isolate;
+  gap: 7px;
+  padding: 7px 4px;
+  border-radius: 24px;
+}
+
+html[data-app="1"] .cbx-action-rail__button {
+  width: 48px;
+  min-height: 48px;
+  padding: 5px 2px;
+  border-radius: 17px;
+}
+
+html[data-app="1"] .cbx-action-rail__button[data-action="comments"] span { font-variant-numeric: tabular-nums; }
+html[data-app="1"] .cbx-action-rail__button[data-action="like"].on { color: #ff5f84; }
+
+html[data-app="1"] .cbx-discover-like-burst {
+  display: grid;
+  width: 112px;
+  height: 112px;
+  place-items: center;
+}
+
+html[data-app="1"] .cbx-discover-like-burst__animation {
+  display: block;
+  width: 112px;
+  height: 112px;
+}
+
+html[data-app="1"] .cbx-discover-like-burst__fallback { display: none; }
+
+html[data-app="1"] :where(.cbx-comment-sheet, .cbx-share-sheet) {
+  width: min(100%, 520px);
+  padding: 0 18px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  color: var(--ix-ink);
+}
+
+html[data-app="1"] :where(.cbx-comment-sheet__head, .cbx-share-sheet header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 0 14px;
+}
+
+html[data-app="1"] :where(.cbx-comment-sheet__head, .cbx-share-sheet header) span {
+  display: block;
+  font-size: 12px;
+  color: var(--ix-ink-muted);
+}
+
+html[data-app="1"] :where(.cbx-comment-sheet__head, .cbx-share-sheet header) h3 { margin: 2px 0 0; font-size: 20px; }
+html[data-app="1"] .cbx-comment-sheet__hint { display: flex; gap: 8px; align-items: center; margin: 0 0 14px; color: var(--ix-ink-muted); font-size: 13px; }
+html[data-app="1"] .cbx-comment-sheet__suggestions { display: grid; gap: 8px; margin-bottom: 14px; }
+html[data-app="1"] .cbx-comment-sheet__suggestions button { padding: 10px 12px; text-align: left; color: var(--ix-ink); background: var(--ix-surface); border: 1px solid var(--ix-hairline); border-radius: 13px; }
+html[data-app="1"] .cbx-comment-sheet__field { display: grid; gap: 7px; font-size: 13px; font-weight: 700; }
+html[data-app="1"] .cbx-comment-sheet__field textarea { width: 100%; box-sizing: border-box; resize: none; padding: 12px; color: var(--ix-ink); background: var(--ix-surface); border: 1px solid var(--ix-hairline); border-radius: 14px; font: inherit; line-height: 1.5; }
+html[data-app="1"] .cbx-comment-sheet__send { width: 100%; min-height: 46px; margin-top: 14px; }
+html[data-app="1"] .cbx-share-sheet > p { margin: 0 0 16px; color: var(--ix-ink-muted); line-height: 1.55; }
+html[data-app="1"] .cbx-share-sheet__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+html[data-app="1"] .cbx-share-sheet__actions .qa-button { min-height: 46px; justify-content: center; }
+
+html[data-app="1"] .cbx-home-kicker { display: block; margin-bottom: 2px; color: var(--ix-act); font-size: 11px; font-weight: 760; letter-spacing: .08em; text-transform: uppercase; }
+html[data-app="1"] .qa3-today .cbx-home-stories .ah-rail {
+  display: grid !important;
+  grid-auto-columns: min(300px, 76vw);
+  grid-auto-flow: column;
+  gap: 10px !important;
+  margin-inline: 0 !important;
+  padding: 2px 0 8px !important;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+html[data-app="1"] .qa3-today .cbx-home-stories .cbx-story-card.ah-resume {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 78px !important;
+  padding: 10px !important;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  grid-template-rows: none;
+  align-items: center;
+  justify-items: stretch !important;
+  gap: 10px !important;
+  border: 1px solid var(--ix-hairline);
+  border-radius: 18px !important;
+  background: var(--ix-material-standard) !important;
+  color: var(--ix-ink);
+  scroll-snap-align: start;
+  text-align: left;
+}
+html[data-app="1"] .qa3-today .cbx-story-card.ah-resume .avatar {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+}
+html[data-app="1"] .cbx-story-card__copy { min-width: 0; display: grid; gap: 3px; }
+html[data-app="1"] .cbx-story-card__copy b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-app="1"] .cbx-story-card__copy em, html[data-app="1"] .cbx-pick-card .ah-pick-tx em { display: inline-flex; overflow: hidden; align-items: center; gap: 3px; color: var(--ix-act); font-size: 11px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+html[data-app="1"] .cbx-pick-card .ah-pick-tx { display: grid; gap: 4px; }
+html[data-app="1"] .cbx-pick-card .ah-pick-tx em { margin-top: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .cbx-action-rail__button { transition: none; }
+  html[data-app="1"] .cbx-discover-like-burst__animation { display: none; }
+  html[data-app="1"] .cbx-discover-like-burst__fallback { display: block; }
 }
 
 /* Messages/Profile: content rows are standard surfaces, not stacked glass. */
 html[data-app="1"] :where(.msgs, .pf) {
-  background: var(--app26-content-bg);
+  background: var(--ix-canvas);
 }
 
 html[data-app="1"] :where(
@@ -182,13 +268,13 @@ html[data-app="1"] :where(
   .qa-glance-cell
 ) {
   border-color: var(--ix-hairline);
-  box-shadow: var(--app26-surface-shadow);
+  box-shadow: var(--ix-shadow-1);
 }
 
 html[data-app="1"] :where(.msgs-tabs, .pf-quick) {
   border: 1px solid var(--ix-hairline);
   border-radius: 18px;
-  background: var(--app26-chrome-regular);
+  background: var(--ix-material-regular);
   -webkit-backdrop-filter: var(--ix-blur-s);
   backdrop-filter: var(--ix-blur-s);
 }
@@ -215,7 +301,7 @@ html[data-app="1"] .qa-chat-main .msg-acts {
 }
 
 html[data-app="1"] .qa-chat-main .msg-acts :where(button, .speak):active {
-  transform: scale(var(--app26-press-scale));
+  transform: scale(var(--ix-press-scale));
 }
 
 /* System settings: remove optical effects, preserve hierarchy and contrast. */
