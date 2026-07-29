@@ -18,6 +18,7 @@ import WelcomePopup from './WelcomePopup.jsx';
 import AppOnboarding from './AppOnboarding.jsx';
 import RouteErrorBoundary from './RouteErrorBoundary.jsx';
 import { AppButton, AppIconButton, AppTabButton } from './AppControls.jsx';
+import { AppMaterialSurface } from './AppMaterialSurface.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
 import { useNav, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
 import { notifyAppTabActive } from '../appTabActivity.js';
@@ -323,6 +324,7 @@ export default function AppLayout({ children }) {
     <div className={'app-root' + (route.dock ? '' : ' no-dock')}
       data-statusbar-tone={route.statusBar}
       data-dirty-policy={route.dirty}
+      data-app-material={route.material}
       data-full-bleed={route.fullBleed || undefined}>
       {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
       {perfNote && (
@@ -358,12 +360,14 @@ export default function AppLayout({ children }) {
 
       {route.dock && (
         <div className="app-dock">
-          <nav className="app-tabbar" ref={tabbarRef} aria-label="主导航">
-            <span className="dock-ink" ref={inkRef} aria-hidden="true" />
-            {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-            <span className="app-dock-gap" aria-hidden="true" />
-            {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
-          </nav>
+          <AppMaterialSurface variant="regular" className="app-tabbar-surface">
+            <nav className="app-tabbar" ref={tabbarRef} aria-label="主导航">
+              <span className="dock-ink" ref={inkRef} aria-hidden="true" />
+              {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+              <span className="app-dock-gap" aria-hidden="true" />
+              {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+            </nav>
+          </AppMaterialSurface>
           <AppIconButton
             ref={fabRef}
             className={'app-fab' + (sheet ? ' open' : '')}
@@ -452,7 +456,9 @@ function CreateSheet({ onClose, returnFocusRef }) {
   const go = (to) => { if (navTo(to) !== false) onClose(); };
   return createPortal((
     <div className="app-sheet-mask" onClick={onClose}>
-      <section
+      <AppMaterialSurface
+        as="section"
+        variant="regular"
         id="app-create-sheet"
         ref={sheetRef}
         className="app-sheet"
@@ -481,7 +487,7 @@ function CreateSheet({ onClose, returnFocusRef }) {
             <span className="ac-tx"><b>{c.label}</b><small>{c.hint}</small></span>
           </AppButton>
         ))}
-      </section>
+      </AppMaterialSurface>
     </div>
   ), document.body);
 }

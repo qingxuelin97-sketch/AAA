@@ -7,6 +7,8 @@ const R = (pattern, options = {}) => ({
   tab: Object.prototype.hasOwnProperty.call(options, 'tab') ? options.tab : '/',
   dock: options.dock ?? false,
   fullBleed: options.fullBleed ?? false,
+  // Route-owned chrome semantics. Content remains standard/opaque.
+  material: options.material ?? 'standard',
   statusBar: options.statusBar ?? 'surface',
   refresh: options.refresh ?? 'remount',
   cache: options.cache ?? 'none',
@@ -16,13 +18,13 @@ const R = (pattern, options = {}) => ({
 export const DEFAULT_APP_TAB = '/today';
 
 export const APP_ROUTE_REGISTRY = Object.freeze([
-  R('/today', { parent: null, tab: '/today', dock: true, cache: 'keep-alive', refresh: 'evict' }),
-  R('/', { parent: null, tab: '/', dock: true, fullBleed: true, cache: 'keep-alive', refresh: 'evict', statusBar: 'immersive' }),
-  R('/messages', { parent: null, tab: '/messages', dock: true, cache: 'keep-alive', refresh: 'evict' }),
-  R('/me', { parent: null, tab: '/me', dock: true, cache: 'keep-alive', refresh: 'evict' }),
+  R('/today', { parent: null, tab: '/today', dock: true, material: 'regular', cache: 'keep-alive', refresh: 'evict' }),
+  R('/', { parent: null, tab: '/', dock: true, material: 'clear', fullBleed: true, cache: 'keep-alive', refresh: 'evict', statusBar: 'immersive' }),
+  R('/messages', { parent: null, tab: '/messages', dock: true, material: 'regular', cache: 'keep-alive', refresh: 'evict' }),
+  R('/me', { parent: null, tab: '/me', dock: true, material: 'regular', cache: 'keep-alive', refresh: 'evict' }),
 
   R('/app-controls', { parent: '/today', tab: '/today', dock: false, refresh: 'none' }),
-  R('/chats/:id', { parent: '/messages', tab: '/messages', statusBar: 'immersive' }),
+  R('/chats/:id', { parent: '/messages', tab: '/messages', material: 'clear', statusBar: 'immersive' }),
   R('/chats', { parent: '/messages', tab: '/messages' }),
   R('/group/:id', { parent: '/groups', tab: '/messages' }),
   R('/groups', { parent: '/messages', tab: '/messages' }),

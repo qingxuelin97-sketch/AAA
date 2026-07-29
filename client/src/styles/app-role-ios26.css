@@ -1,0 +1,239 @@
+/*
+ * App-only role-discovery interaction / iOS 26 material layer.
+ *
+ * Authorized mobile reference: media-first role discovery, action rails, chat
+ * gestures and story-oriented pacing. iOS 26 reference: functional Liquid Glass
+ * belongs to navigation and transient controls; content remains readable and
+ * stable. Every selector is fenced to the native App shell.
+ */
+
+html[data-app="1"] {
+  --app26-content-bg: var(--ix-canvas);
+  --app26-content-surface: var(--ix-surface);
+  --app26-chrome-regular: var(--ix-glass-nav);
+  --app26-chrome-clear: color-mix(in srgb, #0b1012 24%, transparent);
+  --app26-chrome-line: color-mix(in srgb, var(--ix-ink-inverse) 18%, transparent);
+  --app26-chrome-shadow: 0 10px 28px rgb(8 15 17 / 16%);
+  --app26-media-scrim: linear-gradient(180deg, rgb(5 10 12 / 10%) 0%, rgb(5 10 12 / 38%) 72%, rgb(5 10 12 / 68%) 100%);
+  --app26-surface-shadow: var(--ix-shadow-1);
+  --app26-press-scale: .985;
+  background: var(--app26-content-bg);
+}
+
+html[data-app="1"][data-theme="dark"] {
+  --app26-chrome-regular: var(--ix-glass-nav);
+  --app26-chrome-clear: color-mix(in srgb, #000 38%, transparent);
+  --app26-chrome-line: color-mix(in srgb, #fff 18%, transparent);
+  --app26-chrome-shadow: 0 12px 32px rgb(0 0 0 / 34%);
+  --app26-surface-shadow: var(--ix-shadow-1);
+}
+
+/* Route-owned material semantics. */
+html[data-app="1"] .app-root[data-app-material="standard"] {
+  --app26-route-material: var(--app26-content-surface);
+}
+
+html[data-app="1"] .app-root[data-app-material="regular"] {
+  --app26-route-material: var(--app26-chrome-regular);
+}
+
+html[data-app="1"] .app-root[data-app-material="clear"] {
+  --app26-route-material: var(--app26-chrome-clear);
+}
+
+html[data-app="1"] .app-root[data-app-material="standard"] .app-main,
+html[data-app="1"] .app-root[data-app-material="regular"] .app-main {
+  background: var(--app26-content-bg);
+}
+
+html[data-app="1"] .app-root[data-app-material="clear"] .app-main {
+  background: transparent;
+}
+
+/* Shared material primitive: one layer, hairline, and a short shadow. */
+html[data-app="1"] :where(.qa-material, [data-app-material="regular"]:not(.app-root)) {
+  background: var(--app26-chrome-regular);
+  border-color: var(--app26-chrome-line);
+  box-shadow: var(--app26-chrome-shadow);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .qa-material--standard {
+  background: var(--app26-content-surface);
+  border-color: var(--ix-hairline);
+  box-shadow: var(--app26-surface-shadow);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-app="1"] .qa-material--clear {
+  background: var(--app26-chrome-clear);
+  border-color: var(--app26-chrome-line);
+  box-shadow: var(--app26-chrome-shadow);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+/* Floating iOS-style Dock and creation control. */
+html[data-app="1"] .app-dock {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  padding-inline: 12px;
+}
+
+html[data-app="1"] .app-tabbar {
+  min-height: var(--ix-dock-height);
+  border: 1px solid var(--app26-chrome-line);
+  border-radius: 24px;
+  background: var(--app26-chrome-regular);
+  box-shadow: var(--app26-chrome-shadow);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .app-tabbar-surface {
+  position: relative;
+  display: contents;
+}
+
+html[data-app="1"] .app-tabbar .app-tab {
+  min-height: 52px;
+  border-radius: 18px;
+  transition: background-color var(--ix-dur-state) var(--ix-ease), color var(--ix-dur-state) var(--ix-ease), transform var(--ix-dur-press) var(--ix-ease);
+}
+
+html[data-app="1"] .app-tabbar .app-tab:active,
+html[data-app="1"] .app-fab:active {
+  transform: scale(var(--app26-press-scale));
+}
+
+html[data-app="1"] .app-fab {
+  width: 54px;
+  height: 54px;
+  border: 4px solid var(--ix-canvas);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ix-act) 30%, transparent);
+}
+
+/* Sheets are functional chrome; their contents are standard surfaces. */
+html[data-app="1"] :where(.app-sheet, .msgs-delete-sheet, .chat-menu, .chat-details, .call-screen) {
+  border: 1px solid var(--app26-chrome-line);
+  background: var(--app26-chrome-regular);
+  box-shadow: var(--app26-chrome-shadow);
+  -webkit-backdrop-filter: var(--ix-blur);
+  backdrop-filter: var(--ix-blur);
+}
+
+html[data-app="1"] .app-sheet-mask,
+html[data-app="1"] .msgs-delete-mask {
+  background: var(--ix-scrim);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* Today: keep the hero expressive, keep supporting cards opaque. */
+html[data-app="1"] .apphome {
+  background: var(--app26-content-bg);
+}
+
+html[data-app="1"] .apphome :where(.ah-hero-card, .ah-resume, .ah-task, .qa-weekly-card, .ah-pick) {
+  border-color: var(--ix-hairline);
+  box-shadow: var(--app26-surface-shadow);
+}
+
+html[data-app="1"] .apphome .ah-hero-card {
+  overflow: clip;
+  border-radius: 24px;
+}
+
+html[data-app="1"] .apphome .ah-hc-scrim {
+  background: var(--app26-media-scrim);
+}
+
+/* Discover: media-first card, clear action rail, no opaque content veil. */
+html[data-app="1"] .feed-root {
+  background: #080d0f;
+}
+
+html[data-app="1"] :where(.feed-root, .qa3-discover) :where(.feed-actions, .feed-action-rail, .fd-actions, .fd2-actions) {
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 22px;
+  background: rgb(9 15 17 / 36%);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 22%);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] :where(.feed-root, .qa3-discover) :where(.feed-action, .fd-action, .fd2-action):active {
+  transform: scale(var(--app26-press-scale));
+}
+
+/* Messages/Profile: content rows are standard surfaces, not stacked glass. */
+html[data-app="1"] :where(.msgs, .pf) {
+  background: var(--app26-content-bg);
+}
+
+html[data-app="1"] :where(
+  .msgs-conv,
+  .msgs-entry,
+  .pf-identity-card,
+  .pf-group,
+  .pf-cell,
+  .qa-glance,
+  .qa-glance-cell
+) {
+  border-color: var(--ix-hairline);
+  box-shadow: var(--app26-surface-shadow);
+}
+
+html[data-app="1"] :where(.msgs-tabs, .pf-quick) {
+  border: 1px solid var(--ix-hairline);
+  border-radius: 18px;
+  background: var(--app26-chrome-regular);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+/* Chat: clear media header, stable standard message content, tactile actions. */
+html[data-app="1"] .qa-chat-page .qa-chat-header,
+html[data-app="1"] .qa-chat-page .qa-chat-header-actions {
+  border-color: rgb(255 255 255 / 22%);
+  background: rgb(6 12 14 / 34%);
+  -webkit-backdrop-filter: var(--ix-blur-s);
+  backdrop-filter: var(--ix-blur-s);
+}
+
+html[data-app="1"] .qa-chat-main .chat-scroll {
+  overscroll-behavior-y: contain;
+}
+
+html[data-app="1"] .qa-chat-main :where(.msg.assistant .bubble, .msg.user .bubble) {
+  box-shadow: 0 1px 0 rgb(255 255 255 / 18%) inset, 0 6px 18px rgb(0 0 0 / 12%);
+}
+
+html[data-app="1"] .qa-chat-main .msg-acts {
+  opacity: .82;
+}
+
+html[data-app="1"] .qa-chat-main .msg-acts :where(button, .speak):active {
+  transform: scale(var(--app26-press-scale));
+}
+
+/* System settings: remove optical effects, preserve hierarchy and contrast. */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-app="1"] :where(.qa-material, [data-app-material="regular"]:not(.app-root), .app-tabbar, .app-sheet, .msgs-tabs, .pf-quick) {
+    background: var(--ix-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] :where(.app-tabbar .app-tab, .app-fab, .feed-action, .fd-action, .fd2-action, .msg-acts button) {
+    transition: none !important;
+  }
+}
+
+html[data-app="1"][data-perf="lite"] :where(.qa-material, [data-app-material="regular"]:not(.app-root), .app-tabbar, .app-sheet, .msgs-tabs, .pf-quick) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
