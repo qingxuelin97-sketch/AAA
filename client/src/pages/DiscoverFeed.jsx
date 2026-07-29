@@ -18,6 +18,7 @@ import { CategoryIcon, categoryName } from '../assets.jsx';
 import { EmptyArt, CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from '../art.jsx';
 import { shareUrl } from '../util.js';
 import { tick } from '../appgestures.js';
+import { APP_ROLE_GESTURES } from '../appReference.js';
 import CallScreen from '../components/CallScreen.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
@@ -146,7 +147,7 @@ export default function DiscoverFeed() {
   useEffect(() => {
     const current = chars[activeIdx];
     if (!current) return undefined;
-    const timer = setTimeout(() => pushRecent(current), 600);
+    const timer = setTimeout(() => pushRecent(current), APP_ROLE_GESTURES.cardHistoryPauseMs);
     return () => clearTimeout(timer);
   }, [activeIdx, chars]);
 
@@ -226,7 +227,7 @@ export default function DiscoverFeed() {
     const now = Date.now();
     const prev = lastTap.current;
     lastTap.current = { t: now, id: c.id };
-    if (prev.id !== c.id || now - prev.t > 320) return;
+    if (prev.id !== c.id || now - prev.t > APP_ROLE_GESTURES.doubleTapLike.maxIntervalMs) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX ?? rect.left + rect.width / 2) - rect.left;
     const y = (e.clientY ?? rect.top + rect.height / 2) - rect.top;

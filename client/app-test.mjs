@@ -4,6 +4,7 @@ import { registrationRequestHash as clientHash } from './src/playIntegrity.js';
 import { registrationRequestHash as serverHash } from '../server/integrity.js';
 import { mergeMessages, messageId } from './src/groupMessages.js';
 import { getAppRoute, statusBarContextForTone } from './src/routeRegistry.js';
+import { APP_ROLE_GESTURES, APP_DISCOVER_ACTIONS, APP_CHAT_MESSAGE_ACTIONS } from './src/appReference.js';
 import { CallSession } from './src/callSession.js';
 import { runBootstrapTasks } from './src/appBootstrapCore.js';
 import { reconnectDelay, MAX_RECONNECT_DELAY_MS } from './src/realtimePolicy.js';
@@ -34,6 +35,15 @@ assert.match(runtimeCss, /data-insecure-http[^\n{]*\.http-test-badge/, 'HTTP bad
 const chatRoute = getAppRoute('/chats/42?from=messages');
 assert.equal(chatRoute.parent, '/messages', 'chat detail must return to Messages');
 assert.equal(getAppRoute('/today').dock, true, 'top-level Today route must own the Dock');
+assert.equal(getAppRoute('/').material, 'clear', 'Discover must own a clear media chrome layer');
+assert.equal(getAppRoute('/today').material, 'regular', 'Today must own regular navigation chrome');
+assert.equal(getAppRoute('/messages').material, 'regular', 'Messages must own regular navigation chrome');
+assert.equal(getAppRoute('/me').material, 'regular', 'Profile must own regular navigation chrome');
+assert.equal(chatRoute.material, 'clear', 'Chat media headers must own clear chrome');
+assert.equal(APP_ROLE_GESTURES.doubleTapLike.maxIntervalMs, 320, 'role-feed double tap timing must remain deterministic');
+assert.equal(APP_ROLE_GESTURES.messageLongPress.ms, 450, 'message long press must remain touch-friendly');
+assert.deepEqual([...APP_DISCOVER_ACTIONS], ['like', 'favorite', 'comment', 'share', 'history'], 'role-feed action rail contract must stay ordered');
+assert.ok(APP_CHAT_MESSAGE_ACTIONS.includes('bookmark'), 'chat message actions must retain bookmark entry');
 assert.deepEqual(
   { parent: getAppRoute('/character/7/edit').parent, dirty: getAppRoute('/character/7/edit').dirty },
   { parent: '/character/7', dirty: 'confirm' },
@@ -104,6 +114,8 @@ const mainSource = await readFile(new URL('./src/main.jsx', import.meta.url), 'u
 const overlayHooks = await readFile(new URL('./src/chat/hooks.js', import.meta.url), 'utf8');
 const realtimeSource = await readFile(new URL('./src/realtime.jsx', import.meta.url), 'utf8');
 const layoutSource = await readFile(new URL('./src/components/AppLayout.jsx', import.meta.url), 'utf8');
+const materialSurfaceSource = await readFile(new URL('./src/components/AppMaterialSurface.jsx', import.meta.url), 'utf8');
+const appReferenceSource = await readFile(new URL('./src/appReference.js', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('./src/App.jsx', import.meta.url), 'utf8');
 const navigationSource = await readFile(new URL('./src/appNavigation.jsx', import.meta.url), 'utf8');
 const navSource = await readFile(new URL('./src/nav.js', import.meta.url), 'utf8');
@@ -126,6 +138,7 @@ const ixTokens = await readFile(new URL('./src/styles/app-ix-tokens.css', import
 const quietControls = await readFile(new URL('./src/styles/app-controls.css', import.meta.url), 'utf8');
 const quietPages = await readFile(new URL('./src/styles/app-pages-quiet-aqua.css', import.meta.url), 'utf8');
 const quietExperience = await readFile(new URL('./src/styles/app-experience-v3.css', import.meta.url), 'utf8');
+const roleIosCss = await readFile(new URL('./src/styles/app-role-ios26.css', import.meta.url), 'utf8');
 const quietControlsNoComments = quietControls.replace(/\/\*[\s\S]*?\*\//g, '');
 const quietPagesNoComments = quietPages.replace(/\/\*[\s\S]*?\*\//g, '');
 const quietExperienceNoComments = quietExperience.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -618,6 +631,22 @@ assert.match(controlsSource, /if \(!isAppChrome\(\)\)[\s\S]*<LegacyControl/, 'co
 assert.match(controlsSource, /isWebChrome\(\)[\s\S]*'lgw-button'/, 'the Lumen Web chrome gate must render real .lgw-* controls on the web shell');
 assert.match(controlsSource, /dataset\.lumenWeb === '1'/, 'the web control gate must key off the removable data-lumen-web boot flag');
 assert.match(layoutSource, /route\.dock\s*&&\s*\([\s\S]*className="app-dock"/, 'the Quiet Aqua Dock must still obey Route Registry visibility');
+assert.match(layoutSource, /data-app-material=\{route\.material\}/, 'AppLayout must expose route-owned material semantics');
+assert.match(layoutSource, /AppMaterialSurface[\s\S]*variant="regular"/, 'Dock and transient chrome must use the shared material primitive');
+assert.match(materialSurfaceSource, /standard.*regular.*clear/, 'material primitive must expose standard, regular, and clear variants');
+assert.match(materialSurfaceSource, /document\.documentElement\.dataset\.app === '1'/, 'material primitive must stay transparent outside the App shell');
+assert.match(discoverSource, /APP_ROLE_GESTURES\.doubleTapLike/, 'Discover must consume the migrated double-tap gesture contract');
+assert.match(chatSource, /APP_ROLE_GESTURES\.messageLongPress/, 'Chat must consume the migrated long-press gesture contract');
+assert.match(roleIosCss, /html\[data-app="1"\]/, 'the role/iOS 26 layer must be App-scoped');
+assert.doesNotMatch(roleIosCss.replace(/\/\*[\s\S]*?\*\//g, ''), /(^|\})\s*:root\b/m, 'the role/iOS 26 layer must not leak a Web :root selector');
+const forbiddenReferencePattern = new RegExp(
+  String.fromCharCode(99, 97, 116, 98, 111, 120)
+    + '|' + String.fromCodePoint(0x732b, 0x7bb1)
+    + '|' + ['com', 'parallel', 'odyssey'].join('\\.')
+    + '|' + String.fromCharCode(109, 97, 111, 120, 105, 97, 110, 103),
+  'i',
+);
+assert.doesNotMatch(appReferenceSource + roleIosCss + appEntrySource, forbiddenReferencePattern, 'migrated App code must not ship reference branding or vendor package identifiers');
 const dockNavStart = layoutSource.indexOf('<nav className="app-tabbar"');
 const dockNavEnd = layoutSource.indexOf('</nav>', dockNavStart);
 const dockFab = layoutSource.indexOf("className={'app-fab'", dockNavStart);

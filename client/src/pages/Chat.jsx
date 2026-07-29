@@ -17,6 +17,7 @@ import { BubbleContent, setPanelCtx } from '../chat/BubbleContent.jsx';
 import { useOverlayBack, useBookmarks, useLongPress } from '../chat/hooks.js';
 import ChatSearchBar from '../chat/ChatSearchBar.jsx';
 import { isAppMode } from '../appmode.js';
+import { APP_ROLE_GESTURES } from '../appReference.js';
 import { useAppOverlay } from '../overlay.jsx';
 import {
   GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
@@ -584,7 +585,7 @@ export default function Chat() {
     if (!m.content) return;
     sheetOpenedAtRef.current = performance.now();
     setSheetFor(m);
-  });
+  }, APP_ROLE_GESTURES.messageLongPress);
 
   // 消息书签（收藏段落随时跳回，纯本地存储、按会话隔离）—— 逻辑收敛到 chat/hooks.js。
   const { marks, toggleMark, jumpToMark: jumpToMarkRaw } = useBookmarks(id, () => toast('未找到该消息（可能已被删除）', 'err'));
