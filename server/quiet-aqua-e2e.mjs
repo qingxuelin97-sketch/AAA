@@ -16,6 +16,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const UPDATE_BASELINES = process.argv.includes('--update-baselines');
 const DETAIL_ROUTES_ONLY = process.argv.includes('--detail-routes-only');
 const WALLET_ONLY = process.argv.includes('--wallet-only');
+const CATBOX_ONLY = process.argv.includes('--catbox-only');
+const TODAY_RITUAL_ONLY = process.argv.includes('--today-ritual-only');
 const MAX_VISUAL_DIFF_RATIO = 0.02;
 
 const MIME = new Map([
@@ -648,6 +650,51 @@ async function captureCoreScreens(browser, base, theme) {
     await page.screenshot({ path: path.join(OUT, `${name}-390x844-${theme}.png`) });
   }
   assert(page.__qaErrors.length === 0, `${theme} 截图流程产生浏览器错误`, page.__qaErrors.join('\n'));
+  await page.close();
+}
+
+async function captureCatboxScreens(browser, base, {
+  width,
+  height,
+  theme = 'light',
+}) {
+  const page = await preparePage(browser, base, {
+    app: true,
+    token: true,
+    theme,
+    perf: 'auto',
+    viewport: { width, height },
+  });
+  const screens = [
+    ['/today', '.apphome', 'today'],
+    ['/', '.qa-discover-page', 'discover'],
+    ['/messages', '.qa-messages-page', 'messages'],
+    ['/me', '.qa-profile', 'profile'],
+    ['/chats/1', '.catbox-chat-composer', 'chat'],
+  ];
+  for (const [route, selector, name] of screens) {
+    await visit(page, route, selector);
+    await settlePage(page);
+    await pageQualityAssertions(page, `${name} ${width}x${height} ${theme}`);
+    const semantics = await page.evaluate(() => {
+      const root = document.querySelector('.app-root');
+      return {
+        reference: root?.dataset.referenceScreen || '',
+        material: root?.dataset.appMaterial || '',
+        contentMaterial: root?.dataset.appContentMaterial || '',
+      };
+    });
+    assert(semantics.reference.startsWith('catbox-'), `${name} 缺少 Catbox reference-screen 语义`, JSON.stringify(semantics));
+    assert(semantics.material && semantics.contentMaterial, `${name} 缺少路由材质语义`, JSON.stringify(semantics));
+    await saveScreenshot(page, `${name}-${width}x${height}-${theme}.png`);
+  }
+
+  await visit(page, '/today', '.apphome');
+  await page.click('.app-fab');
+  await page.waitForSelector('#app-create-sheet', { visible: true, timeout: 3000 });
+  await sleep(560);
+  await saveScreenshot(page, `app-layout-create-${width}x${height}-${theme}.png`);
+  assert(page.__qaErrors.length === 0, `Catbox 核心返图流程产生浏览器错误`, page.__qaErrors.join('\n'));
   await page.close();
 }
 
@@ -1831,6 +1878,12 @@ async function todayRitualAssertions(browser, base) {
   });
 
   await visit(page, '/today', '.qa-streak');
+  const routeAfterVisit = await page.evaluate(() => ({
+    hash: location.hash,
+    pane: document.querySelector('.tab-pane:not(.off)')?.dataset.pane || '',
+  }));
+  assert(routeAfterVisit.hash === '#/today' && routeAfterVisit.pane === '/today',
+    'Today ritual must start on the active Today pane', JSON.stringify(routeAfterVisit));
   const before = await page.evaluate(() => ({
     dots: document.querySelectorAll('.qa-streak-dot').length,
     lit: document.querySelectorAll('.qa-streak-dot.on').length,
@@ -1839,22 +1892,71 @@ async function todayRitualAssertions(browser, base) {
   assert(before.dots === 7 && before.checkinReady,
     '今日页连签周视图初始状态异常', JSON.stringify(before));
 
-  await page.click('.ah-checkin');
-  await page.waitForSelector('.ah-checkin.done', { timeout: 8000 });
+  await page.click('.tab-pane:not(.off) .ah-checkin');
+  await page.waitForSelector('.tab-pane:not(.off) .ah-checkin.done', { timeout: 8000 });
+  const routeAfterCheckin = await page.evaluate(() => ({
+    hash: location.hash,
+    pane: document.querySelector('.tab-pane:not(.off)')?.dataset.pane || '',
+  }));
+  assert(routeAfterCheckin.hash === '#/today' && routeAfterCheckin.pane === '/today',
+    'Today check-in must not leave the active Today pane', JSON.stringify(routeAfterCheckin));
   await page.waitForFunction(() => document.querySelectorAll('.qa-streak-dot.on').length === 1, { timeout: 5000 });
   await saveScreenshot(page, 'today-ritual-390x844-light.png');
 
   // 「完成每日签到」任务即时转可领：行内领取 → 金币上涨
-  await page.waitForSelector('.qa-task-claim', { timeout: 8000 });
+  await page.waitForSelector('.tab-pane:not(.off) .qa-task-claim', { timeout: 8000 });
+  await page.$eval('.tab-pane:not(.off) .qa-task-claim', (button) => {
+    button.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+  });
+  await sleep(80);
   const goldBefore = await page.evaluate(() => {
     const text = document.querySelector('.ah-coin .ah-balance-value')?.textContent || '0';
     return Number(text.replace(/[^0-9]/g, ''));
   });
-  await page.click('.qa-task-claim');
-  await page.waitForFunction((prev) => {
-    const text = document.querySelector('.ah-coin .ah-balance-value')?.textContent || '0';
-    return Number(text.replace(/[^0-9]/g, '')) > prev;
-  }, { timeout: 8000 }, goldBefore);
+  const claimHitBefore = await page.evaluate(() => {
+    const button = document.querySelector('.tab-pane:not(.off) .qa-task-claim');
+    const rect = button?.getBoundingClientRect();
+    const hit = rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
+    return {
+      rect: rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : null,
+      hitClass: hit?.className || '',
+      hitText: hit?.textContent?.trim().slice(0, 60) || '',
+      targetable: Boolean(button && hit && (button === hit || button.contains(hit))),
+    };
+  });
+  assert(claimHitBefore.targetable, 'Today task reward button is obscured before activation', JSON.stringify(claimHitBefore));
+  await page.click('.tab-pane:not(.off) .qa-task-claim');
+  try {
+    await page.waitForFunction((prev) => {
+      const text = document.querySelector('.ah-coin .ah-balance-value')?.textContent || '0';
+      return Number(text.replace(/[^0-9]/g, '')) > prev;
+    }, { timeout: 8000 }, goldBefore);
+  } catch (error) {
+    const state = await page.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('huanyu_db_v7') || '{}');
+      const claimButton = document.querySelector('.qa-task-claim');
+      const rect = claimButton?.getBoundingClientRect();
+      const hit = rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
+      const hitPane = hit?.closest('.tab-pane');
+      const claimPane = claimButton?.closest('.tab-pane');
+      return {
+        hash: location.hash,
+        balanceText: document.querySelector('.ah-coin .ah-balance-value')?.textContent || '',
+        userGold: (db.users || []).find((user) => user.id === 1)?.gold,
+        claimedTasks: (db.daily_progress || []).find((daily) => daily.user_id === 1)?.claimed || [],
+        claimButtonPresent: Boolean(claimButton),
+        claimDisabled: Boolean(claimButton?.disabled),
+        claimRect: rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : null,
+        hitClass: hit?.className || '',
+        hitText: hit?.textContent?.trim().slice(0, 60) || '',
+        hitPointerEvents: hit ? getComputedStyle(hit).pointerEvents : '',
+        hitPane: hitPane ? { pane: hitPane.dataset.pane, className: hitPane.className, pointerEvents: getComputedStyle(hitPane).pointerEvents, contentVisibility: getComputedStyle(hitPane).contentVisibility } : null,
+        claimPane: claimPane ? { pane: claimPane.dataset.pane, className: claimPane.className, pointerEvents: getComputedStyle(claimPane).pointerEvents, contentVisibility: getComputedStyle(claimPane).contentVisibility } : null,
+        toast: document.querySelector('.toast, [role="status"]')?.textContent?.trim().slice(0, 120) || '',
+      };
+    });
+    throw new Error(`Today task reward did not refresh the visible balance: ${JSON.stringify(state)}`, { cause: error });
+  }
 
   // 日历 sheet：隔离契约 + 今日格与签到日一致
   await page.click('.qa-streak');
@@ -2048,6 +2150,20 @@ async function run() {
     console.log(`Quiet Aqua browser: ${executablePath}`);
     browser = await launchTestBrowser(executablePath);
 
+    if (TODAY_RITUAL_ONLY) {
+      await todayRitualAssertions(browser, base);
+      console.log('✓ Today ritual');
+      return;
+    }
+
+    if (CATBOX_ONLY) {
+      await captureCatboxScreens(browser, base, { width: 390, height: 844, theme: 'light' });
+      await captureCatboxScreens(browser, base, { width: 393, height: 852, theme: 'light' });
+      await captureCatboxScreens(browser, base, { width: 430, height: 932, theme: 'light' });
+      console.log(`✓ Catbox core screenshots: ${OUT}`);
+      return;
+    }
+
     if (WALLET_ONLY) {
       await walletAssertions(browser, base);
       console.log(`✓ wallet and recharge: ${OUT}`);
@@ -2067,7 +2183,9 @@ async function run() {
     const matrix = [
       { width: 360, height: 800, theme: 'light', perf: 'auto', expectedPerf: 'balanced' },
       { width: 390, height: 844, theme: 'light', perf: 'auto', expectedPerf: 'balanced' },
+      { width: 393, height: 852, theme: 'light', perf: 'auto', expectedPerf: 'balanced' },
       { width: 412, height: 915, theme: 'light', perf: 'auto', expectedPerf: 'balanced' },
+      { width: 430, height: 932, theme: 'light', perf: 'auto', expectedPerf: 'balanced' },
       { width: 390, height: 844, theme: 'dark', perf: 'auto', expectedPerf: 'balanced' },
       { width: 390, height: 844, theme: 'light', perf: 'lite', expectedPerf: 'lite' },
     ];
@@ -2119,6 +2237,9 @@ async function run() {
     await g10SurfaceBAssertions(browser, base);
     await captureCoreScreens(browser, base, 'light');
     await captureCoreScreens(browser, base, 'dark');
+    await captureCatboxScreens(browser, base, { width: 390, height: 844, theme: 'light' });
+    await captureCatboxScreens(browser, base, { width: 393, height: 852, theme: 'light' });
+    await captureCatboxScreens(browser, base, { width: 430, height: 932, theme: 'light' });
     console.log(`✓ screenshots: ${OUT}`);
   } finally {
     if (browser) await browser.close();

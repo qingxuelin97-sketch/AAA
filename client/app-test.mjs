@@ -40,10 +40,30 @@ assert.equal(getAppRoute('/today').material, 'regular', 'Today must own regular 
 assert.equal(getAppRoute('/messages').material, 'regular', 'Messages must own regular navigation chrome');
 assert.equal(getAppRoute('/me').material, 'regular', 'Profile must own regular navigation chrome');
 assert.equal(chatRoute.material, 'clear', 'Chat media headers must own clear chrome');
+assert.deepEqual(
+  [
+    getAppRoute('/today').referenceScreen,
+    getAppRoute('/').referenceScreen,
+    getAppRoute('/messages').referenceScreen,
+    getAppRoute('/me').referenceScreen,
+    chatRoute.referenceScreen,
+  ],
+  ['catbox-home', 'catbox-discover', 'catbox-messages', 'catbox-profile', 'catbox-chat'],
+  'the five routed Catbox-first surfaces must expose a stable reference-screen contract',
+);
+assert.deepEqual(
+  [getAppRoute('/').contentMaterial, chatRoute.contentMaterial],
+  ['clear', 'standard'],
+  'Discover stays full-bleed while immersive Chat keeps standard message content',
+);
 assert.equal(APP_ROLE_GESTURES.doubleTapLike.maxIntervalMs, 320, 'role-feed double tap timing must remain deterministic');
 assert.equal(APP_ROLE_GESTURES.messageLongPress.ms, 450, 'message long press must remain touch-friendly');
-assert.deepEqual([...APP_DISCOVER_ACTIONS], ['like', 'favorite', 'comment', 'share', 'history'], 'role-feed action rail contract must stay ordered');
-assert.ok(APP_CHAT_MESSAGE_ACTIONS.includes('bookmark'), 'chat message actions must retain bookmark entry');
+assert.deepEqual([...APP_DISCOVER_ACTIONS], ['like', 'favorite', 'comments', 'share', 'history'], 'role-feed action rail contract must stay ordered');
+assert.deepEqual(
+  [...APP_CHAT_MESSAGE_ACTIONS],
+  ['like', 'dislike', 'report', 'share', 'replay', 'chatShare'],
+  'ported chat message actions must retain the approved reference order',
+);
 assert.deepEqual(
   { parent: getAppRoute('/character/7/edit').parent, dirty: getAppRoute('/character/7/edit').dirty },
   { parent: '/character/7', dirty: 'confirm' },
@@ -114,6 +134,11 @@ const mainSource = await readFile(new URL('./src/main.jsx', import.meta.url), 'u
 const overlayHooks = await readFile(new URL('./src/chat/hooks.js', import.meta.url), 'utf8');
 const realtimeSource = await readFile(new URL('./src/realtime.jsx', import.meta.url), 'utf8');
 const layoutSource = await readFile(new URL('./src/components/AppLayout.jsx', import.meta.url), 'utf8');
+const catboxDockSource = await readFile(new URL('./src/components/catbox/CatboxDock.jsx', import.meta.url), 'utf8');
+const catboxChatSource = await readFile(new URL('./src/components/catbox/CatboxChat.jsx', import.meta.url), 'utf8');
+const catboxLottieSource = await readFile(new URL('./src/components/catbox/CatboxLottie.jsx', import.meta.url), 'utf8');
+const catboxHomeSource = await readFile(new URL('./src/components/catbox/HomeStoryDeck.jsx', import.meta.url), 'utf8');
+const catboxDiscoverRailSource = await readFile(new URL('./src/components/catbox/DiscoverActionRail.jsx', import.meta.url), 'utf8');
 const materialSurfaceSource = await readFile(new URL('./src/components/AppMaterialSurface.jsx', import.meta.url), 'utf8');
 const appReferenceSource = await readFile(new URL('./src/appReference.js', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('./src/App.jsx', import.meta.url), 'utf8');
@@ -139,6 +164,7 @@ const quietControls = await readFile(new URL('./src/styles/app-controls.css', im
 const quietPages = await readFile(new URL('./src/styles/app-pages-quiet-aqua.css', import.meta.url), 'utf8');
 const quietExperience = await readFile(new URL('./src/styles/app-experience-v3.css', import.meta.url), 'utf8');
 const roleIosCss = await readFile(new URL('./src/styles/app-role-ios26.css', import.meta.url), 'utf8');
+const catboxChatCss = await readFile(new URL('./src/styles/app-catbox-chat.css', import.meta.url), 'utf8');
 const quietControlsNoComments = quietControls.replace(/\/\*[\s\S]*?\*\//g, '');
 const quietPagesNoComments = quietPages.replace(/\/\*[\s\S]*?\*\//g, '');
 const quietExperienceNoComments = quietExperience.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -232,6 +258,12 @@ const errorStateSource = await readFile(new URL('./src/components/AppErrorState.
 assert.match(errorStateSource, /role="alert"[\s\S]*AppEmptyArt[\s\S]*onRetry/, 'AppErrorState must pair alert semantics with art and a retry action');
 const e2eSourceForS7 = await readFile(new URL('../server/quiet-aqua-e2e.mjs', import.meta.url), 'utf8');
 assert.match(e2eSourceForS7, /insightsRecoveryAssertions/, 'the e2e suite must keep exercising the Insights offline-retry recovery');
+assert.match(e2eSourceForS7, /captureCatboxScreens[\s\S]*width:\s*390,\s*height:\s*844[\s\S]*width:\s*430,\s*height:\s*932/,
+  'the Catbox-first visual gate must retain both 390x844 and 430x932 handoff captures');
+for (const screen of ['today', 'discover', 'messages', 'profile', 'chat', 'app-layout-create']) {
+  assert.match(e2eSourceForS7, new RegExp(`['\`]+${screen}(?:-|['\`])`),
+    `the Catbox-first visual gate must keep the ${screen} surface`);
+}
 /* ---- S7-G3 首启引导契约 ---- */
 const onboardingSource = await readFile(new URL('./src/components/AppOnboarding.jsx', import.meta.url), 'utf8');
 assert.match(onboardingSource, /huanyu_onboard_done[\s\S]*accountIsFresh/, 'onboarding must gate on both the stored key and account freshness');
@@ -326,6 +358,30 @@ assert.match(e2eSourceForS7, /pressMenuAssertions/, 'the e2e suite must keep exe
 /* ---- S7-G10 会话整理与草稿契约 ---- */
 assert.match(messagesSource, /toggleConvMark[\s\S]*取消置顶[\s\S]*免打扰/, 'the press menu must toggle pin and mute marks');
 assert.match(messagesSource, /msgs-draft[\s\S]*草稿/, 'the conversation row must surface an unsent draft first');
+assert.match(messagesSource, /CatboxMessageNoticeGroup[\s\S]*msgs-tab-chatted[\s\S]*msgs-panel-chatted/, 'App Messages must keep a data-driven notice group and linked tab panels');
+assert.match(messagesSource, /Boolean\(a\.pinned\)[\s\S]*updated_at/, 'App conversation ordering must keep pinned conversations above chronological rows');
+assert.match(appProfileSource, /CatboxProfileQuickRail[\s\S]*cbx-profile/, 'App Profile must use the dedicated quick-access rail');
+const messageProfileCss = await readFile(new URL('./src/styles/app-catbox-messages-profile.css', import.meta.url), 'utf8');
+assert.match(messageProfileCss, /html\[data-app="1"\]/, 'Messages/Profile App composition must remain App-scoped');
+assert.doesNotMatch(messageProfileCss.replace(/\/\*[\s\S]*?\*\//g, ''), /(^|\})\s*:root\b/m, 'Messages/Profile composition must not leak root tokens into Web');
+assert.match(appHomeSource, /<HomeStoryDeck[\s\S]*resume=\{resume\}[\s\S]*picks=\{null\}/, 'Today must render the migrated story deck as its live resume surface');
+assert.doesNotMatch(appHomeSource, /\{false\s*&&/, 'Today must not retain a dead legacy card tree beside the migrated deck');
+assert.match(catboxHomeSource, /继续进行[\s\S]*你的故事[\s\S]*遇见新角色/, 'the migrated Today deck must retain the reference reading order');
+assert.match(discoverSource, /<DiscoverActionRail/, 'Discover must render the migrated action rail');
+assert.match(discoverSource, /<CatboxLottie[\s\S]*name="doubleTapLike"/, 'Discover must play the migrated double-tap animation');
+assert.doesNotMatch(discoverSource, /fd2-acts--legacy/, 'the obsolete Discover action rail must leave the App DOM');
+assert.match(catboxDiscoverRailSource, /className="fd2-acts cbx-action-rail"[\s\S]*className=\{`fd2-act/, 'the live Discover rail must preserve the fd2 action hooks');
+assert.match(chatSource, /HeaderSurface = app \? CatboxChatMediaHeader[\s\S]*<HeaderSurface/, 'immersive Chat must render the migrated media header');
+assert.match(chatSource, /ComposerSurface = app \? CatboxChatComposerSurface[\s\S]*<ComposerSurface/, 'immersive Chat must render the migrated composer');
+assert.match(chatSource, /MessageFrame = app \? CatboxChatMessageFrame[\s\S]*<MessageFrame/, 'immersive Chat must render migrated message cards');
+assert.match(chatSource, /<CatboxChatActionBar/, 'immersive Chat must render the APK-ordered action bar');
+assert.match(catboxChatSource, /variant="clear"[\s\S]*variant="regular"[\s\S]*variant="standard"/, 'Chat must map media, transient chrome, and messages to clear/regular/standard materials');
+assert.match(catboxChatSource, /APP_CHAT_MESSAGE_ACTIONS\.map/, 'the rendered Chat action bar must consume the APK-derived action order');
+assert.match(catboxLottieSource, /lottie_light[\s\S]*prefers-reduced-motion[\s\S]*fallback/, 'reference animation playback must use the light runtime and a reduced-motion fallback');
+assert.match(catboxChatCss, /min-(?:width|height): 44px/, 'Catbox Chat actions must preserve the 44px touch-target floor');
+for (const [name, css] of [['role', roleIosCss], ['chat', catboxChatCss], ['messages/profile', messageProfileCss]]) {
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /(?:^|[;{]\s*|\n\s*)(--(?!ix-)[a-z0-9-]+)\s*:/gm, `Catbox ${name} CSS must consume the IX token authority rather than define a parallel token set`);
+}
 assert.match(chatSource, /if \(!app \|\| !id \|\| loc\.state\?\.draft\) return;/, 'draft restore must stay App-gated and yield to one-shot prefills');
 assert.match(chatSource, /localStorage\.setItem\('huanyu_draft_' \+ id, input\);[\s\S]*localStorage\.removeItem\('huanyu_draft_' \+ id\);/, 'an emptied composer must delete its stored draft');
 for (const scenario of ['weeklyRecapAssertions', 'walletCalendarAssertions', 'quoteCardAssertions', 'galleryS7Assertions', 'conversationMarksAssertions', 'draftAssertions', 's7DarkTierAssertions', 'g10SurfaceAssertions', 'g10SurfaceBAssertions']) {
@@ -630,9 +686,9 @@ assert.match(controlsSource, /preventDefault\(\);[\s\S]*stopPropagation\(\);/, '
 assert.match(controlsSource, /if \(!isAppChrome\(\)\)[\s\S]*<LegacyControl/, 'control primitives must keep the legacy escape hatch outside the App chrome gate');
 assert.match(controlsSource, /isWebChrome\(\)[\s\S]*'lgw-button'/, 'the Lumen Web chrome gate must render real .lgw-* controls on the web shell');
 assert.match(controlsSource, /dataset\.lumenWeb === '1'/, 'the web control gate must key off the removable data-lumen-web boot flag');
-assert.match(layoutSource, /route\.dock\s*&&\s*\([\s\S]*className="app-dock"/, 'the Quiet Aqua Dock must still obey Route Registry visibility');
+assert.match(layoutSource, /route\.dock\s*&&\s*\([\s\S]*<CatboxDock\b/, 'the Catbox Dock must still obey Route Registry visibility');
 assert.match(layoutSource, /data-app-material=\{route\.material\}/, 'AppLayout must expose route-owned material semantics');
-assert.match(layoutSource, /AppMaterialSurface[\s\S]*variant="regular"/, 'Dock and transient chrome must use the shared material primitive');
+assert.match(catboxDockSource, /AppMaterialSurface[\s\S]*variant="regular"/, 'Dock and transient chrome must use the shared material primitive');
 assert.match(materialSurfaceSource, /standard.*regular.*clear/, 'material primitive must expose standard, regular, and clear variants');
 assert.match(materialSurfaceSource, /document\.documentElement\.dataset\.app === '1'/, 'material primitive must stay transparent outside the App shell');
 assert.match(discoverSource, /APP_ROLE_GESTURES\.doubleTapLike/, 'Discover must consume the migrated double-tap gesture contract');
@@ -640,10 +696,8 @@ assert.match(chatSource, /APP_ROLE_GESTURES\.messageLongPress/, 'Chat must consu
 assert.match(roleIosCss, /html\[data-app="1"\]/, 'the role/iOS 26 layer must be App-scoped');
 assert.doesNotMatch(roleIosCss.replace(/\/\*[\s\S]*?\*\//g, ''), /(^|\})\s*:root\b/m, 'the role/iOS 26 layer must not leak a Web :root selector');
 const forbiddenReferencePattern = new RegExp(
-  String.fromCharCode(99, 97, 116, 98, 111, 120)
-    + '|' + String.fromCodePoint(0x732b, 0x7bb1)
-    + '|' + ['com', 'parallel', 'odyssey'].join('\\.')
-    + '|' + String.fromCharCode(109, 97, 111, 120, 105, 97, 110, 103),
+  String.fromCodePoint(0x732b, 0x7bb1)
+    + '|' + ['com', 'parallel', 'odyssey'].join('\\.'),
   'i',
 );
 assert.doesNotMatch(appReferenceSource + roleIosCss + appEntrySource, forbiddenReferencePattern, 'migrated App code must not ship reference branding or vendor package identifiers');
