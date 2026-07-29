@@ -1,0 +1,28 @@
+{
+  "actionBar": [
+    {
+      "id": "like",
+      "show": true
+    },
+    {
+      "id": "dislike",
+      "show": true
+    },
+    {
+      "id": "report",
+      "show": true
+    },
+    {
+      "id": "share",
+      "show": true
+    },
+    {
+      "id": "replay",
+      "show": true
+    },
+    {
+      "id": "chatShare",
+      "show": true
+    }
+  ]
+}

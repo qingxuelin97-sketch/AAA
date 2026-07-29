@@ -1,9 +1,10 @@
 /*
- * Sanitized interaction contract recovered from the authorized mobile
- * reference. It deliberately contains behavior values only: no source
- * binaries, brand artwork, vendor SDKs, or platform-specific classes ship
+ * Sanitized interaction contract recovered from the authorized Catbox APK.
+ * This module is the small runtime-facing slice of the provenance manifest:
+ * no source binaries, brand artwork, vendor SDKs, or platform classes ship
  * with the App.
  */
+import chatItemActionConfig from './assets/app-reference/chat-item-action-config-default.json' with { type: 'json' };
 
 export const APP_ROLE_GESTURES = Object.freeze({
   doubleTapLike: Object.freeze({
@@ -16,20 +17,25 @@ export const APP_ROLE_GESTURES = Object.freeze({
   cardHistoryPauseMs: 600,
 });
 
+export const APP_REFERENCE_SCREENS = Object.freeze({
+  today: 'catbox-home',
+  discover: 'catbox-discover',
+  messages: 'catbox-messages',
+  profile: 'catbox-profile',
+  chat: 'catbox-chat',
+  shell: 'catbox-shell',
+});
+
 export const APP_DISCOVER_ACTIONS = Object.freeze([
   'like',
   'favorite',
-  'comment',
+  'comments',
   'share',
   'history',
 ]);
 
-export const APP_CHAT_MESSAGE_ACTIONS = Object.freeze([
-  'speak',
-  'copy',
-  'regenerate',
-  'react',
-  'reply',
-  'bookmark',
-  'delete',
-]);
+export const APP_CHAT_MESSAGE_ACTIONS = Object.freeze(
+  chatItemActionConfig.actionBar
+    .filter((action) => action.show)
+    .map((action) => action.id),
+);
