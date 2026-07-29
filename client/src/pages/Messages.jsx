@@ -17,6 +17,8 @@ import { isAppMode } from '../appmode.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import AppPressMenu from '../components/AppPressMenu.jsx';
 import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import CatboxMessageNoticeGroup from '../components/catbox/CatboxMessageNoticeGroup.jsx';
+import '../styles/app-catbox-messages-profile.css';
 import { useLongPress } from '../chat/hooks.js';
 import { tick } from '../appgestures.js';
 import { useAppOverlay } from '../overlay.jsx';
@@ -151,7 +153,10 @@ export default function Messages() {
   const loadConvs = () => {
     setConvError('');
     return api('/chat/conversations')
-      .then(d => setConvs(d.conversations || []))
+      .then(d => setConvs((d.conversations || []).slice().sort((a, b) => {
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
+        return new Date(b.updated_at || b.last_message_at || 0) - new Date(a.updated_at || a.last_message_at || 0);
+      })))
       .catch((error) => { setConvs([]); setConvError(error.message || '暂时无法载入对话'); });
   };
   // S7-G10 会话整理：置顶 / 免打扰标记翻转（PATCH 只改标记不 bump 排序时间）
@@ -231,7 +236,7 @@ export default function Messages() {
   };
 
   return (
-    <div className={appMode ? 'msgs qa-messages-page qa3-messages' : 'msgs'}>
+    <div className={appMode ? 'msgs qa-messages-page qa3-messages cbx-messages' : 'msgs'}>
       {appMode ? (
         <>
           <header className="msgs-head">
@@ -240,8 +245,10 @@ export default function Messages() {
           </header>
           <div className="msgs-tabs" role="tablist" aria-label="消息筛选">
             <AppButton variant="tertiary" selected={tab === 'chatted'} role="tab" aria-selected={tab === 'chatted'}
+              id="msgs-tab-chatted" aria-controls="msgs-panel-chatted"
               className={tab === 'chatted' ? 'on' : ''} onClick={() => setTab('chatted')}>聊过</AppButton>
             <AppButton variant="tertiary" selected={tab === 'liked'} role="tab" aria-selected={tab === 'liked'}
+              id="msgs-tab-liked" aria-controls="msgs-panel-liked"
               className={tab === 'liked' ? 'on' : ''} onClick={() => setTab('liked')}>收藏</AppButton>
           </div>
         </>
@@ -258,7 +265,11 @@ export default function Messages() {
 
       {tab === 'chatted' ? (
         <>
-          <AppSection appMode={appMode} className="msgs-entry-group" aria-label="消息入口">
+          {appMode ? <CatboxMessageNoticeGroup rows={[
+            { key: 'notice', icon: Bell, tone: 'notice', title: '互动消息', detail: unread > 0 ? `${unread} 条新的赞、评论、关注` : '有人回应了你的故事或评论', count: unread, onOpen: () => nav('/notifications', { state: { appBackTo: '/messages' } }) },
+            { key: 'direct', icon: UserRound, tone: 'direct', title: '好友私信', detail: dmUnread > 0 ? `${dmUnread} 条未读私信` : '新消息和私信通知', count: dmUnread, onOpen: () => nav('/friends') },
+            { key: 'group', icon: Users, tone: 'group', title: '群聊房间', detail: '你加入的群聊更新', count: 0, onOpen: () => nav('/groups') },
+          ]} /> : <AppSection appMode={appMode} className="msgs-entry-group" aria-label="消息入口">
             <button className="msgs-entry" onClick={() => appMode
               ? nav('/notifications', { state: { appBackTo: '/messages' } })
               : nav('/notifications')}>
@@ -284,12 +295,12 @@ export default function Messages() {
               <span className="msgs-entry-tx"><b>群聊房间</b><small>{appMode ? '你加入的群聊更新' : '多人多 AI 同场闲聊'}</small></span>
               <ChevronRight size={18} className="msgs-entry-chev" />
             </button>
-          </AppSection>
+          </AppSection>}
 
           {appMode
             ? <h2 className="msgs-section-title">与角色的对话</h2>
             : <div className="msgs-sep"><span>与角色的对话</span></div>}
-          <AppSection appMode={appMode} className="msgs-conv-group" aria-label="角色对话">
+          <AppSection appMode={appMode} className="msgs-conv-group" role={appMode ? 'tabpanel' : undefined} id={appMode ? 'msgs-panel-chatted' : undefined} aria-labelledby={appMode ? 'msgs-tab-chatted' : undefined} aria-label="角色对话">
             {convs === null && (
               <div className="msgs-skel">{[0, 1, 2].map(i => <div key={i} className="msgs-skel-row" />)}</div>
             )}
@@ -336,7 +347,7 @@ export default function Messages() {
         </>
       ) : (
         <>
-          <AppSection appMode={appMode} className="msgs-conv-group msgs-liked-group" aria-label="收藏的角色">
+          <AppSection appMode={appMode} className="msgs-conv-group msgs-liked-group" role={appMode ? 'tabpanel' : undefined} id={appMode ? 'msgs-panel-liked' : undefined} aria-labelledby={appMode ? 'msgs-tab-liked' : undefined} aria-label="收藏的角色">
           {favs === null && (
             <div className="msgs-skel">{[0, 1, 2].map(i => <div key={i} className="msgs-skel-row" />)}</div>
           )}

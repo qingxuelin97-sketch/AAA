@@ -13,6 +13,8 @@ import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import MembershipBanner from '../components/profile/MembershipBanner.jsx';
 import AssetCard from '../components/profile/AssetCard.jsx';
 import ProfileContentTabs from '../components/profile/ProfileContentTabs.jsx';
+import CatboxProfileQuickRail from '../components/catbox/CatboxProfileQuickRail.jsx';
+import '../styles/app-catbox-messages-profile.css';
 import WhatsNewSheet from '../components/WhatsNewSheet.jsx';
 import { isAppMode } from '../appmode.js';
 import { useRealtimeEvent } from '../realtime.jsx';
@@ -249,7 +251,7 @@ export default function AppProfile() {
   );
 
   return (
-    <div className={appMode ? 'pf qa-profile qa3-profile' : 'pf'}>
+    <div className={appMode ? 'pf qa-profile qa3-profile cbx-profile' : 'pf'}>
       {/* 顶部图标行 */}
       <div className="pf-top" {...(appMode ? { role: 'toolbar', 'aria-label': '个人中心工具' } : {})}>
         {!appMode && <AppIconButton label="搜索" onClick={openCmdk} aria-label="搜索"><Search size={21} /></AppIconButton>}
@@ -277,14 +279,14 @@ export default function AppProfile() {
       <AssetCard user={user} app={appMode} onWallet={() => nav('/wallet')} />
 
       {/* 快捷功能条 */}
-      <div className="pf-quick">
+      {appMode ? <CatboxProfileQuickRail items={QUICK} onOpen={nav} /> : <div className="pf-quick">
         {QUICK.map(q => (
           <button key={q.label + q.to} data-tone={q.tone} onClick={() => nav(q.to)}>
             <span className="pf-quick-ic"><q.ic size={20} />{q.tag && <i className="pf-quick-tag">{q.tag}</i>}</span>
             <span>{q.label}</span>
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* 内容 Tab（分段 + 骨架 / 错误重试 / 空态 / 网格） */}
       <ProfileContentTabs

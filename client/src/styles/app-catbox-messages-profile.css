@@ -1,0 +1,110 @@
+/* App-only conversation and profile composition.  The existing components own
+   behaviour; this layer defines the first-party mobile information hierarchy. */
+html[data-app="1"] .cbx-messages {
+  padding: max(12px, env(safe-area-inset-top)) 14px calc(104px + env(safe-area-inset-bottom));
+  background: var(--ix-canvas);
+}
+
+html[data-app="1"] .cbx-messages .msgs-head {
+  min-height: 48px; display: flex; align-items: center; justify-content: space-between;
+  margin: 0 2px 12px;
+}
+
+html[data-app="1"] .cbx-messages .msgs-head h1 {
+  margin: 0; color: var(--ix-ink); font-size: 28px; letter-spacing: -.04em; line-height: 1.1;
+}
+
+html[data-app="1"] .cbx-messages .msgs-search {
+  width: 44px; height: 44px; border-radius: 22px; color: var(--ix-ink);
+  background: var(--ix-surface); border: 1px solid var(--ix-hairline);
+}
+
+html[data-app="1"] .cbx-messages .msgs-tabs {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; padding: 4px;
+  margin: 0 0 18px; border: 1px solid var(--ix-hairline); border-radius: 16px;
+  background: color-mix(in srgb, var(--ix-surface) 88%, transparent);
+}
+
+html[data-app="1"] .cbx-messages .msgs-tabs .qa-button {
+  min-height: 40px; border-radius: 12px; color: var(--ix-ink-muted); font-weight: 650;
+}
+
+html[data-app="1"] .cbx-messages .msgs-tabs .qa-button.on {
+  color: var(--ix-ink); background: var(--ix-surface-raised); box-shadow: 0 1px 3px color-mix(in srgb, var(--ix-ink) 13%, transparent);
+}
+
+html[data-app="1"] .cbx-notice-group,
+html[data-app="1"] .cbx-messages .msgs-conv-group {
+  overflow: hidden; border: 1px solid var(--ix-hairline); border-radius: 20px;
+  background: var(--ix-surface); box-shadow: 0 10px 28px color-mix(in srgb, var(--ix-ink) 5%, transparent);
+}
+
+html[data-app="1"] .cbx-notice-row,
+html[data-app="1"] .cbx-messages .msgs-conv { position: relative; min-height: 70px; background: transparent; }
+html[data-app="1"] .cbx-notice-row + .cbx-notice-row::before,
+html[data-app="1"] .cbx-messages .msgs-conv + .msgs-conv::before {
+  content: ''; position: absolute; top: 0; right: 14px; left: 76px; height: 1px; background: var(--ix-hairline);
+}
+
+html[data-app="1"] .cbx-notice-row[data-tone="notice"] .msgs-entry-ic { color: #a96616; background: #fff1dc; }
+html[data-app="1"] .cbx-notice-row[data-tone="direct"] .msgs-entry-ic { color: #416e9e; background: #e7f0fb; }
+html[data-app="1"] .cbx-notice-row[data-tone="group"] .msgs-entry-ic { color: #43765c; background: #e7f5ec; }
+html[data-app="1"] .cbx-notice-row .msgs-entry-ic { border-radius: 16px; }
+html[data-app="1"] .cbx-notice-row .msgs-entry-tx b { color: var(--ix-ink); font-size: 15px; }
+html[data-app="1"] .cbx-notice-row .msgs-entry-tx small { color: var(--ix-ink-muted); }
+html[data-app="1"] .cbx-messages .msgs-section-title { margin: 25px 4px 10px; color: var(--ix-ink); font-size: 15px; font-weight: 720; }
+
+html[data-app="1"] .cbx-messages .msgs-conv-main { min-height: 74px; padding: 11px 8px 11px 14px; }
+html[data-app="1"] .cbx-messages .msgs-conv-tx b { color: var(--ix-ink); font-size: 16px; }
+html[data-app="1"] .cbx-messages .msgs-conv-tx > span { color: var(--ix-ink-muted); font-size: 13px; }
+html[data-app="1"] .cbx-messages .msgs-conv-meta { min-width: 42px; align-items: flex-end; gap: 4px; color: var(--ix-ink-muted); }
+html[data-app="1"] .cbx-messages .msgs-draft { color: var(--ix-act); font-style: normal; }
+html[data-app="1"] .cbx-messages .msgs-del { width: 42px; min-height: 44px; opacity: .76; }
+html[data-app="1"] .cbx-messages .msgs-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--ix-act); color: var(--ix-act-ink); font-size: 11px; line-height: 18px; font-style: normal; }
+html[data-app="1"] .cbx-messages .msgs-liked-group { margin-top: 4px; }
+html[data-app="1"] .cbx-messages .msgs-chatgo { margin-right: 14px; border-radius: 14px; }
+html[data-app="1"] .cbx-messages .msgs-empty { padding: 38px 22px; color: var(--ix-ink-muted); }
+
+html[data-app="1"] .cbx-profile {
+  padding: max(8px, env(safe-area-inset-top)) 14px calc(110px + env(safe-area-inset-bottom));
+  background: var(--ix-canvas);
+}
+html[data-app="1"] .cbx-profile .pf-top { min-height: 46px; margin: 0 0 8px; }
+html[data-app="1"] .cbx-profile .pf-top .qa-icon-button { width: 44px; height: 44px; border-radius: 22px; border: 1px solid var(--ix-hairline); background: var(--ix-surface); }
+html[data-app="1"] .cbx-profile .pf-identity-card {
+  padding: 17px; border: 1px solid var(--ix-hairline); border-radius: 24px; background: var(--ix-surface);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--ix-ink) 5%, transparent);
+}
+html[data-app="1"] .cbx-profile .pf-id { align-items: center; }
+html[data-app="1"] .cbx-profile .pf-av { width: 72px; height: 72px; border-radius: 23px; overflow: hidden; }
+html[data-app="1"] .cbx-profile .pf-id-tx b { color: var(--ix-ink); font-size: 20px; letter-spacing: -.02em; }
+html[data-app="1"] .cbx-profile .pf-uid { padding: 0; min-height: 25px; color: var(--ix-ink-muted); }
+html[data-app="1"] .cbx-profile .pf-edit { margin-left: auto; width: 40px; height: 40px; border-radius: 14px; background: var(--ix-surface-raised); }
+html[data-app="1"] .cbx-profile .pf-bio { margin: 12px 0 10px; color: var(--ix-ink-muted); }
+html[data-app="1"] .cbx-profile .pf-stats { margin: 16px -17px -17px; padding: 14px 4px; border-top: 1px solid var(--ix-hairline); }
+html[data-app="1"] .cbx-profile .pf-stats button b { color: var(--ix-ink); }
+html[data-app="1"] .cbx-profile .pf-stats button span { color: var(--ix-ink-muted); }
+html[data-app="1"] .cbx-profile .pf-vip,
+html[data-app="1"] .cbx-profile .pf-assets { margin-top: 14px; border-radius: 22px; }
+html[data-app="1"] .cbx-profile .pf-vip { min-height: 100px; }
+html[data-app="1"] .cbx-profile .pf-assets { border: 1px solid var(--ix-hairline); background: var(--ix-surface); }
+html[data-app="1"] .cbx-profile-quick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin: 15px 0 23px; overflow: visible; }
+html[data-app="1"] .cbx-profile-quick button { min-width: 0; min-height: 76px; padding: 8px 3px; border: 1px solid var(--ix-hairline); border-radius: 17px; background: var(--ix-surface); color: var(--ix-ink); font-size: 11px; }
+html[data-app="1"] .cbx-profile-quick .pf-quick-ic { width: 31px; height: 31px; margin-bottom: 4px; border-radius: 11px; background: var(--ix-surface-raised); color: var(--ix-act); }
+html[data-app="1"] .cbx-profile .pf-tabs { gap: 20px; margin: 0 2px 12px; border-bottom: 1px solid var(--ix-hairline); }
+html[data-app="1"] .cbx-profile .pf-tabs .qa-button { min-height: 44px; padding: 0 2px; border-radius: 0; color: var(--ix-ink-muted); }
+html[data-app="1"] .cbx-profile .pf-tabs .qa-button.on { color: var(--ix-ink); box-shadow: inset 0 -2px var(--ix-act); }
+html[data-app="1"] .cbx-profile .pf-content-grid { gap: 10px; }
+html[data-app="1"] .cbx-profile .pf-cc { overflow: hidden; border: 1px solid var(--ix-hairline); border-radius: 17px; background: var(--ix-surface); }
+html[data-app="1"] .cbx-profile .pf-cc b { color: var(--ix-ink); }
+html[data-app="1"] .cbx-profile .pf-cc span { color: var(--ix-ink-muted); }
+html[data-app="1"] .cbx-profile .pf-group { margin-top: 25px; border: 1px solid var(--ix-hairline); border-radius: 21px; background: var(--ix-surface); overflow: hidden; }
+html[data-app="1"] .cbx-profile .pf-group h4 { margin: 0; padding: 15px 16px 9px; color: var(--ix-ink); }
+html[data-app="1"] .cbx-profile .pf-cell { min-height: 74px; color: var(--ix-ink); }
+html[data-app="1"] .cbx-profile .pf-cell-ic { color: var(--ix-act); background: var(--ix-surface-raised); border-radius: 13px; }
+html[data-app="1"] .cbx-profile .pf-foot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 20px; }
+html[data-app="1"] .cbx-profile .pf-foot-btn { justify-content: center; min-height: 44px; }
+
+@media (max-width: 360px) { html[data-app="1"] .cbx-profile-quick { gap: 5px; } html[data-app="1"] .cbx-profile-quick button { font-size: 10px; } }
+@media (prefers-reduced-transparency: reduce) { html[data-app="1"] :where(.cbx-notice-group, .cbx-messages .msgs-conv-group, .cbx-profile .pf-identity-card) { background: var(--ix-surface-raised); } }
+@media (prefers-reduced-motion: reduce) { html[data-app="1"] :where(.cbx-messages *, .cbx-profile *) { scroll-behavior: auto; transition-duration: .01ms !important; } }
