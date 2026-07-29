@@ -18,7 +18,7 @@ import WelcomePopup from './WelcomePopup.jsx';
 import AppOnboarding from './AppOnboarding.jsx';
 import RouteErrorBoundary from './RouteErrorBoundary.jsx';
 import { AppButton, AppIconButton, AppTabButton } from './AppControls.jsx';
-import { AppMaterialSurface } from './AppMaterialSurface.jsx';
+import { CatboxDock, CatboxSheetFrame, useCatboxChromeState } from './catbox/CatboxDock.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
 import { useNav, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
 import { notifyAppTabActive } from '../appTabActivity.js';
@@ -54,6 +54,7 @@ const CREATE = [
 export default function AppLayout({ children }) {
   const loc = useLocation();
   const { route, requestBack } = useAppNavigation();
+  const { keyboardOpen } = useCatboxChromeState();
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
   const [sheet, setSheet] = useState(false); // create sheet open?
@@ -325,6 +326,9 @@ export default function AppLayout({ children }) {
       data-statusbar-tone={route.statusBar}
       data-dirty-policy={route.dirty}
       data-app-material={route.material}
+      data-app-content-material={route.contentMaterial}
+      data-reference-screen={route.referenceScreen || undefined}
+      data-keyboard-open={keyboardOpen || undefined}
       data-full-bleed={route.fullBleed || undefined}>
       {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
       {perfNote && (
@@ -359,35 +363,37 @@ export default function AppLayout({ children }) {
       </main>
 
       {route.dock && (
-        <div className="app-dock">
-          <AppMaterialSurface variant="regular" className="app-tabbar-surface">
+        <CatboxDock
+          navigation={(
             <nav className="app-tabbar" ref={tabbarRef} aria-label="主导航">
               <span className="dock-ink" ref={inkRef} aria-hidden="true" />
               {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
               <span className="app-dock-gap" aria-hidden="true" />
               {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
             </nav>
-          </AppMaterialSurface>
-          <AppIconButton
-            ref={fabRef}
-            className={'app-fab' + (sheet ? ' open' : '')}
-            variant="filled"
-            selected={sheet}
-            onClick={(event) => {
-              // Touch activation does not consistently move DOM focus. Make
-              // the launcher explicit so OverlayProvider can restore it after
-              // Escape / Android Back just as it does for keyboard activation.
-              event.currentTarget.focus?.({ preventScroll: true });
-              setSheet(s => !s);
-            }}
-            label={sheet ? '关闭创建菜单' : '打开创建菜单'}
-            aria-expanded={sheet}
-            aria-haspopup="dialog"
-            aria-controls="app-create-sheet"
-          >
-            {sheet ? <X size={20} /> : <Plus size={21} strokeWidth={2.6} />}
-          </AppIconButton>
-        </div>
+          )}
+          action={(
+            <AppIconButton
+              ref={fabRef}
+              className={'app-fab' + (sheet ? ' open' : '')}
+              variant="filled"
+              selected={sheet}
+              onClick={(event) => {
+                // Touch activation does not consistently move DOM focus. Make
+                // the launcher explicit so OverlayProvider can restore it after
+                // Escape / Android Back just as it does for keyboard activation.
+                event.currentTarget.focus?.({ preventScroll: true });
+                setSheet(s => !s);
+              }}
+              label={sheet ? '关闭创建菜单' : '打开创建菜单'}
+              aria-expanded={sheet}
+              aria-haspopup="dialog"
+              aria-controls="app-create-sheet"
+            >
+              {sheet ? <X size={20} /> : <Plus size={21} strokeWidth={2.6} />}
+            </AppIconButton>
+          )}
+        />
       )}
 
       {sheet && <CreateSheet onClose={() => setSheet(false)} returnFocusRef={fabRef} />}
@@ -456,9 +462,8 @@ function CreateSheet({ onClose, returnFocusRef }) {
   const go = (to) => { if (navTo(to) !== false) onClose(); };
   return createPortal((
     <div className="app-sheet-mask" onClick={onClose}>
-      <AppMaterialSurface
+      <CatboxSheetFrame
         as="section"
-        variant="regular"
         id="app-create-sheet"
         ref={sheetRef}
         className="app-sheet"
@@ -487,7 +492,7 @@ function CreateSheet({ onClose, returnFocusRef }) {
             <span className="ac-tx"><b>{c.label}</b><small>{c.hint}</small></span>
           </AppButton>
         ))}
-      </AppMaterialSurface>
+      </CatboxSheetFrame>
     </div>
   ), document.body);
 }

@@ -20,6 +20,13 @@ import { isAppMode } from '../appmode.js';
 import { APP_ROLE_GESTURES } from '../appReference.js';
 import { useAppOverlay } from '../overlay.jsx';
 import {
+  CatboxChatActionBar,
+  CatboxChatComposerSurface,
+  CatboxChatMediaHeader,
+  CatboxChatMessageFrame,
+} from '../components/catbox/CatboxChat.jsx';
+import CatboxLottie from '../components/catbox/CatboxLottie.jsx';
+import {
   GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
   REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo, timeDivider,
 } from '../chat/constants.js';
@@ -84,6 +91,8 @@ export default function Chat() {
   const withAppClass = (base, hook) => app ? [base, hook].filter(Boolean).join(' ') : base;
   const ChatHeader = app ? 'header' : 'div';
   const ChatComposer = app ? 'footer' : 'div';
+  const HeaderSurface = app ? CatboxChatMediaHeader : ChatHeader;
+  const ComposerSurface = app ? CatboxChatComposerSurface : ChatComposer;
   const { id } = useParams();
   const nav = useNav();
   const loc = useLocation();
@@ -150,6 +159,7 @@ export default function Chat() {
   // 长按操作面板（触屏取代 hover 操作行）：sheetFor = 目标消息或 null。
   const [sheetFor, setSheetFor] = useState(null);
   const [quoteShare, setQuoteShare] = useState(null); // App 台词分享卡（长按面板入口）
+  const [catboxLikeBurstId, setCatboxLikeBurstId] = useState(null);
   // 引用回复：replyTo = 被引用的消息或 null；发送时以 markdown 引用块前置。
   const [replyTo, setReplyTo] = useState(null);
   // 消息书签：本地存储（三端通用、不依赖服务端），按会话隔离。
@@ -393,6 +403,27 @@ export default function Chat() {
     try { const d = await api(`/chat/conversations/${id}/messages/${msg.id}/react`, { method: 'POST', body: { reaction: emoji } });
       setMessages(ms => ms.map(x => x.id === msg.id ? { ...x, reaction: d.message.reaction } : x)); }
     catch (e) { toast(e.message, 'err'); }
+  };
+  const reportMessage = async (msg) => {
+    if (!msg?.id) return;
+    try {
+      await api('/engage/report', {
+        method: 'POST',
+        body: { type: 'message', id: msg.id, reason: '来自聊天操作条的反馈' },
+      });
+      toast('反馈已提交');
+    } catch (e) {
+      toast(e.message, 'err');
+    }
+  };
+  const shareMessage = (msg) => setQuoteShare(msg);
+  const likeMessage = (msg) => react(msg, '❤️');
+  const dislikeMessage = (msg) => react(msg, '👎');
+  const doubleTapLike = (msg) => {
+    likeMessage(msg);
+    if (!app || !msg?.id) return;
+    setCatboxLikeBurstId(msg.id);
+    window.setTimeout(() => setCatboxLikeBurstId((current) => current === msg.id ? null : current), 920);
   };
 
   const loadConvs = () => api('/chat/conversations').then(d => setConvs(d.conversations)).catch(() => {});
@@ -710,7 +741,7 @@ export default function Chat() {
             {/* 菜单遮罩挂 .chat-main 层级：塞进 .chat-menu-wrap 会缩成按钮
                 大小的方形模糊块（见 TheaterRoom 同注释） */}
             {menuOpen && <div className="chat-menu-mask" onClick={() => setMenuOpen(false)} />}
-            <ChatHeader className={withAppClass('chat-head', 'qa-chat-header')}>
+            <HeaderSurface as={app ? ChatHeader : undefined} className={withAppClass('chat-head', 'qa-chat-header')}>
               <AppIconButton className={withAppClass('btn ghost sm mobile-only chat-back', 'qa-chat-back')} label="返回消息" onClick={() => nav('/messages')}><ArrowLeft size={16} /></AppIconButton>
               {/* App keeps identity in the navigation chrome where people expect
                   it. Message rows can then stay visually quiet instead of
@@ -804,7 +835,7 @@ export default function Chat() {
                   )}
                 </div>
               </div>
-            </ChatHeader>
+            </HeaderSurface>
             {character?.background && <span className="chat-ai-mark" aria-hidden="true">内容由 AI 生成</span>}
             {/* APP 壳：悬浮玻璃胶囊，高亮 + 上/下条跳转（不过滤，保留上下文）。
                 Web 壳：维持原过滤式搜索不动。 */}
@@ -862,10 +893,15 @@ export default function Chat() {
                 const firstOfRun = i === 0 || messages[i - 1].role !== m.role;
                 // 时间分隔：与上一条间隔 > 10min（或会话首条）时插入居中时间胶囊。
                 const divider = !q ? timeDivider(messages[i - 1]?.created_at, m.created_at) : null;
+                const MessageFrame = app ? CatboxChatMessageFrame : 'div';
                 return (
                 <React.Fragment key={m.id || i}>
                 {divider && <div className="msg-daydivider" aria-hidden="true"><span>{divider}</span></div>}
-                <div id={m.id ? 'msg-' + m.id : undefined} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}>
+                <MessageFrame
+                  id={m.id ? 'msg-' + m.id : undefined}
+                  className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}
+                  {...(app ? { speakerRole: m.role } : {})}
+                >
                   {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={38} />}
                   <div className="msg-col">
                     {m.role === 'assistant' && firstOfRun && (
@@ -892,7 +928,7 @@ export default function Chat() {
                           e.preventDefault();
                           if (!COARSE) copyMsg(m.content);
                         } : undefined}
-                        onDoubleClick={m.role === 'assistant' && m.id ? () => react(m, '❤️') : undefined}
+                        onDoubleClick={m.role === 'assistant' && m.id ? () => doubleTapLike(m) : undefined}
                         title={m.content ? '长按操作 · 双击喜欢' : undefined}>
                         {m._streaming && !m.content
                           ? <span className="typing"><span></span><span></span><span></span></span>
@@ -900,8 +936,38 @@ export default function Chat() {
                         {m.reaction && <span className="msg-reaction" title="我的反应">{m.reaction}</span>}
                       </div>
                     )}
+                    {app && catboxLikeBurstId === m.id && (
+                      <CatboxLottie
+                        name="doubleTapLike"
+                        className="catbox-message-like-burst"
+                        ariaLabel="喜欢"
+                        onComplete={() => setCatboxLikeBurstId(null)}
+                        fallback={<Heart size={38} fill="currentColor" />}
+                      />
+                    )}
                     {!m._streaming && m.content && editingId !== m.id && (
-                      <div className="msg-acts">
+                      app ? (
+                        <CatboxChatActionBar
+                          message={m}
+                          disabled={streaming}
+                          isLast={i === messages.length - 1}
+                          isPlaying={playingId === m.id || voiceLoadingId === m.id}
+                          isBookmarked={m.id ? marks.has(m.id) : false}
+                          onLike={likeMessage}
+                          onDislike={dislikeMessage}
+                          onReport={reportMessage}
+                          onShare={shareMessage}
+                          onReplay={() => regenerate()}
+                          onChatShare={shareMessage}
+                          onSpeak={toggleSpeak}
+                          onCopy={message => copyMsg(message.content)}
+                          onReply={message => { setReplyTo(message); inputRef.current?.focus(); }}
+                          onBookmark={toggleMark}
+                          onEdit={startEdit}
+                          onDelete={delMsg}
+                        />
+                      ) : (
+                        <div className="msg-acts">
                         {m.role === 'assistant' && <>
                           {playingId === m.id || voiceLoadingId === m.id
                             ? <button className="speak on" onClick={() => { cancelPendingVoice(); stopSpeaking(); }} title="停止播放"><Square size={12} fill="currentColor" /> 停止</button>
@@ -927,10 +993,11 @@ export default function Chat() {
                         <button className="speak" onClick={() => { setReplyTo(m); inputRef.current?.focus(); }} title="引用这条消息回复"><CornerUpLeft size={13} /> 引用</button>
                         {m.id && <button className={'speak' + (marks.has(m.id) ? ' on' : '')} onClick={() => toggleMark(m)} title={marks.has(m.id) ? '取消书签' : '加入书签，可从菜单快速跳回'}><Bookmark size={13} /> {marks.has(m.id) ? '已收藏' : '书签'}</button>}
                         {m.id && <button className="speak" onClick={() => delMsg(m)} disabled={streaming}><Trash2 size={13} /> 删除</button>}
-                      </div>
+                        </div>
+                      )
                     )}
                   </div>
-                </div>
+                </MessageFrame>
                 </React.Fragment>
                 );
               })}
@@ -963,7 +1030,7 @@ export default function Chat() {
             {/* 输入栏：移动端 CSS 改 position:fixed 脱离文档流，键盘弹起时 visualViewport
                 驱动 bottom 上移到键盘上方。chat-main 布局不动，下方被键盘覆盖是自然的，
                 只有输入框被顶上去 —— 不会"拉出半屏原色背景"。 */}
-            <ChatComposer className={withAppClass('chat-input-bar', 'qa-chat-composer')} ref={inputBarRef} aria-label={app ? '消息编辑器' : undefined}>
+            <ComposerSurface as={app ? ChatComposer : undefined} className={withAppClass('chat-input-bar', 'qa-chat-composer')} ref={inputBarRef} aria-label={app ? '消息编辑器' : undefined}>
               {replyTo && (
                 <div className={withAppClass('reply-bar', 'qa-chat-reply')}>
                   <div className="rb-body">
@@ -1080,7 +1147,7 @@ export default function Chat() {
                   </div>
                 );
               })()}
-            </ChatComposer>
+            </ComposerSurface>
 
           {drawerOpen && !docked && (
             <>

@@ -1,6 +1,8 @@
 // Native App route policy. Page elements remain declared in App.jsx, while
 // shell behaviour has one authoritative registry: parent, owning tab, Dock,
 // status-bar tone, refresh/cache strategy and dirty-data policy.
+import { APP_REFERENCE_SCREENS } from './appReference.js';
+
 const R = (pattern, options = {}) => ({
   pattern,
   parent: Object.prototype.hasOwnProperty.call(options, 'parent') ? options.parent : '/',
@@ -9,6 +11,8 @@ const R = (pattern, options = {}) => ({
   fullBleed: options.fullBleed ?? false,
   // Route-owned chrome semantics. Content remains standard/opaque.
   material: options.material ?? 'standard',
+  referenceScreen: options.referenceScreen ?? null,
+  contentMaterial: options.contentMaterial ?? (options.material ?? 'standard'),
   statusBar: options.statusBar ?? 'surface',
   refresh: options.refresh ?? 'remount',
   cache: options.cache ?? 'none',
@@ -18,13 +22,29 @@ const R = (pattern, options = {}) => ({
 export const DEFAULT_APP_TAB = '/today';
 
 export const APP_ROUTE_REGISTRY = Object.freeze([
-  R('/today', { parent: null, tab: '/today', dock: true, material: 'regular', cache: 'keep-alive', refresh: 'evict' }),
-  R('/', { parent: null, tab: '/', dock: true, material: 'clear', fullBleed: true, cache: 'keep-alive', refresh: 'evict', statusBar: 'immersive' }),
-  R('/messages', { parent: null, tab: '/messages', dock: true, material: 'regular', cache: 'keep-alive', refresh: 'evict' }),
-  R('/me', { parent: null, tab: '/me', dock: true, material: 'regular', cache: 'keep-alive', refresh: 'evict' }),
+  R('/today', {
+    parent: null, tab: '/today', dock: true, material: 'regular', contentMaterial: 'standard',
+    referenceScreen: APP_REFERENCE_SCREENS.today, cache: 'keep-alive', refresh: 'evict',
+  }),
+  R('/', {
+    parent: null, tab: '/', dock: true, material: 'clear', contentMaterial: 'clear',
+    referenceScreen: APP_REFERENCE_SCREENS.discover, fullBleed: true, cache: 'keep-alive',
+    refresh: 'evict', statusBar: 'immersive',
+  }),
+  R('/messages', {
+    parent: null, tab: '/messages', dock: true, material: 'regular', contentMaterial: 'standard',
+    referenceScreen: APP_REFERENCE_SCREENS.messages, cache: 'keep-alive', refresh: 'evict',
+  }),
+  R('/me', {
+    parent: null, tab: '/me', dock: true, material: 'regular', contentMaterial: 'standard',
+    referenceScreen: APP_REFERENCE_SCREENS.profile, cache: 'keep-alive', refresh: 'evict',
+  }),
 
   R('/app-controls', { parent: '/today', tab: '/today', dock: false, refresh: 'none' }),
-  R('/chats/:id', { parent: '/messages', tab: '/messages', material: 'clear', statusBar: 'immersive' }),
+  R('/chats/:id', {
+    parent: '/messages', tab: '/messages', material: 'clear', contentMaterial: 'standard',
+    referenceScreen: APP_REFERENCE_SCREENS.chat, statusBar: 'immersive',
+  }),
   R('/chats', { parent: '/messages', tab: '/messages' }),
   R('/group/:id', { parent: '/groups', tab: '/messages' }),
   R('/groups', { parent: '/messages', tab: '/messages' }),

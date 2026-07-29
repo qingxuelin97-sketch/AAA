@@ -1,0 +1,200 @@
+/* Catbox-first chat composition. App-only and intentionally independent from
+   the Web chat skin. */
+html[data-app="1"] .app-root[data-reference-screen="catbox-chat"] .app-main {
+  background: var(--ix-material-standard);
+}
+
+html[data-app="1"] .catbox-chat-media-header {
+  position: relative;
+  z-index: 5;
+  border: 0;
+  border-bottom: 1px solid rgb(255 255 255 / 16%);
+  background: var(--ix-media-header);
+  border-radius: 0;
+  box-shadow: 0 8px 26px rgb(0 0 0 / 16%);
+}
+
+html[data-app="1"] .catbox-chat-message {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  padding: 10px;
+  margin: 0 0 var(--ix-space-3);
+  border-radius: 20px;
+  box-shadow: none;
+}
+
+html[data-app="1"] .catbox-chat-message--user {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-app="1"] .catbox-chat-message .msg-col {
+  min-width: 0;
+}
+
+html[data-app="1"] .catbox-chat-message .bubble {
+  border-radius: 12px 16px 16px 4px;
+  border: 1px solid color-mix(in srgb, var(--ix-ink) 9%, transparent);
+  background: var(--ix-surface-raised);
+  box-shadow: 0 5px 18px rgb(8 15 17 / 9%);
+}
+
+html[data-app="1"] .catbox-chat-message--user .bubble {
+  border-radius: 16px 12px 4px 16px;
+  border-color: color-mix(in srgb, var(--ix-act) 40%, transparent);
+  background: color-mix(in srgb, var(--ix-act) 83%, #0b2730);
+  color: var(--ix-act-ink);
+}
+
+html[data-app="1"] .catbox-chat-actions {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+html[data-app="1"] .catbox-chat-actions__burst,
+html[data-app="1"] .catbox-message-like-burst {
+  pointer-events: none;
+  position: absolute;
+  z-index: 4;
+  width: 112px;
+  height: 112px;
+}
+
+html[data-app="1"] .catbox-chat-actions__burst {
+  right: 6px;
+  bottom: 14px;
+}
+
+html[data-app="1"] .catbox-message-like-burst {
+  left: 35%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+html[data-app="1"] .catbox-lottie svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+html[data-app="1"] .catbox-lottie__fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: #ff6584;
+}
+
+html[data-app="1"] .catbox-chat-actions__primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+html[data-app="1"] .catbox-chat-action {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  color: var(--ix-ink-muted);
+}
+
+html[data-app="1"] .catbox-chat-action--like[data-selected="true"] {
+  color: #ff6584;
+}
+
+html[data-app="1"] .catbox-chat-action--dislike:hover { color: #d37b5b; }
+html[data-app="1"] .catbox-chat-action--report:hover { color: #c15b5b; }
+html[data-app="1"] .catbox-chat-action--replay:hover { color: var(--ix-act); }
+html[data-app="1"] .catbox-chat-action--chatShare:hover { color: var(--ix-act); }
+
+html[data-app="1"] .catbox-chat-actions__more {
+  position: absolute;
+  z-index: 12;
+  right: 0;
+  bottom: calc(100% + 6px);
+  display: grid;
+  min-width: 170px;
+  padding: 6px;
+  border: 1px solid var(--ix-hairline);
+  border-radius: 15px;
+  box-shadow: var(--ix-shadow-2);
+}
+
+html[data-app="1"] .catbox-chat-actions__more button,
+html[data-app="1"] .catbox-chat-user-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--ix-ink);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+html[data-app="1"] .catbox-chat-actions__more button:hover,
+html[data-app="1"] .catbox-chat-user-actions button:hover {
+  background: var(--ix-surface-raised);
+}
+
+html[data-app="1"] .catbox-chat-actions__more .danger,
+html[data-app="1"] .catbox-chat-user-actions .danger { color: #b74b4b; }
+
+html[data-app="1"] .catbox-chat-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+html[data-app="1"] .catbox-chat-composer {
+  border: 0;
+  border-top: 1px solid var(--ix-hairline);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--ix-glass-nav) 92%, transparent);
+  box-shadow: 0 -7px 24px rgb(8 15 17 / 9%);
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+html[data-app="1"] .app-root[data-keyboard-open="true"] .catbox-chat-composer {
+  padding-bottom: 8px;
+  box-shadow: 0 -12px 30px rgb(8 15 17 / 16%);
+}
+
+html[data-app="1"] .catbox-chat-composer .box {
+  min-height: 52px;
+  border-radius: 17px;
+  border: 1px solid var(--ix-hairline);
+  background: var(--ix-surface-raised);
+}
+
+html[data-app="1"] .catbox-chat-composer textarea {
+  min-height: 36px;
+  line-height: 1.45;
+}
+
+html[data-app="1"] .catbox-dock__surface { display: contents; }
+
+@media (prefers-reduced-transparency: reduce) {
+  html[data-app="1"] .catbox-chat-media-header,
+  html[data-app="1"] .catbox-chat-composer {
+    background: var(--ix-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] :where(.catbox-chat-action, .catbox-chat-actions__more button, .catbox-chat-user-actions button) {
+    transition: none !important;
+  }
+}

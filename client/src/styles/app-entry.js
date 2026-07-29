@@ -27,3 +27,4 @@ import './app-ix-pages-d.css';
 
 // Authorized role-discovery interaction reference + iOS 26 material layer.
 import './app-role-ios26.css';
+import './app-catbox-chat.css';
