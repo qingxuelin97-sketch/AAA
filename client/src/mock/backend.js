@@ -686,6 +686,51 @@ function authUser(headers) {
 }
 const tokenFor = (u) => 'tok.' + u.id;
 
+function headerValue(headers, name) {
+  if (headers instanceof Headers) return headers.get(name) || '';
+  if (!headers) return '';
+  const expected = name.toLowerCase();
+  const key = Object.keys(headers).find(k => k.toLowerCase() === expected);
+  return key ? String(headers[key] || '') : '';
+}
+
+function ensureMockAppReferenceUser() {
+  let appUser = find('users', user => user.username === 'app-demo');
+  if (appUser) return appUser;
+  appUser = insert('users', {
+    username: 'app-demo', password: crypto.randomUUID(), display_name: '小鱼', public_uid: 'U1024',
+    bio: '在故事里，遇见另一个自己。', avatar: '/app-pink-v1/art/profile-xiaoyu-avatar.png',
+    banner: null, gold: 2680, diamond: 120, svip: 1, verified: 1, app_reference: true,
+    vip_until: new Date(Date.now() + 3650 * 86400000).toISOString(), last_checkin: null, checkin_streak: 0,
+  });
+  insert('settings', {
+    user_id: appUser.id, llm_provider: 'openai', llm_base_url: 'https://api.openai.com/v1', llm_api_key: '',
+    llm_model: 'gpt-4o-mini', llm_temperature: 0.8, llm_max_tokens: 1024, voice_provider: 'openai',
+    voice_protocol: 'openai', voice_base_url: 'https://api.openai.com/v1', voice_api_key: '', voice_model: 'tts-1',
+    voice_name: 'alloy', theme: 'light', nsfw: 0, notify_email: 0, discoverable: 0, leaderboard_visible: 0,
+  });
+  const characters = [
+    ['陆沉舟', '/app-pink-v1/art/today-luchen-art.png', '我等了你很久', '醒了吗？窗外的阳光很好。'],
+    ['林晚栀', '/app-pink-v1/art/discover-linwan-art.png', '末班车停运后，她似乎一直在等你。', '我还在那座车站。'],
+    ['闻溪', '/app-pink-v1/art/profile-xiaoyu-avatar.png', '新的故事已经写好一半了。', '新的故事已经写好一半了。'],
+    ['白砚', '/app-pink-v1/art/today-luchen-art.png', '今晚要继续我们的约定吗？', '今晚要继续我们的约定吗？'],
+  ];
+  characters.forEach(([name, avatar, tagline, preview], index) => {
+    const character = insert('characters', {
+      owner_id: appUser.id, is_public: 0, category: 'app-reference', tags: 'pink-v1', name, avatar,
+      background: avatar, background_type: 'image', tagline, intro: tagline, greeting: preview,
+      persona: `App pink-v1 reference character: ${name}`, voice_name: 'nova', uses: 0, likes: 0,
+    });
+    const conversation = insert('conversations', {
+      user_id: appUser.id, character_id: character.id, title: name,
+      updated_at: new Date(Date.now() - index * 86400000).toISOString(),
+    });
+    insert('messages', { conversation_id: conversation.id, role: 'assistant', content: preview });
+  });
+  save();
+  return appUser;
+}
+
 function fileToDataUrl(file) {
   return new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(file); });
 }
@@ -1217,9 +1262,38 @@ async function route(method, path, search, body, headers) {
     if (!u || u.password !== body.password) return E('用户名或密码错误', 401);
     if (u.is_banned) return E('账号已被封禁' + (u.ban_reason ? '：' + u.ban_reason : ''), 403);
     u.last_active = Date.now(); save();
-    return J({ token: tokenFor(u), user: publicUser(u) });
+    const sessionUser = headerValue(headers, 'X-Huanyu-App') === '1' && u.username === 'demo'
+      ? ensureMockAppReferenceUser()
+      : u;
+    return J({ token: tokenFor(sessionUser), user: publicUser(sessionUser) });
   }
   if (method === 'GET' && path === '/auth/me') { need(); return J({ user: publicUser(me) }); }
+  if (method === 'GET' && path === '/me/app-reference') {
+    need();
+    if (headerValue(headers, 'X-Huanyu-App') !== '1' || search.get('v') !== 'pink-v1' || me.username !== 'app-demo') {
+      return E('未找到该展示模型', 404);
+    }
+    const characters = filter('characters', character => character.owner_id === me.id && character.category === 'app-reference');
+    const conversations = filter('conversations', conversation => conversation.user_id === me.id);
+    const byName = Object.fromEntries(characters.map(character => [character.name, character.id]));
+    const conversationByName = Object.fromEntries(conversations.map(conversation => {
+      const character = find('characters', item => item.id === conversation.character_id);
+      return [character?.name, conversation.id];
+    }));
+    const rows = [
+      { name: '陆沉舟', preview: '醒了吗？窗外的阳光很好。', time: '09:32' },
+      { name: '林晚栀', preview: '我还在那座车站。', time: '昨天' },
+      { name: '闻溪', preview: '新的故事已经写好一半了。', time: '周一' },
+      { name: '白砚', preview: '今晚要继续我们的约定吗？', time: '周日' },
+    ].map(row => ({ ...row, character_id: byName[row.name] || null, conversation_id: conversationByName[row.name] || null }));
+    return J({
+      version: 'pink-v1',
+      profile: { display_name: '小鱼', public_uid: 'U1024', bio: '在故事里，遇见另一个自己。', stats: { characters: 12, scripts: 8, followers: 326, following: 48 }, wallet: { gold: 2680, diamond: 120 }, membership: '幻域会员' },
+      today: { hero: '陆沉舟', line: '我等了你很久', reward: 50, character_id: byName['陆沉舟'] || null, conversation_id: conversationByName['陆沉舟'] || null },
+      discover: { author: '雾岛来信', character: '林晚栀', line: '末班车停运后，她似乎一直在等你。', tags: ['都市', '治愈'], metrics: { hearts: 23000, comments: 896, favorites: 12000, shares: 634 }, character_id: byName['林晚栀'] || null, conversation_id: conversationByName['林晚栀'] || null },
+      messages: { badges: { interactions: 3, friends: 2, groups: 4 }, rows },
+    });
+  }
   if (method === 'PUT' && path === '/auth/me') {
     need(); ['display_name', 'bio', 'avatar', 'banner', 'email'].forEach(k => { if (body[k] !== undefined && body[k] !== null) me[k] = body[k]; }); save();
     return J({ user: publicUser(me) });

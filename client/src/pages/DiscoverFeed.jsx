@@ -11,7 +11,7 @@
 //  IntersectionObserver 驱动当前卡索引（比 scroll 事件在 snap 下更稳、更省电）。
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav.js';
-import { api, assetUrl } from '../api.jsx';
+import { api, assetUrl, useAuth } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { CategoryIcon, categoryName } from '../assets.jsx';
@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 // Lumen Glass · Web 形态（每条选择器 fenced 在 html:not([data-app="1"])，App 零影响）
 import '../styles/web-lumen-discover.css';
+import PinkDiscover from '../pink/PinkDiscover.jsx';
+import { pinkAsset, usePinkReference } from '../pink/reference.js';
 
 // 开场白预览：*动作* 星号只是排版标记，流里展示时去掉更干净。
 const cleanGreeting = (t) => (t || '').replace(/\*/g, '').replace(/\n{2,}/g, '\n').trim();
@@ -48,6 +50,8 @@ const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); }
 export default function DiscoverFeed() {
   const nav = useNav();
   const toast = useToast();
+  const { user } = useAuth();
+  const pink = usePinkReference(user);
   const appMode = isAppMode();
   const [chars, setChars] = useState([]);
   const [mode, setMode] = useState('recommend'); // 发现流分段：recommend 推荐 / new 新作 / follow 关注
@@ -71,6 +75,7 @@ export default function DiscoverFeed() {
   const containerRef = useRef(null);
   const loadFlag = useRef(0);   // 防竞态
   const lastTap = useRef({ t: 0, id: null });
+  const pinkGesture = useRef({ y: 0, lockedUntil: 0 });
 
   // 壳类名：App 侧字符串逐字节不变（零波及）；Web 侧挂 Lumen 皮肤类 + immersive
   // （≤860px 复用 web-modules 的 .app-shell:has(.immersive) 机制隐藏移动顶栏/底部 dock，
@@ -253,6 +258,63 @@ export default function DiscoverFeed() {
     try { await navigator.clipboard.writeText(url); toast('链接已复制'); }
     catch { toast('分享：' + c.name); }
   };
+
+  if (pink.demo) {
+    const current = chars[0] || {};
+    const model = pink.reference?.discover || {};
+    const bakedCharacter = {
+      ...current,
+      id: model.character_id || current.id,
+      name: model.character || '林晚栀',
+      tagline: model.line || '末班车停运后，她似乎一直在等你。',
+      avatar: pinkAsset('art/discover-linwan-art.png'),
+      background: pinkAsset('art/discover-linwan-art.png'),
+    };
+    const bakedCards = [bakedCharacter, ...chars.filter(character => character.id !== bakedCharacter.id).slice(0, 2)];
+    const cardIndex = Math.min(activeIdx, Math.max(0, bakedCards.length - 1));
+    const card = bakedCards[cardIndex] || bakedCharacter;
+    const switchCard = (direction) => {
+      const now = Date.now();
+      if (now < pinkGesture.current.lockedUntil || bakedCards.length < 2) return;
+      pinkGesture.current.lockedUntil = now + 280;
+      setActiveIdx(index => Math.max(0, Math.min(index + direction, bakedCards.length - 1)));
+    };
+    return (
+      <div
+        className="feed-wrap pink-discover-wrap qa-discover-page qa3-discover"
+        data-pink-card-index={cardIndex}
+        aria-label={`发现角色卡 ${cardIndex + 1}/${bakedCards.length}`}
+        onWheel={(event) => {
+          if (Math.abs(event.deltaY) < 24) return;
+          switchCard(event.deltaY > 0 ? 1 : -1);
+        }}
+        onTouchStart={(event) => { pinkGesture.current.y = event.touches[0]?.clientY || 0; }}
+        onTouchEnd={(event) => {
+          const delta = pinkGesture.current.y - (event.changedTouches[0]?.clientY || 0);
+          if (Math.abs(delta) >= 42) switchCard(delta > 0 ? 1 : -1);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+          event.preventDefault();
+          switchCard(event.key === 'ArrowDown' ? 1 : -1);
+        }}
+      >
+        <PinkDiscover
+          character={card}
+          liked={Boolean(card.id && likedSet.has(card.id))}
+          faved={Boolean(card.id && favSet.has(card.id))}
+          mode={mode}
+          onMode={setMode}
+          onLike={like}
+          onFavorite={fav}
+          onShare={share}
+          onChat={chat}
+          onCall={(c) => { pushRecent(c); tick(12); setCallChar(c); }}
+        />
+        {callChar && <CallScreen character={callChar} onClose={() => setCallChar(null)} />}
+      </div>
+    );
+  }
 
   const atEnd = !hasMore && activeIdx >= chars.length - 1;
 
