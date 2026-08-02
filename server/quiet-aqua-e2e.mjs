@@ -165,8 +165,13 @@ async function preparePage(browser, base, {
     localStorage.setItem('huanyu_perf', config.perf);
     if (config.app) localStorage.setItem('huanyu_app', '1');
     else localStorage.removeItem('huanyu_app');
-    if (config.token) localStorage.setItem('huanyu_token', 'tok.1');
-    else localStorage.removeItem('huanyu_token');
+    if (config.token) {
+      localStorage.setItem('huanyu_token', 'tok.1');
+      localStorage.setItem('huanyu_app_token', 'tok.1');
+    } else {
+      localStorage.removeItem('huanyu_token');
+      localStorage.removeItem('huanyu_app_token');
+    }
   }, { app, token, theme, accent, perf, onboard });
   page.__qaErrors = errors;
   page.__qaBase = base;

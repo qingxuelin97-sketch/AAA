@@ -10,7 +10,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useNavigate, useLocation, useNavigationType } from 'react-router-dom';
-import { api } from '../api.jsx';
+import { api, useAuth } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { IxOnboardingArt } from '../art.jsx';
 import CommandPalette from './CommandPalette.jsx';
@@ -25,6 +25,7 @@ import { useAppNavigation } from '../appNavigation.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { preheat } from '../routeChunks.js';
 import { statusBarContextForTone } from '../routeRegistry.js';
+import { pinkAsset, usePinkReference } from '../pink/reference.js';
 import {
   Home, Compass, MessageCircle, Plus, UserRound,
   UserRoundPlus, Feather, ImagePlus, Drama, Send, RefreshCw, WifiOff, BatteryLow, X
@@ -52,6 +53,13 @@ const CREATE = [
 
 export default function AppLayout({ children }) {
   const loc = useLocation();
+  const { user } = useAuth();
+  const pink = usePinkReference(user);
+  const pinkRoute = loc.pathname === '/' ? 'discover'
+    : loc.pathname === '/today' ? 'today'
+      : loc.pathname === '/messages' ? 'messages'
+        : loc.pathname === '/me' ? 'profile' : '';
+  const pinkDock = pink.demo && pinkRoute ? pinkAsset(`baked/${pinkRoute}/04-dock.png`) : '';
   const { route, requestBack } = useAppNavigation();
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
@@ -323,7 +331,9 @@ export default function AppLayout({ children }) {
     <div className={'app-root' + (route.dock ? '' : ' no-dock')}
       data-statusbar-tone={route.statusBar}
       data-dirty-policy={route.dirty}
-      data-full-bleed={route.fullBleed || undefined}>
+      data-full-bleed={route.fullBleed || undefined}
+      data-pink-v1={pink.active ? (pink.demo ? 'demo' : 'dynamic') : undefined}
+      data-pink-route={pinkRoute || undefined}>
       {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
       {perfNote && (
         <div className="app-perfnote" role="status">
@@ -333,7 +343,7 @@ export default function AppLayout({ children }) {
       )}
       <div className={'app-ptr' + (refreshing ? ' spin' : '')}
         style={{ height: ptr, opacity: ptr ? 1 : 0, '--pull-progress': Math.min(1, ptr / 66) }} aria-hidden="true">
-        <RefreshCw size={20} style={{ transform: refreshing ? 'none' : `rotate(${ptr * 3}deg)` }} />
+        {!pink.demo && <RefreshCw size={20} style={{ transform: refreshing ? 'none' : `rotate(${ptr * 3}deg)` }} />}
       </div>
       <main className="app-main" ref={mainRef}
         style={pull && !refreshing ? { transform: `translateY(${Math.min(pull, 90)}px)`, transition: 'none' } : undefined}>
@@ -358,11 +368,12 @@ export default function AppLayout({ children }) {
 
       {route.dock && (
         <div className="app-dock">
+          {pinkDock && <img className="pink-dock-plate" src={pinkDock} alt="" aria-hidden="true" draggable="false" />}
           <nav className="app-tabbar" ref={tabbarRef} aria-label="主导航">
             <span className="dock-ink" ref={inkRef} aria-hidden="true" />
-            {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+            {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} baked={pink.demo} />)}
             <span className="app-dock-gap" aria-hidden="true" />
-            {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+            {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} baked={pink.demo} />)}
           </nav>
           <AppIconButton
             ref={fabRef}
@@ -381,17 +392,17 @@ export default function AppLayout({ children }) {
             aria-haspopup="dialog"
             aria-controls="app-create-sheet"
           >
-            {sheet ? <X size={20} /> : <Plus size={21} strokeWidth={2.6} />}
+            {!pink.demo && (sheet ? <X size={20} /> : <Plus size={21} strokeWidth={2.6} />)}
           </AppIconButton>
         </div>
       )}
 
-      {sheet && <CreateSheet onClose={() => setSheet(false)} returnFocusRef={fabRef} />}
+      {sheet && <CreateSheet onClose={() => setSheet(false)} returnFocusRef={fabRef} baked={pink.demo} />}
 
       <CommandPalette />
       <AppOnboarding />
       <WelcomePopup />
-      {boot && (
+      {boot && !pink.demo && (
         <div className="app-boot" aria-hidden="true">
           <div className="app-boot-inner">
             <IxOnboardingArt step={0} size={88} className="app-boot-logo" />
@@ -404,7 +415,7 @@ export default function AppLayout({ children }) {
   );
 }
 
-function Tab({ t, unread, dmUnread, curPath }) {
+function Tab({ t, unread, dmUnread, curPath, baked = false }) {
   const go = useNav();
   const selected = curPath === t.to;
   // Tapping the already-active tab scrolls the page back to the top (native pattern).
@@ -438,14 +449,14 @@ function Tab({ t, unread, dmUnread, curPath }) {
       onClick={onClick}
       className="app-tab"
       selected={selected}
-      icon={t.ic}
+      icon={baked ? undefined : t.ic}
       label={t.label}
       badgeCount={badgeCount}
     />
   );
 }
 
-function CreateSheet({ onClose, returnFocusRef }) {
+function CreateSheet({ onClose, returnFocusRef, baked = false }) {
   const navTo = useNav();
   const sheetRef = useRef(null);
   useAppOverlay(true, onClose, { rootRef: sheetRef, isolate: true, returnFocusRef });
@@ -465,7 +476,7 @@ function CreateSheet({ onClose, returnFocusRef }) {
         <div className="app-sheet-grip" />
         <div className="app-sheet-head">
           <h3 className="app-sheet-title" id="app-create-title">想创作点什么？</h3>
-          <AppIconButton label="关闭创建菜单" onClick={onClose}><X size={19} /></AppIconButton>
+          <AppIconButton label="关闭创建菜单" onClick={onClose}>{!baked && <X size={19} />}</AppIconButton>
         </div>
         {CREATE.map((c, i) => (
           <AppButton
@@ -477,7 +488,7 @@ function CreateSheet({ onClose, returnFocusRef }) {
             style={{ '--i': i }}
             onClick={() => go(c.to)}
           >
-            <span className="ac-ic"><c.ic size={20} /></span>
+            <span className="ac-ic">{!baked && <c.ic size={20} />}</span>
             <span className="ac-tx"><b>{c.label}</b><small>{c.hint}</small></span>
           </AppButton>
         ))}

@@ -22,6 +22,8 @@ import { useAppTabActive } from '../appTabActivity.js';
 import { greeting, skyClass, loadResumeRail, loadHeroAndPicks, loadTodayTasks } from './home/shared.js';
 import { burst } from '../fx.js';
 import { tick } from '../appgestures.js';
+import PinkToday from '../pink/PinkToday.jsx';
+import { usePinkReference } from '../pink/reference.js';
 import {
   Check, Flame, MessagesSquare, ChevronRight, ThumbsUp,
   Drama, PartyPopper, Dices, Gift, Crown, Star, Compass, Search, Bell,
@@ -43,6 +45,7 @@ const CREATE_SHORTCUTS = [
 
 export default function AppHome() {
   const { user, refreshUser } = useAuth();
+  const pink = usePinkReference(user);
   const toast = useToast();
   const nav = useNav();
   const [resume, setResume] = useState(null);
@@ -134,6 +137,18 @@ export default function AppHome() {
     try { const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } }); nav('/chats/' + d.conversation.id); }
     catch (error) { toast(error?.message || '暂时无法开始对话，请稍后重试', 'err'); }
   };
+
+  if (pink.demo) {
+    const model = pink.reference?.today || {};
+    const bakedHero = {
+      ...(hero || {}),
+      id: model.character_id || hero?.id,
+      conversation_id: model.conversation_id || null,
+      name: model.hero || '陆沉舟',
+      tagline: model.line || '我等了你很久',
+    };
+    return <PinkToday hero={bakedHero} resume={resume || []} unread={unread} checked={checked} onChat={openChat} onCheckin={checkin} />;
+  }
 
   return (
     <div

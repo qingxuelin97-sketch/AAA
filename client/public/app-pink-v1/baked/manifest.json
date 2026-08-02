@@ -1,0 +1,557 @@
+{
+  "version": "pink-v1",
+  "width": 390,
+  "height": 844,
+  "screens": {
+    "today": {
+      "source": "today-source.png",
+      "source_sha256": "8cbeed3e04de679354f42ab8108ee10d7494c5890d69c9e1c5a13acc938dd9aa",
+      "baseline": "today-390x844.png",
+      "baseline_sha256": "0c5cce8b054d190c753911f67bb4f4190691225341ffc19c6c87128ea37b42ce",
+      "parts": [
+        {
+          "name": "header",
+          "file": "today/01-header.png",
+          "top": 0,
+          "height": 126,
+          "sha256": "c4ec178948455be6b4e8b4fbb30231406227f618c01659e37b6f5f755fbeb317"
+        },
+        {
+          "name": "hero",
+          "file": "today/02-hero.png",
+          "top": 126,
+          "height": 385,
+          "sha256": "0122657b210cbc15d583362dcdd5ef45d51952e84f3e452a3de1c5edf222409d"
+        },
+        {
+          "name": "companions-task",
+          "file": "today/03-companions-task.png",
+          "top": 511,
+          "height": 260,
+          "sha256": "3403d11be646ad9ce9fe038d885901945c52e5ac215175b677fd18aa1d0cd38a"
+        },
+        {
+          "name": "dock",
+          "file": "today/04-dock.png",
+          "top": 771,
+          "height": 73,
+          "sha256": "2c10118aff6b223911d5cf37613a663f008ff47912fe7398a1c3e78600344ae8"
+        }
+      ]
+    },
+    "discover": {
+      "source": "discover-source.png",
+      "source_sha256": "f9ad42d4c1078482a976eb020e33a554b51ea0f4f3cb6456fb2258d785baca63",
+      "baseline": "discover-390x844.png",
+      "baseline_sha256": "da555f3ee02a63b595c70dfef467e36db65d156a2b45523321818103b1d6d8d6",
+      "parts": [
+        {
+          "name": "header",
+          "file": "discover/01-header.png",
+          "top": 0,
+          "height": 88,
+          "sha256": "f020c13a97b47c81e8b721cbe16578174a9290e6dcc8e80449f44016454178f5"
+        },
+        {
+          "name": "story",
+          "file": "discover/02-story.png",
+          "top": 88,
+          "height": 460,
+          "sha256": "7bd863b928d11022098dd6d15e0e7a8442fcd036bda4805f9a8b4336f180b639"
+        },
+        {
+          "name": "actions-copy",
+          "file": "discover/03-actions-copy.png",
+          "top": 548,
+          "height": 212,
+          "sha256": "2624cae3d5e68b357a0c6f50361dcee6d319d3cdf10c6ab37de962af3378717b"
+        },
+        {
+          "name": "dock",
+          "file": "discover/04-dock.png",
+          "top": 760,
+          "height": 84,
+          "sha256": "a4af06adc17ecf008b6243a69ea267f8155cb53bced6df716744e01cdf8fea03"
+        }
+      ]
+    },
+    "messages": {
+      "source": "messages-source.png",
+      "source_sha256": "97f86d0825447c4f69aedba041a4b525616c142b802fb36977b1107040a8733b",
+      "baseline": "messages-390x844.png",
+      "baseline_sha256": "d02fb20bb2fbd9f41b257e97f83a4394104d1cb92920f915e89dd8564c713840",
+      "parts": [
+        {
+          "name": "header-entry",
+          "file": "messages/01-header-entry.png",
+          "top": 0,
+          "height": 273,
+          "sha256": "2296cf02e0dbd15e7915ba469ef21166fdcadd0cc9acd3c0857da46139a9be4c"
+        },
+        {
+          "name": "conversations",
+          "file": "messages/02-conversations.png",
+          "top": 273,
+          "height": 435,
+          "sha256": "b92ce57d9f77360ed7fac7ce888f21a4efcae5ac7554a0c1edac86659860fb13"
+        },
+        {
+          "name": "waiting-banner",
+          "file": "messages/03-waiting-banner.png",
+          "top": 708,
+          "height": 63,
+          "sha256": "5a74480bc3b99a3ccb5ded18d5aca68033258a35b82faf46331ca259af071ee3"
+        },
+        {
+          "name": "dock",
+          "file": "messages/04-dock.png",
+          "top": 771,
+          "height": 73,
+          "sha256": "027b22bf41084288885fc9785b635eec65a8ade44556b1366960a677d718e4a7"
+        }
+      ]
+    },
+    "profile": {
+      "source": "profile-source.png",
+      "source_sha256": "e8f63e561f6cb0f51f4cd6b4efcd366921eabdf08432450ebe2d2509e2531f0f",
+      "baseline": "profile-390x844.png",
+      "baseline_sha256": "00a38853668cbe70d7fd341e2ac129b4a6818d8ef23fba82708ec935789e791f",
+      "parts": [
+        {
+          "name": "identity",
+          "file": "profile/01-identity.png",
+          "top": 0,
+          "height": 219,
+          "sha256": "043e313f2b4be511e43b78503445f4ff8f30ca7f2eac943d56707bc15db44098"
+        },
+        {
+          "name": "benefits",
+          "file": "profile/02-benefits.png",
+          "top": 219,
+          "height": 267,
+          "sha256": "fde4a6052c766e1ef6151ac5c555ec55a9e3c1c7705c533305de6258305d0f52"
+        },
+        {
+          "name": "characters-settings",
+          "file": "profile/03-characters-settings.png",
+          "top": 486,
+          "height": 294,
+          "sha256": "9bae92abe534c8e24ed277d5ba249c76579f1ad924934e347dec9c49ab074fb5"
+        },
+        {
+          "name": "dock",
+          "file": "profile/04-dock.png",
+          "top": 780,
+          "height": 64,
+          "sha256": "6be381cb8d22fb57214284d8d3684be7ad532a50ce9627e50e9fd15495acffc8"
+        }
+      ]
+    }
+  },
+  "generated_art": {
+    "discover-linwan-art.png": {
+      "sha256": "02b7fdc8110246b9abf9cbaa17ed7a2e89eb1f1bc6d97dd3b84d1c2e3ed01b1a",
+      "color_type": 6
+    },
+    "messages-watercolor-header.png": {
+      "sha256": "5ac3d1f132936c0c59c2f0ef4dfd0274d1e480bada6a147c28fe03452069541f",
+      "color_type": 6
+    },
+    "profile-xiaoyu-avatar.png": {
+      "sha256": "ec90a1e5afb71ad23b0bfc2d209bc04b50ff86f58fc5266cac060603e2ca959d",
+      "color_type": 6
+    },
+    "today-luchen-art.png": {
+      "sha256": "d37107a105d24ebb167210874dfd0f44f442b0b47110af34848e96c1a7cab1e9",
+      "color_type": 6
+    }
+  },
+  "icons": {
+    "today": [
+      {
+        "name": "search",
+        "file": "icons/today/search.png",
+        "x": 282,
+        "y": 39,
+        "width": 44,
+        "height": 44,
+        "sha256": "fbd1b30f485297f8d0a7916576987d1f7495b494db0cf53afb81e54b67558284"
+      },
+      {
+        "name": "notification",
+        "file": "icons/today/notification.png",
+        "x": 332,
+        "y": 39,
+        "width": 44,
+        "height": 44,
+        "sha256": "756bf5c449a794e1635f58098cb079501b928ee4c9236d4d49813a7a755653ba"
+      },
+      {
+        "name": "tab-today",
+        "file": "icons/today/tab-today.png",
+        "x": 8,
+        "y": 772,
+        "width": 68,
+        "height": 72,
+        "sha256": "b5b13a9d0d501af18c08b6e6d2abcda04ec79fd10225795719ff6a145f9c0abf"
+      },
+      {
+        "name": "tab-discover",
+        "file": "icons/today/tab-discover.png",
+        "x": 83,
+        "y": 772,
+        "width": 68,
+        "height": 72,
+        "sha256": "737fc322164b131ff18195fc7441d706914251374234aa357abbd2592022f62b"
+      },
+      {
+        "name": "tab-create",
+        "file": "icons/today/tab-create.png",
+        "x": 161,
+        "y": 770,
+        "width": 68,
+        "height": 74,
+        "sha256": "9730d1fe6d9fa8b112d0da8084f37bfa12a35b93c259633625233cc9b2d00406"
+      },
+      {
+        "name": "tab-messages",
+        "file": "icons/today/tab-messages.png",
+        "x": 239,
+        "y": 772,
+        "width": 68,
+        "height": 72,
+        "sha256": "8aa3f55d61a394e474c54063ec4cfc56a99d7c53c5aa113e9ca3f2355e1bda2d"
+      },
+      {
+        "name": "tab-profile",
+        "file": "icons/today/tab-profile.png",
+        "x": 314,
+        "y": 772,
+        "width": 68,
+        "height": 72,
+        "sha256": "aa74a29e65a423f7305598d262507bead643bd2c03c7f9d43e480d5f01ce6da3"
+      }
+    ],
+    "discover": [
+      {
+        "name": "search",
+        "file": "icons/discover/search.png",
+        "x": 341,
+        "y": 34,
+        "width": 42,
+        "height": 46,
+        "sha256": "811ceb6d179d9ccc99f916a6c941d6c8b4baed2fcb99f596196fd9c73b4a899c"
+      },
+      {
+        "name": "heart",
+        "file": "icons/discover/heart.png",
+        "x": 330,
+        "y": 390,
+        "width": 52,
+        "height": 60,
+        "sha256": "4a6cfcafc9d75e052cd47468abdf72bd19c876620164bfb7cea7c1b24fcc8788"
+      },
+      {
+        "name": "comment",
+        "file": "icons/discover/comment.png",
+        "x": 330,
+        "y": 462,
+        "width": 52,
+        "height": 60,
+        "sha256": "d1fefac120ea40191c1c02feb892fcd1d700d0a78a08129c25fade8c4a155788"
+      },
+      {
+        "name": "favorite",
+        "file": "icons/discover/favorite.png",
+        "x": 330,
+        "y": 532,
+        "width": 52,
+        "height": 60,
+        "sha256": "1ba29d0b37b0bff1e356234b105d05760f53051aa75ea7d8ec5a5655bf31cebc"
+      },
+      {
+        "name": "share",
+        "file": "icons/discover/share.png",
+        "x": 330,
+        "y": 600,
+        "width": 52,
+        "height": 60,
+        "sha256": "2d9e301e90c8deb113180a92e0b3642f39d43677b56f0bdb520af5c781509019"
+      },
+      {
+        "name": "voice",
+        "file": "icons/discover/voice.png",
+        "x": 320,
+        "y": 699,
+        "width": 60,
+        "height": 60,
+        "sha256": "7f538e60e27266383a8736edaed03993970b7d23b1e454c4542909a13f1863dd"
+      },
+      {
+        "name": "tab-today",
+        "file": "icons/discover/tab-today.png",
+        "x": 18,
+        "y": 761,
+        "width": 66,
+        "height": 83,
+        "sha256": "c3a5d917cc63d84060a539ef8238ffde05651d9a9a9a0f0037af29c3d9bb1e2d"
+      },
+      {
+        "name": "tab-discover",
+        "file": "icons/discover/tab-discover.png",
+        "x": 91,
+        "y": 761,
+        "width": 66,
+        "height": 83,
+        "sha256": "7fb1425e3b27f7d31007d97207b7333e181bb44c8dba40ca7d9e065e501a9ce2"
+      },
+      {
+        "name": "tab-create",
+        "file": "icons/discover/tab-create.png",
+        "x": 164,
+        "y": 760,
+        "width": 66,
+        "height": 84,
+        "sha256": "8ede4e171affa30d1311acb18f690c7f72b2b078cc637f09c09b309bf83755c0"
+      },
+      {
+        "name": "tab-messages",
+        "file": "icons/discover/tab-messages.png",
+        "x": 237,
+        "y": 761,
+        "width": 66,
+        "height": 83,
+        "sha256": "a7e431f7ddefd0ce9f199717bea1a3bca72f42d3d61c73c49e925165788727aa"
+      },
+      {
+        "name": "tab-profile",
+        "file": "icons/discover/tab-profile.png",
+        "x": 310,
+        "y": 761,
+        "width": 66,
+        "height": 83,
+        "sha256": "d6561f1910f94cb52f34cf9c5d41970898af5d512db0598becfa9046323ff09b"
+      }
+    ],
+    "messages": [
+      {
+        "name": "search",
+        "file": "icons/messages/search.png",
+        "x": 337,
+        "y": 36,
+        "width": 44,
+        "height": 44,
+        "sha256": "8c8eeb4844da5c21c9b6c964060bd8790ce129006a0e68f0ebcd847dc68665ef"
+      },
+      {
+        "name": "interactions",
+        "file": "icons/messages/interactions.png",
+        "x": 42,
+        "y": 156,
+        "width": 72,
+        "height": 72,
+        "sha256": "a44c7af5b931b52aaf7eaba18dcb147ff54110d2e438543151e231d05dea7c8f"
+      },
+      {
+        "name": "friends",
+        "file": "icons/messages/friends.png",
+        "x": 159,
+        "y": 156,
+        "width": 72,
+        "height": 72,
+        "sha256": "4997844564cd183119b9b176970ee03bab23edb02dd36f74af68c4332a3175e9"
+      },
+      {
+        "name": "groups",
+        "file": "icons/messages/groups.png",
+        "x": 276,
+        "y": 156,
+        "width": 72,
+        "height": 72,
+        "sha256": "305ed85c5ecbafdab970c02edcecbcfd07ade1d7d877e1de54d6758edea09511"
+      },
+      {
+        "name": "tab-today",
+        "file": "icons/messages/tab-today.png",
+        "x": 8,
+        "y": 772,
+        "width": 68,
+        "height": 72,
+        "sha256": "40ad42100128a64033ee3ebe2362e688a13a7188eae483b3c652e5316efd6f57"
+      },
+      {
+        "name": "tab-discover",
+        "file": "icons/messages/tab-discover.png",
+        "x": 83,
+        "y": 772,
+        "width": 68,
+        "height": 72,
+        "sha256": "b7ed64df4409bd6849381d534c681a7f791283bd0361fcf4bfbda8fe181743ec"
+      },
+      {
+        "name": "tab-create",
+        "file": "icons/messages/tab-create.png",
+        "x": 161,
+        "y": 770,
+        "width": 68,
+        "height": 74,
+        "sha256": "1ee2d2100e78092e9ba209737adb65d3085849378a6cebf2ea64c6b1200e69ca"
+      },
+      {
+        "name": "tab-messages",
+        "file": "icons/messages/tab-messages.png",
+        "x": 239,
+        "y": 772,
+        "width": 68,
+        "height": 72,
+        "sha256": "c6ce9b24122a16c7f2dd27c593321850d4859521769a4529f32f33df62871bb0"
+      },
+      {
+        "name": "tab-profile",
+        "file": "icons/messages/tab-profile.png",
+        "x": 314,
+        "y": 772,
+        "width": 68,
+        "height": 72,
+        "sha256": "fb39964ac7e523a946dead93156673f1009ae34fbbd6d3246f673fc99974c3e4"
+      }
+    ],
+    "profile": [
+      {
+        "name": "notification",
+        "file": "icons/profile/notification.png",
+        "x": 298,
+        "y": 23,
+        "width": 44,
+        "height": 44,
+        "sha256": "b0bdf749ed7a35d9fc6d4ed11dc65a6ad6c209f21bca87f36049327b4f598c3e"
+      },
+      {
+        "name": "settings",
+        "file": "icons/profile/settings.png",
+        "x": 344,
+        "y": 23,
+        "width": 44,
+        "height": 44,
+        "sha256": "560ef4e70081ea2ed3cb14b993faa97f1c69606d81a3fc8899a41c008c00454c"
+      },
+      {
+        "name": "coin",
+        "file": "icons/profile/coin.png",
+        "x": 30,
+        "y": 334,
+        "width": 54,
+        "height": 54,
+        "sha256": "2afdad51d29dc6b588bf3a3843cfa07fc6318552a1f3e75d87faa93c2cc7a347"
+      },
+      {
+        "name": "diamond",
+        "file": "icons/profile/diamond.png",
+        "x": 149,
+        "y": 334,
+        "width": 54,
+        "height": 54,
+        "sha256": "04c758d168517cfa0fdaf984f46b081edb7b76e657d0230ce849cf14e55ff682"
+      },
+      {
+        "name": "wallet",
+        "file": "icons/profile/wallet.png",
+        "x": 269,
+        "y": 334,
+        "width": 54,
+        "height": 54,
+        "sha256": "9b4dae1831107765903161e1b77eb5e7306418a8b1ee3e4a9bf254280a79d361"
+      },
+      {
+        "name": "achievements",
+        "file": "icons/profile/achievements.png",
+        "x": 31,
+        "y": 408,
+        "width": 55,
+        "height": 55,
+        "sha256": "26c6d92b235b9c8897fb447cf1d67256a017a78c1014a3f3b5384d2b55dc8553"
+      },
+      {
+        "name": "orbit",
+        "file": "icons/profile/orbit.png",
+        "x": 105,
+        "y": 408,
+        "width": 55,
+        "height": 55,
+        "sha256": "ca49463c49ffab252183da92d9a6f452cdf6e162a2d99ed65a754994a818e11f"
+      },
+      {
+        "name": "events",
+        "file": "icons/profile/events.png",
+        "x": 179,
+        "y": 408,
+        "width": 55,
+        "height": 55,
+        "sha256": "5f4ca79633e7278c5451ef7a4c824ebac9e34578f6ab39dd0bedca6f1f97cde5"
+      },
+      {
+        "name": "gacha",
+        "file": "icons/profile/gacha.png",
+        "x": 253,
+        "y": 408,
+        "width": 55,
+        "height": 55,
+        "sha256": "bc7b4e3a51239ebd20ae37057c5cc410fc6256c9236199751402d4ec20846b3f"
+      },
+      {
+        "name": "favorites",
+        "file": "icons/profile/favorites.png",
+        "x": 327,
+        "y": 408,
+        "width": 55,
+        "height": 55,
+        "sha256": "39725c1db82963a7c6c346c20cc8a976765547f8f803577b2bbd6516305402d2"
+      },
+      {
+        "name": "tab-today",
+        "file": "icons/profile/tab-today.png",
+        "x": 8,
+        "y": 781,
+        "width": 68,
+        "height": 63,
+        "sha256": "395df4fb3064802c966f310a3354819747340c286604c847b5d54353267d5ffa"
+      },
+      {
+        "name": "tab-discover",
+        "file": "icons/profile/tab-discover.png",
+        "x": 83,
+        "y": 781,
+        "width": 68,
+        "height": 63,
+        "sha256": "baca98dfbe88181f2c8e86f5c27fc64defb0b4f89fba885af1855c451666d8b8"
+      },
+      {
+        "name": "tab-create",
+        "file": "icons/profile/tab-create.png",
+        "x": 161,
+        "y": 780,
+        "width": 68,
+        "height": 64,
+        "sha256": "5da36f1b279844f5e5bf44a6cef480221139b9a1e87b5b908be78e5ba3975b28"
+      },
+      {
+        "name": "tab-messages",
+        "file": "icons/profile/tab-messages.png",
+        "x": 239,
+        "y": 781,
+        "width": 68,
+        "height": 63,
+        "sha256": "7e9ec7275b54173681c9193c0b516861a67ccf8e95dac893ead2bd577efa21ad"
+      },
+      {
+        "name": "tab-profile",
+        "file": "icons/profile/tab-profile.png",
+        "x": 314,
+        "y": 781,
+        "width": 68,
+        "height": 63,
+        "sha256": "bbcf684804352ce75e97e2d8280927abeee95c85ab564d81de8dc1474d115a68"
+      }
+    ]
+  }
+}

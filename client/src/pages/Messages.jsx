@@ -7,7 +7,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNav } from '../nav.js';
-import { api } from '../api.jsx';
+import { api, useAuth } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar } from '../ui.jsx';
 import { EmptyArt, CoverArt, QuietAquaCharacterArt, isLegacyMonogramCover } from '../art.jsx';
@@ -21,6 +21,8 @@ import { useLongPress } from '../chat/hooks.js';
 import { tick } from '../appgestures.js';
 import { useAppOverlay } from '../overlay.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
+import PinkMessages from '../pink/PinkMessages.jsx';
+import { usePinkReference } from '../pink/reference.js';
 import {
   Bell, BellOff, ChevronRight, Heart, MessageCircle, Pin, Search, UserRound, Users, X, Flame, Ellipsis
 } from 'lucide-react';
@@ -122,9 +124,57 @@ function AppFavoriteRow({ character, nav, onChat }) {
   );
 }
 
+function PinkMessageLayers({ pressMenu, setPressMenu, nav, toggleConvMark, setShareCv, shareCv,
+  setDeleteTarget, deleteTarget, closeDeleteDialog, deleteDialogRef, deleting, removeConv }) {
+  return <>
+    {pressMenu && (
+      <AppPressMenu
+        at={pressMenu.at}
+        onClose={() => setPressMenu(null)}
+        items={[
+          { label: '打开对话', onSelect: () => nav('/chats/' + pressMenu.cv.id) },
+          ...(pressMenu.cv.character_id
+            ? [{ label: '查看角色', onSelect: () => nav('/character/' + pressMenu.cv.character_id) }]
+            : []),
+          { label: pressMenu.cv.pinned ? '取消置顶' : '置顶对话', onSelect: () => toggleConvMark(pressMenu.cv, 'pinned') },
+          { label: pressMenu.cv.muted ? '取消免打扰' : '免打扰', onSelect: () => toggleConvMark(pressMenu.cv, 'muted') },
+          { label: '生成分享卡', onSelect: () => setShareCv(pressMenu.cv) },
+          { label: '删除对话', danger: true, onSelect: () => setDeleteTarget(pressMenu.cv) },
+        ]}
+      />
+    )}
+    {shareCv && (
+      <ShareCardSheet
+        kind="character"
+        payload={{ name: shareCv.character_name, tagline: shareCv.title !== shareCv.character_name ? shareCv.title : '',
+          avatar: shareCv.character_avatar || '', path: shareCv.character_id ? '/character/' + shareCv.character_id : '/' }}
+        onClose={() => setShareCv(null)}
+      />
+    )}
+    {deleteTarget && typeof document !== 'undefined' && createPortal(
+      <div className="app-sheet-mask msgs-delete-mask" onClick={closeDeleteDialog}>
+        <section ref={deleteDialogRef} className="msgs-delete-sheet" role="alertdialog" aria-modal="true"
+          aria-labelledby="msgs-delete-title" aria-describedby="msgs-delete-copy"
+          aria-busy={deleting || undefined} tabIndex={-1}
+          onClick={event => event.stopPropagation()}>
+          <h2 id="msgs-delete-title">删除这段对话？</h2>
+          <p id="msgs-delete-copy">与「{deleteTarget.character_name || '角色'}」的这段云端对话记录将被删除，此操作无法撤销。</p>
+          <div className="msgs-delete-actions">
+            <AppButton variant="tertiary" disabled={deleting} onClick={closeDeleteDialog}>取消</AppButton>
+            <AppButton variant="danger" tone="danger" loading={deleting} onClick={() => removeConv(deleteTarget)}>删除</AppButton>
+          </div>
+        </section>
+      </div>,
+      document.body,
+    )}
+  </>;
+}
+
 export default function Messages() {
   const nav = useNav();
   const toast = useToast();
+  const { user } = useAuth();
+  const pink = usePinkReference(user);
   const appMode = isAppMode();
   const [tab, setTab] = useState('chatted'); // 'liked' | 'chatted'
   const [convs, setConvs] = useState(null);  // null = loading
@@ -229,6 +279,16 @@ export default function Messages() {
       else nav('/character/' + c.id);
     }
   };
+
+  if (pink.demo) {
+    return <>
+      <PinkMessages conversations={convs || []} unread={unread} dmUnread={dmUnread} tab={tab} setTab={setTab} onPress={setPressMenu} />
+      <PinkMessageLayers pressMenu={pressMenu} setPressMenu={setPressMenu} nav={nav}
+        toggleConvMark={toggleConvMark} setShareCv={setShareCv} shareCv={shareCv}
+        setDeleteTarget={setDeleteTarget} deleteTarget={deleteTarget} closeDeleteDialog={closeDeleteDialog}
+        deleteDialogRef={deleteDialogRef} deleting={deleting} removeConv={removeConv} />
+    </>;
+  }
 
   return (
     <div className={appMode ? 'msgs qa-messages-page qa3-messages' : 'msgs'}>

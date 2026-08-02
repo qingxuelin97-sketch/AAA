@@ -17,6 +17,8 @@ import WhatsNewSheet from '../components/WhatsNewSheet.jsx';
 import { isAppMode } from '../appmode.js';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
+import PinkProfile from '../pink/PinkProfile.jsx';
+import { usePinkReference } from '../pink/reference.js';
 import {
   Bell, BookOpen, Copy, Dices, Download, Drama,
   Feather, Heart, Landmark, LifeBuoy, LogOut, Medal, Megaphone,
@@ -70,6 +72,7 @@ const WEB_PROFILE_GRID = {
 
 export default function AppProfile() {
   const { user, logout } = useAuth();
+  const pink = usePinkReference(user);
   const nav = useNav();
   const toast = useToast();
   const appMode = isAppMode();
@@ -168,13 +171,18 @@ export default function AppProfile() {
   };
   const copyId = async () => {
     if (appMode && !user?.id) { toast('资料仍在载入，请稍后再试', 'err'); return; }
-    try { await navigator.clipboard.writeText('U' + user.id); toast('已复制 UID'); } catch { toast('UID：U' + user.id); }
+    const uid = pink.demo ? (pink.reference?.profile?.public_uid || 'U1024') : 'U' + user.id;
+    try { await navigator.clipboard.writeText(uid); toast('已复制 UID'); } catch { toast('UID：' + uid); }
   };
   // 内容 Tab 载入失败重试（原错误分支的 onClick 原样搬出为具名函数）
   const retryContent = () => {
     if (tab === 'chars') { setChars(null); setCharsError(''); api('/characters/mine').then(d => setChars(d.characters || [])).catch((error) => { setChars([]); setCharsError(error.message || '暂时无法载入角色'); }); }
     else { setFavs(null); setFavsError(''); }
   };
+
+  if (pink.demo) {
+    return <PinkProfile unread={unread} onCopyUid={copyId} />;
+  }
 
   const ST = [
     { n: stats?.characters, label: '角色', to: '/library' },

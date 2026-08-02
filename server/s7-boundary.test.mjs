@@ -166,6 +166,38 @@ try {
   assert.equal(ordered[0].pinned, 1, '首位必须是置顶态');
   console.log('  ✅ 排序：置顶权重高于新鲜度（API 层端到端）');
 
+  /* ── 8. Pink v1：App demo 独立账号、头部隔离与真实操作 ID ── */
+  const appLoginResponse = await fetch(BASE + '/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Huanyu-App': '1' },
+    body: JSON.stringify({ username: 'demo', password: '123456' }),
+  });
+  assert.equal(appLoginResponse.status, 200, 'App demo 登录必须成功');
+  const appLogin = await appLoginResponse.json();
+  assert.equal(appLogin.user.username, 'app-demo', 'App demo 必须映射到独立内部账号');
+  assert.notEqual(appLogin.user.id, uid, 'App 与 Web demo 不得共享内部用户 ID');
+  const appHeaders = { Authorization: 'Bearer ' + appLogin.token, 'X-Huanyu-App': '1' };
+  const appReferenceResponse = await fetch(BASE + '/me/app-reference?v=pink-v1', { headers: appHeaders });
+  assert.equal(appReferenceResponse.status, 200, 'App demo 必须能读取 pink-v1 展示模型');
+  const appReference = await appReferenceResponse.json();
+  assert.equal(appReference.profile.public_uid, 'U1024');
+  assert.deepEqual(appReference.profile.stats, { characters: 12, scripts: 8, followers: 326, following: 48 });
+  assert.ok(appReference.today.character_id && appReference.today.conversation_id, '今日热区必须返回真实角色/会话 ID');
+  assert.ok(appReference.discover.character_id && appReference.discover.conversation_id, '发现热区必须返回真实角色/会话 ID');
+  assert.ok(appReference.messages.rows.every(row => row.character_id && row.conversation_id), '四条参考会话必须全部可操作');
+  const missingHeader = await fetch(BASE + '/me/app-reference?v=pink-v1', { headers: { Authorization: 'Bearer ' + appLogin.token } });
+  assert.equal(missingHeader.status, 404, '没有 App 头时展示模型必须不可见');
+  const webReference = await fetch(BASE + '/me/app-reference?v=pink-v1', { headers: { ...H, 'X-Huanyu-App': '1' } });
+  assert.equal(webReference.status, 404, 'Web demo 账号即使伪造头部也不得读取内部展示模型');
+  const directInternalLogin = await fetch(BASE + '/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'app-demo', password: '123456' }),
+  });
+  assert.equal(directInternalLogin.status, 401, '内部演示账号不得直接登录');
+  const webMeAfter = await j('/auth/me');
+  assert.equal(webMeAfter.user.username, 'demo', 'App 登录不得覆盖既有 Web demo 会话');
+  console.log('  ✅ Pink v1：App/Web demo 会话隔离 + 参考模型真实 ID');
+
   db.close();
   console.log('\n✅ S7 边界回归：全部通过');
 } catch (e) {

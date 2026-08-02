@@ -8,6 +8,52 @@ import { cnToday } from '../daily.js';
 
 const router = Router();
 
+// Native App-only reference model. The data belongs to the isolated internal
+// demo account, while the identifiers point at real private records so every
+// transparent hotspot can still navigate or mutate normal application state.
+router.get('/app-reference', authRequired, (req, res) => {
+  if (req.header('X-Huanyu-App') !== '1' || req.query.v !== 'pink-v1' || req.user.username !== 'app-demo') {
+    return res.status(404).json({ error: '未找到该展示模型' });
+  }
+
+  const characters = db.prepare(`SELECT id, name FROM characters
+    WHERE owner_id = ? AND category = 'app-reference' ORDER BY id`).all(req.user.id);
+  const conversations = db.prepare(`SELECT cv.id, cv.character_id, c.name
+    FROM conversations cv JOIN characters c ON c.id = cv.character_id
+    WHERE cv.user_id = ? ORDER BY cv.updated_at DESC, cv.id DESC`).all(req.user.id);
+  const byName = Object.fromEntries(characters.map(character => [character.name, character.id]));
+  const conversationByName = Object.fromEntries(conversations.map(conversation => [conversation.name, conversation.id]));
+
+  res.json({
+    version: 'pink-v1',
+    profile: {
+      display_name: '小鱼', public_uid: 'U1024', bio: '在故事里，遇见另一个自己。',
+      stats: { characters: 12, scripts: 8, followers: 326, following: 48 },
+      wallet: { gold: 2680, diamond: 120 }, membership: '幻域会员',
+    },
+    today: {
+      hero: '陆沉舟', line: '我等了你很久', reward: 50,
+      character_id: byName['陆沉舟'] || null,
+      conversation_id: conversationByName['陆沉舟'] || null,
+    },
+    discover: {
+      author: '雾岛来信', character: '林晚栀', line: '末班车停运后，她似乎一直在等你。',
+      tags: ['都市', '治愈'], metrics: { hearts: 23000, comments: 896, favorites: 12000, shares: 634 },
+      character_id: byName['林晚栀'] || null,
+      conversation_id: conversationByName['林晚栀'] || null,
+    },
+    messages: {
+      badges: { interactions: 3, friends: 2, groups: 4 },
+      rows: [
+        { name: '陆沉舟', preview: '醒了吗？窗外的阳光很好。', time: '09:32' },
+        { name: '林晚栀', preview: '我还在那座车站。', time: '昨天' },
+        { name: '闻溪', preview: '新的故事已经写好一半了。', time: '周一' },
+        { name: '白砚', preview: '今晚要继续我们的约定吗？', time: '周日' },
+      ].map(row => ({ ...row, character_id: byName[row.name] || null, conversation_id: conversationByName[row.name] || null })),
+    },
+  });
+});
+
 // ---- creator revenue-share program (创作者收益分成计划) ----
 // 分成基数 = 其他用户在该创作者作品上真实花掉的金币（平台对话费 + 语音费，按 ref_owner 归属）。
 const REV_TIERS = [

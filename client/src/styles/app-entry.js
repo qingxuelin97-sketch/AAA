@@ -24,3 +24,6 @@ import './app-ix-pages-b.css';
 import './app-ix-pages-c.css';
 // IX-6/IX-7 tail: long-tail pages, states, and migrated stage composition.
 import './app-ix-pages-d.css';
+// Pink v1 is intentionally the final App-only light-theme authority. Dark mode
+// continues to resolve through the existing IX cascade above.
+import './app-pink-v1.css';

@@ -29,6 +29,44 @@ const NAME_RE = /^[\w\u4e00-\u9fa5]{2,20}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BCRYPT_ROUNDS = 12;
 const DUMMY_HASH = bcrypt.hashSync(`timing-equalizer-${crypto.randomUUID()}`, BCRYPT_ROUNDS);
+const APP_REFERENCE_USERNAME = 'app-demo';
+
+function ensureAppReferenceUser() {
+  let appUser = db.prepare('SELECT * FROM users WHERE username = ?').get(APP_REFERENCE_USERNAME);
+  if (appUser) return appUser;
+
+  const expires = new Date(Date.now() + 3650 * 86400000).toISOString();
+  db.transaction(() => {
+    const info = db.prepare(`INSERT INTO users
+      (username,password_hash,display_name,bio,avatar,gold,diamond,vip_until,svip,verified,verified_note)
+      VALUES (?,?,?,?,?,?,?,?,1,1,?)`)
+      .run(APP_REFERENCE_USERNAME, DUMMY_HASH, '小鱼', '在故事里，遇见另一个自己。',
+        '/app-pink-v1/art/profile-xiaoyu-avatar.png', 2680, 120, expires, 'App 粉色参考演示账号');
+    const userId = Number(info.lastInsertRowid);
+    db.prepare("INSERT INTO settings (user_id, theme, discoverable, leaderboard_visible) VALUES (?, 'light', 0, 0)").run(userId);
+
+    const characters = [
+      { name: '陆沉舟', avatar: '/app-pink-v1/art/today-luchen-art.png', background: '/app-pink-v1/art/today-luchen-art.png', tagline: '我等了你很久', preview: '醒了吗？窗外的阳光很好。' },
+      { name: '林晚栀', avatar: '/app-pink-v1/art/discover-linwan-art.png', background: '/app-pink-v1/art/discover-linwan-art.png', tagline: '末班车停运后，她似乎一直在等你。', preview: '我还在那座车站。' },
+      { name: '闻溪', avatar: '/app-pink-v1/art/profile-xiaoyu-avatar.png', background: '/app-pink-v1/art/messages-watercolor-header.png', tagline: '新的故事已经写好一半了。', preview: '新的故事已经写好一半了。' },
+      { name: '白砚', avatar: '/app-pink-v1/art/today-luchen-art.png', background: '/app-pink-v1/art/messages-watercolor-header.png', tagline: '今晚要继续我们的约定吗？', preview: '今晚要继续我们的约定吗？' },
+    ];
+    for (const [index, character] of characters.entries()) {
+      const created = db.prepare(`INSERT INTO characters
+        (owner_id,name,avatar,background,background_type,tagline,intro,greeting,persona,category,tags,is_public,uses,likes)
+        VALUES (?,?,?,?,?,?,?,?,?,'app-reference','pink-v1',0,0,0)`)
+        .run(userId, character.name, character.avatar, character.background, 'image', character.tagline,
+          character.tagline, character.preview, `App pink-v1 reference character: ${character.name}`);
+      const conversation = db.prepare(`INSERT INTO conversations (user_id, character_id, title, updated_at)
+        VALUES (?,?,?,datetime('now', ?))`)
+        .run(userId, Number(created.lastInsertRowid), character.name, `-${index} day`);
+      db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)')
+        .run(Number(conversation.lastInsertRowid), 'assistant', character.preview);
+    }
+  }).immediate();
+  appUser = db.prepare('SELECT * FROM users WHERE username = ?').get(APP_REFERENCE_USERNAME);
+  return appUser;
+}
 
 const httpError = (status, message) => Object.assign(new Error(message), { status, expose: true });
 const openRegistrationForTests = () => process.env.NODE_ENV !== 'production' && process.env.REGISTRATION_MODE === 'open';
@@ -244,18 +282,25 @@ router.post('/login', async (req, res) => {
   const initial = getLoginThrottle({ username, ip: source, secret: SECRET });
   if (initial.blocked) return sendThrottle(initial);
 
-  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-  const ok = await bcrypt.compare(String(req.body?.password || ''), row ? row.password_hash : DUMMY_HASH);
-  if (!row || !ok) {
+  // app-demo is an internal account: callers authenticate with the public
+  // demo credentials and can only be mapped to it by the native App header.
+  const loginRow = username === APP_REFERENCE_USERNAME
+    ? null
+    : db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  const ok = await bcrypt.compare(String(req.body?.password || ''), loginRow ? loginRow.password_hash : DUMMY_HASH);
+  if (!loginRow || !ok) {
     const limited = recordLoginFailure({ username, ip: source, secret: SECRET });
     const status = limited.blocked ? 429 : 401;
     log({ level: 'warn', source: 'server', category: 'auth', event: 'login_failed', message: `登录失败 ${username}`,
-      user_id: row?.id || null, ip: source, ua: req.header('user-agent') || '', endpoint: '/auth/login', method: 'POST', status,
+      user_id: loginRow?.id || null, ip: source, ua: req.header('user-agent') || '', endpoint: '/auth/login', method: 'POST', status,
       request_id: req.requestId || '' });
     if (limited.blocked) return sendThrottle(limited);
     return res.status(401).json({ error: '用户名或密码错误' });
   }
-  if (row.is_banned) return res.status(403).json({ error: '账号已被封禁' + (row.ban_reason ? `：${row.ban_reason}` : '') });
+  if (loginRow.is_banned) return res.status(403).json({ error: '账号已被封禁' + (loginRow.ban_reason ? `：${loginRow.ban_reason}` : '') });
+  const row = req.header('X-Huanyu-App') === '1' && username === 'demo'
+    ? ensureAppReferenceUser()
+    : loginRow;
   clearLoginFailures({ username, ip: source, secret: SECRET });
   // Clear obsolete fields left by releases that permanently locked accounts.
   db.prepare('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?').run(row.id);

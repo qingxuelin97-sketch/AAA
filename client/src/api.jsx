@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { isAppMode } from './appmode.js';
 
 const TOKEN_KEY = 'huanyu_token';
+const APP_TOKEN_KEY = 'huanyu_app_token';
+const APP_TOKEN_MIGRATION_KEY = 'huanyu_app_token_migrated';
 const SERVER_KEY = 'huanyu_server';
 const HTTP_TEST_BUILD = import.meta.env.VITE_INSECURE_HTTP_TEST === '1';
 
@@ -45,11 +47,22 @@ export function assetUrl(u) {
 }
 
 export function getToken() {
+  if (isAppMode()) {
+    const scopedToken = localStorage.getItem(APP_TOKEN_KEY);
+    if (scopedToken) return scopedToken;
+    // Read the legacy key once for upgrades. Once App auth has been written or
+    // cleared, never fall back to the Web session again (especially on logout).
+    if (localStorage.getItem(APP_TOKEN_MIGRATION_KEY) === '1') return null;
+    return localStorage.getItem(TOKEN_KEY);
+  }
   return localStorage.getItem(TOKEN_KEY);
 }
 export function setToken(t) {
-  if (t) localStorage.setItem(TOKEN_KEY, t);
-  else localStorage.removeItem(TOKEN_KEY);
+  const app = isAppMode();
+  const key = app ? APP_TOKEN_KEY : TOKEN_KEY;
+  if (app) localStorage.setItem(APP_TOKEN_MIGRATION_KEY, '1');
+  if (t) localStorage.setItem(key, t);
+  else localStorage.removeItem(key);
 }
 
 export class ApiError extends Error {
@@ -66,6 +79,9 @@ export async function api(path, { method = 'GET', body, raw, signal } = {}) {
   const headers = {};
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  // App surface is explicit and never inferred from the URL on the server.
+  // It gates the pink-v1 demo presentation without changing ordinary Web data.
+  if (isAppMode()) headers['X-Huanyu-App'] = '1';
   // 原生壳设备标识（native.js 启动时写入）：服务端注册配额用。Web 端恒无此头。
   if (window.__HY_DEVICE_ID) headers['X-Device-Id'] = window.__HY_DEVICE_ID;
   let payload = body;
@@ -93,10 +109,12 @@ export async function uploadFile(file) {
 const AuthContext = createContext(null);
 
 export async function restoreAuthSession({ retainTransient = isAppMode() } = {}) {
-  if (!getToken()) return { state: 'anonymous', user: null, error: null };
+  const currentToken = getToken();
+  if (!currentToken) return { state: 'anonymous', user: null, error: null };
   try {
     const data = await api('/auth/me');
     if (data.token) setToken(data.token);
+    else if (isAppMode() && !localStorage.getItem(APP_TOKEN_KEY)) setToken(currentToken);
     return { state: 'authenticated', user: data.user, error: null };
   } catch (error) {
     // Only an authoritative authentication verdict invalidates the local

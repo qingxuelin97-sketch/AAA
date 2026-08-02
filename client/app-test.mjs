@@ -668,4 +668,45 @@ assert.match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#E8EBE9' :
   'App theme chrome must use IX while preserving the Web Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: IX-6/IX-7 guards passed');
+/* ---- Pink v1 partition-baked App reference skin ---- */
+const apiSource = await readFile(new URL('./src/api.jsx', import.meta.url), 'utf8');
+const pinkReferenceSource = await readFile(new URL('./src/pink/reference.js', import.meta.url), 'utf8');
+const pinkCss = await readFile(new URL('./src/styles/app-pink-v1.css', import.meta.url), 'utf8');
+const authRouteSource = await readFile(new URL('../server/routes/auth.js', import.meta.url), 'utf8');
+const pinkManifest = JSON.parse(await readFile(new URL('./public/app-pink-v1/baked/manifest.json', import.meta.url), 'utf8'));
+assert.match(apiSource, /APP_TOKEN_KEY = 'huanyu_app_token'[\s\S]*X-Huanyu-App'] = '1'/,
+  'App auth must use an isolated token key and explicit server header');
+assert.match(apiSource, /APP_TOKEN_MIGRATION_KEY = 'huanyu_app_token_migrated'[\s\S]*never fall back to the Web session again/,
+  'App legacy-token migration must not resurrect a Web session after App logout');
+assert.match(pinkReferenceSource, /import\.meta\.env\.BASE_URL[\s\S]*app-reference\?v=pink-v1/,
+  'pink assets and reference data must be base-aware and versioned');
+assert.match(authRouteSource, /APP_REFERENCE_USERNAME = 'app-demo'[\s\S]*ensureAppReferenceUser/,
+  'real App demo login must map to an isolated internal account');
+assert.match(meRouteSource, /router\.get\('\/app-reference'[\s\S]*U1024[\s\S]*character_id[\s\S]*conversation_id/,
+  'real backend must return exact display data plus operable IDs');
+assert.match(mockBackendSource, /path === '\/me\/app-reference'[\s\S]*U1024[\s\S]*conversation_id/,
+  'static mock must mirror the App reference endpoint');
+assert.match(pinkCss, /min-width:\s*44px[\s\S]*min-height:\s*44px/,
+  'pink semantic hotspots must preserve the 44px touch target floor');
+assert.doesNotMatch(pinkCss, /url\(['"]?\/app-pink-v1/,
+  'pink assets must not use root-absolute CSS URLs that break native/static BASE_URL builds');
+assert.equal(pinkManifest.version, 'pink-v1');
+assert.deepEqual([pinkManifest.width, pinkManifest.height], [390, 844]);
+assert.equal(Object.keys(pinkManifest.screens).length, 4);
+assert.equal(Object.values(pinkManifest.screens).flatMap(screen => screen.parts).length, 16);
+assert.ok(Object.values(pinkManifest.icons).flat().length >= 40, 'search, notification, interaction, feature and Dock glyphs must be available as standalone PNG crops');
+assert.ok(Object.values(pinkManifest.screens).every(screen => /^[a-f0-9]{64}$/.test(screen.source_sha256)
+  && /^[a-f0-9]{64}$/.test(screen.baseline_sha256)
+  && screen.parts.every(part => /^[a-f0-9]{64}$/.test(part.sha256))), 'every baked source, baseline and partition must have SHA-256 provenance');
+const pinkAssetRoot = new URL('./public/app-pink-v1/', import.meta.url);
+const pinkAssetNames = (await readdir(pinkAssetRoot, { recursive: true })).map(name => String(name).replaceAll('\\', '/'));
+assert.equal(pinkAssetNames.some(name => name.endsWith('.svg')), false, 'pink-v1 runtime inventory must contain no SVG');
+const pinkPngNames = pinkAssetNames.filter(name => name.endsWith('.png'));
+assert.ok(pinkPngNames.length >= 20, 'pink-v1 must ship generated art plus all 16 baked PNG partitions');
+for (const name of pinkPngNames) {
+  const png = await readFile(new URL(name, pinkAssetRoot));
+  assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${name} must have a valid PNG signature`);
+  assert.ok(png[25] === 6 || png[25] === 4, `${name} must retain an alpha-capable PNG color type`);
+}
+
+console.log('app invariants: IX-6/IX-7 + pink-v1 guards passed');
