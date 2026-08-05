@@ -1,0 +1,107 @@
+/* ============================================================================
+   幻域 · 彩虹青白 · 动效层（Rainbow over Cyan-White）
+   ----------------------------------------------------------------------------
+   基线仍是「白+青」（IX 令牌未动）；本层负责两件事：
+     1. 彩虹点缀：首页键帽宫格六色粉彩、FAB 彩虹环。
+     2. 大量点击/呼吸动效 —— 性能铁律：一切循环动画只动 transform/opacity
+        （合成器直通，零重绘）；渐变/光晕全部静态预烙在层上，动的只是整层
+        的透明度与缩放。box-shadow / filter / background 永不逐帧。
+   降级：[data-perf="lite"] 动画与光环全关（fx.js 同步不再撒涟漪）；
+        prefers-reduced-motion 动画全停。
+   ========================================================================== */
+
+/* ── 1. 首页键帽宫格 · 六色粉彩（DOM 顺序：扭蛋/活动/剧本/剧场/社区/排行榜）——
+   ix-pages-a 的「图标退中性」规则带 !important，这里同带 !important 且靠
+   import 末位赢下级联。 ── */
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(1) .ah-sc-ic { background: #FFF3D2 !important; color: #A97A0C !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(2) .ah-sc-ic { background: #FFE3DA !important; color: #C24E2E !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(3) .ah-sc-ic { background: #EDE4FB !important; color: #6D48C8 !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(4) .ah-sc-ic { background: #DEE8FD !important; color: #3757B8 !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(5) .ah-sc-ic { background: #D8F1FC !important; color: #0E6E93 !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(6) .ah-sc-ic { background: #D9F4E4 !important; color: #1F7A4C !important; }
+
+/* ── 2. FAB 彩虹环 + 呼吸光环（兄弟元素，见 AppLayout.jsx） ── */
+html[data-app="1"] .app-dock .app-fab-halo {
+  position: absolute;
+  top: -16px;                       /* fab top -12px，环外扩 4px */
+  left: 50%;
+  width: 62px;
+  height: 62px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  pointer-events: none;
+  /* 彩虹环本体：静态 conic 渐变 + 环形掩膜，一次光栅化 */
+  background: conic-gradient(#56C4EA, #7A8CFF, #C77AF0, #FF7AA8, #FFB65A, #6FD79A, #56C4EA);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+}
+/* 呼吸辉光：act 青的柔光单独一层，只动 opacity/scale */
+html[data-app="1"] .app-dock .app-fab-halo::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--ix-act) 38%, transparent) 0%, transparent 68%);
+  animation: ixBreath 2.8s ease-in-out infinite;
+}
+@keyframes ixBreath {
+  0%, 100% { opacity: .35; transform: scale(1); }
+  50%      { opacity: .85; transform: scale(1.14); }
+}
+
+/* ── 3. 呼吸细节：Dock 选中 LED · 在线状态点 ── */
+html[data-app="1"] .qa-tab-button.active .qa-tab-button__icon::before {
+  animation: ixLedBreath 2.4s ease-in-out infinite;
+}
+@keyframes ixLedBreath {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+html[data-app="1"] .ah-presence i,
+html[data-app="1"] .chat-head .ch-dot {
+  animation: ixDotBreath 2.2s ease-in-out infinite;
+}
+@keyframes ixDotBreath {
+  0%, 100% { opacity: .6; transform: scale(.92); }
+  50%      { opacity: 1;  transform: scale(1.06); }
+}
+
+/* ── 4. 点击反馈：全域按压缩放（transform 专属通道 + 快速回弹） ── */
+html[data-app="1"] .qa-button,
+html[data-app="1"] .qa-icon-button,
+html[data-app="1"] .ah-sc,
+html[data-app="1"] .msgs-entry,
+html[data-app="1"] .msgs-conv,
+html[data-app="1"] .pf-cell,
+html[data-app="1"] .app-create-row,
+html[data-app="1"] .poster,
+html[data-app="1"] .cps-item {
+  transition: transform var(--ix-dur-press, 80ms) var(--ix-ease, ease);
+}
+html[data-app="1"] .qa-button:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(var(--ix-key-travel, 1px)) scale(.96) !important;
+}
+html[data-app="1"] .qa-icon-button:active:not(:disabled) { transform: scale(.88) !important; }
+html[data-app="1"] .ah-sc:active { transform: scale(.94) !important; }
+html[data-app="1"] :where(.msgs-entry, .msgs-conv, .pf-cell, .app-create-row, .poster):active { transform: scale(.975); }
+/* FAB：按压下沉 + 收缩（保住水平居中的 translateX） */
+html[data-app="1"] .app-dock .app-fab:active {
+  transform: translateX(-50%) translateY(var(--ix-key-travel, 1px)) scale(.92) !important;
+}
+
+/* 涟漪在深色/彩色主键上提亮（fx.js 注入 .ripple-dot，动画只有 transform+opacity） */
+html[data-app="1"] .qa-button--primary .ripple-dot,
+html[data-app="1"] .app-fab .ripple-dot { background: #fff; opacity: .34; }
+
+/* ── 5. 降级闸门 ── */
+html[data-app="1"][data-perf="lite"] .app-fab-halo { display: none; }
+html[data-app="1"][data-perf="lite"] .qa-tab-button.active .qa-tab-button__icon::before,
+html[data-app="1"][data-perf="lite"] .ah-presence i,
+html[data-app="1"][data-perf="lite"] .chat-head .ch-dot { animation: none; }
+html[data-app="1"][data-perf="lite"] .ripple-dot { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .app-fab-halo::before,
+  html[data-app="1"] .qa-tab-button.active .qa-tab-button__icon::before,
+  html[data-app="1"] .ah-presence i,
+  html[data-app="1"] .chat-head .ch-dot { animation: none; }
+}

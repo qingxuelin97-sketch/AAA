@@ -364,6 +364,9 @@ export default function AppLayout({ children }) {
             <span className="app-dock-gap" aria-hidden="true" />
             {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
           </nav>
+          {/* FAB 呼吸光环 + 彩虹环：独立兄弟元素 —— FAB 本体为收涟漪要 overflow:hidden，
+              光环必须溢出按钮范围，只能画在体外（纯 transform/opacity 动画，合成器直通）。 */}
+          <span className="app-fab-halo" aria-hidden="true" />
           <AppIconButton
             ref={fabRef}
             className={'app-fab' + (sheet ? ' open' : '')}

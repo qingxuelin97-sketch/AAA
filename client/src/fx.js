@@ -70,11 +70,12 @@ export function initFx() {
   initTilt();
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    const t = e.target.closest('.btn, .nav-item, .cast-chip, .seg button, .cat-bar button, .send-btn, .task-row .btn, .theme-seg button, .tabs-bar button');
+    const t = e.target.closest('.btn, .nav-item, .cast-chip, .seg button, .cat-bar button, .send-btn, .task-row .btn, .theme-seg button, .tabs-bar button, .qa-button, .qa-icon-button, .app-fab, .cps-item, .paren-btn, .starter-chip, .ah-sc');
     if (!t || t.disabled || t.classList.contains('no-ripple')) return;
-    // Quiet Aqua owns App control feedback. Do not inject the legacy ripple DOM
-    // into its primitives (including legacy classes retained for Web parity).
-    if (document.documentElement.dataset.app === '1' && t.closest('.qa-button, .qa-icon-button, .qa-tab-button, .app-fab')) return;
+    // 彩虹青白动效：App 控件也吃涟漪（Dock 键除外 —— 它有墨滴+LED 自己的反馈；
+    // 省电档整体关闸，保证低端机零额外绘制）。
+    if (document.documentElement.dataset.perf === 'lite') return;
+    if (document.documentElement.dataset.app === '1' && t.closest('.qa-tab-button, .app-tab')) return;
     // Lumen Web 控件同理：.lgw-* 自带按压态（--lg-dur-press），不叠涟漪 DOM。
     if (t.closest('.lgw-button, .lgw-icon-button, .lgw-tab-button')) return;
     if (getComputedStyle(t).position === 'static') t.style.position = 'relative';

@@ -584,6 +584,8 @@ const INFINITE_ALLOWLIST = new Set([
   'skel-shimmer', 'skel-spin', 'spin360',
   // Web-owned legacy loops living unfenced in shared files; the App fence neutralises them
   'chatKenburns', 'emptyFloat', 'insDrift', 'ringSlide', 'vmGoShine', 'vmShine', 'vmSpark',
+  // 彩虹青白动效层（用户定稿的呼吸循环；只动 transform/opacity，lite/reduced-motion 全关）
+  'ixBreath', 'ixLedBreath', 'ixDotBreath',
 ]);
 const infiniteNames = [...appLayerCss.matchAll(/animation:\s*([a-zA-Z][\w-]*)[^;]*\binfinite\b/g)].map((m) => m[1]);
 assert.deepEqual(
@@ -629,7 +631,8 @@ assert.match(chatSource, /AFFINITY_APP_ICONS/, 'the App chat affinity badge must
 assert.match(layoutSource, /useAppOverlay\(true,\s*onClose,\s*\{\s*rootRef:\s*sheetRef,\s*isolate:\s*true,\s*returnFocusRef\s*\}\)[\s\S]*createPortal/, 'the redesigned create sheet must preserve PR4 portal isolation and explicit focus return');
 assert.match(appSource, /path="\/app-controls"[\s\S]*P\(<AppControlsGallery \/>\)/, 'the control gallery must stay lazy and protected (dual-shell acceptance page since W4)');
 assert.match(routeChunksSource, /AppControlsGallery:[\s\S]*import\('\.\/pages\/AppControlsGallery\.jsx'\)/, 'the control gallery must participate in the route chunk registry');
-assert.match(fxSource, /dataset\.app === '1'[\s\S]*\.qa-button[\s\S]*\.app-fab/, 'legacy ripple injection must skip Quiet Aqua controls and the App FAB');
+assert.match(fxSource, /dataset\.perf === 'lite'/, 'ripple injection must stay disabled in the lite power tier (rainbow motion contract)');
+assert.match(fxSource, /dataset\.app === '1'[\s\S]*\.qa-tab-button/, 'ripple injection must keep skipping Dock keys — they own the ink-drop + LED feedback');
 assert.match(fxSource, /\.lgw-button, \.lgw-icon-button, \.lgw-tab-button/, 'legacy ripple injection must also skip Lumen Web controls (they own their pressed state)');
 
 assert.equal(quietCharacterPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', 'the reviewed character fallback must remain a valid PNG');
