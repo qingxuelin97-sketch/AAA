@@ -101,11 +101,22 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar .box.box.box {
   padding: 2px 2px 2px 6px !important;
 }
 
-/* 输入文字与占位：白字浮在玻璃上 */
+/* 输入文字与占位：白字浮在玻璃上。
+   垂直居中：textarea 不再 stretch/吃 min-height（上游规则把单行文字顶到药丸上沿），
+   高度交还 useAutoGrow 的内联值，随 .box 的 align-items:center 真居中；
+   两侧图标键同样钉回居中（老层 .act-btn 带 align-self:flex-end 往下坠）。 */
 html[data-app="1"] .chat-main .chat-input-bar .box textarea.qa-chat-textarea.qa-chat-textarea,
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box textarea.qa-chat-textarea.qa-chat-textarea {
   color: #fff !important;
   caret-color: #fff;
+  align-self: center !important;
+  min-height: 0 !important;
+  padding: 10px 5px !important;
+}
+html[data-app="1"] .chat-main .chat-input-bar .act-btn.act-btn.act-btn,
+html[data-app="1"] .chat-main .chat-input-bar .send-btn.send-btn.send-btn,
+html[data-app="1"] .chat-main .paren-btn {
+  align-self: center !important;
 }
 html[data-app="1"] .chat-main .chat-input-bar .box textarea.qa-chat-textarea.qa-chat-textarea::placeholder,
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box textarea.qa-chat-textarea.qa-chat-textarea::placeholder {
