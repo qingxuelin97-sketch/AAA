@@ -137,6 +137,102 @@ html[data-app="1"] .qa3-discover .fd2-act > span {
   text-shadow: 0 1px 3px rgb(0 0 0 / 55%);
 }
 
+/* ═══ ① 今日 · 区块头、续读轨、推荐瓦片 ═══════════════════════════ */
+/* 金融舱卡（.ah-hero）与它的读数、签到键、连签点一律不动 —— IX-3 的字面契约。
+   首屏高度也一律不动：e2e 有一道几何闸，故事卡 CTA 必须完整浮出机身条。
+   本节只改 hero 卡以下的区块，以及不参与布局的投影。 */
+
+/* 零投影：box-shadow 不参与布局，全页应用不会撼动任何几何闸 */
+html[data-app="1"] .qa3-today .ah-sc,
+html[data-app="1"] .qa3-today .ah-pick,
+html[data-app="1"] .qa3-today .ah-task,
+html[data-app="1"] .qa3-today .qa-weekly-card,
+html[data-app="1"] .qa3-today .ah-hero-card {
+  box-shadow: var(--ov-ring) !important;
+}
+
+/* 区块头 48：标题 17 粗体，「全部 ›」退到三阶墨，不与标题争 */
+html[data-app="1"] .qa3-today .ah-sec-head {
+  min-height: var(--ov-sec-head);
+  align-items: center;
+}
+html[data-app="1"] .qa3-today .ah-sec-head h2 {
+  font-size: var(--ix-type-section);
+  font-weight: 600;
+  color: var(--ov-ink-100);
+}
+html[data-app="1"] .qa3-today .ah-more.qa-button {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: var(--ov-elev-0) !important;
+  color: var(--ov-ink-55) !important;
+  font-size: var(--ix-type-meta);
+}
+
+/* 续读轨：2:3 满幅封面 + 底部遮罩承载名字。
+   原来是「封面在上、名字在下、好感度再一行」的三段式，一张卡吃掉很高的
+   纵向预算，轨里只能露出一张半；改成文字压在图上后同宽能排下三张。 */
+/* display 必须 important：历史层把它设成 grid，而 grid 下的
+   justify-content:flex-end 管的是横向轨道，名字会留在卡片顶部。 */
+html[data-app="1"] .qa3-today .ah-rail .ah-resume {
+  position: relative;
+  display: flex !important;
+  flex: 0 0 auto;
+  flex-direction: column !important;
+  justify-content: flex-end;
+  gap: 2px;
+  width: var(--ov-rail-w);
+  height: var(--ov-rail-h);
+  padding: var(--ix-space-2);
+  border: 0 !important;
+  border-radius: var(--ix-r-card);
+  overflow: hidden;
+  background: var(--ix-grouped) !important;
+  box-shadow: var(--ov-elev-0) !important;
+}
+html[data-app="1"] .qa3-today .ah-rail .ah-resume .avatar,
+html[data-app="1"] .qa3-today .ah-rail .ah-resume img {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  object-fit: cover;
+}
+html[data-app="1"] .qa3-today .ah-rail .ah-resume::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--ov-scrim-h-sm);
+  background: var(--ov-scrim-media);
+  pointer-events: none;
+}
+html[data-app="1"] .qa3-today .ah-rail .ah-resume > b,
+html[data-app="1"] .qa3-today .ah-rail .ah-resume > .ah-aff {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  text-align: left;
+  color: var(--ov-on-stage);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 50%);
+}
+html[data-app="1"] .qa3-today .ah-rail .ah-resume > b {
+  overflow: hidden;
+  font-size: var(--ix-type-meta);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-app="1"] .qa3-today .ah-rail .ah-resume > .ah-aff {
+  background: transparent !important;
+  color: var(--ov-on-stage-70) !important;
+  font-family: var(--ix-font-mono);
+  font-size: var(--ix-type-micro);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ═══ 子分段 · 全 App 一种下划线语言 ═══════════════════════════════ */
 /* 发现的顶部轨、消息的聊过/收藏、我的的角色/收藏，此前是三套写法：
    玻璃胶囊组、滑动药丸、青色变形下划线。统一成 28×2 一种，页面之间
