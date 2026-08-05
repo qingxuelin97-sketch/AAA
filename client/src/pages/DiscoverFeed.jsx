@@ -316,7 +316,7 @@ export default function DiscoverFeed() {
         {visibleSegs.map(s => (
           <AppButton key={s.key} variant="tertiary" selected={mode === s.key}
             role={appMode ? 'tab' : undefined} aria-selected={appMode ? mode === s.key : undefined}
-            data-seg-on={mode === s.key ? '1' : undefined}
+            data-seg-on={appMode && mode === s.key ? '1' : undefined}
             className={'feed-mode' + (mode === s.key ? ' on' : '')} onClick={() => setMode(s.key)}>{s.label}</AppButton>
         ))}
       </div>

@@ -1,8 +1,31 @@
 # docs/design · 设计权威索引
 
-## 现行权威：「仪与匣」The Field Instrument（field-instrument/）
+## 现行权威（一级四页 + 机身条）：「叠印」Overprint（overprint/）
 
-阶段四换代（IX 系列）的设计交付包，**替代**曜光玻璃 Lumen Glass 的视觉层；产品结构、路由、状态矩阵、Web 零差异边界全部继承。
+阶段五换代（OV 系列）的设计交付包。与前几代不同，**叠印是局部换代**：它只接管
+App 壳的一级四页（今日 / 发现 / 消息 / 我的）与机身条 Dock，其余约 40 条二级与
+深层路由继续由「仪与匣」管辖。
+
+叠印**扩展**而非替换 IX —— 圆角五档、间距六档、44/48 触控、Dock 高度、安全区
+与全部语义色相一律 `var(--ix-*)` 继承，`overprint/design-tokens.css` 里不重定义
+（app-test 断言 `--ov-*` 命名空间内不得出现几何或语义色）。这是刻意的：跨页跳转
+会穿过材质接缝，让接缝只落在材质层而不落在几何层，两代才不割裂。
+
+- `overprint/design-tokens.css` — `--ov-*` 令牌**冻结原件**（`:root` 作用域；浅/深/沉浸台/lite 四态）。运行时孪生 `client/src/styles/app-ov-tokens.css` 由 `scripts/sync-ov-tokens.mjs` 生成，只做 `:root` → `html[data-app="1"]` 改写，值逐字节相同，由 app-test 反向改写后断言相等。**不要手抄孪生。**
+- `overprint/SPEC.md` — 设计权威 v1.0：世界观 / 与 IX 的边界 / 墨阶 / 零投影 / 表面极性 / 逐屏要点。
+- `overprint/HANDOFF_README.md` — 实现纪律：硬约束 10 条、改动流程、不可改动的字面量清单、已知接缝。
+
+叠印补的是 IX 缺失的四件事：**墨阶七档**（一种墨的密度阶梯，前三档才排字）、
+**零投影**（边界靠发丝内描边与填充档差）、**媒体遮罩**（唯一允许的装饰性渐变）、
+**表面极性**（`data-surface` 由路由声明，沉浸页恒为深台，机身条随之换极性、
+图标以 100%/40% 两档不透明度表达激活态）。
+
+运行时三层追加在 `app-ix-pages-d.css` 之后：`app-ov-tokens.css` → `app-ov-dock.css`
+→ `app-ov-pages.css`（顺序由 app-test 锁死）。
+
+## 深页权威：「仪与匣」The Field Instrument（field-instrument/）
+
+阶段四换代（IX 系列）的设计交付包，**替代**曜光玻璃 Lumen Glass 的视觉层；产品结构、路由、状态矩阵、Web 零差异边界全部继承。一级四页与机身条的视觉层已由「叠印」接管，其余全部路由仍以本包为权威。
 
 - `field-instrument/design-tokens.css` — 全套 `--ix-*` 令牌**冻结原件**（`:root` 作用域；浅/深/lite/reduced-motion 四态齐全）。client 侧孪生 `client/src/styles/app-ix-tokens.css` 仅做选择器改写（`:root` → `html[data-app="1"]`），值逐字节相同，由 app-test 断言锁死。
 - `field-instrument/SPEC.md` — 设计权威 v1.0：材质规则表 / 色彩 / 排版几何 / 组件契约 / 动效 / 无障碍 / 逐屏要点 / lg→ix 迁移对照。

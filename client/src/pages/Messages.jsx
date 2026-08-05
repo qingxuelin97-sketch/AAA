@@ -112,7 +112,7 @@ function AppFavoriteRow({ character, nav, onChat }) {
     <div className="msgs-conv msgs-conv--app">
       <button type="button" className="msgs-conv-main" onClick={() => nav('/character/' + character.id)}>
         {character.avatar && !isLegacyMonogramCover(character.avatar)
-          ? <Avatar src={character.avatar} name={character.name} size={50} />
+          ? <Avatar src={character.avatar} name={character.name} size={56} />
           : <span className="msgs-fav-ph"><AppPortraitFallback name={character.name} /></span>}
         <span className="msgs-conv-tx">
           <b>{character.name} <Heart size={12} className="msgs-fav-heart" fill="currentColor" /></b>

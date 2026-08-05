@@ -50,6 +50,20 @@ Do not treat a single screenshot as release evidence. Store regenerated images w
   Dock 创建钮 50 + act 35% 柔影、沉浸 CTA 白胶囊。
 - 路由与生成条件同 v7。
 
+## manual-v10（仪与匣 The Field Instrument · IX-7 收口态）
+- 补录：IX 换代（2026-07-26→28）后一直没有截图基线，最近的 manual-v9 还是上一代
+  Lumen S7，比 IX 早两天。叠印动工前先把 IX 的现状录下来，否则改完无从对照。
+- 由 `npm run test:app:e2e` 一次跑出的 81 张（22 条路由 × 浅/深 + 交互态帧），
+  五组矩阵（360/390/412 浅色 balanced、390 深色、390 lite）全绿时的产物。
+
+## manual-v11（叠印 Overprint · 一级四页与机身条换代）
+- 与 v10 同一套生成条件、同名 81 张，可逐帧并排对照。
+- 主要看四帧：`today-*`（区块头 48 + 2:3 续读轨）、`discover-*`（一屏一张卡 +
+  可滚动分段轨 + 深极性机身条）、`messages-*`（80 行 + 56 圆角方形头像 +
+  时间戳内联）、`profile-*`（88 头像 + 两枚主键 + 中性金刚区 + 满幅内容瓦片）。
+- 深页帧（wallet / vip / settings / achievements 等）应与 v10 基本一致——叠印
+  不覆盖它们，若出现差异即是围栏漏了。
+
 ## manual-v9（Lumen S7 仪式与相伴 · 含 G10 重录）
 - 定向重录 S7/G10 改动面（390×844 浅/深）：today（连签周点 + 任务行内领取 + 日历入口
   + 「本周与你相伴」周报卡）、wallet（streak 行 + 日历入口 + 流水筛选 chips）、

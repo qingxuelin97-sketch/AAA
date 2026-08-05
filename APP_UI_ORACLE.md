@@ -1,9 +1,17 @@
 # 琉璃 Liuli v5 — App 前端设计先知稿（承接静水青 Quiet Aqua v4.2）
 
-> **视觉权威变更（Lumen Glass v1.0）**：App 壳的视觉/材质/色彩层现由
-> `docs/design/LUMEN_GLASS_SPEC.md` 与 `docs/design/lumen-glass-tokens.css`（--lg-*，值冻结）接管；
-> 本稿的产品结构、路由注册、状态矩阵、无障碍与 Web 零差异边界继续有效。
-> 迁移记录见 `docs/design/LUMEN_MIGRATION_PLAN.md`。
+> **视觉权威变更（现行）**：App 壳的视觉/材质/色彩层已两度换代，本稿的
+> **产品结构、路由注册、状态矩阵、无障碍与 Web 零差异边界始终继续有效**。
+> - 一级四页（今日 / 发现 / 消息 / 我的）与机身条 Dock → 「叠印」Overprint，
+>   见 `docs/design/overprint/SPEC.md` 与 `docs/design/overprint/design-tokens.css`（`--ov-*`，值冻结）。
+> - 其余全部路由 → 「仪与匣」The Field Instrument，见 `docs/design/field-instrument/SPEC.md`
+>   与 `docs/design/field-instrument/design-tokens.css`（`--ix-*`，值冻结）。
+> - 叠印扩展而非替换 IX：几何基元与语义色相一律从 `--ix-*` 继承。
+> 上代曜光玻璃 Lumen Glass 与琉璃 Liuli 的视觉文档均已归档，索引见 `docs/design/README.md`。
+>
+> 本稿 §4.1 的一级导航契约（`<nav>` 内只有四个目的地、创建按钮在 `<nav>` 之外）
+> 在叠印下**逐字不变**：创建键只是从 50px 圆钮改成 56×32 加宽内联键位，仍是
+> nav 的兄弟节点，机器断言两处照旧。
 
 文档状态：`v5 / Liuli authority / HTTP App-shell preview`  
 适用边界：通过 `http(s)://<host>/?app=1` 启用的 Capacitor App 壳与 HTTP 内测壳。  
