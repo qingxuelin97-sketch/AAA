@@ -43,13 +43,14 @@ html[data-app="1"][data-theme="dark"] .msg-sheet {
   --ix-shadow-1: inset 0 1px 0 rgb(255 255 255 / 80%), inset 0 0 0 1px rgb(24 29 27 / 10%), 0 1px 2px rgb(24 29 27 / 6%);
 }
 
-/* ── 输入岛玻璃壳（有无立绘、深浅主题统一同一配方） ── */
+/* ── 输入岛玻璃壳（有无立绘、深浅主题统一同一配方） ──
+   闲置/输入态：整条 = 一颗全圆角玻璃药丸（参考稿 1/2/3）。 */
 html[data-app="1"] .chat-main .chat-input-bar.chat-input-bar.chat-input-bar,
 html[data-app="1"] .chat-main.has-bg .chat-input-bar.chat-input-bar.chat-input-bar {
   left: 12px !important;
   right: 12px !important;
-  border-radius: 30px !important;
-  padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  border-radius: 999px !important;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
   background: linear-gradient(180deg, rgb(255 255 255 / 34%), rgb(255 255 255 / 24%)) !important;
   border: 1px solid rgb(255 255 255 / 36%) !important;
   -webkit-backdrop-filter: blur(36px) saturate(160%) brightness(1.26) !important;
@@ -59,6 +60,25 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar.chat-input-bar.chat-input-b
 html[data-app="1"] .chat-main .chat-input-bar.chat-input-bar.chat-input-bar:focus-within {
   border-color: rgb(255 255 255 / 52%) !important;
   box-shadow: 0 14px 40px rgb(0 0 0 / 22%) !important;
+}
+/* 面板开（参考稿 4）：岛回大圆角玻璃板；输入行缩进板内自成一颗描边药丸；
+   圆环 × 脱离药丸，独立悬在板右上角。 */
+html[data-app="1"] .chat-main .chat-input-bar.chat-input-bar.chat-input-bar:has(.chat-plus-sheet),
+html[data-app="1"] .chat-main.has-bg .chat-input-bar.chat-input-bar.chat-input-bar:has(.chat-plus-sheet) {
+  border-radius: 32px !important;
+  padding: 12px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+}
+html[data-app="1"] .chat-main .chat-input-bar.chat-input-bar:has(.chat-plus-sheet) .box.box.box {
+  background: rgb(255 255 255 / 20%) !important;
+  border: 1px solid rgb(255 255 255 / 34%) !important;
+  border-radius: 999px !important;
+  padding: 3px 6px 3px 10px !important;
+  margin-right: 56px;
+}
+html[data-app="1"] .chat-main .chat-input-bar.chat-input-bar:has(.chat-plus-sheet) .plus-btn.plus-btn.plus-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
 }
 /* lite 档没有 backdrop-filter：中性半透灰替身，同样不许发黑 */
 html[data-app="1"][data-perf="lite"] .chat-main .chat-input-bar.chat-input-bar.chat-input-bar,
