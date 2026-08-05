@@ -62,6 +62,20 @@ const buffer = [];
 let flushTimer = null;
 let installed = false;
 
+// —— 面包屑：内存环形缓冲（最多 30 条），记录路由切换与业务 warn/error 事件。
+// 不单独上报（高频低值），只在 error 级日志发出时整体附在 extra.breadcrumbs 里 ——
+// GM 排查「崩溃前用户经历了什么」时这是最关键的上下文。
+const BREADCRUMB_MAX = 30;
+const breadcrumbs = [];
+function addBreadcrumb(type, msg) {
+  breadcrumbs.push({ t: Date.now(), type, msg: String(msg || '').slice(0, 160) });
+  if (breadcrumbs.length > BREADCRUMB_MAX) breadcrumbs.shift();
+}
+function breadcrumbSnapshot() {
+  const now = Date.now();
+  return breadcrumbs.map(b => ({ ago_ms: now - b.t, type: b.type, msg: b.msg }));
+}
+
 // 指纹去重：相同 event+message 在窗口内只缓冲一次，count 累加。
 // Map 有上限 + 过期清扫：长会话（挂机一整天的 App）里不同错误不断累积会无界增长；
 // 超限时先清一遍过期项，仍超限则放弃去重直接上报（宁可多报一条也不丢日志）。
@@ -92,6 +106,13 @@ function sweepFingerprints(now = Date.now()) {
 function push(item) {
   // debug 智能采样
   if (item.level === 'debug' && Math.random() > DEBUG_SAMPLE_RATE) return;
+  // error 级自动附上面包屑（崩溃前的路由/事件轨迹）
+  if (item.level === 'error' && breadcrumbs.length) {
+    const extra = (item.extra && typeof item.extra === 'object') ? item.extra : {};
+    item = { ...item, extra: { ...extra, breadcrumbs: breadcrumbSnapshot() } };
+  }
+  // warn/error 业务事件本身也进面包屑（后续错误能看到「之前还出过什么状况」）
+  if (item.level === 'warn' || item.level === 'error') addBreadcrumb(item.level, `${item.event}: ${item.message}`);
   // error/warn 指纹去重
   if (item.level === 'error' || item.level === 'warn') {
     const fp = makeFingerprint(item.event, item.message);
@@ -264,6 +285,21 @@ export function installGlobalErrorCapture() {
       }).catch(() => {});
     }
   } catch { /* not in native shell */ }
+
+  // 4.5 路由面包屑：SPA 导航走 history.pushState/replaceState（React Router 不派发
+  // 事件），patch 一层只记轨迹不改行为；popstate/hashchange 覆盖前进后退与 Hash 路由。
+  try {
+    addBreadcrumb('route', location.pathname + location.hash);
+    const wrap = (fn) => function (...args) {
+      const r = fn.apply(this, args);
+      try { addBreadcrumb('route', location.pathname + location.hash); } catch { /* */ }
+      return r;
+    };
+    history.pushState = wrap(history.pushState);
+    history.replaceState = wrap(history.replaceState);
+    window.addEventListener('popstate', () => addBreadcrumb('route', location.pathname + location.hash));
+    window.addEventListener('hashchange', () => addBreadcrumb('route', location.pathname + location.hash));
+  } catch { /* 面包屑失败不影响主流程 */ }
 
   // 5. 首屏性能时序 —— load 后记录 navigation timing
   window.addEventListener('load', () => {

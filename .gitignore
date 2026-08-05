@@ -14,6 +14,8 @@ server/mobile-test.tmp.sqlite*
 *.log
 server/smoke.tmp.sqlite*
 server/s7test.tmp.sqlite*
+server/logstest.tmp.sqlite*
+server/log-archives/
 server/.jwt-secret
 .env
 # 安卓原生工程 —— 本地生成，不进仓库，避免 pull/push 冲突

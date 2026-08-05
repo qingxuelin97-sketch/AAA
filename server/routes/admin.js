@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { randomInt } from 'node:crypto';
+import fs from 'node:fs';
 import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { authRequired, requireGm } from '../auth.js';
@@ -16,7 +17,9 @@ import { getMail, updateMail, testMailConn } from '../mail.js';
 import { listWhitelist, addWhitelist, importWhitelist, removeWhitelist, clearWhitelist, whitelistEnabled } from '../whitelist.js';
 import {
   auditLog, queryLogs, getLogStats, getLogTimeseries, getLogTop, getErrorFingerprints, log,
-  getLogRetention, setLogRetention, getLogAlerts, setLogAlerts, purgeLogs,
+  getLogRetention, setLogRetention, getLogAlertRules, setLogAlertRules, purgeLogs,
+  setLogTail, getLogViews, setLogViews, listLogArchives, logArchivePath, deleteLogArchive,
+  archiveNow, getLatencyStats, getLogHeatmap, getLogSessions, getLogHealth,
 } from '../logger.js';
 
 const router = Router();
@@ -678,12 +681,54 @@ router.put('/logs/retention', (req, res) => {
   res.json({ ok: true, retention });
 });
 
-// —— 告警规则（窗口期内 error/fatal 达到阈值 → 站内通知全体 GM）——
-router.get('/logs/alerts', (req, res) => res.json({ alerts: getLogAlerts() }));
+// —— 告警规则引擎（多条规则：错误风暴 / 慢请求风暴 / 指定事件监控）——
+router.get('/logs/alerts', (req, res) => res.json({ rules: getLogAlertRules() }));
 router.put('/logs/alerts', (req, res) => {
-  const alerts = setLogAlerts(req.body || {});
-  audit(req, 'logs_alerts', `GM 更新日志告警规则（${alerts.enabled ? '启用' : '停用'}，阈值 ${alerts.threshold}/${alerts.window_min}min）`, { alerts });
-  res.json({ ok: true, alerts });
+  const rules = setLogAlertRules(req.body?.rules ?? req.body ?? []);
+  audit(req, 'logs_alerts', `GM 更新日志告警规则（${rules.length} 条，启用 ${rules.filter(r => r.enabled).length} 条）`, { rules });
+  res.json({ ok: true, rules });
+});
+
+// —— 实时日志流（live tail）：开启后 10 分钟内所有新日志推送到该 GM 的 SSE，
+// 客户端每 4 分钟续订；关闭立即停止。——
+router.post('/logs/tail', (req, res) => {
+  res.json({ ok: true, ...setLogTail(req.user.id, !!req.body?.enabled) });
+});
+
+// —— 查询书签（常用过滤组合，全体 GM 共享）——
+router.get('/logs/views', (req, res) => res.json({ views: getLogViews() }));
+router.put('/logs/views', (req, res) => {
+  const views = setLogViews(req.body?.views ?? []);
+  res.json({ ok: true, views });
+});
+
+// —— 分析：延迟分位 / 活跃热力图 / 会话轨迹 / 健康自检 ——
+router.get('/logs/latency', (req, res) => res.json(getLatencyStats()));
+router.get('/logs/heatmap', (req, res) => res.json({ matrix: getLogHeatmap() }));
+router.get('/logs/sessions', (req, res) => {
+  res.json({ sessions: getLogSessions({ user_id: req.query.user_id || '', limit: req.query.limit }) });
+});
+router.get('/logs/health', (req, res) => res.json({ health: getLogHealth() }));
+
+// —— 归档：清理前自动写入（retention.archive 开启时），也可手动「立即归档」。——
+router.get('/logs/archives', (req, res) => res.json({ archives: listLogArchives() }));
+router.post('/logs/archives', (req, res) => {
+  const { level = '', days = null } = req.body || {};
+  const r = archiveNow({ level, days });
+  audit(req, 'logs_archive', `GM 手动归档日志 ${r.count} 条${r.file ? ` → ${r.file}` : ''}`, { ...r, level, days });
+  res.json({ ok: true, ...r });
+});
+router.get('/logs/archives/:name', (req, res) => {
+  const p = logArchivePath(req.params.name);
+  if (!p) return res.status(404).json({ error: '归档文件不存在' });
+  res.setHeader('Content-Type', 'application/gzip');
+  res.setHeader('Content-Disposition', `attachment; filename="${req.params.name}"`);
+  res.send(fs.readFileSync(p));
+});
+router.delete('/logs/archives/:name', (req, res) => {
+  if (!deleteLogArchive(req.params.name)) return res.status(404).json({ error: '归档文件不存在' });
+  audit(req, 'logs_archive_delete', `GM 删除日志归档 ${req.params.name}`, { file: req.params.name });
+  res.json({ ok: true });
 });
 
 // 手动触发日志清理。缺省按保留策略清；带 level/days 时定向清理
