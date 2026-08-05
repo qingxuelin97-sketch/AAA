@@ -35,6 +35,13 @@ html[data-app="1"] .app-dock .qa-tab-button__label {
   opacity: var(--ov-dock-dim);
   transition: opacity var(--ix-dur-state) var(--ix-ease);
 }
+/* 图标放大到 26：AppTabButton 把 lucide 的 size 写死成 22（双壳共用，
+   不能改 JSX），在 App 层用 CSS 覆盖实际绘制尺寸。参考素材的目的地图标
+   是 32dp —— 那是含内边距的槽宽，字形本身约 26。 */
+html[data-app="1"] .app-dock .qa-tab-button__glyph svg {
+  width: 26px;
+  height: 26px;
+}
 html[data-app="1"] .app-dock .qa-tab-button.active .qa-tab-button__glyph,
 html[data-app="1"] .app-dock .qa-tab-button.active .qa-tab-button__label {
   opacity: 1;

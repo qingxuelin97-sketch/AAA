@@ -114,6 +114,53 @@ html[data-app="1"] .qa3-discover .feed-mode.qa-button::after {
 }
 html[data-app="1"] .qa3-discover .feed-mode.on.qa-button::after { opacity: 1; }
 
+/* 信息块紧凑化：媒体是内容，标题是元数据。
+   实测原状：信息栈占 762px 卡面的 235px（31%），其中角色名一项就 61px
+   （两行 28px）；栈底还留着 82px 偏移——那是媒体压在机身条底下时用来避让的，
+   卡片化之后成了纯浪费的死区。参考素材的同一块是「标题栏 25 + 次级行 29」，
+   离卡底 24。这里按同一节奏收：名 1 行、副行各自 1 行、栈底 24。 */
+html[data-app="1"] .qa3-discover .fd2-stack {
+  bottom: var(--ix-space-5) !important;
+  gap: var(--ix-space-2);
+}
+html[data-app="1"] .qa3-discover .fd2-meta { margin: 0 !important; }
+html[data-app="1"] .qa3-discover .fd2-name {
+  display: block !important;
+  overflow: hidden;
+  min-height: 0 !important;
+  margin: 0 !important;
+  font-size: var(--ix-type-section) !important;
+  font-weight: 700 !important;
+  line-height: 1.45 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-app="1"] .qa3-discover .fd2-name svg {
+  vertical-align: -2px;
+  margin-left: 2px;
+}
+html[data-app="1"] .qa3-discover .fd2-tagline {
+  overflow: hidden;
+  margin: 2px 0 0 !important;
+  font-size: var(--ix-type-meta) !important;
+  line-height: 1.4 !important;
+  color: var(--ov-on-stage-70) !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-app="1"] .qa3-discover .fd2-author {
+  margin-top: var(--ix-space-2) !important;
+}
+/* 开场白降为一条补充叙事：两行封顶，不再和媒体争高度 */
+html[data-app="1"] .qa3-discover .fd2-greet {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--ix-type-meta) !important;
+  line-height: 1.45 !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 /* 竖排动作轨：50 列宽 · 32 图标 · 11 等宽计数（参考素材的比例）。
    图标本体的投影保留 —— 它压在任意亮度的媒体上，遮罩管不到那么远。 */
 html[data-app="1"] .qa3-discover .fd2-act {
@@ -142,8 +189,34 @@ html[data-app="1"] .qa3-discover .fd2-act > span {
    首屏高度也一律不动：e2e 有一道几何闸，故事卡 CTA 必须完整浮出机身条。
    本节只改 hero 卡以下的区块，以及不参与布局的投影。 */
 
+/* 2×3 宫格与「我的」的金刚区统一：图标压标签、无格底。
+   IX-3 把它做成「键帽宫格」，而键帽的语义全靠投影与按下行程——在零投影
+   体系里键帽讲不通，六个带底色的方块也把一屏切成六块。两处宫格用同一种
+   写法后，跨页时「这是一排入口」的读法才一致。 */
+html[data-app="1"] .qa3-today .ah-sc {
+  min-height: 0 !important;
+  gap: var(--ov-grid-gap) !important;
+  background: transparent !important;
+  box-shadow: var(--ov-elev-0) !important;
+  font-size: var(--ov-grid-label);
+  color: var(--ov-ink-70) !important;
+}
+html[data-app="1"] .qa3-today .ah-sc .ah-sc-ic,
+html[data-app="1"] .qa3-today .ah-sc[data-tone] .ah-sc-ic {
+  width: var(--ov-grid-ic) !important;
+  height: var(--ov-grid-ic) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: var(--ov-elev-0) !important;
+  color: var(--ov-ink-100) !important;
+}
+html[data-app="1"] .qa3-today .ah-sc:active {
+  transform: none !important;
+  opacity: .6;
+}
+
 /* 零投影：box-shadow 不参与布局，全页应用不会撼动任何几何闸 */
-html[data-app="1"] .qa3-today .ah-sc,
 html[data-app="1"] .qa3-today .ah-pick,
 html[data-app="1"] .qa3-today .ah-task,
 html[data-app="1"] .qa3-today .qa-weekly-card,
@@ -294,10 +367,35 @@ html[data-app="1"] .qa3-profile.qa-profile .pf-tabs .qa-button.on::after {
   transform: none;
 }
 
-/* ═══ ④ 消息 · 会话行 80 / 头像 56 / 时间内联 ═══════════════════ */
-html[data-app="1"] .qa3-messages .msgs-conv--app,
-html[data-app="1"] .qa3-messages .msgs-entry {
-  box-shadow: var(--ov-ring) !important;
+/* ═══ ④ 消息 · 原生感分组列表 ═══════════════════════════════════ */
+/* 每行各自成卡是这一页此前的形态，也正是 APP_UI_ORACLE §4 原型三明令
+   「不允许」的写法（「每行悬浮成卡」）。改成参考素材那种分组列表：
+   面板挂在**组**上，行与行之间只有一条发丝线，视线沿左侧那条竖直边往下走，
+   不再被十几个圆角卡片切断。 */
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-entry-group,
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-conv-group {
+  overflow: hidden;
+  padding: 0 !important;
+  gap: 0 !important;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ov-ring);
+}
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-entry,
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-conv--app {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* 相邻兄弟即分隔线：不按序号取行，纯结构关系 */
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-entry + .msgs-entry,
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-conv--app + .msgs-conv--app {
+  border-top: 1px solid var(--ov-ink-13) !important;
+}
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-entry:active,
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-conv--app:active {
+  background: var(--ov-ink-05) !important;
 }
 html[data-app="1"] .qa3-messages.qa-messages-page .msgs-conv--app {
   min-height: var(--ov-row-conv) !important;
