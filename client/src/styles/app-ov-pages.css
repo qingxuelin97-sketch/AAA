@@ -137,6 +137,279 @@ html[data-app="1"] .qa3-discover .fd2-act > span {
   text-shadow: 0 1px 3px rgb(0 0 0 / 55%);
 }
 
+/* ═══ 子分段 · 全 App 一种下划线语言 ═══════════════════════════════ */
+/* 发现的顶部轨、消息的聊过/收藏、我的的角色/收藏，此前是三套写法：
+   玻璃胶囊组、滑动药丸、青色变形下划线。统一成 28×2 一种，页面之间
+   切换时「我在哪个子页」的读法才是同一个。 */
+html[data-app="1"] .qa3-messages .msgs-tabs,
+html[data-app="1"] .qa3-profile .pf-tabs {
+  gap: var(--ix-space-2);
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: var(--ov-elev-0) !important;
+}
+/* 滑动药丸退役：选中语义交给下划线，不要两套同时在场 */
+html[data-app="1"] .qa3-messages .msgs-tabs::before,
+html[data-app="1"] .qa3-profile .pf-tabs::before {
+  content: none !important;
+  display: none !important;
+}
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-tabs .qa-button,
+html[data-app="1"] .qa3-profile.qa-profile .pf-tabs .qa-button {
+  position: relative;
+  min-height: var(--ix-hit-min) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: var(--ov-elev-0) !important;
+  color: var(--ov-ink-55) !important;
+  font-size: var(--ix-type-section);
+  font-weight: 600;
+}
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-tabs .qa-button.on,
+html[data-app="1"] .qa3-profile.qa-profile .pf-tabs .qa-button.on {
+  background: transparent !important;
+  color: var(--ov-ink-100) !important;
+  font-weight: 700;
+}
+/* 控件层把 .qa-button::after 全局关成 content:none!important，
+   要画下划线必须在 content/display 上同级顶回来。 */
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-tabs .qa-button::after,
+html[data-app="1"] .qa3-profile.qa-profile .pf-tabs .qa-button::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute;
+  right: auto;
+  bottom: 4px;
+  left: 50%;
+  width: var(--ov-underline-w);
+  height: var(--ov-underline-h);
+  margin-left: calc(var(--ov-underline-w) / -2);
+  border-radius: var(--ix-r-dial);
+  background: var(--ov-ink-100);
+  opacity: 0;
+  transform: none;
+  transition: opacity var(--ix-dur-state) var(--ix-ease);
+}
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-tabs .qa-button.on::after,
+html[data-app="1"] .qa3-profile.qa-profile .pf-tabs .qa-button.on::after {
+  opacity: 1;
+  transform: none;
+}
+
+/* ═══ ④ 消息 · 会话行 80 / 头像 56 / 时间内联 ═══════════════════ */
+html[data-app="1"] .qa3-messages .msgs-conv--app,
+html[data-app="1"] .qa3-messages .msgs-entry {
+  box-shadow: var(--ov-ring) !important;
+}
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-conv--app {
+  min-height: var(--ov-row-conv) !important;
+  height: auto !important;
+}
+/* 圆角方形头像：圆形头像在长列表里把视线切成一串圆点，
+   方形带圆角能让左侧形成一条稳定的竖直边。 */
+html[data-app="1"] .qa3-messages .msgs-conv-main .avatar,
+html[data-app="1"] .qa3-messages .msgs-conv-main img,
+html[data-app="1"] .qa3-messages .msgs-fav-ph {
+  width: var(--ov-avatar-conv) !important;
+  height: var(--ov-avatar-conv) !important;
+  border-radius: var(--ix-r-card) !important;
+  flex: 0 0 auto;
+}
+/* 预览行：文字先截断，时间紧随其后。
+   .msgs-conv-tx 的历史规则把它的直接 span 子元素设成 block+overflow:hidden，
+   特异性高过按新类名写的规则，所以这里点名父子关系并在 display 上加 important，
+   否则时间会被推到 x=496（屏外）。 */
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-conv-tx > .msgs-conv-line {
+  display: flex !important;
+  overflow: visible !important;
+  min-width: 0;
+  gap: var(--ix-space-2);
+  align-items: baseline;
+}
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-conv-preview {
+  overflow: hidden;
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--ov-ink-70);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-app="1"] .qa3-messages.qa-messages-page .msgs-conv-time {
+  flex: 0 0 auto;
+  font-family: var(--ix-font-mono);
+  font-size: var(--ix-type-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--ov-ink-55);
+}
+html[data-app="1"] .qa3-messages .msgs-conv-tx > b { color: var(--ov-ink-100); }
+
+/* ═══ ⑫ 我的 · 身份、金刚区、内容瓦片 ═══════════════════════════ */
+
+/* 零投影：内容面的边界改由发丝内描边表达。IX 在这一页用的是
+   --ix-shadow-1（内高光 + 内描边 + 落影三件套），落影在一屏十几个
+   面板叠起来时会让整页发灰。 */
+html[data-app="1"] .qa3-profile .pf-identity-card,
+html[data-app="1"] .qa3-profile .qa-glance,
+html[data-app="1"] .qa3-profile .pf-cell,
+html[data-app="1"] .qa3-profile .pf-quick > button {
+  box-shadow: var(--ov-ring) !important;
+}
+
+/* 身份头：88 头像 + 24 粗体名 */
+html[data-app="1"] .qa3-profile .pf-id-tx > b {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: var(--ix-lh-heading);
+  letter-spacing: var(--ix-track-tight);
+  color: var(--ov-ink-100);
+}
+
+/* 两枚等宽主键 */
+html[data-app="1"] .qa3-profile .pf-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ix-space-3);
+  margin-top: var(--ix-space-4);
+}
+html[data-app="1"] .qa3-profile .pf-action.qa-button {
+  min-height: var(--ix-hit-min);
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  background: var(--ov-ink-05) !important;
+  color: var(--ov-ink-100) !important;
+  box-shadow: var(--ov-elev-0) !important;
+  font-size: var(--ix-type-body);
+  font-weight: 700;
+}
+html[data-app="1"] .qa3-profile .pf-action.qa-button:active {
+  background: var(--ov-ink-13) !important;
+  transform: translateY(var(--ix-key-travel));
+}
+
+/* 统计行：数字上等宽，格间用 1.5×10 的圆角竖条断开
+   （细竖条比留白更能说明「这是并列的几项」，也比整条分隔线轻）。 */
+html[data-app="1"] .qa3-profile .pf-stats > button {
+  position: relative;
+  background: transparent;
+  box-shadow: var(--ov-elev-0);
+}
+html[data-app="1"] .qa3-profile .pf-stats > button:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 1.5px;
+  height: 10px;
+  margin-top: -5px;
+  border-radius: var(--ix-r-dial);
+  background: var(--ov-ink-22);
+}
+html[data-app="1"] .qa3-profile .pf-stats b {
+  font-family: var(--ix-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ov-ink-100);
+}
+html[data-app="1"] .qa3-profile .pf-stats span { color: var(--ov-ink-55); }
+
+/* 金刚区：28 图标压 13 标签，单元格居中、无底、无影 —— 图标本身就是
+   可点区域的重心，方块底反而把十几个入口切成十几个色块。 */
+html[data-app="1"] .qa3-profile .pf-cell,
+html[data-app="1"] .qa3-profile .pf-quick > button {
+  gap: var(--ov-grid-gap);
+  background: transparent !important;
+  box-shadow: var(--ov-elev-0) !important;
+  font-size: var(--ov-grid-label);
+  color: var(--ov-ink-70);
+}
+/* 图标退中性：语义交给标签文字。带 [data-tone] 的历史规则特异性是 (0,5,2)，
+   所以这里必须把带属性的那一支也点名，否则五个入口仍各自顶着一块语义软底
+   —— 它们和上方的 VIP 金卡、资产舱一起，会把这一屏切成七八种颜色。 */
+html[data-app="1"] .qa3-profile .pf-cell .pf-cell-ic,
+html[data-app="1"] .qa3-profile .pf-quick > button .pf-quick-ic,
+html[data-app="1"] .qa3-profile .pf-quick > button[data-tone] .pf-quick-ic {
+  width: var(--ov-grid-ic) !important;
+  height: var(--ov-grid-ic) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: var(--ov-elev-0) !important;
+  color: var(--ov-ink-100) !important;
+}
+
+/* 区块头 48：左标题、右动作，题下不再压一条实线 */
+html[data-app="1"] .qa3-profile .pf-group > h4 {
+  display: flex;
+  align-items: center;
+  min-height: var(--ov-sec-head);
+  margin: 0;
+  font-size: var(--ix-type-section);
+  font-weight: 600;
+  color: var(--ov-ink-100);
+}
+
+/* 内容瓦片：满幅封面 + 底部遮罩承载文字。
+   DOM 不动（封面 / 名 / 简介仍是三个兄弟），靠封面绝对定位到底层、
+   文字列贴底来完成「文字压在图上」这件事。 */
+html[data-app="1"] .qa3-profile .pf-cc {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  aspect-ratio: var(--ov-tile-ratio);
+  padding: var(--ix-space-3);
+  border-radius: var(--ix-r-card);
+  overflow: hidden;
+  background: var(--ix-grouped);
+  box-shadow: var(--ov-elev-0);
+}
+html[data-app="1"] .qa3-profile .pf-cc .pf-cc-cover {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border-radius: 0;
+}
+html[data-app="1"] .qa3-profile .pf-cc .pf-cc-cover img,
+html[data-app="1"] .qa3-profile .pf-cc .pf-cc-cover > * {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+html[data-app="1"] .qa3-profile .pf-cc::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--ov-scrim-h);
+  background: var(--ov-scrim-media);
+  pointer-events: none;
+}
+html[data-app="1"] .qa3-profile .pf-cc > b,
+html[data-app="1"] .qa3-profile .pf-cc > span {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  text-align: left;
+  color: var(--ov-on-stage);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 45%);
+}
+html[data-app="1"] .qa3-profile .pf-cc > b {
+  font-size: var(--ix-type-body);
+  font-weight: 700;
+}
+html[data-app="1"] .qa3-profile .pf-cc > span {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--ix-type-meta);
+  color: var(--ov-on-stage-70);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 /* 首启双击提示：一条压在流上的细胶囊，点掉或真的双击过即退场。
    贴在分段轨下方的空媒体区，不去和底部的开场白/CTA 抢位置
    （那一带实测已被 .fd2-cta 占到 y=620，胶囊放下面必然叠上去）。 */

@@ -204,16 +204,29 @@ export default function AppProfile() {
           onClick={() => nav('/profile')}
           style={appMode ? { viewTransitionName: 'qa-profile-avatar' } : undefined}
         >
-          <Avatar src={user?.avatar} name={user?.display_name} size={68} eager />
+          <Avatar src={user?.avatar} name={user?.display_name} size={appMode ? 88 : 68} eager />
         </AppIconButton>
         <div className="pf-id-tx">
           <b>{user?.display_name || user?.username}</b>
           <AppButton className="pf-uid" variant="tertiary" size="sm" onClick={copyId}>UID: U{user?.id} <Copy size={12} /></AppButton>
         </div>
-        <AppIconButton className="pf-edit" label="编辑资料" onClick={() => nav('/profile')} aria-label="编辑资料"><Pencil size={16} /></AppIconButton>
+        {/* App 壳里编辑入口下沉到主键对，这枚铅笔就成了同一动作的第二个入口 */}
+        {!appMode && <AppIconButton className="pf-edit" label="编辑资料" onClick={() => nav('/profile')} aria-label="编辑资料"><Pencil size={16} /></AppIconButton>}
       </div>
       <div className="pf-bio" onClick={() => nav('/profile')} {...bioKeyboard}>{user?.bio || '点击填写你的简介吧'}</div>
       <IdentityBadges u={user} className="pf-badges" />
+      {/* 身份区的两枚等宽主键：创作是这一页真正的出口，编辑资料是它的对照。
+          原本创作只在别处（Dock 的创建键）出现，个人页只有一枚 16px 铅笔。 */}
+      {appMode && (
+        <div className="pf-actions">
+          <AppButton className="pf-action" variant="secondary" onClick={() => nav('/character/new')}>
+            <Feather size={16} /> 创作
+          </AppButton>
+          <AppButton className="pf-action" variant="secondary" onClick={() => nav('/profile')}>
+            <Pencil size={16} /> 编辑资料
+          </AppButton>
+        </div>
+      )}
       <div className="pf-stats">
         {ST.map(s => (
           <button key={s.label} onClick={() => nav(s.to)}>

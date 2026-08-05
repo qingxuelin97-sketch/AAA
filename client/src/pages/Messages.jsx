@@ -72,21 +72,25 @@ function AppConversationRow({ cv, nav, onDelete, onPress }) {
         onContextMenu={(e) => { e.preventDefault(); onPress?.({ cv, at: { x: e.clientX, y: e.clientY } }); }}>
         {isLegacyMonogramCover(cv.character_avatar)
           ? <span className="msgs-fav-ph"><AppPortraitFallback name={cv.character_name} /></span>
-          : <Avatar src={cv.character_avatar} name={cv.character_name} size={50} />}
+          : <Avatar src={cv.character_avatar} name={cv.character_name} size={56} />}
         <span className="msgs-conv-tx">
           <b>{cv.character_name}</b>
-          <span>
-            {(() => {
-              // S7-G10 草稿优先：有未发送草稿时明示，回来即续写
-              let draft = '';
-              try { draft = (localStorage.getItem('huanyu_draft_' + cv.id) || '').trim(); } catch { /* */ }
-              if (draft) return <><i className="msgs-draft">[草稿]</i>{draft.slice(0, 40)}</>;
-              return msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话');
-            })()}
+          {/* 时间戳内联在预览之后而非右对齐：右边缘整块留给「一条会话此刻
+              需要你做什么」（未读 / 管理入口），时间只是预览的落款。 */}
+          <span className="msgs-conv-line">
+            <span className="msgs-conv-preview">
+              {(() => {
+                // S7-G10 草稿优先：有未发送草稿时明示，回来即续写
+                let draft = '';
+                try { draft = (localStorage.getItem('huanyu_draft_' + cv.id) || '').trim(); } catch { /* */ }
+                if (draft) return <><i className="msgs-draft">[草稿]</i>{draft.slice(0, 40)}</>;
+                return msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话');
+              })()}
+            </span>
+            {time && <time className="msgs-conv-time" dateTime={cv.updated_at || cv.last_message_at || cv.last_at}>{time}</time>}
           </span>
         </span>
         <span className="msgs-conv-meta">
-          {time && <time dateTime={cv.updated_at || cv.last_message_at || cv.last_at}>{time}</time>}
           {cv.affinity ? <span className="msgs-aff"><Flame size={11} /> {cv.affinity}</span> : null}
           {(cv.pinned || cv.muted) ? (
             <span className="msgs-marks">
@@ -322,7 +326,7 @@ export default function Messages() {
                 onKeyDown={e => e.key === 'Enter' && nav('/chats/' + cv.id)}>
                 {appMode && isLegacyMonogramCover(cv.character_avatar)
                   ? <div className="msgs-fav-ph"><CoverArt name={cv.character_name} /></div>
-                  : <Avatar src={cv.character_avatar} name={cv.character_name} size={50} />}
+                  : <Avatar src={cv.character_avatar} name={cv.character_name} size={56} />}
                 <div className="msgs-conv-tx">
                   <b>{cv.character_name}</b>
                   <span>{msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话')}</span>
