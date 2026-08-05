@@ -218,10 +218,29 @@ html[data-app="1"] .qa3-today .ah-sc:active {
 
 /* 零投影：box-shadow 不参与布局，全页应用不会撼动任何几何闸 */
 html[data-app="1"] .qa3-today .ah-pick,
-html[data-app="1"] .qa3-today .ah-task,
 html[data-app="1"] .qa3-today .qa-weekly-card,
 html[data-app="1"] .qa3-today .ah-hero-card {
   box-shadow: var(--ov-ring) !important;
+}
+
+/* 任务清单同样按组收：三条任务本是一件事的三个进度，各自成卡就成了
+   Oracle 原型一明令禁止的「仪表盘卡片海」。与消息页同一种写法。 */
+html[data-app="1"] .qa3-today .ah-tasks {
+  overflow: hidden;
+  padding: 0 !important;
+  gap: 0 !important;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ov-ring);
+}
+html[data-app="1"] .qa3-today .ah-task {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+html[data-app="1"] .qa3-today .ah-task + .ah-task {
+  border-top: 1px solid var(--ov-ink-13) !important;
 }
 
 /* 区块头 48：标题 17 粗体，「全部 ›」退到三阶墨，不与标题争 */

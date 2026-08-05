@@ -24,6 +24,35 @@
 9. **lite 档只关浮层投影。** 遮罩与墨阶是可读性不是特效，`[data-perf="lite"]` 不得关闭它们。机身条玻璃归 IX 管，lite 归零的行为不变。
 10. **围栏。** 每条选择器从 `html[data-app="1"]` 起始。`app-ov-*.css` 里出现任何未围栏的顶层类选择器都会被 app-test 拦下。
 
+## 复用模式：分组列表
+
+多条同类行（消息入口、会话、今日任务）一律按**组**成面，不要一行一张卡。
+`APP_UI_ORACLE.md` §4 原型三对此有明令（「不允许：每行悬浮成卡」），原型一
+对首页也有对应的一条（不允许「仪表盘卡片海」）。写法固定为：
+
+```css
+/* 面板挂在组上 */
+html[data-app="1"] <页根> <组> {
+  overflow: hidden; padding: 0 !important; gap: 0 !important;
+  border-radius: var(--ix-r-card);
+  background: var(--ix-surface);
+  box-shadow: var(--ov-ring);
+}
+/* 行退成纯布局 */
+html[data-app="1"] <页根> <行> {
+  margin: 0 !important; border-radius: 0 !important;
+  background: transparent !important; box-shadow: none !important;
+}
+/* 相邻兄弟即分隔线——纯结构关系，不是按序号取行 */
+html[data-app="1"] <页根> <行> + <行> {
+  border-top: 1px solid var(--ov-ink-13) !important;
+}
+html[data-app="1"] <页根> <行>:active { background: var(--ov-ink-05) !important; }
+```
+
+`padding: 0` / `gap: 0` 这两条不能省：历史层常在组上留 12px 内边距与行间距，
+不清掉的话行不会与组齐边，看上去仍是「卡片里套卡片」。
+
 ## 改动流程
 
 **改令牌**：必须同时改 `docs/design/overprint/design-tokens.css`（冻结原件）与
