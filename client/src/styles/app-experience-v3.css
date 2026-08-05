@@ -2221,13 +2221,19 @@ html[data-app="1"] .qa-chat-input-island .qa-chat-send.qa-icon-button::before {
   display: none !important;
 }
 
-html[data-app="1"] .qa-chat-main .qa-chat-reply,
-html[data-app="1"] .qa-chat-main .qa-chat-actions-panel,
-html[data-app="1"] .qa-chat-main .qa-chat-tools-panel {
+html[data-app="1"] .qa-chat-main .qa-chat-reply {
   border-color: var(--ix-composition-line) !important;
   background: color-mix(in srgb, var(--ix-composition-material) 96%, transparent) !important;
   color: var(--ix-composition-ink) !important;
   box-shadow: var(--ix-composition-shadow-short) !important;
+}
+
+/* 表情/工具面板不再铺浅色材质卡 —— 直接融入输入岛，按钮自带底色。 */
+html[data-app="1"] .qa-chat-main .qa-chat-actions-panel,
+html[data-app="1"] .qa-chat-main .qa-chat-tools-panel {
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
 }
 
 html[data-app="1"] .qa-chat-main .chat-input-spacer {

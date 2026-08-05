@@ -17,7 +17,8 @@ export const RANDOM_EVENTS = [
 
 export const REACTIONS = ['❤️', '😂', '👍', '😮', '😢', '🔥'];
 export const STARTERS = ['你好呀～', '很高兴认识你！', '*微笑着向你打招呼*', '今天过得怎么样？', '我们聊点什么好呢？'];
-export const QUICK_ACTIONS = ['*微笑*', '*点头*', '*脸红*', '*轻笑*', '*歪头*', '*叹气*', '*眨眨眼*', '*沉默不语*', '*牵起你的手*', '*轻轻拥抱*', '😊', '😳', '🥰', '😢'];
+// 推荐动作短语已按需求移除，表情面板只保留 emoji 快捷插入。
+export const QUICK_ACTIONS = ['😊', '😳', '🥰', '😢', '😂', '😮', '🤔', '😴', '❤️', '✨'];
 
 // localStorage 键名（对话页偏好）。
 export const LIST_KEY = 'huanyu_chatlist_mini';

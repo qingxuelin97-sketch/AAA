@@ -2156,11 +2156,16 @@ html[data-app="1"] .qa-chat-stop.qa-icon-button {
   color: var(--ix-danger-ink);
 }
 
-html[data-app="1"] :where(.qa-chat-actions-panel, .qa-chat-tools-panel, .qa-chat-reply) {
+html[data-app="1"] :where(.qa-chat-reply) {
   border: 1px solid var(--ix-hairline);
   background: var(--ix-surface);
   color: var(--ix-ink);
   box-shadow: var(--ix-shadow-1);
+}
+html[data-app="1"] :where(.qa-chat-actions-panel, .qa-chat-tools-panel) {
+  border: none;
+  background: none;
+  box-shadow: none;
 }
 
 html[data-app="1"][data-perf="balanced"] .qa-chat-header,
