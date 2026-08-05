@@ -161,17 +161,23 @@ html[data-app="1"] .chat-main.has-bg .chat-plus-sheet.chat-plus-sheet.chat-plus-
   background: none !important;
   border: none !important;
   box-shadow: none !important;
+  margin: 2px 0 0 !important;
+  padding: 2px 2px 0 !important;
 }
 html[data-app="1"] .chat-main .chat-plus-sheet .cps-item.cps-item.cps-item {
   color: rgb(255 255 255 / 92%) !important;
   background: none !important;
   border: none !important;
   box-shadow: none !important;
+  gap: 5px;
+  padding: 6px 2px 4px;
+  font-size: 11px;
 }
+html[data-app="1"] .chat-main .chat-plus-sheet .cps-page { gap: 2px 4px; padding: 0 6px; }
 html[data-app="1"] .chat-main .chat-plus-sheet .cps-item .cps-ic.cps-ic.cps-ic {
-  width: 62px;
-  height: 62px;
-  border-radius: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
   background: rgb(255 255 255 / 26%) !important;
   border: none !important;
   box-shadow: none !important;
@@ -179,6 +185,7 @@ html[data-app="1"] .chat-main .chat-plus-sheet .cps-item .cps-ic.cps-ic.cps-ic {
 }
 html[data-app="1"] .chat-main .chat-plus-sheet .cps-item.cps-item:disabled { opacity: 0.45; }
 html[data-app="1"] .chat-main .chat-plus-sheet .cps-item.cps-item:disabled .cps-ic { background: rgb(255 255 255 / 14%) !important; }
+html[data-app="1"] .chat-main .chat-plus-sheet .cps-dots { padding: 5px 0 0; }
 html[data-app="1"] .chat-main .chat-plus-sheet .cps-dots i { background: rgb(255 255 255 / 42%) !important; }
 html[data-app="1"] .chat-main .chat-plus-sheet .cps-dots i.on { background: #fff !important; }
 html[data-app="1"] .chat-main .chat-plus-sheet .cps-gifts button {
