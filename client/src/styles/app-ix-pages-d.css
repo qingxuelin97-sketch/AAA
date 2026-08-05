@@ -3699,3 +3699,15 @@ html[data-app="1"] .app-boot-logo {
   border-radius: var(--ix-r-panel);
   box-shadow: var(--ix-shadow-2);
 }
+
+/* ── 「我的角色 / 收藏」内容 Tab 圆润化（用户反馈：选中芯片太方）──
+   选中态 act-soft 填充由 ix-core 通用规则提供，这里把承载它的按钮改成
+   药丸圆角并给回呼吸留白；改药丸后下划线指示冗余，撤下。 */
+html[data-app="1"] .qa3-profile .pf-tabs .qa-button {
+  padding: 0 16px !important;
+  border-radius: 999px !important;
+}
+html[data-app="1"] .qa3-profile .pf-tabs .qa-button::after,
+html[data-app="1"] .qa3-profile .pf-tabs .qa-button.on::after {
+  display: none !important;
+}
