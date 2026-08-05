@@ -1,7 +1,7 @@
 /*
  * 仪与匣 · IX-5 价值与身份（mockup ⑤ 成就 / ⑥ 钱包 / ⑦ 星轨 / ⑨ 月历 / ⑪ 角色详情 / ⑬⑭ 充值与 VIP）
  * + 仪式动效（split-flap 翻牌 / 指针入场，一次即止；reduced-motion 由时长令牌归零直达）。
- * 全围栏 html[data-app="1"]，只消费 --ix-*；vault 舱内金读数 #E0A83E / 亮青 #3FD2B4 /
+ * 全围栏 html[data-app="1"]，只消费 --ix-*；vault 舱内金读数 #E0A83E / 亮朱 #E5734F /
  * 钻读数 #8FBCE8 是 HANDOFF 硬约束 6 的字面契约（舱体深浅共用，语义色相冻结）。
  * 货币图标本体不动（用户特批）。
  */
@@ -42,10 +42,10 @@ html[data-app="1"] .qa-wallet-v4__asset-icon {
   box-shadow: inset 0 0 0 1px var(--ix-vault-line) !important;
   border-radius: var(--ix-r-card) !important;
 }
-/* 舱内充值 CTA：固定亮青（不随用户 accent） */
+/* 舱内充值 CTA：固定亮朱（不随用户 accent） */
 html[data-app="1"] .qa-wallet-v4__recharge.qa-button {
-  background: #3FD2B4 !important;
-  color: #06211B !important;
+  background: #E5734F !important;
+  color: #2B0F06 !important;
   border: 0 !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%) !important;
 }

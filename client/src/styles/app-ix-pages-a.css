@@ -1,7 +1,7 @@
 /*
  * 仪与匣 · IX-3 一级四页（mockup ① 今日 / ② 发现 / ④ 消息 / ⑫ 我的）
  * 全围栏 html[data-app="1"]，只消费 --ix-*；金融舱（--ix-vault）深浅共用，
- * 舱内 CTA 固定亮青 #3FD2B4、金读数 #E0A83E（HANDOFF 硬约束 6 的字面契约）。
+ * 舱内 CTA 固定亮朱 #E5734F、金读数 #E0A83E（HANDOFF 硬约束 6 的字面契约，去 AI 化后色值更新）。
  * 货币图标本体不动（用户特批），只重排其周边读数与材质。
  */
 
@@ -43,8 +43,8 @@ html[data-app="1"] .qa3-today .ah-hero::before {
 html[data-app="1"] .qa3-today .ah-hero .ah-name { color: var(--ix-vault-ink); }
 html[data-app="1"] .qa3-today .ah-hero .ah-presence { color: var(--ix-vault-ink-2); }
 html[data-app="1"] .qa3-today .ah-hero .ah-presence i {
-  background: #3FD2B4;
-  box-shadow: var(--ix-led-halo) #3FD2B4;
+  background: #E5734F;
+  box-shadow: var(--ix-led-halo) #E5734F;
 }
 /* 舱内读数：金/钻各归其色，数值上等宽（图标本体原样保留） */
 html[data-app="1"] .qa3-today .ah-hero .ah-coin {
@@ -60,14 +60,14 @@ html[data-app="1"] .qa3-today .ah-hero .ah-coin .ah-balance-value {
   color: var(--ix-vault-gold);
 }
 html[data-app="1"] .qa3-today .ah-hero .ah-coin.di .ah-balance-value { color: #8FBCE8; }
-/* 舱内签到主键：固定亮青（不随用户 accent），键帽高光 + 下沉反馈由核心层继承 */
+/* 舱内签到主键：固定亮朱（不随用户 accent），键帽高光 + 下沉反馈由核心层继承 */
 html[data-app="1"] .qa3-today .ah-hero .ah-checkin.qa-button {
-  background: #3FD2B4 !important;
-  color: #06211B !important;
+  background: #E5734F !important;
+  color: #2B0F06 !important;
 }
 html[data-app="1"][data-theme="dark"] .apphome .ah-checkin.qa-button {
-  background: #3FD2B4 !important;
-  color: #06211B !important;
+  background: #E5734F !important;
+  color: #2B0F06 !important;
 }
 html[data-app="1"] .qa3-today .ah-hero .ah-checkin.qa-button.done {
   background: var(--ix-vault-2) !important;
@@ -75,7 +75,7 @@ html[data-app="1"] .qa3-today .ah-hero .ah-checkin.qa-button.done {
   border: 1px solid var(--ix-vault-line) !important;
   text-shadow: none !important;
 }
-/* 连签行：舱内刻线分隔 + 周点（on=亮青 / off=舱内暗点） */
+/* 连签行：舱内刻线分隔 + 周点（on=亮朱 / off=舱内暗点） */
 html[data-app="1"] .qa3-today .qa-streak {
   border-top: 1px solid var(--ix-vault-line) !important;
   background: transparent !important;
@@ -85,8 +85,8 @@ html[data-app="1"] .qa3-today .qa-streak-dot {
   box-shadow: none !important;
 }
 html[data-app="1"] .qa3-today .qa-streak-dot.on {
-  background: #3FD2B4 !important;
-  box-shadow: var(--ix-led-halo) #3FD2B4 !important;
+  background: #E5734F !important;
+  box-shadow: var(--ix-led-halo) #E5734F !important;
 }
 html[data-app="1"] .qa3-today .qa-streak-copy {
   font-family: var(--ix-font-mono);

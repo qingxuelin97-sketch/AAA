@@ -468,7 +468,7 @@ assert.doesNotMatch(appEntrySource, /(?:lumen-glass-tokens|app-quiet-aqua-tokens
   assert.doesNotMatch(ixPagesAClean, /^\s*\.[a-z-]+[^{,]*\{/m, 'every IX pages-a selector must stay behind the data-app fence');
   assert.doesNotMatch(ixPagesAClean, /nth-(?:child|of-type)/, 'the IX pages-a layer must not style by position');
   assert.doesNotMatch(ixPagesAClean, /var\(--(?:lg|qa)-/, 'the IX pages-a layer must consume --ix-* only');
-  assert.match(ixPagesA, /\.ah-checkin\.qa-button\s*\{[^}]*#3FD2B4/s, 'the vault check-in key must stay the fixed bright teal (never follows user accent)');
+  assert.match(ixPagesA, /\.ah-checkin\.qa-button\s*\{[^}]*#E5734F/s, 'the vault check-in key must stay the fixed bright vermilion (never follows user accent)');
   assert.match(ixPagesA, /\.ah-hero::before\s*\{[^}]*var\(--ix-glare\)/s, 'the vault card must wear its static 45° glare cap');
   assert.match(ixPagesA, /\.qa-weekly-bar i\s*\{[^}]*var\(--ix-act\)[^}]*opacity:\s*\.3/s, 'weekly history bars must be the same hue at 30% (single-hue chart discipline)');
   const appHomeForDate = await readFile(new URL('./src/pages/AppHome.jsx', import.meta.url), 'utf8');

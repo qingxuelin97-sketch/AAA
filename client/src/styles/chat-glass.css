@@ -19,28 +19,28 @@ html[data-app="1"][data-theme="dark"] .chat-main,
 html[data-app="1"][data-theme="dark"] .chat-layout,
 html[data-app="1"][data-theme="dark"] .msg-sheet {
   color-scheme: light;
-  --ix-canvas: #E8EBE9;
-  --ix-grouped: #DCE1DE;
-  --ix-surface: #F6F8F7;
-  --ix-raise: #FDFEFD;
-  --ix-hairline: rgb(24 29 27 / 12%);
-  --ix-hairline-strong: rgb(24 29 27 / 20%);
-  --ix-ink: #181D1B;
-  --ix-ink-2: #566059;
-  --ix-ink-3: #87918B;
-  --ix-ink-inverse: #F6F8F7;
-  --ix-act: #0E7263;
-  --ix-act-ink: #F6F8F7;
-  --ix-act-soft: rgb(14 114 99 / 10%);
-  --ix-focus: #0E7263;
-  --ix-danger: #B03427;
+  --ix-canvas: #F2EFE9;
+  --ix-grouped: #E8E4DC;
+  --ix-surface: #FAF8F4;
+  --ix-raise: #FFFFFF;
+  --ix-hairline: rgb(31 27 20 / 12%);
+  --ix-hairline-strong: rgb(31 27 20 / 20%);
+  --ix-ink: #221E17;
+  --ix-ink-2: #5E574B;
+  --ix-ink-3: #8E867A;
+  --ix-ink-inverse: #FAF8F4;
+  --ix-act: #B5402A;
+  --ix-act-ink: #FFF9F4;
+  --ix-act-soft: rgb(181 64 42 / 10%);
+  --ix-focus: #B5402A;
+  --ix-danger: #8E2437;
   --ix-danger-ink: #FFFFFF;
-  --ix-danger-soft: rgb(176 52 39 / 10%);
-  --ix-success: #2E7C3F;
+  --ix-danger-soft: rgb(142 36 55 / 10%);
+  --ix-success: #43723B;
   --ix-success-ink: #FFFFFF;
-  --ix-glass-temp: rgb(250 252 251 / 88%);
-  --ix-glass-nav: rgb(238 241 239 / 84%);
-  --ix-shadow-1: inset 0 1px 0 rgb(255 255 255 / 80%), inset 0 0 0 1px rgb(24 29 27 / 10%), 0 1px 2px rgb(24 29 27 / 6%);
+  --ix-glass-temp: rgb(252 250 246 / 88%);
+  --ix-glass-nav: rgb(242 239 232 / 84%);
+  --ix-shadow-1: inset 0 1px 0 rgb(255 255 255 / 80%), inset 0 0 0 1px rgb(31 27 20 / 10%), 0 1px 2px rgb(31 27 20 / 6%);
 }
 
 /* ── 输入岛玻璃壳（有无立绘、深浅主题统一同一配方） ──
