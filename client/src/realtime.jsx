@@ -6,7 +6,7 @@ import { reconnectDelay } from './realtimePolicy.js';
 // 已知的事件名集合。EventSource 需在建连时为每个具名事件注册监听器，
 // 这里枚举服务端会推送的全部事件，建连时一次性注册。
 // 业务侧用 useRealtimeEvent(name, fn) 订阅，handler 写进 ref，每次渲染都刷新，无需重绑。
-const KNOWN_EVENTS = ['ready', 'dm', 'friend', 'notification', 'character_new', 'audit', 'group_msg', 'theater_msg'];
+const KNOWN_EVENTS = ['ready', 'dm', 'friend', 'notification', 'character_new', 'audit', 'group_msg', 'theater_msg', 'logline', 'audit_alert'];
 
 const RealtimeContext = createContext(null);
 
