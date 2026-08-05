@@ -70,7 +70,6 @@ export default function AppLayout({ children }) {
   const mainRef = useRef(null);
   const tabbarRef = useRef(null);
   const fabRef = useRef(null);
-  const inkRef = useRef(null);
   // 启动品牌闪屏：每会话一次，尊重减弱动效 / 低端机档
   const [boot, setBoot] = useState(() => {
     try {
@@ -92,31 +91,10 @@ export default function AppLayout({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Dock「墨迹」滑块：量出活跃 tab 的位置，让指示 pill 弹性滑过去（原生质感）。
-  // 量测（offsetLeft 等 4 次强制 reflow）放进 rAF：路由 commit / VT 快照的
-  // 同一帧里不再插同步布局，晚一帧就位在 0.42s 弹性过渡下不可见。
-  useEffect(() => {
-    const bar = tabbarRef.current, ink = inkRef.current;
-    if (!bar || !ink) return;
-    let raf = 0;
-    const place = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const act = bar.querySelector('.app-tab.active');
-        if (!act) { ink.style.opacity = '0'; return; }
-        ink.style.opacity = '1';
-        ink.style.transform = `translateX(${act.offsetLeft}px)`;
-        ink.style.width = act.offsetWidth + 'px';
-        // 垂直也按活跃 tab 实测定位：CSS 写死 top 会随 tabbar padding 变化而偏移
-        //（实机反馈光罩偏下 —— tabbar padding-top 4px 而旧 CSS top:6px）
-        ink.style.top = act.offsetTop + 'px';
-        ink.style.height = act.offsetHeight + 'px';
-      });
-    };
-    place();
-    window.addEventListener('resize', place);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', place); };
-  }, [loc.pathname, sheet]);
+  // 叠印：选中态改由图标不透明度两档表达（100% / --ov-dock-dim），滑动墨迹片
+  // 连同它每次导航一次的 rAF 量测（offsetLeft 等 4 次强制 reflow）一并退场。
+  // IX 时期 app-ix-core.css 就已把 .dock-ink 置为 display:none —— 量测在算一个
+  // 谁也看不见的位置，这里把 DOM 与测量代码一起摘掉。
 
   // PWA 安装事件：存到全局，「我的」页里提供「安装到桌面」入口。
   useEffect(() => {
@@ -155,6 +133,14 @@ export default function AppLayout({ children }) {
     emit(statusBarContextForTone(route.statusBar));
     return () => emit(null);
   }, [route.statusBar]);
+
+  // 叠印表面极性：令牌块挂在 html[data-app="1"][data-surface] 上，所以极性必须
+  // 印到 <html>（与 data-theme / data-perf / data-app 同处）。用 layout effect
+  // 在 paint 前写入，否则切进发现页会闪一帧索引极性的墨阶。.app-root 上的同名
+  // 属性是它的镜像，供页面层就近写规则，两者同源于 route.surface。
+  useLayoutEffect(() => {
+    document.documentElement.dataset.surface = route.surface;
+  }, [route.surface]);
 
   // —— 四路一级 tab KeepAlive ——
   // 切 tab 不再卸载整页重建（旧行为让 DOM 重建 + 接口重拉正好压在过渡动画帧
@@ -322,6 +308,7 @@ export default function AppLayout({ children }) {
   return (
     <div className={'app-root' + (route.dock ? '' : ' no-dock')}
       data-statusbar-tone={route.statusBar}
+      data-surface={route.surface}
       data-dirty-policy={route.dirty}
       data-full-bleed={route.fullBleed || undefined}>
       {offline && <div className="app-offline" role="status"><WifiOff size={13} /> 网络已断开，正在使用离线内容</div>}
@@ -359,10 +346,9 @@ export default function AppLayout({ children }) {
       {route.dock && (
         <div className="app-dock">
           <nav className="app-tabbar" ref={tabbarRef} aria-label="主导航">
-            <span className="dock-ink" ref={inkRef} aria-hidden="true" />
-            {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+            {TABS_L.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} onReTap={doRefresh} />)}
             <span className="app-dock-gap" aria-hidden="true" />
-            {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} />)}
+            {TABS_R.map(t => <Tab key={t.to} t={t} unread={unread} dmUnread={dmUnread} curPath={loc.pathname} onReTap={doRefresh} />)}
           </nav>
           <AppIconButton
             ref={fabRef}
@@ -404,17 +390,26 @@ export default function AppLayout({ children }) {
   );
 }
 
-function Tab({ t, unread, dmUnread, curPath }) {
+const RETAP_WINDOW = 320; // ms —— 判定「再点一次」的窗口
+
+function Tab({ t, unread, dmUnread, curPath, onReTap }) {
   const go = useNav();
   const selected = curPath === t.to;
+  const lastTap = useRef(0);
   // Tapping the already-active tab scrolls the page back to the top (native pattern).
   // 也覆盖内部滚动容器（发现流 .feed-root、聊天列表等），否则再点无反应。
+  // 叠印新增：窗口内再点一次 = 刷新（复用下拉刷新那条驱逐路径）。回顶已经发生，
+  // 第二下把「已经到顶了还想要新东西」这个意图接住 —— 与下拉是同一语义的两个入口。
   // 非活跃 tab：拦掉 NavLink 默认导航，走 useNav 拿方向化过渡（active 样式仍由
   // NavLink 按路由位置计算，不受影响）。
   const onClick = (e) => {
     e.preventDefault();
-    if (curPath !== t.to) { go(t.to); return; }
+    if (curPath !== t.to) { go(t.to); lastTap.current = 0; return; }
+    const now = performance.now();
+    const reTap = now - lastTap.current < RETAP_WINDOW;
+    lastTap.current = reTap ? 0 : now;   // 消费掉，避免三连点连刷两次
     tick();
+    if (reTap) { onReTap?.(); return; }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     try {
       // KeepAlive 后其它 tab 的 pane 也在 DOM 里，滚动容器必须在活跃 pane 内找

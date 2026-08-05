@@ -668,4 +668,66 @@ assert.match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#E8EBE9' :
   'App theme chrome must use IX while preserving the Web Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
-console.log('app invariants: IX-6/IX-7 guards passed');
+/* ---- OV「叠印」token twin, fence, cascade and Dock guards ---- */
+{
+  const ovTwin = await readFile(new URL('./src/styles/app-ov-tokens.css', import.meta.url), 'utf8');
+  const ovFrozen = await readFile(new URL('../docs/design/overprint/design-tokens.css', import.meta.url), 'utf8');
+  // 与 scripts/sync-ov-tokens.mjs 的正向改写严格互逆。
+  const ovReversed = ovTwin
+    .replaceAll('html[data-app="1"][data-theme="dark"]', ':root[data-theme="dark"]')
+    .replaceAll('html[data-app="1"][data-surface="immersive"]', ':root[data-surface="immersive"]')
+    .replaceAll('html[data-app="1"][data-perf="lite"]', ':root[data-perf="lite"]')
+    .replace(/html\[data-app="1"\](\s*\{)/g, ':root$1');
+  assert.equal(ovReversed, ovFrozen,
+    'the runtime Overprint token twin must equal the frozen handoff byte-for-byte modulo the App-fence selector rewrite');
+  assert.doesNotMatch(ovTwin, /(^|\n):root/,
+    'the Overprint token twin must never leak an unfenced :root block into the Web bundle');
+
+  // 叠印扩展 IX 而非替换它：几何基元与语义色相一律继承，本层重定义即违约。
+  const ovProps = [...ovFrozen.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]);
+  assert.ok(ovProps.length > 0 && ovProps.every((p) => p.startsWith('--ov-')),
+    'the Overprint token file may only define the --ov-* namespace');
+  const ovTrespass = ovProps.filter((p) => /^--ov-(?:r-|space-|hit-|danger|success|gold|dia|badge$|act)/.test(p));
+  assert.deepEqual(ovTrespass, [],
+    'Overprint must inherit IX geometry and semantic hues, never restate them under --ov-*');
+  assert.match(ovFrozen, /--ov-ink-55/,
+    'the third ink step is 55% (3.8:1), not the 45% of the reference material which fails even the 3:1 graphics floor');
+
+  for (const name of ['dock', 'pages']) {
+    const layer = await readFile(new URL(`./src/styles/app-ov-${name}.css`, import.meta.url), 'utf8');
+    const clean = layer.replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.doesNotMatch(clean, /^\s*\.[a-z-]+[^{,]*\{/m, `every Overprint ${name} selector must stay behind the data-app fence`);
+    assert.doesNotMatch(clean, /nth-(?:child|of-type)/, `the Overprint ${name} layer must not style by position`);
+    assert.doesNotMatch(clean, /var\(--(?:lg|qa)-/, `the Overprint ${name} layer must consume --ov-* / --ix-* only`);
+    assert.doesNotMatch(clean, /background-clip:\s*text/, `the Overprint ${name} layer must not restore gradient text`);
+    assert.doesNotMatch(clean, /animation:[^;]*\binfinite\b/, `the Overprint ${name} layer must not introduce perpetual motion`);
+  }
+
+  assert.ok(
+    appEntrySource.indexOf('app-ix-pages-d.css') < appEntrySource.indexOf('app-ov-tokens.css')
+    && appEntrySource.indexOf('app-ov-tokens.css') < appEntrySource.indexOf('app-ov-dock.css')
+    && appEntrySource.indexOf('app-ov-dock.css') < appEntrySource.indexOf('app-ov-pages.css'),
+    'the Overprint layers must be the final cascade, ordered tokens → dock → pages');
+
+  const ovDock = await readFile(new URL('./src/styles/app-ov-dock.css', import.meta.url), 'utf8');
+  assert.match(ovDock, /\.qa-tab-button__glyph[\s\S]{0,200}?opacity:\s*var\(--ov-dock-dim\)/,
+    'inactive Dock destinations must dim the glyph rather than recolour the whole key');
+  assert.doesNotMatch(ovDock.replace(/\/\*[\s\S]*?\*\//g, ''), /\.qa-tab-button__icon\s*(?:,[^{]*)?\{[^}]*opacity/s,
+    'the unread badge lives inside __icon, so __icon must never be dimmed with the glyph');
+  assert.match(ovDock, /\.app-fab\s*\{[^}]*height:\s*var\(--ix-hit-min\)/s,
+    'the create key hit box must hold the 44px minimum even though its visible face is 32px tall');
+  assert.match(ovDock, /\.app-fab \.qa-icon-button__content\s*\{[^}]*height:\s*var\(--ov-key-h\)/s,
+    'the create key face must be the widened inline key, not a raised circular FAB');
+
+  const registrySource = await readFile(new URL('./src/routeRegistry.js', import.meta.url), 'utf8');
+  assert.match(registrySource, /surface:\s*options\.surface\s*\?\?/,
+    'the route registry must declare surface polarity for every route');
+  assert.match(layoutSource, /document\.documentElement\.dataset\.surface = route\.surface/,
+    'AppLayout must stamp surface polarity on <html> so the Overprint token block resolves');
+  assert.doesNotMatch(layoutSource, /className="dock-ink"/,
+    'the retired sliding dock ink node must not come back (selection is the two-step opacity)');
+  assert.match(layoutSource, /RETAP_WINDOW[\s\S]*?onReTap\?\.\(\)/,
+    're-tapping the active destination inside the window must refresh the tab');
+}
+
+console.log('app invariants: IX-6/IX-7 + OV overprint guards passed');

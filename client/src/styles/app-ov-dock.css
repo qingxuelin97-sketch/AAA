@@ -1,0 +1,105 @@
+/* ═══════════════════════════════════════════════════════════════════
+ * 叠印 Overprint · 机身条 Dock
+ * ───────────────────────────────────────────────────────────────────
+ * 全围栏 html[data-app="1"]。玻璃与模糊仍归 IX（app-runtime.css 的
+ * .app-tabbar --ix-blur 规则与 lite 归零是机器断言的字面契约，此处
+ * 一律不碰 backdrop-filter），本层只改三件事：
+ *   1. 极性——沉浸台上机身条转深，索引页跟随主题
+ *   2. 激活态——图标与标签的两档不透明度，取代 ink-3 → act 换色
+ *   3. 创建键——从 50px 圆钮改为 56×32 加宽内联键面
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* ═══ 1 · 极性 ═══════════════════════════════════════════════════ */
+/* 沉浸台（发现）：机身条沉进媒体，不再是浮在暗图上的一条亮玻璃。
+   只换底色与发丝线，模糊留给 IX 的 --ix-blur 继续管。 */
+html[data-app="1"][data-surface="immersive"] .app-dock {
+  background: rgb(11 13 12 / 78%) !important;
+  border-top-color: var(--ov-on-stage-13) !important;
+}
+
+/* ═══ 2 · 目的地：墨阶两档不透明度 ═══════════════════════════════ */
+/* 降透明度的是 __glyph 与 __label，**不是 __icon** —— 未读角标是
+   __icon 的子节点，跟着淡下去会让「有新消息」这件事在非活跃 tab 上
+   几乎看不见。角标永远满不透明。 */
+/* 同一节点同时挂着 .app-tab 与 .qa-tab-button，而历史层用
+   `.app-dock .app-tab.active { color: var(--ix-act) !important }` 锁死了选中色，
+   所以这里必须同时点名 .app-tab 并同级 !important 压制。 */
+html[data-app="1"] .app-dock .app-tab,
+html[data-app="1"] .app-dock .app-tab.active,
+html[data-app="1"] .app-dock .qa-tab-button,
+html[data-app="1"] .app-dock .qa-tab-button.active {
+  color: var(--ov-ink-100) !important;
+}
+html[data-app="1"] .app-dock .qa-tab-button__glyph,
+html[data-app="1"] .app-dock .qa-tab-button__label {
+  opacity: var(--ov-dock-dim);
+  transition: opacity var(--ix-dur-state) var(--ix-ease);
+}
+html[data-app="1"] .app-dock .qa-tab-button.active .qa-tab-button__glyph,
+html[data-app="1"] .app-dock .qa-tab-button.active .qa-tab-button__label {
+  opacity: 1;
+}
+html[data-app="1"] .app-dock .qa-tab-button.active .qa-tab-button__label {
+  font-weight: 700;
+}
+
+/* 未读角标：与机身条同色的描边环，让数字在图标上读得清。
+   IX 用 2px --ix-canvas；叠印收到 1.5px 并让它随极性走。 */
+html[data-app="1"] .app-dock .qa-tab-button__badge {
+  box-shadow: 0 0 0 var(--ov-badge-ring) var(--ix-canvas) !important;
+}
+html[data-app="1"][data-surface="immersive"] .app-dock .qa-tab-button__badge {
+  box-shadow: 0 0 0 var(--ov-badge-ring) var(--ov-stage) !important;
+}
+
+/* ═══ 3 · 创建键：加宽内联键位 ═══════════════════════════════════ */
+/* 热区 56×44：e2e 的全局质量闸要求每个可见 .qa-icon-button ≥43.5×43.5，
+   所以按钮本体必须够高；56×32 的键面画在内层 __content 上。
+   垂直定位：.app-tabbar 的盒子是 .app-dock 顶部起算的 --ix-dock-height，
+   键居中即 (dock-height - hit-min) / 2，不用 translateY，免得和既有的
+   :active / .open 的 translateX(-50%) 打架。 */
+html[data-app="1"] .app-dock .app-fab {
+  top: calc((var(--ix-dock-height) - var(--ix-hit-min)) / 2) !important;
+  width: var(--ov-key-w) !important;
+  height: var(--ix-hit-min) !important;
+  min-width: var(--ov-key-w) !important;
+  min-height: var(--ix-hit-min) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-key) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--ix-act-ink) !important;
+}
+html[data-app="1"] .app-dock .app-fab .qa-icon-button__content {
+  display: grid;
+  place-items: center;
+  width: var(--ov-key-w);
+  height: var(--ov-key-h);
+  border-radius: var(--ix-r-key);
+  background: var(--ix-act);
+  color: var(--ix-act-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%);
+  transition: background-color var(--ix-dur-state) var(--ix-ease);
+}
+/* 键帽下沉，不缩放、不旋转：宽键旋转 90° 读不出「关闭」，
+   图标本身已经从 + 换成 ×，语义不需要第二遍。 */
+html[data-app="1"] .app-dock .app-fab:active {
+  background: transparent !important;
+  transform: translateX(-50%) translateY(var(--ix-key-travel)) !important;
+}
+html[data-app="1"] .app-dock .app-fab:active .qa-icon-button__content {
+  box-shadow: var(--ix-shadow-key-down);
+}
+html[data-app="1"] .app-dock .app-fab.open {
+  transform: translateX(-50%) !important;
+}
+html[data-app="1"] .app-dock .app-fab.open .qa-icon-button__content {
+  background: var(--ix-grouped);
+  color: var(--ix-ink);
+  box-shadow: var(--ix-shadow-key-down);
+}
+html[data-app="1"] .app-dock .app-fab > svg,
+html[data-app="1"] .app-dock .app-fab.open > svg {
+  transform: none !important;
+}

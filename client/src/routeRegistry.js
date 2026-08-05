@@ -1,6 +1,10 @@
 // Native App route policy. Page elements remain declared in App.jsx, while
 // shell behaviour has one authoritative registry: parent, owning tab, Dock,
 // status-bar tone, refresh/cache strategy and dirty-data policy.
+//
+// surface（叠印 Overprint）：表面极性由路由声明，不由主题决定。'immersive' 恒为
+// 深台，墨阶翻转为纯白，机身条随之换极性；'index' 跟随 data-theme。默认从
+// statusBar 推导，因为沉浸状态栏与深台是同一件事的两个面。
 const R = (pattern, options = {}) => ({
   pattern,
   parent: Object.prototype.hasOwnProperty.call(options, 'parent') ? options.parent : '/',
@@ -8,6 +12,7 @@ const R = (pattern, options = {}) => ({
   dock: options.dock ?? false,
   fullBleed: options.fullBleed ?? false,
   statusBar: options.statusBar ?? 'surface',
+  surface: options.surface ?? ((options.statusBar ?? 'surface') === 'immersive' ? 'immersive' : 'index'),
   refresh: options.refresh ?? 'remount',
   cache: options.cache ?? 'none',
   dirty: options.dirty ?? 'none',

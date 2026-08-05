@@ -24,3 +24,8 @@ import './app-ix-pages-b.css';
 import './app-ix-pages-c.css';
 // IX-6/IX-7 tail: long-tail pages, states, and migrated stage composition.
 import './app-ix-pages-d.css';
+// 叠印 Overprint：一级四页与机身条的最终级联层。IX 仍是全部深页的权威，
+// 本代只接管四个一级页与 Dock，几何基元与语义色相继续从 --ix-* 继承。
+import './app-ov-tokens.css';
+import './app-ov-dock.css';
+import './app-ov-pages.css';
