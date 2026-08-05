@@ -1436,34 +1436,32 @@ html[data-app="1"][data-theme="dark"] {
       深色专属规则（[data-theme="dark"] ...）在 APP 下自动关闭。
    仅 html[data-app="1"] 生效，Web 浅色（暖白 ivory）不受影响。
    ============================================================ */
-/* 去 AI 化：原「白+青」板整体转「暖纸+朱砂」（青灰底/青墨/青强调是生成式
-   设计的标志组合；换成纸感中性 + 人文朱砂，与 IX 令牌新基线同源）。 */
 html[data-app="1"][data-theme="light"] {
-  --bg: #F5F2EC;          /* 暖纸 极浅底 */
-  --bg-2: #ECE7DE;        /* 凹陷面（输入等） */
+  --bg: #eefbfd;          /* 白+青 极浅底 */
+  --bg-2: #e0f5f9;        /* 凹陷面（输入等） */
   --panel: #ffffff;       /* 卡片纯白 */
-  --panel-2: #F3EFE7;     /* 次级面，米杏 */
-  --border: #E1DACD;      /* 暖灰发丝 */
-  --border-2: #D2C9B8;    /* 稍重边 */
-  --text: #2A241C;        /* 暖墨 */
-  --muted: #6B6355;       /* 次级文字 */
-  --faint: #98907F;       /* 三级文字 */
-  --accent: #B5402A;      /* 朱砂强调 */
-  --accent-2: #8F2F1E;    /* 深一档（hover/渐变尾） */
-  --accent-soft: #F6E4DD; /* 强调浅底 */
-  --accent-ring: rgba(181, 64, 42, 0.22);
+  --panel-2: #eaf8fb;     /* 次级面，淡青 */
+  --border: #cbe8ef;      /* 青灰发丝 */
+  --border-2: #aedde6;    /* 稍重边 */
+  --text: #0f2e35;        /* 深青墨 */
+  --muted: #4b6b72;       /* 次级文字 */
+  --faint: #7ba0a8;       /* 三级文字 */
+  --accent: #0e9cb8;      /* 青强调（白+青的青） */
+  --accent-2: #0a7f97;    /* 深一档（hover/渐变尾） */
+  --accent-soft: #d7f2f8; /* 强调浅底 */
+  --accent-ring: rgba(14, 156, 184, 0.24);
   --radius: 18px; --radius-sm: 12px;
-  --shadow-sm: 0 1px 2px rgba(62, 48, 32, 0.08);
-  --shadow: 0 1px 2px rgba(62, 48, 32, 0.06), 0 8px 24px rgba(62, 48, 32, 0.10);
-  --shadow-lg: 0 2px 8px rgba(62, 48, 32, 0.10), 0 24px 56px rgba(62, 48, 32, 0.16);
-  --shadow-float: 0 2px 8px rgba(62, 48, 32, 0.09), 0 18px 44px rgba(62, 48, 32, 0.15);
+  --shadow-sm: 0 1px 2px rgba(13, 74, 88, 0.08);
+  --shadow: 0 1px 2px rgba(13, 74, 88, 0.06), 0 8px 24px rgba(13, 74, 88, 0.10);
+  --shadow-lg: 0 2px 8px rgba(13, 74, 88, 0.10), 0 24px 56px rgba(13, 74, 88, 0.16);
+  --shadow-float: 0 2px 8px rgba(13, 74, 88, 0.09), 0 18px 44px rgba(13, 74, 88, 0.15);
 }
-/* App 浅色底纹：极淡暖光晕，替代深色壳的暗底 */
+/* App 浅色底纹：极淡青光晕，替代深色壳的暗底（body 背景由 :root 暖白改为白青） */
 html[data-app="1"][data-theme="light"] body {
   background: var(--bg);
   background-image:
-    radial-gradient(900px 520px at 88% -8%, rgba(181, 64, 42, 0.06), transparent 60%),
-    radial-gradient(760px 480px at -6% 108%, rgba(196, 148, 58, 0.07), transparent 55%);
+    radial-gradient(900px 520px at 88% -8%, rgba(14, 156, 184, 0.10), transparent 60%),
+    radial-gradient(760px 480px at -6% 108%, rgba(34, 211, 238, 0.09), transparent 55%);
 }
 
 /* 卡片：统一圆角、细边、更足内边距，去杂色更干净 */
