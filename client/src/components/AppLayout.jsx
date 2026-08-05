@@ -41,7 +41,7 @@ const TABS_R = [
 ];
 
 // FAB create-sheet actions. Icons are concrete verbs (no sparkle/wand
-// metaphors); tone follows the ORACLE creation-workbench semantics.
+// metaphors); tone follows the creation-workbench semantics.
 const CREATE = [
   { to: '/character/new', ic: UserRoundPlus, tone: 'indigo', label: '创建角色', hint: '立绘 · 人设 · 世界书' },
   { to: '/atelier', ic: Feather, tone: 'coral', label: '写小说', hint: 'AI 协作长篇创作' },

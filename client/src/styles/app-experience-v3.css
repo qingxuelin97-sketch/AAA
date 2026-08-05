@@ -2666,7 +2666,7 @@ html[data-app="1"] .qa-wallet .recharge-wrap { overflow: hidden; box-shadow: non
 html[data-app="1"] .qa-wallet .recharge-mask { background: color-mix(in srgb, var(--ix-composition-canvas) 91%, transparent) !important; color: var(--ix-composition-muted) !important; }
 html[data-app="1"] .qa-wallet .tx-row { min-height: 62px; border-color: var(--ix-composition-line) !important; }
 
-/* Wallet v4 — a real wallet/recharge flow traced from the generated oracle.
+/* Wallet v4 — a real wallet/recharge flow.
    It intentionally uses a different composition from generic settings cards:
    one asset instrument, a compact action rail, a ledger, and a separate
    purchase task with a persistent checkout summary. */
@@ -5288,7 +5288,7 @@ html[data-app="1"][data-perf="lite"] :where(.qa-script-detail-v4__topbar, .qa-sc
 
 /* --------------------------------------------------------------------------
    Liuli v5 · 聊天 + 面板（.cps-*）App 围栏中和 —— Web 保留原 hue 渐变磁贴，
-   App 端按 ORACLE 语义色降噪：软色底 + 语义色图标，无渐变、无投影光。
+   App 端按语义色降噪：软色底 + 语义色图标，无渐变、无投影光。
    hue → 语义映射：通话=成功绿 · 插图/旁白=创作靛 · 骰子/事件/朗读=奖励金 ·
    礼物=互动珊瑚 · 档案/重掷=社交蓝 · 开场白=成功绿 · 音乐=收藏玫瑰 · 字号=石墨。
    -------------------------------------------------------------------------- */

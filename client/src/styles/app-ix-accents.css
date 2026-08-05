@@ -1,7 +1,7 @@
 /*
- * 仪与匣 · 用户强调色伴随层（冻结件 design-tokens.css 之外的唯一 --ix-act 来源）
- * SPEC §8：「accent 机制保留，仅改 --ix-act」。默认磷光青 = 无 data-accent 属性，
- * 即冻结件基线；本文件只为 accent.js 会落到 DOM 的五个 id（dusk/teal/forest/
+ * 仪与匣 · 用户强调色伴随层（app-ix-tokens.css 之外的唯一 --ix-act 来源）
+ * accent 机制只改 --ix-act 一族。默认磷光青 = 无 data-accent 属性，
+ * 即令牌基线；本文件只为 accent.js 会落到 DOM 的五个 id（dusk/teal/forest/
  * rose/amber）定义 --ix-act / --ix-act-ink / --ix-act-soft / --ix-focus。
  * 语义色（danger/success/gold/dia/badge）与 vault 舱体永不随强调色漂移。
  * 全部值经 AA 校验：act×act-ink ≥4.5，act×canvas 浅 ≥3 / 深 ≥4.5。

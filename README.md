@@ -86,7 +86,7 @@ GitHub Pages 只能托管纯浏览器版（静态）。要部署带真实数据�
 ## 🛠 技术栈
 
 - 后端：Node.js + Express 5 + better-sqlite3 + JWT + multer
-- 前端：React 19 + Vite + React Router + lucide-react 图标（无 UI 框架）；界面为「曜光玻璃 Lumen Glass」双壳体系 —— App 壳与 Web 壳共享一套冻结设计令牌、CSS 围栏互斥零波及，Web 层权威见 `docs/design/WEB_LUMEN_SPEC.md`
+- 前端：React 19 + Vite + React Router + lucide-react 图标（无 UI 框架）；界面为双壳体系 —— App 壳与 Web 壳各有独立设计令牌、CSS 围栏互斥零波及
 
 ## 🚀 本地运行
 

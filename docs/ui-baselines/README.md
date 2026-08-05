@@ -43,7 +43,7 @@ Do not treat a single screenshot as release evidence. Store regenerated images w
 - 生成条件同 v6：build:static + mock 登录（huanyu_token=tok.1）+ perf=high。
 
 ## manual-v8（Lumen UI kit 组件对齐）
-- 依据 `docs/design/lumen-glass-ui-kit.html`（逐组件 × 逐状态基准）对齐后的重拍：
+- 逐组件 × 逐状态对齐后的重拍：
   AppButton 胶囊 999 / 600 字重 / 焦点环 3px act 55%、secondary=--lg-glass-2、
   danger 1.6px 珊瑚描边、分段胶囊槽 + 选中片、开关 51×31、输入焦点 1.6px act、
   设置行 56 / 会话行 72、气泡 20/20/20/6 + 锚角 6、toast 玻璃胶囊、grabber 38×5、
@@ -62,4 +62,4 @@ Do not treat a single screenshot as release evidence. Store regenerated images w
 - G10 终态注：today/wallet/insights/app-controls 帧包含 G10 全部新面
   （周报卡 / 流水筛选 / 年鉴卡入口 / 六展区 Gallery）；交互态新增面
   （足迹卡 / 相伴一览 / 新功能 Sheet / 长按家族）证据见
-  `client/dist/quiet-aqua-e2e/` 与 `docs/design/lumen-s7-ui-kit.html`。
+  `client/dist/quiet-aqua-e2e/`。
