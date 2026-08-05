@@ -1,0 +1,195 @@
+/* ============================================================================
+   幻域 · Chat 雾态玻璃对话框（参考稿 1:1）
+   ----------------------------------------------------------------------------
+   在 app-entry.js 里最后引入 —— 对话框（输入岛 + 工具面板）的最终收口层。
+   历史层（hig-v5 / v3 / ix-pages-d）对 composer 的规则最高打到 (0,6,1)+!important，
+   所以本文件统一用「类名三连」抬特异性到 (0,6~7,1) + !important 硬性收口；
+   后续全面重做时应反过来清掉历史层，这里再降权。
+
+   规则约定：
+   · 雾态玻璃本身不带色系：底色 = backdrop 模糊吸取对话背景色，再叠白提亮，
+     立绘/背景是什么色调，玻璃就是什么色调 —— 但绝不因深色背景而发黑
+     （白量 + brightness 提亮兜底）。
+   · Chat 内不随 data-theme 深浅切换：本文件把对话页作用域的 IX 令牌在 dark
+     下钉回浅色值，页面规则一律不写主题条件。
+   ========================================================================== */
+
+/* ── Chat 主题钉死：dark 模式下对话页作用域令牌回浅色（与 light 完全一致） ── */
+html[data-app="1"][data-theme="dark"] .chat-main,
+html[data-app="1"][data-theme="dark"] .chat-layout,
+html[data-app="1"][data-theme="dark"] .msg-sheet {
+  color-scheme: light;
+  --ix-canvas: #E8EBE9;
+  --ix-grouped: #DCE1DE;
+  --ix-surface: #F6F8F7;
+  --ix-raise: #FDFEFD;
+  --ix-hairline: rgb(24 29 27 / 12%);
+  --ix-hairline-strong: rgb(24 29 27 / 20%);
+  --ix-ink: #181D1B;
+  --ix-ink-2: #566059;
+  --ix-ink-3: #87918B;
+  --ix-ink-inverse: #F6F8F7;
+  --ix-act: #0E7263;
+  --ix-act-ink: #F6F8F7;
+  --ix-act-soft: rgb(14 114 99 / 10%);
+  --ix-focus: #0E7263;
+  --ix-danger: #B03427;
+  --ix-danger-ink: #FFFFFF;
+  --ix-danger-soft: rgb(176 52 39 / 10%);
+  --ix-success: #2E7C3F;
+  --ix-success-ink: #FFFFFF;
+  --ix-glass-temp: rgb(250 252 251 / 88%);
+  --ix-glass-nav: rgb(238 241 239 / 84%);
+  --ix-shadow-1: inset 0 1px 0 rgb(255 255 255 / 80%), inset 0 0 0 1px rgb(24 29 27 / 10%), 0 1px 2px rgb(24 29 27 / 6%);
+}
+
+/* ── 输入岛玻璃壳（有无立绘、深浅主题统一同一配方） ── */
+html[data-app="1"] .chat-main .chat-input-bar.chat-input-bar.chat-input-bar,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar.chat-input-bar.chat-input-bar {
+  left: 12px !important;
+  right: 12px !important;
+  border-radius: 30px !important;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  background: linear-gradient(180deg, rgb(255 255 255 / 34%), rgb(255 255 255 / 24%)) !important;
+  border: 1px solid rgb(255 255 255 / 36%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(160%) brightness(1.26) !important;
+  backdrop-filter: blur(36px) saturate(160%) brightness(1.26) !important;
+  box-shadow: 0 14px 40px rgb(0 0 0 / 22%) !important;
+}
+html[data-app="1"] .chat-main .chat-input-bar.chat-input-bar.chat-input-bar:focus-within {
+  border-color: rgb(255 255 255 / 52%) !important;
+  box-shadow: 0 14px 40px rgb(0 0 0 / 22%) !important;
+}
+/* lite 档没有 backdrop-filter：中性半透灰替身，同样不许发黑 */
+html[data-app="1"][data-perf="lite"] .chat-main .chat-input-bar.chat-input-bar.chat-input-bar,
+html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar.chat-input-bar.chat-input-bar {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  background: rgb(154 158 172 / 90%) !important;
+}
+
+/* 岛内内容层保持透明（玻璃只画在壳上一层） */
+html[data-app="1"] .chat-main .chat-input-bar .box.box.box,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box.box.box {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 2px 2px 6px !important;
+}
+
+/* 输入文字与占位：白字浮在玻璃上 */
+html[data-app="1"] .chat-main .chat-input-bar .box textarea.qa-chat-textarea.qa-chat-textarea,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box textarea.qa-chat-textarea.qa-chat-textarea {
+  color: #fff !important;
+  caret-color: #fff;
+}
+html[data-app="1"] .chat-main .chat-input-bar .box textarea.qa-chat-textarea.qa-chat-textarea::placeholder,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .box textarea.qa-chat-textarea.qa-chat-textarea::placeholder {
+  color: rgb(255 255 255 / 66%) !important;
+}
+
+/* ── 岛上按钮：裸白图标（电话 / 声波 / ⊕），不再画底色芯片 ── */
+html[data-app="1"] .chat-main .chat-input-bar .act-btn.act-btn.act-btn,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .act-btn.act-btn.act-btn,
+html[data-app="1"] .chat-main .chat-input-bar .act-btn.act-btn.act-btn.on,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .plus-btn.plus-btn.plus-btn.on {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: rgb(255 255 255 / 94%) !important;
+  transform: none !important; /* 旧层 .plus-btn.on 的 45° 旋转（现在图标本身切 X，不再转） */
+}
+html[data-app="1"] .chat-main .chat-input-bar .act-btn.act-btn.act-btn:active {
+  transform: scale(0.92) !important;
+}
+/* 声波键开/关两态亮度 */
+html[data-app="1"] .chat-main .chat-input-bar .wave-btn.wave-btn.wave-btn { color: rgb(255 255 255 / 62%) !important; }
+html[data-app="1"] .chat-main .chat-input-bar .wave-btn.wave-btn.wave-btn.on { color: #fff !important; }
+/* ⊕：细圆环空心加号（参考稿）；44px 保住触控热区纪律。
+   .on（面板开，图标切 ×）保持同一只圆环 —— 参考稿的 (×)。 */
+html[data-app="1"] .chat-main .chat-input-bar .plus-btn.plus-btn.plus-btn,
+html[data-app="1"] .chat-main .chat-input-bar .plus-btn.plus-btn.plus-btn.on,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .plus-btn.plus-btn.plus-btn.on {
+  width: 44px !important;
+  height: 44px !important;
+  border: 1.8px solid rgb(255 255 255 / 92%) !important;
+  border-radius: 50% !important;
+}
+
+/* （ ）括号键：一块更亮一档的小玻璃芯片 */
+html[data-app="1"] .chat-main .paren-btn {
+  flex-shrink: 0;
+  min-width: 46px;
+  height: 42px;
+  border: none;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 34%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.13s, background 0.15s;
+}
+html[data-app="1"] .chat-main .paren-btn:active { transform: scale(0.92); }
+
+/* ── 发送 / 停止：白色实心圆 + 深色图标（参考稿的白圆↑） ── */
+html[data-app="1"] .chat-main .chat-input-bar .send-btn.send-btn.send-btn,
+html[data-app="1"] .chat-main.has-bg .chat-input-bar .send-btn.send-btn.send-btn {
+  width: 46px !important;
+  height: 46px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  color: #3a4152 !important;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 22%) !important;
+}
+html[data-app="1"] .chat-main .chat-input-bar .send-btn.send-btn.send-btn::before { display: none !important; }
+html[data-app="1"] .chat-main .chat-input-bar .send-btn.send-btn.send-btn.stop {
+  color: #c2453f !important; /* 停止键仍要一眼可辨：白圆里给红色方块 */
+}
+
+/* ── 「+」工具面板：只抄参考稿的玻璃底 —— 面板透明融岛，条目统一雾玻璃方砖 ── */
+html[data-app="1"] .chat-main .chat-plus-sheet.chat-plus-sheet.chat-plus-sheet,
+html[data-app="1"] .chat-main.has-bg .chat-plus-sheet.chat-plus-sheet.chat-plus-sheet {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+html[data-app="1"] .chat-main .chat-plus-sheet .cps-item.cps-item.cps-item {
+  color: rgb(255 255 255 / 92%) !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+html[data-app="1"] .chat-main .chat-plus-sheet .cps-item .cps-ic.cps-ic.cps-ic {
+  width: 62px;
+  height: 62px;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 26%) !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+html[data-app="1"] .chat-main .chat-plus-sheet .cps-item.cps-item:disabled { opacity: 0.45; }
+html[data-app="1"] .chat-main .chat-plus-sheet .cps-item.cps-item:disabled .cps-ic { background: rgb(255 255 255 / 14%) !important; }
+html[data-app="1"] .chat-main .chat-plus-sheet .cps-dots i { background: rgb(255 255 255 / 42%) !important; }
+html[data-app="1"] .chat-main .chat-plus-sheet .cps-dots i.on { background: #fff !important; }
+html[data-app="1"] .chat-main .chat-plus-sheet .cps-gifts button {
+  background: rgb(255 255 255 / 26%) !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+/* ── 表情/动作残留面板（Web 专用入口，App 壳兜底同风格） ── */
+html[data-app="1"] .chat-main .action-panel.action-panel button {
+  background: rgb(255 255 255 / 26%) !important;
+  border: none !important;
+  color: #fff !important;
+}

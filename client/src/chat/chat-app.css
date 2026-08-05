@@ -382,12 +382,7 @@ html[data-app="1"] .chat-main.has-bg .scroll-bottom-btn {
   -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
   border: 1px solid rgba(255, 255, 255, 0.16);
 }
-/* 长按面板：深色主题转深玻璃（面板 fixed 于 .chat-main 外，仅随主题切换材质） */
-html[data-app="1"][data-theme="dark"] .msg-sheet {
-  background: rgba(24, 20, 30, 0.94); color: #f0edea;
-  border-color: rgba(255, 255, 255, 0.12);
-}
-html[data-app="1"][data-theme="dark"] .msg-sheet .ms-row { color: #f0edea; }
+/* 长按面板：Chat 内不随主题切换（用户定稿）—— 原 dark 专属深玻璃变体已删除。 */
 
 /* ── 9. +面板托盘（沿用 hue 瓷片，细化间距与入场）── */
 html[data-app="1"] .chat-main .cps-item { transition: transform 0.14s var(--chat-ease); }

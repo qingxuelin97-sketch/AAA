@@ -596,17 +596,19 @@ async function integrationAssertions(browser, base) {
       const rect = button.getBoundingClientRect();
       return rect.width < 43.5 || rect.height < 43.5;
     }).length;
+    // 雾态玻璃 composer：空草稿时发送键让位给 ⊕（有字才浮现白圆↑），
+    // 表情/动作键在 App 壳撤下，左侧固定为语音通话入口。
     const send = document.querySelector('.chat-input-bar .send-btn');
     return {
       small,
-      sendDisabled: Boolean(send?.disabled || send?.getAttribute('aria-disabled') === 'true'),
-      actionsControls: document.querySelector('.chat-input-bar [aria-controls="chat-actions-panel"]')?.getAttribute('aria-expanded'),
+      sendHidden: !send,
+      callBtn: Boolean(document.querySelector('.chat-input-bar .qa-chat-call')),
       toolsControls: document.querySelector('.chat-input-bar [aria-controls="chat-tools-panel"]')?.getAttribute('aria-expanded'),
       overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
     };
   });
-  assert(chatResult.small === 0 && chatResult.sendDisabled, '聊天输入岛热区或空发送状态错误', JSON.stringify(chatResult));
-  assert(chatResult.actionsControls === 'false' && chatResult.toolsControls === 'false', '聊天展开控件缺少状态关联', JSON.stringify(chatResult));
+  assert(chatResult.small === 0 && chatResult.sendHidden, '聊天输入岛热区错误，或空草稿时发送键未让位给 ⊕', JSON.stringify(chatResult));
+  assert(chatResult.callBtn && chatResult.toolsControls === 'false', '通话入口缺失或 ⊕ 面板缺少状态关联', JSON.stringify(chatResult));
   assert(chatResult.overflow <= 1, 'Chat 存在横向溢出', JSON.stringify(chatResult));
   assert(chat.__qaErrors.length === 0, 'Chat 产生浏览器错误', chat.__qaErrors.join('\n'));
   await chat.waitForSelector('.app-boot', { hidden: true, timeout: 2200 }).catch(() => {});

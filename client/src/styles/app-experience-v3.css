@@ -2240,24 +2240,8 @@ html[data-app="1"] .qa-chat-main .chat-input-spacer {
   height: 96px;
 }
 
-html[data-app="1"][data-theme="dark"] .qa-chat-main.chat-main.has-bg {
-  background: #12151b !important;
-}
-
-html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .chat-bg > img {
-  opacity: .6;
-  filter: saturate(.72) contrast(.94) brightness(.72);
-}
-
-html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .chat-bg::after {
-  background: linear-gradient(180deg, rgb(13 19 18 / 76%), transparent 26%, rgb(13 19 18 / 16%) 58%, rgb(13 19 18 / 94%) 100%) !important;
-}
-
-html[data-app="1"][data-theme="dark"] .qa-chat-main .msg.assistant .bubble,
-html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .msg.assistant .bubble {
-  border-color: rgb(238 248 245 / 9%) !important;
-  background: rgb(25 34 32 / 92%) !important;
-}
+/* Chat 内不随 data-theme 深浅切换（用户定稿）：原先此处的 dark 专属
+   chat 背景/立绘压暗/气泡换色规则已删除，对话页在两种主题下渲染一致。 */
 
 html[data-app="1"][data-perf="lite"] .qa-chat-main :where(.qa-chat-header, .qa-chat-input-island, .msg-daydivider span) {
   -webkit-backdrop-filter: none !important;

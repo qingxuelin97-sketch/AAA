@@ -484,17 +484,8 @@ html[data-app="1"] .qa-chat-main.has-bg.ba-clear .msg.assistant .bubble {
   box-shadow: var(--ix-shadow-1) !important;
   text-shadow: none;
 }
-/* 深色主题：白玻璃回到暗域配方（白 9%），墨色令牌自动翻转为浅字 */
-html[data-app="1"][data-theme="dark"] .qa-chat-main .msg.assistant .bubble,
-html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .msg.assistant .bubble,
-html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg.ba-solid .msg.assistant .bubble,
-html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg.ba-mid .msg.assistant .bubble,
-html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg.ba-clear .msg.assistant .bubble {
-  border: 0 !important;
-  background: rgb(255 255 255 / 9%) !important;
-  color: var(--ix-ink) !important;
-  box-shadow: var(--ix-shadow-1) !important;
-}
+/* Chat 内不随 data-theme 深浅切换（用户定稿）：dark 专属的暗域气泡配方已删除，
+   助手气泡两种主题共用上方浅色规则（chat-glass.css 同步把对话页令牌钉回浅色）。 */
 /* 用户气泡：主动作 --ix-act 实底（唯一随用户强调色漂移的语义） */
 html[data-app="1"] .qa-chat-main .msg.user .bubble,
 html[data-app="1"] .qa-chat-main.has-bg .msg.user .bubble,

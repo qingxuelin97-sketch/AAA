@@ -24,3 +24,5 @@ import './app-ix-pages-b.css';
 import './app-ix-pages-c.css';
 // IX-6/IX-7 tail: long-tail pages, states, and migrated stage composition.
 import './app-ix-pages-d.css';
+// 对话框雾态玻璃收口（参考稿 1:1）：必须最后引入，覆盖上面各层的 chat 输入岛规则。
+import './chat-glass.css';

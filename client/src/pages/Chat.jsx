@@ -22,7 +22,22 @@ import {
   GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
   REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo, timeDivider,
 } from '../chat/constants.js';
-import { Send, Volume2, Plus, X, ArrowLeft, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft, ImagePlus, Blend, LayoutTemplate, Sprout, Leaf, Coffee, HeartHandshake, Gem } from 'lucide-react';
+import { Send, Volume2, Plus, X, ArrowLeft, ArrowUp, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft, ImagePlus, Blend, LayoutTemplate, Sprout, Leaf, Coffee, HeartHandshake, Gem } from 'lucide-react';
+
+// 声波键（参考稿 1:1）：外圈 + 声源点 + 朝右上放射的两道弧。
+function WaveIcon({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="10.3" cy="13.7" r="1.25" fill="currentColor" stroke="none" />
+      <g transform="rotate(-45 10.3 13.7)">
+        <path d="M13.1 10.9 a3.05 3.05 0 0 1 0 5.6" />
+        <path d="M15.1 8.9 a5.85 5.85 0 0 1 0 9.6" />
+      </g>
+    </svg>
+  );
+}
 
 // Liuli v5：App 端好感等级用 lucide 图标表达（Web 保留 emoji 徽章）。
 const AFFINITY_APP_ICONS = [Sprout, Leaf, Coffee, Smile, Heart, HeartHandshake, Gem];
@@ -114,6 +129,7 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [actionsOpen, setActionsOpen] = useState(false);
   const [plusOpen, setPlusOpen] = useState(false);   // 输入栏「+」对话功能面板
+  const [inputFocused, setInputFocused] = useState(false); // App 壳：（ ）括号键随聚焦浮现
   const [plusPage, setPlusPage] = useState(0);       // 面板分页指示（0=互动 1=工具）
   const [giftOpen, setGiftOpen] = useState(false);   // 送礼物选择条
   const [callOpen, setCallOpen] = useState(false);   // 语音/视频通话
@@ -549,6 +565,16 @@ export default function Chat() {
     await streamInto(`/api/chat/conversations/${id}/complete`, { content: text });
   };
   const insertAction = (a) => { setInput(v => (v ? v.replace(/\s*$/, '') + ' ' : '') + a + ' '); setActionsOpen(false); };
+  // （ ）键：在光标处插入全角括号，光标落在括号中间（动作/心理描写速记）。
+  const insertParens = () => {
+    const el = inputRef.current;
+    const start = el?.selectionStart ?? input.length;
+    const end = el?.selectionEnd ?? input.length;
+    setInput(input.slice(0, start) + '（）' + input.slice(end));
+    requestAnimationFrame(() => {
+      try { el.focus(); el.setSelectionRange(start + 1, start + 1); } catch { /* 键盘收起时静默 */ }
+    });
+  };
 
   // 切换开场白（仅对话未开始时提供入口；服务端按 greeting_index 重置为对应开场）。
   const switchGreeting = async (gi) => {
@@ -982,33 +1008,59 @@ export default function Chat() {
                     「AI 说话时我被冻住」是二次交互延迟的大头。发送本身仍被 send()
                     的 streaming 守卫拦住（发送键此刻也是停止键），写库类操作
                     （编辑/删除/重生成）维持锁定。 */}
-                <AppIconButton
-                  className={withAppClass('act-btn' + (actionsOpen ? ' on' : ''), 'qa-chat-action-toggle')}
-                  label="动作与表情"
-                  pressed={actionsOpen}
-                  onClick={() => { setActionsOpen(o => !o); setPlusOpen(false); }}
-                  title="动作 / 表情"
-                  aria-expanded={app ? actionsOpen : undefined}
-                  aria-controls={app ? 'chat-actions-panel' : undefined}
-                ><Smile size={19} /></AppIconButton>
+                {/* App 壳（雾态玻璃稿）：左电话；Web 壳保留表情/动作面板入口。 */}
+                {app ? (
+                  <AppIconButton
+                    className={withAppClass('act-btn call-btn', 'qa-chat-call')}
+                    label="语音通话" onClick={() => setCallOpen(true)} title="语音通话"
+                  ><Phone size={20} /></AppIconButton>
+                ) : (
+                  <AppIconButton
+                    className={withAppClass('act-btn' + (actionsOpen ? ' on' : ''), 'qa-chat-action-toggle')}
+                    label="动作与表情"
+                    pressed={actionsOpen}
+                    onClick={() => { setActionsOpen(o => !o); setPlusOpen(false); }}
+                    title="动作 / 表情"
+                  ><Smile size={19} /></AppIconButton>
+                )}
                 <textarea className={app ? 'qa-chat-textarea' : undefined} ref={inputRef} rows={1} value={input}
                   aria-label={app ? '输入消息' : undefined}
-                  placeholder={`对 ${(character?.name || '').length > 5 ? (character.name.slice(0, 5) + '…') : (character?.name || 'TA')} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
+                  placeholder={app ? '自由输入...' : `对 ${(character?.name || '').length > 5 ? (character.name.slice(0, 5) + '…') : (character?.name || 'TA')} 说点什么…` + (COARSE ? '' : '（Enter 发送，Shift+Enter 换行）')}
                   enterKeyHint="send" autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
+                  onFocus={app ? () => setInputFocused(true) : undefined}
+                  onBlur={app ? () => setInputFocused(false) : undefined}
                   onChange={e => setInput(e.target.value)} onKeyDown={onKey} />
-                {/* 「+」对话功能面板：把散落在头部菜单里的对话内能力聚合到拇指热区 */}
-                <AppIconButton
-                  className={withAppClass('act-btn plus-btn' + (plusOpen ? ' on' : ''), 'qa-chat-tools-toggle')}
-                  label="对话功能"
-                  pressed={plusOpen}
-                  onClick={() => { setPlusOpen(o => !o); setActionsOpen(false); }}
-                  title="对话功能"
-                  aria-expanded={app ? plusOpen : undefined}
-                  aria-controls={app ? 'chat-tools-panel' : undefined}
-                ><Plus size={20} /></AppIconButton>
+                {/* （ ）动作括号：聚焦/有草稿时浮现，插入全角括号并把光标落在中间 */}
+                {app && (inputFocused || input) && (
+                  <button type="button" className="paren-btn" aria-label="插入动作括号" title="插入动作括号"
+                    onMouseDown={e => e.preventDefault()} onClick={insertParens}>( )</button>
+                )}
+                {/* 声波：自动朗读开关（有草稿时让位给发送键） */}
+                {app && !input.trim() && (
+                  <AppIconButton
+                    className={withAppClass('act-btn wave-btn' + (autoRead ? ' on' : ''), 'qa-chat-wave')}
+                    label={autoRead ? '自动朗读 开' : '自动朗读 关'}
+                    pressed={autoRead} onClick={toggleAutoRead} title="自动朗读"
+                  ><WaveIcon size={22} /></AppIconButton>
+                )}
+                {/* 「+」对话功能面板：把散落在头部菜单里的对话内能力聚合到拇指热区。
+                    App 壳：有草稿时此槽位切换成白圆发送键（参考稿 1:1）。 */}
+                {(!app || (!input.trim() && !streaming)) && (
+                  <AppIconButton
+                    className={withAppClass('act-btn plus-btn' + (plusOpen ? ' on' : ''), 'qa-chat-tools-toggle')}
+                    label="对话功能"
+                    pressed={plusOpen}
+                    onClick={() => { setPlusOpen(o => !o); setActionsOpen(false); }}
+                    title="对话功能"
+                    aria-expanded={app ? plusOpen : undefined}
+                    aria-controls={app ? 'chat-tools-panel' : undefined}
+                  >{app && plusOpen ? <X size={20} /> : <Plus size={20} />}</AppIconButton>
+                )}
                 {streaming
                   ? <AppIconButton className={withAppClass('send-btn stop', 'qa-chat-send qa-chat-stop')} label="停止生成" variant="filled" tone="danger" onClick={stop} title="停止生成"><Square size={15} fill="currentColor" /></AppIconButton>
-                  : <AppIconButton className={withAppClass('send-btn', 'qa-chat-send')} label="发送消息" variant="filled" onClick={() => send()} disabled={!input.trim()}><Send size={17} /></AppIconButton>}
+                  : (!app || input.trim())
+                    ? <AppIconButton className={withAppClass('send-btn', 'qa-chat-send')} label="发送消息" variant="filled" onClick={() => send()} disabled={!input.trim()}>{app ? <ArrowUp size={21} strokeWidth={2.4} /> : <Send size={17} />}</AppIconButton>
+                    : null}
               </div>
               {plusOpen && (() => {
                 // 两页 × 6 项（对标一线聊天功能面板）：P1 互动添趣 / P2 实用工具。
