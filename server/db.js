@@ -938,6 +938,8 @@ CREATE INDEX IF NOT EXISTS idx_logs_user ON logs (user_id, id);
 CREATE INDEX IF NOT EXISTS idx_logs_fingerprint ON logs (fingerprint, id);
 CREATE INDEX IF NOT EXISTS idx_logs_event ON logs (event, id);
 CREATE INDEX IF NOT EXISTS idx_logs_request ON logs (request_id);
+CREATE INDEX IF NOT EXISTS idx_logs_endpoint ON logs (endpoint, id);
+CREATE INDEX IF NOT EXISTS idx_logs_session ON logs (session_id);
 `);
 // 迁移：为已有数据库补齐新列（忽略已存在）。
 for (const sql of [

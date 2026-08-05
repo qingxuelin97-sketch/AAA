@@ -79,6 +79,35 @@ export function broadcast(event, data, exceptUserId = null) {
   return n;
 }
 
+// 只广播给在线的 GM 用户（日志告警 / audit 实时脉冲专用）。
+// 错误摘要可能含内部信息（接口路径、异常消息），绝不能进普通用户的事件流 ——
+// 此前 logger 用全员 broadcast、靠前端判 is_gm 过滤，属于纯展示层过滤，已废弃。
+// is_gm 逐个查库：在线用户量级小（单进程 SSE），且 better-sqlite3 主键点查微秒级；
+// 结果带 60s 短缓存，避免错误风暴期间高频重查。
+const isGmStmt = db.prepare('SELECT is_gm FROM users WHERE id = ?');
+const gmCache = new Map(); // userId -> { gm: boolean, ts: number }
+function isGmUser(userId) {
+  const now = Date.now();
+  const hit = gmCache.get(userId);
+  if (hit && now - hit.ts < 60_000) return hit.gm;
+  let gm = false;
+  try { gm = !!isGmStmt.get(userId)?.is_gm; } catch { /* 查库失败按非 GM 处理 */ }
+  gmCache.set(userId, { gm, ts: now });
+  return gm;
+}
+export function broadcastGm(event, data) {
+  if (!clients.size) return 0;
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data ?? null)}\n\n`;
+  let n = 0;
+  for (const [uid, set] of [...clients]) {
+    if (!isGmUser(uid)) continue;
+    for (const res of [...set]) {
+      try { res.write(payload); n++; } catch { evict(uid, set, res); }
+    }
+  }
+  return n;
+}
+
 export function onlineCount() { return clients.size; }
 export function isUserOnline(userId) {
   const s = clients.get(userId);

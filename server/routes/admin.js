@@ -14,7 +14,10 @@ import { flush } from '../persist.js';
 import { cnToday } from '../daily.js';
 import { getMail, updateMail, testMailConn } from '../mail.js';
 import { listWhitelist, addWhitelist, importWhitelist, removeWhitelist, clearWhitelist, whitelistEnabled } from '../whitelist.js';
-import { auditLog, queryLogs, getLogStats, getLogTimeseries, getLogTop, getErrorFingerprints, log } from '../logger.js';
+import {
+  auditLog, queryLogs, getLogStats, getLogTimeseries, getLogTop, getErrorFingerprints, log,
+  getLogRetention, setLogRetention, getLogAlerts, setLogAlerts, purgeLogs,
+} from '../logger.js';
 
 const router = Router();
 // authRequired 已带 is_gm，requireGm 直接读 req.user，无需再查库。
@@ -22,6 +25,14 @@ router.use(authRequired, requireGm);
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const rnd = (n = 6) => Array.from({ length: n }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
 const dataOpsEnabled = () => process.env.ADMIN_DATA_OPS === 'true';
+
+// 审计快捷封装：GM 敏感操作统一留痕（操作者/IP/UA/请求链路自动带上）。
+// 密钥类配置（平台 AI / SMTP）只记「改了哪些字段」，绝不把值写进日志。
+const audit = (req, event, message, extra = null, targetUserId = null) =>
+  auditLog({
+    event, message, user_id: targetUserId, actor_id: req.user.id,
+    ip: req.ip, ua: req.header('user-agent') || '', extra, request_id: req.requestId || '',
+  });
 
 router.get('/check', (req, res) => res.json({ is_gm: true }));
 
@@ -74,7 +85,13 @@ router.post('/accounts', async (req, res) => {
 
 // ---- platform AI config (language / voice / image) ----
 router.get('/platform', (req, res) => res.json({ platform: adminView() }));
-router.put('/platform', (req, res) => res.json({ ok: true, platform: updatePlatform(req.body || {}) }));
+router.put('/platform', (req, res) => {
+  const fields = Object.keys(req.body || {});
+  const platform = updatePlatform(req.body || {});
+  // 只记字段名不记值：body 里可能带 LLM/TTS/生图/ASR 的 API 密钥。
+  audit(req, 'platform_config', `GM 更新平台AI配置（${fields.length} 个字段）`, { fields });
+  res.json({ ok: true, platform });
+});
 
 // GM voice preview — synthesize a sample with the posted form values (so the GM
 // can verify before saving). A blank key falls back to the saved platform key.
@@ -457,7 +474,11 @@ router.get('/characters', (req, res) => {
   res.json({ characters: rows });
 });
 router.post('/characters/:id/feature', (req, res) => { db.prepare('UPDATE characters SET featured = ? WHERE id = ?').run(req.body?.value ? 1 : 0, req.params.id); res.json({ ok: true }); });
-router.delete('/characters/:id', (req, res) => { db.prepare('DELETE FROM characters WHERE id = ?').run(req.params.id); res.json({ ok: true }); });
+router.delete('/characters/:id', (req, res) => {
+  db.prepare('DELETE FROM characters WHERE id = ?').run(req.params.id);
+  audit(req, 'character_delete', `GM 删除角色 #${req.params.id}`, { character_id: req.params.id });
+  res.json({ ok: true });
+});
 
 router.get('/scripts', (req, res) => {
   const q = String(req.query.q || '').trim(); const k = `%${q}%`;
@@ -468,12 +489,25 @@ router.get('/scripts', (req, res) => {
 router.post('/scripts/:id/feature', (req, res) => { db.prepare('UPDATE scripts SET featured = ? WHERE id = ?').run(req.body?.value ? 1 : 0, req.params.id); res.json({ ok: true }); });
 router.delete('/scripts/:id', (req, res) => {
   db.prepare('UPDATE scripts SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?').run(Date.now(), req.params.id);
+  audit(req, 'script_delete', `GM 下架剧本 #${req.params.id}（软删除）`, { script_id: req.params.id });
   res.json({ ok: true, deleted: true });
 });
 
-router.delete('/moments/:id', (req, res) => { db.prepare('DELETE FROM moments WHERE id = ?').run(req.params.id); res.json({ ok: true }); });
-router.delete('/comments/:id', (req, res) => { db.prepare('DELETE FROM comments WHERE id = ?').run(req.params.id); res.json({ ok: true }); });
-router.delete('/reviews/:id', (req, res) => { db.prepare('DELETE FROM reviews WHERE id = ?').run(req.params.id); res.json({ ok: true }); });
+router.delete('/moments/:id', (req, res) => {
+  db.prepare('DELETE FROM moments WHERE id = ?').run(req.params.id);
+  audit(req, 'moment_delete', `GM 删除动态 #${req.params.id}`, { moment_id: req.params.id });
+  res.json({ ok: true });
+});
+router.delete('/comments/:id', (req, res) => {
+  db.prepare('DELETE FROM comments WHERE id = ?').run(req.params.id);
+  audit(req, 'comment_delete', `GM 删除评论 #${req.params.id}`, { comment_id: req.params.id });
+  res.json({ ok: true });
+});
+router.delete('/reviews/:id', (req, res) => {
+  db.prepare('DELETE FROM reviews WHERE id = ?').run(req.params.id);
+  audit(req, 'review_delete', `GM 删除评价 #${req.params.id}`, { review_id: req.params.id });
+  res.json({ ok: true });
+});
 
 // ---- codes (invite / gift) ----
 router.get('/codes', (req, res) => {
@@ -484,9 +518,14 @@ router.post('/codes', (req, res) => {
   const code = (prefix ? String(prefix).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' : '') + rnd(6);
   db.prepare('INSERT INTO invite_keys (code, max_uses, used, grant_gold, grant_diamond, grant_vip_days, note) VALUES (?,?,0,?,?,?,?)')
     .run(code, Math.max(1, +max_uses || 1), +gold || 0, +diamond || 0, +vip_days || 0, note || '');
+  audit(req, 'code_create', `GM 创建兑换码 ${code}`, { code, gold: +gold || 0, diamond: +diamond || 0, vip_days: +vip_days || 0, max_uses: Math.max(1, +max_uses || 1) });
   res.json({ code: db.prepare('SELECT * FROM invite_keys WHERE code = ?').get(code) });
 });
-router.delete('/codes/:code', (req, res) => { db.prepare('DELETE FROM invite_keys WHERE code = ?').run(req.params.code); res.json({ ok: true }); });
+router.delete('/codes/:code', (req, res) => {
+  db.prepare('DELETE FROM invite_keys WHERE code = ?').run(req.params.code);
+  audit(req, 'code_delete', `GM 删除兑换码 ${req.params.code}`, { code: req.params.code });
+  res.json({ ok: true });
+});
 
 // ---- reports ----
 router.get('/reports', (req, res) => {
@@ -506,24 +545,33 @@ router.post('/whitelist', (req, res) => {
   const { email, kind, note } = req.body || {};
   const r = addWhitelist(email, kind, note);
   if (!r.ok) return res.status(400).json({ error: r.error });
+  audit(req, 'whitelist_add', `GM 添加注册白名单：${email}`, { email, kind: kind || 'exact' });
   res.json({ ok: true, whitelist: listWhitelist(), enabled: whitelistEnabled() });
 });
 router.post('/whitelist/import', (req, res) => {
   const r = importWhitelist(req.body?.text);
+  audit(req, 'whitelist_import', `GM 批量导入注册白名单（新增 ${r.added ?? 0} 条）`, { ...r });
   res.json({ ok: true, ...r, whitelist: listWhitelist(), enabled: whitelistEnabled() });
 });
 router.delete('/whitelist/:id', (req, res) => {
   removeWhitelist(req.params.id);
+  audit(req, 'whitelist_remove', `GM 移除注册白名单条目 #${req.params.id}`, { id: req.params.id });
   res.json({ ok: true, whitelist: listWhitelist(), enabled: whitelistEnabled() });
 });
 router.delete('/whitelist', (req, res) => {
   clearWhitelist();
+  audit(req, 'whitelist_clear', 'GM 清空注册白名单（白名单模式关闭）');
   res.json({ ok: true, whitelist: [], enabled: false });
 });
 
 // ---- 邮件服务（SMTP）配置 ----
 router.get('/mail', (req, res) => res.json({ mail: getMail() }));
-router.put('/mail', (req, res) => res.json({ ok: true, mail: updateMail(req.body || {}) }));
+router.put('/mail', (req, res) => {
+  const fields = Object.keys(req.body || {});
+  const mail = updateMail(req.body || {});
+  audit(req, 'mail_config', `GM 更新邮件服务配置（${fields.length} 个字段）`, { fields });
+  res.json({ ok: true, mail });
+});
 router.post('/mail/test', async (req, res) => {
   const r = await testMailConn(req.body || {});
   res.json(r);
@@ -534,9 +582,18 @@ router.post('/mail/test', async (req, res) => {
 // 全部需 GM 权限（router.use(authRequired, gm) 已在最外层拦截）。
 
 // 多维过滤分页查询。level=error 时自动包含 fatal（>= 过滤）。
+// 链路维度：request_id（同请求全链路）/ session_id（同会话轨迹）/ fingerprint
+// （同错误全部出现）精确匹配；endpoint 前缀匹配；status_class 按状态码百位分档；
+// min_duration 慢请求下钻。
 router.get('/logs', (req, res) => {
-  const { level, source, category, event, user_id, q, since, until, limit, offset, sort } = req.query;
-  const r = queryLogs({ level, source, category, event, user_id, q, since, until, limit, offset, sort });
+  const {
+    level, source, category, event, user_id, q, since, until, limit, offset, sort,
+    endpoint, request_id, session_id, fingerprint, status_class, min_duration,
+  } = req.query;
+  const r = queryLogs({
+    level, source, category, event, user_id, q, since, until, limit, offset, sort,
+    endpoint, request_id, session_id, fingerprint, status_class, min_duration,
+  });
   res.json(r);
 });
 
@@ -552,9 +609,9 @@ router.get('/logs/timeseries', (req, res) => {
   res.json({ series: getLogTimeseries(window, level) });
 });
 
-// TOP 榜：高频事件 / 热点接口 / 活跃用户 / 高频 IP。
+// TOP 榜：高频事件 / 热点接口 / 活跃用户 / 高频 IP / 高频类别 / 状态码 / 慢接口。
 router.get('/logs/top', (req, res) => {
-  const dim = ['event', 'endpoint', 'user', 'ip'].includes(req.query.dim) ? req.query.dim : 'event';
+  const dim = ['event', 'endpoint', 'user', 'ip', 'category', 'status', 'slow'].includes(req.query.dim) ? req.query.dim : 'event';
   const level = req.query.level || '';
   const limit = req.query.limit || 10;
   res.json({ top: getLogTop(dim, level, limit) });
@@ -566,20 +623,75 @@ router.get('/logs/fingerprints', (req, res) => {
   res.json({ fingerprints: getErrorFingerprints(limit) });
 });
 
-// 导出日志为 JSON 文件（最多 1000 条，避免响应过大）。
-// GM 排查问题时可导出当前过滤结果离线分析。
+// 导出日志（GM 排查问题时导出当前过滤结果离线分析）。
+// format=json（默认，结构化）| csv（表格工具直开）| ndjson（jq / 日志管道友好）。
+// 上限 5000 条；导出行为本身进审计（导出内容可能含用户 IP/UA，属敏感操作）。
+const CSV_COLS = ['id', 'ts', 'level', 'source', 'category', 'event', 'message', 'user_id', 'ip', 'endpoint', 'method', 'status', 'duration_ms', 'session_id', 'request_id', 'fingerprint', 'count'];
+const csvCell = (v) => {
+  const s = v == null ? '' : String(v);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
 router.get('/logs/export', (req, res) => {
-  const { level, source, category, event, user_id, q, since, until, sort } = req.query;
-  const r = queryLogs({ level, source, category, event, user_id, q, since, until, limit: 1000, offset: 0, sort });
-  res.setHeader('Content-Disposition', `attachment; filename="logs-${new Date().toISOString().slice(0, 10)}.json"`);
-  res.json({ exported_at: new Date().toISOString(), total: r.total, rows: r.rows });
+  const {
+    level, source, category, event, user_id, q, since, until, sort,
+    endpoint, request_id, session_id, fingerprint, status_class, min_duration,
+  } = req.query;
+  const limit = Math.min(5000, Math.max(1, Number(req.query.limit) || 1000));
+  const format = ['csv', 'ndjson'].includes(req.query.format) ? req.query.format : 'json';
+  // queryLogs 的单次上限 500，导出分页拉取拼装。
+  const rows = [];
+  let total = 0;
+  for (let off = 0; off < limit; off += 500) {
+    const r = queryLogs({
+      level, source, category, event, user_id, q, since, until, sort,
+      endpoint, request_id, session_id, fingerprint, status_class, min_duration,
+      limit: Math.min(500, limit - off), offset: off,
+    });
+    total = r.total;
+    rows.push(...r.rows);
+    if (rows.length >= total || r.rows.length === 0) break;
+  }
+  const day = new Date().toISOString().slice(0, 10);
+  audit(req, 'logs_export', `GM 导出日志 ${rows.length} 条（${format}）`, { format, count: rows.length, filters: { level, source, category, event, user_id, q } });
+  if (format === 'csv') {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="logs-${day}.csv"`);
+    const lines = [CSV_COLS.join(',')];
+    for (const r of rows) lines.push(CSV_COLS.map(c => csvCell(r[c])).join(','));
+    // BOM 前缀：Excel 打开中文不乱码。
+    return res.send('\ufeff' + lines.join('\r\n'));
+  }
+  if (format === 'ndjson') {
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="logs-${day}.ndjson"`);
+    return res.send(rows.map(r => JSON.stringify(r)).join('\n'));
+  }
+  res.setHeader('Content-Disposition', `attachment; filename="logs-${day}.json"`);
+  res.json({ exported_at: new Date().toISOString(), total, rows });
 });
 
-// 手动触发日志清理（GM 在后台「日志」页点击「立即清理」按钮调用）。
-router.post('/logs/purge', async (req, res) => {
-  const { purgeOldLogs } = await import('../logger.js');
-  const removed = purgeOldLogs();
-  auditLog({ event: 'purge_logs', message: `GM 手动清理日志 ${removed} 条`, actor_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', extra: { removed } });
+// —— 保留策略（各级别保留天数，1–365 钳制）——
+router.get('/logs/retention', (req, res) => res.json({ retention: getLogRetention() }));
+router.put('/logs/retention', (req, res) => {
+  const retention = setLogRetention(req.body || {});
+  audit(req, 'logs_retention', 'GM 更新日志保留策略', { retention });
+  res.json({ ok: true, retention });
+});
+
+// —— 告警规则（窗口期内 error/fatal 达到阈值 → 站内通知全体 GM）——
+router.get('/logs/alerts', (req, res) => res.json({ alerts: getLogAlerts() }));
+router.put('/logs/alerts', (req, res) => {
+  const alerts = setLogAlerts(req.body || {});
+  audit(req, 'logs_alerts', `GM 更新日志告警规则（${alerts.enabled ? '启用' : '停用'}，阈值 ${alerts.threshold}/${alerts.window_min}min）`, { alerts });
+  res.json({ ok: true, alerts });
+});
+
+// 手动触发日志清理。缺省按保留策略清；带 level/days 时定向清理
+// （如 level=debug&days=0 清空全部调试日志）。
+router.post('/logs/purge', (req, res) => {
+  const { level = '', days = null } = req.body || {};
+  const removed = purgeLogs({ level, days });
+  audit(req, 'purge_logs', `GM 手动清理日志 ${removed} 条${level ? `（级别 ${level}）` : ''}${days != null ? `（早于 ${days} 天）` : '（按保留策略）'}`, { removed, level, days });
   res.json({ ok: true, removed });
 });
 

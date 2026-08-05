@@ -1267,27 +1267,68 @@ const LEVEL_LABELS = { debug: '调试', info: '信息', warn: '警告', error: '
 function LogsTab({ toast }) {
   const [stats, setStats] = useState(null);
   const [series, setSeries] = useState(null);
+  const [seriesWindow, setSeriesWindow] = useState('hour'); // hour=24小时 | day=30天
+  const [seriesMetric, setSeriesMetric] = useState('all');  // all=全部 | errors=仅错误
   const [top, setTop] = useState(null);
+  const [topDim, setTopDim] = useState('event');
   const [fingerprints, setFingerprints] = useState(null);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState(null);
   const [page, setPage] = useState(0);
-  const PAGE_SIZE = 30;
+  const [pageSize, setPageSize] = useState(30);
   // 过滤条件
   const [fLevel, setFLevel] = useState('');
   const [fSource, setFSource] = useState('');
   const [fCategory, setFCategory] = useState('');
   const [fEvent, setFEvent] = useState('');
   const [fQ, setFQ] = useState('');
+  const [fStatusClass, setFStatusClass] = useState('');
+  const [fEndpoint, setFEndpoint] = useState('');
+  // 链路下钻过滤（详情弹窗 / 错误热点点击穿透设置，以 chip 形式展示可移除）
+  const [fRequestId, setFRequestId] = useState('');
+  const [fSessionId, setFSessionId] = useState('');
+  const [fFingerprint, setFFingerprint] = useState('');
+  // 时间范围：预设或自定义（datetime-local，转成 UTC 'YYYY-MM-DD HH:MM:SS'）
+  const [timePreset, setTimePreset] = useState('all'); // all | 1h | 24h | 7d | custom
+  const [fSince, setFSince] = useState('');
+  const [fUntil, setFUntil] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [livePulse, setLivePulse] = useState(0); // 实时错误脉冲计数
-  // 选中账号查看登录历史：fUserId 锁定到某用户，fLoginOnly=1 时再叠加 category=auth&event=login
+  // 选中账号查看登录历史
   const [fUserId, setFUserId] = useState('');
-  const [selectedUser, setSelectedUser] = useState(null); // 选中账号的展示信息 {id,username,display_name,avatar}
-  const [userQ, setUserQ] = useState(''); // 账号搜索输入
-  const [userResults, setUserResults] = useState([]); // 账号搜索结果
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userQ, setUserQ] = useState('');
+  const [userResults, setUserResults] = useState([]);
+  // 保留策略与告警规则设置
+  const [retention, setRetention] = useState(null);
+  const [alerts, setAlerts] = useState(null);
+  const [savingCfg, setSavingCfg] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  // 定向清理
+  const [purgeLevel, setPurgeLevel] = useState('');
+  const [purgeDays, setPurgeDays] = useState('7');
+  // SSE 节流刷新定时器：挂在 ref 上并在卸载时清理（此前挂 window 全局，卸载后仍会触发
+  // 对已卸载组件的 setState，且多实例互相覆盖 —— 历史 bug）。
+  const refreshTimerRef = useRef(null);
+  useEffect(() => () => { if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current); }, []);
+
+  // 本地时间输入(datetime-local) → UTC 'YYYY-MM-DD HH:MM:SS'（logs.ts 为 UTC）
+  const toUtc = (local) => {
+    if (!local) return '';
+    const d = new Date(local);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 19).replace('T', ' ');
+  };
+  const presetSince = () => {
+    const now = Date.now();
+    if (timePreset === '1h') return new Date(now - 3600_000).toISOString().slice(0, 19).replace('T', ' ');
+    if (timePreset === '24h') return new Date(now - 86400_000).toISOString().slice(0, 19).replace('T', ' ');
+    if (timePreset === '7d') return new Date(now - 7 * 86400_000).toISOString().slice(0, 19).replace('T', ' ');
+    if (timePreset === 'custom') return toUtc(fSince);
+    return '';
+  };
 
   // 构建查询参数
   const queryStr = (extra = {}) => {
@@ -1298,28 +1339,37 @@ function LogsTab({ toast }) {
     if (fEvent) p.set('event', fEvent);
     if (fQ) p.set('q', fQ);
     if (fUserId) p.set('user_id', fUserId);
-    p.set('limit', PAGE_SIZE);
-    p.set('offset', (extra.page ?? page) * PAGE_SIZE);
-    for (const [k, v] of Object.entries(extra)) if (v != null) p.set(k, v);
+    if (fStatusClass) p.set('status_class', fStatusClass);
+    if (fEndpoint) p.set('endpoint', fEndpoint);
+    if (fRequestId) p.set('request_id', fRequestId);
+    if (fSessionId) p.set('session_id', fSessionId);
+    if (fFingerprint) p.set('fingerprint', fFingerprint);
+    const since = presetSince();
+    if (since) p.set('since', since);
+    if (timePreset === 'custom' && fUntil) p.set('until', toUtc(fUntil));
+    // 链路视图按时间正序（复盘一次请求/一次会话要从头读）
+    if (fRequestId || fSessionId) p.set('sort', 'asc');
+    p.set('limit', extra.limit ?? pageSize);
+    p.set('offset', (extra.page ?? page) * pageSize);
+    for (const [k, v] of Object.entries(extra)) if (v != null && k !== 'page' && k !== 'limit') p.set(k, v);
     return p.toString();
   };
 
-  const loadAll = async () => {
-    setLoading(true);
-    try {
-      const [s, ts, tp, fp, lr] = await Promise.all([
-        api('/admin/logs/stats').then(d => d.stats).catch(() => null),
-        api('/admin/logs/timeseries?window=hour').then(d => d.series).catch(() => null),
-        api('/admin/logs/top?dim=event&limit=8').then(d => d.top).catch(() => null),
-        api('/admin/logs/fingerprints?limit=8').then(d => d.fingerprints).catch(() => null),
-        api('/admin/logs?' + queryStr()).catch(() => ({ rows: [], total: 0 })),
-      ]);
-      setStats(s); setSeries(ts); setTop(tp); setFingerprints(fp);
-      setRows(lr.rows || []); setTotal(lr.total || 0);
-    } catch (e) { toast(e.message, 'err'); }
-    finally { setLoading(false); }
+  const loadOverview = async () => {
+    const [s, fp] = await Promise.all([
+      api('/admin/logs/stats').then(d => d.stats).catch(() => null),
+      api('/admin/logs/fingerprints?limit=8').then(d => d.fingerprints).catch(() => null),
+    ]);
+    setStats(s); setFingerprints(fp);
   };
-
+  const loadSeries = async (win = seriesWindow) => {
+    const d = await api('/admin/logs/timeseries?window=' + win).catch(() => null);
+    setSeries(d?.series || null);
+  };
+  const loadTop = async (dim = topDim) => {
+    const d = await api('/admin/logs/top?dim=' + dim + '&limit=8').catch(() => null);
+    setTop(d?.top || null);
+  };
   const loadList = async (p = page) => {
     setLoading(true);
     try {
@@ -1328,9 +1378,25 @@ function LogsTab({ toast }) {
     } catch (e) { toast(e.message, 'err'); }
     finally { setLoading(false); }
   };
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([loadOverview(), loadSeries(), loadTop(), loadList()]);
+    } catch (e) { toast(e.message, 'err'); }
+    finally { setLoading(false); }
+  };
+  const loadSettings = async () => {
+    const [r, a] = await Promise.all([
+      api('/admin/logs/retention').then(d => d.retention).catch(() => null),
+      api('/admin/logs/alerts').then(d => d.alerts).catch(() => null),
+    ]);
+    setRetention(r); setAlerts(a);
+  };
 
-  useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, []);
-  useEffect(() => { loadList(page); /* eslint-disable-next-line */ }, [page, fLevel, fSource, fCategory, fEvent, fUserId]);
+  useEffect(() => { loadAll(); loadSettings(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { loadList(page); /* eslint-disable-next-line */ }, [page, pageSize, fLevel, fSource, fCategory, fEvent, fUserId, fStatusClass, fRequestId, fSessionId, fFingerprint, timePreset]);
+  useEffect(() => { loadSeries(seriesWindow); /* eslint-disable-next-line */ }, [seriesWindow]);
+  useEffect(() => { loadTop(topDim); /* eslint-disable-next-line */ }, [topDim]);
 
   // 账号搜索：复用 /admin/users（空查询返回最新 50，纯数字按 id 精确，否则按用户名/昵称模糊）
   const searchUsers = async () => {
@@ -1347,41 +1413,93 @@ function LogsTab({ toast }) {
   };
 
   // SSE 实时推送：error/fatal 事件触发刷新 + 脉冲动画
-  useRealtimeEvent('audit', (data) => {
-    if (!autoRefresh) { setLivePulse(p => p + 1); return; }
+  useRealtimeEvent('audit', () => {
     setLivePulse(p => p + 1);
+    if (!autoRefresh) return;
     // 节流刷新：1.5s 内多次推送只刷新一次
-    clearTimeout(window.__logRefreshTimer);
-    window.__logRefreshTimer = setTimeout(() => { loadAll(); }, 1500);
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => { refreshTimerRef.current = null; loadAll(); }, 1500);
+  });
+  // 阈值告警触发时给 GM 一个显眼提示（服务端同时已发站内通知）
+  useRealtimeEvent('audit_alert', (data) => {
+    toast(`⚠️ 日志告警：${data?.window_min ?? '?'} 分钟内 ${data?.total ?? '?'} 条错误`, 'err');
   });
 
-  const doExport = async () => {
+  const doExport = async (format = 'json') => {
     try {
       toast('正在导出…');
-      const qs = queryStr({ page: 0, limit: 1000 });
+      const qs = queryStr({ page: 0, limit: 5000, format });
       // 用 fetch 直接拿 blob（api() 会解析 JSON）
       const token = getToken();
       const res = await fetch(getApiBase() + '/api/admin/logs/export?' + qs, { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      if (!res.ok) throw new Error('导出失败 (HTTP ' + res.status + ')');
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `logs-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `logs-${new Date().toISOString().slice(0, 10)}.${format === 'ndjson' ? 'ndjson' : format}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       toast('已导出');
     } catch (e) { toast('导出失败：' + e.message, 'err'); }
   };
 
-  const doPurge = async () => {
-    if (!confirm('立即清理过期日志？（debug>3天 / info>7天 / warn>30天 / error>90天）')) return;
+  const doPurge = async (targeted = false) => {
+    const body = targeted ? { level: purgeLevel || undefined, days: Number(purgeDays) } : {};
+    const hint = targeted
+      ? `定向清理${purgeLevel ? `「${LEVEL_LABELS[purgeLevel] || purgeLevel}」级别` : '全部级别'}早于 ${purgeDays} 天的日志？`
+      : '按保留策略清理过期日志？';
+    if (!confirm(hint)) return;
     try {
-      const d = await api('/admin/logs/purge', { method: 'POST' });
-      toast(`已清理 ${d.removed} 条过期日志`);
+      const d = await api('/admin/logs/purge', { method: 'POST', body });
+      toast(`已清理 ${d.removed} 条日志`);
       loadAll();
     } catch (e) { toast(e.message, 'err'); }
   };
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const saveRetention = async () => {
+    setSavingCfg(true);
+    try {
+      const d = await api('/admin/logs/retention', { method: 'PUT', body: retention });
+      setRetention(d.retention); toast('保留策略已保存');
+    } catch (e) { toast(e.message, 'err'); }
+    finally { setSavingCfg(false); }
+  };
+  const saveAlerts = async () => {
+    setSavingCfg(true);
+    try {
+      const d = await api('/admin/logs/alerts', { method: 'PUT', body: alerts });
+      setAlerts(d.alerts); toast('告警规则已保存');
+    } catch (e) { toast(e.message, 'err'); }
+    finally { setSavingCfg(false); }
+  };
+
+  // 详情弹窗点击穿透：设置链路过滤并关闭弹窗
+  const drillDown = (patch) => {
+    setDetail(null); setPage(0);
+    if (patch.request_id != null) setFRequestId(patch.request_id);
+    if (patch.session_id != null) setFSessionId(patch.session_id);
+    if (patch.fingerprint != null) setFFingerprint(patch.fingerprint);
+  };
+  const chainChips = [
+    fRequestId && { label: '请求链路 ' + fRequestId, clear: () => setFRequestId('') },
+    fSessionId && { label: '会话 ' + fSessionId, clear: () => setFSessionId('') },
+    fFingerprint && { label: '指纹 ' + fFingerprint, clear: () => setFFingerprint('') },
+    fEndpoint && { label: '接口 ' + fEndpoint, clear: () => setFEndpoint('') },
+  ].filter(Boolean);
+
+  const copyDetail = () => {
+    try {
+      const d = { ...detail };
+      try { d.extra = JSON.parse(d.extra); } catch { /* 保持原样 */ }
+      navigator.clipboard?.writeText(JSON.stringify(d, null, 2));
+      toast('已复制日志 JSON');
+    } catch { toast('复制失败', 'err'); }
+  };
+
+  const totalPages = Math.ceil(total / pageSize);
+  const TOP_DIMS = [['event', '高频事件'], ['endpoint', '热点接口'], ['user', '活跃用户'], ['ip', '高频 IP'], ['category', '类别'], ['status', '状态码'], ['slow', '慢接口']];
+  const fmtBucket = (b) => seriesWindow === 'hour' ? b.slice(11, 16) : b.slice(5);
+  const seriesData = (series || []).map(s => ({ x: fmtBucket(s.bucket), y: seriesMetric === 'errors' ? (s.errors ?? 0) : s.n }));
 
   return (
     <>
@@ -1397,6 +1515,24 @@ function LogsTab({ toast }) {
             <b style={{ color: 'var(--danger, #bb4b35)' }}>{stats.recent_errors_24h}</b>
             <span>24h 错误{livePulse > 0 ? ` · +${livePulse} 新` : ''}</span>
           </div>
+          {stats.api_24h && (
+            <>
+              <div className="adm-stat">
+                <span className="adm-stat-ic"><Activity size={16} /></span>
+                <b>{stats.api_24h.requests}</b><span>24h 请求</span>
+              </div>
+              <div className="adm-stat">
+                <span className="adm-stat-ic" style={{ color: stats.api_24h.error_rate > 5 ? 'var(--danger, #bb4b35)' : undefined }}><TrendingUp size={16} /></span>
+                <b style={stats.api_24h.error_rate > 5 ? { color: 'var(--danger, #bb4b35)' } : undefined}>{stats.api_24h.error_rate}%</b>
+                <span>错误率</span>
+              </div>
+              <div className="adm-stat">
+                <span className="adm-stat-ic" style={{ color: '#e0a530' }}><Zap size={16} /></span>
+                <b style={{ color: stats.api_24h.slow > 0 ? '#e0a530' : undefined }}>{stats.api_24h.slow}</b>
+                <span>慢请求 · 均值 {stats.api_24h.avg_ms}ms</span>
+              </div>
+            </>
+          )}
           {stats.by_level?.filter(x => x.n > 0).slice(0, 5).map(l => (
             <div key={l.level} className="adm-stat">
               <span className="adm-stat-ic" style={{ color: LEVEL_COLORS[l.level] || 'var(--muted)' }}><Activity size={14} /></span>
@@ -1411,25 +1547,44 @@ function LogsTab({ toast }) {
       <div className="chart-grid" style={{ marginTop: 18, gridTemplateColumns: '2fr 1fr' }}>
         {series && (
           <div className="card chart-card">
-            <div className="section-title"><h2 style={{ fontSize: 16, margin: 0 }}><TrendingUp size={15} style={{ verticalAlign: -3, marginRight: 5 }} />近 24 小时日志趋势</h2></div>
-            <LineChart data={series.map(s => ({ x: s.bucket.slice(11, 16), y: s.n }))} color="var(--accent)" unit="" />
+            <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <h2 style={{ fontSize: 16, margin: 0, flex: 1 }}><TrendingUp size={15} style={{ verticalAlign: -3, marginRight: 5 }} />{seriesWindow === 'hour' ? '近 24 小时' : '近 30 天'}{seriesMetric === 'errors' ? '错误' : '日志'}趋势</h2>
+              <div className="tabs-bar" style={{ margin: 0 }}>
+                <button className={seriesWindow === 'hour' ? 'active' : ''} onClick={() => setSeriesWindow('hour')}>24小时</button>
+                <button className={seriesWindow === 'day' ? 'active' : ''} onClick={() => setSeriesWindow('day')}>30天</button>
+                <button className={seriesMetric === 'errors' ? 'active' : ''} onClick={() => setSeriesMetric(m => m === 'errors' ? 'all' : 'errors')}>仅错误</button>
+              </div>
+            </div>
+            <LineChart data={seriesData} color={seriesMetric === 'errors' ? 'var(--danger, #bb4b35)' : 'var(--accent)'} unit="" />
           </div>
         )}
-        {top && top.length > 0 && (
-          <div className="card chart-card">
-            <div className="section-title"><h2 style={{ fontSize: 16, margin: 0 }}><Terminal size={15} style={{ verticalAlign: -3, marginRight: 5 }} />高频事件 TOP</h2></div>
-            <BarChart data={top.map(t => ({ label: String(t.key || '—').slice(0, 12), value: t.total || t.n }))} color="var(--accent)" height={140} />
+        <div className="card chart-card">
+          <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <h2 style={{ fontSize: 16, margin: 0, flex: 1 }}><Terminal size={15} style={{ verticalAlign: -3, marginRight: 5 }} />TOP 榜</h2>
+            <select className="select" value={topDim} onChange={e => setTopDim(e.target.value)} style={{ width: 'auto', fontSize: 12, padding: '4px 8px' }}>
+              {TOP_DIMS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
           </div>
-        )}
+          {top && top.length > 0 ? (
+            <BarChart
+              data={top.map(t => ({
+                label: String(t.key ?? '—').slice(0, 14),
+                value: topDim === 'slow' ? (t.avg_ms || 0) : (t.total || t.n),
+              }))}
+              color={topDim === 'slow' ? '#e0a530' : 'var(--accent)'} height={140}
+              unit={topDim === 'slow' ? 'ms' : ''}
+            />
+          ) : <div className="chart-empty">暂无数据</div>}
+        </div>
       </div>
 
       {/* 错误指纹热点 */}
       {fingerprints && fingerprints.length > 0 && (
         <div className="card" style={{ marginTop: 18 }}>
-          <div className="section-title"><h2 style={{ fontSize: 16, margin: 0 }}><AlertTriangle size={15} style={{ verticalAlign: -3, marginRight: 5 }} />错误热点（按指纹聚合）</h2></div>
+          <div className="section-title"><h2 style={{ fontSize: 16, margin: 0 }}><AlertTriangle size={15} style={{ verticalAlign: -3, marginRight: 5 }} />错误热点（按指纹聚合 · 点击筛出全部出现）</h2></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
-            {fingerprints.slice(0, 5).map((f, i) => (
-              <div key={i} className="adm-row" style={{ padding: '6px 0' }} onClick={() => setDetail({ ...f, _isFingerprint: true })} style={{ cursor: 'pointer' }}>
+            {fingerprints.slice(0, 5).map((f) => (
+              <div key={f.fingerprint} className="adm-row" style={{ padding: '6px 0', cursor: 'pointer' }} onClick={() => { setFFingerprint(f.fingerprint); setPage(0); }}>
                 <span className="tag" style={{ background: 'var(--danger-soft, rgba(187,75,53,0.12))', color: 'var(--danger, #bb4b35)', flexShrink: 0 }}>×{f.total}</span>
                 <div className="grow" style={{ minWidth: 0 }}>
                   <b style={{ fontSize: 13 }}>{f.event}</b>
@@ -1500,41 +1655,157 @@ function LogsTab({ toast }) {
               <option value="app">APP端</option>
             </select>
           </div>
-          <div className="field" style={{ flex: '1 1 120px', minWidth: 120 }}>
+          <div className="field" style={{ flex: '1 1 110px', minWidth: 110 }}>
             <label>类别</label>
             <select className="select" value={fCategory} onChange={e => { setFCategory(e.target.value); setPage(0); }}>
               <option value="">全部</option>
               {['api', 'auth', 'admin', 'economy', 'chat', 'character', 'social', 'dm', 'parliament', 'upload', 'system', 'client', 'app'].map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
-          <div className="field" style={{ flex: '1 1 120px', minWidth: 120 }}>
+          <div className="field" style={{ flex: '1 1 100px', minWidth: 100 }}>
+            <label>状态码</label>
+            <select className="select" value={fStatusClass} onChange={e => { setFStatusClass(e.target.value); setPage(0); }}>
+              <option value="">全部</option>
+              <option value="2">2xx 成功</option>
+              <option value="3">3xx 重定向</option>
+              <option value="4">4xx 客户端错</option>
+              <option value="5">5xx 服务端错</option>
+            </select>
+          </div>
+          <div className="field" style={{ flex: '1 1 110px', minWidth: 110 }}>
+            <label>时间范围</label>
+            <select className="select" value={timePreset} onChange={e => { setTimePreset(e.target.value); setPage(0); }}>
+              <option value="all">全部时间</option>
+              <option value="1h">最近 1 小时</option>
+              <option value="24h">最近 24 小时</option>
+              <option value="7d">最近 7 天</option>
+              <option value="custom">自定义…</option>
+            </select>
+          </div>
+          <div className="field" style={{ flex: '1 1 110px', minWidth: 110 }}>
             <label>事件名</label>
             <input className="input" value={fEvent} onChange={e => { setFEvent(e.target.value); setPage(0); }} placeholder="如 login" />
           </div>
-          <div className="field" style={{ flex: '2 1 200px', minWidth: 150 }}>
+          <div className="field" style={{ flex: '1 1 130px', minWidth: 120 }}>
+            <label>接口前缀</label>
+            <input className="input" value={fEndpoint} onChange={e => setFEndpoint(e.target.value)} onKeyDown={e => e.key === 'Enter' && (setPage(0), loadList(0))} placeholder="如 /chat" />
+          </div>
+          <div className="field" style={{ flex: '2 1 180px', minWidth: 150 }}>
             <label>搜索</label>
             <input className="input" value={fQ} onChange={e => setFQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && (setPage(0), loadList(0))} placeholder="消息/事件/接口" />
           </div>
           <button className="btn" onClick={() => { setPage(0); loadList(0); }}><Search size={14} /> 查询</button>
-          <button className="btn" onClick={() => { setFLevel(''); setFSource(''); setFCategory(''); setFEvent(''); setFQ(''); setFUserId(''); setSelectedUser(null); setUserResults([]); setPage(0); }}>重置</button>
+          <button className="btn" onClick={() => { setFLevel(''); setFSource(''); setFCategory(''); setFEvent(''); setFQ(''); setFUserId(''); setFStatusClass(''); setFEndpoint(''); setFRequestId(''); setFSessionId(''); setFFingerprint(''); setTimePreset('all'); setFSince(''); setFUntil(''); setSelectedUser(null); setUserResults([]); setPage(0); }}>重置</button>
         </div>
+        {timePreset === 'custom' && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 10 }}>
+            <div className="field" style={{ flex: '1 1 180px', minWidth: 170 }}>
+              <label>起始（本地时间）</label>
+              <input className="input" type="datetime-local" value={fSince} onChange={e => setFSince(e.target.value)} />
+            </div>
+            <div className="field" style={{ flex: '1 1 180px', minWidth: 170 }}>
+              <label>截止（本地时间）</label>
+              <input className="input" type="datetime-local" value={fUntil} onChange={e => setFUntil(e.target.value)} />
+            </div>
+            <button className="btn" onClick={() => { setPage(0); loadList(0); }}>应用时间范围</button>
+          </div>
+        )}
+        {chainChips.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+            {chainChips.map((c, i) => (
+              <span key={i} className="tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--accent-soft, rgba(120,140,255,0.12))', color: 'var(--accent-2)', fontFamily: 'monospace', fontSize: 11 }}>
+                {c.label}
+                <button onClick={() => { c.clear(); setPage(0); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, display: 'inline-flex' }}><X size={12} /></button>
+              </span>
+            ))}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
             <input type="checkbox" checked={autoRefresh} onChange={e => { setAutoRefresh(e.target.checked); if (!e.target.checked) setLivePulse(0); }} />
             实时刷新（SSE）
           </label>
-          {livePulse > 0 && autoRefresh && <span className="tag" style={{ background: 'var(--danger-soft, rgba(187,75,53,0.12))', color: 'var(--danger, #bb4b35)' }}>● {livePulse} 条新错误</span>}
+          {livePulse > 0 && <span className="tag" style={{ background: 'var(--danger-soft, rgba(187,75,53,0.12))', color: 'var(--danger, #bb4b35)' }}>● {livePulse} 条新错误</span>}
           <div style={{ flex: 1 }} />
           <button className="btn sm" onClick={loadAll} disabled={loading}><RefreshCw size={13} className={loading ? 'spin' : ''} /> 刷新</button>
-          <button className="btn sm" onClick={doExport}><Download size={13} /> 导出</button>
-          <button className="btn sm" onClick={doPurge}><Trash2 size={13} /> 清理过期</button>
+          <button className="btn sm" onClick={() => doExport('json')}><Download size={13} /> JSON</button>
+          <button className="btn sm" onClick={() => doExport('csv')}><Download size={13} /> CSV</button>
+          <button className="btn sm" onClick={() => doExport('ndjson')}><Download size={13} /> NDJSON</button>
+          <button className="btn sm" onClick={() => setShowSettings(s => !s)}><Terminal size={13} /> 设置{showSettings ? ' ▲' : ' ▼'}</button>
         </div>
       </div>
 
+      {/* 日志设置：保留策略 / 告警规则 / 清理 */}
+      {showSettings && (
+        <div className="card" style={{ marginTop: 18 }}>
+          <div className="section-title"><h2 style={{ fontSize: 16, margin: 0 }}>日志设置</h2></div>
+          {retention && (
+            <div style={{ marginTop: 10 }}>
+              <b style={{ fontSize: 13 }}>保留策略（各级别保留天数，1–365）</b>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 8 }}>
+                {['debug', 'info', 'warn', 'error', 'fatal'].map(lv => (
+                  <div key={lv} className="field" style={{ flex: '1 1 90px', minWidth: 80 }}>
+                    <label style={{ color: LEVEL_COLORS[lv] }}>{LEVEL_LABELS[lv]}</label>
+                    <input className="input" type="number" min="1" max="365" value={retention[lv] ?? ''}
+                      onChange={e => setRetention(r => ({ ...r, [lv]: e.target.value }))} />
+                  </div>
+                ))}
+                <button className="btn" onClick={saveRetention} disabled={savingCfg}><Check size={14} /> 保存策略</button>
+              </div>
+            </div>
+          )}
+          {alerts && (
+            <div style={{ marginTop: 16 }}>
+              <b style={{ fontSize: 13 }}>错误告警（窗口期内 error/fatal 达到阈值 → 站内通知全体 GM）</b>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', paddingBottom: 8 }}>
+                  <input type="checkbox" checked={!!alerts.enabled} onChange={e => setAlerts(a => ({ ...a, enabled: e.target.checked }))} />
+                  启用
+                </label>
+                <div className="field" style={{ flex: '1 1 90px', minWidth: 80 }}>
+                  <label>阈值（条）</label>
+                  <input className="input" type="number" min="1" value={alerts.threshold ?? ''} onChange={e => setAlerts(a => ({ ...a, threshold: e.target.value }))} />
+                </div>
+                <div className="field" style={{ flex: '1 1 90px', minWidth: 80 }}>
+                  <label>窗口（分钟）</label>
+                  <input className="input" type="number" min="1" value={alerts.window_min ?? ''} onChange={e => setAlerts(a => ({ ...a, window_min: e.target.value }))} />
+                </div>
+                <div className="field" style={{ flex: '1 1 90px', minWidth: 80 }}>
+                  <label>冷却（分钟）</label>
+                  <input className="input" type="number" min="1" value={alerts.cooldown_min ?? ''} onChange={e => setAlerts(a => ({ ...a, cooldown_min: e.target.value }))} />
+                </div>
+                <button className="btn" onClick={saveAlerts} disabled={savingCfg}><Check size={14} /> 保存规则</button>
+              </div>
+            </div>
+          )}
+          <div style={{ marginTop: 16 }}>
+            <b style={{ fontSize: 13 }}>清理</b>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 8 }}>
+              <div className="field" style={{ flex: '1 1 110px', minWidth: 100 }}>
+                <label>级别</label>
+                <select className="select" value={purgeLevel} onChange={e => setPurgeLevel(e.target.value)}>
+                  <option value="">全部级别</option>
+                  {['debug', 'info', 'warn', 'error', 'fatal'].map(lv => <option key={lv} value={lv}>{LEVEL_LABELS[lv]}</option>)}
+                </select>
+              </div>
+              <div className="field" style={{ flex: '1 1 110px', minWidth: 100 }}>
+                <label>早于（天，0=全部）</label>
+                <input className="input" type="number" min="0" max="365" value={purgeDays} onChange={e => setPurgeDays(e.target.value)} />
+              </div>
+              <button className="btn" onClick={() => doPurge(true)}><Trash2 size={14} /> 定向清理</button>
+              <button className="btn ghost" onClick={() => doPurge(false)}><Trash2 size={14} /> 按保留策略清理</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 日志列表 */}
       <div className="card" style={{ marginTop: 18 }}>
-        <div className="section-title">
-          <h2 style={{ fontSize: 16, margin: 0 }}>日志列表 <span className="muted" style={{ fontSize: 13 }}>（共 {total} 条，第 {page + 1}/{Math.max(1, totalPages)} 页）</span></h2>
+        <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: 16, margin: 0, flex: 1 }}>日志列表 <span className="muted" style={{ fontSize: 13 }}>（共 {total} 条，第 {page + 1}/{Math.max(1, totalPages)} 页）</span></h2>
+          <select className="select" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(0); }} style={{ width: 'auto', fontSize: 12, padding: '4px 8px' }}>
+            {[30, 50, 100].map(n => <option key={n} value={n}>{n} 条/页</option>)}
+          </select>
         </div>
         {rows.length === 0 ? <div className="empty" style={{ padding: 24 }}>没有匹配的日志</div> : rows.map(r => (
           <div key={r.id} className="adm-row" style={{ cursor: 'pointer' }} onClick={() => setDetail(r)}>
@@ -1547,7 +1818,7 @@ function LogsTab({ toast }) {
               <div className="sub2" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.message}</div>
             </div>
             <span className="muted" style={{ fontSize: 11, flexShrink: 0, textAlign: 'right' }}>
-              {r.source}{r.user_id ? ` · U${r.user_id}` : ''}<br />{r.ts}
+              {r.source}{r.user_id ? ` · U${r.user_id}` : ''}{r.duration_ms > 1500 ? ' · 🐢' : ''}<br />{r.ts}
             </span>
           </div>
         ))}
@@ -1580,10 +1851,8 @@ function LogsTab({ toast }) {
             <div><span className="muted">会话：</span>{detail.session_id || '—'}</div>
             <div><span className="muted">请求ID：</span>{detail.request_id || '—'}</div>
             <div><span className="muted">指纹：</span>{detail.fingerprint || '—'}</div>
-            {!detail._isFingerprint && <>
-              <div><span className="muted">接口：</span>{detail.method} {detail.endpoint}</div>
-              <div><span className="muted">状态/耗时：</span>{detail.status} · {detail.duration_ms}ms</div>
-            </>}
+            <div><span className="muted">接口：</span>{detail.method} {detail.endpoint}</div>
+            <div><span className="muted">状态/耗时：</span>{detail.status} · {detail.duration_ms}ms</div>
           </div>
           <div className="field">
             <label>消息</label>
@@ -1600,7 +1869,11 @@ function LogsTab({ toast }) {
               </pre>
             </div>
           )}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 16 }}>
+            {detail.request_id && <button className="btn sm" onClick={() => drillDown({ request_id: detail.request_id })}>查看同请求链路</button>}
+            {detail.session_id && <button className="btn sm" onClick={() => drillDown({ session_id: detail.session_id })}>查看同会话</button>}
+            {detail.fingerprint && <button className="btn sm" onClick={() => drillDown({ fingerprint: detail.fingerprint })}>查看同类错误</button>}
+            <button className="btn sm" onClick={copyDetail}><Copy size={13} /> 复制 JSON</button>
             <button className="btn ghost" onClick={() => setDetail(null)}>关闭</button>
           </div>
         </Modal>

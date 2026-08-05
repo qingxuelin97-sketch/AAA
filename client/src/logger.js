@@ -63,13 +63,29 @@ let flushTimer = null;
 let installed = false;
 
 // 指纹去重：相同 event+message 在窗口内只缓冲一次，count 累加。
-const recentFingerprints = new Map(); // fp -> { count, firstTs }
+// Map 有上限 + 过期清扫：长会话（挂机一整天的 App）里不同错误不断累积会无界增长；
+// 超限时先清一遍过期项，仍超限则放弃去重直接上报（宁可多报一条也不丢日志）。
+const recentFingerprints = new Map(); // fp -> { count, firstTs, item }
+const FP_MAP_MAX = 200;
 
 function makeFingerprint(event, message) {
   const raw = `${event}|${String(message || '').slice(0, 200)}`;
   let h = 0;
   for (let i = 0; i < raw.length; i++) { h = ((h << 5) - h + raw.charCodeAt(i)) | 0; }
   return 'fp' + Math.abs(h).toString(36);
+}
+
+// 清扫过期指纹；窗口内累计 >1 次的，把「重复了 N 次」作为汇总条目补报
+// （服务端 log() 支持 count 透传，一条带 count=N 的日志比丢失 N-1 次重复更有用）。
+function sweepFingerprints(now = Date.now()) {
+  for (const [fp, rec] of recentFingerprints) {
+    if (now - rec.firstTs < DEDUP_WINDOW_MS) continue;
+    recentFingerprints.delete(fp);
+    if (rec.count > 1 && rec.item) {
+      buffer.push({ ...rec.item, count: rec.count - 1, message: `${rec.item.message}`.slice(0, 1000) });
+    }
+  }
+  if (buffer.length) scheduleFlush();
 }
 
 // 把一条日志推入缓冲区。去重 + 采样在此完成。
@@ -80,12 +96,15 @@ function push(item) {
   if (item.level === 'error' || item.level === 'warn') {
     const fp = makeFingerprint(item.event, item.message);
     const now = Date.now();
+    sweepFingerprints(now);
     const recent = recentFingerprints.get(fp);
     if (recent && now - recent.firstTs < DEDUP_WINDOW_MS) {
       recent.count++;
-      return; // 已有相同指纹在窗口内，不重复缓冲
+      return; // 已有相同指纹在窗口内，不重复缓冲（窗口关闭时会补报累计次数）
     }
-    recentFingerprints.set(fp, { count: 1, firstTs: now });
+    if (recentFingerprints.size < FP_MAP_MAX) {
+      recentFingerprints.set(fp, { count: 1, firstTs: now, item });
+    }
   }
   buffer.push(item);
   if (buffer.length >= BUFFER_MAX) flush();
@@ -126,6 +145,13 @@ function ship(items) {
 
 // flush 缓冲区。如果是最终卸载，强制 sendBeacon / keepalive。
 function flush(isUnload = false) {
+  if (isUnload) {
+    // 卸载前把窗口内累计的重复次数结算成汇总条目（否则这些计数随页面一起消失）。
+    for (const [fp, rec] of recentFingerprints) {
+      recentFingerprints.delete(fp);
+      if (rec.count > 1 && rec.item) buffer.push({ ...rec.item, count: rec.count - 1 });
+    }
+  }
   if (!buffer.length) return;
   const items = buffer.splice(0);
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }

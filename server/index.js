@@ -244,23 +244,41 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 // 三端（桌面网页 / 移动网页 / APP）统一上报：JS 异常、Promise 拒绝、React 崩溃、
 // 业务自定义事件。无需鉴权（崩溃发生在登录前也要能上报），但按 IP 限流防刷。
 // source 自动识别：UA 含 huanyu/capacitor 或带 X-Huanyu-App 头 → 'app'，否则 'client'。
+// 兼容两种载荷：单条 {level,event,...}（sendBeacon 卸载路径）与批量 {batch:[...]}
+// （logger.js 缓冲 flush 路径 —— 历史 bug：此前只解析单条字段，批量上报会整包
+// 丢失、落成一条空 client_log）。批量上限 20 条，超出丢弃尾部。
+// level 钳制：客户端自报级别只允许 debug/info/warn/error —— fatal 是服务端进程级
+// 事件专用级别（会触发 GM 实时告警），不受理外部输入，防日志投毒/告警轰炸。
 const clientLogLimiter = rateLimit({
   windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false,
   keyGenerator: (req) => req.ip,
   message: { error: '日志上报过于频繁' },
 });
+const CLIENT_LOG_LEVELS = new Set(['debug', 'info', 'warn', 'error']);
 app.post('/api/logs/client', clientLogLimiter, (req, res) => {
-  const { level = 'info', event = 'client_log', message = '', extra = null, session_id = '', request_id = '' } = req.body || {};
+  const body = req.body || {};
+  const items = Array.isArray(body.batch) ? body.batch.slice(0, 20) : [body];
   const ua = req.header('user-agent') || '';
   const isApp = /huanyu|capacitor/i.test(ua) || !!req.header('X-Huanyu-App');
   const source = isApp ? 'app' : 'client';
-  log({
-    level, source, category: isApp ? 'app' : 'client', event,
-    message, ip: req.ip || '', ua, extra,
-    session_id, request_id: request_id || req.header('X-Request-Id') || '',
-    endpoint: req.header('referer') || '',
-  });
-  res.json({ ok: true });
+  let accepted = 0;
+  for (const it of items) {
+    if (!it || typeof it !== 'object') continue;
+    const lvRaw = String(it.level || 'info');
+    const level = CLIENT_LOG_LEVELS.has(lvRaw) ? lvRaw : (lvRaw === 'fatal' ? 'error' : 'info');
+    log({
+      level, source, category: isApp ? 'app' : 'client',
+      event: String(it.event || 'client_log').slice(0, 120),
+      message: String(it.message || '').slice(0, 1000),
+      ip: req.ip || '', ua, extra: it.extra ?? null,
+      session_id: String(it.session_id || '').slice(0, 64),
+      request_id: String(it.request_id || req.header('X-Request-Id') || '').slice(0, 64),
+      endpoint: req.header('referer') || '',
+      count: it.count,
+    });
+    accepted++;
+  }
+  res.json({ ok: true, accepted });
 });
 
 // Serve built client (production) with SPA fallback.
