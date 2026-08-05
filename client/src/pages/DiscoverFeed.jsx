@@ -19,6 +19,8 @@ import { EmptyArt, CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from
 import { shareUrl } from '../util.js';
 import { tick } from '../appgestures.js';
 import CallScreen from '../components/CallScreen.jsx';
+import AppPressMenu from '../components/AppPressMenu.jsx';
+import { useLongPress } from '../chat/hooks.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppOverlay } from '../overlay.jsx';
@@ -45,6 +47,21 @@ const pushRecent = (c) => {
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
+// 叠印：顶部分段是一条可滚动的轨，三个基础流打头、服务端分类续在其后
+// —— 浏览意图（想看什么题材）和排序意图（关注/热/新）本来就该在同一层选，
+// 分成两处会让人先选完排序再去别处找分类。分类经 /characters/public?category=
+// 落到同一个查询上，不新增接口。
+const BASE_SEGS = [
+  { key: 'follow', label: '关注', query: 'sort=hot&scope=following' },
+  { key: 'recommend', label: '推荐', query: 'sort=hot' },
+  { key: 'new', label: '新作', query: 'sort=new' },
+];
+const CAT_PREFIX = 'cat:';
+
+// 首次进入沉浸流时提示一次双击点赞；看过即不再出现。
+const COACH_KEY = 'huanyu_feed_coach';
+const readCoach = () => { try { return localStorage.getItem(COACH_KEY) === '1'; } catch { return true; } };
+
 export default function DiscoverFeed() {
   const nav = useNav();
   const toast = useToast();
@@ -68,7 +85,12 @@ export default function DiscoverFeed() {
   const [histOpen, setHistOpen] = useState(false); // 「历史」最近看过面板
   useAppOverlay(histOpen, () => setHistOpen(false), { rootRef: historySheetRef });
   const [callChar, setCallChar] = useState(null);  // 通话中的角色（电话键落点）
+  const [cats, setCats] = useState([]);            // 服务端分类，接在三个基础流之后
+  const [press, setPress] = useState(null);        // 长按菜单 { c, at:{x,y} }
+  const [coached, setCoached] = useState(readCoach);
   const containerRef = useRef(null);
+  const segsRef = useRef(null);
+  const pressPt = useRef({ x: 0, y: 0 });
   const loadFlag = useRef(0);   // 防竞态
   const lastTap = useRef({ t: 0, id: null });
 
@@ -79,8 +101,13 @@ export default function DiscoverFeed() {
 
   const persistLiked = (s) => { try { localStorage.setItem('feed_liked', JSON.stringify([...s].slice(-200))); } catch { /* */ } };
 
-  // 分段 → 查询参数：推荐=热度、新作=最新、关注=已关注创作者。
-  const modeQuery = (m) => (m === 'new' ? 'sort=new' : m === 'follow' ? 'sort=hot&scope=following' : 'sort=hot');
+  // 分段轨：三个基础流 + 服务端分类。key 以 cat: 打头的落到 category 查询上。
+  const segs = [...BASE_SEGS, ...cats.map(c => ({
+    key: CAT_PREFIX + (c.slug || c.id || c),
+    label: c.name || categoryName(c.slug || c) || String(c),
+    query: `sort=hot&category=${encodeURIComponent(c.slug || c.id || c)}`,
+  }))];
+  const modeQuery = (m) => (segs.find(s => s.key === m) || BASE_SEGS[1]).query;
 
   const load = useCallback((m, reset = true) => {
     const flag = ++loadFlag.current;
@@ -114,6 +141,20 @@ export default function DiscoverFeed() {
   useEffect(() => {
     api('/characters/favorites/list').then(d => { setFavSet(new Set((d.characters || []).map(c => c.id))); }).catch(() => {});
   }, []);
+
+  // 分类轨：拉不到就只剩三个基础流，页面照常可用（分类是增强不是前提）。
+  useEffect(() => {
+    api('/meta/categories').then(d => setCats(d.categories || d || [])).catch(() => setCats([]));
+  }, []);
+
+  // 选中的分段滚到轨中央：轨可横滑后，选中项落在屏外会让人以为没选上。
+  useEffect(() => {
+    const strip = segsRef.current;
+    const on = strip?.querySelector('[data-seg-on="1"]');
+    if (!on) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    on.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest', inline: 'center' });
+  }, [mode, cats.length]);
 
   // SSE：他人发布新公开角色卡时秒级插入到流顶部，不打断当前观看。
   useRealtimeEvent('character_new', (data) => {
@@ -232,6 +273,7 @@ export default function DiscoverFeed() {
     const y = (e.clientY ?? rect.top + rect.height / 2) - rect.top;
     if (!likedSet.has(c.id)) like(c);
     tick(10);
+    dismissCoach();   // 会双击了，提示自然退场
     setBurst({ id: c.id, x, y, k: now });
     setTimeout(() => setBurst(b => (b && b.k === now ? null : b)), 850);
   };
@@ -256,16 +298,27 @@ export default function DiscoverFeed() {
 
   const atEnd = !hasMore && activeIdx >= chars.length - 1;
 
+  // 长按卡面 → 就地动作菜单。触屏专有（hover 在这里不存在），坐标由 pointerdown
+  // 单独记录：useLongPress 只管计时，不带落点。
+  const bindPress = useLongPress((c) => { tick(8); setPress({ c, at: pressPt.current }); });
+  const dismissCoach = () => {
+    setCoached(true);
+    try { localStorage.setItem(COACH_KEY, '1'); } catch { /* */ }
+  };
+
   // 顶部：分段（关注 / 推荐 / 新作，居中）+ 右侧搜索浮钮 —— 始终常驻（含空/加载态可切换）。
+  // 分类只在 App 壳里接到轨上：Web 壳的发现页是另一套 Lumen 布局，
+  // 三段固定宽的分段控件塞不下 N 个分类，且本代不碰 Web。
+  const visibleSegs = appMode ? segs : BASE_SEGS;
   const topBar = (
     <div className="feed-top">
-      <div className="feed-modes" role={appMode ? 'tablist' : undefined} aria-label={appMode ? '发现内容筛选' : undefined}>
-        <AppButton variant="tertiary" selected={mode === 'follow'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? mode === 'follow' : undefined}
-          className={'feed-mode' + (mode === 'follow' ? ' on' : '')} onClick={() => setMode('follow')}>关注</AppButton>
-        <AppButton variant="tertiary" selected={mode === 'recommend'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? mode === 'recommend' : undefined}
-          className={'feed-mode' + (mode === 'recommend' ? ' on' : '')} onClick={() => setMode('recommend')}>推荐</AppButton>
-        <AppButton variant="tertiary" selected={mode === 'new'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? mode === 'new' : undefined}
-          className={'feed-mode' + (mode === 'new' ? ' on' : '')} onClick={() => setMode('new')}>新作</AppButton>
+      <div className="feed-modes" ref={segsRef} role={appMode ? 'tablist' : undefined} aria-label={appMode ? '发现内容筛选' : undefined}>
+        {visibleSegs.map(s => (
+          <AppButton key={s.key} variant="tertiary" selected={mode === s.key}
+            role={appMode ? 'tab' : undefined} aria-selected={appMode ? mode === s.key : undefined}
+            data-seg-on={mode === s.key ? '1' : undefined}
+            className={'feed-mode' + (mode === s.key ? ' on' : '')} onClick={() => setMode(s.key)}>{s.label}</AppButton>
+        ))}
       </div>
       <AppIconButton className="feed-search" onClick={openCmdk} label="搜索" aria-label="搜索"><Search size={18} /></AppIconButton>
     </div>
@@ -330,8 +383,11 @@ export default function DiscoverFeed() {
                     : <div className="feed-bg cover-art-box" style={sharedMediaStyle}><CoverArt name={c.name} /></div>}
               <div className="feed-scrim" />
               {c.ai_generated && <span className="feed-ai-mark" aria-hidden="true">由 AI 生成</span>}
-              {/* 双击点赞层：盖住画面区域，按钮层在其上不受影响 */}
-              <div className="feed-tap" onClick={e => cardTap(e, c)} />
+              {/* 双击点赞层：盖住画面区域，按钮层在其上不受影响。
+                  App 壳里同一层再接长按 → 就地动作菜单。 */}
+              <div className="feed-tap" onClick={e => cardTap(e, c)}
+                onPointerDown={appMode ? (e => { pressPt.current = { x: e.clientX, y: e.clientY }; }) : undefined}
+                {...(appMode ? bindPress(c) : {})} />
               {burst && burst.id === c.id && (
                 <span key={burst.k} className="feed-heart" style={{ left: burst.x, top: burst.y }} aria-hidden="true">
                   <Heart size={84} fill="currentColor" />
@@ -515,6 +571,34 @@ export default function DiscoverFeed() {
             <AppButton className="fd2-hist-close" variant="tertiary" onClick={() => setHistOpen(false)}><X size={15} /> 关闭</AppButton>
           </div>
         </div>
+      )}
+
+      {/* 首启一次的双击提示：真的双击过就自动消失，不必等人去点它 */}
+      {appMode && !coached && chars.length > 0 && (
+        <button type="button" className="feed-coach" onClick={dismissCoach}>
+          <Heart size={15} /> 双击画面即可心动
+        </button>
+      )}
+
+      {/* 长按卡面 → 就地动作。「不感兴趣」只在本次列表里移除：
+          没有对应的后端负反馈接口，与其伪造一个不如老实做本地收敛。 */}
+      {press && (
+        <AppPressMenu
+          at={press.at}
+          onClose={() => setPress(null)}
+          items={[
+            { label: '查看角色', onSelect: () => nav('/character/' + press.c.id) },
+            { label: '分享', onSelect: () => share(press.c) },
+            {
+              label: '不感兴趣',
+              danger: true,
+              onSelect: () => {
+                setChars(prev => prev.filter(x => x.id !== press.c.id));
+                toast('已从这次的推荐里移开');
+              },
+            },
+          ]}
+        />
       )}
 
       {/* 通话 —— 给角色打电话（沉浸式全屏） */}

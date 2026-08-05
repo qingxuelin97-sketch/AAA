@@ -12,3 +12,149 @@ html[data-app="1"][data-surface="immersive"] .app-root,
 html[data-app="1"][data-surface="immersive"] .app-main {
   background: var(--ov-stage);
 }
+
+/* ═══ ② 发现 · 一屏一张卡 ═══════════════════════════════════════ */
+/* IX 让媒体一直铺到机身条底下，靠玻璃透出来；代价是机身条永远压着画面
+   的一条，且「这一屏到哪儿结束」没有边界。叠印把滚动容器收到机身条之上
+   再留 8px，于是每屏成为一张有始有终的卡，贴合翻页也从「滚动」变成
+   「一页一张」的确定动作。容器高度即一个 snap 视口高，贴合语义不变。 */
+html[data-app="1"] .qa3-discover.feed-wrap {
+  background: var(--ov-stage) !important;
+}
+/* --app-bot 已经含了 8px 余量（dock-height + dock-bottom + 8），
+   卡底到机身条正好是那 8px，不要再减一次 --ov-feed-gap。 */
+html[data-app="1"] .qa3-discover .feed-root {
+  height: calc(100% - var(--app-bot)) !important;
+  padding-inline: var(--ix-space-2);
+  scrollbar-width: none;
+}
+html[data-app="1"] .qa3-discover .feed-root::-webkit-scrollbar { display: none; }
+html[data-app="1"] .qa3-discover .feed-card {
+  height: 100% !important;
+  border-radius: var(--ix-r-panel);
+  overflow: hidden;
+  box-shadow: var(--ov-elev-0);
+}
+
+/* 顶部分段：可滚动的一条轨，选中项自动滚到中央。
+   IX 是固定三格的玻璃胶囊组（width: min(230px, 68vw) 的 grid），
+   容不下服务端分类；这里改为 flex 横滑，并把选中态从「实心药丸」
+   换成 28×2 下划线 —— 药丸在满幅媒体上会多出一块与内容无关的色块。 */
+/* 顶栏改 flex：IX 把它做成三列 grid 并让分段组居中（justify-self: center），
+   内容一旦宽过格子就向两侧同时溢出，scrollLeft=0 落在中段——实测选中的
+   「推荐」被推到 x=-135，人看不见自己选了什么。改成「轨占满剩余宽、
+   搜索钉右」后起点才回到左边缘。 */
+html[data-app="1"] .qa3-discover .feed-top {
+  display: flex !important;
+  align-items: center;
+  gap: var(--ix-space-2);
+}
+/* 搜索键原本是绝对定位的浮钮，脱离流就会压在轨的尾巴上。
+   收回常规流做 flex 末项，轨才真正只占「剩余」宽度。 */
+html[data-app="1"] .qa3-discover .feed-search.qa-icon-button {
+  position: static !important;
+  flex: 0 0 auto;
+}
+html[data-app="1"] .qa3-discover .feed-modes {
+  display: flex !important;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  justify-self: stretch !important;
+  min-width: 0;
+  width: auto !important;
+  max-width: 100%;
+  height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  gap: 2px;
+}
+html[data-app="1"] .qa3-discover .feed-modes::-webkit-scrollbar { display: none; }
+html[data-app="1"] .qa3-discover .feed-mode.qa-button {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: var(--ix-hit-min) !important;
+  padding: 0 var(--ix-space-3) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--ov-on-stage-45) !important;
+  font-size: var(--ix-type-section);
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 45%);
+  white-space: nowrap;
+}
+html[data-app="1"] .qa3-discover .feed-mode.on.qa-button {
+  background: transparent !important;
+  color: var(--ov-on-stage) !important;
+  font-weight: 700;
+}
+/* 下划线：28×2，只在选中项出现。
+   控件层有一条 `:where(.qa-button,…)::after { content: none !important }` 的全局
+   伪元素重置，另有一条专门关掉 .feed-mode::after —— 想用伪元素画下划线就必须
+   在 content 与 display 上同级 !important 顶回来（.pf-tabs 的下划线同此办法）。 */
+html[data-app="1"] .qa3-discover .feed-mode.qa-button::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  width: var(--ov-underline-w);
+  height: var(--ov-underline-h);
+  margin-left: calc(var(--ov-underline-w) / -2);
+  border-radius: var(--ix-r-dial);
+  background: var(--ov-on-stage);
+  opacity: 0;
+  transition: opacity var(--ix-dur-state) var(--ix-ease);
+}
+html[data-app="1"] .qa3-discover .feed-mode.on.qa-button::after { opacity: 1; }
+
+/* 竖排动作轨：50 列宽 · 32 图标 · 11 等宽计数（参考素材的比例）。
+   图标本体的投影保留 —— 它压在任意亮度的媒体上，遮罩管不到那么远。 */
+html[data-app="1"] .qa3-discover .fd2-act {
+  width: var(--ov-vrail-col);
+  gap: var(--ix-space-1);
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: var(--ov-elev-0) !important;
+  color: var(--ov-on-stage);
+}
+html[data-app="1"] .qa3-discover .fd2-act svg {
+  width: var(--ov-vrail-ic);
+  height: var(--ov-vrail-ic);
+}
+html[data-app="1"] .qa3-discover .fd2-act > span {
+  font-family: var(--ix-font-mono);
+  font-size: var(--ov-vrail-count);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 55%);
+}
+
+/* 首启双击提示：一条压在流上的细胶囊，点掉或真的双击过即退场。
+   贴在分段轨下方的空媒体区，不去和底部的开场白/CTA 抢位置
+   （那一带实测已被 .fd2-cta 占到 y=620，胶囊放下面必然叠上去）。 */
+html[data-app="1"] .feed-coach {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--app-top) + 82px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  gap: var(--ix-space-2);
+  align-items: center;
+  min-height: var(--ix-hit-min);
+  padding: 0 var(--ix-space-4);
+  border: 0;
+  border-radius: var(--ix-r-dial);
+  background: rgb(0 0 0 / 55%);
+  color: var(--ov-on-stage);
+  font-size: var(--ix-type-meta);
+  font-weight: 600;
+}
