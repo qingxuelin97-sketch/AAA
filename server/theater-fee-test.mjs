@@ -142,5 +142,5 @@ try {
 
 console.log(`\n互动小说平台兜底专项: ${pass} passed, ${fail} failed`);
 srv.kill(); stub.close();
-for (const f of [DB_PATH, DB_PATH + '-wal', DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch { /* */ } }
+for (const f of [DB_PATH, DB_PATH + '-wal', DB_PATH + '-shm', interceptor]) { try { fs.unlinkSync(f); } catch { /* */ } }
 process.exit(fail ? 1 : 0);
