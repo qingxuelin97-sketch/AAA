@@ -132,6 +132,29 @@ export function chargePlatformFeeJson({ req, res, me, eff, historyLen, memo, ref
   return ctx;
 }
 
+// 一次性（非流式）AI 生成的统一计费包装：预扣 → produce() 产出有效即 settle，
+// 任何 throw（上游错误 / 解析失败 / 空产出）即整体退款并按 e.status 回 JSON 错误。
+// novels 的九条 llmOnce 路由与世界书拆书此前平台分支零计费（白嫖口），统一在此收口。
+// produce 返回「已解析且有效」的产物；无效时 throw Object.assign(new Error(文案), { status: 502 })。
+// 返回 { out, fee }；已回错误响应时返回 null（调用方直接 return）。
+export async function billedOnce(req, res, eff, memo, produce) {
+  const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(req.user.id);
+  const feeCtx = chargePlatformFeeJson({
+    req, res, me, eff, historyLen: 0, memo: `平台 AI · ${memo}`,
+    insufficientHint: '可前往钱包签到/兑换，或在设置中填写自己的 API。',
+  });
+  if (feeCtx.rejected) return null;
+  try {
+    const out = await produce();
+    feeCtx.settle();
+    return { out, fee: feeCtx.fee || 0 };
+  } catch (e) {
+    feeCtx.refund('生成失败');
+    res.status(e.status || 502).json({ error: e.message || '模型服务暂不可用' });
+    return null;
+  }
+}
+
 // Group-wide platform AI config (language / voice / image). Stored as JSON in
 // app_config. Keys live only in the server DB and are never returned unmasked.
 // 默认平台语言服务密钥从环境变量注入，杜绝硬编码进源码；GM 也可在后台配置。

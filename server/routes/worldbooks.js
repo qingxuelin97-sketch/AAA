@@ -4,6 +4,8 @@ import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter, aiLimiter } from '../limiters.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { str, csv } from '../validate.js';
+import { effectiveLLM } from '../llm.js';
+import { billedOnce } from '../platform.js';
 
 const router = Router();
 
@@ -248,24 +250,29 @@ router.get('/:id/attachments', authRequired, (req, res) => {
   res.json({ characters: chars.map(c => ({ ...c, attached: attached.has(c.id) })) });
 });
 
-// AI 拆书：把一大段自由设定文本交给用户自己的 LLM，拆解为结构化世界书条目。
-// 只返回候选条目，由创作者在前端预览确认后并入，不直接写库。
+// AI 拆书：把一大段自由设定文本拆解为结构化世界书条目（只返回候选，不写库）。
+// 平台兜底（毛坯修缮③）：自带 key 免费；无 key 走平台模型按次计费（billedOnce
+// 预扣 + 失败退款）。此前这里是全仓最后一处「硬性要求自带 key」的业务路由。
 router.post('/assist/extract', authRequired, aiLimiter, async (req, res) => {
   const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
-  if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
+  const eff = effectiveLLM(settings);
+  if (!eff) return res.status(400).json({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' });
   const text = str(req.body?.text, 12000);
   if (!text.trim()) return res.status(400).json({ error: '请粘贴需要拆解的设定文本' });
   const system = `你是世界观设定整理专家。把用户给出的设定文本拆解成「世界书条目」：每条聚焦一个独立概念（人物 / 地点 / 组织 / 物品 / 规则 / 事件…），并提炼触发关键词（含常见别称）。只输出 JSON 数组，每项形如 {"keys":"关键词1, 关键词2","content":"该概念的设定内容（尽量保留原文关键细节，300字内）","comment":"8字内概括"}。数量以覆盖全部概念为准（通常 5-20 条），不要输出任何 JSON 以外的文字。`;
-  try {
-    assertPublicUrl(settings.llm_base_url);
-    const r = await safeFetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
+  const fail = (msg) => Object.assign(new Error(msg), { status: 502 });
+  const bill = await billedOnce(req, res, eff, '世界书拆书', async () => {
+    // 用户自填地址不可信：同步预检 + safeFetch；平台配置可信走原生 fetch（chat/novels 同范式）。
+    const doFetch = eff.platform ? fetch : (u, o) => safeFetch(u, o, { timeoutMs: 60000 });
+    if (!eff.platform) assertPublicUrl(eff.base_url);
+    const r = await doFetch(String(eff.base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
       body: JSON.stringify({
-        model: settings.llm_model, temperature: 0.3, max_tokens: 3000,
+        model: eff.model, temperature: 0.3, max_tokens: 3000,
         messages: [{ role: 'system', content: system }, { role: 'user', content: text }]
       })
     });
-    if (!r.ok) return res.status(502).json({ error: '模型服务暂不可用' });
+    if (!r.ok) throw fail('模型服务暂不可用');
     const data = await r.json();
     let raw = (data.choices?.[0]?.message?.content || '').trim();
     const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i); if (fence) raw = fence[1].trim();
@@ -274,13 +281,15 @@ router.post('/assist/extract', authRequired, aiLimiter, async (req, res) => {
       // 宽松回退：截取首个 [ … ] 片段再试一次
       const seg = raw.match(/\[[\s\S]*\]/); if (seg) { try { arr = JSON.parse(seg[0]); } catch { /* */ } }
     }
-    if (!Array.isArray(arr)) return res.status(502).json({ error: '模型未返回有效条目，请重试或换个模型' });
+    if (!Array.isArray(arr)) throw fail('模型未返回有效条目，请重试或换个模型');
     const entries = arr.filter(e => e && typeof e === 'object' && (e.content || e.keys)).slice(0, 40).map(e => ({
       keys: str(e.keys, 300), content: str(e.content, 4000), comment: str(e.comment, 60)
     })).filter(e => e.content.trim());
-    if (!entries.length) return res.status(502).json({ error: '模型未拆出有效条目，请重试' });
-    res.json({ entries });
-  } catch { res.status(502).json({ error: '模型服务暂不可用' }); }
+    if (!entries.length) throw fail('模型未拆出有效条目，请重试');
+    return entries;
+  });
+  if (!bill) return;
+  res.json({ entries: bill.out, fee: bill.fee });
 });
 
 // 把角色内嵌世界书另存为独立世界书

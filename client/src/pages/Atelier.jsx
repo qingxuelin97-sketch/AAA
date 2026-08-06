@@ -377,6 +377,7 @@ function CreateModal({ onClose, onCreated, appMode = false, creationLock }) {
     setBrainstorming(true);
     try {
       const d = await api('/novels/brainstorm', { method: 'POST', body: { seed: seed.trim() } });
+      if (d.fee) toast(`平台 AI · 本次消耗 ${d.fee} 金币`);
       setForm({ ...form, ...d.draft });
       toast('灵感已生成，可继续微调', 'ok');
     } catch (e) { toast(e.message, 'err'); }

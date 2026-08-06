@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
-import { getPlatform, chargePlatformFee } from '../platform.js';
+import { getPlatform, chargePlatformFee, billedOnce } from '../platform.js';
 import { effectiveLLM as effectiveLLMBase } from '../llm.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
@@ -575,10 +575,13 @@ router.post('/runs/:rid/sync-canon', authRequired, aiLimiter, async (req, res) =
   const system = '你是小说连续性编辑。任务：从最新正文中提炼出「应当长期记住的设定事实」（新出场角色、关系变化、地点、物品、势力、世界规则、关键剧情状态），用于维护设定库，保证后续创作不矛盾。只提炼确实在正文中发生/确立的事实，不要臆造、不要写转瞬即逝的细节。';
   const user = `已知设定：\n${known}\n\n最新正文：\n${recent}\n\n请输出一个 JSON 数组，每个元素形如 {"title":"简短条目名","category":"world|character|relationship|faction|location|item|lore|rule|timeline|plot","content":"一句到两句话的设定描述","keys":"触发关键词，逗号分隔","trigger":"keyword 或 scene 或 always"}。\n- 若是对已知条目的更新，请沿用同名 title。\n- 若没有任何值得沉淀的新设定，输出空数组 []。\n只输出 JSON，不要其它文字。`;
 
-  let arr;
-  try { arr = extractJSON(await llmOnce(eff, system, user, { maxTokens: 900, temperature: 0.3 })); }
-  catch (e) { return res.status(502).json({ error: e.message }); }
-  if (!Array.isArray(arr)) arr = [];
+  // 平台按次计费（此前平台分支零计费）：预扣→产出 settle→失败退款
+  const bill = await billedOnce(req, res, eff, '小说设定同步', async () => {
+    const a = extractJSON(await llmOnce(eff, system, user, { maxTokens: 900, temperature: 0.3 }));
+    return Array.isArray(a) ? a : [];
+  });
+  if (!bill) return;
+  const arr = bill.out;
 
   let added = 0, updated = 0;
   const byTitle = new Map(canon.map(e => [e.title.trim(), e]));
@@ -597,7 +600,7 @@ router.post('/runs/:rid/sync-canon', authRequired, aiLimiter, async (req, res) =
     }
   }
   if (added || updated) db.prepare("UPDATE novel_runs SET canon = ?, updated_at = datetime('now') WHERE id = ?").run(JSON.stringify(cleanEntries(canon)), r.id);
-  res.json({ run: shapeRun(db.prepare('SELECT * FROM novel_runs WHERE id = ?').get(r.id)), added, updated });
+  res.json({ run: shapeRun(db.prepare('SELECT * FROM novel_runs WHERE id = ?').get(r.id)), added, updated, fee: bill.fee });
 });
 
 // 滚动剧情摘要：把整线压缩成「前情提要」，作为长篇记忆喂回写作。
@@ -611,11 +614,14 @@ router.post('/runs/:rid/recap', authRequired, aiLimiter, async (req, res) => {
   const text = beats.map(b => b.content).join('\n\n');
   if (!text.trim()) return res.json({ run: shapeRun(r) });
   const system = '你是小说编辑，请把以下连载内容压缩成简洁连贯的「前情提要」，覆盖关键人物、已发生的核心事件、当前局势与悬念，控制在 300 字内。只输出提要本身。';
-  let recap;
-  try { recap = await llmOnce(eff, system, text.slice(-8000), { maxTokens: 600, temperature: 0.4 }); }
-  catch (e) { return res.status(502).json({ error: e.message }); }
-  db.prepare("UPDATE novel_runs SET summary = ?, updated_at = datetime('now') WHERE id = ?").run(clampStr(recap, 6000), r.id);
-  res.json({ run: shapeRun(db.prepare('SELECT * FROM novel_runs WHERE id = ?').get(r.id)) });
+  const bill = await billedOnce(req, res, eff, '小说前情提要', async () => {
+    const recap = await llmOnce(eff, system, text.slice(-8000), { maxTokens: 600, temperature: 0.4 });
+    if (!String(recap || '').trim()) throw Object.assign(new Error('模型未返回提要，请重试'), { status: 502 });
+    return recap;
+  });
+  if (!bill) return;
+  db.prepare("UPDATE novel_runs SET summary = ?, updated_at = datetime('now') WHERE id = ?").run(clampStr(bill.out, 6000), r.id);
+  res.json({ run: shapeRun(db.prepare('SELECT * FROM novel_runs WHERE id = ?').get(r.id)), fee: bill.fee });
 });
 
 // 续写灵感：给出几条下一步可走的方向，作者一键采用。
@@ -630,12 +636,13 @@ router.post('/runs/:rid/suggest', authRequired, aiLimiter, async (req, res) => {
   const recent = beats.map(b => b.content).join('\n\n') || novel.synopsis || novel.logline || '故事尚未开始。';
   const system = `你是资深小说策划，为《${novel.title}》构思接下来的剧情走向。给出 4 个差异明显、各有张力的方向（有的推进主线、有的制造冲突或转折、有的深化人物或埋伏笔）。`;
   const user = `当前进展：\n${recent}\n\n请输出 JSON 数组，每个元素 {"label":"6字内方向标签","prompt":"可直接作为创作指令的一句话方向（30字内）"}。只输出 JSON。`;
-  let arr;
-  try { arr = extractJSON(await llmOnce(eff, system, user, { maxTokens: 700, temperature: 0.95 })); }
-  catch (e) { return res.status(502).json({ error: e.message }); }
-  if (!Array.isArray(arr)) arr = [];
-  const suggestions = arr.slice(0, 6).map(x => ({ label: clampStr(x.label, 24), prompt: clampStr(x.prompt, 200) })).filter(x => x.prompt);
-  res.json({ suggestions });
+  const bill = await billedOnce(req, res, eff, '小说续写灵感', async () => {
+    const a = extractJSON(await llmOnce(eff, system, user, { maxTokens: 700, temperature: 0.95 }));
+    return Array.isArray(a) ? a : [];
+  });
+  if (!bill) return;
+  const suggestions = bill.out.slice(0, 6).map(x => ({ label: clampStr(x.label, 24), prompt: clampStr(x.prompt, 200) })).filter(x => x.prompt);
+  res.json({ suggestions, fee: bill.fee });
 });
 
 // AI 灵感开局：从一句创意生成 标题/内核/类型/梗概/标签。
@@ -648,14 +655,17 @@ router.post('/brainstorm', authRequired, aiLimiter, async (req, res) => {
   if (!seed) return res.status(400).json({ error: '请先写一句你的创意' });
   const system = '你是小说企划。根据用户的一句创意，构思一部有吸引力的小说雏形。';
   const user = `创意：${seed}\n\n输出 JSON：{"title":"作品名","logline":"一句话故事内核(40字内)","genre":"类型","synopsis":"100-200字开篇梗概","tags":"逗号分隔的3-5个标签"}。只输出 JSON。`;
-  let obj;
-  try { obj = extractJSON(await llmOnce(eff, system, user, { maxTokens: 800, temperature: 0.95 })); }
-  catch (e) { return res.status(502).json({ error: e.message }); }
-  if (!obj || typeof obj !== 'object') return res.status(502).json({ error: 'AI 返回格式异常，请重试' });
+  const bill = await billedOnce(req, res, eff, '小说灵感开局', async () => {
+    const obj = extractJSON(await llmOnce(eff, system, user, { maxTokens: 800, temperature: 0.95 }));
+    if (!obj || typeof obj !== 'object') throw Object.assign(new Error('AI 返回格式异常，请重试'), { status: 502 });
+    return obj;
+  });
+  if (!bill) return;
+  const obj = bill.out;
   res.json({ draft: {
     title: clampStr(obj.title, 80), logline: clampStr(obj.logline, 200), genre: clampStr(obj.genre, 40),
     synopsis: clampStr(obj.synopsis, 4000), tags: clampStr(obj.tags, 200),
-  } });
+  }, fee: bill.fee });
 });
 
 // AI 生成局外设定：从作品梗概自动起一套世界观/角色/势力等设定母版。
@@ -669,16 +679,18 @@ router.post('/:id/codex/generate', authRequired, aiLimiter, async (req, res) => 
   const base = `《${n.title}》${n.genre ? '（' + n.genre + '）' : ''}\n内核：${n.logline || '—'}\n梗概：${n.synopsis || '—'}`;
   const system = '你是世界观架构师。为这部小说搭建一套可落地的「设定母版」：涵盖世界观背景、核心主角与重要配角、关键关系、主要势力/地点、独特设定或规则、以及悬而未决的核心剧情线。条目精炼、彼此自洽。';
   const user = `${base}\n${focus ? '侧重：' + focus + '\n' : ''}\n请输出 JSON 数组（8-14 条），每个元素 {"title":"条目名","category":"world|character|relationship|faction|location|item|lore|rule|timeline|plot","content":"1-3句设定","keys":"触发关键词,逗号分隔","trigger":"always|keyword|scene"}。\n世界观/基调类用 always；具体人物地点物品用 keyword 或 scene。只输出 JSON。`;
-  let arr;
-  try { arr = extractJSON(await llmOnce(eff, system, user, { maxTokens: 1800, temperature: 0.85 })); }
-  catch (e) { return res.status(502).json({ error: e.message }); }
-  if (!Array.isArray(arr)) return res.status(502).json({ error: 'AI 返回格式异常，请重试' });
-  const generated = cleanEntries(arr.map(x => ({ ...x, source: 'meta' })), { defaultSource: 'meta' });
+  const bill = await billedOnce(req, res, eff, '小说设定母版', async () => {
+    const a = extractJSON(await llmOnce(eff, system, user, { maxTokens: 1800, temperature: 0.85 }));
+    if (!Array.isArray(a)) throw Object.assign(new Error('AI 返回格式异常，请重试'), { status: 502 });
+    return a;
+  });
+  if (!bill) return;
+  const generated = cleanEntries(bill.out.map(x => ({ ...x, source: 'meta' })), { defaultSource: 'meta' });
   const append = req.body?.append !== false;
   const existing = append ? cleanEntries(parseJSON(n.codex, [])) : [];
   const codex = cleanEntries(existing.concat(generated), { defaultSource: 'meta' });
   db.prepare("UPDATE novels SET codex = ?, updated_at = datetime('now') WHERE id = ?").run(JSON.stringify(codex), n.id);
-  res.json({ novel: shapeNovel(db.prepare('SELECT * FROM novels WHERE id = ?').get(n.id)), generated: generated.length });
+  res.json({ novel: shapeNovel(db.prepare('SELECT * FROM novels WHERE id = ?').get(n.id)), generated: generated.length, fee: bill.fee });
 });
 
 // 导出整线为纯文本 / Markdown。
@@ -707,12 +719,13 @@ router.post('/runs/:rid/check', authRequired, aiLimiter, async (req, res) => {
   const setText = canon.map(e => `- ${e.title}（${CAT_LABEL[e.category]}）：${e.content}`).join('\n') || '（暂无设定）';
   const system = '你是严谨的小说连续性审校。对照设定库检查正文是否存在自相矛盾、人物/地点/时间错乱、设定违背或前后断裂。只报真正的问题，没有就返回空数组。';
   const user = `设定库：\n${setText}\n\n最新正文：\n${recent}\n\n输出 JSON 数组，每个元素 {"severity":"high|medium|low","issue":"问题描述","fix":"修正建议"}。只输出 JSON。`;
-  let arr;
-  try { arr = extractJSON(await llmOnce(eff, system, user, { maxTokens: 900, temperature: 0.2 })); }
-  catch (e) { return res.status(502).json({ error: e.message }); }
-  if (!Array.isArray(arr)) arr = [];
-  const issues = arr.slice(0, 12).map(x => ({ severity: ['high', 'medium', 'low'].includes(x.severity) ? x.severity : 'medium', issue: clampStr(x.issue, 300), fix: clampStr(x.fix, 300) })).filter(x => x.issue);
-  res.json({ issues });
+  const bill = await billedOnce(req, res, eff, '小说一致性检查', async () => {
+    const a = extractJSON(await llmOnce(eff, system, user, { maxTokens: 900, temperature: 0.2 }));
+    return Array.isArray(a) ? a : [];
+  });
+  if (!bill) return;
+  const issues = bill.out.slice(0, 12).map(x => ({ severity: ['high', 'medium', 'low'].includes(x.severity) ? x.severity : 'medium', issue: clampStr(x.issue, 300), fix: clampStr(x.fix, 300) })).filter(x => x.issue);
+  res.json({ issues, fee: bill.fee });
 });
 
 // 剧情时间线：把整线正文提炼成按顺序的关键事件流（派生视图，非创作大纲）。
@@ -726,11 +739,12 @@ router.post('/runs/:rid/timeline', authRequired, aiLimiter, async (req, res) => 
   if (!text.trim()) return res.json({ events: [] });
   const system = '你是小说编辑，把连载正文梳理成「关键事件时间线」，按发生顺序列出，每条聚焦一个推动剧情的事件。';
   const user = `正文：\n${text.slice(-9000)}\n\n输出 JSON 数组，每个元素 {"label":"阶段/场景短名","event":"该事件一句话"}。最多 12 条。只输出 JSON。`;
-  let arr;
-  try { arr = extractJSON(await llmOnce(eff, system, user, { maxTokens: 1000, temperature: 0.4 })); }
-  catch (e) { return res.status(502).json({ error: e.message }); }
-  if (!Array.isArray(arr)) arr = [];
-  res.json({ events: arr.slice(0, 20).map(x => ({ label: clampStr(x.label, 30), event: clampStr(x.event, 240) })).filter(x => x.event) });
+  const bill = await billedOnce(req, res, eff, '小说时间线', async () => {
+    const a = extractJSON(await llmOnce(eff, system, user, { maxTokens: 1000, temperature: 0.4 }));
+    return Array.isArray(a) ? a : [];
+  });
+  if (!bill) return;
+  res.json({ events: bill.out.slice(0, 20).map(x => ({ label: clampStr(x.label, 30), event: clampStr(x.event, 240) })).filter(x => x.event), fee: bill.fee });
 });
 
 // 设定关系图谱：基于局内设定 + 近期正文，推断角色/势力/地点之间的关系，生成可视化节点与连线。
@@ -746,14 +760,16 @@ router.post('/runs/:rid/graph', authRequired, aiLimiter, async (req, res) => {
   const recent = db.prepare('SELECT content FROM novel_beats WHERE run_id = ? ORDER BY seq DESC LIMIT 3').all(r.id).reverse().map(b => b.content).join('\n');
   const system = '你是故事结构分析师。根据设定库与正文，提炼主要实体（人物/势力/地点）及它们之间的关系，用于绘制关系图谱。';
   const user = `设定库：\n${setText}\n\n近期正文：\n${recent}\n\n输出 JSON：{"nodes":[{"id":"名字","type":"character|faction|location|other"}],"edges":[{"from":"名字","to":"名字","label":"关系，如 师徒/敌对/同伴"}]}。节点不超过 12 个。只输出 JSON。`;
-  let obj;
-  try { obj = extractJSON(await llmOnce(eff, system, user, { maxTokens: 1100, temperature: 0.4 })); }
-  catch (e) { return res.status(502).json({ error: e.message }); }
-  if (!obj || typeof obj !== 'object') obj = {};
+  const bill = await billedOnce(req, res, eff, '小说关系图谱', async () => {
+    const o = extractJSON(await llmOnce(eff, system, user, { maxTokens: 1100, temperature: 0.4 }));
+    return o && typeof o === 'object' ? o : {};
+  });
+  if (!bill) return;
+  const obj = bill.out;
   const nodes = Array.isArray(obj.nodes) ? obj.nodes.slice(0, 16).map(n => ({ id: clampStr(n.id, 30), type: ['character', 'faction', 'location', 'other'].includes(n.type) ? n.type : 'other' })).filter(n => n.id) : [];
   const ids = new Set(nodes.map(n => n.id));
   const edges = Array.isArray(obj.edges) ? obj.edges.slice(0, 30).map(e => ({ from: clampStr(e.from, 30), to: clampStr(e.to, 30), label: clampStr(e.label, 20) })).filter(e => ids.has(e.from) && ids.has(e.to) && e.from !== e.to) : [];
-  res.json({ nodes, edges });
+  res.json({ nodes, edges, fee: bill.fee });
 });
 
 // 卡文急救 / 灵感火花：随机给出人名、转折、细节，帮作者突破写作瓶颈。
@@ -765,12 +781,14 @@ router.post('/:id/muse', authRequired, aiLimiter, async (req, res) => {
   if (!eff.platform) { try { assertPublicUrl(eff.base_url); } catch (e) { return res.status(400).json({ error: e.message }); } }
   const system = `你是脑暴搭子，为《${n.title}》${n.genre ? '（' + n.genre + '）' : ''}提供即兴灵感火花，贴合其题材气质。`;
   const user = `${n.logline ? '内核：' + n.logline + '\n' : ''}请输出 JSON：{"names":["契合世界观的人名/称号，4个"],"twists":["出人意料的剧情转折，3个，每条一句"],"details":["可增强画面感的具体细节/意象，3个"]}。只输出 JSON。`;
-  let obj;
-  try { obj = extractJSON(await llmOnce(eff, system, user, { maxTokens: 800, temperature: 1.0 })); }
-  catch (e) { return res.status(502).json({ error: e.message }); }
-  if (!obj || typeof obj !== 'object') obj = {};
+  const bill = await billedOnce(req, res, eff, '小说灵感火花', async () => {
+    const o = extractJSON(await llmOnce(eff, system, user, { maxTokens: 800, temperature: 1.0 }));
+    return o && typeof o === 'object' ? o : {};
+  });
+  if (!bill) return;
+  const obj = bill.out;
   const arr = (a, n2, len) => (Array.isArray(a) ? a : []).slice(0, n2).map(x => clampStr(x, len)).filter(Boolean);
-  res.json({ names: arr(obj.names, 8, 40), twists: arr(obj.twists, 6, 160), details: arr(obj.details, 6, 160) });
+  res.json({ names: arr(obj.names, 8, 40), twists: arr(obj.twists, 6, 160), details: arr(obj.details, 6, 160), fee: bill.fee });
 });
 
 // 写作统计：字数 / 段落 / 剧情线 / 设定条目，按线汇总。

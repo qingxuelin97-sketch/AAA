@@ -165,7 +165,7 @@ export default function NovelWorkspace() {
 
   const suggest = async () => {
     setSuggesting(true);
-    try { const d = await api(`/novels/runs/${run.id}/suggest`, { method: 'POST' }); setSuggestions(d.suggestions || []); }
+    try { const d = await api(`/novels/runs/${run.id}/suggest`, { method: 'POST' }); if (d.fee) toast(`平台 AI · 本次消耗 ${d.fee} 金币`); setSuggestions(d.suggestions || []); }
     catch (e) { toast(e.message, 'err'); }
     finally { setSuggesting(false); }
   };
@@ -173,6 +173,7 @@ export default function NovelWorkspace() {
   const syncCanon = async (silent) => {
     try {
       const d = await api(`/novels/runs/${run.id}/sync-canon`, { method: 'POST' });
+      if (d.fee) toast(`平台 AI · 本次消耗 ${d.fee} 金币`);
       setRun(d.run);
       if (d.added || d.updated) toast(`局内设定已更新：新增 ${d.added}，修订 ${d.updated}`, 'ok');
       else if (!silent) toast('暂无可沉淀的新设定', 'info');
@@ -645,7 +646,7 @@ function CodexPanel({ novel, onSaveNovel, toast, onDirtyChange }) {
   };
   const generate = async () => {
     setGen(true);
-    try { const d = await api(`/novels/${novel.id}/codex/generate`, { method: 'POST', body: { focus, append: true } }); onSaveNovel(d.novel); setCodex(d.novel.codex); setDirty(false); toast(`AI 生成了 ${d.generated} 条设定`, 'ok'); }
+    try { const d = await api(`/novels/${novel.id}/codex/generate`, { method: 'POST', body: { focus, append: true } }); onSaveNovel(d.novel); setCodex(d.novel.codex); setDirty(false); toast(`AI 生成了 ${d.generated} 条设定${d.fee ? ` · 平台 AI 消耗 ${d.fee} 金币` : ''}`, 'ok'); }
     catch (e) { toast(e.message, 'err'); }
     finally { setGen(false); }
   };
@@ -718,7 +719,7 @@ function RunsPanel({ novel, run, onSwitchRun, refreshRuns, toast, loadRun }) {
     try { const d = await api(`/novels/runs/${r.id}/export?format=md`); const blob = new Blob([d.text], { type: 'text/markdown;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${novel.title}-${r.name}.md`; a.click(); URL.revokeObjectURL(url); }
     catch (e) { toast(e.message, 'err'); }
   };
-  const recap = async (r) => { try { await api(`/novels/runs/${r.id}/recap`, { method: 'POST' }); toast('已生成前情提要', 'ok'); if (r.id === run.id) loadRun(run.id); } catch (e) { toast(e.message, 'err'); } };
+  const recap = async (r) => { try { const d = await api(`/novels/runs/${r.id}/recap`, { method: 'POST' }); toast(`已生成前情提要${d.fee ? ` · 平台 AI 消耗 ${d.fee} 金币` : ''}`, 'ok'); if (r.id === run.id) loadRun(run.id); } catch (e) { toast(e.message, 'err'); } };
   return (
     <div>
       <p className="atl-panel-hint"><GitBranch size={13} /> 每条剧情线都是独立的存档：开新线会复刻一份局外母版作为它的局内设定，从此各自生长。</p>
@@ -761,9 +762,9 @@ function AnalysisPanel({ run, toast }) {
   const runIt = async (kind) => {
     setBusy(true);
     try {
-      if (kind === 'check') { const d = await api(`/novels/runs/${run.id}/check`, { method: 'POST' }); setCheck(d.issues || []); }
-      else if (kind === 'timeline') { const d = await api(`/novels/runs/${run.id}/timeline`, { method: 'POST' }); setTimeline(d.events || []); }
-      else { const d = await api(`/novels/runs/${run.id}/graph`, { method: 'POST' }); setGraph(d); }
+      if (kind === 'check') { const d = await api(`/novels/runs/${run.id}/check`, { method: 'POST' }); if (d.fee) toast(`平台 AI · 本次消耗 ${d.fee} 金币`); setCheck(d.issues || []); }
+      else if (kind === 'timeline') { const d = await api(`/novels/runs/${run.id}/timeline`, { method: 'POST' }); if (d.fee) toast(`平台 AI · 本次消耗 ${d.fee} 金币`); setTimeline(d.events || []); }
+      else { const d = await api(`/novels/runs/${run.id}/graph`, { method: 'POST' }); if (d.fee) toast(`平台 AI · 本次消耗 ${d.fee} 金币`); setGraph(d); }
     } catch (e) { toast(e.message, 'err'); }
     finally { setBusy(false); }
   };
@@ -895,7 +896,7 @@ function MuseModal({ novelId, onClose, onInsert, toast }) {
   const [busy, setBusy] = useState(false);
   const load = async () => {
     setBusy(true);
-    try { const d = await api(`/novels/${novelId}/muse`, { method: 'POST' }); setData(d); }
+    try { const d = await api(`/novels/${novelId}/muse`, { method: 'POST' }); if (d.fee) toast(`平台 AI · 本次消耗 ${d.fee} 金币`); setData(d); }
     catch (e) { toast(e.message, 'err'); }
     finally { setBusy(false); }
   };

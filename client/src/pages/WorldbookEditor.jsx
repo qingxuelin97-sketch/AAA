@@ -283,6 +283,7 @@ export default function WorldbookEditor() {
     setAiSplit(s => ({ ...s, loading: true }));
     try {
       const d = await api('/worldbooks/assist/extract', { method: 'POST', body: { text } });
+      if (d.fee) toast(`平台 AI · 本次消耗 ${d.fee} 金币`);
       setAiSplit(s => s ? { ...s, loading: false, result: d.entries, picked: new Set(d.entries.map((_, i) => i)) } : s);
     } catch (e) { toast(e.message, 'err'); setAiSplit(s => s ? { ...s, loading: false } : s); }
   };
@@ -1060,7 +1061,7 @@ export default function WorldbookEditor() {
         >
           <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Wand2 size={18} /> AI 拆书</h2>
           <p className="muted" style={{ marginTop: -4, fontSize: 13 }}>
-            把小说设定、维基条目、跑团模组等大段文本粘贴进来，AI 会拆成带触发关键词的世界书条目；预览勾选后并入本书。使用你在设置中配置的语言模型。
+            把小说设定、维基条目、跑团模组等大段文本粘贴进来，AI 会拆成带触发关键词的世界书条目；预览勾选后并入本书。自带 API 免费；未配置则走平台模型，按次计费（约 20 金币，会员折扣）。
           </p>
           {!aiSplit.result && (
             <>
