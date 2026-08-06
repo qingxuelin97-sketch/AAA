@@ -483,13 +483,9 @@ html[data-app="1"] img { -webkit-user-drag: none; user-select: none; }
   }
 }
 
-/* —— Log · Fix: 之前 .aht-nb 位置是 top:0 right:0 会与图标 svg 重叠 —— */
 html[data-app="1"] .aht-nb { top: 2px; right: 2px; }
 
-/* —— Log · Fix: DiscoverFeed feed-top 曾无左内边距，右滑边缘裁切 —— */
 html[data-app="1"] .feed-top { padding-left: 12px; }
-
-/* —— Log · Fix: 开场白截断策略已废除（改为限高内滚，见基础 .fd2-greet）—— */
 
 /* —— 加载态更精致的骨架 —— */
 html[data-app="1"] .ah-hero-skel,

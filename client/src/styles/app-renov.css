@@ -1933,11 +1933,11 @@ html[data-app="1"][data-perf="lite"] .fd2-call { background: #fff; -webkit-backd
    ========================================================================== */
 /* 「我」气泡：设计的亮青渐变（比默认 accent 更亮） */
 html[data-app="1"] .msg.user .bubble { background: linear-gradient(135deg, #2BD0BF, #0A8C93); }
-/* 立绘上的旁白（rp-act）：青色斜体（对齐设计，覆盖默认暖色） */
+/* 立绘上的旁白（rp-act）：青色斜体（覆盖默认暖色） */
 html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act { color: #8FD8CE; }
 
 /* ============================================================================
-   幻域重设计 · AI 绘图（Draw）—— 唯一深青玻璃场景（设计稿「深色玻璃」）
+   幻域重设计 · AI 绘图（Draw）—— 唯一深青玻璃场景
    仅作用于 .draw-screen（app 态）；Web 端不受影响。
    ========================================================================== */
 html[data-app="1"] .draw-screen {

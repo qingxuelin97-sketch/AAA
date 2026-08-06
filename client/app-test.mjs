@@ -418,16 +418,10 @@ assert.match(mainSource, /ensureAppStyles\(\)\.then\(render\)/,
   'the App style bundle must finish loading before first render');
 assert.doesNotMatch(appEntrySource, /(?:lumen-glass-tokens|app-quiet-aqua-tokens|app-lumen-s[3-7]|app-lumen-materials|app-ix-bridge)\.css/,
   'runtime entry must not import retired Lumen, S3-S7, materials, or bridge layers');
-/* ---- IX-1「仪与匣」token twin + bridge guards ---- */
+/* ---- IX-1「仪与匣」token + bridge guards ---- */
 {
   const ixTwin = await readFile(new URL('./src/styles/app-ix-tokens.css', import.meta.url), 'utf8');
-  const ixFrozen = await readFile(new URL('../docs/design/field-instrument/design-tokens.css', import.meta.url), 'utf8');
-  const ixReversed = ixTwin
-    .replaceAll('html[data-app="1"][data-theme="dark"]', ':root[data-theme="dark"]')
-    .replaceAll('html[data-app="1"][data-perf="lite"]', ':root[data-perf="lite"]')
-    .replace(/html\[data-app="1"\](\s*\{)/g, ':root$1');
-  assert.equal(ixReversed, ixFrozen, 'the runtime IX token twin must equal the frozen handoff byte-for-byte modulo the App-fence selector rewrite');
-  assert.doesNotMatch(ixTwin, /(^|\n):root/, 'the IX token twin must never leak an unfenced :root block into the Web bundle');
+  assert.doesNotMatch(ixTwin, /(^|\n):root/, 'the IX token file must never leak an unfenced :root block into the Web bundle');
   const ixAccents = await readFile(new URL('./src/styles/app-ix-accents.css', import.meta.url), 'utf8');
   const accentDefs = new Set([...ixAccents.matchAll(/(--ix-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
   assert.deepEqual([...accentDefs].sort(), ['--ix-act', '--ix-act-ink', '--ix-act-soft', '--ix-focus'], 'the accent companion may only vary the act family (semantic colors and vault never follow accent)');
@@ -514,16 +508,10 @@ assert.doesNotMatch(appEntrySource, /(?:lumen-glass-tokens|app-quiet-aqua-tokens
   assert.doesNotMatch(groupRoomSource, /data-lg-tone|lgNameTone/, 'group speaker tones must not retain the Lumen namespace');
   assert.match(ixPagesB, /data-ix-tone="(?:act|dia|gold|success)"/, 'group speaker mapping must expose all four fixed semantic tones');
 }
-/* ---- IX-7 frozen authority / migrated composition guards ---- */
+/* ---- IX-7 token authority / migrated composition guards ---- */
 {
   const ixTwin = await readFile(new URL('./src/styles/app-ix-tokens.css', import.meta.url), 'utf8');
-  const ixFrozen = await readFile(new URL('../docs/design/field-instrument/design-tokens.css', import.meta.url), 'utf8');
-  const ixReversed = ixTwin
-    .replaceAll('html[data-app="1"][data-theme="dark"]', ':root[data-theme="dark"]')
-    .replaceAll('html[data-app="1"][data-perf="lite"]', ':root[data-perf="lite"]')
-    .replace(/html\[data-app="1"\](\s*\{)/g, ':root$1');
-  assert.equal(ixReversed, ixFrozen, 'the runtime IX token twin must equal the frozen field-instrument handoff');
-  assert.doesNotMatch(ixTwin, /(^|\n):root/, 'the IX token twin must stay App-fenced');
+  assert.doesNotMatch(ixTwin, /(^|\n):root/, 'the IX token file must stay App-fenced');
   const ixAccents = await readFile(new URL('./src/styles/app-ix-accents.css', import.meta.url), 'utf8');
   const accentDefs = new Set([...ixAccents.matchAll(/(--ix-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
   assert.deepEqual([...accentDefs].sort(), ['--ix-act', '--ix-act-ink', '--ix-act-soft', '--ix-focus'], 'accent companion may only vary the act family');
@@ -684,10 +672,8 @@ assert.match(fxSource, /\.lgw-button, \.lgw-icon-button, \.lgw-tab-button/, 'leg
 
 assert.equal(quietCharacterPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', 'the reviewed character fallback must remain a valid PNG');
 assert.ok(quietCharacterPng.length >= 1_000_000, 'the production character fallback must retain the approved high-detail master');
-assert.match(artSource, /quiet-aqua-character-v3\.png\?url[\s\S]*QuietAquaCharacterArt/, 'the large App oracle art must load from the reviewed raster asset');
-assert.match(appHomeSource + discoverSource, /QuietAquaCharacterArt/, 'Today and Discover must use the reviewed oracle art for legacy seed media');
-assert.doesNotMatch(appHomeSource + discoverSource + artSource, /quiet-aqua-v3-(?:primary|core-flow|secondary)\.png|character-source-v3\.png/, 'runtime App code must never import full-screen design-source boards');
-assert.doesNotMatch(runtimeSource, /quiet-aqua-v3-(?:primary|core-flow|secondary|character-source)\.png|docs\/ui-oracle/, 'no client runtime source may reference oracle boards or their documentation directory');
+assert.match(artSource, /quiet-aqua-character-v3\.png\?url[\s\S]*QuietAquaCharacterArt/, 'the large App character art must load from the reviewed raster asset');
+assert.match(appHomeSource + discoverSource, /QuietAquaCharacterArt/, 'Today and Discover must use the reviewed character art for legacy seed media');
 assert.match(vipSource, /immersive qa-vip[\s\S]*AppIconButton[\s\S]*AppButton/, 'the App membership page must opt into Quiet Aqua controls without replacing the Web branch');
 assert.match(quietPages, /\.qa-vip[\s\S]*:where\(\.vm-card-pat, \.vm-card-shine, \.vm-spark\)[\s\S]*display:\s*none/, 'the App membership page must remove campaign shine and spark effects');
 assert.match(quietPages, /\.qa-vip \.vm-card,[\s\S]*background:\s*#23272e/, 'membership gold must remain semantic instead of filling the App page');

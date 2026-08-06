@@ -1,8 +1,4 @@
-// 幻域 · 自制矢量数字资产库（移动端包装）
-//
-// 为什么自制而非引外部素材：CSP 限制 script/style 同源、App 离线版要求资产全
-// 本地可用、且外部插画的授权与风格都难以统一。这里的所有插画都围绕品牌
-// 「月门 / 星尘」母题手绘为 SVG，颜色全部走 CSS 变量，浅色 / 深色主题自动适配。
+// 幻域 · 矢量数字资产库（移动端包装）
 //
 //  - <EmptyArt kind />   空态场景插画：chat / favorites / notifications /
 //                        friends / search / library / generic
@@ -11,9 +7,8 @@
 import React from 'react';
 import { isAppMode } from './appmode.js';
 import quietAquaCharacterUrl from './assets/quiet-aqua-character-v3.png?url';
-// 仪与匣内容插画：每个场景都交付浅/深双线色 SVG，运行时不再把
-// Lumen/QA 位图当作 UI 皮肤。两张图同时挂载，由 IX CSS 按 data-theme 选版，
-// 因而主题切换无需重挂载页面。
+// 仪与匣内容插画：每个场景都有浅/深两版 SVG。两张图同时挂载，
+// 由 IX CSS 按 data-theme 选版，因而主题切换无需重挂载页面。
 import ixChatLight from './assets/illos/ix-illo-chat-light.svg?url';
 import ixChatDark from './assets/illos/ix-illo-chat-dark.svg?url';
 import ixFavoritesLight from './assets/illos/ix-illo-favorites-light.svg?url';
@@ -52,7 +47,7 @@ import ixOnb002Light from './assets/illos/ix-illo-onb-002-light.svg?url';
 import ixOnb002Dark from './assets/illos/ix-illo-onb-002-dark.svg?url';
 import ixOnb003Light from './assets/illos/ix-illo-onb-003-light.svg?url';
 import ixOnb003Dark from './assets/illos/ix-illo-onb-003-dark.svg?url';
-// 仪与匣（IX-5）：纪念印章三档换设计交付 SVG（铜单环/银双环短芒/金三环长芒；
+// 纪念印章三档 SVG（铜单环/银双环短芒/金三环长芒；
 // 透明底零文字，数字由 UI 活文本叠加）。
 import ixStampBronzeUrl from './assets/illos/ix-stamp-bronze.svg?url';
 import ixStampSilverUrl from './assets/illos/ix-stamp-silver.svg?url';
@@ -77,7 +72,7 @@ const IX_ILLUSTRATIONS = {
   maintenance: { light: ixMaintenanceLight, dark: ixMaintenanceDark },
 };
 
-// 旧调用方的 kind 名保持可用，但统一落到设计交付包中的 16 个场景。
+// 旧调用方的 kind 名保持可用，统一落到现有 16 个插画场景。
 const IX_KIND_ALIASES = {
   library: 'works',
   atelier: 'works',
@@ -136,10 +131,8 @@ export function IxOnboardingArt({ step, size = 290, className }) {
 }
 
 /**
- * High-detail App oracle art for large seed/demo media planes. The imported
- * reviewed raster artwork is intentionally used here: the portrait contains
- * fine hair and fabric detail that a path-only trace visibly degraded. Product
- * UI remains live DOM above it and genuine user media still wins whenever it
+ * High-detail character art for large seed/demo media planes. Product UI
+ * remains live DOM above it and genuine user media still wins whenever it
  * exists.
  */
 export function QuietAquaCharacterArt({ className, alt = '', loading = 'eager', ...imgProps }) {
@@ -214,9 +207,7 @@ const COVER_PALETTES = [
   ['#9a6ab0', '#3c2a55'], ['#6f9a76', '#2f4a3a'], ['#d0704e', '#6e2f3c'],
 ];
 
-// App-only fallback portraits. These are code-native vector illustrations
-// traced from the Quiet Aqua visual oracle: no bitmap, remote request or text
-// baked into the media plane. Web keeps the original monogram covers below.
+// App-only fallback portraits. Web keeps the original monogram covers below.
 const APP_COVER_PALETTES = [
   ['#e9f4f2', '#9cc8c1', '#183f3c', '#f1cfc3', '#5e8f89'],
   ['#edf0f4', '#a6b3c3', '#263b48', '#eed0c5', '#718899'],

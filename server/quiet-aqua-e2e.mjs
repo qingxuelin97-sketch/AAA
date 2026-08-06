@@ -683,7 +683,7 @@ async function walletAssertions(browser, base) {
       };
     });
     assert(wallet.headGlass.includes('blur(') && wallet.quickGlass.includes('blur(') && wallet.balanceGlass.includes('blur('), 'Wallet balanced 档丢失玻璃材质', JSON.stringify(wallet));
-    assert(!wallet.switchPresent, 'Wallet 根页仍存在与母版不符的双层分段器', JSON.stringify(wallet));
+    assert(!wallet.switchPresent, 'Wallet 根页不应出现双层「钱包/充值」分段器', JSON.stringify(wallet));
     assert(wallet.currencyPng, 'Wallet 货币资产未使用可加载的 PNG', JSON.stringify(wallet));
     assert(wallet.overflow <= 1, 'Wallet 存在横向溢出', JSON.stringify(wallet));
     await page.screenshot({ path: path.join(OUT, `wallet-390x844-${theme}.png`) });
@@ -1982,7 +1982,7 @@ async function onboardingAssertions(browser, base) {
   await rmPage.close();
 }
 
-// S7-G2 · Insights 首载失败 → AppErrorState 恢复出口（ORACLE §7.2）。
+// S7-G2 · Insights 首载失败 → AppErrorState 恢复出口。
 // 静态构建的 /api 由页内 mock fetch 直接合成响应，CDP 拦截看不到——
 // 用访问器包装 mock 安装的 fetch，按开关注入 /me/insights 断网。
 async function insightsRecoveryAssertions(browser, base) {

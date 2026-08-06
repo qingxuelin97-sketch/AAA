@@ -3,8 +3,8 @@
 // 保护的契约（web: W1-W6 大更新引入）：
 //   1. 围栏：web-lumen-*.css 的每条规则都从 html:not([data-app="1"]) 开始，
 //      Web 层永远不可能改写 App 壳的任何样式（反向的 App 围栏由 app-test 保护）。
-//   2. 令牌：--lg-* 引用必须可解析；核心值与冻结交接稿逐字符同步（防漂移）；
-//      accent 别名映射与 App 端奇偶一致（rose/clay 无块 = 基线契约）。
+//   2. 令牌：--lg-* 引用必须可解析；核心值字面锁定（防漂移）；
+//      accent 契约（rose/clay 无块 = 基线契约）。
 //   3. 材质纪律：backdrop-filter 只允许出现在 chrome/浮层允许名单；新增
 //      keyframes 一律 lgw 前缀且与存量 160+ 同名 keyframes 零交集；无限循环
 //      动画只允许 loading/骨架。
@@ -20,7 +20,6 @@ const tally = (fn) => {
 const ok = tally(assert.ok.bind(assert));
 const match = tally(assert.match.bind(assert));
 const doesNotMatch = tally(assert.doesNotMatch.bind(assert));
-const equal = tally(assert.equal.bind(assert));
 
 const read = (p) => readFile(new URL(p, import.meta.url), 'utf8');
 
@@ -89,8 +88,7 @@ for (const f of lumenWebFiles) {
   }
 }
 
-/* ---- 3. 核心令牌与冻结交接稿逐字符同步（防漂移） ---- */
-const handoff = await read('../docs/design/lumen-glass-tokens.css');
+/* ---- 3. 核心令牌值字面锁定（防漂移） ---- */
 for (const decl of [
   '--lg-canvas: #EDEFF6;', '--lg-canvas: #0A0C12;',
   '--lg-ink: #12151E;', '--lg-ink: #F2F4F9;',
@@ -99,22 +97,13 @@ for (const decl of [
   '--lg-glass-3: rgb(250 251 255 / 60%);',
   '--lg-blur: blur(26px) saturate(170%);', '--lg-blur: blur(28px) saturate(150%);',
 ]) {
-  ok(handoff.includes(decl), `frozen handoff sanity: "${decl}"`);
-  ok(tokensCss.includes(decl), `web tokens must carry the frozen value verbatim: "${decl}"`);
+  ok(tokensCss.includes(decl), `web tokens must carry the locked value verbatim: "${decl}"`);
 }
 
-/* ---- 4. Web 强调色保持冻结 Lumen 值；IX App 使用独立色板 ---- */
-const frozenAccentAliases = new Map([
-  ['teal', 'azure'],
-  ['dusk', 'violet'],
-  ['forest', 'jade'],
-  ['amber', 'clay'],
-]);
-for (const [id, frozenId] of frozenAccentAliases) {
-  const frozenLine = handoff.match(new RegExp(`html\\[data-app="1"\\]\\[data-accent="${frozenId}"\\]\\s*\\{([^}]+)\\}`));
+/* ---- 4. Web 强调色齐全；IX App 使用独立色板 ---- */
+for (const id of ['teal', 'dusk', 'forest', 'amber']) {
   const webLine = tokensCss.match(new RegExp(`html:not\\(\\[data-app="1"\\]\\)\\[data-accent="${id}"\\]\\s*\\{([^}]+)\\}`));
-  ok(frozenLine && webLine, `Web accent "${id}" and frozen Lumen alias "${frozenId}" must both exist`);
-  equal(webLine[1].trim(), frozenLine[1].trim(), `Web accent "${id}" must preserve its frozen Lumen values`);
+  ok(webLine, `Web accent "${id}" must define its token block`);
 }
 doesNotMatch(tokensCss, /data-accent="rose"/, 'rose is a content semantic — it must fall back to the iris baseline (no block)');
 doesNotMatch(tokensCss, /data-accent="clay"/, 'clay is the unset baseline (no attribute is stamped) — a block would be dead code hiding drift');

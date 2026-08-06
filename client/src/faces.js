@@ -1,5 +1,5 @@
-// Realistic-style human face preset avatars — drawn as crisp parametric SVG
-// (no external images). Distinguishes 男 / 女 via hairstyle, brows, lips and jaw.
+// Realistic-style human face preset avatars, generated as parametric SVG.
+// Distinguishes 男 / 女 via hairstyle, brows, lips and jaw.
 // Shared by the avatar picker (UI) and the in-browser backend seed.
 
 const svgUrl = (svg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg.replace(/\s+/g, ' ').trim());
