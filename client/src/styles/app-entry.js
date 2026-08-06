@@ -24,7 +24,9 @@ import './app-ix-pages-b.css';
 import './app-ix-pages-c.css';
 // IX-6/IX-7 tail: long-tail pages, states, and migrated stage composition.
 import './app-ix-pages-d.css';
-// 彩虹青白动效层：键帽粉彩 / FAB 彩虹环 / 呼吸与按压反馈（合成器直通）。
+// 彩虹系色彩层：青蓝玻璃基面覆盖 + 彩虹令牌与全部静态彩虹落点。
 import './app-rainbow.css';
+// 彩虹系动效层：keyframes / 呼吸循环 / 浮层退场 / 降级闸门。
+import './app-rainbow-motion.css';
 // 对话框雾态玻璃收口（参考稿 1:1）：必须最后引入，覆盖上面各层的 chat 输入岛规则。
 import './chat-glass.css';

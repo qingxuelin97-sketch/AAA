@@ -1,0 +1,43 @@
+/* ============================================================================
+   幻域 · 彩虹系 · 动效层（keyframes / 循环 / 退场 / 闸门）
+   ----------------------------------------------------------------------------
+   与 app-rainbow.css（色彩层）成对；导入位：色彩层之后、chat-glass.css 之前。
+   性能铁律：所有 @keyframes 只许声明 transform / opacity（app-test 有合成器
+   专属 lint）；循环动画同屏 ≤4 个；三重闸——[data-perf="lite"] 关、
+   prefers-reduced-motion 关、[data-page-hidden] 与 .tab-pane.off 全局暂停
+   （后两者由 perf.js / app-shell.css 既有开关免费继承）。
+   ========================================================================== */
+
+/* ── 呼吸循环（同屏预算 4：FAB 辉光 / Dock LED / 在线点 / 连签点） ── */
+@keyframes ixBreath {
+  0%, 100% { opacity: .35; transform: scale(1); }
+  50%      { opacity: .85; transform: scale(1.14); }
+}
+@keyframes ixLedBreath {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+@keyframes ixDotBreath {
+  0%, 100% { opacity: .6; transform: scale(.92); }
+  50%      { opacity: 1;  transform: scale(1.06); }
+}
+
+/* ── 一次性状态动效 ── */
+@keyframes ixSelectGrow {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+/* ── 降级闸门（循环部分） ── */
+html[data-app="1"][data-perf="lite"] .app-fab-halo::before,
+html[data-app="1"][data-perf="lite"] .qa-tab-button.active .qa-tab-button__icon::before,
+html[data-app="1"][data-perf="lite"] .ah-presence i,
+html[data-app="1"][data-perf="lite"] .chat-head .ch-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-app="1"] .app-fab-halo,
+  html[data-app="1"] .app-fab-halo::before,
+  html[data-app="1"] .qa-tab-button.active .qa-tab-button__icon::before,
+  html[data-app="1"] .ah-presence i,
+  html[data-app="1"] .chat-head .ch-dot,
+  html[data-app="1"] .qa-button[data-selected]::after { animation: none; }
+}
