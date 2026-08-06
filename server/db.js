@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS world_entries (
 CREATE TABLE IF NOT EXISTS favorites (
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now')),
   PRIMARY KEY (user_id, character_id)
 );
 
@@ -215,6 +216,7 @@ CREATE TABLE IF NOT EXISTS comments (
 CREATE TABLE IF NOT EXISTS follows (
   follower_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   following_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now')),
   PRIMARY KEY (follower_id, following_id)
 );
 CREATE TABLE IF NOT EXISTS notifications (
@@ -444,7 +446,15 @@ for (const sql of [
   "ALTER TABLE theaters ADD COLUMN bgm TEXT DEFAULT ''",
   // 段落读者反应：JSON { emoji: [userId,…] }
   "ALTER TABLE theater_messages ADD COLUMN reactions TEXT DEFAULT ''",
+  // 防刷判定需要时间序：ALTER 不允许非常量默认值，旧行由下方回填，
+  // 新行由各插入点显式写 datetime('now')（新库走 CREATE TABLE 默认值）。
+  'ALTER TABLE favorites ADD COLUMN created_at TEXT',
+  'ALTER TABLE follows ADD COLUMN created_at TEXT',
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
+try {
+  db.exec("UPDATE favorites SET created_at = datetime('now') WHERE created_at IS NULL");
+  db.exec("UPDATE follows SET created_at = datetime('now') WHERE created_at IS NULL");
+} catch { /* */ }
 
 // 安全相关：剧本点赞去重表，PRIMARY KEY(script_id,user_id) 防重复点赞刷数。
 db.exec(`CREATE TABLE IF NOT EXISTS script_likes (

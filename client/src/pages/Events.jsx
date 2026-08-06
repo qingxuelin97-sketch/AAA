@@ -7,7 +7,7 @@ import { isAppMode } from '../appmode.js';
 import { EmptyArt, AppEmptyArt } from '../art.jsx';
 import AppErrorState from '../components/AppErrorState.jsx';
 import { tick } from '../appgestures.js';
-import { PartyPopper, Gift, Check, ArrowRight, Copy, Users, ListChecks, ArrowLeft, RefreshCw } from 'lucide-react';
+import { PartyPopper, Gift, Check, ArrowRight, Users, ListChecks, ArrowLeft, RefreshCw } from 'lucide-react';
 
 // Event accents are semantic and stable. They are deliberately independent
 // from the user's global accent so the activity feed does not become one teal
@@ -70,10 +70,6 @@ export default function Events() {
       toast('领取成功！' + parts);
       await refreshUser(); await load();
     } catch (e) { toast(e.message, 'err'); } finally { setBusy(''); }
-  };
-  const copyQQ = (qq) => async () => {
-    try { await navigator.clipboard.writeText(qq); toast('已复制官方技术 QQ：' + qq); }
-    catch { toast('复制失败，QQ：' + qq, 'err'); }
   };
   const TasksRoot = app ? 'section' : 'div';
 
@@ -171,9 +167,6 @@ export default function Events() {
                     <AppButton className={'btn block' + (ev.kind === 'claim' ? '' : ' primary')} variant={ev.kind === 'claim' ? 'secondary' : 'primary'} onClick={() => nav(ev.link)}>
                       {ev.tag === '联机' ? <Users size={15} /> : <ArrowRight size={15} />} {ev.linkText || '前往'}
                     </AppButton>
-                  )}
-                  {ev.qq && (
-                    <AppButton className="btn block" onClick={copyQQ(ev.qq)}><Copy size={15} /> 复制官方 QQ {ev.qq}</AppButton>
                   )}
                 </div>
                 </EventRoot>

@@ -227,8 +227,8 @@ db.prepare('UPDATE scripts SET featured=1 WHERE category IN (?,?)').run('mystery
 db.prepare('UPDATE scripts SET views = plays * 3').run();
 
 // favorites + a conversation for demo
-db.prepare('INSERT OR IGNORE INTO favorites (user_id, character_id) VALUES (?,?)').run(u1, cK);
-db.prepare('INSERT OR IGNORE INTO favorites (user_id, character_id) VALUES (?,?)').run(u1, cMian);
+db.prepare("INSERT OR IGNORE INTO favorites (user_id, character_id, created_at) VALUES (?,?,datetime('now'))").run(u1, cK);
+db.prepare("INSERT OR IGNORE INTO favorites (user_id, character_id, created_at) VALUES (?,?,datetime('now'))").run(u1, cMian);
 const conv = db.prepare('INSERT INTO conversations (user_id, character_id, title) VALUES (?,?,?)').run(u1, cVeil, '森灵 · 薇尔');
 const cid = conv.lastInsertRowid; const M = db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)');
 M.run(cid, 'assistant', '*林叶沙沙作响，一道翠色身影从树影中浮现*\n\n旅人，你踏入了永青森林的领地。别害怕……只要你心怀善意，这里的每一棵树都会为你低语。说吧，是什么风把你吹来的？');
@@ -276,7 +276,7 @@ db.prepare('INSERT OR IGNORE INTO moment_likes (moment_id, user_id) VALUES (?,?)
 
 // follows
 [[u1, u2], [u1, u3], [u2, u1], [u3, u1], [u4, u1], [u1, u4]].forEach(([a, b]) =>
- db.prepare('INSERT OR IGNORE INTO follows (follower_id, following_id) VALUES (?,?)').run(a, b));
+ db.prepare("INSERT OR IGNORE INTO follows (follower_id, following_id, created_at) VALUES (?,?,datetime('now'))").run(a, b));
 
 // ---- groups ----
 function group(owner, name, desc, av, members) {

@@ -47,12 +47,12 @@ const EVENTS = [
   { id: 'coop_carnival', kind: 'claim', tag: '联机', title: '限时联机狂欢', desc: '进入「剧场」与多位 AI 角色同台即兴演出，领取联机狂欢礼：60 钻石，并解锁多人同屏剧情。', reward: { gold: 0, diamond: 60 }, link: '/theater', linkText: '前往联机剧场', accent: '#7c5cff' },
   { id: 'group_party', kind: 'link', tag: '联机', title: '创作者联机大厅', desc: '加入群聊与其他创作者实时联机交流、互相导入角色、组队共创剧本。', link: '/groups', linkText: '进入联机大厅', accent: '#3f8195' },
   { id: 'checkin', kind: 'link', tag: '日常', title: '每日签到瓜分金币', desc: '连续签到奖励翻倍递增，VIP 再享双倍。坚持登录，金币越攒越多。', link: '/wallet', linkText: '去签到', accent: '#b3892f' },
-  { id: 'bugbounty', kind: 'info', tag: '赏金', title: 'Bug 赏金猎人', desc: '发现任何 bug 或体验问题，提交至官方技术 QQ：3487923507，一经采纳奖励 100 金币起，重大问题另有钻石与 VIP 加码。', accent: '#5c8a63', qq: '3487923507' },
+  { id: 'bugbounty', kind: 'info', tag: '赏金', title: 'Bug 赏金猎人', desc: '发现任何 bug 或体验问题，请联系管理员提交反馈，一经采纳奖励 100 金币起，重大问题另有钻石与 VIP 加码。', accent: '#5c8a63' },
   { id: 'invite', kind: 'info', tag: '裂变', title: '邀请好友共创', desc: '在「设置 / 钱包」使用邀请密钥，邀请越多奖励越丰厚。与好友一起把幻域写满故事。', link: '/wallet', linkText: '查看兑换码', accent: '#c25a38' },
 ];
 router.get('/events', authOptional, (req, res) => {
   const claims = req.user ? db.prepare('SELECT event_id FROM event_claims WHERE user_id = ?').all(req.user.id).map(c => c.event_id) : [];
-  res.json({ events: EVENTS.map(e => ({ id: e.id, kind: e.kind, tag: e.tag, title: e.title, desc: e.desc, reward: e.reward || null, link: e.link || '', linkText: e.linkText || '', accent: e.accent, qq: e.qq || '', claimed: claims.includes(e.id) })) });
+  res.json({ events: EVENTS.map(e => ({ id: e.id, kind: e.kind, tag: e.tag, title: e.title, desc: e.desc, reward: e.reward || null, link: e.link || '', linkText: e.linkText || '', accent: e.accent, claimed: claims.includes(e.id) })) });
 });
 router.post('/events/:id/claim', authRequired, (req, res) => {
   const ev = EVENTS.find(e => e.id === req.params.id);
@@ -176,7 +176,7 @@ router.post('/gacha', authRequired, (req, res) => {
       assertEconomicAccess(req.user.id);
       applyTx(req.user.id, { kind: 'reward', diamond: -GACHA_COST, memo: '抽卡' });
       already = db.prepare('SELECT 1 FROM favorites WHERE user_id=? AND character_id=?').get(req.user.id, pick.id);
-      if (!already) { db.prepare('INSERT INTO favorites (user_id, character_id) VALUES (?,?)').run(req.user.id, pick.id); db.prepare('UPDATE characters SET likes=likes+1 WHERE id=?').run(pick.id); }
+      if (!already) { db.prepare("INSERT INTO favorites (user_id, character_id, created_at) VALUES (?,?,datetime('now'))").run(req.user.id, pick.id); db.prepare('UPDATE characters SET likes=likes+1 WHERE id=?').run(pick.id); }
       w = applyTx(req.user.id, { kind: 'reward', gold: 10, memo: '抽卡返利' }); // small gold consolation
       db.prepare('UPDATE users SET gacha_pulls = COALESCE(gacha_pulls,0) + 1 WHERE id = ?').run(req.user.id);
     }).immediate();

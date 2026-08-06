@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNav as useNavigate } from '../nav.js';
-import { useToast, CoinIcon, DiamondIcon } from '../ui.jsx';
-import { Sparkles, Bug, Crown, MessageSquare, Copy, X } from 'lucide-react';
+import { CoinIcon, DiamondIcon } from '../ui.jsx';
+import { Sparkles, Bug, Crown, MessageSquare, X } from 'lucide-react';
 import { useAppOverlay } from '../overlay.jsx';
 import { isAppMode } from '../appmode.js';
 
-const QQ = '3487923507';
 const SEEN_KEY = 'huanyu_welcome_seen';
 
 // Auto entry popup — shown once per day. Welcomes the user and surfaces the
@@ -16,7 +15,6 @@ export default function WelcomePopup() {
   const popupRef = useRef(null);
   const appPortal = isAppMode();
   const nav = useNavigate();
-  const toast = useToast();
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -31,10 +29,6 @@ export default function WelcomePopup() {
     setOpen(false);
   };
   useAppOverlay(open, close, { rootRef: popupRef, isolate: appPortal });
-  const copyQQ = async () => {
-    try { await navigator.clipboard.writeText(QQ); toast('已复制官方技术 QQ：' + QQ); }
-    catch { toast('复制失败，请手动记录 QQ：' + QQ, 'err'); }
-  };
 
   if (!open) return null;
   const popup = (
@@ -51,7 +45,7 @@ export default function WelcomePopup() {
           <span className="wp-bug"><Bug size={20} /></span>
           <div className="wp-bounty-tx">
             <b>Bug 赏金计划 · 你来找茬，我来发奖</b>
-            <p>发现任何 bug、卡顿或体验瑕疵，提交至官方技术 QQ，一经采纳 <b>奖励 100 金币起</b>；重大问题再加码钻石与 VIP。让幻域因你而更好。</p>
+            <p>发现任何 bug、卡顿或体验瑕疵，联系管理员提交反馈，一经采纳 <b>奖励 100 金币起</b>；重大问题再加码钻石与 VIP。让幻域因你而更好。</p>
             <div className="wp-rewards">
               <span><CoinIcon size={13} /> 100 金币起</span>
               <span><DiamondIcon size={13} /> 重大问题加码</span>
@@ -59,8 +53,7 @@ export default function WelcomePopup() {
             </div>
             <div className="wp-qq">
               <MessageSquare size={15} />
-              <span>官方技术 QQ：<b>{QQ}</b></span>
-              <button className="btn sm" onClick={copyQQ}><Copy size={13} /> 复制</button>
+              <span>反馈渠道：<b>联系管理员</b></span>
             </div>
           </div>
         </div>

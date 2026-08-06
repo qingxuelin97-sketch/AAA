@@ -129,7 +129,7 @@ router.post('/follow/:id', authRequired, (req, res) => {
     });
     return res.json({ following: false });
   }
-  db.prepare('INSERT INTO follows (follower_id, following_id) VALUES (?,?)').run(req.user.id, target);
+  db.prepare("INSERT INTO follows (follower_id, following_id, created_at) VALUES (?,?,datetime('now'))").run(req.user.id, target);
   notify(target, `${req.user.display_name || req.user.username} 关注了你`, '/user/' + req.user.id);
   log({
     level: 'info', category: 'social', event: 'follow',

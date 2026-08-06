@@ -127,7 +127,7 @@ router.post('/:id/favorite', authRequired, (req, res) => {
   if (!character || (!character.is_public && character.owner_id !== req.user.id)) {
     return res.status(404).json({ error: '角色不存在或不可收藏' });
   }
-  db.prepare('INSERT INTO favorites (user_id, character_id) VALUES (?,?)').run(req.user.id, req.params.id);
+  db.prepare("INSERT INTO favorites (user_id, character_id, created_at) VALUES (?,?,datetime('now'))").run(req.user.id, req.params.id);
   db.prepare('UPDATE characters SET likes = likes + 1 WHERE id = ?').run(req.params.id);
   bumpDaily(req.user.id, 'fav');
   log({ category: 'character', level: 'info', event: 'favorite', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: Number(req.params.id), faved: true }, message: '收藏角色' });
