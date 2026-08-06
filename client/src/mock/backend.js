@@ -525,6 +525,8 @@ const ACHIEVEMENTS = [
   { id: 'endorse_3', name: '民意所向', desc: '联署 3 份议案', icon: 'Landmark', cat: '议会', goal: 3, reward: 70, metric: 'endorsements', link: '/parliament' },
   // 财富 / 探索
   { id: 'checkin_7', name: '持之以恒', desc: '连续签到 7 天', icon: 'CalendarCheck', cat: '财富', goal: 7, reward: 200, metric: 'checkin_streak', link: '/wallet' },
+  { id: 'checkin_30', name: '月满盈仓', desc: '连续签到 30 天', icon: 'CalendarCheck', cat: '财富', goal: 30, reward: 600, metric: 'checkin_streak', link: '/wallet' },
+  { id: 'checkin_100', name: '百日之约', desc: '连续签到 100 天', icon: 'CalendarCheck', cat: '财富', goal: 100, reward: 1500, metric: 'checkin_streak', link: '/wallet' },
   { id: 'gold_10k', name: '腰缠万贯', desc: '累计赚取 10000 金币', icon: 'Coins', cat: '财富', goal: 10000, reward: 300, metric: 'gold_earned', link: '/wallet' },
   { id: 'gacha_10', name: '欧皇之路', desc: '在扭蛋机抽卡 10 次', icon: 'Dices', cat: '财富', goal: 10, reward: 160, metric: 'gacha_pulls', link: '/gacha' },
   { id: 'become_vip', name: '尊享会员', desc: '开通 VIP 会员', icon: 'Crown', cat: '财富', goal: 1, reward: 120, metric: 'vip', link: '/wallet' },
@@ -1963,7 +1965,11 @@ async function route(method, path, search, body, headers) {
     // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
     const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200; if (isVip(me)) reward *= 2;
     me.last_checkin = today; me.checkin_streak = streak;
-    const w = applyTx(me.id, { kind: 'checkin', gold: reward, memo: `第 ${streak} 天签到` }); bumpDaily(me.id, 'checkin'); return J({ wallet: w, reward, streak });
+    let w = applyTx(me.id, { kind: 'checkin', gold: reward, memo: `第 ${streak} 天签到` }); bumpDaily(me.id, 'checkin');
+    // 连签里程碑（7/30/100 → +100/500/2000，不吃 VIP 翻倍）——与服务端同语义。
+    const milestone = ({ 7: 100, 30: 500, 100: 2000 })[streak] || 0;
+    if (milestone) w = applyTx(me.id, { kind: 'milestone', gold: milestone, memo: `连签 ${streak} 天里程碑` });
+    return J({ wallet: w, reward, streak, milestone });
   }
   if (method === 'POST' && path === '/economy/redeem') { need(); const key = find('invite_keys', k => k.code === String(body.code || '').trim()); if (!key) return E('密钥无效'); if (key.used >= key.max_uses) return E('该密钥已用完'); key.used++; if (key.grant_gold || key.grant_diamond) applyTx(me.id, { kind: 'reward', gold: key.grant_gold, diamond: key.grant_diamond, memo: `兑换码 ${key.code}` }); if (key.grant_vip_days) { const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + key.grant_vip_days * 86400000).toISOString(); } save(); return J({ wallet: publicUser(me) }); }
 

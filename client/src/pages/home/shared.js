@@ -49,7 +49,7 @@ export function useCheckin() {
     try {
       const d = await api('/economy/checkin', { method: 'POST' });
       setChecked(true); setStreak(d.streak || 0);
-      toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
+      toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天${d.milestone ? ` · 里程碑 +${d.milestone} 金币！` : ''}`);
       refreshUser?.(); // 顶部金币余额立即更新，不留旧值
     } catch (e) {
       // Only the server's explicit idempotent verdict may settle the CTA as

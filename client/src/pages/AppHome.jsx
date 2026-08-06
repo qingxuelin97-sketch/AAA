@@ -94,7 +94,7 @@ export default function AppHome() {
     try {
       const d = await api('/economy/checkin', { method: 'POST' });
       setChecked(true); setStreak(d.streak || 0);
-      toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天`);
+      toast(`签到成功 · +${d.reward} 金币 · 连续 ${d.streak} 天${d.milestone ? ` · 里程碑 +${d.milestone} 金币！` : ''}`);
       // 仪式感：一次性粒子 + 触感（burst 自带 reduced-motion 降级为无）
       tick(12);
       const rect = checkinBtnRef.current?.getBoundingClientRect?.();

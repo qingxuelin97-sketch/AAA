@@ -112,6 +112,12 @@ router.post('/checkin', authRequired, (req, res) => {
   // 每日签到金币：50 / 100 / 200，概率 33% / 50% / 17%（VIP 翻倍）
   const roll = Math.random(); let reward = roll < 0.33 ? 50 : roll < 0.83 ? 100 : 200;
   if (isVip(u)) reward *= 2;
+  // 连签里程碑（7/30/100 天 → +100/500/2000 金）：与签到同事务发放。
+  // 刻意不吃 VIP 翻倍——里程碑是「坚持」的奖励，非会员权益；账本 kind=
+  // 'milestone' 与日常 'checkin' 区分。幂等键按用户+日期唯一，重放不重发；
+  // 断签重新累到同一档会再次发放（新的坚持周期，语义上应得）。
+  const MILESTONES = { 7: 100, 30: 500, 100: 2000 };
+  const milestone = MILESTONES[streak] || 0;
   // 条件 UPDATE 防并发重复签到 + 发奖 + 每日任务一并原子提交（崩溃不再「标记已签到却没发币」）。
   let w;
   try {
@@ -123,6 +129,12 @@ router.post('/checkin', authRequired, (req, res) => {
         expose: true,
       });
       w = applyTx(req.user.id, { kind: 'checkin', gold: reward, memo: `第 ${streak} 天签到` });
+      if (milestone) {
+        // 幂等键带 streak 档位：同日重放由条件 UPDATE 拦截，幂等键兜崩溃重试；
+        // 键含档位保证「不同里程碑」永不共键（防 kind/金额不一致的幂等冲突）。
+        w = applyTx(req.user.id, { kind: 'milestone', gold: milestone, memo: `连签 ${streak} 天里程碑`,
+          idempotency_key: `checkin-milestone:${req.user.id}:${today}:${streak}` });
+      }
       bumpDaily(req.user.id, 'checkin');
     }).immediate();
   } catch (e) {
@@ -132,10 +144,10 @@ router.post('/checkin', authRequired, (req, res) => {
     });
   }
   log({ level: 'info', category: 'economy', event: 'checkin',
-    message: `用户签到 第 ${streak} 天 奖励 ${reward} 金币`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    message: `用户签到 第 ${streak} 天 奖励 ${reward} 金币${milestone ? `（里程碑 +${milestone}）` : ''}`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
     endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
-    extra: { gold: reward, streak, vip: isVip(u) } });
-  res.json({ wallet: w, reward, streak });
+    extra: { gold: reward, streak, vip: isVip(u), milestone } });
+  res.json({ wallet: w, reward, streak, milestone });
 });
 
 router.get('/transactions', authRequired, (req, res) => {

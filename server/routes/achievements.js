@@ -36,6 +36,8 @@ const ACHIEVEMENTS = [
   { id: 'vote_5', name: '恪尽职守', desc: '参与 5 次议会表决', icon: 'CheckSquare', cat: '议会', goal: 5, reward: 130, metric: 'votes', link: '/parliament' },
   { id: 'endorse_3', name: '民意所向', desc: '联署 3 份议案', icon: 'Landmark', cat: '议会', goal: 3, reward: 70, metric: 'endorsements', link: '/parliament' },
   { id: 'checkin_7', name: '持之以恒', desc: '连续签到 7 天', icon: 'CalendarCheck', cat: '财富', goal: 7, reward: 200, metric: 'checkin_streak', link: '/wallet' },
+  { id: 'checkin_30', name: '月满盈仓', desc: '连续签到 30 天', icon: 'CalendarCheck', cat: '财富', goal: 30, reward: 600, metric: 'checkin_streak', link: '/wallet' },
+  { id: 'checkin_100', name: '百日之约', desc: '连续签到 100 天', icon: 'CalendarCheck', cat: '财富', goal: 100, reward: 1500, metric: 'checkin_streak', link: '/wallet' },
   { id: 'gold_10k', name: '腰缠万贯', desc: '累计赚取 10000 金币', icon: 'Coins', cat: '财富', goal: 10000, reward: 300, metric: 'gold_earned', link: '/wallet' },
   { id: 'gacha_10', name: '欧皇之路', desc: '在扭蛋机抽卡 10 次', icon: 'Dices', cat: '财富', goal: 10, reward: 160, metric: 'gacha_pulls', link: '/gacha' },
   { id: 'become_vip', name: '尊享会员', desc: '开通 VIP 会员', icon: 'Crown', cat: '财富', goal: 1, reward: 120, metric: 'vip', link: '/wallet' },
