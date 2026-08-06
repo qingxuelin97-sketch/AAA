@@ -425,12 +425,8 @@ try {
   const fakeGachaT = tasksBeforeRealGacha.tasks.find(t => t.id === 'gacha');
   ok(chatT && chatT.progress === 0, `客户端上报 chat 不计任务进度（progress=${chatT?.progress}）`);
   ok(fakeGachaT && fakeGachaT.progress === 0, `客户端伪造 gacha 上报不计任务进度（progress=${fakeGachaT?.progress}）`);
-  {
-    const db = new Database(DB_PATH);
-    db.prepare("UPDATE users SET diamond=100 WHERE username='sec_u1'").run();
-    db.close();
-  }
-  const realGacha = await post('/engage/gacha', {}, r1.token);
+  // 扭蛋统一版：真实抽取走 /gacha/pull（每日免费一抽，服务端摇号+保底）。
+  const realGacha = await post('/gacha/pull', { use: 'free' }, r1.token);
   const tasksAfterRealGacha = await J(await fetch(BASE + '/engage/tasks', { headers: { Authorization: 'Bearer ' + r1.token } }));
   const realGachaT = tasksAfterRealGacha.tasks.find(t => t.id === 'gacha');
   ok(realGacha.ok && realGachaT?.progress === 1,

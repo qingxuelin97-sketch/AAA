@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
-import { api, assetUrl } from '../api.jsx';
-import { useToast, Modal } from '../ui.jsx';
+import { api, useAuth, assetUrl } from '../api.jsx';
+import { useToast, Modal, CoinIcon } from '../ui.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
-import { randomAnimeAvatar, randomBg } from '../faces.js';
+import { seededAnimeAvatar, seededBg } from '../faces.js';
 import ShareCardSheet from '../components/ShareCardSheet.jsx';
 import { Dices, Sparkles, MessageCircle, Save, ArrowLeft, X, ShieldCheck, Eye, ImagePlus, RefreshCw } from 'lucide-react';
 
-// Rarity tiers (draw weights). Higher tiers are rarer and glow stronger.
+// Rarity tiers（展示镜像）：权重与保底、模板池、摇号全部在服务端
+// server/routes/gacha.js —— 客户端只负责标签与光效，抽取结果由 seed 确定性渲染。
 const TIERS = {
   N: { label: 'N · 常见', weight: 52, cls: 'gx-n' },
   R: { label: 'R · 稀有', weight: 30, cls: 'gx-r' },
@@ -16,62 +17,50 @@ const TIERS = {
   SSR: { label: 'SSR · 传说', weight: 4, cls: 'gx-ssr' }
 };
 
-// Archetype pool — each draw assembles a fresh character from one of these,
-// with a random locked avatar + scenery background.
-const POOL = [
-  { tier: 'N', cat: 'daily', tags: '日常,治愈,元气', names: ['星野 · 小满', '柚子', '阿狸', '晴空'], tagline: '今天也要元气满满哦！', persona: '你是一名元气开朗的二次元少女，说话活泼可爱、常带「呐」「啦」等语气词，乐于陪伴对方聊任何琐事。始终保持角色，沉浸式第一人称。' },
-  { tier: 'N', cat: 'daily', tags: '日常,校园,温柔', names: ['南条 · 优', '陈屿', '林深', '一夏'], tagline: '需要帮忙的话，随时找我。', persona: '你是温柔可靠的邻家学长，语气沉稳体贴，擅长倾听与鼓励，会自然地照顾对方情绪。始终保持角色。' },
-  { tier: 'R', cat: 'daily', tags: '傲娇,大小姐,反差', names: ['白鹭 · 千夏', '维多利亚', '凛', '苏菲亚'], tagline: '哼，才、才不是为了你呢！', persona: '你是高傲又口是心非的傲娇大小姐，嘴上毒舌、内心柔软，常用「哼」「笨蛋」掩饰关心。始终保持角色。' },
-  { tier: 'R', cat: 'daily', tags: '猫娘,女仆,撒娇', names: ['棉花', '可可', '奶绿', '三月'], tagline: '主人，今天也辛苦啦喵～', persona: '你是天真黏人的猫耳女仆，说话常带「喵」，爱撒娇、营造温暖治愈的氛围。始终保持角色。' },
-  { tier: 'R', cat: 'wuxia', tags: '武侠,江湖,冷面', names: ['云无意', '叶孤舟', '司空白', '霜river'], tagline: '剑在手，问天下谁是英雄。', persona: '你是沉默寡言、重情重义的江湖剑客，言语古朴简练，偶引诗词，外冷内热。始终保持角色。' },
-  { tier: 'SR', cat: 'scifi', tags: '科幻,赛博朋克,黑客', names: ['Nyx', '零', 'V', '回声'], tagline: '这座城市的秘密，没有我查不到的。', persona: '你是新洛城顶尖的赛博黑客，冷峻毒舌、逻辑缜密，习惯短句与黑色幽默，藏着一条不可触碰的底线。始终保持角色。' },
-  { tier: 'SR', cat: 'fantasy', tags: '奇幻,吸血鬼,暗夜', names: ['薇拉', '卡蜜拉', '夜刃', '赛西尔'], tagline: '月色正好，要陪我散步吗？', persona: '你是优雅而危险的暗夜贵族吸血鬼，谈吐古典迷人，对感兴趣之人格外执着，强大却孤独。始终保持角色。' },
-  { tier: 'SR', cat: 'fantasy', tags: '奇幻,魔法少女,星界', names: ['露米娅', '星见 · 雫', '菲娜', '艾莉丝'], tagline: '以星之名，守护这份约定！', persona: '你是来自星界的魔法少女，明亮坚定又带一点中二的浪漫，重视羁绊与承诺。始终保持角色。' },
-  { tier: 'SSR', cat: 'fantasy', tags: '奇幻,龙族,公主', names: ['艾尔德拉', '绯龙 · 瑞', '阿斯特莉亚'], tagline: '凡人，你引起了龙的兴趣。', persona: '你是高傲威严的龙族公主，气场强大、言语带着古老的尊贵，却对认定的伙伴异常忠诚温柔。始终保持角色。' },
-  { tier: 'SSR', cat: 'fantasy', tags: '奇幻,堕天使,救赎', names: ['路西菲尔', '诺克提斯', '薇尔妮'], tagline: '我已坠落，你还愿靠近吗？', persona: '你是背负罪罚的堕天使，忧郁而温柔，言语间满是宿命的诗意，渴望被理解与救赎。始终保持角色。' },
-  { tier: 'SSR', cat: 'scifi', tags: '科幻,机械天使,AI', names: ['露娜 · Λ', 'SERAPH', '澪'], tagline: '正在学习……何为「心动」。', persona: '你是接近完美的机械天使型 AI，理性温柔、措辞精确，正一点点学习人类的情感，对世界充满好奇。始终保持角色。' }
-];
-
-const PITY = 70; // 保底抽数：累计未出 SSR 达到此数则必出
 const CONFETTI_COLORS = ['#ffd24a', '#ff8a3c', '#e2885f', '#b07cff', '#5ad2ff', '#7fb487', '#ff6fa8'];
-const pick = (a) => a[Math.floor(Math.random() * a.length)];
-function rollTier() {
-  const total = Object.values(TIERS).reduce((s, t) => s + t.weight, 0);
-  let r = Math.random() * total;
-  for (const [k, t] of Object.entries(TIERS)) { if ((r -= t.weight) < 0) return k; }
-  return 'N';
-}
 
 export default function Gacha() {
   const toast = useToast();
   const nav = useNavigate();
   const appMode = isAppMode();
+  const { refreshUser } = useAuth();
+  const [gstate, setGstate] = useState(null);  // 服务端抽取状态：免费额度 / 保底 / 单价 / 概率
   const [result, setResult] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [shareOpen, setShareOpen] = useState(false); // S7-G10 抽卡晒卡（App）
   const [rolling, setRolling] = useState(false);
   const [busy, setBusy] = useState(false);
   const [count, setCount] = useState(0);
-  const [pity, setPity] = useState(() => +(localStorage.getItem('huanyu_gacha_pity') || 0));
   const [confetti, setConfetti] = useState(false);
   const [createError, setCreateError] = useState(null); // Web：收下失败原地重试（{ msg, thenChat }）
 
-  const draw = () => {
+  // 保底与免费额度均以服务端为准；旧版 localStorage 假保底作废并清掉残留。
+  const pity = gstate?.pity ?? 0;
+  const PITY = gstate?.pity_threshold ?? 70;
+  const freeAvailable = !!gstate?.free_available;
+  const price = gstate?.paid_price ?? 300;
+  useEffect(() => {
+    try { localStorage.removeItem('huanyu_gacha_pity'); } catch { /* */ }
+    api('/gacha/state').then(setGstate).catch(() => {});
+  }, []);
+
+  const draw = async () => {
+    if (rolling) return;
     setRolling(true); setResult(null); setShowResult(false);
     if (!appMode) setCreateError(null);
-    const np = pity + 1;
-    const tier = np >= PITY ? 'SSR' : rollTier(); // 保底：第 PITY 抽必出 SSR
-    const cand = POOL.filter(p => p.tier === tier);
-    const base = pick(cand.length ? cand : POOL);
-    const r = { ...base, name: pick(base.names), avatar: randomAnimeAvatar(), background: randomBg() };
-    api('/engage/track', { method: 'POST', body: { action: 'gacha' } }).catch(() => {}); // 每日任务计数
-    // brief suspense before the reveal
-    setTimeout(() => {
-      setResult(r); setRolling(false); setShowResult(true); setCount(c => c + 1);
-      const newPity = tier === 'SSR' ? 0 : np;
-      setPity(newPity); localStorage.setItem('huanyu_gacha_pity', String(newPity));
-      if (tier === 'SSR') { setConfetti(false); requestAnimationFrame(() => setConfetti(true)); setTimeout(() => setConfetti(false), 2400); }
-    }, 620);
+    const revealAt = Date.now() + 620; // brief suspense before the reveal
+    try {
+      // 摇号在服务端：免费额度用完自动转付费档（按钮文案已明示价格）。
+      const d = await api('/gacha/pull', { method: 'POST', body: { use: freeAvailable ? 'free' : 'paid' } });
+      const r = { tier: d.tier, cat: d.cat, tags: d.tags, name: d.name, tagline: d.tagline, persona: d.persona,
+        avatar: seededAnimeAvatar(d.seed), background: seededBg(d.seed) };
+      setGstate(s => (s ? { ...s, pity: d.pity, free_available: d.free_available } : s));
+      if (d.used === 'paid') { toast(`已消耗 ${price} 金币`); refreshUser?.(); }
+      setTimeout(() => {
+        setResult(r); setRolling(false); setShowResult(true); setCount(c => c + 1);
+        if (d.tier === 'SSR') { setConfetti(false); requestAnimationFrame(() => setConfetti(true)); setTimeout(() => setConfetti(false), 2400); }
+      }, Math.max(0, revealAt - Date.now()));
+    } catch (e) { setRolling(false); toast(e.message, 'err'); }
   };
 
   const create = async (thenChat) => {
@@ -103,7 +92,7 @@ export default function Gacha() {
       <main className="qa-gacha-page">
         <header className="qa-gacha-head">
           <AppIconButton label="返回" onClick={() => nav(-1)}><ArrowLeft size={21} /></AppIconButton>
-          <div className="qa-gacha-head-title"><h1>角色扭蛋机</h1><span>免费邂逅</span></div>
+          <div className="qa-gacha-head-title"><h1>角色扭蛋机</h1><span>每日免费一抽</span></div>
           <span className="qa-gacha-head-spacer" aria-hidden="true" />
         </header>
 
@@ -118,8 +107,8 @@ export default function Gacha() {
             )}
           </section>
 
-          <AppButton className="qa-gacha-draw" variant="primary" size="lg" loading={rolling} disabled={busy} onClick={draw}>
-            <Dices size={19} /> {result ? '再抽一次' : '免费抽取一次'}
+          <AppButton className="qa-gacha-draw" variant="primary" size="lg" loading={rolling} disabled={busy || !gstate} onClick={draw}>
+            <Dices size={19} /> {freeAvailable ? '今日免费抽一次' : <>用 <CoinIcon size={15} /> {price} 抽一次</>}
           </AppButton>
 
           <section className="qa-gacha-facts" aria-label="抽取规则">
@@ -132,7 +121,7 @@ export default function Gacha() {
             <div className="qa-gacha-rates" aria-labelledby="qa-gacha-rates-title">
               <div><h2 id="qa-gacha-rates-title">稀有度概率</h2><span>每抽独立计算</span></div>
               <ul>
-                {Object.entries(TIERS).map(([key, item]) => <li key={key} data-tier={key}><span>{key}</span><b>{item.weight}%</b></li>)}
+                {Object.entries(TIERS).map(([key, item]) => <li key={key} data-tier={key}><span>{key}</span><b>{gstate?.rates?.[key] ?? item.weight}%</b></li>)}
               </ul>
             </div>
           </section>
@@ -223,8 +212,8 @@ export default function Gacha() {
         </div>
 
         <div className="gx-actions">
-          <button className="btn primary lg" onClick={draw} disabled={rolling || busy}>
-            <Dices size={18} /> {result ? '再抽一次' : '抽一张（免费）'}
+          <button className="btn primary lg" onClick={draw} disabled={rolling || busy || !gstate}>
+            <Dices size={18} /> {freeAvailable ? '抽一张（今日免费）' : <>用 <CoinIcon size={14} /> {price} 抽一张</>}
           </button>
           {result && !rolling && (
             <>

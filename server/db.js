@@ -450,6 +450,8 @@ for (const sql of [
   // 新行由各插入点显式写 datetime('now')（新库走 CREATE TABLE 默认值）。
   'ALTER TABLE favorites ADD COLUMN created_at TEXT',
   'ALTER TABLE follows ADD COLUMN created_at TEXT',
+  // 扭蛋保底计数（服务端唯一真相，旧版 localStorage 保底作废）
+  'ALTER TABLE users ADD COLUMN gacha_pity INTEGER DEFAULT 0',
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 try {
   db.exec("UPDATE favorites SET created_at = datetime('now') WHERE created_at IS NULL");

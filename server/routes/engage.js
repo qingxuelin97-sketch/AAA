@@ -2,8 +2,8 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter } from '../limiters.js';
-import { applyTx, assertEconomicAccess, notify } from '../wallet.js';
-import { DAILY_TASKS, dailyOf, bumpDaily, saveClaimed } from '../daily.js';
+import { applyTx, notify } from '../wallet.js';
+import { DAILY_TASKS, dailyOf, saveClaimed } from '../daily.js';
 import { creatorTier } from '../creator.js';
 
 const router = Router();
@@ -163,26 +163,8 @@ router.get('/leaderboard', authOptional, (req, res) => {
   res.json({ characters, scripts, authors, me: mine });
 });
 
-// ---- gacha (spend diamonds to draw a public character into favorites) ----
-const GACHA_COST = 50;
-router.post('/gacha', authRequired, (req, res) => {
-  // 只随机取一行的必要列，避免把全部公开角色（含 persona 大字段）物化到内存。
-  const pick = db.prepare('SELECT id, name, avatar, tagline FROM characters WHERE is_public = 1 ORDER BY RANDOM() LIMIT 1').get();
-  if (!pick) return res.status(400).json({ error: '暂无可抽取的角色' });
-  let already, w;
-  try {
-    // 扣钻 + 入藏 + 返利 + 抽卡计数一并原子提交，崩溃不再「扣了钻没入账」。
-    db.transaction(() => {
-      assertEconomicAccess(req.user.id);
-      applyTx(req.user.id, { kind: 'reward', diamond: -GACHA_COST, memo: '抽卡' });
-      already = db.prepare('SELECT 1 FROM favorites WHERE user_id=? AND character_id=?').get(req.user.id, pick.id);
-      if (!already) { db.prepare("INSERT INTO favorites (user_id, character_id, created_at) VALUES (?,?,datetime('now'))").run(req.user.id, pick.id); db.prepare('UPDATE characters SET likes=likes+1 WHERE id=?').run(pick.id); }
-      w = applyTx(req.user.id, { kind: 'reward', gold: 10, memo: '抽卡返利' }); // small gold consolation
-      db.prepare('UPDATE users SET gacha_pulls = COALESCE(gacha_pulls,0) + 1 WHERE id = ?').run(req.user.id);
-    }).immediate();
-  } catch (e) { return res.status(e.status || 400).json({ error: e.message, ...(e.code ? { code: e.code } : {}) }); }
-  bumpDaily(req.user.id, 'gacha');
-  res.json({ character: { id: pick.id, name: pick.name, avatar: pick.avatar, tagline: pick.tagline }, already: !!already, cost: GACHA_COST, wallet: w });
-});
+// 旧「50 钻直抽公开角色入收藏」端点已废弃：前端从未接入，且发金币返利 +
+// 点赞污染都与扭蛋统一版语义冲突。真实抽取一律走 /api/gacha（routes/gacha.js，
+// 服务端权威保底 + 每日免费 + 付费金币抽）。
 
 export default router;

@@ -227,3 +227,18 @@ export function randomBg() {
   const t = BG_THEMES[Math.floor(Math.random() * BG_THEMES.length)];
   return bgPreset({ ...t, seed: 'r' + Math.random().toString(36).slice(2, 9) });
 }
+
+// —— 扭蛋专用：由服务端 seed 决定的确定性形象 ——
+// 摇号（稀有度/模板/名字/seed）只在服务端发生；客户端拿同一 seed 永远渲染出
+// 同一张脸和同一片景，「抽到即锁定」由服务端种子背书，本地只是渲染器。
+export function seededAnimeAvatar(seed) {
+  const r = rng('av:' + seed);
+  const p = ANIME_RAW[Math.floor(r() * ANIME_RAW.length)];
+  const eyes = ['#5ad2ff', '#ff6fa8', '#9a82ff', '#5fd6a0', '#ffb04f', '#ff5a6e'];
+  return animeAvatar({ ...p, eye: eyes[Math.floor(r() * eyes.length)], id: Math.floor(r() * 1e6) });
+}
+export function seededBg(seed) {
+  const r = rng('bg:' + seed);
+  const t = BG_THEMES[Math.floor(r() * BG_THEMES.length)];
+  return bgPreset({ ...t, seed: 'g:' + seed });
+}

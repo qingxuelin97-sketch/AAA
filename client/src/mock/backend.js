@@ -2297,7 +2297,8 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/community/inbox/seen') { return J({ ok: true }); }
 
   // ---------- engagement: views / reviews / reports / leaderboard ----------
-  if (method === 'POST' && path === '/engage/track') { need(); const a = String(body.action || ''); if (['gacha', 'chat', 'fav', 'like', 'checkin', 'novel'].includes(a)) bumpDaily(me.id, a); return J({ ok: true }); }
+  // 抽卡任务计数只认真实 /gacha/pull（与真实服务端 /track no-op 语义对齐）。
+  if (method === 'POST' && path === '/engage/track') { need(); const a = String(body.action || ''); if (['chat', 'fav', 'like', 'checkin', 'novel'].includes(a)) bumpDaily(me.id, a); return J({ ok: true }); }
   if (method === 'GET' && path === '/engage/tasks') {
     need(); const d = dailyOf(me.id);
     const tasks = DAILY_TASKS.map(t => { const cnt = d.counts[t.key] || 0; return { id: t.id, name: t.name, target: t.target, reward: t.reward, progress: Math.min(cnt, t.target), done: cnt >= t.target, claimed: d.claimed.includes(t.id) }; });
@@ -2388,15 +2389,45 @@ async function route(method, path, search, body, headers) {
     }
     return J({ characters, scripts, authors, me: mine });
   }
-  if (method === 'POST' && path === '/engage/gacha') {
-    need(); const pool = filter('characters', c => c.is_public); if (!pool.length) return E('暂无可抽取的角色');
-    try { applyTx(me.id, { kind: 'reward', diamond: -50, memo: '抽卡' }); } catch (e) { return E(e.message); }
+  // 扭蛋统一版（与 server/routes/gacha.js 同步的迷你镜像）：每日免费一抽 +
+  // 付费 300 金，服务端式保底存 me.gacha_pity，seed 由客户端确定性渲染形象。
+  if (method === 'GET' && path === '/gacha/state') {
+    need();
+    return J({ free_available: !(dailyOf(me.id).counts.gacha_free >= 1), paid_price: 300,
+      pity: me.gacha_pity || 0, pity_threshold: 70, rates: { N: 52, R: 30, SR: 14, SSR: 4 },
+      total_pulls: me.gacha_pulls || 0, gold: me.gold });
+  }
+  if (method === 'POST' && path === '/gacha/pull') {
+    need();
+    const use = body.use === 'paid' ? 'paid' : 'free';
+    const d = dailyOf(me.id);
+    let wallet;
+    if (use === 'free') {
+      if ((d.counts.gacha_free || 0) >= 1) return E('今日免费抽取已用完，可花 300 金币继续抽');
+      d.counts.gacha_free = 1; save();
+    } else {
+      if (me.gold < 300) return E(`金币不足，付费抽取需 300 金币（当前 ${me.gold}）`);
+      wallet = applyTx(me.id, { kind: 'gacha', gold: -300, memo: '扭蛋 · 付费抽取' });
+    }
+    const GPOOL = [
+      { tier: 'N', cat: 'daily', tags: '日常,治愈,元气', names: ['星野 · 小满', '柚子', '阿狸', '晴空'], tagline: '今天也要元气满满哦！', persona: '你是一名元气开朗的二次元少女，说话活泼可爱、常带「呐」「啦」等语气词，乐于陪伴对方聊任何琐事。始终保持角色，沉浸式第一人称。' },
+      { tier: 'R', cat: 'daily', tags: '傲娇,大小姐,反差', names: ['白鹭 · 千夏', '维多利亚', '凛', '苏菲亚'], tagline: '哼，才、才不是为了你呢！', persona: '你是高傲又口是心非的傲娇大小姐，嘴上毒舌、内心柔软，常用「哼」「笨蛋」掩饰关心。始终保持角色。' },
+      { tier: 'SR', cat: 'scifi', tags: '科幻,赛博朋克,黑客', names: ['Nyx', '零', 'V', '回声'], tagline: '这座城市的秘密，没有我查不到的。', persona: '你是新洛城顶尖的赛博黑客，冷峻毒舌、逻辑缜密，习惯短句与黑色幽默，藏着一条不可触碰的底线。始终保持角色。' },
+      { tier: 'SSR', cat: 'fantasy', tags: '奇幻,龙族,公主', names: ['艾尔德拉', '绯龙 · 瑞', '阿斯特莉亚'], tagline: '凡人，你引起了龙的兴趣。', persona: '你是高傲威严的龙族公主，气场强大、言语带着古老的尊贵，却对认定的伙伴异常忠诚温柔。始终保持角色。' },
+    ];
+    const np = (me.gacha_pity || 0) + 1;
+    let tier = 'SSR';
+    if (np < 70) { let r = Math.random() * 100; for (const [k, w] of Object.entries({ N: 52, R: 30, SR: 14, SSR: 4 })) { if ((r -= w) < 0) { tier = k; break; } } }
+    const cand = GPOOL.filter(t => t.tier === tier);
+    const base = cand[Math.floor(Math.random() * cand.length)] || GPOOL[0];
+    const name = base.names[Math.floor(Math.random() * base.names.length)];
+    const seed = Math.random().toString(36).slice(2, 18);
+    me.gacha_pity = tier === 'SSR' ? 0 : np;
     me.gacha_pulls = (me.gacha_pulls || 0) + 1;
-    const pick = pool[Math.floor(Math.random() * pool.length)];
-    const had = find('favorites', f => f.user_id === me.id && f.character_id === pick.id);
-    if (!had) { insert('favorites', { user_id: me.id, character_id: pick.id }); pick.likes = (pick.likes || 0) + 1; }
-    const w = applyTx(me.id, { kind: 'reward', gold: 10, memo: '抽卡返利' });
-    return J({ character: { id: pick.id, name: pick.name, avatar: pick.avatar, tagline: pick.tagline }, already: !!had, cost: 50, wallet: w });
+    bumpDaily(me.id, 'gacha');
+    save();
+    return J({ wallet, tier, name, seed, tagline: base.tagline, persona: base.persona, tags: base.tags, cat: base.cat,
+      pity: me.gacha_pity, pity_threshold: 70, used: use, free_available: !(dailyOf(me.id).counts.gacha_free >= 1) });
   }
 
   // ---------- GM admin ----------
