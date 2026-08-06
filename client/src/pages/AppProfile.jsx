@@ -52,7 +52,7 @@ const GRID = [
     // 「我的角色」不再入宫格：页面中部已有「我的角色」内容 Tab（实机反馈重复）
     { to: '/atelier', ic: Feather, label: '小说' },
     { to: '/draw', ic: Wand2, label: 'AI 绘图' },
-    { to: '/theater', ic: Drama, label: '剧场' },
+    { to: '/theater', ic: Drama, label: '互动小说' },
     { to: '/friends', ic: UserRound, label: '好友' },
     { to: '/groups', ic: Users, label: '群聊' },
     { to: '/worldbooks', ic: BookOpen, label: '世界书' },

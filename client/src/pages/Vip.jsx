@@ -23,7 +23,7 @@ const PERKS = [
   { ic: Gift, title: '双倍金币', desc: '签到收益 ×2' },
   { ic: AudioLines, title: '语音折扣', desc: '语音合成', discounted: true },
   { ic: Crown, title: '尊贵标识', desc: '评论区专属徽记' },
-  { ic: Drama, title: '剧场畅玩', desc: '多人多 AI 无限' },
+  { ic: Drama, title: '小说折扣', desc: '互动小说续写享会员价' },
   { ic: BrainCircuit, title: '创作加成', desc: '灵感与记忆全速' }
 ];
 

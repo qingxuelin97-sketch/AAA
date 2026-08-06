@@ -36,7 +36,7 @@ const CREATE_SHORTCUTS = [
   { to: '/gacha', ic: Dices, label: '扭蛋', tone: 'reward' },
   { to: '/events', ic: PartyPopper, label: '活动', tone: 'coral' },
   { to: '/scripts', ic: ScrollText, label: '剧本', tone: 'graphite' },
-  { to: '/theater', ic: Drama, label: '剧场', tone: 'indigo' },
+  { to: '/theater', ic: Drama, label: '互动小说', tone: 'indigo' },
   { to: '/community', ic: Users, label: '社区', tone: 'blue' },
   { to: '/leaderboard', ic: Trophy, label: '排行榜', tone: 'reward' }
 ];

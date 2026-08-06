@@ -29,7 +29,7 @@ const ACHIEVEMENTS = [
   { id: 'fav_10', name: '收藏家', desc: '收藏 10 个角色', icon: 'Bookmark', cat: '社交', goal: 10, reward: 120, metric: 'favorites', link: '/favorites' },
   { id: 'first_moment', name: '初次发声', desc: '在社区发布 1 条动态', icon: 'PenLine', cat: '社交', goal: 1, reward: 40, metric: 'moments', link: '/community' },
   { id: 'first_group', name: '群英荟萃', desc: '加入 1 个群聊', icon: 'Users', cat: '社交', goal: 1, reward: 50, metric: 'groups', link: '/groups' },
-  { id: 'first_theater', name: '登台亮相', desc: '参与 1 次剧场联机', icon: 'Drama', cat: '社交', goal: 1, reward: 60, metric: 'theaters', link: '/theater' },
+  { id: 'first_theater', name: '登台亮相', desc: '开始 1 部互动小说', icon: 'Drama', cat: '社交', goal: 1, reward: 60, metric: 'theaters', link: '/theater' },
   { id: 'fans_5', name: '小有名气', desc: '获得 5 位粉丝', icon: 'UserCheck', cat: '社交', goal: 5, reward: 150, metric: 'followers', link: '/profile' },
   { id: 'councilor', name: '当选议员', desc: '成为幻域议会议员', icon: 'Scale', cat: '议会', goal: 1, reward: 200, metric: 'councilor', link: '/parliament' },
   { id: 'first_proposal', name: '议政之始', desc: '提交 1 份公共议案', icon: 'Gavel', cat: '议会', goal: 1, reward: 120, metric: 'proposals', link: '/parliament' },

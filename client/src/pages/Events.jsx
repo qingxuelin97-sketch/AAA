@@ -15,7 +15,7 @@ import { PartyPopper, Gift, Check, ArrowRight, Users, ListChecks, ArrowLeft, Ref
 const eventTone = (event, index) => {
   const tag = String(event?.tag || '').toLowerCase();
   if (event?.kind === 'claim') return 'gold';
-  if (tag.includes('联机') || tag.includes('群')) return 'indigo';
+  if (tag.includes('联机') || tag.includes('群') || tag.includes('社区') || tag.includes('玩法')) return 'indigo';
   if (tag.includes('反馈') || tag.includes('公告')) return 'coral';
   return ['blue', 'rose', 'graphite'][index % 3];
 };
@@ -77,7 +77,7 @@ export default function Events() {
     <>
       <div className={app ? 'topbar qa-events-header' : 'topbar'}>
         {app && <AppIconButton className="qa-events-back" label="返回上一页" onClick={() => nav(-1)}><ArrowLeft size={20} /></AppIconButton>}
-        <div style={{ flex: 1 }}><h1>活动中心</h1><div className="sub">领奖励 · 玩联机 · 提反馈，幻域因你更精彩</div></div>
+        <div style={{ flex: 1 }}><h1>活动中心</h1><div className="sub">领奖励 · 追玩法 · 提反馈，幻域因你更精彩</div></div>
       </div>
       <div className={app ? 'page qa-events-page' : 'page'}>
         {app && !tasks && <div className="qa-events-task-loading" role="status" aria-label="正在载入每日任务"><i className="skel" /><i className="skel" /></div>}
@@ -165,7 +165,7 @@ export default function Events() {
                   )}
                   {ev.link && (
                     <AppButton className={'btn block' + (ev.kind === 'claim' ? '' : ' primary')} variant={ev.kind === 'claim' ? 'secondary' : 'primary'} onClick={() => nav(ev.link)}>
-                      {ev.tag === '联机' ? <Users size={15} /> : <ArrowRight size={15} />} {ev.linkText || '前往'}
+                      {['联机', '社区', '玩法'].includes(ev.tag) ? <Users size={15} /> : <ArrowRight size={15} />} {ev.linkText || '前往'}
                     </AppButton>
                   )}
                 </div>

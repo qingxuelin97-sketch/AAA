@@ -44,9 +44,10 @@ router.post('/tasks/:id/claim', authRequired, (req, res) => {
 // ---- events ----
 const EVENTS = [
   { id: 'newbie', kind: 'claim', tag: '新人', title: '新人见面礼', desc: '初入幻域，领取启程礼包：200 金币 + 10 钻石，开启你的第一段角色扮演。', reward: { gold: 200, diamond: 10 }, accent: '#d97757' },
-  { id: 'coop_carnival', kind: 'claim', tag: '联机', title: '限时联机狂欢', desc: '进入「剧场」与多位 AI 角色同台即兴演出，领取联机狂欢礼：60 钻石，并解锁多人同屏剧情。', reward: { gold: 0, diamond: 60 }, link: '/theater', linkText: '前往联机剧场', accent: '#7c5cff' },
-  { id: 'group_party', kind: 'link', tag: '联机', title: '创作者联机大厅', desc: '加入群聊与其他创作者实时联机交流、互相导入角色、组队共创剧本。', link: '/groups', linkText: '进入联机大厅', accent: '#3f8195' },
-  { id: 'checkin', kind: 'link', tag: '日常', title: '每日签到瓜分金币', desc: '连续签到奖励翻倍递增，VIP 再享双倍。坚持登录，金币越攒越多。', link: '/wallet', linkText: '去签到', accent: '#b3892f' },
+  // 承诺清扫：文案如实描述当前玩法（单人主角互动小说），奖励与领取逻辑不动。
+  { id: 'coop_carnival', kind: 'claim', tag: '玩法', title: '互动小说 · 开幕礼', desc: '开启「互动小说」：以你为主角的 AI 即兴叙事——写下行动，旁白续写后果，命运抉择三选一。领取开幕礼：60 钻石。', reward: { gold: 0, diamond: 60 }, link: '/theater', linkText: '开始我的故事', accent: '#7c5cff' },
+  { id: 'group_party', kind: 'link', tag: '社区', title: '创作者交流大厅', desc: '加入群聊与其他创作者实时交流、互相导入角色、组队共创剧本。', link: '/groups', linkText: '进入大厅', accent: '#3f8195' },
+  { id: 'checkin', kind: 'link', tag: '日常', title: '每日签到攒金币', desc: '每天签到得金币（VIP 双倍），连签 7/30/100 天再拿 100/500/2000 金币里程碑加成。', link: '/wallet', linkText: '去签到', accent: '#b3892f' },
   { id: 'bugbounty', kind: 'info', tag: '赏金', title: 'Bug 赏金猎人', desc: '发现任何 bug 或体验问题，请联系管理员提交反馈，一经采纳奖励 100 金币起，重大问题另有钻石与 VIP 加码。', accent: '#5c8a63' },
   { id: 'invite', kind: 'info', tag: '裂变', title: '邀请好友共创', desc: '在「设置 / 钱包」使用邀请密钥，邀请越多奖励越丰厚。与好友一起把幻域写满故事。', link: '/wallet', linkText: '查看兑换码', accent: '#c25a38' },
 ];

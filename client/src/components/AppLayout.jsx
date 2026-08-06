@@ -46,7 +46,7 @@ const CREATE = [
   { to: '/character/new', ic: UserRoundPlus, tone: 'indigo', label: '创建角色', hint: '立绘 · 人设 · 世界书' },
   { to: '/atelier', ic: Feather, tone: 'coral', label: '写小说', hint: 'AI 协作长篇创作' },
   { to: '/draw', ic: ImagePlus, tone: 'gold', label: 'AI 绘图', hint: '文生图工作室' },
-  { to: '/theater', ic: Drama, tone: 'blue', label: '开剧场', hint: '多人多 AI 即兴演出' },
+  { to: '/theater', ic: Drama, tone: 'blue', label: '互动小说', hint: '以你为主角的 AI 即兴故事' },
   { to: '/publish', ic: Send, tone: 'success', label: '发布作品', hint: '角色 / 剧本 / 动态' }
 ];
 

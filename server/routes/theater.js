@@ -158,7 +158,7 @@ router.get('/', authRequired, (req, res) => {
 
 router.post('/', authRequired, (req, res) => {
   const { name, scene, cover, cast, is_public, stage_config, worldbook, style } = req.body || {};
-  if (!name) return res.status(400).json({ error: '剧场名称必填' });
+  if (!name) return res.status(400).json({ error: '作品名称必填' });
   const castIds = castIdsOf(cast);
   if (!castIds.length || castIds.length !== cast.length) return res.status(400).json({ error: '登场角色列表无效' });
   const characters = db.prepare(`SELECT id, owner_id, is_public FROM characters
@@ -187,9 +187,9 @@ router.post('/', authRequired, (req, res) => {
 
 router.get('/:id', authRequired, (req, res) => {
   const t = db.prepare(`SELECT t.*, u.display_name AS owner_name FROM theaters t JOIN users u ON u.id = t.owner_id WHERE t.id = ?`).get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
   // 私有剧场仅 owner 与成员可见，防 IDOR。
-  if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '无权访问该剧场' });
+  if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '无权访问这部作品' });
   const cast = publicCastOf(t.id);
   const members = db.prepare(`SELECT u.id, u.display_name, u.avatar FROM theater_members tm JOIN users u ON u.id = tm.user_id WHERE tm.theater_id = ?`).all(t.id);
   const messages = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id').all(t.id);
@@ -210,7 +210,7 @@ router.get('/:id', authRequired, (req, res) => {
 // 更新舞台设定（背景系统）—— 仅作者可改。也可顺带改名称 / 序章 / 封面。
 router.patch('/:id', authRequired, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
   if (t.owner_id !== req.user.id) return res.status(403).json({ error: '仅作者可修改舞台设定' });
   const fields = [], vals = [];
   if (req.body?.stage_config !== undefined) { fields.push('stage_config = ?'); vals.push(JSON.stringify(cleanStage(req.body.stage_config))); }
@@ -232,9 +232,9 @@ router.patch('/:id', authRequired, (req, res) => {
 
 router.post('/:id/join', authRequired, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
   if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) {
-    return res.status(403).json({ error: '私有剧场仅限受邀成员加入' });
+    return res.status(403).json({ error: '私有作品仅限受邀成员加入' });
   }
   if (!memberOf(t.id, req.user.id)) db.prepare('INSERT INTO theater_members (theater_id, user_id) VALUES (?,?)').run(t.id, req.user.id);
   res.json({ ok: true });
@@ -243,7 +243,7 @@ router.post('/:id/join', authRequired, (req, res) => {
 // 离开故事（此前仅 mock 有此接口，真实服务端缺失导致「离开」按钮报错）。
 router.post('/:id/leave', authRequired, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
   if (t.owner_id === req.user.id) return res.status(400).json({ error: '作者不能离开自己的作品，可在导演台完结或删除' });
   db.prepare('DELETE FROM theater_members WHERE theater_id = ? AND user_id = ?').run(t.id, req.user.id);
   res.json({ ok: true });
@@ -252,7 +252,7 @@ router.post('/:id/leave', authRequired, (req, res) => {
 // 删除作品（仅作者）：级联清理成员 / 阵容 / 段落（外键 ON DELETE CASCADE）。
 router.delete('/:id', authRequired, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
   if (t.owner_id !== req.user.id) return res.status(403).json({ error: '仅作者可删除作品' });
   db.prepare('DELETE FROM theaters WHERE id = ?').run(t.id);
   res.json({ ok: true });
@@ -261,8 +261,8 @@ router.delete('/:id', authRequired, (req, res) => {
 // A human speaks — 仅成员可发言，不再自动加成员，防任意用户干扰他人剧场。
 router.post('/:id/say', authRequired, aiLimiter, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
-  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
+  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入这部作品' });
   if (t.status === 'finished') return res.status(400).json({ error: '本作已完结，作者可在导演台重新开启连载' });
   const { content } = req.body || {};
   if (!content) return res.status(400).json({ error: '内容不能为空' });
@@ -292,7 +292,7 @@ async function runGeneration(t, eff, body, excludeId) {
     system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。你是「旁白」，请用富有画面感的第三人称，推进剧情、描写环境氛围或引出转折，控制在 2-4 句话，不要替具体角色说出对白。`;
   } else {
     const c = cast.find(x => x.id === body?.character_id) || cast[0];
-    if (!c) { const e = new Error('剧场没有 AI 角色'); e.code = 400; throw e; }
+    if (!c) { const e = new Error('这部作品还没有 AI 角色'); e.code = 400; throw e; }
     target = c;
     system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`;
   }
@@ -333,8 +333,8 @@ const insertReply = (t, gen) => db.prepare('INSERT INTO theater_messages (theate
 // 模型（预扣 + 失败退款，谁触发谁付费）。
 router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
-  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
+  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入这部作品' });
   if (t.status === 'finished') return res.status(400).json({ error: '本作已完结，作者可在导演台重新开启连载' });
   const gc = beginTheaterGeneration(req, res, t);
   if (!gc) return;
@@ -354,8 +354,8 @@ router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
 // 重写最近一段 AI 续写（旁白 / 角色）：先生成新内容，成功后替换旧段，失败则保留原文。
 router.post('/:id/retry', authRequired, aiLimiter, async (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
-  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
+  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入这部作品' });
   if (t.status === 'finished') return res.status(400).json({ error: '本作已完结，作者可在导演台重新开启连载' });
   const last = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 1').get(t.id);
   if (!last || (last.sender_type !== 'ai' && last.sender_type !== 'narrator')) return res.status(400).json({ error: '最近一段不是 AI 续写，无法重写' });
@@ -380,7 +380,7 @@ router.post('/:id/retry', authRequired, aiLimiter, async (req, res) => {
 // 阅读器据此渲染装饰性分章与目录；剧情日志里呈现为【新章节】提示模型换幕。
 router.post('/:id/chapter', authRequired, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
   if (t.owner_id !== req.user.id) return res.status(403).json({ error: '仅作者可以分章' });
   const title = String(req.body?.title || '').trim().slice(0, 60);
   if (!title) return res.status(400).json({ error: '请填写章节标题' });
@@ -394,8 +394,8 @@ router.post('/:id/chapter', authRequired, (req, res) => {
 // —— 命运抉择：让 AI 根据当前剧情给主角生成 3 个可选行动（不入库，选中后走 /say）。
 router.post('/:id/choices', authRequired, aiLimiter, async (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
-  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
+  if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入这部作品' });
   if (t.status === 'finished') return res.status(400).json({ error: '本作已完结' });
   const gc = beginTheaterGeneration(req, res, t);
   if (!gc) return;
@@ -435,8 +435,8 @@ router.post('/:id/choices', authRequired, aiLimiter, async (req, res) => {
 const REACT_EMOJI = ['❤️', '🔥', '😂', '😮', '👏', '😢'];
 router.post('/:id/messages/:mid/react', authRequired, (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
-  if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
+  if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入这部作品' });
   const msg = db.prepare('SELECT * FROM theater_messages WHERE id = ? AND theater_id = ?').get(req.params.mid, t.id);
   if (!msg) return res.status(404).json({ error: '段落不存在' });
   const emoji = String(req.body?.emoji || '');
@@ -453,8 +453,8 @@ router.post('/:id/messages/:mid/react', authRequired, (req, res) => {
 // 仅成员可拉取消息，防 IDOR 读取他人剧场历史。
 router.get('/:id/messages', authRequired, (req, res) => {
   const t = db.prepare('SELECT owner_id, is_public FROM theaters WHERE id = ?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: '剧场不存在' });
-  if (t.owner_id !== req.user.id && !memberOf(req.params.id, req.user.id) && !t.is_public) return res.status(403).json({ error: '无权访问该剧场' });
+  if (!t) return res.status(404).json({ error: '作品不存在' });
+  if (t.owner_id !== req.user.id && !memberOf(req.params.id, req.user.id) && !t.is_public) return res.status(403).json({ error: '无权访问这部作品' });
   const after = parseInt(req.query.after, 10) || 0;
   res.json({ messages: db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? AND id > ? ORDER BY id').all(req.params.id, after) });
 });

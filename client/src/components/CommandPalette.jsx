@@ -27,7 +27,7 @@ const NAV = [
   { to: '/atelier', ic: Feather, label: '小说创作 · 工坊', kw: 'atelier novel xiaoshuo chuangzuo write ai' },
   { to: '/friends', ic: UserRound, label: '好友 · 私信', kw: 'friends haoyou sixin dm' },
   { to: '/groups', ic: Users, label: '群聊', kw: 'groups qunliao' },
-  { to: '/theater', ic: Drama, label: '剧场 · 联机', kw: 'theater juchang' },
+  { to: '/theater', ic: Drama, label: '互动小说', kw: 'theater juchang hudong xiaoshuo novel' },
   { to: '/library', ic: Library, label: '我的角色', kw: 'library wodejuese' },
   { to: '/studio', ic: TrendingUp, label: '创作中心', kw: 'studio chuangzuo' },
   { to: '/insights', ic: Orbit, label: '星轨 · 我的旅程', kw: 'insights xinggui journey stats shuju' },

@@ -73,7 +73,7 @@ export default function Theater() {
           <AppIconButton label="返回" onClick={() => nav(-1)}><ArrowLeft size={21} /></AppIconButton>
           <div className="qa-theater-head-title">
             <h1>互动小说</h1>
-            <span>故事剧场</span>
+            <span>互动小说</span>
           </div>
           <AppIconButton label="创作新故事" variant="filled" onClick={() => setCreating(true)}><Plus size={20} /></AppIconButton>
         </header>

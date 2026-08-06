@@ -64,7 +64,7 @@ db.prepare("UPDATE users SET svip=1, verified=1, verified_note='幻域官方认�
   .run(new Date(Date.now() + 3650 * 86400000).toISOString());
 db.prepare("UPDATE users SET verified=1, verified_note='官方账号' WHERE username='gm'").run();
 const annStmt = db.prepare('INSERT INTO announcements (author_id, title, body, pinned) VALUES (?,?,?,?)');
-annStmt.run(gmUser, '欢迎来到幻域 · 测试版', '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。欢迎创建角色、剧本，并在剧场与多位 AI 同台演出。', 1);
+annStmt.run(gmUser, '欢迎来到幻域 · 测试版', '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。欢迎创建角色、剧本，并在互动小说里当自己故事的主角。', 1);
 annStmt.run(gmUser, '新功能：模型自检测', '设置 → 语言模型 中新增「检测模型」，可一键拉取你所用服务商的可用模型列表并选择，无需手动填写。', 0);
 
 function char(owner, c) {
@@ -266,11 +266,11 @@ function moment(uid, text, image, likes) {
 }
 const m1 = moment(u3, '新角色「棉花」上线啦！治愈值拉满，欢迎来咖啡店坐坐喵～', bg('mo_cafe.svg', '#7a4a5e', '#2a1620', '#ffd5a8', 'soft'), 128);
 const m2 = moment(u2, '熬夜把《猎户座最后的信号》的真结局写完了，自认为是目前最满意的一篇硬科幻剧本。', null, 86);
-const m3 = moment(u1, '今天在森林剧场和三个 AI 角色即兴演了一场，剧情走向完全失控但意外地好玩 强烈推荐试试剧场功能！', null, 64);
+const m3 = moment(u1, '今天在互动小说里和三个 AI 角色即兴演了一场，剧情走向完全失控但意外地好玩 强烈推荐试试互动小说！', null, 64);
 const m4 = moment(u4, '一剑霜寒十四州。江湖路远，与诸君共勉。', bg('mo_wuxia.svg', '#2a3340', '#10151c', '#7a8aa0', 'soft'), 39);
 const cmt = db.prepare('INSERT INTO comments (moment_id, user_id, text) VALUES (?,?,?)');
 cmt.run(m1, u1, '棉花太可爱了！已收藏 '); cmt.run(m1, u2, '咖啡店背景图绝了');
-cmt.run(m3, u2, '剧场真的会上瘾，多 AI 互相接梗太魔性了');
+cmt.run(m3, u2, '互动小说真的会上瘾，多 AI 互相接梗太魔性了');
 db.prepare('INSERT OR IGNORE INTO moment_likes (moment_id, user_id) VALUES (?,?)').run(m1, u1);
 db.prepare('INSERT OR IGNORE INTO moment_likes (moment_id, user_id) VALUES (?,?)').run(m3, u1);
 

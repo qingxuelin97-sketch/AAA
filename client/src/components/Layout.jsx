@@ -26,7 +26,7 @@ const NAV_PRIMARY = [
   { to: '/discover', ic: Telescope, label: '沉浸发现' },
   { to: '/messages', ic: MessagesSquare, label: '消息中心', badge: 'dm' },
   { to: '/scripts', ic: ScrollText, label: '剧本' },
-  { to: '/theater', ic: Drama, label: '剧场 · 联机' },
+  { to: '/theater', ic: Drama, label: '互动小说' },
   { to: '/community', ic: Users, label: '社区' },
   { to: '/library', ic: Library, label: '我的角色' }
 ];
@@ -66,7 +66,7 @@ const TABS = [
   { to: '/', ic: Compass, label: '发现', end: true },
   { to: '/events', ic: PartyPopper, label: '活动' },
   { to: '/community', ic: Users, label: '社区' },
-  { to: '/theater', ic: Drama, label: '剧场' },
+  { to: '/theater', ic: Drama, label: '互动小说' },
   { to: '/profile', ic: User, label: '我的' }
 ];
 

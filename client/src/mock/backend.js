@@ -182,8 +182,8 @@ function migrate() {
     if (kenji && demo && !areFriends(kenji.id, demo.id)) insert('friend_requests', { from_id: kenji.id, to_id: demo.id, status: 'pending' });
     if (astra && demo) {
       insert('dm_messages', { from_id: astra.id, to_id: demo.id, text: '嘿！你那个森灵角色做得太惊艳了～', read: 0 });
-      insert('dm_messages', { from_id: demo.id, to_id: astra.id, text: '哈哈谢谢，要不要一起开个剧场联机？', read: 1 });
-      insert('dm_messages', { from_id: astra.id, to_id: demo.id, text: '好啊，今晚八点剧场见！', read: 0 });
+      insert('dm_messages', { from_id: demo.id, to_id: astra.id, text: '哈哈谢谢，要不要一起写一部互动小说？', read: 1 });
+      insert('dm_messages', { from_id: astra.id, to_id: demo.id, text: '好啊，今晚八点小说里见！', read: 0 });
     }
     if (astra) astra.last_active = Date.now(); // 在线
     if (mochi) mochi.last_active = Date.now() - 20 * 60 * 1000; // 离线
@@ -278,9 +278,9 @@ function seed() {
   gmu.is_gm = 1; u1.is_gm = 1;
   Object.assign(u1, { svip: 1, verified: 1, official: 1, verified_note: '幻域官方认证', vip_until: new Date(Date.now() + 3650 * 86400000).toISOString(), bio: '幻域官方认证 · 平台超级管理员｜SVIP 尊享会员，欢迎来到幻域。' });
   Object.assign(gmu, { verified: 1, verified_note: '官方账号', official: 1 });
-  insert('announcements', { author_id: gmu.id, title: '欢迎来到幻域 · 测试版', body: '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。未配置自己 API 的用户将自动使用平台内置语言服务，每次对话按金币计费（VIP/SVIP 享折扣）。欢迎创建角色、剧本，并在剧场与多位 AI 同台联机演出。', pinned: 1 });
+  insert('announcements', { author_id: gmu.id, title: '欢迎来到幻域 · 测试版', body: '当前为公开测试版本：充值功能暂未开放，金币/钻石仅用于体验。未配置自己 API 的用户将自动使用平台内置语言服务，每次对话按金币计费（VIP/SVIP 享折扣）。欢迎创建角色、剧本，并在互动小说里当自己故事的主角。', pinned: 1 });
   insert('announcements', { author_id: gmu.id, title: 'Bug 赏金计划上线', body: '发现任何 bug 或体验问题，请联系管理员提交反馈，一经采纳奖励 100 金币起，重大问题另有钻石与 VIP 加码。你的每一条反馈都在帮幻域变得更好。', pinned: 1 });
-  insert('announcements', { author_id: gmu.id, title: '新功能：活动中心 / 联机狂欢', body: '左侧新增「活动」入口：新人见面礼、限时联机狂欢、创作者联机大厅等你来领。剧场支持多位 AI 角色同台即兴联机演出。', pinned: 0 });
+  insert('announcements', { author_id: gmu.id, title: '新功能：活动中心 / 互动小说', body: '左侧新增「活动」入口：新人见面礼、互动小说开幕礼、创作者交流大厅等你来领。互动小说支持写下行动让 AI 续写世界。', pinned: 0 });
   [u1, u2, u3, u4].forEach(u => defaultSettings(u.id));
 
   const mkChar = (owner, c) => {
@@ -426,11 +426,11 @@ function seed() {
   const mkMoment = (uid, text, image, likes) => insert('moments', { user_id: uid, text, image: image || null, likes: likes || 0 });
   const m1 = mkMoment(u3.id, '新角色「棉花」上线啦！治愈值拉满，欢迎来咖啡店坐坐喵～', bgArt('mocafe', '#7a4a5e', '#2a1620', '#ffd5a8', 'soft'), 128);
   const m2 = mkMoment(u2.id, '熬夜把《猎户座最后的信号》的真结局写完了，自认为是目前最满意的一篇硬科幻剧本。', null, 86);
-  const m3 = mkMoment(u1.id, '今天在森林剧场和三个 AI 角色即兴演了一场，剧情走向完全失控但意外地好玩  强烈推荐试试剧场功能！', null, 64);
+  const m3 = mkMoment(u1.id, '今天在互动小说里和三个 AI 角色即兴演了一场，剧情走向完全失控但意外地好玩  强烈推荐试试互动小说！', null, 64);
   mkMoment(u4.id, '一剑霜寒十四州。江湖路远，与诸君共勉。', bgArt('mowuxia', '#2a3340', '#10151c', '#7a8aa0', 'soft'), 39);
   insert('comments', { moment_id: m1.id, user_id: u1.id, text: '棉花太可爱了！已收藏 ' });
   insert('comments', { moment_id: m1.id, user_id: u2.id, text: '咖啡店背景图绝了' });
-  insert('comments', { moment_id: m3.id, user_id: u2.id, text: '剧场真的会上瘾，多 AI 互相接梗太魔性了' });
+  insert('comments', { moment_id: m3.id, user_id: u2.id, text: '互动小说真的会上瘾，多 AI 互相接梗太魔性了' });
   insert('moment_likes', { moment_id: m1.id, user_id: u1.id });
   insert('moment_likes', { moment_id: m3.id, user_id: u1.id });
 
@@ -516,7 +516,7 @@ const ACHIEVEMENTS = [
   { id: 'fav_10', name: '收藏家', desc: '收藏 10 个角色', icon: 'Bookmark', cat: '社交', goal: 10, reward: 120, metric: 'favorites', link: '/favorites' },
   { id: 'first_moment', name: '初次发声', desc: '在社区发布 1 条动态', icon: 'PenLine', cat: '社交', goal: 1, reward: 40, metric: 'moments', link: '/community' },
   { id: 'first_group', name: '群英荟萃', desc: '加入 1 个群聊', icon: 'Users', cat: '社交', goal: 1, reward: 50, metric: 'groups', link: '/groups' },
-  { id: 'first_theater', name: '登台亮相', desc: '参与 1 次剧场联机', icon: 'Drama', cat: '社交', goal: 1, reward: 60, metric: 'theaters', link: '/theater' },
+  { id: 'first_theater', name: '登台亮相', desc: '开始 1 部互动小说', icon: 'Drama', cat: '社交', goal: 1, reward: 60, metric: 'theaters', link: '/theater' },
   { id: 'fans_5', name: '小有名气', desc: '获得 5 位粉丝', icon: 'UserCheck', cat: '社交', goal: 5, reward: 150, metric: 'followers', link: '/profile' },
   // 议会
   { id: 'councilor', name: '当选议员', desc: '成为幻域议会议员', icon: 'Scale', cat: '议会', goal: 1, reward: 200, metric: 'councilor', link: '/parliament' },
@@ -1045,9 +1045,9 @@ const PACKAGES = [{ id: 'p1', cny: 6, diamond: 60, bonus: 0 }, { id: 'p2', cny: 
 // informational or link to a multiplayer (联机) destination.
 const EVENTS = [
   { id: 'newbie', kind: 'claim', tag: '新人', title: '新人见面礼', desc: '初入幻域，领取启程礼包：200 金币 + 10 钻石，开启你的第一段角色扮演。', reward: { gold: 200, diamond: 10 }, accent: '#d97757' },
-  { id: 'coop_carnival', kind: 'claim', tag: '联机', title: '限时联机狂欢', desc: '进入「剧场」与多位 AI 角色同台即兴演出，领取联机狂欢礼：60 钻石，并解锁多人同屏剧情。', reward: { gold: 0, diamond: 60 }, link: '/theater', linkText: '前往联机剧场', accent: '#7c5cff' },
-  { id: 'group_party', kind: 'link', tag: '联机', title: '创作者联机大厅', desc: '加入群聊与其他创作者实时联机交流、互相导入角色、组队共创剧本。', link: '/groups', linkText: '进入联机大厅', accent: '#3f8195' },
-  { id: 'checkin', kind: 'link', tag: '日常', title: '每日签到瓜分金币', desc: '连续签到奖励翻倍递增，VIP 再享双倍。坚持登录，金币越攒越多。', link: '/wallet', linkText: '去签到', accent: '#b3892f' },
+  { id: 'coop_carnival', kind: 'claim', tag: '玩法', title: '互动小说 · 开幕礼', desc: '开启「互动小说」：以你为主角的 AI 即兴叙事——写下行动，旁白续写后果，命运抉择三选一。领取开幕礼：60 钻石。', reward: { gold: 0, diamond: 60 }, link: '/theater', linkText: '开始我的故事', accent: '#7c5cff' },
+  { id: 'group_party', kind: 'link', tag: '社区', title: '创作者交流大厅', desc: '加入群聊与其他创作者实时交流、互相导入角色、组队共创剧本。', link: '/groups', linkText: '进入大厅', accent: '#3f8195' },
+  { id: 'checkin', kind: 'link', tag: '日常', title: '每日签到攒金币', desc: '每天签到得金币（VIP 双倍），连签 7/30/100 天再拿 100/500/2000 金币里程碑加成。', link: '/wallet', linkText: '去签到', accent: '#b3892f' },
   { id: 'bugbounty', kind: 'info', tag: '赏金', title: 'Bug 赏金猎人', desc: '发现任何 bug 或体验问题，请联系管理员提交反馈，一经采纳奖励 100 金币起，重大问题另有钻石与 VIP 加码。', accent: '#5c8a63' },
   { id: 'invite', kind: 'info', tag: '裂变', title: '邀请好友共创', desc: '在「设置 / 钱包」使用邀请密钥，邀请越多奖励越丰厚。与好友一起把幻域写满故事。', link: '/wallet', linkText: '查看兑换码', accent: '#c25a38' }
 ];
@@ -2190,7 +2190,7 @@ async function route(method, path, search, body, headers) {
     const castList = cast.map(c => `「${c.name}」(${c.tagline || '登场角色'})`).join('、');
     let target, system;
     if (body.narrator) { target = { id: null, name: '旁白', avatar: null }; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。你是「旁白」，请用富有画面感的第三人称，推进剧情、描写环境氛围或引出转折，控制在 2-4 句话，不要替具体角色说出对白。`; }
-    else { const c = cast.find(x => x.id === body.character_id) || cast[0]; if (!c) throw new Error('剧场没有 AI 角色'); target = c; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`; }
+    else { const c = cast.find(x => x.id === body.character_id) || cast[0]; if (!c) throw new Error('这部作品还没有 AI 角色'); target = c; system = `这是一个多人即兴剧场。场景：${t.scene || '自由发挥'}。登场角色有：${castList}。\n你现在只扮演其中的「${c.name}」。${c.persona || c.intro || ''}\n请严格以「${c.name}」的身份，根据下面的剧情进展生成一段符合人设的台词与动作（可含 *动作描写*），只说这一个角色的内容，不要替玩家或其他角色发言，控制在 1-3 句。`; }
     // 导演台：文风约束全体；导演密令仅注入旁白（与真实服务端口径一致）。
     if (t.style) system += `\n【文风要求】整体行文风格：${t.style}。`;
     if (t.directive && body.narrator) system += `\n【导演密令（读者不可见，请在续写中悄然遵循，勿直接透露）】${String(t.directive).slice(0, 1000)}`;
@@ -2220,29 +2220,29 @@ async function route(method, path, search, body, headers) {
     }).sort((a, b) => String(b.last_at || '').localeCompare(String(a.last_at || '')));
     return J({ theaters: rows });
   }
-  if (method === 'POST' && path === '/theater') { need(); if (!body.name) return E('剧场名称必填'); if (!Array.isArray(body.cast) || !body.cast.length) return E('请至少选择一位 AI 角色登场'); const t = insert('theaters', { name: body.name, owner_id: me.id, scene: body.scene || '', cover: body.cover || null, is_public: body.is_public === false ? 0 : 1, stage_config: cleanStage(body.stage_config), worldbook: cleanWorld(body.worldbook), style: String(body.style || '').slice(0, 30), directive: '', status: 'ongoing', bgm: '' }); insert('theater_members', { theater_id: t.id, user_id: me.id }); body.cast.forEach(cid => { if (!find('theater_cast', x => x.theater_id === t.id && x.character_id === cid)) insert('theater_cast', { theater_id: t.id, character_id: cid }); }); if (body.scene) insert('theater_messages', { theater_id: t.id, sender_type: 'narrator', sender_id: null, name: '旁白', avatar: null, content: body.scene }); return J({ theater: t }); }
+  if (method === 'POST' && path === '/theater') { need(); if (!body.name) return E('作品名称必填'); if (!Array.isArray(body.cast) || !body.cast.length) return E('请至少选择一位 AI 角色登场'); const t = insert('theaters', { name: body.name, owner_id: me.id, scene: body.scene || '', cover: body.cover || null, is_public: body.is_public === false ? 0 : 1, stage_config: cleanStage(body.stage_config), worldbook: cleanWorld(body.worldbook), style: String(body.style || '').slice(0, 30), directive: '', status: 'ongoing', bgm: '' }); insert('theater_members', { theater_id: t.id, user_id: me.id }); body.cast.forEach(cid => { if (!find('theater_cast', x => x.theater_id === t.id && x.character_id === cid)) insert('theater_cast', { theater_id: t.id, character_id: cid }); }); if (body.scene) insert('theater_messages', { theater_id: t.id, sender_type: 'narrator', sender_id: null, name: '旁白', avatar: null, content: body.scene }); return J({ theater: t }); }
   if ((m = P(/^\/theater\/(\d+)\/join$/)) && method === 'POST') { need(); const tid = +m[1]; if (!find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) insert('theater_members', { theater_id: tid, user_id: me.id }); return J({ ok: true }); }
-  if ((m = P(/^\/theater\/(\d+)\/leave$/)) && method === 'POST') { need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (t && t.owner_id === me.id) return E('房主不能退出，请先解散剧场', 400); db.theater_members = filter('theater_members', x => !(x.theater_id === tid && x.user_id === me.id)); save(); return J({ ok: true }); }
+  if ((m = P(/^\/theater\/(\d+)\/leave$/)) && method === 'POST') { need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (t && t.owner_id === me.id) return E('作者不能退出，可在导演台完结或删除作品', 400); db.theater_members = filter('theater_members', x => !(x.theater_id === tid && x.user_id === me.id)); save(); return J({ ok: true }); }
   if ((m = P(/^\/theater\/(\d+)\/say$/)) && method === 'POST') { need(); const tid = +m[1]; const t0 = find('theaters', x => x.id === tid); if (t0 && (t0.status || 'ongoing') === 'finished') return E('本作已完结，作者可在导演台重新开启连载'); if (!body.content) return E('内容不能为空'); if (!find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) insert('theater_members', { theater_id: tid, user_id: me.id }); const msg = insert('theater_messages', { theater_id: tid, sender_type: 'user', sender_id: me.id, name: me.display_name, avatar: me.avatar, content: body.content }); return J({ message: msg }); }
   if ((m = P(/^\/theater\/(\d+)\/act$/)) && method === 'POST') {
-    need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (!t) return E('剧场不存在', 404);
+    need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (!t) return E('作品不存在', 404);
     if ((t.status || 'ongoing') === 'finished') return E('本作已完结，作者可在导演台重新开启连载');
     const s = find('settings', x => x.user_id === me.id);
     const eff = effectiveLLM(s);
-    if (eff.platform) { const fee = platformFee(me, 0); if (me.gold < fee) return E(`金币不足，剧场联机平台 AI 需 ${fee} 金币（当前 ${me.gold}）`); }
+    if (eff.platform) { const fee = platformFee(me, 0); if (me.gold < fee) return E(`金币不足，互动小说平台 AI 需 ${fee} 金币（当前 ${me.gold}）`); }
     try {
       const { target, content, narrator } = await genTheaterReply(t, s, body, null);
       const msg = insert('theater_messages', { theater_id: tid, sender_type: narrator ? 'narrator' : 'ai', sender_id: target.id, name: target.name, avatar: target.avatar, content });
-      if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 剧场联机' }); } catch { /* */ } }
+      if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 互动小说' }); } catch { /* */ } }
       return J({ message: msg, fee: eff.platform ? platformFee(me, 0) : 0, balance: eff.platform ? me.gold : undefined });
     } catch (e) { return E(e.message, 502); }
   }
   if ((m = P(/^\/theater\/(\d+)\/retry$/)) && method === 'POST') {
-    need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (!t) return E('剧场不存在', 404);
-    if (t.owner_id !== me.id && !find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) return E('请先加入该剧场', 403);
+    need(); const tid = +m[1]; const t = find('theaters', x => x.id === tid); if (!t) return E('作品不存在', 404);
+    if (t.owner_id !== me.id && !find('theater_members', x => x.theater_id === tid && x.user_id === me.id)) return E('请先加入这部作品', 403);
     const s = find('settings', x => x.user_id === me.id);
     const eff = effectiveLLM(s);
-    if (eff.platform) { const fee = platformFee(me, 0); if (me.gold < fee) return E(`金币不足，剧场联机平台 AI 需 ${fee} 金币（当前 ${me.gold}）`); }
+    if (eff.platform) { const fee = platformFee(me, 0); if (me.gold < fee) return E(`金币不足，互动小说平台 AI 需 ${fee} 金币（当前 ${me.gold}）`); }
     const msgs = filter('theater_messages', x => x.theater_id === tid);
     const last = msgs[msgs.length - 1];
     if (!last || (last.sender_type !== 'ai' && last.sender_type !== 'narrator')) return E('最近一段不是 AI 续写，无法重写', 400);
@@ -2251,16 +2251,16 @@ async function route(method, path, search, body, headers) {
       const { target, content, narrator } = await genTheaterReply(t, s, body2, last.id);
       db.theater_messages = filter('theater_messages', x => x.id !== last.id);
       const msg = insert('theater_messages', { theater_id: tid, sender_type: narrator ? 'narrator' : 'ai', sender_id: target.id, name: target.name, avatar: target.avatar, content });
-      if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 剧场重写' }); } catch { /* */ } }
+      if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 互动小说重写' }); } catch { /* */ } }
       save();
       return J({ removedId: last.id, message: msg, fee: eff.platform ? platformFee(me, 0) : 0, balance: eff.platform ? me.gold : undefined });
     } catch (e) { return E(e.message, 502); }
   }
   if ((m = P(/^\/theater\/(\d+)\/messages$/)) && method === 'GET') { const tid = +m[1]; const after = parseInt(search.get('after'), 10) || 0; return J({ messages: filter('theater_messages', x => x.theater_id === tid && x.id > after) }); }
-  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'PATCH') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); if (t.owner_id !== me.id) return E('仅作者可修改舞台设定', 403); if (body.stage_config !== undefined) t.stage_config = cleanStage(body.stage_config); if (body.worldbook !== undefined) t.worldbook = cleanWorld(body.worldbook); if (typeof body.name === 'string' && body.name.trim()) t.name = body.name.trim().slice(0, 80); if (typeof body.scene === 'string') t.scene = body.scene.slice(0, 4000); if (body.cover !== undefined) t.cover = body.cover || null; if (body.style !== undefined) t.style = String(body.style || '').slice(0, 30); if (body.directive !== undefined) t.directive = String(body.directive || '').slice(0, 1000); if (body.status !== undefined) t.status = body.status === 'finished' ? 'finished' : 'ongoing'; if (body.bgm !== undefined) t.bgm = String(body.bgm || '').slice(0, 500); save(); return J({ theater: { ...t, stage_config: cleanStage(t.stage_config), worldbook: cleanWorld(t.worldbook) } }); }
-  if ((m = P(/^\/theater\/(\d+)\/chapter$/)) && method === 'POST') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); if (t.owner_id !== me.id) return E('仅作者可以分章', 403); const title = String(body.title || '').trim().slice(0, 60); if (!title) return E('请填写章节标题'); const msg = insert('theater_messages', { theater_id: t.id, sender_type: 'chapter', sender_id: null, name: '章节', avatar: null, content: title }); return J({ message: msg }); }
+  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'PATCH') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('作品不存在', 404); if (t.owner_id !== me.id) return E('仅作者可修改舞台设定', 403); if (body.stage_config !== undefined) t.stage_config = cleanStage(body.stage_config); if (body.worldbook !== undefined) t.worldbook = cleanWorld(body.worldbook); if (typeof body.name === 'string' && body.name.trim()) t.name = body.name.trim().slice(0, 80); if (typeof body.scene === 'string') t.scene = body.scene.slice(0, 4000); if (body.cover !== undefined) t.cover = body.cover || null; if (body.style !== undefined) t.style = String(body.style || '').slice(0, 30); if (body.directive !== undefined) t.directive = String(body.directive || '').slice(0, 1000); if (body.status !== undefined) t.status = body.status === 'finished' ? 'finished' : 'ongoing'; if (body.bgm !== undefined) t.bgm = String(body.bgm || '').slice(0, 500); save(); return J({ theater: { ...t, stage_config: cleanStage(t.stage_config), worldbook: cleanWorld(t.worldbook) } }); }
+  if ((m = P(/^\/theater\/(\d+)\/chapter$/)) && method === 'POST') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('作品不存在', 404); if (t.owner_id !== me.id) return E('仅作者可以分章', 403); const title = String(body.title || '').trim().slice(0, 60); if (!title) return E('请填写章节标题'); const msg = insert('theater_messages', { theater_id: t.id, sender_type: 'chapter', sender_id: null, name: '章节', avatar: null, content: title }); return J({ message: msg }); }
   if ((m = P(/^\/theater\/(\d+)\/choices$/)) && method === 'POST') {
-    need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404);
+    need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('作品不存在', 404);
     if ((t.status || 'ongoing') === 'finished') return E('本作已完结');
     const s = find('settings', x => x.user_id === me.id);
     const eff = effectiveLLM(s);
@@ -2282,7 +2282,7 @@ async function route(method, path, search, body, headers) {
     } catch (e) { return E(e.message, 502); }
   }
   if ((m = P(/^\/theater\/(\d+)\/messages\/(\d+)\/react$/)) && method === 'POST') {
-    need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404);
+    need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('作品不存在', 404);
     const msg = find('theater_messages', x => x.id === +m[2] && x.theater_id === t.id); if (!msg) return E('段落不存在', 404);
     const emoji = String(body.emoji || '');
     if (!['❤️', '🔥', '😂', '😮', '👏', '😢'].includes(emoji)) return E('不支持的反应');
@@ -2294,8 +2294,8 @@ async function route(method, path, search, body, headers) {
     msg.reactions = map; save();
     return J({ id: msg.id, reactions: map });
   }
-  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'DELETE') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); if (t.owner_id !== me.id) return E('仅作者可删除作品', 403); db.theaters = filter('theaters', x => x.id !== t.id); db.theater_members = filter('theater_members', x => x.theater_id !== t.id); db.theater_cast = filter('theater_cast', x => x.theater_id !== t.id); db.theater_messages = filter('theater_messages', x => x.theater_id !== t.id); save(); return J({ ok: true }); }
-  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'GET') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean); const members = filter('theater_members', x => x.theater_id === t.id).map(x => ({ id: x.user_id, display_name: user(x.user_id)?.display_name, avatar: user(x.user_id)?.avatar })); const messages = filter('theater_messages', x => x.theater_id === t.id); const effL = effectiveLLM(find('settings', x => x.user_id === me.id)); const llm = effL ? { platform: !!effL.platform, fee: effL.platform ? platformFee(me, 0) : 0 } : { platform: false, fee: 0, unconfigured: true }; return J({ theater: { ...t, owner_name: user(t.owner_id)?.display_name, stage_config: cleanStage(t.stage_config), worldbook: t.owner_id === me.id ? cleanWorld(t.worldbook) : undefined, directive: t.owner_id === me.id ? (t.directive || '') : undefined }, cast, members, messages, joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id), llm }); }
+  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'DELETE') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('作品不存在', 404); if (t.owner_id !== me.id) return E('仅作者可删除作品', 403); db.theaters = filter('theaters', x => x.id !== t.id); db.theater_members = filter('theater_members', x => x.theater_id !== t.id); db.theater_cast = filter('theater_cast', x => x.theater_id !== t.id); db.theater_messages = filter('theater_messages', x => x.theater_id !== t.id); save(); return J({ ok: true }); }
+  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'GET') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('作品不存在', 404); const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean); const members = filter('theater_members', x => x.theater_id === t.id).map(x => ({ id: x.user_id, display_name: user(x.user_id)?.display_name, avatar: user(x.user_id)?.avatar })); const messages = filter('theater_messages', x => x.theater_id === t.id); const effL = effectiveLLM(find('settings', x => x.user_id === me.id)); const llm = effL ? { platform: !!effL.platform, fee: effL.platform ? platformFee(me, 0) : 0 } : { platform: false, fee: 0, unconfigured: true }; return J({ theater: { ...t, owner_name: user(t.owner_id)?.display_name, stage_config: cleanStage(t.stage_config), worldbook: t.owner_id === me.id ? cleanWorld(t.worldbook) : undefined, directive: t.owner_id === me.id ? (t.directive || '') : undefined }, cast, members, messages, joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id), llm }); }
 
   // ---------- community (cards / inbox) ----------
   if ((m = P(/^\/community\/publish-character\/(\d+)$/)) && method === 'POST') { need(); const c = find('characters', x => x.id === +m[1]); if (!c || c.owner_id !== me.id) return E('无权发布', 403); c.is_public = 1; save(); return J({ ok: true }); }

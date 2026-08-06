@@ -1,11 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
-import { useToast, Avatar, CountUp, CoinIcon } from '../ui.jsx';
+import { useToast, Avatar, CountUp, CoinIcon, Modal } from '../ui.jsx';
 import { BarChart, LineChart } from '../components/Charts.jsx';
-import { Eye, Heart, Star, Play, Users, Drama, ScrollText, TrendingUp, Sparkles, BarChart3, LineChart as LineIcon, Gift, Crown, Check, ChevronRight, Coins, TrendingDown, Calendar } from 'lucide-react';
+import { Eye, Heart, Star, Play, Users, Drama, ScrollText, TrendingUp, Sparkles, BarChart3, LineChart as LineIcon, Gift, Crown, Check, ChevronRight, Coins, TrendingDown, Calendar, BookOpen, Globe2, Feather } from 'lucide-react';
 
 const fmt = (n) => (n >= 10000 ? (n / 10000).toFixed(1) + 'w' : String(n ?? 0));
+
+// 创作指南：四条创作线各自是什么、发布到哪、哪条线怎么进分成。
+// 写作线正名后（剧场 → 互动小说）边界容易混，这里一次讲清，抑制「不知道
+// 往哪条线发布」对供给的抑制。
+const GUIDE_LINES = [
+  { ic: Drama, name: '角色卡', what: '一个可对话的 AI 角色：人设、开场白、语音、世界书触发条目。', where: '「创建角色」→ 编辑完成后在「发布」公开到发现广场。', rev: '其他用户用平台 AI 与你的角色对话/语音时，消耗计入你的「被投入池」，按创作者等级分成。' },
+  { ic: BookOpen, name: '世界书', what: '独立的世界观设定集：关键词触发、常驻条目、变量与分支，可挂载到多个角色。', where: '「世界书」板块创建，公开后可被任何角色关联。', rev: '暂不直接分成；挂载它的角色被使用时，收益归角色作者。' },
+  { ic: ScrollText, name: '剧本', what: '结构化剧情包：场景、开场、规则，玩家一键开演沿剧本推进。', where: '「写剧本」→ 可免费或定价（金币）发布到剧本市场。', rev: '付费剧本售出即入账（30 分钟冷静期后结算），销售收入全额归你。' },
+  { ic: Feather, name: '互动小说', what: '以读者为主角的即兴叙事：行动 → 旁白续写 → 命运抉择，支持章节与导演台。', where: '「互动小说」板块创建并公开连载。', rev: '内测期读者续写费不参与分成（防刷保护），后续版本开放。' },
+];
 
 export default function Studio() {
   const toast = useToast();
@@ -14,6 +24,7 @@ export default function Studio() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState('analytics');
   const [claiming, setClaiming] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const load = () => api('/me/studio').then(setData).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -47,8 +58,25 @@ export default function Studio() {
       <div className="topbar">
         <div style={{ flex: 1 }}><h1><TrendingUp size={20} style={{ verticalAlign: -3, marginRight: 6 }} />创作中心</h1>
           <div className="sub">作品数据、收益分析与创作者分成计划</div></div>
+        <button className="btn" onClick={() => setGuideOpen(true)}><BookOpen size={15} /> 创作指南</button>
         <button className="btn primary" onClick={() => nav('/publish')}><Sparkles size={15} /> 发布新作品</button>
       </div>
+
+      {guideOpen && (
+        <Modal onClose={() => setGuideOpen(false)}>
+          <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><BookOpen size={18} /> 创作指南 · 四条创作线</h2>
+          <p className="muted" style={{ fontSize: 13, marginTop: -6 }}>各条线是什么、发布到哪、收益怎么来，一次讲清。</p>
+          {GUIDE_LINES.map(g => (
+            <div key={g.name} className="card" style={{ padding: '12px 14px', marginBottom: 10 }}>
+              <b style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 14.5 }}><g.ic size={16} /> {g.name}</b>
+              <p className="muted" style={{ fontSize: 13, margin: '6px 0 4px' }}>{g.what}</p>
+              <p style={{ fontSize: 12.8, margin: '0 0 4px' }}><Globe2 size={12} style={{ verticalAlign: -2 }} /> <b>发布：</b>{g.where}</p>
+              <p style={{ fontSize: 12.8, margin: 0 }}><Coins size={12} style={{ verticalAlign: -2 }} /> <b>收益：</b>{g.rev}</p>
+            </div>
+          ))}
+          <button className="btn block" onClick={() => setGuideOpen(false)}>我知道了</button>
+        </Modal>
+      )}
 
       <div className="page">
         <div className="studio-cards">

@@ -38,7 +38,7 @@ export default function WelcomePopup() {
         <div className="wp-hero">
           <span className="wp-badge"><Sparkles size={14} /> 欢迎来到幻域</span>
           <h2>把你脑海里的故事，写成会呼吸的角色</h2>
-          <p>创建角色、共写剧本，在剧场与多位 AI 同台联机演出。未配置自己 API 也能畅聊——平台已为你备好内置语言服务。</p>
+          <p>创建角色、共写剧本，在互动小说里当自己故事的主角。未配置自己 API 也能畅聊——平台已为你备好内置语言服务。</p>
         </div>
 
         <div className="wp-bounty">

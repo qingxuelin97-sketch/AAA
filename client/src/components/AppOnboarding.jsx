@@ -106,7 +106,7 @@ export default function AppOnboarding() {
   const FEATURES = [
     { Icon: MessageCircle, title: '角色对话', copy: '与会呼吸的角色随时开聊，无需任何配置' },
     { Icon: Feather, title: '共写创作', copy: '角色卡、剧本、世界书与小说工坊随手创作' },
-    { Icon: Users, title: '同台演出', copy: '剧场联机，与多位 AI 和好友同台推进故事' },
+    { Icon: Users, title: '互动小说', copy: '以你为主角的即兴叙事，写下行动让 AI 续写世界' },
   ];
 
   const popup = (

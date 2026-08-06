@@ -12,7 +12,7 @@ import { Drama, Plug, Volume2, Eye, EyeOff, Sparkles, ArrowRight, Landmark, Dice
 const TAGLINES = [
   ['与你创造的', '角色一同呼吸'],
   ['编写世界书', '让故事自己生长'],
-  ['在剧场里', '与众生同台联机'],
+  ['在互动小说里', '当自己故事的主角'],
   ['你的幻域', '由你立法共治'],
 ];
 const FEATURES = [
