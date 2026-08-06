@@ -346,12 +346,6 @@ CREATE TABLE IF NOT EXISTS dm_messages (
   text TEXT NOT NULL, read INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
-CREATE TABLE IF NOT EXISTS post_likes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  created_at TEXT DEFAULT (datetime('now'))
-);
 -- 发现流「心动」：私有轻量喜欢信号（与收藏并存，不动 characters.likes 公开计数），
 -- 只喂推荐排序。此前只存客户端 localStorage，现回流服务端。
 CREATE TABLE IF NOT EXISTS hearts (
@@ -987,19 +981,11 @@ for (const sql of [
   'CREATE INDEX IF NOT EXISTS idx_dm_from ON dm_messages (from_id, id)',
   'CREATE INDEX IF NOT EXISTS idx_dm_to ON dm_messages (to_id, id)',
   'CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members (user_id)',
-  'CREATE INDEX IF NOT EXISTS idx_post_likes_post ON post_likes (post_id)',
   'CREATE INDEX IF NOT EXISTS idx_comments_moment ON comments (moment_id, id)',
   'CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews (target_type, target_id)',
   'CREATE INDEX IF NOT EXISTS idx_script_purchases_user ON script_purchases (user_id)',
   'CREATE INDEX IF NOT EXISTS idx_script_purchases_script ON script_purchases (script_id)',
 ]) { try { db.exec(sql); } catch { /* 表/列可能尚不存在，忽略 */ } }
-
-// —— post_likes 去重 + 唯一约束（与 moment_likes/favorites/script_likes 对齐，
-//    DB 级防重复点赞与计数漂移）。先删历史重复行，再建唯一索引。——
-try {
-  db.exec('DELETE FROM post_likes WHERE id NOT IN (SELECT MIN(id) FROM post_likes GROUP BY post_id, user_id)');
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_post_likes_uniq ON post_likes (post_id, user_id)');
-} catch { /* */ }
 
 // 进程退出时把 WAL 落盘并截断，抑制 WAL 文件长期膨胀（同步操作，安全）。
 process.on('exit', () => { try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* */ } });

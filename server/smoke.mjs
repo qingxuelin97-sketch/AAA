@@ -40,7 +40,7 @@ try {
     '/economy/checkin/calendar',
     '/characters/public', '/characters/mine', '/characters/recommended', '/characters/favorites/list', cid && `/characters/${cid}`,
     '/scripts', '/scripts/mine', sid && `/scripts/${sid}`, '/chat/conversations', convId && `/chat/conversations/${convId}`,
-    '/community/feed', '/community/inbox', '/social/moments', '/social/suggested', '/social/notifications',
+    '/community/inbox', '/social/moments', '/social/suggested', '/social/notifications',
     '/groups', '/theater', '/novels', '/announcements', '/engage/tasks', '/engage/events', '/engage/leaderboard', '/achievements', '/me/studio', '/me/insights', '/me/weekly',
     '/parliament/overview', '/parliament/proposals', '/parliament/councilors', pid && `/parliament/proposals/${pid}/comments`,
     '/friends', '/friends/requests', '/friends/state/2', '/dm', '/users/search?q=a', '/users/2', '/ai/images',
