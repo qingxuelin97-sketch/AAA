@@ -94,6 +94,10 @@ function CharPanelBody({ app, character, affinity, memories, newMem, setNewMem, 
   );
 }
 
+// 礼物目录会话级缓存：服务端 /chat/gifts 是价格与好感增量的权威（本地 GIFTS
+// 只是离线兜底镜像，不含 affinity），首开礼物面板拉一次全程复用。
+let giftCatalogCache = null;
+
 export default function Chat() {
   const app = isAppMode();
   const withAppClass = (base, hook) => app ? [base, hook].filter(Boolean).join(' ') : base;
@@ -133,6 +137,13 @@ export default function Chat() {
   const [inputFocused, setInputFocused] = useState(false); // App 壳：（ ）括号键随聚焦浮现
   const [plusPage, setPlusPage] = useState(0);       // 面板分页指示（0=互动 1=工具）
   const [giftOpen, setGiftOpen] = useState(false);   // 送礼物选择条
+  const [giftCatalog, setGiftCatalog] = useState(() => giftCatalogCache);
+  useEffect(() => {
+    if (!giftOpen || giftCatalog) return;
+    api('/chat/gifts').then(d => {
+      if (Array.isArray(d.gifts) && d.gifts.length) { giftCatalogCache = d.gifts; setGiftCatalog(d.gifts); }
+    }).catch(() => { /* 离线/失败退回本地镜像 */ });
+  }, [giftOpen, giftCatalog]);
   const [callOpen, setCallOpen] = useState(false);   // 语音/视频通话
   const plusPagerRef = useRef(null);
   const [streaming, setStreaming] = useState(false);
@@ -1136,13 +1147,13 @@ export default function Chat() {
                   <div className={withAppClass('chat-plus-sheet paged', 'qa-chat-tools-panel')} id={app ? 'chat-tools-panel' : undefined} role={app ? 'region' : undefined} aria-label={app ? '对话工具' : undefined}>
                     {giftOpen && (
                       <div className="cps-gifts">
-                        {GIFTS.map(g => (
+                        {(giftCatalog || GIFTS).map(g => (
                           <button key={g.id} onClick={() => sendGift(g)}>
                             {GIFT_ART[g.id]
                               ? <img className="cps-gift-img" src={GIFT_ART[g.id]} alt="" draggable="false" />
                               : <b>{g.e}</b>}
                             <span>{g.n.replace(/^一[枝块杯只封份枚把]/, '')}</span>
-                            <i className="cps-gift-price"><CoinIcon size={9} /> {g.price}</i>
+                            <i className="cps-gift-price"><CoinIcon size={9} /> {g.price}{g.affinity ? <em className="cps-gift-aff">♥+{g.affinity}</em> : null}</i>
                           </button>
                         ))}
                       </div>

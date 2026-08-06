@@ -1716,6 +1716,16 @@ async function route(method, path, search, body, headers) {
     conv.memories = (conv.memories || []).filter(x => x.id !== +m[2]); save();
     return J({ memories: conv.memories });
   }
+  // 礼物目录（与服务端 /chat/gifts 同构）：价格与好感增量的权威口
+  if (method === 'GET' && path === '/chat/gifts') {
+    need();
+    return J({ gifts: [
+      { id: 'candy', e: '🍬', n: '一把水果糖', price: 10, affinity: 1 }, { id: 'rose', e: '🌹', n: '一枝红玫瑰', price: 20, affinity: 2 },
+      { id: 'coffee', e: '☕', n: '一杯热咖啡', price: 30, affinity: 3 }, { id: 'cake', e: '🍰', n: '一块草莓蛋糕', price: 50, affinity: 4 },
+      { id: 'letter', e: '💌', n: '一封手写信', price: 60, affinity: 5 }, { id: 'bear', e: '🧸', n: '一只小熊玩偶', price: 100, affinity: 8 },
+      { id: 'pendant', e: '🌙', n: '一枚月亮吊坠', price: 300, affinity: 12 }, { id: 'mystery', e: '🎁', n: '一份神秘礼物', price: 500, affinity: 15 },
+    ] });
+  }
   // 礼物（真金币消耗）：与服务端 GIFT_CATALOG 同步的迷你镜像——扣款 + RP 消息 + 加好感。
   if ((m = P(/^\/chat\/conversations\/(\d+)\/gift$/)) && method === 'POST') {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);

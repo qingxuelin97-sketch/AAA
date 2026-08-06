@@ -24,14 +24,14 @@ export const AFFINITY_ART = [aff1, aff2, aff3, aff4, aff5, aff6, aff7];
 // 展示镜像：价格与好感增量以 server/routes/chat.js GIFT_CATALOG 为权威，
 // 两边必须同步。好感与对话共享每日配额，打满后礼物照送、好感 +0。
 export const GIFTS = [
-  { id: 'candy',   e: '🍬', n: '一把水果糖',   price: 10 },
-  { id: 'rose',    e: '🌹', n: '一枝红玫瑰',   price: 20 },
-  { id: 'coffee',  e: '☕', n: '一杯热咖啡',   price: 30 },
-  { id: 'cake',    e: '🍰', n: '一块草莓蛋糕', price: 50 },
-  { id: 'letter',  e: '💌', n: '一封手写信',   price: 60 },
-  { id: 'bear',    e: '🧸', n: '一只小熊玩偶', price: 100 },
-  { id: 'pendant', e: '🌙', n: '一枚月亮吊坠', price: 300 },
-  { id: 'mystery', e: '🎁', n: '一份神秘礼物', price: 500 },
+  { id: 'candy',   e: '🍬', n: '一把水果糖',   price: 10,  affinity: 1 },
+  { id: 'rose',    e: '🌹', n: '一枝红玫瑰',   price: 20,  affinity: 2 },
+  { id: 'coffee',  e: '☕', n: '一杯热咖啡',   price: 30,  affinity: 3 },
+  { id: 'cake',    e: '🍰', n: '一块草莓蛋糕', price: 50,  affinity: 4 },
+  { id: 'letter',  e: '💌', n: '一封手写信',   price: 60,  affinity: 5 },
+  { id: 'bear',    e: '🧸', n: '一只小熊玩偶', price: 100, affinity: 8 },
+  { id: 'pendant', e: '🌙', n: '一枚月亮吊坠', price: 300, affinity: 12 },
+  { id: 'mystery', e: '🎁', n: '一份神秘礼物', price: 500, affinity: 15 },
 ];
 
 // 随机事件：注入一个剧情转折，让 AI 顺着演（互动添趣的核心玩法）。
