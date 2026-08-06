@@ -2211,7 +2211,7 @@ async function route(method, path, search, body, headers) {
       const { target, content, narrator } = await genTheaterReply(t, s, body, null);
       const msg = insert('theater_messages', { theater_id: tid, sender_type: narrator ? 'narrator' : 'ai', sender_id: target.id, name: target.name, avatar: target.avatar, content });
       if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 剧场联机' }); } catch { /* */ } }
-      return J({ message: msg });
+      return J({ message: msg, fee: eff.platform ? platformFee(me, 0) : 0, balance: eff.platform ? me.gold : undefined });
     } catch (e) { return E(e.message, 502); }
   }
   if ((m = P(/^\/theater\/(\d+)\/retry$/)) && method === 'POST') {
@@ -2230,7 +2230,7 @@ async function route(method, path, search, body, headers) {
       const msg = insert('theater_messages', { theater_id: tid, sender_type: narrator ? 'narrator' : 'ai', sender_id: target.id, name: target.name, avatar: target.avatar, content });
       if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 剧场重写' }); } catch { /* */ } }
       save();
-      return J({ removedId: last.id, message: msg });
+      return J({ removedId: last.id, message: msg, fee: eff.platform ? platformFee(me, 0) : 0, balance: eff.platform ? me.gold : undefined });
     } catch (e) { return E(e.message, 502); }
   }
   if ((m = P(/^\/theater\/(\d+)\/messages$/)) && method === 'GET') { const tid = +m[1]; const after = parseInt(search.get('after'), 10) || 0; return J({ messages: filter('theater_messages', x => x.theater_id === tid && x.id > after) }); }
@@ -2255,7 +2255,7 @@ async function route(method, path, search, body, headers) {
       choices = choices.map(c => String(c).slice(0, 60)).filter(Boolean).slice(0, 3);
       if (!choices.length) return E('模型未返回可用抉择', 502);
       if (eff.platform) { try { applyTx(me.id, { kind: 'ai_fee', gold: -platformFee(me, 0), memo: '平台 AI · 命运抉择' }); } catch { /* */ } }
-      return J({ choices });
+      return J({ choices, fee: eff.platform ? platformFee(me, 0) : 0, balance: eff.platform ? me.gold : undefined });
     } catch (e) { return E(e.message, 502); }
   }
   if ((m = P(/^\/theater\/(\d+)\/messages\/(\d+)\/react$/)) && method === 'POST') {
@@ -2272,7 +2272,7 @@ async function route(method, path, search, body, headers) {
     return J({ id: msg.id, reactions: map });
   }
   if ((m = P(/^\/theater\/(\d+)$/)) && method === 'DELETE') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); if (t.owner_id !== me.id) return E('仅作者可删除作品', 403); db.theaters = filter('theaters', x => x.id !== t.id); db.theater_members = filter('theater_members', x => x.theater_id !== t.id); db.theater_cast = filter('theater_cast', x => x.theater_id !== t.id); db.theater_messages = filter('theater_messages', x => x.theater_id !== t.id); save(); return J({ ok: true }); }
-  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'GET') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean); const members = filter('theater_members', x => x.theater_id === t.id).map(x => ({ id: x.user_id, display_name: user(x.user_id)?.display_name, avatar: user(x.user_id)?.avatar })); const messages = filter('theater_messages', x => x.theater_id === t.id); return J({ theater: { ...t, owner_name: user(t.owner_id)?.display_name, stage_config: cleanStage(t.stage_config), worldbook: t.owner_id === me.id ? cleanWorld(t.worldbook) : undefined, directive: t.owner_id === me.id ? (t.directive || '') : undefined }, cast, members, messages, joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id) }); }
+  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'GET') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('剧场不存在', 404); const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean); const members = filter('theater_members', x => x.theater_id === t.id).map(x => ({ id: x.user_id, display_name: user(x.user_id)?.display_name, avatar: user(x.user_id)?.avatar })); const messages = filter('theater_messages', x => x.theater_id === t.id); const effL = effectiveLLM(find('settings', x => x.user_id === me.id)); const llm = effL ? { platform: !!effL.platform, fee: effL.platform ? platformFee(me, 0) : 0 } : { platform: false, fee: 0, unconfigured: true }; return J({ theater: { ...t, owner_name: user(t.owner_id)?.display_name, stage_config: cleanStage(t.stage_config), worldbook: t.owner_id === me.id ? cleanWorld(t.worldbook) : undefined, directive: t.owner_id === me.id ? (t.directive || '') : undefined }, cast, members, messages, joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id), llm }); }
 
   // ---------- community (cards / inbox) ----------
   if ((m = P(/^\/community\/publish-character\/(\d+)$/)) && method === 'POST') { need(); const c = find('characters', x => x.id === +m[1]); if (!c || c.owner_id !== me.id) return E('无权发布', 403); c.is_public = 1; save(); return J({ ok: true }); }

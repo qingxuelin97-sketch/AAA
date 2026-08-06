@@ -4,8 +4,32 @@ import { authRequired } from '../auth.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { push } from '../realtime.js';
+import { effectiveLLM } from '../llm.js';
+import { chargePlatformFeeJson, platformFee } from '../platform.js';
 
 const router = Router();
+const getSettings = (userId) => db.prepare('SELECT * FROM settings WHERE user_id = ?').get(userId);
+// 平台兜底计费的公共前置：解析凭据（用户 key 免费优先 / 平台按段计费）+
+// 预扣。多人房间「谁触发谁付费」——费用始终落在发起本次生成的用户头上，
+// 前端在续写操作区常驻披露（GET /:id 返回的 llm 字段）。
+function beginTheaterGeneration(req, res, t) {
+  const eff = effectiveLLM(getSettings(req.user.id));
+  if (!eff) {
+    res.status(400).json({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' });
+    return null;
+  }
+  const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(req.user.id);
+  const historyLen = db.prepare('SELECT COUNT(*) n FROM theater_messages WHERE theater_id = ?').get(t.id).n;
+  const feeCtx = chargePlatformFeeJson({
+    req, res, me, eff, historyLen,
+    memo: `平台 AI · 互动小说《${t.name || ''}》`,
+    kind: 'theater_fee', refundKind: 'theater_refund',
+    insufficientHint: '可前往钱包签到/兑换，或在设置中填写自己的 API。',
+  });
+  if (feeCtx.rejected) return null;
+  return { eff, me, feeCtx };
+}
+const goldOf = (uid) => db.prepare('SELECT gold FROM users WHERE id = ?').get(uid)?.gold ?? 0;
 const memberOf = (tid, uid) => !!db.prepare('SELECT 1 FROM theater_members WHERE theater_id = ? AND user_id = ?').get(tid, uid);
 
 // 新段落 SSE 秒推给其他在线读者 —— 此前只靠前端 4s 轮询，联机共读时
@@ -173,7 +197,14 @@ router.get('/:id', authRequired, (req, res) => {
   // 世界书条目与导演密令仅作者可见可编（避免泄露隐藏设定给普通读者）。
   if (t.owner_id === req.user.id) { t.worldbook = cleanWorld(t.worldbook); }
   else { t.worldbook = undefined; t.directive = undefined; }
-  res.json({ theater: t, cast, members, messages, joined: memberOf(t.id, req.user.id) });
+  // 计费披露（按请求者视角）：走平台模型时给出单段预估费用，前端在续写
+  // 操作区常驻「谁触发谁付费」提示；自带 key 用户 platform=false 零扣费。
+  const eff = effectiveLLM(getSettings(req.user.id));
+  const meRow = db.prepare('SELECT id, vip_until, svip FROM users WHERE id = ?').get(req.user.id);
+  const llm = eff
+    ? { platform: !!eff.platform, fee: eff.platform ? platformFee(meRow, messages.length) : 0 }
+    : { platform: false, fee: 0, unconfigured: true };
+  res.json({ theater: t, cast, members, messages, joined: memberOf(t.id, req.user.id), llm });
 });
 
 // 更新舞台设定（背景系统）—— 仅作者可改。也可顺带改名称 / 序章 / 封面。
@@ -245,7 +276,8 @@ router.post('/:id/say', authRequired, aiLimiter, (req, res) => {
 
 // 生成一段续写（旁白 / 角色），含世界书注入。excludeId 用于「重写」时排除被替换的那段。
 // 成功返回 { target, content, narrator }，失败 throw 带 code 的错误（由调用方决定状态码）。
-async function runGeneration(t, settings, body, excludeId) {
+// eff 来自 effectiveLLM：用户自带 key（免费）或平台语言服务（调用方已预扣费）。
+async function runGeneration(t, eff, body, excludeId) {
   const cast = castOf(t.id);
   let transcript = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 31').all(t.id).reverse();
   if (excludeId) transcript = transcript.filter(m => m.id !== excludeId);
@@ -273,16 +305,21 @@ async function runGeneration(t, settings, body, excludeId) {
   const wbCharIds = body?.narrator ? cast.map(c => c.id) : [target.id].filter(Boolean);
   system += buildWorldBlock(t, transcript, wbCharIds);
 
-  // SSRF 防护：剧场恒为用户自填 llm_base_url，除同步预检外必须走 safeFetch
-  //（DNS 复检 + 逐跳重定向复检 + 请求头超时），防解析到内网/重定向绕过。
-  assertPublicUrl(settings.llm_base_url);
-  const r = await safeFetch(settings.llm_base_url.replace(/\/$/, '') + '/chat/completions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
+  // 平台系统提示词前置注入（与 chat.js / novels.js 同范式）。
+  if (eff.platform && eff.system_prompt?.trim()) system = eff.system_prompt.trim() + '\n\n' + system;
+
+  // SSRF 防护：用户自填 base_url 不可信，同步预检 + safeFetch（DNS 复检 +
+  // 逐跳重定向复检 + 请求头超时），防解析到内网/重定向绕过。平台配置由
+  // GM 控制台设置、视为可信，走原生 fetch（可能部署在内网，novels 同范式）。
+  const doFetch = eff.platform ? fetch : (u, o) => safeFetch(u, o, { timeoutMs: 60000 });
+  if (!eff.platform) assertPublicUrl(eff.base_url);
+  const r = await doFetch(String(eff.base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
     body: JSON.stringify({
-      model: settings.llm_model, temperature: settings.llm_temperature, max_tokens: 400,
+      model: eff.model, temperature: eff.temperature, max_tokens: 400,
       messages: [{ role: 'system', content: system }, { role: 'user', content: `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请继续：` }]
     })
-  }, { timeoutMs: 60000 });
+  });
   if (!r.ok) { const e = new Error('模型服务暂不可用'); e.code = 502; throw e; }
   const data = await r.json();
   const content = (data.choices?.[0]?.message?.content || '').trim();
@@ -292,21 +329,26 @@ async function runGeneration(t, settings, body, excludeId) {
 const insertReply = (t, gen) => db.prepare('INSERT INTO theater_messages (theater_id, sender_type, sender_id, name, avatar, content) VALUES (?,?,?,?,?,?)')
   .run(t.id, gen.narrator ? 'narrator' : 'ai', gen.target.id || null, gen.target.name, gen.target.avatar, gen.content);
 
-// Drive an AI character (or narrator) to speak. Uses the caller's LLM settings.
+// Drive an AI character (or narrator) to speak. 自带 key 免费；无 key 走平台
+// 模型（预扣 + 失败退款，谁触发谁付费）。
 router.post('/:id/act', authRequired, aiLimiter, async (req, res) => {
   const t = db.prepare('SELECT * FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
   if (t.status === 'finished') return res.status(400).json({ error: '本作已完结，作者可在导演台重新开启连载' });
-  const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
-  if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
+  const gc = beginTheaterGeneration(req, res, t);
+  if (!gc) return;
   try {
-    const gen = await runGeneration(t, settings, req.body || {});
+    const gen = await runGeneration(t, gc.eff, req.body || {});
     const info = insertReply(t, gen);
+    gc.feeCtx.settle();
     const msg = db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid);
     pushTheaterMsg(t, msg, req.user.id);
-    res.json({ message: msg });
-  } catch (e) { res.status(e.status === 400 || e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
+    res.json({ message: msg, fee: gc.feeCtx.fee || 0, balance: gc.feeCtx.fee ? goldOf(req.user.id) : undefined });
+  } catch (e) {
+    gc.feeCtx.refund('生成失败');
+    res.status(e.status === 400 || e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' });
+  }
 });
 
 // 重写最近一段 AI 续写（旁白 / 角色）：先生成新内容，成功后替换旧段，失败则保留原文。
@@ -315,19 +357,23 @@ router.post('/:id/retry', authRequired, aiLimiter, async (req, res) => {
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
   if (t.status === 'finished') return res.status(400).json({ error: '本作已完结，作者可在导演台重新开启连载' });
-  const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
-  if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
   const last = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 1').get(t.id);
   if (!last || (last.sender_type !== 'ai' && last.sender_type !== 'narrator')) return res.status(400).json({ error: '最近一段不是 AI 续写，无法重写' });
+  const gc = beginTheaterGeneration(req, res, t);
+  if (!gc) return;
   const body = last.sender_type === 'narrator' ? { narrator: true } : { character_id: last.sender_id };
   try {
-    const gen = await runGeneration(t, settings, body, last.id);
+    const gen = await runGeneration(t, gc.eff, body, last.id);
     db.prepare('DELETE FROM theater_messages WHERE id = ?').run(last.id);
     const info = insertReply(t, gen);
+    gc.feeCtx.settle();
     const msg = db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid);
     pushTheaterMsg(t, msg, req.user.id, last.id);
-    res.json({ removedId: last.id, message: msg });
-  } catch (e) { res.status(e.status === 400 || e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' }); }
+    res.json({ removedId: last.id, message: msg, fee: gc.feeCtx.fee || 0, balance: gc.feeCtx.fee ? goldOf(req.user.id) : undefined });
+  } catch (e) {
+    gc.feeCtx.refund('生成失败');
+    res.status(e.status === 400 || e.code === 400 ? 400 : 502).json({ error: e.message || '模型服务暂不可用' });
+  }
 });
 
 // —— 章节分隔：作者在正文中插入一个章节标记（sender_type = 'chapter'）。
@@ -351,24 +397,27 @@ router.post('/:id/choices', authRequired, aiLimiter, async (req, res) => {
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   if (t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '请先加入该剧场' });
   if (t.status === 'finished') return res.status(400).json({ error: '本作已完结' });
-  const settings = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
-  if (!settings?.llm_api_key) return res.status(400).json({ error: '请先在设置中配置语言模型 API' });
+  const gc = beginTheaterGeneration(req, res, t);
+  if (!gc) return;
   const transcript = db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? ORDER BY id DESC LIMIT 20').all(t.id).reverse();
   const log = transcript.map(m => m.sender_type === 'chapter' ? `【新章节 · ${m.content}】` : `${m.name}：${m.content}`).join('\n');
   let system = `这是一部互动小说，读者是故事的主角。场景：${t.scene || '自由发挥'}。`;
   if (t.style) system += `文风：${t.style}。`;
   system += `\n请根据剧情进展，为主角设计 3 个风格迥异、都能推动剧情的下一步行动（每个 8-24 字，第一人称视角的行动或台词，不要编号），只输出 JSON 字符串数组，例如 ["推开吱呀作响的门","质问薇尔为何隐瞒","悄悄退回阴影中"]。`;
   try {
-    // 同上：用户自填地址必须走 safeFetch，防 DNS/重定向绕过同步预检。
-    assertPublicUrl(settings.llm_base_url);
-    const r = await safeFetch(String(settings.llm_base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.llm_api_key}` },
+    // 同上：用户自填地址必须走 safeFetch，防 DNS/重定向绕过同步预检；
+    // 平台配置可信，走原生 fetch。
+    const eff = gc.eff;
+    const doFetch = eff.platform ? fetch : (u, o) => safeFetch(u, o, { timeoutMs: 60000 });
+    if (!eff.platform) assertPublicUrl(eff.base_url);
+    const r = await doFetch(String(eff.base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
       body: JSON.stringify({
-        model: settings.llm_model, temperature: Math.min(1.2, (settings.llm_temperature || 0.8) + 0.15), max_tokens: 200,
+        model: eff.model, temperature: Math.min(1.2, (eff.temperature || 0.8) + 0.15), max_tokens: 200,
         messages: [{ role: 'system', content: system }, { role: 'user', content: `【当前剧情】\n${log || '（剧情刚刚开始）'}\n\n请给出 3 个抉择：` }]
       })
-    }, { timeoutMs: 60000 });
-    if (!r.ok) return res.status(502).json({ error: '模型服务暂不可用' });
+    });
+    if (!r.ok) { gc.feeCtx.refund('上游错误'); return res.status(502).json({ error: '模型服务暂不可用' }); }
     const data = await r.json();
     let raw = (data.choices?.[0]?.message?.content || '').trim();
     const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i); if (fence) raw = fence[1].trim();
@@ -376,9 +425,10 @@ router.post('/:id/choices', authRequired, aiLimiter, async (req, res) => {
     try { const arr = JSON.parse(raw); if (Array.isArray(arr)) choices = arr; } catch { /* 走行解析回退 */ }
     if (!choices.length) choices = raw.split('\n').map(s => s.replace(/^[\s\d\-.、*"'\[\]]+|["'\],]+$/g, '').trim()).filter(Boolean);
     choices = choices.map(c => String(c).slice(0, 60)).filter(Boolean).slice(0, 3);
-    if (!choices.length) return res.status(502).json({ error: '模型未返回可用抉择' });
-    res.json({ choices });
-  } catch { res.status(502).json({ error: '模型服务暂不可用' }); }
+    if (!choices.length) { gc.feeCtx.refund('空产出'); return res.status(502).json({ error: '模型未返回可用抉择' }); }
+    gc.feeCtx.settle();
+    res.json({ choices, fee: gc.feeCtx.fee || 0, balance: gc.feeCtx.fee ? goldOf(req.user.id) : undefined });
+  } catch { gc.feeCtx.refund('生成失败'); res.status(502).json({ error: '模型服务暂不可用' }); }
 });
 
 // —— 段落反应：读者对任意段落点 emoji，同一 emoji 再点一次取消。

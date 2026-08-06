@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { getPlatform, chargePlatformFee } from '../platform.js';
+import { effectiveLLM as effectiveLLMBase } from '../llm.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { bumpDaily } from '../daily.js';
@@ -10,22 +11,12 @@ import { str as clampStr } from '../validate.js';
 const router = Router();
 
 /* ───────────────────────── LLM plumbing ─────────────────────────
-   纯小说创作复用「用户自带 Key 优先、否则走平台服务（按金币计费）」的同一套逻辑。
-   写作温度默认偏高（更有文采），可被设置里的 llm_temperature 覆盖。 */
+   纯小说创作复用「用户自带 Key 优先、否则走平台服务（按金币计费）」的统一判定
+  （server/llm.js 严格版：只有 key 没有 base_url 时回退平台，修复此前宽松版
+   拼出 ERR_INVALID_URL 的隐患）。写作温度默认偏高（更有文采）、长产出下限
+   1600 tokens，可被设置里的 llm_temperature / llm_max_tokens 覆盖。 */
 function getSettings(userId) { return db.prepare('SELECT * FROM settings WHERE user_id = ?').get(userId); }
-function effectiveLLM(settings) {
-  if (settings?.llm_api_key) {
-    return { base_url: settings.llm_base_url, api_key: settings.llm_api_key, model: settings.llm_model,
-      temperature: settings.llm_temperature, max_tokens: settings.llm_max_tokens, system_prompt: '', platform: false };
-  }
-  const p = getPlatform();
-  if (p.key && p.base_url) {
-    return { base_url: p.base_url, api_key: p.key, model: p.model,
-      temperature: settings?.llm_temperature ?? 0.9, max_tokens: Math.max(settings?.llm_max_tokens || 0, 1600),
-      system_prompt: p.system_prompt || '', platform: true };
-  }
-  return null;
-}
+const effectiveLLM = (settings) => effectiveLLMBase(settings, { platformTemperature: 0.9, platformMinTokens: 1600 });
 
 // One-shot (non-streaming) completion — used for brainstorm / codex generation /
 // canon extraction / next-beat suggestions. Returns trimmed text or throws.

@@ -9,6 +9,7 @@ import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { log } from '../logger.js';
 import { grantAffinity, affinityPromptFor } from '../affinity.js';
+import { effectiveLLM } from '../llm.js';
 
 const router = Router();
 
@@ -18,23 +19,8 @@ function getSettings(userId) {
 
 // Resolve which LLM creds a request uses: the user's own key (free) takes priority,
 // otherwise fall back to the platform language service (billed per reply).
-// 关键：用户 key 必须同时有 base_url 才可用——只有 key 没有 base_url 时跳过，
-// 回退到平台模型。否则 pumpModelStream 会拼出 "/chat/completions" → ERR_INVALID_URL。
-// 这正是「后台测试平台配置成功、实际对话却报 Invalid URL」的根因：
-// test-llm 测的是平台配置（GM 后台填的），chat 走 effectiveLLM 优先用户个人配置。
-function effectiveLLM(settings) {
-  if (settings?.llm_api_key && settings?.llm_base_url && String(settings.llm_base_url).trim()) {
-    return { base_url: settings.llm_base_url, api_key: settings.llm_api_key, model: settings.llm_model,
-      temperature: settings.llm_temperature, max_tokens: settings.llm_max_tokens, system_prompt: '', platform: false };
-  }
-  const p = getPlatform();
-  if (p.key && p.base_url) {
-    return { base_url: p.base_url, api_key: p.key, model: p.model,
-      temperature: settings?.llm_temperature ?? 0.8, max_tokens: settings?.llm_max_tokens || 1024,
-      system_prompt: p.system_prompt || '', platform: true };
-  }
-  return null;
-}
+// 判定已抽到 server/llm.js（严格版：用户 key 必须同时有非空 base_url 才可用，
+// 详见该文件注释），chat / novels / theater 三条产品线共用同一份语义。
 
 // Split a combined "a:b" credential (Baidu APIKey:SecretKey / Volcano AppID:Token).
 const splitPair = (k) => { const s = String(k || ''); const i = s.indexOf(':'); return i < 0 ? [s.trim(), ''] : [s.slice(0, i).trim(), s.slice(i + 1).trim()]; };

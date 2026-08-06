@@ -60,6 +60,49 @@ export function chargePlatformFee({ req, res, sse, me, eff, historyLen, memo, re
   return ctx;
 }
 
+// chargePlatformFee 的 JSON 变体：非流式路由（互动小说 /act /retry /choices）用。
+// 语义与上面的 SSE 版一致（预扣 + 失败退款 + settle 结算），差异仅在呈现层：
+//   - 余额不足时直接 res.status(402).json 而非写 SSE 事件；
+//   - settle() 只结算，不回写余额事件——调用方自行把 fee/balance 放进 JSON 响应。
+// kind 可定制（互动小说记 theater_fee / theater_refund）：与 ai_fee 区分开，
+// 且内测期不带 ref_owner —— 多人剧场归因含糊，进创作者分成池会开自刷口子；
+// me.js 的分成池按 kind 白名单统计，theater_fee 天然被排除（双保险）。
+export function chargePlatformFeeJson({ req, res, me, eff, historyLen, memo, refOwner = null, convId = null, characterId = null, insufficientHint = '', kind = 'ai_fee', refundKind = 'ai_refund' }) {
+  const ctx = { fee: 0, rejected: false, charged: false, settle: () => {}, refund: () => {} };
+  if (!eff?.platform) return ctx;
+  ctx.fee = platformFee(me, historyLen);
+  const logExtra = { conversation_id: convId, character_id: characterId, fee_due: ctx.fee };
+  const logBase = { source: 'server', category: 'economy', user_id: me.id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '' };
+  let charge = null;
+  try {
+    charge = applyTx(me.id, { kind, gold: -ctx.fee, memo, ref_owner: refOwner, share_eligible: false });
+    ctx.charged = true;
+  } catch {
+    ctx.rejected = true;
+    res.status(402).json({ error: `金币不足，本次平台 AI 服务需 ${ctx.fee} 金币（当前 ${me.gold}）。${insufficientHint}` });
+    return ctx;
+  }
+  ctx.settle = () => {
+    if (!ctx.charged) return;
+    settleTransaction(charge.transaction_id);
+    ctx.charged = false;
+  };
+  ctx.refund = (reason) => {
+    if (!ctx.charged) return;
+    try {
+      applyTx(me.id, {
+        kind: refundKind, gold: ctx.fee, memo: `退款（${reason}）· ${memo}`,
+        reversal_of: charge.transaction_id, idempotency_key: `${refundKind}:${charge.transaction_id}`,
+      });
+      ctx.charged = false;
+      log({ ...logBase, level: 'info', event: 'ai_fee_refund', message: `平台 AI 预扣退款（${reason}）`, extra: logExtra });
+    } catch (e) {
+      log({ ...logBase, level: 'error', event: 'ai_fee_refund_failed', message: `平台 AI 预扣退款失败（${reason}）：${e.message}`, extra: logExtra });
+    }
+  };
+  return ctx;
+}
+
 // Group-wide platform AI config (language / voice / image). Stored as JSON in
 // app_config. Keys live only in the server DB and are never returned unmasked.
 // 默认平台语言服务密钥从环境变量注入，杜绝硬编码进源码；GM 也可在后台配置。

@@ -30,6 +30,7 @@
     "app:add:android": "node scripts/configure-android.mjs --before && npm run build:static && npx cap add android && node scripts/configure-android.mjs --after",
     "app:add:ios": "npx cap add ios",
     "test:sec": "node server/sec-test.mjs",
+    "test:theater-fee": "node server/theater-fee-test.mjs",
     "test:payments": "node server/payment-test.mjs",
     "test:integrity": "node server/integrity-test.mjs",
     "test:safe-url": "node server/safe-url-test.mjs",

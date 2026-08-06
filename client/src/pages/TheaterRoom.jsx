@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
 import { useRealtimeEvent, useRealtimeFeat } from '../realtime.jsx';
-import { useToast, Avatar, Modal } from '../ui.jsx';
+import { useToast, Avatar, Modal, CoinIcon } from '../ui.jsx';
 import { useKeyboardInsetBar } from '../mobile.js';
 import { speakBrowser, stopSpeaking, onVoiceStateChange, currentVoiceId } from '../voice.js';
 import StageEditor from '../components/StageEditor.jsx';
@@ -213,6 +213,12 @@ export default function TheaterRoom() {
     catch { return `theater-${id}-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
   };
 
+  // 平台计费披露同步：走平台模型时服务端每次返回本段实际费用（随剧情长度
+  // 档位变化），常驻提示以此保持准确；自带 key 的响应 fee=0，不动披露。
+  const syncFee = (d) => {
+    if (d && d.fee > 0) setData(prev => prev ? { ...prev, llm: { ...(prev.llm || {}), platform: true, fee: d.fee } } : prev);
+  };
+
   // 让旁白 / 某个角色续写一段。
   const advance = async (body, label) => {
     if (!beginAction()) return false;
@@ -224,6 +230,7 @@ export default function TheaterRoom() {
         body: { ...(body || { narrator: true }), operation_id: operationId() },
       });
       push(d.message);
+      syncFee(d);
       return true;
     }
     catch (e) { toast(e.message, 'err'); return false; }
@@ -244,6 +251,7 @@ export default function TheaterRoom() {
       const d = await api('/theater/' + id + '/retry', { method: 'POST', body: { operation_id: operationId() } });
       setMessages(m => [...m.filter(x => x.id !== d.removedId), d.message]);
       lastId.current = Math.max(lastId.current, d.message.id);
+      syncFee(d);
     } catch (e) { toast(e.message, 'err'); } finally { setActing(false); endAction(); }
   };
 
@@ -278,7 +286,7 @@ export default function TheaterRoom() {
   const fetchChoices = async () => {
     if (actionLockRef.current || choices === 'loading') return;
     setChoices('loading');
-    try { const d = await api('/theater/' + id + '/choices', { method: 'POST', body: {} }); setChoices(d.choices); }
+    try { const d = await api('/theater/' + id + '/choices', { method: 'POST', body: {} }); setChoices(d.choices); syncFee(d); }
     catch (e) { toast(e.message, 'err'); setChoices(null); }
   };
   const pickChoice = (c) => { setChoices(null); say(c); };
@@ -814,6 +822,12 @@ export default function TheaterRoom() {
               </section>
             )}
 
+            {/* 平台兜底计费披露：多人共读时谁点续写谁付费，必须常驻明示（自带 key 用户不显示，零扣费） */}
+            {data?.llm?.platform && (
+              <div className="inovel-billing" role="note">
+                <CoinIcon size={11} /> 平台模型续写 · 每段约 {data.llm.fee} 金币 · 谁触发谁付费，失败自动退款
+              </div>
+            )}
             <div className="qa-theater-quick-actions" aria-label="续写操作">
               <AppButton variant="primary" disabled={actionBusy} onClick={() => advance(undefined, '旁白')}><Sparkles size={16} /> 推进剧情</AppButton>
               <AppButton variant="tertiary" selected={Boolean(choices)} disabled={actionBusy} onClick={() => choices ? setChoices(null) : fetchChoices()}><Wand2 size={16} /> 命运抉择</AppButton>
@@ -860,6 +874,11 @@ export default function TheaterRoom() {
                       <button className="inovel-choice-again" onClick={fetchChoices}><RefreshCw size={12} /> 换一批命运</button>
                     </>
                   )}
+              </div>
+            )}
+            {data?.llm?.platform && (
+              <div className="inovel-billing" role="note">
+                <CoinIcon size={11} /> 平台模型续写 · 每段约 {data.llm.fee} 金币 · 谁触发谁付费，失败自动退款
               </div>
             )}
             <div className="inovel-choices">

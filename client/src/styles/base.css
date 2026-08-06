@@ -740,6 +740,9 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 /* 底部完全透明：删掉渐变，输入框 / 行动按钮各有自己的底色 */
 .inovel-bar { background: none !important; backdrop-filter: none; }
 .inovel-choices { max-width: 680px; margin: 0 auto 8px; display: flex; flex-wrap: wrap; gap: 7px; }
+/* 平台兜底计费披露：多人共读时「谁触发谁付费」必须常驻明示（自带 key 用户不渲染） */
+.inovel-billing { max-width: 680px; margin: 0 auto 6px; display: flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: var(--muted); line-height: 1.4; }
 .inovel-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px 6px 6px; border-radius: 999px; background: var(--panel);
   border: 1px solid var(--border-2); font-size: 12.5px; font-weight: 500; color: var(--text); cursor: pointer; box-shadow: var(--shadow-sm);
   transition: transform 0.2s var(--spring), border-color 0.16s, color 0.16s; }
