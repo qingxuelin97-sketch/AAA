@@ -411,6 +411,10 @@ function seed() {
   insert('favorites', { user_id: u1.id, character_id: cK.id });
   insert('favorites', { user_id: u1.id, character_id: cMian.id });
 
+  // 收件箱种子：演示态第一次打开消息页就能看到「他人推送」长什么样
+  insert('shares', { from_user: u2.id, to_user: u1.id, note: '这张卡的世界观超对你胃口，试试！', seen: 0,
+    title: cK.name, cover: cK.avatar, type: 'card', character_id: cK.id });
+
   const conv = insert('conversations', { user_id: u1.id, character_id: cVeil.id, title: '森灵 · 薇尔', updated_at: now() });
   insert('messages', { conversation_id: conv.id, role: 'assistant', content: cVeil.greeting });
   insert('messages', { conversation_id: conv.id, role: 'user', content: '我在寻找传说中的贤者之泉，听说它能治愈一切伤痛。' });
@@ -2313,8 +2317,26 @@ async function route(method, path, search, body, headers) {
 
   // ---------- community (cards / inbox) ----------
   if ((m = P(/^\/community\/publish-character\/(\d+)$/)) && method === 'POST') { need(); const c = find('characters', x => x.id === +m[1]); if (!c || c.owner_id !== me.id) return E('无权发布', 403); c.is_public = 1; save(); return J({ ok: true }); }
-  if (method === 'GET' && path === '/community/inbox') { need(); return J({ shares: [] }); }
-  if (method === 'POST' && path === '/community/inbox/seen') { return J({ ok: true }); }
+  // 推送给玩家：定向送进对方收件箱 + 一条通知（与服务端语义同构；mock 无
+  // posts 表，share 行内联 title/cover/character_id）。
+  if (method === 'POST' && path === '/community/push') {
+    need();
+    const c = find('characters', x => x.id === +(body.character_id || 0));
+    if (!c || !c.is_public) return E('角色不存在或未公开', 404);
+    const target = find('users', u => u.username === body.to_username || u.display_name === body.to_username);
+    if (!target) return E('目标用户不存在', 404);
+    insert('shares', { from_user: me.id, to_user: target.id, note: String(body.note || '').slice(0, 200), seen: 0,
+      title: c.name, cover: c.avatar, type: 'card', character_id: c.id });
+    if (target.id !== me.id) notify(target.id, `「${me.display_name}」向你推送了《${c.name}》`, '/messages');
+    save(); return J({ ok: true });
+  }
+  if (method === 'GET' && path === '/community/inbox') {
+    need();
+    const rows = filter('shares', s => s.to_user === me.id)
+      .map(s => ({ ...s, from_name: user(s.from_user)?.display_name || '玩家' })).reverse();
+    return J({ shares: rows, unseen: rows.filter(s => !s.seen).length });
+  }
+  if (method === 'POST' && path === '/community/inbox/seen') { need(); filter('shares', s => s.to_user === me.id).forEach(s => { s.seen = 1; }); save(); return J({ ok: true }); }
 
   // ---------- engagement: views / reviews / reports / leaderboard ----------
   // 抽卡任务计数只认真实 /gacha/pull（与真实服务端 /track no-op 语义对齐）。

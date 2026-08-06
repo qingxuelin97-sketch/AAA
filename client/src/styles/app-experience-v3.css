@@ -694,7 +694,7 @@ html[data-app="1"] .qa3-messages .msgs-search.qa-icon-button {
 html[data-app="1"] .qa3-messages .msgs-tabs {
   position: relative;
   display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   width: 100% !important;
   height: 50px !important;
   margin: 3px 0 14px !important;
@@ -712,7 +712,7 @@ html[data-app="1"] .qa3-messages .msgs-tabs::before {
   z-index: -1;
   top: 3px;
   left: 3px;
-  width: calc(50% - 3px);
+  width: calc((100% - 6px) / 3);
   height: 42px;
   border: 1px solid rgb(255 255 255 / 62%);
   border-radius: 13px;
@@ -722,8 +722,12 @@ html[data-app="1"] .qa3-messages .msgs-tabs::before {
   transition: transform 380ms var(--ix-composition-spring);
 }
 
-html[data-app="1"] .qa3-messages .msgs-tabs:has(.qa-button:last-child.on)::before {
+html[data-app="1"] .qa3-messages .msgs-tabs:has(.msgs-tab-liked.on)::before {
   transform: translateX(100%);
+}
+
+html[data-app="1"] .qa3-messages .msgs-tabs:has(.msgs-tab-inbox.on)::before {
+  transform: translateX(200%);
 }
 
 html[data-app="1"] .qa3-messages .msgs-tabs .qa-button {
@@ -740,6 +744,15 @@ html[data-app="1"] .qa3-messages .msgs-tabs .qa-button {
 
 html[data-app="1"] .qa3-messages .msgs-tabs .qa-button.on {
   color: var(--ix-composition-teal) !important;
+}
+
+/* 收件箱 tab 未读角标：行内小药丸，复用全局 .msgs-badge 配色 */
+html[data-app="1"] .qa3-messages .msgs-tabs .msgs-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  vertical-align: 2px;
 }
 
 html[data-app="1"] .qa3-messages .msgs-entry-group {

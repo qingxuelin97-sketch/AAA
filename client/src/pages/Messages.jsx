@@ -22,7 +22,7 @@ import { tick } from '../appgestures.js';
 import { useAppOverlay } from '../overlay.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
 import {
-  Bell, BellOff, ChevronRight, Heart, MessageCircle, Pin, Search, UserRound, Users, X, Flame, Ellipsis
+  Bell, BellOff, ChevronRight, Heart, Inbox, MessageCircle, Pin, Search, UserRound, Users, X, Flame, Ellipsis
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -122,17 +122,43 @@ function AppFavoriteRow({ character, nav, onChat }) {
   );
 }
 
+function AppInboxRow({ share, onOpen }) {
+  const time = conversationTime({ updated_at: share.created_at });
+  return (
+    <div className="msgs-conv msgs-conv--app">
+      <button type="button" className="msgs-conv-main" onClick={onOpen}>
+        {share.cover && !isLegacyMonogramCover(share.cover)
+          ? <Avatar src={share.cover} name={share.title} size={50} />
+          : <span className="msgs-fav-ph"><AppPortraitFallback name={share.title} /></span>}
+        <span className="msgs-conv-tx">
+          <b>{share.title}</b>
+          <span>来自 {share.from_name || '玩家'}{share.note ? ` · ${share.note}` : ''}</span>
+        </span>
+        <span className="msgs-conv-meta">
+          {time && <time dateTime={share.created_at}>{time}</time>}
+          {!share.seen && <i className="msgs-badge">新</i>}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export default function Messages() {
   const nav = useNav();
   const toast = useToast();
   const appMode = isAppMode();
-  const [tab, setTab] = useState('chatted'); // 'liked' | 'chatted'
+  const [tab, setTab] = useState('chatted'); // 'liked' | 'chatted' | 'inbox'
   const [convs, setConvs] = useState(null);  // null = loading
   const [favs, setFavs] = useState(null);
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
   const [convError, setConvError] = useState('');
   const [favError, setFavError] = useState('');
+  // 收件箱（他人推送的角色卡等）：/community/inbox 一次拉取即带 unseen 计数，
+  // tab 角标才有数；进入 tab 时调 seen 清零。
+  const [inbox, setInbox] = useState(null);
+  const [inboxUnseen, setInboxUnseen] = useState(0);
+  const [inboxError, setInboxError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [pressMenu, setPressMenu] = useState(null); // { cv, at }
@@ -160,11 +186,26 @@ export default function Messages() {
       .then(() => { tick(6); loadConvs(); })
       .catch((error) => toast(error.message || '操作失败，请稍后重试', 'err'));
   };
+  const loadInbox = () => {
+    setInboxError('');
+    return api('/community/inbox')
+      .then(d => { setInbox(d.shares || []); setInboxUnseen(d.unseen || 0); })
+      .catch((error) => { setInbox([]); setInboxError(error.message || '暂时无法载入收件箱'); });
+  };
   useEffect(() => {
     loadConvs();
+    loadInbox();
     api('/social/notifications').then(d => setUnread(d.unread || 0)).catch(() => {});
     api('/dm').then(d => setDmUnread(d.unread_total || 0)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // 进入收件箱 tab 即已读：清角标 + 服务端 seen 落库
+  useEffect(() => {
+    if (tab === 'inbox' && inboxUnseen > 0) {
+      setInboxUnseen(0);
+      api('/community/inbox/seen', { method: 'POST' }).catch(() => {});
+    }
+  }, [tab, inboxUnseen]);
   useEffect(() => {
     if (tab === 'liked' && favs === null) {
       setFavError('');
@@ -174,7 +215,7 @@ export default function Messages() {
     }
   }, [tab, favs]);
 
-  useRealtimeEvent('notification', () => setUnread(u => u + 1));
+  useRealtimeEvent('notification', () => { setUnread(u => u + 1); loadInbox(); });
   useRealtimeEvent('dm', () => { api('/dm').then(d => setDmUnread(d.unread_total || 0)).catch(() => {}); });
   useEffect(() => {
     if (!appMode) return undefined;
@@ -185,6 +226,7 @@ export default function Messages() {
   useAppTabActive('/messages', () => {
     if (!appMode) return;
     loadConvs();
+    loadInbox();
     api('/social/notifications').then(d => setUnread(d.unread || 0)).catch(() => {});
     api('/dm').then(d => setDmUnread(d.unread_total || 0)).catch(() => {});
     if (tab === 'liked') {
@@ -222,6 +264,11 @@ export default function Messages() {
     if (!confirm('删除该对话？')) return;
     await removeConv(cv);
   };
+  // 收件箱行落点：角色卡类 post 直达角色详情（导入/开聊都在那）；其余类型暂无详情页
+  const openShare = (s) => {
+    if (s.character_id) nav('/character/' + s.character_id);
+    else toast('该内容暂不支持直接打开');
+  };
   const chatFav = async (c) => {
     try { const d = await api('/chat/conversations', { method: 'POST', body: { character_id: c.id } }); nav('/chats/' + d.conversation.id); }
     catch (error) {
@@ -240,9 +287,13 @@ export default function Messages() {
           </header>
           <div className="msgs-tabs" role="tablist" aria-label="消息筛选">
             <AppButton variant="tertiary" selected={tab === 'chatted'} role="tab" aria-selected={tab === 'chatted'}
-              className={tab === 'chatted' ? 'on' : ''} onClick={() => setTab('chatted')}>聊过</AppButton>
+              className={'msgs-tab-chatted' + (tab === 'chatted' ? ' on' : '')} onClick={() => setTab('chatted')}>聊过</AppButton>
             <AppButton variant="tertiary" selected={tab === 'liked'} role="tab" aria-selected={tab === 'liked'}
-              className={tab === 'liked' ? 'on' : ''} onClick={() => setTab('liked')}>收藏</AppButton>
+              className={'msgs-tab-liked' + (tab === 'liked' ? ' on' : '')} onClick={() => setTab('liked')}>收藏</AppButton>
+            <AppButton variant="tertiary" selected={tab === 'inbox'} role="tab" aria-selected={tab === 'inbox'}
+              className={'msgs-tab-inbox' + (tab === 'inbox' ? ' on' : '')} onClick={() => setTab('inbox')}>
+              收件箱{inboxUnseen > 0 && <i className="msgs-badge msgs-tab-badge">{inboxUnseen > 99 ? '99+' : inboxUnseen}</i>}
+            </AppButton>
           </div>
         </>
       ) : (
@@ -251,6 +302,9 @@ export default function Messages() {
           <div className="msgs-tabs" role="tablist">
             <button role="tab" aria-selected={tab === 'chatted'} className={tab === 'chatted' ? 'on' : ''} onClick={() => setTab('chatted')}>聊过</button>
             <button role="tab" aria-selected={tab === 'liked'} className={tab === 'liked' ? 'on' : ''} onClick={() => setTab('liked')}>赞过</button>
+            <button role="tab" aria-selected={tab === 'inbox'} className={tab === 'inbox' ? 'on' : ''} onClick={() => setTab('inbox')}>
+              收件箱{inboxUnseen > 0 && <i className="msgs-badge msgs-tab-badge">{inboxUnseen > 99 ? '99+' : inboxUnseen}</i>}
+            </button>
           </div>
           <button className="msgs-search" onClick={openCmdk} aria-label="搜索"><Search size={20} /></button>
         </div>
@@ -334,7 +388,7 @@ export default function Messages() {
             ))}
           </AppSection>
         </>
-      ) : (
+      ) : tab === 'liked' ? (
         <>
           <AppSection appMode={appMode} className="msgs-conv-group msgs-liked-group" aria-label="收藏的角色">
           {favs === null && (
@@ -379,6 +433,48 @@ export default function Messages() {
               <AppButton className="msgs-chatgo" size="sm" onClick={e => { e.stopPropagation(); chatFav(c); }}>
                 <MessageCircle size={14} /> 续聊
               </AppButton>
+            </div>
+            )
+          ))}
+          </AppSection>
+        </>
+      ) : (
+        <>
+          <AppSection appMode={appMode} className="msgs-conv-group msgs-inbox-group" aria-label="收件箱">
+          {inbox === null && (
+            <div className="msgs-skel">{[0, 1, 2].map(i => <div key={i} className="msgs-skel-row" />)}</div>
+          )}
+          {inbox && inbox.length === 0 && inboxError && (
+            <div className={'msgs-empty msgs-error' + (appMode ? '' : ' lgw-error')} role="alert">
+              {!appMode && <span className="lgw-error-ic"><Inbox size={20} /></span>}
+              <p className={appMode ? undefined : 'lgw-error-msg'}>{inboxError}</p>
+              {appMode
+                ? <AppButton variant="secondary" size="sm" onClick={() => { setInbox(null); loadInbox(); }}>重新载入</AppButton>
+                : <button className="btn primary lgw-error-retry" onClick={() => { setInbox(null); loadInbox(); }}>重新载入</button>}
+            </div>
+          )}
+          {inbox && inbox.length === 0 && !inboxError && (
+            <div className="msgs-empty">
+              <EmptyArt kind="library" size={120} />
+              <p>还没有收到推送 —— 好友在角色页「推送给玩家」时会出现在这里</p>
+              <AppButton className="btn primary sm" variant="primary" size="sm" onClick={() => nav('/')}>去逛逛</AppButton>
+            </div>
+          )}
+          {inbox && inbox.map(s => (
+            appMode ? (
+              <AppInboxRow key={s.id} share={s} onOpen={() => openShare(s)} />
+            ) : (
+            <div key={s.id} className="msgs-conv" role="button" tabIndex={0}
+              onClick={() => openShare(s)}
+              onKeyDown={e => e.key === 'Enter' && openShare(s)}>
+              {s.cover
+                ? <Avatar src={s.cover} name={s.title} size={50} />
+                : <div className="msgs-fav-ph"><CoverArt name={s.title} /></div>}
+              <div className="msgs-conv-tx">
+                <b>{s.title} <Inbox size={12} className="msgs-fav-heart" /></b>
+                <span>来自 {s.from_name || '玩家'}{s.note ? ` · ${s.note}` : ''}</span>
+              </div>
+              {!s.seen && <i className="msgs-badge">新</i>}
             </div>
             )
           ))}

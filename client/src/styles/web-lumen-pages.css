@@ -724,6 +724,14 @@ html:not([data-app="1"]) .msg .speak.on { color: var(--lg-act); }
 html:not([data-app="1"]) .msgs-tabs button { color: var(--lg-ink-3); min-height: var(--lg-control-min); }
 html:not([data-app="1"]) .msgs-tabs button.on { color: var(--lg-ink); }
 html:not([data-app="1"]) .msgs-tabs button.on::after { background: var(--lg-act); }
+/* 收件箱 tab 未读角标：行内小药丸 */
+html:not([data-app="1"]) .msgs-tabs .msgs-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  vertical-align: 2px;
+}
 html:not([data-app="1"]) .msgs-search { min-width: var(--lg-control-min); min-height: var(--lg-control-min); }
 /* 聚合入口：语义单色实心（不再三色渐变） */
 html:not([data-app="1"]) .msgs-entry {

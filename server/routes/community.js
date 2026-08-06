@@ -6,6 +6,7 @@ import { str, clampInt } from '../validate.js';
 import { bumpDaily } from '../daily.js';
 import { broadcast } from '../realtime.js';
 import { creatorTier } from '../creator.js';
+import { notify } from '../wallet.js';
 
 const router = Router();
 
@@ -118,25 +119,51 @@ router.post('/posts/:id/import', authRequired, (req, res) => {
   res.json({ character_id: info.lastInsertRowid });
 });
 
-// "Push to other players" — directed share into a user's inbox
+// "Push to other players" — directed share into a user's inbox.
+// 既收 post_id（广场卡片）也收 character_id（角色详情页入口）：后者解析该
+// 角色最新的广场卡片；从未发布过卡片的公开角色就地物化一张（作者=角色
+// 主人，内容与 publish-character 同构，不广播），保证收件箱 JOIN 恒成立。
 router.post('/push', authRequired, contentLimiter, (req, res) => {
-  const { post_id, to_username, note } = req.body || {};
-  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(post_id);
+  const { post_id, character_id, to_username, note } = req.body || {};
+  let post = null;
+  if (post_id) {
+    post = db.prepare('SELECT * FROM posts WHERE id = ?').get(post_id);
+  } else if (character_id) {
+    const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(character_id);
+    if (!c || !c.is_public) return res.status(404).json({ error: '角色不存在或未公开' });
+    post = db.prepare('SELECT * FROM posts WHERE character_id = ? ORDER BY id DESC LIMIT 1').get(c.id);
+    if (!post) {
+      const world = db.prepare('SELECT keys, content, enabled, position FROM world_entries WHERE character_id = ?').all(c.id);
+      const payload = { name: c.name, avatar: c.avatar, background: c.background, background_type: c.background_type,
+        tagline: c.tagline, intro: c.intro, greeting: c.greeting, persona: c.persona, tags: c.tags, world };
+      const info = db.prepare(`INSERT INTO posts (author_id, type, title, body, cover, character_id, payload, tags)
+        VALUES (?,?,?,?,?,?,?,?)`).run(
+        c.owner_id, 'card', c.name, c.tagline || (c.intro || '').slice(0, 120), c.avatar, c.id, JSON.stringify(payload), c.tags
+      );
+      post = db.prepare('SELECT * FROM posts WHERE id = ?').get(info.lastInsertRowid);
+    }
+  }
   if (!post) return res.status(404).json({ error: '内容不存在' });
   const target = db.prepare('SELECT id FROM users WHERE username = ? OR display_name = ?').get(to_username, to_username);
   if (!target) return res.status(404).json({ error: '目标用户不存在' });
   db.prepare('INSERT INTO shares (post_id, from_user, to_user, note) VALUES (?,?,?,?)')
-    .run(post_id, req.user.id, target.id, note || '');
+    .run(post.id, req.user.id, target.id, str(note, 200));
+  // 收件人秒级得知：通知落库 + SSE，链接落到消息页收件箱 tab。
+  if (target.id !== req.user.id) {
+    const fromName = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id)?.display_name || '有人';
+    notify(target.id, `「${fromName}」向你推送了《${post.title}》`, '/messages');
+  }
   res.json({ ok: true });
 });
 
 // My inbox of received pushes
 router.get('/inbox', authRequired, (req, res) => {
   const rows = db.prepare(`
-    SELECT s.*, p.title, p.type, p.cover, u.display_name AS from_name
+    SELECT s.*, p.title, p.type, p.cover, p.character_id, u.display_name AS from_name
     FROM shares s JOIN posts p ON p.id = s.post_id JOIN users u ON u.id = s.from_user
     WHERE s.to_user = ? ORDER BY s.created_at DESC`).all(req.user.id);
-  res.json({ shares: rows });
+  const unseen = db.prepare('SELECT COUNT(*) n FROM shares WHERE to_user = ? AND seen = 0').get(req.user.id).n;
+  res.json({ shares: rows, unseen });
 });
 
 router.post('/inbox/seen', authRequired, (req, res) => {
