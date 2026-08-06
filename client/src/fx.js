@@ -15,8 +15,12 @@ function spawnRipple(el, x, y) {
 }
 
 // Burst a few colored particles outward from a point (used on like/favorite).
-export function burst(x, y, colors = ['#ff5a8a', '#ff8aa8', '#ffd24a', '#e2885f']) {
+// App 壳默认换彩虹六色（与 --ix-rainbow-stops 同源）；lite 省电档不撒粒子。
+const RAINBOW_BURST = ['#56C4EA', '#7A8CFF', '#C77AF0', '#FF7AA8', '#FFB65A', '#6FD79A'];
+export function burst(x, y, colors) {
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (document.documentElement.dataset.perf === 'lite') return;
+  if (!colors) colors = document.documentElement.dataset.app === '1' ? RAINBOW_BURST : ['#ff5a8a', '#ff8aa8', '#ffd24a', '#e2885f'];
   const layer = document.createElement('div');
   layer.className = 'burst-layer';
   layer.style.left = x + 'px';
@@ -70,7 +74,7 @@ export function initFx() {
   initTilt();
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    const t = e.target.closest('.btn, .nav-item, .cast-chip, .seg button, .cat-bar button, .send-btn, .task-row .btn, .theme-seg button, .tabs-bar button, .qa-button, .qa-icon-button, .app-fab, .cps-item, .paren-btn, .starter-chip, .ah-sc');
+    const t = e.target.closest('.btn, .nav-item, .cast-chip, .seg button, .cat-bar button, .send-btn, .task-row .btn, .theme-seg button, .tabs-bar button, .qa-button, .qa-icon-button, .app-fab, .cps-item, .paren-btn, .starter-chip, .ah-sc, .qa-streak, .qa-task-main, .qa-glance-cell, .pf-bio, .pf-stats, .fd2-hist-main, .modal-x, .fd2-cat, .qa-cal-cell');
     if (!t || t.disabled || t.classList.contains('no-ripple')) return;
     // 彩虹青白动效：App 控件也吃涟漪（Dock 键除外 —— 它有墨滴+LED 自己的反馈；
     // 省电档整体关闸，保证低端机零额外绘制）。
@@ -87,7 +91,7 @@ export function initFx() {
   // 让 CSS 里的液态涟漪从真实触点扩散（否则一律从中心射出，很塑料感）。
   document.addEventListener('pointerdown', (e) => {
     if (document.documentElement.dataset.app !== '1') return;
-    const t = e.target.closest('.app-tab, .ah-sc, .msgs-entry, .pf-cell, .app-create-row, .fd2-act, .feed-cat');
+    const t = e.target.closest('.app-tab, .ah-sc, .msgs-entry, .pf-cell, .app-create-row, .fd2-act, .feed-cat, .qa-glance-cell, .qa-task-main');
     if (!t) return;
     const r = t.getBoundingClientRect();
     const rx = ((e.clientX - r.left) / r.width) * 100;

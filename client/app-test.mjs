@@ -569,9 +569,40 @@ assert.doesNotMatch(
   /nth-(?:child|of-type)\([^)]*\)[^{]*\{[^}]*(?:linear-gradient|color-mix\(in srgb, var\(--(?:diamond|gold|dusk)\))/,
   'legacy App layers must not reintroduce position-driven rainbow tinting',
 );
+const rainbowCss = await readFile(new URL('./src/styles/app-rainbow.css', import.meta.url), 'utf8');
+const rainbowMotionCss = await readFile(new URL('./src/styles/app-rainbow-motion.css', import.meta.url), 'utf8');
 const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls, quietPages, quietExperience,
   await readFile(new URL('./src/chat/chat-app.css', import.meta.url), 'utf8'),
+  rainbowCss, rainbowMotionCss,
 ].map((css) => css.replace(/\/\*[\s\S]*?\*\//g, '')).join('\n');
+
+/* ---- 彩虹系专属守卫 ---- */
+{
+  const rainbowAll = (rainbowCss + '\n' + rainbowMotionCss).replace(/\/\*[\s\S]*?\*\//g, '');
+  // A. 合成器专属 lint：彩虹两层的每个 @keyframes 只许声明 transform/opacity
+  for (const kf of rainbowAll.matchAll(/@keyframes\s+([\w-]+)\s*\{([\s\S]*?)\}\s*\}/g)) {
+    const props = [...kf[2].matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1]);
+    const bad = props.filter((p) => p !== 'transform' && p !== 'opacity');
+    assert.deepEqual(bad, [], `rainbow keyframes must animate transform/opacity only (${kf[1]} declares: ${bad.join(', ')})`);
+  }
+  // B. 令牌围栏：彩虹层自定义属性只许 --ix-rainbow-* 或列举的青蓝基面覆盖名单；禁 :root
+  const RAINBOW_BASE_OVERRIDES = new Set(['--ix-canvas', '--ix-grouped', '--ix-surface', '--ix-raise',
+    '--ix-hairline', '--ix-hairline-strong', '--ix-glass-nav', '--ix-glass-temp']);
+  for (const def of rainbowAll.matchAll(/(--[\w-]+)\s*:/g)) {
+    const name = def[1];
+    assert.ok(name.startsWith('--ix-rainbow-') || RAINBOW_BASE_OVERRIDES.has(name),
+      `rainbow layers may only define --ix-rainbow-* tokens or the enumerated cyan-glass base overrides (found ${name})`);
+  }
+  assert.doesNotMatch(rainbowCss + rainbowMotionCss, /(^|\n):root/, 'rainbow layers must stay App-fenced (no :root leak)');
+  // 导入顺序：pages-d < rainbow < rainbow-motion < chat-glass（chat-glass 恒最后）
+  const entryOrder = appEntrySource;
+  const iD = entryOrder.indexOf('app-ix-pages-d.css');
+  const iR = entryOrder.indexOf('app-rainbow.css');
+  const iM = entryOrder.indexOf('app-rainbow-motion.css');
+  const iG = entryOrder.indexOf('chat-glass.css');
+  assert.ok(iD > -1 && iR > iD && iM > iR && iG > iM && entryOrder.lastIndexOf('.css') < iG + 20,
+    'app-entry order must be pages-d < rainbow < rainbow-motion < chat-glass (frozen last)');
+}
 assert.doesNotMatch(appLayerCss, /background-clip:\s*text/, 'App layers must not restore gradient text');
 // The unfenced `.cps-item.hue-*` palette block is Web-owned (the App fence
 // overrides it with semantic tones); exclude only those lines from the ban.
@@ -585,8 +616,8 @@ const INFINITE_ALLOWLIST = new Set([
   /* motionSkel / qa3Skeleton（background-position 重绘循环）已退役 —— 彩虹系性能收口 */
   // Web-owned legacy loops living unfenced in shared files; the App fence neutralises them
   'chatKenburns', 'emptyFloat', 'insDrift', 'ringSlide', 'vmGoShine', 'vmShine', 'vmSpark',
-  // 彩虹青白动效层（用户定稿的呼吸循环；只动 transform/opacity，lite/reduced-motion 全关）
-  'ixBreath', 'ixLedBreath', 'ixDotBreath',
+  // 彩虹系动效层（用户定稿的呼吸/环旋循环；只动 transform/opacity，lite/reduced-motion 全关）
+  'ixBreath', 'ixLedBreath', 'ixDotBreath', 'ixStreakBreath', 'ixHaloSpin',
 ]);
 const infiniteNames = [...appLayerCss.matchAll(/animation:\s*([a-zA-Z][\w-]*)[^;]*\binfinite\b/g)].map((m) => m[1]);
 assert.deepEqual(
