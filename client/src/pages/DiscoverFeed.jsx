@@ -115,6 +115,24 @@ export default function DiscoverFeed() {
     api('/characters/favorites/list').then(d => { setFavSet(new Set((d.characters || []).map(c => c.id))); }).catch(() => {});
   }, []);
 
+  // 心动回流：以服务端集合为准回填；本机历史标记（feed_liked 时代）一次性
+  // 上传（只补不撤，toggle 语义下先查集合再 POST）后清键。失败静默——
+  // 未登录/离线时退回纯本机行为，不打断滑流。
+  useEffect(() => {
+    let alive = true;
+    api('/characters/hearts/list').then(async d => {
+      const server = new Set(d.ids || []);
+      let legacy = [];
+      try { legacy = JSON.parse(localStorage.getItem('feed_liked') || '[]'); } catch { /* */ }
+      for (const id of legacy.filter(x => !server.has(x))) {
+        try { const r = await api(`/characters/${id}/heart`, { method: 'POST' }); if (r.hearted) server.add(id); } catch { /* 已删角色等：跳过 */ }
+      }
+      try { localStorage.removeItem('feed_liked'); } catch { /* */ }
+      if (alive) setLikedSet(server);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
   // SSE：他人发布新公开角色卡时秒级插入到流顶部，不打断当前观看。
   useRealtimeEvent('character_new', (data) => {
     const c = data?.character; if (!c) return;
@@ -219,7 +237,10 @@ export default function DiscoverFeed() {
     } catch (e) { toast(e.message, 'err'); }
   };
   const like = (c) => {
+    // 本机乐观切换（persistLiked 兜底未登录/离线，登录后下次同步会迁移并清键），
+    // 同时静默上报服务端 toggle —— 心动从此喂给推荐排序。
     setLikedSet(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); persistLiked(n); return n; });
+    api(`/characters/${c.id}/heart`, { method: 'POST' }).catch(() => {});
   };
   // 双击点赞：卡面快速连点两下 → 点亮爱心 + 迸发动画（再双击不取消）。
   const cardTap = (e, c) => {
@@ -340,7 +361,7 @@ export default function DiscoverFeed() {
 
               {/* 方案B：右侧竖排互动条（玻璃圆钮），浮于画面右缘，脱离底部信息栈 */}
               <div className="fd2-acts">
-                <button className={'fd2-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label={liked ? '取消本机心动标记' : '标记为心动，仅保存在本机'} aria-pressed={appMode ? liked : undefined}>
+                <button className={'fd2-act' + (liked ? ' on' : '')} onClick={() => like(c)} aria-label={liked ? '取消心动' : '心动'} aria-pressed={appMode ? liked : undefined}>
                   <Heart size={24} fill={liked ? 'currentColor' : 'none'} />
                   <span>{liked ? '已心动' : '心动'}</span>
                 </button>

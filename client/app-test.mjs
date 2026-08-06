@@ -680,6 +680,12 @@ assert.equal(quietCharacterPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a
 assert.ok(quietCharacterPng.length >= 1_000_000, 'the production character fallback must retain the approved high-detail master');
 assert.match(artSource, /quiet-aqua-character-v3\.png\?url[\s\S]*QuietAquaCharacterArt/, 'the large App character art must load from the reviewed raster asset');
 assert.match(appHomeSource + discoverSource, /QuietAquaCharacterArt/, 'Today and Discover must use the reviewed character art for legacy seed media');
+// 心动回流（修缮①）：心动必须上报服务端、初始化从 hearts/list 回填、
+// 本机 feed_liked 历史一次性迁移后清键；旧「仅保存在本机」文案不得回潮。
+assert.match(discoverSource, /api\(`\/characters\/\$\{c\.id\}\/heart`, \{ method: 'POST' \}\)/, 'Discover heart taps must sync to the server heart endpoint');
+assert.match(discoverSource, /api\('\/characters\/hearts\/list'\)/, 'Discover must hydrate hearts from the server list');
+assert.match(discoverSource, /localStorage\.removeItem\('feed_liked'\)/, 'legacy feed_liked marks must migrate once then clear');
+assert.doesNotMatch(discoverSource, /仅保存在本机/, 'the local-only heart copy must not return after server sync');
 assert.match(vipSource, /immersive qa-vip[\s\S]*AppIconButton[\s\S]*AppButton/, 'the App membership page must opt into Quiet Aqua controls without replacing the Web branch');
 assert.match(quietPages, /\.qa-vip[\s\S]*:where\(\.vm-card-pat, \.vm-card-shine, \.vm-spark\)[\s\S]*display:\s*none/, 'the App membership page must remove campaign shine and spark effects');
 assert.match(quietPages, /\.qa-vip \.vm-card,[\s\S]*background:\s*#23272e/, 'membership gold must remain semantic instead of filling the App page');

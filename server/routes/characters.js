@@ -90,6 +90,8 @@ router.get('/recommended', authRequired, (req, res) => {
   const bump = (cat, w) => { if (cat) weight[cat] = (weight[cat] || 0) + w; };
   db.prepare(`SELECT c.category FROM favorites f JOIN characters c ON c.id = f.character_id WHERE f.user_id = ?`).all(uid).forEach(r => bump(r.category, 2));
   db.prepare(`SELECT c.category FROM conversations cv JOIN characters c ON c.id = cv.character_id WHERE cv.user_id = ?`).all(uid).forEach(r => bump(r.category, 1));
+  // 发现流「心动」：轻量私有喜欢，介于聊过与收藏之间，取同档 +1。
+  db.prepare(`SELECT c.category FROM hearts h JOIN characters c ON c.id = h.character_id WHERE h.user_id = ?`).all(uid).forEach(r => bump(r.category, 1));
   // S7 兴趣画像：用户显式选择的分类各 +2（与收藏同权），仅在 personalize 开启时生效。
   const st = db.prepare('SELECT interests, personalize FROM settings WHERE user_id = ?').get(uid);
   if (st && st.personalize !== 0 && st.interests) {
@@ -132,6 +134,27 @@ router.post('/:id/favorite', authRequired, (req, res) => {
   bumpDaily(req.user.id, 'fav');
   log({ category: 'character', level: 'info', event: 'favorite', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: Number(req.params.id), faved: true }, message: '收藏角色' });
   res.json({ faved: true });
+});
+
+// 心动（发现流轻量喜欢）：私有信号，不动 characters.likes 公开计数，
+// 只作为推荐排序的行为输入。toggle 语义与收藏一致。
+router.get('/hearts/list', authRequired, (req, res) => {
+  const ids = db.prepare('SELECT character_id FROM hearts WHERE user_id = ?').all(req.user.id).map(r => r.character_id);
+  res.json({ ids });
+});
+router.post('/:id/heart', authRequired, (req, res) => {
+  const has = db.prepare('SELECT 1 FROM hearts WHERE user_id = ? AND character_id = ?').get(req.user.id, req.params.id);
+  if (has) {
+    db.prepare('DELETE FROM hearts WHERE user_id = ? AND character_id = ?').run(req.user.id, req.params.id);
+    return res.json({ hearted: false });
+  }
+  // 与收藏同规则：私密角色对外 404，不当存在性探针；作者可标记自己的私密卡。
+  const character = db.prepare('SELECT id, owner_id, is_public FROM characters WHERE id = ?').get(req.params.id);
+  if (!character || (!character.is_public && character.owner_id !== req.user.id)) {
+    return res.status(404).json({ error: '角色不存在' });
+  }
+  db.prepare("INSERT INTO hearts (user_id, character_id, created_at) VALUES (?,?,datetime('now'))").run(req.user.id, req.params.id);
+  res.json({ hearted: true });
 });
 
 router.get('/:id', authOptional, (req, res) => {

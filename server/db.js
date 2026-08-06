@@ -352,6 +352,14 @@ CREATE TABLE IF NOT EXISTS post_likes (
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   created_at TEXT DEFAULT (datetime('now'))
 );
+-- 发现流「心动」：私有轻量喜欢信号（与收藏并存，不动 characters.likes 公开计数），
+-- 只喂推荐排序。此前只存客户端 localStorage，现回流服务端。
+CREATE TABLE IF NOT EXISTS hearts (
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, character_id)
+);
 `);
 
 // Lightweight column migrations (add new columns to existing DBs; ignore if present).

@@ -1562,6 +1562,8 @@ async function route(method, path, search, body, headers) {
     const bump = (cat, w) => { if (cat) weight[cat] = (weight[cat] || 0) + w; };
     favRows.forEach(f => bump(find('characters', x => x.id === f.character_id)?.category, 2));
     myConvs.forEach(cv => bump(find('characters', x => x.id === cv.character_id)?.category, 1));
+    // 发现流「心动」：轻量私有喜欢 +1（与服务端同构）
+    filter('hearts', h => h.user_id === me.id).forEach(h => bump(find('characters', x => x.id === h.character_id)?.category, 1));
     // S7 兴趣画像：显式兴趣各 +2（与收藏同权），仅 personalize 开启时生效（与服务端同构）
     const st = find('settings', x => x.user_id === me.id);
     if (st && st.personalize !== 0 && st.interests) String(st.interests).split(',').filter(Boolean).forEach(slug => bump(slug, 2));
@@ -1578,6 +1580,15 @@ async function route(method, path, search, body, headers) {
     need(); const cid = +m[1]; const ex = find('favorites', f => f.user_id === me.id && f.character_id === cid); const c = find('characters', x => x.id === cid);
     if (ex) { db.favorites = filter('favorites', f => !(f.user_id === me.id && f.character_id === cid)); if (c) c.likes = Math.max(0, c.likes - 1); save(); return J({ faved: false }); }
     insert('favorites', { user_id: me.id, character_id: cid }); if (c) c.likes++; bumpDaily(me.id, 'fav'); save(); return J({ faved: true });
+  }
+  // 心动（发现流轻量喜欢）：私有信号，不动 characters.likes，只喂推荐排序（与服务端同构）
+  if (method === 'GET' && path === '/characters/hearts/list') { need(); return J({ ids: filter('hearts', h => h.user_id === me.id).map(h => h.character_id) }); }
+  if ((m = P(/^\/characters\/(\d+)\/heart$/)) && method === 'POST') {
+    need(); const cid = +m[1]; const ex = find('hearts', h => h.user_id === me.id && h.character_id === cid);
+    if (ex) { db.hearts = filter('hearts', h => !(h.user_id === me.id && h.character_id === cid)); save(); return J({ hearted: false }); }
+    const c = find('characters', x => x.id === cid);
+    if (!c || (!c.is_public && c.owner_id !== me.id)) return E('角色不存在', 404);
+    insert('hearts', { user_id: me.id, character_id: cid }); save(); return J({ hearted: true });
   }
   if ((m = P(/^\/characters\/(\d+)$/))) {
     const cid = +m[1]; const c = find('characters', x => x.id === cid);
