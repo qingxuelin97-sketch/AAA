@@ -6,24 +6,24 @@ import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import coinArtUrl from '../assets/wallet-products/coin-currency.png';
 import diamondArtUrl from '../assets/wallet-products/diamond-currency.png';
-import { Sparkles, ArrowLeft, X, ShieldCheck, Ticket, RotateCw } from 'lucide-react';
+// 转盘美术素材（用户提供，matte 管线抠底）：底盘 8 格已含外圈灯珠、顶部 12 点
+// 是分界线（与服务端 index*45° 落点模型严格对齐）；按钮面留白由代码叠「GO」。
+import wheelBaseUrl from '../assets/app/wheel-base.png?url';
+import wheelPointerUrl from '../assets/app/wheel-pointer.png?url';
+import wheelHubUrl from '../assets/app/wheel-hub.png?url';
+import creditTicketUrl from '../assets/app/credit-ticket.png?url';
+import wheelBannerUrl from '../assets/app/wheel-banner.png?url';
+import { Sparkles, ArrowLeft, X, ShieldCheck, RotateCw } from 'lucide-react';
 
 // 幸运转盘（产品定案，替代旧扭蛋机）：奖品只有数字资产（金币/钻石）与
 // 聊天次数卡（1 卡抵 1 次平台 AI 对话费）。摇号、权重、保底、发奖全部在
 // 服务端 /gacha/spin；客户端只拿 index 播落点动画——转盘是「回放器」，
 // 不是「决定器」。动画只动 transform（合成层，不卡纪律）。
 const CONFETTI_COLORS = ['#ffd24a', '#ff8a3c', '#38DAD2', '#2E9FF7', '#b07cff', '#5ad2ff', '#ff6fa8'];
-const SEG_COLORS = {
-  gold: ['#FFF3D6', '#FFE6AE'],      // 金币档：暖金
-  diamond: ['#D9F6FF', '#B7E9FF'],   // 钻石档：冰蓝
-  credit: ['#EFE4FF', '#DFD0FF'],    // 聊天卡档：淡紫
-};
-const segColor = (p, i) => (SEG_COLORS[p.kind] || SEG_COLORS.gold)[i % 2];
 
 function PrizeIcon({ prize, size = 22 }) {
-  if (prize.kind === 'gold') return <img src={coinArtUrl} width={size} height={size} alt="" draggable="false" />;
-  if (prize.kind === 'diamond') return <img src={diamondArtUrl} width={size} height={size} alt="" draggable="false" />;
-  return <Ticket size={size} aria-hidden="true" />;   // 聊天次数卡（待专属 PNG 素材）
+  const src = prize.kind === 'gold' ? coinArtUrl : prize.kind === 'diamond' ? diamondArtUrl : creditTicketUrl;
+  return <img src={src} width={size} height={size} alt="" draggable="false" style={{ objectFit: 'contain' }} />;
 }
 
 export default function Gacha() {
@@ -73,6 +73,8 @@ export default function Gacha() {
   useEffect(() => () => clearTimeout(settleRef.current), []);
 
   const wheel = (
+    <>
+    <img className="lw-hero" src={wheelBannerUrl} alt="" draggable="false" />
     <div className="lw-stage">
       {confetti && (
         <div className="gx-confetti" aria-hidden="true">
@@ -82,9 +84,9 @@ export default function Gacha() {
         </div>
       )}
       <div className="lw-wrap" role="img" aria-label="幸运转盘">
-        <span className="lw-pointer" aria-hidden="true" />
-        <div className={'lw-wheel' + (spinning ? ' spinning' : '')}
-          style={{ transform: `rotate(${rot}deg)`, '--lw-conic': `conic-gradient(${prizes.map((p, i) => `${segColor(p, i)} ${i * 45}deg ${(i + 1) * 45}deg`).join(', ')})` }}>
+        <img className="lw-pointer" src={wheelPointerUrl} alt="" aria-hidden="true" draggable="false" />
+        <div className={'lw-wheel' + (spinning ? ' spinning' : '')} style={{ transform: `rotate(${rot}deg)` }}>
+          <img className="lw-wheel-art" src={wheelBaseUrl} alt="" draggable="false" />
           {prizes.map((p, i) => (
             <span key={p.id} className={'lw-seg' + (p.jackpot ? ' jackpot' : '')} style={{ transform: `rotate(${i * 45 + 22.5}deg)` }}>
               <i className="lw-seg-inner">
@@ -95,16 +97,18 @@ export default function Gacha() {
           ))}
         </div>
         <button className="lw-hub" onClick={spin} disabled={spinning || !gstate} aria-label={freeAvailable ? '免费转一次' : `${price} 金币转一次`}>
-          {spinning ? <RotateCw size={20} className="lw-hub-spin" /> : <b>GO</b>}
+          <img className="lw-hub-art" src={wheelHubUrl} alt="" draggable="false" />
+          {spinning ? <RotateCw size={22} className="lw-hub-spin" /> : <b>GO</b>}
         </button>
       </div>
     </div>
+    </>
   );
 
   const facts = (
     <>
       <div className="lw-meta">
-        <span className="lw-chip"><Ticket size={14} /> 聊天次数卡 <b>{credits}</b> 张</span>
+        <span className="lw-chip"><img src={creditTicketUrl} width={16} height={16} alt="" draggable="false" /> 聊天次数卡 <b>{credits}</b> 张</span>
         <span className="lw-chip"><ShieldCheck size={14} /> 稀有保底 <b>{pity}/{guarantee}</b></span>
       </div>
       <AppButton className="lw-spin-cta" variant="primary" size="lg" loading={spinning} disabled={!gstate} onClick={spin}>
