@@ -17,7 +17,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import Database from 'better-sqlite3';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,8 +40,29 @@ const run = (cmd, args, env) => new Promise((res, rej) => {
 console.log('· 灌入临时演示数据…');
 await run('node', ['server/seed.js'], { DB_PATH });
 
+// 上游 mock：预载进服务端进程，拦截**出站**的平台 AI 调用（生图/对话/TTS），
+// 让计费路径能端到端跑完而不真的联网。只拦截固定的 mock 主机，其余原样透传。
+// 平台生图配置指向字面公网 IP（93.184.216.34）以跳过 DNS 解析。
+const interceptor = path.join(__dirname, 'stress-test.interceptor.mjs');
+fs.writeFileSync(interceptor, `
+const realFetch = globalThis.fetch;
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+globalThis.fetch = async (url, opts = {}) => {
+  const u = String(url);
+  if (!u.includes('93.184.216.34')) return realFetch(url, opts);
+  if (u.includes('/images/generations')) return new Response(JSON.stringify({ data: [{ b64_json: PNG }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+  return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+};
+`);
+{
+  const db = new Database(DB_PATH);
+  const cfg = { image: { provider: 'openai', protocol: 'openai', base_url: 'https://93.184.216.34', key: 'sk-mock', model: 'gpt-image-1', size: '1024x1024' } };
+  db.prepare("INSERT INTO app_config (key,value) VALUES ('platform',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(JSON.stringify(cfg));
+  db.close();
+}
+
 console.log('· 启动服务端…');
-const srv = spawn(process.execPath, ['server/index.js'], {
+const srv = spawn(process.execPath, ['--import', pathToFileURL(interceptor).href, 'server/index.js'], {
   cwd: ROOT,
   env: {
     ...process.env, NODE_ENV: 'test', PORT: String(PORT), DB_PATH,
@@ -51,6 +72,8 @@ const srv = spawn(process.execPath, ['server/index.js'], {
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
+// 子进程 RSS（Linux /proc）：内存泄漏检测用。非 Linux 环境返回 0，对应断言跳过。
+const rss = () => { try { return Number(/VmRSS:\s+(\d+)/.exec(fs.readFileSync(`/proc/${srv.pid}/status`, 'utf8'))?.[1] || 0) / 1024; } catch { return 0; } };
 let serverOutput = '';
 srv.stdout.on('data', c => { serverOutput = (serverOutput + c).slice(-8000); });
 srv.stderr.on('data', c => { serverOutput = (serverOutput + c).slice(-8000); });
@@ -163,6 +186,50 @@ try {
     const dDia = after.diamond - before.diamond, dTxDia = after.txDiamond - before.txDiamond;
     ok(dGold === dTxGold, `金币对账：余额变化 ${dGold} == 流水变化 ${dTxGold}`);
     ok(dDia === dTxDia, `钻石对账：余额变化 ${dDia} == 流水变化 ${dTxDia}`);
+  }
+
+  // ————————————————————————————————————————————
+  console.log('\n· 阶段 2b：真实竞态窗口 —— 余额不足时的并发生图');
+  // ————————————————————————————————————————————
+  // 这才是单进程下唯一能真正交错的路径：ai.js 在「算费」与「调上游」之间有 await。
+  // 预扣设计的正确性判据：给用户恰好够 K 张图的金币，打 N(>K) 个并发生图请求，
+  // 必须恰好 K 个成功、其余 402，余额永不为负，账本逐分对齐，落库图片数 == 净扣费笔数。
+  {
+    const bcrypt = (await import('bcryptjs')).default;
+    let uid;
+    {
+      const db = new Database(DB_PATH);
+      db.prepare('INSERT INTO users (username, password_hash, display_name, gold) VALUES (?,?,?,?)')
+        .run('poor', bcrypt.hashSync('123456', 10), 'Poor', 80);
+      uid = db.prepare("SELECT id FROM users WHERE username='poor'").get().id;
+      db.prepare('INSERT INTO settings (user_id) VALUES (?)').run(uid);
+      db.close();
+    }
+    const poorTok = await login('poor', '123456');
+    const startGold = 80;
+    const N = 40;
+    const rs = await Promise.all(Array.from({ length: N }, () =>
+      fetch(BASE + '/ai/image', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + poorTok }, body: JSON.stringify({ prompt: 'x' }) })
+        .then(async r => { await r.text(); return r.status; }).catch(() => 0)));
+    const okN = rs.filter(s => s === 200).length;
+    const s402 = rs.filter(s => s === 402).length;
+    const s5 = rs.filter(s => s >= 500).length;
+
+    const db = new Database(DB_PATH, { readonly: true });
+    const gold = db.prepare('SELECT gold FROM users WHERE id = ?').get(uid).gold;
+    const led = db.prepare("SELECT COALESCE(SUM(gold),0) g FROM transactions WHERE user_id = ?").get(uid).g;
+    const charges = db.prepare("SELECT COUNT(*) c FROM transactions WHERE user_id = ? AND kind = 'image_fee'").get(uid).c;
+    const refunds = db.prepare("SELECT COUNT(*) c FROM transactions WHERE user_id = ? AND kind = 'ai_refund'").get(uid).c;
+    const images = db.prepare("SELECT COUNT(*) c FROM ai_images WHERE user_id = ?").get(uid).c;
+    db.close();
+
+    const fee = startGold / okN;   // 演示费率下 80/2=40，稳成整数
+    console.log(`    起始 ${startGold}g · ${N} 并发 → 200×${okN} 402×${s402} · 余额=${gold} 流水=${led} 扣费×${charges} 退款×${refunds} 落库图×${images}`);
+    ok(s5 === 0, `${N} 并发生图：0 个 5xx`);
+    ok(gold >= 0, `余额永不为负（=${gold}）`);
+    ok(startGold + led === gold, `账本对账：起始 ${startGold} + 流水 ${led} == 余额 ${gold}`);
+    ok(okN === Math.floor(startGold / fee), `恰好 ${okN} 张成功（= floor(${startGold}/${fee})，其余原子拒绝为 402）`);
+    ok(charges - refunds === images, `净扣费笔数 ${charges - refunds} == 落库图片数 ${images}（不多扣、不白嫖）`);
   }
 
   // ————————————————————————————————————————————
@@ -280,6 +347,35 @@ try {
   }
 
   // ————————————————————————————————————————————
+  console.log('\n· 阶段 6：内存泄漏检测（持续负载下 RSS 曲线）');
+  // ————————————————————————————————————————————
+  // 泄漏 vs GC 滞后的判据：跑满一段持续负载，逐波采样子进程 RSS。真泄漏会持续
+  // 线性攀升；正常服务会预热到稳态后走平。用「后半程斜率」判定 —— 预热噪声不算。
+  // 依赖 Linux /proc；rss()==0（非 Linux）时跳过断言但仍打印。
+  if (rss() > 0) {
+    const READS = ['/characters/public', '/scripts', '/community/feed', '/social/moments', '/economy/wallet',
+      '/engage/tasks', '/novels', '/groups', '/theater', '/meta/categories', '/economy/packages'];
+    const series = [];
+    const WAVES = 40, WCONC = 300;
+    for (let w = 0; w < WAVES; w++) {
+      await Promise.all(Array.from({ length: WCONC }, (_, i) =>
+        fetch(BASE + READS[(w * WCONC + i) % READS.length], { headers: { Authorization: 'Bearer ' + TOK } }).then(r => r.text()).catch(() => {})));
+      series.push(rss());
+    }
+    const firstHalf = series.slice(0, WAVES / 2), lastHalf = series.slice(WAVES / 2);
+    const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+    const tail = series.slice(-Math.floor(WAVES / 2));
+    const slopePerWave = (tail.at(-1) - tail[0]) / tail.length;
+    const slopePer1k = slopePerWave / WCONC * 1000;
+    console.log(`    ${WAVES}×${WCONC}=${WAVES * WCONC} 请求 · 前半均值 ${avg(firstHalf).toFixed(0)}MB → 后半均值 ${avg(lastHalf).toFixed(0)}MB · 峰值 ${Math.max(...series).toFixed(0)}MB`);
+    console.log(`    后半程斜率 ${slopePerWave.toFixed(2)} MB/波（≈ ${slopePer1k.toFixed(2)} MB/千请求）`);
+    // 稳态后每千请求 RSS 增幅应趋近于 0（阈值宽松到 3MB/千请求，仍能抓住真泄漏）。
+    ok(slopePer1k < 3, `稳态后 RSS 增幅 ${slopePer1k.toFixed(2)} MB/千请求（阈值 3；持续攀升即泄漏）`);
+  } else {
+    console.log('    /proc 不可用，跳过 RSS 断言');
+  }
+
+  // ————————————————————————————————————————————
   console.log('\n· 收尾：存活与全局不变量');
   // ————————————————————————————————————————————
   probing = false; await probeTask;
@@ -298,6 +394,7 @@ try {
   probing = false;
   try { await probeTask; } catch { /* */ }
   srv.kill();
+  try { fs.unlinkSync(interceptor); } catch { /* */ }
   for (const f of [DB_PATH, DB_PATH + '-wal', DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch { /* */ } }
 }
 
