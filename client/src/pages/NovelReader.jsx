@@ -16,9 +16,8 @@ export default function NovelReader() {
   const toast = useToast();
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
-  // S7-G10 字号记忆（仅 App，Web 行为零变化）：14–28 合法域外回默认
+  // S7-G10 字号记忆（双壳）：14–28 合法域外回默认
   const [size, setSize] = useState(() => {
-    if (!isAppMode()) return 18;
     try { const v = parseInt(localStorage.getItem('huanyu_read_size'), 10); return v >= 14 && v <= 28 ? v : 18; } catch { return 18; }
   });
   const [aaOpen, setAaOpen] = useState(false);
@@ -31,13 +30,13 @@ export default function NovelReader() {
   }, [id]);
 
   useEffect(() => {
-    if (app) try { localStorage.setItem('huanyu_read_size', String(size)); } catch { /* */ }
-  }, [app, size]);
+    try { localStorage.setItem('huanyu_read_size', String(size)); } catch { /* */ }
+  }, [size]);
 
-  // S7-G10 阅读进度记忆（仅 App）：按作品存滚动比例，回来接着读；
+  // S7-G10 阅读进度记忆（双壳）：按作品存滚动比例，回来接着读；
   // 顶部 2px 进度条随滚动即时反馈，落库 300ms 防抖。
   useEffect(() => {
-    if (!app || !data) return;
+    if (!data) return;
     const el = scrollerRef.current;
     if (!el) return;
     let saved = 0;
@@ -57,7 +56,7 @@ export default function NovelReader() {
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => { clearTimeout(t); el.removeEventListener('scroll', onScroll); };
-  }, [app, data, id]);
+  }, [data, id]);
 
   if (err) return <div className="empty" style={{ paddingTop: 140 }}>{err}<div style={{ marginTop: 16 }}><button className="btn" onClick={() => nav('/atelier')}>返回工坊</button></div></div>;
   if (!data) return <div className="empty" style={{ paddingTop: 160 }}>载入中…</div>;

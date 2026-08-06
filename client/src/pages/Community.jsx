@@ -185,13 +185,21 @@ export default function Community() {
             </div>
           )
         ) :
-          !app && loadError && moments.length === 0 ? (
+          loadError && moments.length === 0 ? (
+            app ? (
+              <div className="empty" role="alert">
+                <div className="big"><AppEmptyArt kind="group" size={104} /></div>
+                <p>{loadError}</p>
+                <button className="btn primary sm" onClick={() => load()}><RefreshCw size={14} /> 重新载入</button>
+              </div>
+            ) : (
             <div className="empty lgw-error" role="alert">
               <span className="lgw-error-ic"><RefreshCw size={22} /></span>
               <h2 className="lgw-error-title">动态暂时无法载入</h2>
               <p className="lgw-error-msg">{loadError}</p>
               <button className="btn primary lgw-error-retry" onClick={() => load()}><RefreshCw size={15} /> 重新载入</button>
             </div>
+            )
           ) :
           moments.length === 0 ? (
             app ? <div className="empty"><div className="big"><AppEmptyArt kind="group" size={104} /></div>这里还没有动态，来发布第一条吧</div> : (

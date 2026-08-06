@@ -160,6 +160,7 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareCardOpen, setShareCardOpen] = useState(false);
   const [pushOpen, setPushOpen] = useState(false);
+  const [calling, setCalling] = useState(false); // 通话入口双壳对齐：Web 一直有，App 详情页此前缺
   const [introOpen, setIntroOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [greetOpen, setGreetOpen] = useState(false);
@@ -235,6 +236,7 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
         <div className="cvx-top">
           <AppIconButton className="cvx-orb" onClick={() => nav(-1)} label="返回"><ArrowLeft size={20} /></AppIconButton>
           <div className="cvx-top-r">
+            <AppIconButton className="cvx-orb" onClick={() => setCalling(true)} label="语音通话" title="语音通话"><Phone size={17} /></AppIconButton>
             <AppIconButton className="cvx-orb" onClick={share} label="分享"><Share2 size={17} /></AppIconButton>
             <AppIconButton ref={menuTriggerRef} className={'cvx-orb' + (menuOpen ? ' on' : '')} selected={menuOpen} pressed={menuOpen}
               onClick={() => setMenuOpen(o => !o)} label="更多" aria-expanded={menuOpen} aria-controls="cvx-action-menu">
@@ -266,6 +268,7 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
           />
         )}
         {pushOpen && <PushSheet character={c} onClose={() => setPushOpen(false)} />}
+        {calling && <CallScreen character={c} onClose={() => setCalling(false)} />}
 
         {/* —— 作者行 + 关注 —— */}
         <div className="cvx-body">
@@ -428,7 +431,7 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
 /* ============================================================
    Web / 移动网页布局（原样保留）
    ============================================================ */
-function WebView({ c, user, nav, faved, busy, wbOpen, setWbOpen, related, startChat, toggleFav, exportCard }) {
+function WebView({ c, user, nav, faved, busy, wbOpen, setWbOpen, related, startChat, toggleFav, exportCard, share }) {
   // 语音通话（Web 专属入口）：WebView 只在 !isAppMode() 下被渲染，App 端
   // 已有自己的通话入口（沉浸流电话键），此处零波及。CallScreen 双端可用。
   const [calling, setCalling] = useState(false);
@@ -447,6 +450,7 @@ function WebView({ c, user, nav, faved, busy, wbOpen, setWbOpen, related, startC
         <button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /></button>
         <div style={{ flex: 1 }}><h1>{c.name}</h1><div className="sub">角色卡 · {pid('character', c.id)}</div></div>
         {!isOwner && <ReportButton type="character" id={c.id} />}
+        <button className="btn ghost sm" onClick={share} title="分享角色"><Share2 size={15} /></button>
         {!!c.is_public && <button className="btn ghost sm" onClick={() => setPushOpen(true)} title="推送给玩家"><Send size={15} /></button>}
         <button className="btn ghost sm" onClick={exportCard} title="导出角色卡 JSON"><Download size={15} /></button>
         {isOwner && <button className="btn" onClick={() => nav('/character/' + c.id + '/edit')}><Pencil size={15} /> 编辑</button>}

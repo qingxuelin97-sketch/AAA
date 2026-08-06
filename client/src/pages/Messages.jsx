@@ -378,10 +378,19 @@ export default function Messages() {
                   ? <div className="msgs-fav-ph"><CoverArt name={cv.character_name} /></div>
                   : <Avatar src={cv.character_avatar} name={cv.character_name} size={50} />}
                 <div className="msgs-conv-tx">
-                  <b>{cv.character_name}</b>
+                  <b>{cv.character_name}{cv.pinned ? <Pin size={11} style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="已置顶" /> : null}{cv.muted ? <BellOff size={11} style={{ marginLeft: 4, verticalAlign: -1 }} aria-label="已免打扰" /> : null}</b>
                   <span>{msgPreview(cv.last_message) || (cv.title && cv.title !== cv.character_name ? cv.title : '点击继续对话')}</span>
                 </div>
                 {cv.affinity ? <span className="msgs-aff"><Flame size={11} /> {cv.affinity}</span> : null}
+                {/* 会话整理双壳对齐：App 长按菜单已有，Web 此前只有删除叉，置顶/免打扰改不了也看不见 */}
+                <button className="msgs-del" onClick={e => { e.stopPropagation(); toggleConvMark(cv, 'pinned'); }}
+                  aria-label={cv.pinned ? '取消置顶' : '置顶对话'} title={cv.pinned ? '取消置顶' : '置顶对话'}>
+                  <Pin size={14} fill={cv.pinned ? 'currentColor' : 'none'} />
+                </button>
+                <button className="msgs-del" onClick={e => { e.stopPropagation(); toggleConvMark(cv, 'muted'); }}
+                  aria-label={cv.muted ? '取消免打扰' : '免打扰'} title={cv.muted ? '取消免打扰' : '免打扰'}>
+                  {cv.muted ? <BellOff size={14} /> : <Bell size={14} />}
+                </button>
                 <button className="msgs-del" onClick={e => delConv(e, cv)} aria-label="删除对话"><X size={15} /></button>
               </div>
               )
