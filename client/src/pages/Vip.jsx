@@ -10,18 +10,21 @@ import { isAppMode } from '../appmode.js';
 import { t } from '../appCopy.js';
 import { fmtNum } from '../util.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
+import vipHero from '../assets/app/vip-hero.png?url';
 import {
   ArrowLeft, BadgePercent, Gift, AudioLines, Crown, Drama, BrainCircuit,
   Check, Ticket, ChevronRight, Sparkles, HelpCircle
 } from 'lucide-react';
 
+// 权益文案按参考稿节奏收敛为「四字标题 + 一句说明」，标题不折行。
+// 权益文案按参考稿节奏收敛：四字标题 + 一行说明，两者都不折行。
 const PERKS = [
-  { ic: BadgePercent, title: 'AI 对话', desc: '平台模型全线折扣', discounted: true },
-  { ic: Gift, title: '签到金币双倍', desc: '每日签到收益 ×2' },
-  { ic: AudioLines, title: '语音朗读', desc: '平台语音合成同享折扣', discounted: true },
-  { ic: Crown, title: '专属会员标识', desc: '主页评论区尊贵展示' },
-  { ic: Drama, title: '剧场群聊畅玩', desc: '多人多 AI 无限开场' },
-  { ic: BrainCircuit, title: '记忆与创作加成', desc: '灵感与记忆全速释放' }
+  { ic: BadgePercent, title: '对话折扣', desc: '模型全线', discounted: true },
+  { ic: Gift, title: '双倍金币', desc: '签到收益 ×2' },
+  { ic: AudioLines, title: '语音折扣', desc: '语音合成', discounted: true },
+  { ic: Crown, title: '尊贵标识', desc: '评论区专属徽记' },
+  { ic: Drama, title: '剧场畅玩', desc: '多人多 AI 无限' },
+  { ic: BrainCircuit, title: '创作加成', desc: '灵感与记忆全速' }
 ];
 
 // 兜底档位（rates.vip_plans 缺省时用）。
@@ -118,49 +121,42 @@ export default function Vip() {
     <div className={rootClassName}>
       <Head />
 
-      <div className="vm-scroll">
-        {/* —— 会员卡 —— */}
-        <div className={'vm-card' + (isSvip ? ' svip' : '')}>
-          <span className="vm-card-pat" aria-hidden="true" />
-          <span className="vm-card-shine" aria-hidden="true" />
-          <div className="vm-card-body">
-            <b className="vm-word">{isSvip ? 'SVIP' : 'VIP'}</b>
-            <span className="vm-card-sub">
-              {isSvip ? '至高权益 · 平台 AI 全线 5 折'
-                : isVip ? `会员有效期至 ${String(w?.vip_until || '').slice(0, 10)}`
-                : '解锁幻域全部沉浸体验'}
-            </span>
-          </div>
-          <span className="vm-card-deco" aria-hidden="true">
-            <Crown size={30} />
-            <i className="vm-spark s1" /><i className="vm-spark s2" /><i className="vm-spark s3" />
+      <div className="vm-scroll vipx-scroll">
+        {/* —— 会员横幅：插画为切片位图，会员状态叠在其上保持动态 —— */}
+        <section className="vipx-hero">
+          <img className="vipx-hero-art" src={vipHero} alt="" width={760} height={393}
+            draggable="false" fetchPriority="high" />
+          <span className="vipx-hero-state">
+            {isSvip ? `SVIP · 全线 ${discountLabel}`
+              : isVip ? `有效期至 ${String(w?.vip_until || '').slice(0, 10)}`
+              : '解锁全部沉浸体验'}
           </span>
-        </div>
+        </section>
 
-        {/* —— 权益宫格 —— */}
-        <div className="vm-perks">
+        {/* —— 权益宫格 2×3 —— */}
+        <div className="vipx-perks">
           {PERKS.map(p => (
-            <div key={p.title} className="vm-perk">
-              <span className="vm-perk-ic"><p.ic size={20} /></span>
-              <div className="vm-perk-tx">
-                <b>{p.discounted ? `${p.title} ${discountLabel}` : p.title}</b>
-                <small>{p.discounted ? `${p.desc} · ${discountLabel}` : p.desc}</small>
+            <div key={p.title} className="vipx-perk">
+              <span className="vipx-perk-ic"><p.ic size={22} /></span>
+              <div className="vipx-perk-tx">
+                <b>{p.title}</b>
+                <small>{p.discounted ? `${p.desc} ${discountLabel}` : p.desc}</small>
               </div>
             </div>
           ))}
         </div>
 
-        {/* —— 套餐 + 开通（白色承载卡）—— */}
-        <div className="vm-sheet">
-          <div className="vm-sheet-head">
-            <span className="vm-tag">特惠推荐</span>
+        {/* —— 方案 + 开通（白色承载卡）—— */}
+        <section className="vipx-sheet">
+          <div className="vipx-sheet-head">
+            <h2 className="vipx-sheet-title">选择会员方案</h2>
             {/* 兑换码入口统一收口到钱包页（此前两页各带一套兑换 UI，重复） */}
-            <AppButton className="vm-redeem-link" variant="tertiary" onClick={() => nav('/wallet')}>
+            <AppButton className="vipx-redeem" variant="tertiary" onClick={() => nav('/wallet')}>
               <Ticket size={13} /> 兑换码
             </AppButton>
           </div>
 
-          <div className="vm-plans">
+          <div className="vipx-plans">
             {plans.map(p => {
               const per = Math.round(p.gold / p.days);
               const on = p.id === plan;
@@ -168,7 +164,7 @@ export default function Vip() {
               return (
                 <AppButton
                   key={p.id}
-                  className={'vm-plan' + (on ? ' on' : '')}
+                  className={'vipx-plan' + (on ? ' on' : '') + (rec ? ' rec' : '')}
                   variant="tertiary"
                   selected={on}
                   pressed={on}
@@ -176,35 +172,35 @@ export default function Vip() {
                   disabled={isSvip || !!busy}
                   onClick={() => setPlan(p.id)}
                 >
-                  {rec && <span className="vm-plan-rec">超值</span>}
-                  <b className="vm-plan-name">{p.label}</b>
-                  <span className="vm-plan-price"><CoinIcon size={15} /> {fmtNum(p.gold)}</span>
-                  <small className="vm-plan-per">约 {fmtNum(per)}/天</small>
+                  {rec && <span className="vipx-plan-rec">推荐</span>}
+                  <b className="vipx-plan-name">{p.label}</b>
+                  <span className="vipx-plan-price"><CoinIcon size={17} />{fmtNum(p.gold)}</span>
+                  <small className="vipx-plan-per">约 {fmtNum(per)}/天</small>
                 </AppButton>
               );
             })}
           </div>
 
-          <p className="vm-renew">
-            {isSvip ? 'SVIP 已生效 · 无需重复购买 VIP' : '金币开通 · 到期不自动扣费 · 随时安心'}
+          <p className="vipx-note">
+            {isSvip ? 'SVIP 已生效 · 无需重复购买 VIP' : '金币开通 · 到期不自动扣费 · 可随时停用'}
           </p>
 
-          <AppButton className="vm-go" variant="primary" size="lg" loading={busy === 'vip'} onClick={openVip} disabled={isSvip || !!busy}>
+          <AppButton className="vipx-go" variant="primary" size="lg" loading={busy === 'vip'} onClick={openVip} disabled={isSvip || !!busy}>
             {isSvip
               ? 'SVIP 权益已生效'
               : busy === 'vip'
               ? '开通中…'
-              : <>{isVip ? '续费 VIP' : '开通 VIP'} {cur?.label} · <CoinIcon size={16} /> {fmtNum(cur?.gold)}</>}
+              : <>{isVip ? '续费会员' : '立即开通'} · <CoinIcon size={16} />{fmtNum(cur?.gold)}</>}
           </AppButton>
 
-          {!isSvip && <label className="vm-agree">
+          {!isSvip && <label className="vipx-agree">
             <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} />
-            <span className="vm-check" aria-hidden="true">{agree && <Check size={11} strokeWidth={3.5} />}</span>
-            <span>已阅读并同意<em>《幻域会员服务协议与续费条款》</em></span>
+            <span className="vipx-check" aria-hidden="true">{agree && <Check size={11} strokeWidth={3.5} />}</span>
+            <span>已阅读并同意<em>《幻域会员服务协议》</em>和<em>《金币扣费规则》</em></span>
           </label>}
-        </div>
+        </section>
 
-        <AppButton className="vm-ledger" variant="tertiary" onClick={() => nav('/wallet')}>
+        <AppButton className="vipx-ledger" variant="tertiary" onClick={() => nav('/wallet')}>
           <Sparkles size={14} /> 查看钱包流水与每日签到 <ChevronRight size={14} />
         </AppButton>
         <div className="vm-bottom-space" />

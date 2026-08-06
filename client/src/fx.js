@@ -16,7 +16,7 @@ function spawnRipple(el, x, y) {
 
 // Burst a few colored particles outward from a point (used on like/favorite).
 // App 壳默认换彩虹六色（与 --ix-rainbow-stops 同源）；lite 省电档不撒粒子。
-const RAINBOW_BURST = ['#56C4EA', '#7A8CFF', '#C77AF0', '#FF7AA8', '#FFB65A', '#6FD79A'];
+const RAINBOW_BURST = ['#38DAD2', '#5FE0E2', '#2FC3E8', '#2AA0FA', '#7FD4FF', '#2E9FF7'];
 export function burst(x, y, colors) {
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   if (document.documentElement.dataset.perf === 'lite') return;

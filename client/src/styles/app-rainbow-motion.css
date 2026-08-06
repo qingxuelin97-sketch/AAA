@@ -31,15 +31,8 @@ html[data-app="1"] .qa3-today .qa-streak-dot.on {
 /* 错峰：相邻点相位错开，像一串呼吸的灯（延迟为负 = 立即处于循环中段） */
 html[data-app="1"] .qa3-today .qa-streak-dot.on:nth-child(odd) { animation-delay: -1.3s; }
 
-/* ── 2. FAB 彩虹环慢旋转（静态 conic 环整层旋转 = 合成器直通；
-   必须保住水平居中的 translateX） ── */
-@keyframes ixHaloSpin {
-  from { transform: translateX(-50%) rotate(0deg); }
-  to   { transform: translateX(-50%) rotate(360deg); }
-}
-html[data-app="1"] .app-dock .app-fab-halo {
-  animation: ixHaloSpin 16s linear infinite;
-}
+/* ── 2. FAB 光环：青蓝渐变系不再有彩虹环，辉光呼吸由色彩层的 ::before 承担，
+   此处不再叠加整环旋转（旋转一个无纹理的径向辉光看不出来，纯浪费一层合成）。 */
 
 /* ── 3. 一次性状态动效 ── */
 @keyframes ixSelectGrow {

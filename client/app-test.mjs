@@ -586,9 +586,15 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
     assert.deepEqual(bad, [], `rainbow keyframes must animate transform/opacity only (${kf[1]} declares: ${bad.join(', ')})`);
   }
   // B. 令牌围栏：彩虹层自定义属性只许 --ix-rainbow-* 或列举的青蓝基面覆盖名单；禁 :root
+  // 青蓝渐变系：识别层除基面外还接管强调实色与圆角语言（渐变负责活力，
+  // 实色只用于文字/边框/LED；圆角改软以贴合参考稿）。冻结令牌文件仍零改动。
   const RAINBOW_BASE_OVERRIDES = new Set(['--ix-canvas', '--ix-grouped', '--ix-surface', '--ix-raise',
-    '--ix-hairline', '--ix-hairline-strong', '--ix-glass-nav', '--ix-glass-temp']);
-  for (const def of rainbowAll.matchAll(/(--[\w-]+)\s*:/g)) {
+    '--ix-hairline', '--ix-hairline-strong', '--ix-glass-nav', '--ix-glass-temp',
+    '--ix-act', '--ix-act-ink', '--ix-act-soft', '--ix-focus',
+    '--ix-r-key', '--ix-r-card', '--ix-r-panel']);
+  // 只认「声明位」的自定义属性（行首/`{`/`;` 之后）——否则 .qa-button--primary:not()
+  // 这类选择器里的伪类冒号会被误判成令牌定义。
+  for (const def of rainbowAll.matchAll(/(?:^|[;{\n])\s*(--[\w-]+)\s*:/g)) {
     const name = def[1];
     assert.ok(name.startsWith('--ix-rainbow-') || RAINBOW_BASE_OVERRIDES.has(name),
       `rainbow layers may only define --ix-rainbow-* tokens or the enumerated cyan-glass base overrides (found ${name})`);
@@ -617,7 +623,7 @@ const INFINITE_ALLOWLIST = new Set([
   // Web-owned legacy loops living unfenced in shared files; the App fence neutralises them
   'chatKenburns', 'emptyFloat', 'insDrift', 'ringSlide', 'vmGoShine', 'vmShine', 'vmSpark',
   // 彩虹系动效层（用户定稿的呼吸/环旋循环；只动 transform/opacity，lite/reduced-motion 全关）
-  'ixBreath', 'ixLedBreath', 'ixDotBreath', 'ixStreakBreath', 'ixHaloSpin',
+  'ixBreath', 'ixLedBreath', 'ixDotBreath', 'ixStreakBreath',
 ]);
 const infiniteNames = [...appLayerCss.matchAll(/animation:\s*([a-zA-Z][\w-]*)[^;]*\binfinite\b/g)].map((m) => m[1]);
 assert.deepEqual(
