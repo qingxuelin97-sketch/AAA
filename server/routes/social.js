@@ -4,6 +4,7 @@ import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter } from '../limiters.js';
 import { notify } from '../wallet.js';
 import { log } from '../logger.js';
+import { str } from '../validate.js';
 
 const router = Router();
 
@@ -34,9 +35,12 @@ router.get('/moments', authOptional, (req, res) => {
 });
 
 router.post('/moments', authRequired, contentLimiter, (req, res) => {
-  const { text, image } = req.body || {};
+  // 防呆：此前 text/image 原样入库 —— 传对象/数组会被 better-sqlite3 当成
+  // 具名参数/参数列表，直接 500。统一收敛为带上限的字符串。
+  const text = str(req.body?.text, 5000);
+  const image = str(req.body?.image, 500);
   if (!text && !image) return res.status(400).json({ error: '说点什么或配张图吧' });
-  const info = db.prepare('INSERT INTO moments (user_id, text, image) VALUES (?,?,?)').run(req.user.id, text || '', image || null);
+  const info = db.prepare('INSERT INTO moments (user_id, text, image) VALUES (?,?,?)').run(req.user.id, text, image || null);
   log({
     level: 'info', category: 'social', event: 'moment_post',
     user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
@@ -90,7 +94,7 @@ router.get('/moments/:id/comments', (req, res) => {
 });
 
 router.post('/moments/:id/comments', authRequired, contentLimiter, (req, res) => {
-  const { text } = req.body || {};
+  const text = str(req.body?.text, 2000);
   if (!text) return res.status(400).json({ error: '评论不能为空' });
   const m = db.prepare('SELECT * FROM moments WHERE id = ?').get(req.params.id);
   if (!m) return res.status(404).json({ error: '动态不存在' });

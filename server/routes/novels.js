@@ -5,7 +5,7 @@ import { getPlatform, chargePlatformFee } from '../platform.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { bumpDaily } from '../daily.js';
-import { str as clampStr } from '../validate.js';
+import { str as clampStr, jsonText } from '../validate.js';
 
 const router = Router();
 
@@ -241,7 +241,7 @@ router.post('/', authRequired, (req, res) => {
   if (!title) return res.status(400).json({ error: '请填写作品名' });
   const info = db.prepare(`INSERT INTO novels (owner_id, title, logline, synopsis, cover, genre, tags, style, codex)
     VALUES (?,?,?,?,?,?,?,?,?)`).run(
-    req.user.id, title, clampStr(b.logline, 200), clampStr(b.synopsis, 4000), b.cover || null,
+    req.user.id, title, clampStr(b.logline, 200), clampStr(b.synopsis, 4000), clampStr(b.cover, 500) || null,
     clampStr(b.genre, 40), clampStr(b.tags, 200),
     JSON.stringify(cleanStyle(b.style)), JSON.stringify(cleanEntries(b.codex, { defaultSource: 'meta' })));
   // 自动开一条主线，并把局外设定复刻进局内。
@@ -327,7 +327,9 @@ router.patch('/runs/:rid', authRequired, (req, res) => {
   if (typeof b.name === 'string' && b.name.trim()) put('name', clampStr(b.name, 40).trim());
   // 局内设定可手动编辑（作者校正）；自动更新走专门的 sync-canon 接口。
   if (b.canon !== undefined) put('canon', JSON.stringify(cleanEntries(b.canon)));
-  if (b.vars !== undefined && b.vars && typeof b.vars === 'object') put('vars', JSON.stringify(b.vars));
+  // jsonText 而非裸 JSON.stringify：深层嵌套会抛 RangeError（V8 约 2 万层）、
+  // 循环引用会抛 TypeError —— 未捕获即 500。统一转成 400。
+  if (b.vars !== undefined && b.vars && typeof b.vars === 'object') put('vars', jsonText(b.vars, 32768));
   if (typeof b.summary === 'string') put('summary', clampStr(b.summary, 6000));
   if (b.archived !== undefined) put('archived', b.archived ? 1 : 0);
   if (!sets.length) return res.json({ run: shapeRun(r) });
@@ -340,7 +342,15 @@ router.delete('/runs/:rid', authRequired, (req, res) => {
   const r = ownRun(req, res); if (!r) return;
   const left = db.prepare('SELECT COUNT(*) c FROM novel_runs WHERE novel_id = ?').get(r.novel_id).c;
   if (left <= 1) return res.status(400).json({ error: '至少保留一条剧情线' });
-  db.prepare('DELETE FROM novel_runs WHERE id = ?').run(r.id);
+  // 删除的若正是已发布的那条剧情线，必须同时下架：否则 published_run_id 变成
+  // 悬空指针，/read 会退回到「第一条 run」，把作者从未发布的剧情线泄露给所有
+  // 登录用户。下架（fail-closed）而不是静默改指向另一条 —— 后者等于替作者
+  // 发布了他没选择发布的内容。
+  db.transaction(() => {
+    db.prepare('DELETE FROM novel_runs WHERE id = ?').run(r.id);
+    db.prepare(`UPDATE novels SET published = 0, published_run_id = NULL
+      WHERE id = ? AND published_run_id = ?`).run(r.novel_id, r.id);
+  }).immediate();
   res.json({ ok: true });
 });
 
@@ -833,8 +843,18 @@ router.get('/:id/read', authRequired, (req, res) => {
   if (!n) return res.status(404).json({ error: '作品不存在' });
   const isOwner = n.owner_id === req.user.id;
   if (!n.published && !isOwner) return res.status(403).json({ error: '该作品未公开' });
-  const runId = req.query.run_id && isOwner ? req.query.run_id : n.published_run_id;
-  const run = db.prepare('SELECT * FROM novel_runs WHERE id = ? AND novel_id = ?').get(runId, n.id) || db.prepare('SELECT * FROM novel_runs WHERE novel_id = ? ORDER BY id LIMIT 1').get(n.id);
+  // 「取不到就退回第一条 run」的兜底仅对作者生效。对非作者放行会把作者从未
+  // 发布的剧情线泄露出去（published_run_id 悬空时），这里必须 fail-closed。
+  let run;
+  if (isOwner) {
+    const runId = req.query.run_id || n.published_run_id;
+    run = db.prepare('SELECT * FROM novel_runs WHERE id = ? AND novel_id = ?').get(runId, n.id)
+      || db.prepare('SELECT * FROM novel_runs WHERE novel_id = ? ORDER BY id LIMIT 1').get(n.id);
+  } else {
+    if (!n.published_run_id) return res.status(403).json({ error: '该作品未公开' });
+    run = db.prepare('SELECT * FROM novel_runs WHERE id = ? AND novel_id = ?').get(n.published_run_id, n.id);
+    if (!run) return res.status(403).json({ error: '该作品未公开' });
+  }
   const author = db.prepare('SELECT * FROM users WHERE id = ?').get(n.owner_id);
   const beats = run ? db.prepare('SELECT id, content, image FROM novel_beats WHERE run_id = ? ORDER BY seq, id').all(run.id) : [];
   res.json({

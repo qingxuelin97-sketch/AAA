@@ -2,6 +2,10 @@ import { Router } from'express';
 import db from'../db.js';
 import { authRequired, authOptional } from'../auth.js';
 import { applyTx, notify } from'../wallet.js';
+import { str } from'../validate.js';
+
+// 局部更新取值：只有真字符串才覆盖原值，其余保留原值并施加长度上限。
+const keepStr = (v, cur, max) => (typeof v === 'string' ? v.slice(0, max) : cur);
 
 const router = Router();
 const REFUND_WINDOW_MS = 30 * 60 * 1000; // 30 分钟内可退款
@@ -121,12 +125,17 @@ router.get('/:id', authOptional, (req, res) => {
 
 router.post('/', authRequired, (req, res) => {
   const b = req.body || {};
-  if (!b.title) return res.status(400).json({ error:'标题必填' });
+  // 防呆：此前只判 truthy。传对象/数组时 better-sqlite3 会把数组当成参数列表
+  //（Too many parameter values）、把对象当成具名参数（Too few parameter values），
+  // 一律 500。这里统一收敛为带上限的字符串。
+  if (typeof b.title !== 'string' || !b.title.trim() || b.title.length > 120) {
+    return res.status(400).json({ error: '标题必填（120字内）' });
+  }
   let price;
   try { price = scriptPrice(b.price_gold); } catch (err) { return res.status(err.status || 400).json({ error: err.message }); }
   const info = db.prepare(`INSERT INTO scripts (author_id,title,summary,cover,content,category,tags,price_gold,nsfw)
-    VALUES (?,?,?,?,?,?,?,?,?)`).run(req.user.id, b.title, b.summary ||'', b.cover || null, b.content ||'',
-    b.category ||'', b.tags ||'', price, b.nsfw ? 1 : 0);
+    VALUES (?,?,?,?,?,?,?,?,?)`).run(req.user.id, b.title.trim(), str(b.summary, 4000), str(b.cover, 500) || null, str(b.content, 200000),
+    str(b.category, 40), str(b.tags, 200), price, b.nsfw ? 1 : 0);
   res.json({ script: db.prepare('SELECT * FROM scripts WHERE id = ?').get(info.lastInsertRowid) });
 });
 
@@ -138,8 +147,9 @@ router.put('/:id', authRequired, (req, res) => {
   let price;
   try { price = scriptPrice(b.price_gold, s.price_gold); } catch (err) { return res.status(err.status || 400).json({ error: err.message }); }
   db.prepare(`UPDATE scripts SET title=?, summary=?, cover=?, content=?, category=?, tags=?, price_gold=?, nsfw=? WHERE id=?`)
-    .run(b.title ?? s.title, b.summary ?? s.summary, b.cover ?? s.cover, b.content ?? s.content,
-      b.category ?? s.category, b.tags ?? s.tags, price, b.nsfw === undefined ? s.nsfw : (b.nsfw ? 1 : 0), s.id);
+    // keepStr：只有真字符串才覆盖原值（?? 挡不住 {} / []，那会让 better-sqlite3 抛错 → 500）
+    .run(keepStr(b.title, s.title, 120), keepStr(b.summary, s.summary, 4000), keepStr(b.cover, s.cover, 500), keepStr(b.content, s.content, 200000),
+      keepStr(b.category, s.category, 40), keepStr(b.tags, s.tags, 200), price, b.nsfw === undefined ? s.nsfw : (b.nsfw ? 1 : 0), s.id);
   res.json({ script: db.prepare('SELECT * FROM scripts WHERE id = ?').get(s.id) });
 });
 

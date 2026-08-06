@@ -4,6 +4,7 @@ import { authRequired } from '../auth.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { push } from '../realtime.js';
+import { clampInt } from '../validate.js';
 
 const router = Router();
 const memberOf = (tid, uid) => !!db.prepare('SELECT 1 FROM theater_members WHERE theater_id = ? AND user_id = ?').get(tid, uid);
@@ -405,8 +406,11 @@ router.get('/:id/messages', authRequired, (req, res) => {
   const t = db.prepare('SELECT owner_id, is_public FROM theaters WHERE id = ?').get(req.params.id);
   if (!t) return res.status(404).json({ error: '剧场不存在' });
   if (t.owner_id !== req.user.id && !memberOf(req.params.id, req.user.id) && !t.is_public) return res.status(403).json({ error: '无权访问该剧场' });
-  const after = parseInt(req.query.after, 10) || 0;
-  res.json({ messages: db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? AND id > ? ORDER BY id').all(req.params.id, after) });
+  // 防呆：与 groups.js 的 /:id/messages 是同一处缺 LIMIT 的问题，必须一起修。
+  // 客户端（TheaterRoom.jsx）同样按收到的最后一条 id 推进 after，截断可自愈。
+  const after = clampInt(req.query.after, 0, Number.MAX_SAFE_INTEGER, 0);
+  const limit = clampInt(req.query.limit, 1, 200, 100);
+  res.json({ messages: db.prepare('SELECT * FROM theater_messages WHERE theater_id = ? AND id > ? ORDER BY id LIMIT ?').all(req.params.id, after, limit) });
 });
 
 export default router;

@@ -3,6 +3,7 @@
 // ③safeFetch 逐跳重定向复检 + 请求头超时，杜绝「域名解析到内网」「302 跳内网」两类绕过。
 import { URL } from 'url';
 import dns from 'dns/promises';
+import dnsCb from 'node:dns';
 import net from 'net';
 
 const ssrf = (msg = 'Base URL 不合法或指向内网地址，禁止访问') =>
@@ -66,15 +67,70 @@ export function assertPublicUrl(raw, msg) {
 }
 
 // —— 异步复检：DNS 解析主机名，任一解析地址落私网即拒绝（防「域名指向内网」） ——
+// 返回校验通过的地址表 [{address, family}]，供 safeFetch 钉扎给真正的连接使用
+//（防 DNS 重绑定，见下方 installDnsPin）。既有调用方忽略返回值，行为不变。
 export async function assertResolvedPublic(hostname) {
   const h = normalizeMaybeIp(String(hostname).toLowerCase().replace(/^\[|\]$/g, ''));
   if (!h || h === 'localhost' || h.endsWith('.localhost')) throw ssrf();
-  if (net.isIP(h)) { if (ipIsPrivate(h)) throw ssrf(); return; }
+  if (net.isIP(h)) {
+    if (ipIsPrivate(h)) throw ssrf();
+    return [{ address: h, family: net.isIPv6(h) ? 6 : 4 }];
+  }
   let addrs;
   try { addrs = await dns.lookup(h, { all: true }); } catch { throw ssrf('无法解析目标主机'); }
   if (!addrs.length) throw ssrf('无法解析目标主机');
   for (const a of addrs) if (ipIsPrivate(a.address)) throw ssrf();
+  return addrs.map(a => ({ address: a.address, family: a.family }));
 }
+
+// —— DNS 重绑定（TOCTOU）防护 ——
+// 上面的校验用的是「它自己那次解析」，而随后的 fetch 会独立地再解析一次。
+// 攻击者控制的域名可以在两次解析之间返回不同结果（TTL=0）：第一次给公网 IP
+// 骗过校验，第二次给 127.0.0.1 / 169.254.169.254 让请求真正打进内网。
+// 对策：把「校验通过的 IP」钉给这次连接 —— 仅对钉扎中的主机名接管 dns.lookup，
+// 其余主机名严格原样透传（其他模块行为零变化）。URL 从不被改写，因此
+// Host 头、TLS SNI、证书主机名校验全部继续使用真实域名。
+const PINS = new Map();                                   // hostname -> { addrs, refs }
+const PATCH_FLAG = Symbol.for('huanyu.safeUrl.dnsPinned');
+
+function pin(hostname, addrs) {
+  const key = String(hostname).toLowerCase();
+  const cur = PINS.get(key);
+  if (cur) { cur.refs++; cur.addrs = addrs; } else PINS.set(key, { addrs, refs: 1 });
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    const e = PINS.get(key);
+    if (e && --e.refs <= 0) PINS.delete(key);
+  };
+}
+
+// 只安装一次（Symbol 防重复 import 重复包装）；SAFE_URL_PIN=0 可熔断。
+function installDnsPin() {
+  if (process.env.SAFE_URL_PIN === '0' || globalThis[PATCH_FLAG]) return;
+  globalThis[PATCH_FLAG] = true;
+  const real = dnsCb.lookup;
+  dnsCb.lookup = function lookup(hostname, options, callback) {
+    if (typeof options === 'function') { callback = options; options = {}; }
+    const entry = PINS.get(String(hostname).toLowerCase());
+    if (!entry) return real.call(this, hostname, options, callback);
+    const opts = typeof options === 'number' ? { family: options } : (options || {});
+    const addrs = (opts.family === 4 || opts.family === 6)
+      ? entry.addrs.filter(a => a.family === opts.family)
+      : entry.addrs;
+    if (!addrs.length) {
+      const err = Object.assign(new Error(`getaddrinfo ENOTFOUND ${hostname}`), { code: 'ENOTFOUND', hostname });
+      return process.nextTick(() => callback(err));
+    }
+    // options.all 契约必须精确遵守：为真返回 [{address, family}] 数组，
+    // 否则返回 (err, address, family) —— 返回错形态会让 undici 报
+    // 「Invalid IP address: undefined」。
+    if (opts.all) return process.nextTick(() => callback(null, addrs.map(a => ({ address: a.address, family: a.family }))));
+    return process.nextTick(() => callback(null, addrs[0].address, addrs[0].family));
+  };
+}
+installDnsPin();
 
 // —— 安全出站请求：预检 + DNS 复检 + 逐跳重定向复检 + 请求头超时。
 // 与 fetch 同签名，返回原始 Response（流式 body 不受超时影响：超时仅守到响应头到达）。
@@ -131,7 +187,10 @@ export async function safeFetch(rawUrl, opts = {}, { maxRedirects = 4, timeoutMs
   for (let hop = 0; hop <= maxRedirects; hop++) {
     const u = new URL(url);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') throw ssrf();
-    await assertResolvedPublic(u.hostname);
+    // 每一跳都重新解析 + 重新校验 + 重新钉扎：既保留原有的「302 跳内网」防护，
+    // 又让本跳的连接只能落到刚校验通过的地址上（防重绑定）。
+    const pinned = await assertResolvedPublic(u.hostname);
+    const release = pin(u.hostname, pinned);
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), timeoutMs);
     const onCaller = () => ac.abort();
@@ -142,7 +201,12 @@ export async function safeFetch(rawUrl, opts = {}, { maxRedirects = 4, timeoutMs
     } catch (e) {
       if (callerSignal) callerSignal.removeEventListener('abort', onCaller);
       throw e;
-    } finally { clearTimeout(timer); }
+    } finally {
+      clearTimeout(timer);
+      // 响应头已到达 —— socket 早已连上校验过的地址，此时释放钉扎是安全的
+      //（keep-alive 复用的也是这条已验证的连接）。
+      release();
+    }
     const loc = res.status >= 300 && res.status < 400 && res.headers.get('location');
     if (loc) {
       if (callerSignal) callerSignal.removeEventListener('abort', onCaller);

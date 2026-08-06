@@ -6,6 +6,7 @@ import { getPlatform, voiceReady, imageReady, featureFee, platformFee, memberDis
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { CATEGORIES } from './meta.js';
+import { clampInt, num, oneOf, badRequest } from '../validate.js';
 
 const router = Router();
 
@@ -58,19 +59,34 @@ router.put('/', authRequired, (req, res) => {
   const b = req.body || {};
   let cur = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id);
   if (!cur) { db.prepare('INSERT INTO settings (user_id) VALUES (?)').run(req.user.id); cur = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.user.id); }
-  const str = (k) => (typeof b[k] === 'string' ? b[k] : cur[k]);
+  // 防呆：每个字符串字段都必须带长度上限 —— 否则 2MB 的 llm_base_url 会直接入库
+  //（请求体上限 2MB 是唯一的边界，路由自身此前完全不设防）。
+  // 非字符串一律回落当前值，杜绝对象/数组直接喂给 better-sqlite3 抛 TypeError → 500。
+  const str = (k, max) => (typeof b[k] === 'string' ? b[k].slice(0, max) : cur[k]);
   const bool = (k) => (b[k] === undefined ? cur[k] : (b[k] ? 1 : 0));
+  // 密钥字段：显式要求字符串。此前非字符串会直接进 better-sqlite3 → 500。
+  const key = (k, max) => {
+    if (b[k] === undefined || b[k] === '') return cur[k];
+    if (typeof b[k] !== 'string') throw badRequest(`${k} 必须是字符串`);
+    return b[k].slice(0, max);
+  };
+  // 枚举双层收敛：外层收敛本次输入，内层顺带自愈存量脏值（这两列由迁移添加、
+  // 无 DB 约束，历史行可能是任意字符串）。用户下次保存即归位，无需数据迁移。
+  const PRIVACY = ['public', 'followers', 'private'];
+  const ALLOW_DM = ['all', 'followers', 'none'];
   const next = {
     user_id: req.user.id,
-    llm_provider: str('llm_provider'), llm_protocol: str('llm_protocol'), llm_base_url: str('llm_base_url'),
-    llm_api_key: (b.llm_api_key === undefined || b.llm_api_key === '') ? cur.llm_api_key : b.llm_api_key,
-    llm_model: str('llm_model'), llm_temperature: b.llm_temperature ?? cur.llm_temperature, llm_max_tokens: b.llm_max_tokens ?? cur.llm_max_tokens,
-    voice_provider: str('voice_provider'), voice_protocol: str('voice_protocol'), voice_base_url: str('voice_base_url'),
-    voice_api_key: (b.voice_api_key === undefined || b.voice_api_key === '') ? cur.voice_api_key : b.voice_api_key,
-    voice_model: str('voice_model'), voice_name: str('voice_name'), theme: str('theme'),
+    llm_provider: str('llm_provider', 40), llm_protocol: str('llm_protocol', 40), llm_base_url: str('llm_base_url', 500),
+    llm_api_key: key('llm_api_key', 1000),
+    llm_model: str('llm_model', 200),
+    llm_temperature: num(b.llm_temperature, 0, 2, cur.llm_temperature),
+    llm_max_tokens: clampInt(b.llm_max_tokens, 1, 200000, cur.llm_max_tokens),
+    voice_provider: str('voice_provider', 40), voice_protocol: str('voice_protocol', 40), voice_base_url: str('voice_base_url', 500),
+    voice_api_key: key('voice_api_key', 1000),
+    voice_model: str('voice_model', 200), voice_name: str('voice_name', 100), theme: str('theme', 40),
     nsfw: bool('nsfw'), notify_email: bool('notify_email'),
-    privacy_profile: typeof b.privacy_profile === 'string' ? b.privacy_profile : cur.privacy_profile,
-    allow_dm: typeof b.allow_dm === 'string' ? b.allow_dm : cur.allow_dm,
+    privacy_profile: oneOf(b.privacy_profile, PRIVACY, oneOf(cur.privacy_profile, PRIVACY, 'public')),
+    allow_dm: oneOf(b.allow_dm, ALLOW_DM, oneOf(cur.allow_dm, ALLOW_DM, 'all')),
     show_online: bool('show_online'), discoverable: bool('discoverable'), activity_visible: bool('activity_visible'),
     leaderboard_visible: bool('leaderboard_visible'), read_receipts: bool('read_receipts'), personalize: bool('personalize'),
     interests: sanitizeInterests(b.interests, cur.interests || ''),

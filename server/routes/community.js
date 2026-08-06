@@ -2,7 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter } from '../limiters.js';
-import { str, clampInt } from '../validate.js';
+import { str, clampInt, jsonText } from '../validate.js';
 import { bumpDaily } from '../daily.js';
 import { broadcast } from '../realtime.js';
 import { creatorTier } from '../creator.js';
@@ -37,11 +37,17 @@ router.get('/posts/:id', authOptional, (req, res) => {
 // Publish a card/script to the homepage
 router.post('/posts', authRequired, contentLimiter, (req, res) => {
   const b = req.body || {};
-  if (!b.title) return res.status(400).json({ error: '标题必填' });
+  // 防呆：此前只判 truthy，title: {} 能过关再到 better-sqlite3 抛 TypeError → 500。
+  if (typeof b.title !== 'string' || !b.title.trim() || b.title.length > 120) {
+    return res.status(400).json({ error: '标题必填（120字内）' });
+  }
+  // payload 走 jsonText：裸 JSON.stringify 对深层嵌套会抛 RangeError（V8 约 2 万层）
+  // → 未捕获即 500。约 40KB 的 {"payload":[[[[…]]]]} 就能触发。
+  const payload = b.payload ? jsonText(b.payload, 32768) : '';
   const info = db.prepare(`INSERT INTO posts (author_id, type, title, body, cover, character_id, payload, tags)
     VALUES (?,?,?,?,?,?,?,?)`).run(
-    req.user.id, b.type === 'script' ? 'script' : 'card', b.title, b.body || '',
-    b.cover || null, b.character_id || null, b.payload ? JSON.stringify(b.payload) : '', b.tags || ''
+    req.user.id, b.type === 'script' ? 'script' : 'card', b.title.trim(), str(b.body, 20000),
+    str(b.cover, 500) || null, clampInt(b.character_id, 1, Number.MAX_SAFE_INTEGER, null), payload, str(b.tags, 200)
   );
   const p = db.prepare('SELECT * FROM posts WHERE id = ?').get(info.lastInsertRowid);
   res.json({ post: p });
@@ -121,12 +127,18 @@ router.post('/posts/:id/import', authRequired, (req, res) => {
 // "Push to other players" — directed share into a user's inbox
 router.post('/push', authRequired, contentLimiter, (req, res) => {
   const { post_id, to_username, note } = req.body || {};
-  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(post_id);
+  // 防呆：post_id / to_username 此前原样进查询 —— 传对象会被 better-sqlite3
+  // 当成具名参数、传数组当成参数列表，两者都是 500。先收敛类型再查库。
+  const postId = clampInt(post_id, 1, Number.MAX_SAFE_INTEGER, 0);
+  const uname = str(to_username, 60);
+  if (!postId || !uname) return res.status(400).json({ error: '参数无效' });
+  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(postId);
   if (!post) return res.status(404).json({ error: '内容不存在' });
-  const target = db.prepare('SELECT id FROM users WHERE username = ? OR display_name = ?').get(to_username, to_username);
+  const target = db.prepare('SELECT id FROM users WHERE username = ? OR display_name = ?').get(uname, uname);
   if (!target) return res.status(404).json({ error: '目标用户不存在' });
+  // 防呆：note 此前无长度上限（同文件其余写入都走 str(v,max)）—— 2MB 的备注可直接入库。
   db.prepare('INSERT INTO shares (post_id, from_user, to_user, note) VALUES (?,?,?,?)')
-    .run(post_id, req.user.id, target.id, note || '');
+    .run(postId, req.user.id, target.id, str(note, 500));
   res.json({ ok: true });
 });
 

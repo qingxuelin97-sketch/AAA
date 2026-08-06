@@ -39,6 +39,14 @@ jobs:
       - name: Security regression
         run: npm run test:sec
 
+      # 防呆回归：离谱输入矩阵 + ReDoS/越权/上限的具名断言 + 事件循环阻塞探针。
+      # 压测（npm run test:stress）刻意不进 CI —— 时延与吞吐断言在共享 runner 上
+      # 会抖动，一旦 flaky 就会被加 continue-on-error，反而什么都保障不了。
+      # 需要在 CI 每次守住的那条性质（不许有请求钉死事件循环）已用确定性探针
+      # 放进 test:abuse。
+      - name: Fool-proofing regression
+        run: npm run test:abuse
+
       - name: Payment regression
         run: npm run test:payments
 

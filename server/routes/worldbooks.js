@@ -3,7 +3,7 @@ import db from '../db.js';
 import { authRequired, authOptional } from '../auth.js';
 import { contentLimiter, aiLimiter } from '../limiters.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
-import { str, csv } from '../validate.js';
+import { str, csv, compileSafeRegex, regexBudget } from '../validate.js';
 
 const router = Router();
 
@@ -112,14 +112,27 @@ router.post('/:id/test-trigger', authRequired, (req, res) => {
   const singleText = str(req.body?.text, 4000) || '';
   const samples = texts && texts.length ? texts : (singleText ? [singleText] : ['']);
   const entries = loadEntries(w.id).filter(e => e.enabled !== false && e.enabled !== 0);
+  // 整个请求共享一份正则预算（覆盖所有条目 × 所有测试样本）。静态分析只保证
+  // 「不是指数级」，不保证便宜：a.*b 这类在 4000 字文本上是 O(n²)，几百条累加
+  // 足以把事件循环占住数秒 —— 压测实测过 6.9s 停顿。
+  // 预算取 50ms：本接口对**任何公开世界书**都对全体登录用户开放，且没有专属
+  // 限流，只受全局 240 次/分钟约束 —— 按 50ms 算，单个用户最多占用约 20% 的
+  // 单核 CPU；再宽就等于把 CPU 拱手让人。对作者调试模式而言 50ms 绰绰有余。
+  const rxBudget = regexBudget({ maxEvals: 256, budgetMs: 50 });
   // 互斥分组冲突告警：同组内多条命中视为冲突
   const groupHits = new Map();
   const runOne = (text) => entries.map(e => {
     const mode = e.mode || 'keyword';
     const keysRaw = csv(e.keys);
     let triggered;
+    // 被安全策略拒绝的 regex 键（ReDoS 防护，见 validate.js）。回显给作者，
+    // 否则他只会看到「我的模式从来不命中」却不知道原因。存量数据也走这条路径。
+    let regexRejected = false;
     if (mode === 'always' || keysRaw.length === 0) triggered = true;
-    else if (mode === 'regex') triggered = keysRaw.some(k => { try { return new RegExp(k, e.case_sensitive ? '' : 'i').test(text); } catch { return false; } });
+    else if (mode === 'regex') triggered = keysRaw.some(k => {
+      if (!compileSafeRegex(k, e.case_sensitive ? '' : 'i')) { regexRejected = true; return false; }
+      return rxBudget.test(k, text, e.case_sensitive ? '' : 'i');
+    });
     else triggered = keysRaw.some(k => { const hay = e.case_sensitive ? text : text.toLowerCase(); return hay.includes(e.case_sensitive ? k : k.toLowerCase()); });
     // required_keys：AND 逻辑，全部命中才触发
     const reqRaw = csv(e.required_keys);
@@ -144,8 +157,8 @@ router.post('/:id/test-trigger', authRequired, (req, res) => {
       max_turns: e.max_turns ?? 0, cooldown: e.cooldown ?? 0, required_keys: e.required_keys || '',
       sticky: e.sticky ?? 0, depth: e.depth ?? 0, tone: e.tone || '',
       variable_write: e.variable_write || '', branch: e.branch || '', vectorize: !!e.vectorize,
-      triggered, imgTriggered, image_urls: urls, image_position: e.image_position };
-  }).filter(r => r.triggered || r.imgTriggered);
+      triggered, imgTriggered, image_urls: urls, image_position: e.image_position, regex_rejected: regexRejected };
+  }).filter(r => r.triggered || r.imgTriggered || r.regex_rejected);
   const results = samples.map((text, i) => ({ text: text.slice(0, 80) + (text.length > 80 ? '…' : ''), hits: runOne(text) }));
   // 互斥组冲突告警
   const conflicts = [...groupHits.entries()].filter(([, arr]) => arr.length > 1).map(([g, arr]) => ({ group: g, entries: arr }));
@@ -154,7 +167,9 @@ router.post('/:id/test-trigger', authRequired, (req, res) => {
   res.json({ results, scan_depth: w.scan_depth, token_budget: w.token_budget, recursion: !!w.recursion,
     max_active: w.max_active ?? 6, system_pos: w.system_pos || 'after', recursion_depth: w.recursion_depth ?? 2,
     variable_schema: w.variable_schema || '',
-    est_tokens: Math.ceil(estChars / 4), conflicts, total: entries.length });
+    est_tokens: Math.ceil(estChars / 4), conflicts, total: entries.length,
+    // 预算触顶时如实告知：结果不完整，而不是让作者以为「就是没命中」。
+    regex_budget_exceeded: rxBudget.blown });
 });
 
 // 创建
@@ -171,7 +186,7 @@ router.post('/', authRequired, contentLimiter, (req, res) => {
       Math.max(1, Math.min(50, parseInt(b.max_active) || 6)), str(b.variable_schema, 4000),
       ['before', 'after', 'front'].includes(b.system_pos) ? b.system_pos : 'after',
       Math.max(1, Math.min(10, parseInt(b.recursion_depth) || 2)));
-  saveEntries(info.lastInsertRowid, entries);
+  saveEntries(info.lastInsertRowid, entries, { strict: true });
   const w = db.prepare('SELECT * FROM worldbooks WHERE id = ?').get(info.lastInsertRowid);
   res.json({ worldbook: { ...w, entries: loadEntries(w.id) } });
 });
@@ -190,7 +205,7 @@ router.put('/:id', authRequired, (req, res) => {
       Math.max(1, Math.min(50, parseInt(b.max_active ?? w.max_active) || 6)), str(b.variable_schema ?? w.variable_schema, 4000),
       ['before', 'after', 'front'].includes(b.system_pos ?? w.system_pos) ? (b.system_pos ?? w.system_pos) : 'after',
       Math.max(1, Math.min(10, parseInt(b.recursion_depth ?? w.recursion_depth) || 2)), w.id);
-  if (Array.isArray(b.entries)) saveEntries(w.id, b.entries.filter(e => e && typeof e === 'object').slice(0, SAFE_ENTRY_LIMIT));
+  if (Array.isArray(b.entries)) saveEntries(w.id, b.entries.filter(e => e && typeof e === 'object').slice(0, SAFE_ENTRY_LIMIT), { strict: true });
   const updated = db.prepare('SELECT * FROM worldbooks WHERE id = ?').get(w.id);
   res.json({ worldbook: { ...updated, entries: loadEntries(w.id) } });
 });
@@ -297,7 +312,29 @@ router.post('/from-character/:characterId', authRequired, contentLimiter, (req, 
 });
 
 // 全字段保存：所有字段始终入库（不再按 tier 剥离），运行时按「字段是否有数据」决定特性是否启用。
-function saveEntries(wbId, entries) {
+//
+// ReDoS 写入侧把关（读取侧见 chat.js / test-trigger，两侧都做以覆盖存量数据）：
+//   · strict=true（交互路径：新建 / 更新）—— 危险 regex 键直接 400，点名到具体的键，
+//     让作者当场知道哪条不合法、为什么；不静默改写他的输入。
+//   · strict=false（派生路径：fork / 从角色另存）—— 降级为 keyword 模式而非硬失败。
+//     在这里硬失败会让既有世界书无法被复制，那是数据迁移事故，不是安全收益。
+function saveEntries(wbId, entries, { strict = false } = {}) {
+  if (Array.isArray(entries)) {
+    for (const e of entries) {
+      if (!e || (e.mode === 'regex') !== true) continue;
+      for (const k of csv(e.keys)) {
+        if (compileSafeRegex(k, e.case_sensitive ? '' : 'i')) continue;
+        if (strict) {
+          throw Object.assign(
+            new Error(`正则关键词「${String(k).slice(0, 40)}」可能导致灾难性回溯或语法非法，已拒绝。请改用更简单的模式或关键词模式。`),
+            { status: 400, expose: true },
+          );
+        }
+        e.mode = 'keyword';   // 派生路径：降级保存，不阻断复制
+        break;
+      }
+    }
+  }
   db.prepare('DELETE FROM worldbook_entries WHERE worldbook_id = ?').run(wbId);
   if (!Array.isArray(entries)) return;
   const stmt = db.prepare(`INSERT INTO worldbook_entries

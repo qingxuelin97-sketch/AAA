@@ -8,8 +8,22 @@ import { bumpDaily } from '../daily.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { log } from '../logger.js';
+import { regexBudget, badRequest } from '../validate.js';
 
 const router = Router();
+
+// 单条聊天消息长度上限。此前完全不设防，实际边界是 2MB 的请求体上限 —— 任何用户
+// 都能把 2MB 文本塞进 messages 表。选择「超限报 400」而不是静默截断：悄悄砍掉
+// 用户亲手写的消息，防呆体验比明确报错更差。16000 字符 ≈ 32KB，远超正常用量。
+const CHAT_MSG_MAX = Number(process.env.CHAT_MSG_MAX) || 16000;
+// 统一取正文：非字符串一律视为空（此前 (req.body?.content || '').trim() 对
+// content: {} 会抛 TypeError → 500）。超限抛 400。
+const readContent = (raw, field = 'content') => {
+  if (raw == null) return '';
+  if (typeof raw !== 'string') throw badRequest(`${field} 必须是字符串`);
+  if (raw.length > CHAT_MSG_MAX) throw badRequest(`消息过长（上限 ${CHAT_MSG_MAX} 字）`);
+  return raw.trim();
+};
 
 function getSettings(userId) {
   return db.prepare('SELECT * FROM settings WHERE user_id = ?').get(userId);
@@ -360,6 +374,15 @@ function buildSystemPrompt(character, recentText, history) {
     while ((mm = setRe.exec(m.content))) variables[mm[1]] = mm[2];
   }
 
+  // —— 世界书 regex 匹配的运行时护栏（与 validate.js 的静态分析互为双保险）——
+  // regex 键由世界书作者自填，对所有与该角色聊天的用户生效；灾难性回溯能把
+  // Node 单线程的事件循环钉死数十秒（实测 (a+)+b 对 24 个 a 就 >30s 不返回）。
+  // 三重护栏：①compileSafeRegex 的静态分析 + 探针，不安全的模式根本不编译
+  // ②扫描文本收紧到 2000 字 ③整轮共享墙钟预算与条数上限 —— 即便分析器放行了
+  // 某个多项式复杂度的模式，单次补全的正则总耗时也被钉在预算内。
+  const REGEX_SCAN_MAX = 2000;
+  const rxBudget = regexBudget({ maxEvals: 64, budgetMs: 25 });
+
   // 统一触发动机：内嵌条目默认 keyword 模式；空 keys => always
   const evalEntry = (w) => {
     const mode = w.mode || 'keyword';
@@ -368,14 +391,8 @@ function buildSystemPrompt(character, recentText, history) {
     const cs = !!w.case_sensitive;
     const hay = cs ? scanText : scanText.toLowerCase();
     if (mode === 'regex') {
-      // ReDoS 缓解：世界书 regex 键由角色作者自填、对所有与之聊天的用户生效，
-      // 灾难性回溯的模式能拖死一个 CPU 核。廉价护栏：跳过超长模式（>200 字符），
-      // 只对截断后的扫描文本（≤6k）匹配。无第三方依赖，不引入 RE2。
-      const hayR = scanText.length > 6000 ? scanText.slice(-6000) : scanText;
-      return keysRaw.some(k => {
-        if (!k || k.length > 200) return false;
-        try { const re = new RegExp(k, cs ? '' : 'i'); return re.test(hayR); } catch { return false; }
-      });
+      const hayR = scanText.length > REGEX_SCAN_MAX ? scanText.slice(-REGEX_SCAN_MAX) : scanText;
+      return keysRaw.some(k => rxBudget.test(k, hayR, cs ? '' : 'i'));
     }
     return keysRaw.some(k => { const kk = cs ? k : k.toLowerCase(); return hay.includes(kk); });
   };
@@ -425,6 +442,16 @@ function buildSystemPrompt(character, recentText, history) {
     .filter(evalMaxTurns)
     .filter(evalCooldown)
     .filter(evalProbability);
+
+  // 被判定为不安全/非法的 regex 键，或触顶的匹配预算：记一条 warn 供作者与 GM 排查。
+  // logger 的 60 秒指纹去重保证这条日志本身不会变成新的 DoS 面。
+  if (rxBudget.rejected.length || rxBudget.blown) {
+    log({
+      level: 'warn', source: 'server', category: 'worldbook', event: 'regex_rejected',
+      message: `世界书 regex 键被安全策略拦截（${rxBudget.rejected.length} 个）${rxBudget.blown ? '，且匹配预算触顶' : ''}`,
+      extra: { character_id: character?.id, keys: rxBudget.rejected.slice(0, 8), budget_blown: rxBudget.blown },
+    });
+  }
 
   // 递归触发：被激活条目的 content 作为新扫描文本，继续激活其他条目（按 recursion_depth 控制轮数，默认 2）。
   const anyRecursion = linked.some(l => l.recursion);
@@ -679,7 +706,7 @@ router.patch('/conversations/:id/messages/:mid', authRequired, (req, res) => {
   const conv = ownConv(req, res); if (!conv) return;
   const msg = db.prepare('SELECT * FROM messages WHERE id = ? AND conversation_id = ?').get(req.params.mid, conv.id);
   if (!msg) return res.status(404).json({ error: '消息不存在' });
-  const c = String(req.body?.content || '').trim(); if (!c) return res.status(400).json({ error: '内容不能为空' });
+  const c = readContent(req.body?.content); if (!c) return res.status(400).json({ error: '内容不能为空' });
   db.prepare('UPDATE messages SET content = ? WHERE id = ?').run(c, msg.id);
   res.json({ message: { ...msg, content: c } });
 });
@@ -705,7 +732,7 @@ router.post('/conversations/:id/complete', authRequired, aiLimiter, async (req, 
   const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
   const settings = getSettings(req.user.id);
 
-  const userContent = (req.body?.content || '').trim();
+  const userContent = readContent(req.body?.content);
   if (userContent) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'user', userContent);
   }

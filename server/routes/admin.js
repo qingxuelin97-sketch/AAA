@@ -8,6 +8,7 @@ import { adminView, updatePlatform, getPlatform } from '../platform.js';
 import { synthesize } from './chat.js';
 import { detectAsrModels, transcribe } from '../asr.js';
 import { creatorTier } from '../creator.js';
+import { str as clampStr } from '../validate.js';
 import { councilCfg, saveCouncil, councilSeats, councilSize, baseSeats, totalUsers, USERS_PER_SEAT, MIN_SEATS } from '../council.js';
 import { exportAll, importAll } from '../snapshot.js';
 import { flush } from '../persist.js';
@@ -483,7 +484,7 @@ router.post('/codes', (req, res) => {
   const { gold = 0, diamond = 0, vip_days = 0, max_uses = 1, note = '', prefix = '' } = req.body || {};
   const code = (prefix ? String(prefix).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' : '') + rnd(6);
   db.prepare('INSERT INTO invite_keys (code, max_uses, used, grant_gold, grant_diamond, grant_vip_days, note) VALUES (?,?,0,?,?,?,?)')
-    .run(code, Math.max(1, +max_uses || 1), +gold || 0, +diamond || 0, +vip_days || 0, note || '');
+    .run(code, Math.max(1, +max_uses || 1), +gold || 0, +diamond || 0, +vip_days || 0, clampStr(note, 200));
   res.json({ code: db.prepare('SELECT * FROM invite_keys WHERE code = ?').get(code) });
 });
 router.delete('/codes/:code', (req, res) => { db.prepare('DELETE FROM invite_keys WHERE code = ?').run(req.params.code); res.json({ ok: true }); });

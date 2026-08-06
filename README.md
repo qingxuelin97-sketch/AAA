@@ -101,6 +101,11 @@ npm run test:app        # 源码契约断言（271 条）
 npm run test:app:e2e    # 浏览器端到端（S7 全场景）
 npm run smoke           # 服务端接口体检
 npm run test:server:s7  # 北京时区界 / 排序语义七组验值
+
+# 后端安全 / 防呆 / 压测
+npm run test:sec        # 安全加固专项回归
+npm run test:abuse      # 防呆：离谱输入矩阵 + ReDoS/越权/上限断言（CI 门禁）
+npm run test:stress     # 压测：并发双花、SSE 翻搅、事件循环健康度（按需，不进 CI）
 ```
 
 开发模式：终端 1 `npm run dev:server`，终端 2 `npm run dev:client`（访问 5173）。

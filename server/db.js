@@ -975,6 +975,17 @@ try {
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_post_likes_uniq ON post_likes (post_id, user_id)');
 } catch { /* */ }
 
+// —— 一次性修复：published_run_id 悬空的已发布作品 ——
+// 历史上删除剧情线不会清理 novels.published_run_id，留下「已发布 + 指针悬空」
+// 的不一致状态；旧的 /read 逻辑对非作者会退回到第一条 run，从而泄露作者从未
+// 发布的剧情线。写入侧已在 routes/novels.js 的 DELETE /runs/:rid 修好，这里
+// 把存量脏数据一并下架（fail-closed）。
+try {
+  db.exec(`UPDATE novels SET published = 0, published_run_id = NULL
+    WHERE published = 1 AND (published_run_id IS NULL
+      OR published_run_id NOT IN (SELECT id FROM novel_runs))`);
+} catch { /* 表可能尚不存在 */ }
+
 // 进程退出时把 WAL 落盘并截断，抑制 WAL 文件长期膨胀（同步操作，安全）。
 process.on('exit', () => { try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* */ } });
 

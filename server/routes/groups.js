@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { push } from '../realtime.js';
+import { str, clampInt } from '../validate.js';
 
 const router = Router();
 
@@ -18,11 +19,15 @@ router.get('/', authRequired, (req, res) => {
 
 router.post('/', authRequired, (req, res) => {
   const { name, description, avatar, is_public } = req.body || {};
-  if (!name) return res.status(400).json({ error: '群名称必填' });
+  // 防呆：此前只判 truthy —— name: [] 能过这一关，然后作为非原始值喂给
+  // better-sqlite3 抛 TypeError → 500。这里要求真字符串并限长。
+  if (typeof name !== 'string' || !name.trim() || name.length > 60) {
+    return res.status(400).json({ error: '群名称必填（60字内）' });
+  }
   // 建群 + 建 owner 成员一并原子提交，杜绝崩溃留下「无主群」。
   const gid = db.transaction(() => {
     const info = db.prepare('INSERT INTO groups (name, owner_id, avatar, description, is_public) VALUES (?,?,?,?,?)')
-      .run(name, req.user.id, avatar || null, description || '', is_public === false ? 0 : 1);
+      .run(name.trim(), req.user.id, str(avatar, 500) || null, str(description, 500), is_public === false ? 0 : 1);
     db.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?,?,?)').run(info.lastInsertRowid, req.user.id, 'owner');
     return info.lastInsertRowid;
   }).immediate();
@@ -80,9 +85,13 @@ router.get('/:id/messages', authRequired, (req, res) => {
   const g = db.prepare('SELECT owner_id, is_public FROM groups WHERE id = ?').get(req.params.id);
   if (!g) return res.status(404).json({ error: '群不存在' });
   if (g.owner_id !== req.user.id && !memberOf(req.params.id, req.user.id) && !g.is_public) return res.status(403).json({ error: '无权访问该群' });
-  const after = parseInt(req.query.after, 10) || 0;
+  // 防呆：此前无 LIMIT —— after=0 会把整个群的历史一次性拉走。客户端轮询
+  // 按「收到的最后一条 id」推进 after（GroupRoom.jsx），被截断的页会在下一次
+  // 轮询自动补齐，因此加上限不影响功能。
+  const after = clampInt(req.query.after, 0, Number.MAX_SAFE_INTEGER, 0);
+  const limit = clampInt(req.query.limit, 1, 200, 100);
   const rows = db.prepare(`SELECT m.*, u.display_name, u.avatar FROM group_messages m
-    JOIN users u ON u.id = m.user_id WHERE m.group_id = ? AND m.id > ? ORDER BY m.id`).all(req.params.id, after);
+    JOIN users u ON u.id = m.user_id WHERE m.group_id = ? AND m.id > ? ORDER BY m.id LIMIT ?`).all(req.params.id, after, limit);
   res.json({ messages: rows });
 });
 

@@ -19,6 +19,11 @@ const clampSpeed = (v) => { const n = Number(v); return n >= 0.5 && n <= 2 ? Mat
 // Voice pitch is a 0.5–1.5 multiplier; default 1 (natural).
 const clampPitch = (v) => { const n = Number(v); return n >= 0.5 && n <= 1.5 ? Math.round(n * 100) / 100 : 1; };
 
+// 局部更新取值：只有「真字符串」才覆盖原值，其余（对象/数组/布尔/数字）一律
+// 保留原值。?? 只挡 null/undefined，挡不住 {} —— 那会让 better-sqlite3 抛
+// TypeError 变成 500。同时统一施加长度上限。
+const keep = (v, cur, max) => (typeof v === 'string' ? v.slice(0, max) : cur);
+
 // 独立世界书可在角色创建时一并挂载。只接受正整数、去重且限制数量，
 // 后续仍需由路由校验「本人拥有或公开」的使用权限。
 const linkedWorldbookIds = (value) => [...new Set((Array.isArray(value) ? value : [])
@@ -150,7 +155,11 @@ router.get('/:id', authOptional, (req, res) => {
 
 router.post('/', authRequired, (req, res) => {
   const b = req.body || {};
-  if (!b.name) return res.status(400).json({ error: '角色名必填' });
+  // 防呆：此前只判 truthy —— name: {} 能过关，随后作为非原始值喂给 better-sqlite3
+  // 抛 TypeError → 500。与本文件的导入路径（/import）保持同一套校验与上限。
+  if (typeof b.name !== 'string' || !b.name.trim() || b.name.length > 60) {
+    return res.status(400).json({ error: '角色名必填（60字内）' });
+  }
   const wbIds = linkedWorldbookIds(b.linked_worldbook_ids);
   if (wbIds.length) {
     const usable = db.prepare(`SELECT COUNT(*) AS n FROM worldbooks
@@ -163,11 +172,14 @@ router.post('/', authRequired, (req, res) => {
     VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@alt_greetings)`)
     .run({
       owner_id: req.user.id,
-      name: b.name, avatar: b.avatar || null,
-      background: b.background || null, background_type: b.background_type || 'image', bgm: b.bgm || '',
-      tagline: b.tagline || '', intro: b.intro || '', greeting: b.greeting || '',
-      persona: b.persona || '', voice_name: b.voice_name || '', voice_speed: clampSpeed(b.voice_speed), voice_pitch: clampPitch(b.voice_pitch),
-      category: b.category || '', tags: b.tags || '',
+      name: str(b.name, 60), avatar: str(b.avatar, 500) || null,
+      background: str(b.background, 500) || null,
+      background_type: ['image', 'color', 'video'].includes(b.background_type) ? b.background_type : 'image',
+      bgm: str(b.bgm, 500),
+      tagline: str(b.tagline, 200), intro: str(b.intro, 8000), greeting: str(b.greeting, 24000),
+      persona: str(b.persona, 24000), voice_name: str(b.voice_name, 60),
+      voice_speed: clampSpeed(b.voice_speed), voice_pitch: clampPitch(b.voice_pitch),
+      category: str(b.category, 40), tags: str(b.tags, 200),
       is_public: b.is_public ? 1 : 0, nsfw: b.nsfw ? 1 : 0,
       alt_greetings: normAltGreetings(b.alt_greetings)
     });
@@ -200,14 +212,18 @@ router.put('/:id', authRequired, (req, res) => {
       id: c.id,
       alt_greetings: normAltGreetings(b.alt_greetings, c.alt_greetings || '[]'),
       front_regex: (() => { if (b.front_regex == null) return c.front_regex || '[]'; try { const v = typeof b.front_regex === 'string' ? JSON.parse(b.front_regex) : b.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : (c.front_regex || '[]'); } catch { return c.front_regex || '[]'; } })(),
-      name: b.name ?? c.name, avatar: b.avatar ?? c.avatar,
-      background: b.background ?? c.background, background_type: b.background_type ?? c.background_type,
-      bgm: b.bgm ?? c.bgm,
-      tagline: b.tagline ?? c.tagline, intro: b.intro ?? c.intro, greeting: b.greeting ?? c.greeting,
-      persona: b.persona ?? c.persona, voice_name: b.voice_name ?? c.voice_name,
+      // 防呆：?? 只挡 null/undefined，挡不住对象/数组/布尔 —— 那些会直接喂给
+      // better-sqlite3 抛 TypeError → 500。keep() 保证「非字符串一律回落原值」，
+      // 并与 POST / 及 /import 使用同一套长度上限。
+      name: keep(b.name, c.name, 60), avatar: keep(b.avatar, c.avatar, 500),
+      background: keep(b.background, c.background, 500),
+      background_type: ['image', 'color', 'video'].includes(b.background_type) ? b.background_type : c.background_type,
+      bgm: keep(b.bgm, c.bgm, 500),
+      tagline: keep(b.tagline, c.tagline, 200), intro: keep(b.intro, c.intro, 8000), greeting: keep(b.greeting, c.greeting, 24000),
+      persona: keep(b.persona, c.persona, 24000), voice_name: keep(b.voice_name, c.voice_name, 60),
       voice_speed: b.voice_speed != null ? clampSpeed(b.voice_speed) : (c.voice_speed ?? 1),
       voice_pitch: b.voice_pitch != null ? clampPitch(b.voice_pitch) : (c.voice_pitch ?? 1),
-      category: b.category ?? c.category, tags: b.tags ?? c.tags,
+      category: keep(b.category, c.category, 40), tags: keep(b.tags, c.tags, 200),
       is_public: (b.is_public ? 1 : 0), nsfw: (b.nsfw ? 1 : 0)
     });
   if (b.world) saveWorld(c.id, b.world);
@@ -231,7 +247,9 @@ function saveWorld(characterId, world) {
   world.forEach((w, i) => {
     if (!w || (!w.content && !w.keys)) return;
     // constant（酒馆常驻条目）：无视关键词恒注入 —— 驱动酒馆卡游戏引擎的规则条目多依赖此标记
-    stmt.run(characterId, w.keys || '', w.content || '', w.enabled === false ? 0 : 1, i, w.constant ? 1 : 0);
+    // 防呆：与 community.js 的同类导入路径对齐上限，避免 2MB 条目直接入库
+    //（非字符串同时被 str() 收敛，杜绝对象喂给 better-sqlite3 抛 TypeError → 500）。
+    stmt.run(characterId, str(w.keys, 500), str(w.content, 24000), w.enabled === false ? 0 : 1, i, w.constant ? 1 : 0);
   });
 }
 
