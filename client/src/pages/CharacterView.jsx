@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNav } from '../nav.js';
 import { api, useAuth, assetUrl } from '../api.jsx';
-import { useToast, Avatar, CreatorV, Modal } from '../ui.jsx';
+import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import { isAppMode } from '../appmode.js';
 import Reviews from '../components/Reviews.jsx';
@@ -12,6 +12,7 @@ import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { useAppOverlay } from '../overlay.jsx';
 import { CoverArt, EmptyArt, QuietAquaCharacterArt, isLegacyMonogramCover, resolveCharacterMedia } from '../art.jsx';
 import ShareCardSheet from '../components/ShareCardSheet.jsx';
+import PushSheet from '../components/PushSheet.jsx';
 import {
   MessageCircle, Heart, Pencil, BookOpen, ArrowLeft, Sparkles, Globe, Eye,
   ChevronRight, ChevronDown, Drama, BadgeCheck, Download, X, MoreHorizontal,
@@ -26,43 +27,6 @@ function recordRecent(c) {
     const item = { id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline, owner_name: c.owner_name, category: c.category, uses: c.uses, featured: c.featured };
     localStorage.setItem('recent_chars', JSON.stringify([item, ...prev].slice(0, 12)));
   } catch { /* */ }
-}
-
-// 「推送给玩家」：把这张公开角色卡定向送进对方的消息收件箱（/messages 收件箱 tab）。
-// 双壳共用：Modal 在 App 壳自动走 portal + 退场动效。
-function PushSheet({ character, onClose }) {
-  const toast = useToast();
-  const [to, setTo] = useState('');
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-  const submit = async () => {
-    if (!to.trim() || busy) return;
-    setBusy(true);
-    try {
-      await api('/community/push', { method: 'POST', body: { character_id: character.id, to_username: to.trim(), note: note.trim() } });
-      toast(`已推送给「${to.trim()}」`);
-      onClose();
-    } catch (e) { toast(e.message || '推送失败，请稍后重试', 'err'); }
-    finally { setBusy(false); }
-  };
-  return (
-    <Modal onClose={onClose} className="cv-push-modal">
-      <h2 style={{ margin: '0 0 4px' }}><Send size={16} style={{ verticalAlign: -2, marginRight: 6 }} />推送给玩家</h2>
-      <p className="muted" style={{ margin: '0 0 14px', fontSize: 13 }}>把「{character.name}」直接送进对方的消息收件箱。</p>
-      <label className="atl-seed-label" htmlFor="cv-push-to">收件人</label>
-      <input id="cv-push-to" className="input" style={{ width: '100%', marginBottom: 10 }}
-        placeholder="对方的用户名或昵称" maxLength={40} value={to}
-        onChange={e => setTo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }} />
-      <label className="atl-seed-label" htmlFor="cv-push-note">附言（可选）</label>
-      <input id="cv-push-note" className="input" style={{ width: '100%' }}
-        placeholder="想对 TA 说的话" maxLength={100} value={note}
-        onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }} />
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-        <AppButton variant="tertiary" onClick={onClose} disabled={busy}>取消</AppButton>
-        <AppButton variant="primary" loading={busy} disabled={busy || !to.trim()} onClick={submit}>推送</AppButton>
-      </div>
-    </Modal>
-  );
 }
 
 export default function CharacterView() {
@@ -267,7 +231,7 @@ function AppView({ c, user, nav, toast, faved, busy, wbOpen, setWbOpen, related,
             onClose={() => setShareCardOpen(false)}
           />
         )}
-        {pushOpen && <PushSheet character={c} onClose={() => setPushOpen(false)} />}
+        {pushOpen && <PushSheet title={c.name} payload={{ character_id: c.id }} onClose={() => setPushOpen(false)} />}
         {calling && <CallScreen character={c} onClose={() => setCalling(false)} />}
 
         {/* —— 作者行 + 关注 —— */}
@@ -455,7 +419,7 @@ function WebView({ c, user, nav, faved, busy, wbOpen, setWbOpen, related, startC
         <button className="btn ghost sm" onClick={exportCard} title="导出角色卡 JSON"><Download size={15} /></button>
         {isOwner && <button className="btn" onClick={() => nav('/character/' + c.id + '/edit')}><Pencil size={15} /> 编辑</button>}
       </div>
-      {pushOpen && <PushSheet character={c} onClose={() => setPushOpen(false)} />}
+      {pushOpen && <PushSheet title={c.name} payload={{ character_id: c.id }} onClose={() => setPushOpen(false)} />}
       <div className="page" style={{ maxWidth: 860 }}>
         <div className="char-hero">
           <div className="char-hero-bg">

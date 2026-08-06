@@ -101,6 +101,22 @@ try {
   ok(badUser.status === 404, `目标用户不存在 404（${badUser.status}）`);
   const badChar = await post('/community/push', { character_id: cPriv, to_username: 'inboxTargetB' }, b.token);
   ok(badChar.status === 404, `他人私密角色推送 404（${badChar.status}）`);
+
+  // 7) 剧本推送（修缮⑬）：script_id 入口物化 type='script' 卡片，行带 script_id 供跳转
+  const scriptId = dbWrite((d) => Number(d.prepare(
+    'INSERT INTO scripts (author_id, title, summary, content, category, tags, price_gold) VALUES (?,?,?,?,?,?,0)'
+  ).run(a.user.id, '雾港谜案·推送样本', '悬疑短剧', '【开场】……', 'mystery', '悬疑').lastInsertRowid));
+  const ps = await J(await post('/community/push', { script_id: scriptId, to_username: 'inboxTargetB', note: '这本超好玩' }, a.token));
+  ok(ps.ok === true, '按 script_id 推送成功（就地物化剧本卡）');
+  const spost = dbRead((d) => d.prepare('SELECT * FROM posts WHERE script_id = ?').get(scriptId));
+  ok(spost && spost.type === 'script' && spost.author_id === a.user.id, '物化 post 类型 script、归属剧本作者');
+  const ib3 = await J(await get('/community/inbox', b.token));
+  const srow = ib3.shares.find((x) => x.script_id === scriptId);
+  ok(srow && srow.type === 'script' && srow.title === '雾港谜案·推送样本', '收件箱行带 script_id/type 供跳转');
+  await post('/community/push', { script_id: scriptId, to_username: 'inboxTargetB' }, a.token);
+  ok(dbRead((d) => d.prepare('SELECT COUNT(*) n FROM posts WHERE script_id = ?').get(scriptId).n) === 1, '重复推送复用同一张剧本 post');
+  const badScript = await post('/community/push', { script_id: 99999, to_username: 'inboxTargetB' }, a.token);
+  ok(badScript.status === 404, `不存在剧本推送 404（${badScript.status}）`);
 } catch (e) {
   fail++; console.error('  ✗ 异常：', e.message, '\n---- server output ----\n' + serverOutput);
 }

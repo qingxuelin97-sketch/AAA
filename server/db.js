@@ -379,6 +379,8 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN economic_hold_at INTEGER',
   // 头像框装扮位（修缮⑤）：存框 id，目录与校验见 wallet.js AVATAR_FRAMES
   "ALTER TABLE users ADD COLUMN avatar_frame TEXT DEFAULT ''",
+  // 收件箱剧本卡（修缮⑬）：type='script' 的 post 关联剧本，行点击跳 /script/:id
+  'ALTER TABLE posts ADD COLUMN script_id INTEGER',
   'ALTER TABLE transactions ADD COLUMN ref_owner INTEGER',
   'ALTER TABLE transactions ADD COLUMN payment_order_id TEXT',
   // Ledger correlation/idempotency. share_eligible keeps a reserved upstream

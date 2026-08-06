@@ -6,9 +6,10 @@ import { useToast, Avatar, CoinIcon } from '../ui.jsx';
 import { pid } from '../assets.jsx';
 import Reviews from '../components/Reviews.jsx';
 import ReportButton from '../components/ReportButton.jsx';
+import PushSheet from '../components/PushSheet.jsx';
 import { isAppMode } from '../appmode.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
-import { Heart, Play, Lock, Trash2, Eye, ArrowLeft, Pencil, Sparkles, ShieldCheck, Clock3, BookOpen, ChevronRight } from 'lucide-react';
+import { Heart, Play, Lock, Trash2, Eye, ArrowLeft, Pencil, Sparkles, ShieldCheck, Clock3, BookOpen, ChevronRight, Send } from 'lucide-react';
 
 export default function ScriptDetail() {
   const { id } = useParams();
@@ -20,6 +21,7 @@ export default function ScriptDetail() {
   const [busy, setBusy] = useState(false);
   const [liked, setLiked] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [pushOpen, setPushOpen] = useState(false); // 推送给玩家（收件箱定向分享）
 
   const load = () => {
     setLoadError(null);
@@ -110,12 +112,16 @@ export default function ScriptDetail() {
             <span>剧本详情</span>
             <strong>{script.title}</strong>
           </div>
+          <AppIconButton className="qa-script-detail-v4__top-edit" label="推送给玩家" onClick={() => setPushOpen(true)}>
+            <Send size={18} />
+          </AppIconButton>
           {!isAuthor
             ? <span className="qa-script-detail-v4__top-action"><ReportButton type="script" id={script.id} label="" size={18} /></span>
             : <AppIconButton className="qa-script-detail-v4__top-edit" label="编辑剧本" onClick={() => nav('/script/' + id + '/edit')}>
               <Pencil size={18} />
             </AppIconButton>}
         </header>
+        {pushOpen && <PushSheet title={script.title} payload={{ script_id: script.id }} onClose={() => setPushOpen(false)} />}
 
         <div className="qa-script-detail-v4__scroll">
           <section className="qa-script-detail-v4__hero" aria-labelledby="qa-script-detail-title">
@@ -202,12 +208,14 @@ export default function ScriptDetail() {
 
   return (
     <>
+      {pushOpen && <PushSheet title={script.title} payload={{ script_id: script.id }} onClose={() => setPushOpen(false)} />}
       <div className="topbar">
         <button className="btn ghost sm" onClick={() => nav(-1)}><ArrowLeft size={16} /> 返回</button>
         <div style={{ flex: 1 }}>
           <h1>{script.title}</h1>
           <div className="sub">{pid('script', script.id)} · 由 {script.author_name} 创作</div>
         </div>
+        <button className="btn ghost sm" onClick={() => setPushOpen(true)} title="推送给玩家"><Send size={15} /></button>
         {!isAuthor && <ReportButton type="script" id={script.id} />}
         {isAuthor && <>
           <button className="btn" onClick={() => nav('/script/' + id + '/edit')}>编辑</button>

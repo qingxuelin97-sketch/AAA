@@ -2339,13 +2339,20 @@ async function route(method, path, search, body, headers) {
   // posts 表，share 行内联 title/cover/character_id）。
   if (method === 'POST' && path === '/community/push') {
     need();
-    const c = find('characters', x => x.id === +(body.character_id || 0));
-    if (!c || !c.is_public) return E('角色不存在或未公开', 404);
+    let card = null;
+    if (body.script_id) {
+      const sc = find('scripts', x => x.id === +body.script_id);
+      if (!sc) return E('剧本不存在', 404);
+      card = { title: sc.title, cover: sc.cover, type: 'script', script_id: sc.id };
+    } else {
+      const c = find('characters', x => x.id === +(body.character_id || 0));
+      if (!c || !c.is_public) return E('角色不存在或未公开', 404);
+      card = { title: c.name, cover: c.avatar, type: 'card', character_id: c.id };
+    }
     const target = find('users', u => u.username === body.to_username || u.display_name === body.to_username);
     if (!target) return E('目标用户不存在', 404);
-    insert('shares', { from_user: me.id, to_user: target.id, note: String(body.note || '').slice(0, 200), seen: 0,
-      title: c.name, cover: c.avatar, type: 'card', character_id: c.id });
-    if (target.id !== me.id) notify(target.id, `「${me.display_name}」向你推送了《${c.name}》`, '/messages');
+    insert('shares', { from_user: me.id, to_user: target.id, note: String(body.note || '').slice(0, 200), seen: 0, ...card });
+    if (target.id !== me.id) notify(target.id, `「${me.display_name}」向你推送了《${card.title}》`, '/messages');
     save(); return J({ ok: true });
   }
   if (method === 'GET' && path === '/community/inbox') {

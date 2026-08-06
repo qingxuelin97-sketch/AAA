@@ -22,7 +22,7 @@ import { tick } from '../appgestures.js';
 import { useAppOverlay } from '../overlay.jsx';
 import { useAppTabActive } from '../appTabActivity.js';
 import {
-  Bell, BellOff, ChevronRight, Heart, Inbox, MessageCircle, Pin, Search, UserRound, Users, X, Flame, Ellipsis
+  Bell, BellOff, ChevronRight, Heart, Inbox, MessageCircle, Pin, ScrollText, Search, UserRound, Users, X, Flame, Ellipsis
 } from 'lucide-react';
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
@@ -132,7 +132,7 @@ function AppInboxRow({ share, onOpen }) {
           : <span className="msgs-fav-ph"><AppPortraitFallback name={share.title} /></span>}
         <span className="msgs-conv-tx">
           <b>{share.title}</b>
-          <span>来自 {share.from_name || '玩家'}{share.note ? ` · ${share.note}` : ''}</span>
+          <span>{share.type === 'script' ? '剧本 · ' : ''}来自 {share.from_name || '玩家'}{share.note ? ` · ${share.note}` : ''}</span>
         </span>
         <span className="msgs-conv-meta">
           {time && <time dateTime={share.created_at}>{time}</time>}
@@ -264,9 +264,10 @@ export default function Messages() {
     if (!confirm('删除该对话？')) return;
     await removeConv(cv);
   };
-  // 收件箱行落点：角色卡类 post 直达角色详情（导入/开聊都在那）；其余类型暂无详情页
+  // 收件箱行落点：角色卡 → 角色详情（开聊/收藏都在那）；剧本 → 剧本详情（买/玩）
   const openShare = (s) => {
     if (s.character_id) nav('/character/' + s.character_id);
+    else if (s.script_id) nav('/script/' + s.script_id);
     else toast('该内容暂不支持直接打开');
   };
   const chatFav = async (c) => {
@@ -480,7 +481,7 @@ export default function Messages() {
                 ? <Avatar src={s.cover} name={s.title} size={50} />
                 : <div className="msgs-fav-ph"><CoverArt name={s.title} /></div>}
               <div className="msgs-conv-tx">
-                <b>{s.title} <Inbox size={12} className="msgs-fav-heart" /></b>
+                <b>{s.title} {s.type === 'script' ? <ScrollText size={12} className="msgs-fav-heart" /> : <Inbox size={12} className="msgs-fav-heart" />}</b>
                 <span>来自 {s.from_name || '玩家'}{s.note ? ` · ${s.note}` : ''}</span>
               </div>
               {!s.seen && <i className="msgs-badge">新</i>}

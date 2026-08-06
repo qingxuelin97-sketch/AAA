@@ -34,14 +34,25 @@ router.post('/publish-character/:id', authRequired, (req, res) => {
 });
 
 // "Push to other players" — directed share into a user's inbox.
-// 既收 post_id（广场卡片）也收 character_id（角色详情页入口）：后者解析该
-// 角色最新的广场卡片；从未发布过卡片的公开角色就地物化一张（作者=角色
-// 主人，内容与 publish-character 同构，不广播），保证收件箱 JOIN 恒成立。
+// 收 post_id（广场卡片）/ character_id（角色详情页入口）/ script_id（剧本
+// 详情页入口）：后两者解析对应的最新卡片 post；从未有过卡片的公开内容就地
+// 物化一张（作者=内容主人，不广播），保证收件箱 JOIN 恒成立。
 router.post('/push', authRequired, contentLimiter, (req, res) => {
-  const { post_id, character_id, to_username, note } = req.body || {};
+  const { post_id, character_id, script_id, to_username, note } = req.body || {};
   let post = null;
   if (post_id) {
     post = db.prepare('SELECT * FROM posts WHERE id = ?').get(post_id);
+  } else if (script_id) {
+    const sc = db.prepare('SELECT * FROM scripts WHERE id = ? AND deleted_at IS NULL').get(script_id);
+    if (!sc) return res.status(404).json({ error: '剧本不存在' });
+    post = db.prepare('SELECT * FROM posts WHERE script_id = ? ORDER BY id DESC LIMIT 1').get(sc.id);
+    if (!post) {
+      const info = db.prepare(`INSERT INTO posts (author_id, type, title, body, cover, script_id, payload, tags)
+        VALUES (?,?,?,?,?,?,?,?)`).run(
+        sc.author_id, 'script', sc.title, (sc.summary || '').slice(0, 120), sc.cover, sc.id, '', sc.tags || ''
+      );
+      post = db.prepare('SELECT * FROM posts WHERE id = ?').get(info.lastInsertRowid);
+    }
   } else if (character_id) {
     const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(character_id);
     if (!c || !c.is_public) return res.status(404).json({ error: '角色不存在或未公开' });
@@ -73,7 +84,7 @@ router.post('/push', authRequired, contentLimiter, (req, res) => {
 // My inbox of received pushes
 router.get('/inbox', authRequired, (req, res) => {
   const rows = db.prepare(`
-    SELECT s.*, p.title, p.type, p.cover, p.character_id, u.display_name AS from_name
+    SELECT s.*, p.title, p.type, p.cover, p.character_id, p.script_id, u.display_name AS from_name
     FROM shares s JOIN posts p ON p.id = s.post_id JOIN users u ON u.id = s.from_user
     WHERE s.to_user = ? ORDER BY s.created_at DESC`).all(req.user.id);
   const unseen = db.prepare('SELECT COUNT(*) n FROM shares WHERE to_user = ? AND seen = 0').get(req.user.id).n;
