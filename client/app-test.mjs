@@ -379,11 +379,12 @@ assert.match(calendarSheetSource, /streakSealForTier\(data\?\.streak \|\| 0\)/, 
 assert.match(appProfileSource, /huanyu_whatsnew_seen'\) === 'S7'/, 'the whats-new dot must key on the current version');
 assert.match(appProfileSource, /pf-whatsnew-dot/, 'the unread dot must sit on the whats-new entry');
 assert.match(gallerySource, /gallery-s7-companion[\s\S]*qa-gallery__lbmine/, 'the gallery must exhibit the companion dossier family');
-/* ---- S7-G10 阅读进度记忆 ---- */
+/* ---- S7-G10 阅读进度记忆（修缮⑦起双壳同享） ---- */
 const novelReaderSource = await readFile(new URL('./src/pages/NovelReader.jsx', import.meta.url), 'utf8');
-assert.match(novelReaderSource, /if \(!app \|\| !data\) return;[\s\S]*huanyu_read_' \+ id/, 'reading progress must stay App-gated');
+assert.match(novelReaderSource, /if \(!data\) return;[\s\S]*huanyu_read_' \+ id/, 'reading progress memory must cover both shells');
 assert.match(novelReaderSource, /saved > 0\.01 && saved < 0\.999/, 'near-start and finished runs must reopen from the top');
-assert.match(novelReaderSource, /if \(!isAppMode\(\)\) return 18;/, 'font-size memory must never change the Web reader');
+assert.doesNotMatch(novelReaderSource, /if \(!isAppMode\(\)\) return 18;/, 'font-size memory must not regress to App-only gating');
+assert.match(novelReaderSource, /huanyu_read_size/, 'font-size memory must persist across sessions');
 const characterRecoveryIndex = characterViewSource.indexOf('if (!c && loadError)');
 const characterDispatchIndex = characterViewSource.indexOf('const shared =');
 assert.ok(
