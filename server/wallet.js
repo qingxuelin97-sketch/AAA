@@ -16,6 +16,7 @@ export function publicUser(u) {
     id: u.id, username: u.username, email: u.email, display_name: u.display_name,
     avatar: u.avatar, banner: u.banner, bio: u.bio,
     gold: u.gold, diamond: u.diamond,
+    chat_credits: u.chat_credits || 0,   // 聊天次数卡（转盘奖品，平台对话自动抵扣）
     diamond_debt: Math.max(0, u.diamond_debt || 0), economic_hold: !!u.economic_hold,
     economic_hold_reason: u.economic_hold_reason || '',
     vip_until: u.vip_until, vip: isVip(u),

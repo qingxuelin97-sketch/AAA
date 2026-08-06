@@ -2890,6 +2890,7 @@ html[data-app="1"] .qa-wallet-v4__asset-icon {
 
 html[data-app="1"] .qa-wallet-v4__asset-icon.gold { color: #f4d083; }
 html[data-app="1"] .qa-wallet-v4__asset-icon.diamond { color: #aee9e3; }
+html[data-app="1"] .qa-wallet-v4__asset-icon.credit { color: #d8c6ff; }
 html[data-app="1"] .qa-wallet-v4__asset-icon img {
   display: block;
   width: 34px;

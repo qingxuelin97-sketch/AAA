@@ -247,6 +247,8 @@ html[data-page-hidden] *, html[data-page-hidden] *::before, html[data-page-hidde
 .asset-chip { display: inline-grid; place-items: center; flex-shrink: 0; width: 56px; height: 56px;
   background: none; border: 0; border-radius: 0; box-shadow: none; transition: transform 0.25s var(--spring); }
 .asset-chip > svg { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.24)); }
+/* 聊天次数卡（转盘奖品）资产位：淡紫票券 */
+.asset-chip.credit { color: #8A63D8; background: rgba(138, 99, 216, 0.14); }
 .wallet-hero .col:hover .asset-chip { transform: translateY(-2px) rotate(-3deg); }
 /* 资产数字配色 + 货币色微光，让金币/钻石一眼可辨 */
 .wallet-hero .col.gold .bal-num { color: #c8932f; text-shadow: 0 0 14px rgba(241,196,82,0.4); }

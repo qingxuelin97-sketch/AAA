@@ -194,6 +194,11 @@ export default function Wallet() {
                   <span className="qa-wallet-v4__asset-icon diamond"><img src={diamondCurrencyArtUrl} alt="" aria-hidden="true" /></span>
                   <div><small>钻石</small><strong><CountUp value={wallet.diamond} /></strong></div>
                 </div>
+                {/* 聊天次数卡（转盘奖品）：平台对话自动抵扣。Ticket 图标为占位，待素材 PNG 到位替换 */}
+                <div className="qa-wallet-v4__asset">
+                  <span className="qa-wallet-v4__asset-icon credit"><Ticket size={22} aria-hidden="true" /></span>
+                  <div><small>聊天次数卡</small><strong><CountUp value={wallet.chat_credits || 0} /></strong></div>
+                </div>
               </div>
               <div className="qa-wallet-v4__membership">
                 <Crown size={18} />
@@ -367,6 +372,10 @@ export default function Wallet() {
           <div className="col diamond">
             <span className="asset-chip diamond"><DiamondIcon size={46} /></span>
             <div><div className="bal-num"><CountUp value={wallet.diamond} /></div><div className="bal-lbl">钻石</div></div>
+          </div>
+          <div className="col credit">
+            <span className="asset-chip credit"><Ticket size={40} /></span>
+            <div><div className="bal-num"><CountUp value={wallet.chat_credits || 0} /></div><div className="bal-lbl">聊天次数卡</div></div>
           </div>
           <div className="col member">
             <span className={'icon-chip ' + (wallet.svip ? 'svip' : 'vip')}><Crown size={20} /></span>
