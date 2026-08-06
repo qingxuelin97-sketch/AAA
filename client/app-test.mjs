@@ -633,6 +633,14 @@ assert.match(appSource, /path="\/app-controls"[\s\S]*P\(<AppControlsGallery \/>\
 assert.match(routeChunksSource, /AppControlsGallery:[\s\S]*import\('\.\/pages\/AppControlsGallery\.jsx'\)/, 'the control gallery must participate in the route chunk registry');
 assert.match(fxSource, /dataset\.perf === 'lite'/, 'ripple injection must stay disabled in the lite power tier (rainbow motion contract)');
 assert.match(fxSource, /dataset\.app === '1'[\s\S]*\.qa-tab-button/, 'ripple injection must keep skipping Dock keys — they own the ink-drop + LED feedback');
+
+/* ---- 彩虹系：App 端深色模式暂闭（用户定稿） ---- */
+{
+  const themeSource = await readFile(new URL('./src/theme.js', import.meta.url), 'utf8');
+  assert.match(themeSource, /if \(isAppMode\(\)\) return 'light';/, 'the App shell must resolve every theme mode to light while dark mode is closed');
+  const settingsSource = await readFile(new URL('./src/pages/Settings.jsx', import.meta.url), 'utf8');
+  assert.match(settingsSource, /app \? \[\['light', '浅色', Sun\]\]/, 'the App Settings theme segment must expose only the light option while dark mode is closed');
+}
 assert.match(fxSource, /\.lgw-button, \.lgw-icon-button, \.lgw-tab-button/, 'legacy ripple injection must also skip Lumen Web controls (they own their pressed state)');
 
 assert.equal(quietCharacterPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', 'the reviewed character fallback must remain a valid PNG');
@@ -663,12 +671,12 @@ assert.match(artSource, /ix-illo-onb-001-light\.svg\?url[\s\S]*IxOnboardingArt/,
 assert.match(artSource, /ix-stamp-bronze\.svg\?url[\s\S]*streakSealForTier/, 'streak seals must use the reviewed IX SVG media');
 const capacitorConfig = await readFile(new URL('../capacitor.config.json', import.meta.url), 'utf8');
 assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must not return to the purple-navy splash');
-assert.match(capacitorConfig, /"backgroundColor":\s*"#E8EBE9"/, 'native launch colours must match the IX canvas');
+assert.match(capacitorConfig, /"backgroundColor":\s*"#E4F1F6"/, 'native launch colours must match the rainbow cyan-blue canvas');
 const nativeSource = await readFile(new URL('./src/native.js', import.meta.url), 'utf8');
-assert.match(nativeSource, /dark \? '#0F1312' : '#E8EBE9'/, 'native system chrome must follow the light/dark IX canvas');
+assert.match(nativeSource, /dark \? '#0F1312' : '#E4F1F6'/, 'native system chrome must follow the light rainbow canvas (dark tier dormant)');
 const themeSource = await readFile(new URL('./src/theme.js', import.meta.url), 'utf8');
-assert.match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#E8EBE9' : '#EDEFF6'/,
-  'App theme chrome must use IX while preserving the Web Lumen canvas');
+assert.match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#E4F1F6' : '#EDEFF6'/,
+  'App theme chrome must use the rainbow canvas while preserving the Web Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
 console.log('app invariants: IX-6/IX-7 guards passed');

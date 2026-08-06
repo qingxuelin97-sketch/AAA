@@ -655,13 +655,15 @@ export default function Settings() {
             <div className="field">
               <label>外观主题</label>
               <div className="theme-seg">
-                {[['light', '浅色', Sun], ['dark', '深色', Moon], ['system', '跟随系统', Monitor]].map(([v, l, Ic]) => (
+                {(app ? [['light', '浅色', Sun]] : [['light', '浅色', Sun], ['dark', '深色', Moon], ['system', '跟随系统', Monitor]]).map(([v, l, Ic]) => (
                   <button key={v} type="button" className={theme === v ? 'active' : ''} onClick={() => changeTheme(v)}>
                     <Ic size={15} /> {l}
                   </button>
                 ))}
               </div>
-              <div className="hint">即时生效并记忆在本机；「跟随系统」随设备深/浅色自动切换（App 内默认深色沉浸观感）。</div>
+              <div className="hint">{app
+                ? 'App 端暂时固定浅色，深色模式将在后续版本回归。'
+                : '即时生效并记忆在本机；「跟随系统」随设备深/浅色自动切换。'}</div>
             </div>
             <div className="field">
               <label>主题色</label>

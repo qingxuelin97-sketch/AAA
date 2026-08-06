@@ -34,7 +34,7 @@ export async function syncStatusBar() {
     await StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light });
     if (Capacitor.getPlatform() === 'android') {
       // Native system chrome follows the IX App canvas; Web keeps its own palette.
-      await StatusBar.setBackgroundColor({ color: dark ? '#0F1312' : '#E8EBE9' });
+      await StatusBar.setBackgroundColor({ color: dark ? '#0F1312' : '#E4F1F6' });
     }
   } catch { /* plugin not available */ }
 }

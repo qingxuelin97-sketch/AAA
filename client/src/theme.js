@@ -7,8 +7,12 @@ const mq = () => window.matchMedia('(prefers-color-scheme: dark)');
 
 export function getThemeMode() { return localStorage.getItem(KEY) || 'system'; }
 export function resolveTheme(mode = getThemeMode()) {
+  // 彩虹系（用户定稿）：App 端深色模式暂时关闭 —— 无论存的是 dark 还是
+  // system，一律解析为浅色。localStorage 偏好不改写，Web 端不受影响，
+  // 后续版本重开深色时用户的选择原样恢复。
+  if (isAppMode()) return 'light';
   if (mode === 'system') {
-    // Liuli v5：App 与 Web 一致，「跟随系统」真正跟随系统深浅色。
+    // Liuli v5：Web 端「跟随系统」真正跟随系统深浅色。
     return mq().matches ? 'dark' : 'light';
   }
   return mode;
@@ -23,7 +27,7 @@ export function applyTheme(mode = getThemeMode()) {
     const app = isAppMode();
     meta.setAttribute('content', resolved === 'dark'
       ? (app ? '#0F1312' : '#0A0C12')
-      : (app ? '#E8EBE9' : '#EDEFF6'));
+      : (app ? '#E4F1F6' : '#EDEFF6'));
   }
   try { window.dispatchEvent(new Event('huanyu-theme')); } catch { /* */ }
 }
