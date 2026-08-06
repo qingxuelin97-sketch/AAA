@@ -120,8 +120,14 @@ export function setLogRetention(patch = {}) {
 //   event_match —— 窗口期内指定事件（可选叠加 category/level）累计达到阈值
 // 每条规则独立冷却，触发时站内通知全体 GM + SSE audit_alert。
 const ALERT_TYPES = new Set(['error_burst', 'slow_burst', 'event_match']);
+// 本版新增账本 kind（gift / gacha / milestone / theater_fee / theater_refund）
+// 的观测口径：钱包明细用 memo 呈现（无未知类型噪音）；economy 类日志事件为
+// gift / gacha_pull / checkin(含 milestone extra)；预扣退款失败统一走
+// ai_fee_refund_failed（error 级）。退款失败 = 用户钱被卡住，单发也值得
+// 告警，故给独立 event_match 规则（阈值 1），不依赖错误风暴的 10 条阈值。
 const DEFAULT_RULES = [
   { id: 'error-burst', name: '错误风暴', enabled: true, type: 'error_burst', threshold: 10, window_min: 5, cooldown_min: 15 },
+  { id: 'refund-failed', name: '预扣退款失败', enabled: true, type: 'event_match', event: 'ai_fee_refund_failed', threshold: 1, window_min: 60, cooldown_min: 60 },
 ];
 
 function sanitizeRule(r, idx) {
