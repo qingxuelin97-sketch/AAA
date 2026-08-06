@@ -220,7 +220,7 @@ export default function AppHome() {
             ))}
           </span>
           <span className="qa-streak-copy">
-            {streak > 0 ? `连签 ${streak} 天` : '开始你的连签'}
+            {streak > 0 ? <>连签 <IxFlip value={String(streak)} /> 天</> : '开始你的连签'}
           </span>
           <span className="qa-streak-cal"><CalendarCheck size={14} aria-hidden="true" /> 日历</span>
         </button>

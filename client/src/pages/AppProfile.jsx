@@ -302,7 +302,7 @@ export default function AppProfile() {
       {gridGroups.map(g => (
         <section key={g.title} className="pf-group">
           <h4>{g.title}</h4>
-          <div className="pf-grid">
+          <div className="pf-grid stagger-in">
             {g.items.map((n, i) => (
               <button key={n.to + n.label} className="pf-cell" style={{ '--i': i }} onClick={() => nav(n.to)}>
                 <span className="pf-cell-ic"><n.ic size={20} />{n.badge === 'noti' && unread > 0 && <i className="pf-dot sm" />}</span>
