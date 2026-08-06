@@ -717,3 +717,142 @@ html[data-app="1"] .qa3-messages .msgs-tabs .qa-button::after { display: none !i
 html[data-app="1"] :where(.qa-ach-ring, .qa-achievements-ring, .qa-glance-ring) {
   --ix-act: #2E9FF7;
 }
+
+/* ============================================================================
+   §9 · 色彩回归 + 语义色系独立
+   ----------------------------------------------------------------------------
+   §1/§8 把全 App 图标统一成同一支青蓝渐变，结果是「一片蓝、不彩」。
+   这里在**不改变视觉语法**（同样是 145deg 两段式渐变圆芯片）的前提下按功能
+   分配色相，让界面重新有颜色；同时把本来就有自己身份色的 UI 从青蓝里摘出来：
+     会员=金 · 金币=金 · 钻石=靛紫 · 勋章=金银铜 · 危险/未读=红
+   青蓝仍是结构色（页底 / Dock / 主 CTA / 选中态 / 会员中心页）。
+   ========================================================================== */
+html[data-app="1"] {
+  --ix-rainbow-cyan:   linear-gradient(145deg, #6BE8EA 0%, #22BCF4 100%);
+  --ix-rainbow-violet: linear-gradient(145deg, #B49BFF 0%, #7C5CF0 100%);
+  --ix-rainbow-rose:   linear-gradient(145deg, #FFA6C4 0%, #F4608F 100%);
+  --ix-rainbow-amber:  linear-gradient(145deg, #FFD37A 0%, #F2A215 100%);
+  --ix-rainbow-mint:   linear-gradient(145deg, #86E7B6 0%, #1FBE80 100%);
+  --ix-rainbow-indigo: linear-gradient(145deg, #8FB7FF 0%, #4668EE 100%);
+  --ix-rainbow-coral:  linear-gradient(145deg, #FFC08D 0%, #FF7A45 100%);
+}
+
+/* ── 9a. 首页键帽宫格：六色轮转（DOM 序：扭蛋/活动/剧本/剧场/社区/排行榜） ── */
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(1) .ah-sc-ic { background-image: var(--ix-rainbow-violet) !important; box-shadow: 0 6px 14px rgb(124 92 240 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(2) .ah-sc-ic { background-image: var(--ix-rainbow-coral) !important;  box-shadow: 0 6px 14px rgb(255 122 69 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(3) .ah-sc-ic { background-image: var(--ix-rainbow-indigo) !important; box-shadow: 0 6px 14px rgb(70 104 238 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(4) .ah-sc-ic { background-image: var(--ix-rainbow-rose) !important;   box-shadow: 0 6px 14px rgb(244 96 143 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(5) .ah-sc-ic { background-image: var(--ix-rainbow-mint) !important;   box-shadow: 0 6px 14px rgb(31 190 128 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(6) .ah-sc-ic { background-image: var(--ix-rainbow-amber) !important;  box-shadow: 0 6px 14px rgb(242 162 21 / 28%) !important; }
+
+/* ── 9b. 「我的」宫格与快捷瓦：同一支六色轮转 ── */
+html[data-app="1"] .pf-cell:nth-child(6n+1) .pf-cell-ic { background-image: var(--ix-rainbow-cyan) !important; }
+html[data-app="1"] .pf-cell:nth-child(6n+2) .pf-cell-ic { background-image: var(--ix-rainbow-violet) !important; }
+html[data-app="1"] .pf-cell:nth-child(6n+3) .pf-cell-ic { background-image: var(--ix-rainbow-coral) !important; }
+html[data-app="1"] .pf-cell:nth-child(6n+4) .pf-cell-ic { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .pf-cell:nth-child(6n+5) .pf-cell-ic { background-image: var(--ix-rainbow-indigo) !important; }
+html[data-app="1"] .pf-cell:nth-child(6n+6) .pf-cell-ic { background-image: var(--ix-rainbow-rose) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button:nth-child(1) .pf-quick-ic { background-image: var(--ix-rainbow-amber) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button:nth-child(2) .pf-quick-ic { background-image: var(--ix-rainbow-violet) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button:nth-child(3) .pf-quick-ic { background-image: var(--ix-rainbow-coral) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button:nth-child(4) .pf-quick-ic { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button:nth-child(5) .pf-quick-ic { background-image: var(--ix-rainbow-rose) !important; }
+
+/* ── 9c. 带语义 data-tone 的列表（创建面板 / 设置行）按语义取色 ──
+   注意：这里**不能**用 :where()，它的特异性为 0，会被 §8a 的双类名规则压住；
+   必须写足类名把特异性抬到 §8a 之上。 */
+html[data-app="1"] .qa-settings-row-icon[data-tone="indigo"].qa-settings-row-icon,
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="indigo"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-violet) !important; }
+html[data-app="1"] .qa-settings-row-icon[data-tone="graphite"].qa-settings-row-icon,
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="graphite"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-indigo) !important; }
+html[data-app="1"] .qa-settings-row-icon[data-tone="blue"].qa-settings-row-icon,
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="blue"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-indigo) !important; }
+html[data-app="1"] .qa-settings-row-icon[data-tone="coral"].qa-settings-row-icon,
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="coral"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-coral) !important; }
+html[data-app="1"] .qa-settings-row-icon[data-tone="gold"].qa-settings-row-icon,
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="gold"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-amber) !important; }
+html[data-app="1"] .qa-settings-row-icon[data-tone="reward"].qa-settings-row-icon,
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="reward"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-amber) !important; }
+html[data-app="1"] .qa-settings-row-icon[data-tone="success"].qa-settings-row-icon,
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="success"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .qa-settings-row-icon[data-tone="jade"].qa-settings-row-icon,
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="jade"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .qa-settings-row-icon[data-tone="rose"].qa-settings-row-icon,
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="rose"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-rose) !important; }
+
+/* ── 9d. 消息入口按语义分色（互动=珊瑚 / 私信=薄荷 / 群聊=靛） ── */
+html[data-app="1"] .msgs-entry-ic.noti.noti { background-image: var(--ix-rainbow-coral) !important; }
+html[data-app="1"] .msgs-entry-ic.dm.dm { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .msgs-entry-ic.grp.grp { background-image: var(--ix-rainbow-indigo) !important; }
+
+/* ── 9e. 脱离青蓝的身份色 UI ── */
+/* 会员：金。钱包「会员中心」瓦、成就奖励瓦、签到瓦各归其身份色 */
+html[data-app="1"] .qa-wallet-v4__quick-icon.warm.warm { background-image: var(--ix-rainbow-amber) !important; }
+html[data-app="1"] .qa-wallet-v4__quick-icon.indigo.indigo { background-image: var(--ix-rainbow-violet) !important; }
+html[data-app="1"] .qa-wallet-v4__notice-icon.qa-wallet-v4__notice-icon { background-image: var(--ix-rainbow-amber) !important; }
+html[data-app="1"] .qa-wallet-v4__checkin-icon.qa-wallet-v4__checkin-icon { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .qa-settings-notifications-icon.qa-settings-notifications-icon { background-image: var(--ix-rainbow-coral) !important; }
+html[data-app="1"] .qa-gacha-machine-icon.qa-gacha-machine-icon { background-image: var(--ix-rainbow-violet) !important; }
+
+/* ── 9f. 会员徽章重做：撤掉深蓝描边 + 扁平土黄，改金质渐变药丸 + 白圈 ── */
+html[data-app="1"] .qa3-today .ah-tier,
+html[data-app="1"] .apphome .ah-tier,
+html[data-app="1"] .qa3-today .ah-tier.svip,
+html[data-app="1"] .apphome .ah-tier.svip,
+html[data-app="1"] .qa3-today .ah-tier.vip,
+html[data-app="1"] .apphome .ah-tier.vip {
+  left: 50% !important;
+  right: auto !important;
+  bottom: -8px !important;
+  transform: translateX(-50%) !important;
+  padding: 2px 8px !important;
+  border: 2px solid #fff !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #FFD97A 0%, #F0A81E 100%) !important;
+  background-image: linear-gradient(135deg, #FFD97A 0%, #F0A81E 100%) !important;
+  color: #5A3B00 !important;
+  font-size: 8.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: .05em !important;
+  line-height: 1.4 !important;
+  box-shadow: 0 3px 9px rgb(190 130 10 / 42%) !important;
+  text-shadow: none !important;
+}
+/* 资料页 / 侧栏的同族徽章 */
+html[data-app="1"] :where(.idb-svip, .svip-badge) {
+  background: linear-gradient(135deg, #FFD97A 0%, #F0A81E 100%) !important;
+  color: #5A3B00 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  letter-spacing: .05em !important;
+  box-shadow: 0 2px 8px rgb(190 130 10 / 34%) !important;
+}
+
+/* ── 9g. 会员横幅：淡米底 → 金质渐变卡（会员身份色，独立于青蓝结构色） ── */
+html[data-app="1"] .qa3-profile .pf-vip,
+html[data-app="1"] .qa3-profile .pf-vip.svip,
+html[data-app="1"] .pf-vip.pf-vip {
+  background: linear-gradient(135deg, #FFE3A3 0%, #F6BE4E 46%, #E9A02A 100%) !important;
+  background-image: linear-gradient(135deg, #FFE3A3 0%, #F6BE4E 46%, #E9A02A 100%) !important;
+  border: 0 !important;
+  border-radius: var(--ix-r-card) !important;
+  box-shadow: 0 8px 20px rgb(200 140 20 / 26%) !important;
+}
+html[data-app="1"] .pf-vip :where(b, strong, h3, h4) { color: #4A3000 !important; }
+html[data-app="1"] .pf-vip :where(small, p, .muted, span) { color: rgb(74 48 0 / 78%) !important; }
+html[data-app="1"] .pf-vip .pf-vip-ic {
+  background: rgb(255 255 255 / 42%) !important;
+  background-image: none !important;
+  color: #7A5200 !important;
+  border-radius: 50% !important;
+  box-shadow: none !important;
+}
+html[data-app="1"] .pf-vip .pf-vip-ic svg { color: #7A5200 !important; }
+html[data-app="1"] .pf-vip .pf-vip-go.qa-button {
+  background: #fff !important;
+  background-image: none !important;
+  color: #8A5E00 !important;
+  border: 0 !important;
+  box-shadow: 0 3px 10px rgb(120 80 0 / 22%) !important;
+}
