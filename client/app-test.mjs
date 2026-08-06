@@ -591,6 +591,7 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
   const RAINBOW_BASE_OVERRIDES = new Set(['--ix-canvas', '--ix-grouped', '--ix-surface', '--ix-raise',
     '--ix-hairline', '--ix-hairline-strong', '--ix-glass-nav', '--ix-glass-temp',
     '--ix-act', '--ix-act-ink', '--ix-act-soft', '--ix-focus',
+    '--ix-ink', '--ix-ink-2', '--ix-ink-3',
     '--ix-r-key', '--ix-r-card', '--ix-r-panel']);
   // 只认「声明位」的自定义属性（行首/`{`/`;` 之后）——否则 .qa-button--primary:not()
   // 这类选择器里的伪类冒号会被误判成令牌定义。

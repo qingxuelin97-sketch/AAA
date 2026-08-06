@@ -6,9 +6,11 @@
      · 浅蓝渐变页底 + 纯白圆角卡
      · 青 → 蓝渐变是唯一的强调色（圆形图标芯片 / 主按钮 / CTA / 进度）
      · 不再有任何按位次配色的六色点缀
-   色值与几何全部取自用户提供的参考稿逐像素采样（853px 原图 → 390 逻辑宽 ×0.457）：
+   色值与几何全部取自参考稿逐像素测量（853px 原图 ÷2.187 → 390 逻辑宽；
+   圆角为弧线拟合、渐变端点为平面最小二乘外推，非目测）：
      主渐变 #38DAD2 → #2E9FF7 · 图标芯片 #6BE8EA → #22BCF4 · CTA #22DCDF → #2AA0FA
-     页底 #EFF8FD · 白卡 #FFF · 卡圆角 19px · 页边距 11px · 图标圆 46px
+     页底 #EFF8FD · 卡面 #FAFDFE（60% 白叠页底）· 蓝调墨 #0A1330/#44557A/#58677F
+     页边距 16 · 权益卡圆角 12/图标圆 44 · 方案面板圆角 22 · 投影为青调非中性黑
    本层职责=颜色/材质；动效在 app-rainbow-motion.css。渐变一律静态一次光栅化。
    ========================================================================== */
 
@@ -40,9 +42,14 @@ html[data-app="1"] {
   --ix-act-soft: rgb(46 159 247 / 10%);
   --ix-focus: #2E9FF7;
 
-  /* 几何：参考稿是更软的圆角语言 */
+  /* 墨色三阶：参考稿是蓝调墨（弧线/笔画核心采样，非目测） */
+  --ix-ink: #0A1330;
+  --ix-ink-2: #44557A;
+  --ix-ink-3: #58677F;
+
+  /* 几何：参考稿弧线拟合值 —— 卡 12 / 面板 22 / 控件 12 */
   --ix-r-key: 12px;
-  --ix-r-card: 19px;
+  --ix-r-card: 16px;
   --ix-r-panel: 22px;
 }
 
@@ -185,10 +192,10 @@ html[data-app="1"] .app-dock .app-fab-halo::before {
 html[data-app="1"] :where(.ah-shortcuts, .ah-hero-card, .ah-resume, .qa-weekly-card,
   .msgs-entry-group, .pf-group, .pf-stats, .qa-glance, .qa-settings-group,
   .qa-achievements-card, .qa-ach-wall, .vm-sheet) {
-  background: #fff !important;
+  background: #FAFDFE !important;
   border-radius: var(--ix-r-card) !important;
   border: 0 !important;
-  box-shadow: 0 2px 10px rgb(20 70 110 / 6%) !important;
+  box-shadow: 0 2px 10px rgb(45 155 200 / 9%) !important;
 }
 
 /* ── 4. 选中态 / 进度 / 指示：青蓝渐变 ── */
@@ -314,7 +321,7 @@ html[data-app="1"] .qa-vip .vipx-scroll {
   background: transparent !important;
 }
 html[data-app="1"] .qa-vip .vipx-scroll {
-  padding: 4px 11px 0 !important;
+  padding: 4px 16px 0 !important;
 }
 html[data-app="1"] .qa-vip .vm-top {
   background: transparent !important;
@@ -326,10 +333,10 @@ html[data-app="1"] .qa-vip .vm-top {
 html[data-app="1"] .qa-vip .vipx-hero {
   position: relative;
   display: block;
-  margin: 6px 0 14px;
-  border-radius: 19px;
+  margin: 6px 0 18px;
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 10px 24px rgb(42 160 250 / 22%);
+  box-shadow: 0 8px 22px rgb(45 155 200 / 18%);
   line-height: 0;
 }
 html[data-app="1"] .qa-vip .vipx-hero-art {
@@ -364,23 +371,23 @@ html[data-app="1"][data-perf="lite"] .qa-vip .vipx-hero-state {
 html[data-app="1"] .qa-vip .vipx-perks {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 11px;
-  margin-bottom: 14px;
+  gap: 13px 14px;
+  margin-bottom: 17px;
 }
 html[data-app="1"] .qa-vip .vipx-perk {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 14px 12px;
-  border-radius: 19px;
-  background: #fff;
-  box-shadow: 0 2px 10px rgb(20 70 110 / 6%);
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #F8FCFE;
+  box-shadow: 0 2px 8px rgb(45 155 200 / 8%);
   min-width: 0;
 }
 html[data-app="1"] .qa-vip .vipx-perk-ic {
   flex: 0 0 auto;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -407,10 +414,10 @@ html[data-app="1"] .qa-vip .vipx-perk-tx small {
 
 /* —— 方案承载卡 —— */
 html[data-app="1"] .qa-vip .vipx-sheet {
-  padding: 18px 14px 16px;
+  padding: 19px 16px 16px;
   border-radius: 22px;
-  background: #fff;
-  box-shadow: 0 2px 12px rgb(20 70 110 / 7%);
+  background: #FAFDFE;
+  box-shadow: 0 2px 12px rgb(45 155 200 / 9%);
 }
 html[data-app="1"] .qa-vip .vipx-sheet-head {
   display: flex;
@@ -420,8 +427,8 @@ html[data-app="1"] .qa-vip .vipx-sheet-head {
 }
 html[data-app="1"] .qa-vip .vipx-sheet-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--ix-ink);
 }
 html[data-app="1"] .qa-vip .vipx-redeem.qa-button {
@@ -436,7 +443,7 @@ html[data-app="1"] .qa-vip .vipx-redeem.qa-button {
 html[data-app="1"] .qa-vip .vipx-plans {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 9px;
+  gap: 10px;
 }
 /* AppButton 把 children 包进 .qa-button__content（横向 flex），
    竖排必须钉在那一层，否则名称/价格/单价会挤成一行溢出。 */
@@ -456,18 +463,18 @@ html[data-app="1"] .qa-vip .vipx-plan.qa-button {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  min-height: 104px !important;
+  min-height: 113px !important;
   padding: 14px 4px 12px !important;
-  border-radius: 15px !important;
-  border: 1.5px solid #E2EEF6 !important;
-  background: #FBFDFF !important;
+  border-radius: 14px !important;
+  border: 1px solid #DCEDF9 !important;
+  background: #FAFDFE !important;
   background-image: none !important;
   box-shadow: none !important;
   overflow: visible !important;
 }
 html[data-app="1"] .qa-vip .vipx-plan.qa-button.on {
-  border-color: #2E9FF7 !important;
-  background: rgb(46 159 247 / 7%) !important;
+  border-color: #0F97FA !important;
+  background: #ECF8FE !important;
 }
 html[data-app="1"] .qa-vip .vipx-plan .vipx-plan-rec {
   position: absolute;
@@ -476,13 +483,13 @@ html[data-app="1"] .qa-vip .vipx-plan .vipx-plan-rec {
   transform: translateX(-50%);
   padding: 2px 9px;
   border-radius: 999px;
-  background: var(--ix-rainbow-grad-h);
+  background: #26A8FC;
   color: #fff;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: .02em;
   white-space: nowrap;
-  box-shadow: 0 3px 8px rgb(42 160 250 / 34%);
+  box-shadow: 0 3px 8px rgb(38 168 252 / 34%);
 }
 html[data-app="1"] .qa-vip .vipx-plan .vipx-plan-name {
   font-size: 13px;
@@ -504,7 +511,7 @@ html[data-app="1"] .qa-vip .vipx-plan .vipx-plan-price {
   max-width: 100%;
 }
 html[data-app="1"] .qa-vip .vipx-plan .vipx-plan-price svg { flex: 0 0 auto; }
-html[data-app="1"] .qa-vip .vipx-plan.on .vipx-plan-price { color: #1B7FD0; }
+html[data-app="1"] .qa-vip .vipx-plan.on .vipx-plan-price { color: #0F7FD8; }
 html[data-app="1"] .qa-vip .vipx-plan .vipx-plan-per {
   font-size: 10.5px;
   color: var(--ix-ink-3);
@@ -552,7 +559,7 @@ html[data-app="1"] .qa-vip .vipx-agree input:checked + .vipx-check {
 }
 html[data-app="1"] .qa-vip .vipx-agree em {
   font-style: normal;
-  color: var(--ix-act);
+  color: #1092FB;
 }
 html[data-app="1"] .qa-vip .vipx-ledger.qa-button {
   width: 100%;
