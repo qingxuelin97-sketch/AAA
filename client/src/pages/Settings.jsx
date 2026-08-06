@@ -7,6 +7,7 @@ import { ACCENTS, getAccent, setAccent } from '../accent.js';
 import { getPerfPref, setPerfPref, resolvePerf } from '../perf.js';
 import { browserVoices, playAudioUrl, speakBrowser, stopSpeaking } from '../voice.js';
 import HelpCenter from '../components/HelpCenter.jsx';
+import FramedAvatar, { AVATAR_FRAMES } from '../components/FramedAvatar.jsx';
 import { LegalModal, LegalLinks } from '../components/LegalModal.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { tick } from '../appgestures.js';
@@ -78,7 +79,7 @@ export default function Settings() {
   const [settingsError, setSettingsError] = useState('');
   const [unread, setUnread] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [profile, setProfile] = useState({ display_name: '', bio: '', avatar: '', banner: '' });
+  const [profile, setProfile] = useState({ display_name: '', bio: '', avatar: '', banner: '', avatar_frame: '' });
   const [pwd, setPwd] = useState({ old_password: '', new_password: '' });
   const [models, setModels] = useState([]);
   const [detecting, setDetecting] = useState(false);
@@ -142,7 +143,7 @@ export default function Settings() {
   }, [app]);
   useEffect(() => {
     if (!user) return;
-    const next = { display_name: user.display_name || '', bio: user.bio || '', avatar: user.avatar || '', banner: user.banner || '' };
+    const next = { display_name: user.display_name || '', bio: user.bio || '', avatar: user.avatar || '', banner: user.banner || '', avatar_frame: user.avatar_frame || '' };
     cleanProfileRef.current = next;
     setProfile(next);
   }, [user]);
@@ -559,6 +560,25 @@ export default function Settings() {
                   <div className="field" style={{ marginBottom: 10 }}><label>昵称</label><input className="input" value={profile.display_name} onChange={e => setProfile({ ...profile, display_name: e.target.value })} autoCapitalize="off" autoCorrect="off" spellCheck={false} enterKeyHint="done" /></div>
                   <div className="muted" style={{ fontSize: 12 }}>用户名 @{user?.username}（不可更改）</div>
                 </div>
+              </div>
+              <div className="field">
+                <label>头像框</label>
+                <div className="avf-picks" role="radiogroup" aria-label="选择头像框">
+                  {AVATAR_FRAMES.map(f => {
+                    const locked = f.svip && !user?.svip;
+                    const on = (profile.avatar_frame || '') === f.id;
+                    return (
+                      <button key={f.id || 'none'} type="button" className={'avf-pick' + (on ? ' on' : '') + (locked ? ' locked' : '')}
+                        role="radio" aria-checked={on}
+                        title={locked ? 'SVIP 专属头像框，点击了解会员' : f.label}
+                        onClick={() => { if (locked) { nav('/vip'); return; } setProfile({ ...profile, avatar_frame: f.id }); }}>
+                        <FramedAvatar frame={f.id} src={profile.avatar} name={profile.display_name || user?.username} size={46} />
+                        <span>{f.label}{f.svip ? (locked ? ' · SVIP 🔒' : ' · SVIP') : ''}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>头像框会出现在个人主页与侧栏头像上；动态框敬请期待。</div>
               </div>
               <div className="field"><label>个人简介</label><textarea className="textarea" value={profile.bio} onChange={e => setProfile({ ...profile, bio: e.target.value })} placeholder="介绍一下你自己…" autoCapitalize="off" autoCorrect="off" spellCheck={false} /></div>
               <div className="field"><label>主页横幅</label><Uploader value={profile.banner} onChange={url => setProfile({ ...profile, banner: url })} accept="image/*" /></div>

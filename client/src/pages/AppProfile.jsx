@@ -7,7 +7,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNav } from '../nav.js';
 import { api, useAuth } from '../api.jsx';
-import { useToast, Avatar, IdentityBadges, CountUp } from '../ui.jsx';
+import { useToast, IdentityBadges, CountUp } from '../ui.jsx';
+import FramedAvatar from '../components/FramedAvatar.jsx';
 import { fmtNum } from '../util.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import MembershipBanner from '../components/profile/MembershipBanner.jsx';
@@ -204,7 +205,7 @@ export default function AppProfile() {
           onClick={() => nav('/profile')}
           style={appMode ? { viewTransitionName: 'qa-profile-avatar' } : undefined}
         >
-          <Avatar src={user?.avatar} name={user?.display_name} size={68} eager />
+          <FramedAvatar frame={user?.avatar_frame} src={user?.avatar} name={user?.display_name} size={68} eager />
         </AppIconButton>
         <div className="pf-id-tx">
           <b>{user?.display_name || user?.username}</b>

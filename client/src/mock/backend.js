@@ -600,7 +600,7 @@ const VIP_PLANS = {
 };
 const isVip = (u) => !!u?.vip_until && new Date(u.vip_until).getTime() > Date.now();
 function publicUser(u) {
-  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, chat_credits: u.chat_credits || 0, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, official: !!u.official, creator_tier: creatorTier(u), created_at: u.created_at };
+  return u && { id: u.id, username: u.username, email: u.email, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, gold: u.gold, diamond: u.diamond, chat_credits: u.chat_credits || 0, vip_until: u.vip_until, vip: isVip(u), checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, official: !!u.official, creator_tier: creatorTier(u), created_at: u.created_at, avatar_frame: u.avatar_frame || '' };
 }
 function applyTx(uid, { kind, gold = 0, diamond = 0, memo = '', ref_owner = null }) {
   const u = user(uid);
@@ -1230,7 +1230,15 @@ async function route(method, path, search, body, headers) {
   }
   if (method === 'GET' && path === '/auth/me') { need(); return J({ user: publicUser(me) }); }
   if (method === 'PUT' && path === '/auth/me') {
-    need(); ['display_name', 'bio', 'avatar', 'banner', 'email'].forEach(k => { if (body[k] !== undefined && body[k] !== null) me[k] = body[k]; }); save();
+    need(); ['display_name', 'bio', 'avatar', 'banner', 'email'].forEach(k => { if (body[k] !== undefined && body[k] !== null) me[k] = body[k]; });
+    // 头像框：白名单 + SVIP 校验（与服务端 AVATAR_FRAMES 同构）
+    if (body.avatar_frame !== undefined) {
+      const frame = [{ id: '' }, { id: 'aurora', svip: true }].find(f => f.id === String(body.avatar_frame));
+      if (!frame) return E('未知的头像框');
+      if (frame.svip && !me.svip) return E('该头像框为 SVIP 专属', 403);
+      me.avatar_frame = frame.id;
+    }
+    save();
     return J({ user: publicUser(me) });
   }
   if (method === 'PUT' && path === '/auth/password') {

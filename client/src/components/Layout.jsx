@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, api } from '../api.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { Avatar, CoinIcon, DiamondIcon } from '../ui.jsx';
+import FramedAvatar from './FramedAvatar.jsx';
 import { Logo } from '../assets.jsx';
 import { fmtNum, msgPreview } from '../util.js';
 import { useCheckin } from '../pages/home/shared.js';
@@ -446,7 +447,7 @@ function Sidebar({ user, unread, dmUnread, convs, mode, peek, cycle, onLeave }) 
       </div>
       <div className="sidebar-foot">
         <div className={'user-chip' + (collapsed ? ' compact' : '')} onClick={() => nav('/profile')} title={collapsed ? user?.display_name : undefined}>
-          <Avatar src={user?.avatar} name={user?.display_name} size={collapsed ? 32 : 36} />
+          <FramedAvatar frame={user?.avatar_frame} src={user?.avatar} name={user?.display_name} size={collapsed ? 32 : 36} />
           {!collapsed && (
             <>
               <div style={{ minWidth: 0, flex: 1 }}>
@@ -489,7 +490,7 @@ function MobileNav({ user, unread, dmUnread, onClose, installEvt, doInstall }) {
       <aside className="mnav" onClick={e => e.stopPropagation()}>
         <div className="mnav-head">
           <div className="user-chip" onClick={() => go('/profile')} style={{ flex: 1 }}>
-            <Avatar src={user?.avatar} name={user?.display_name} size={40} />
+            <FramedAvatar frame={user?.avatar_frame} src={user?.avatar} name={user?.display_name} size={40} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <b style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.display_name}</b>
               <span style={{ fontSize: 11.5, color: 'var(--faint)' }}>@{user?.username}</span>

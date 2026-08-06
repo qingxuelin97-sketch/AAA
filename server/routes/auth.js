@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import db from '../db.js';
 import { sign, authRequired, bumpTokenVersion, SECRET } from '../auth.js';
-import { publicUser, applyTx, notify } from '../wallet.js';
+import { publicUser, applyTx, notify, AVATAR_FRAMES } from '../wallet.js';
 import { sendVerifyCode, getMail } from '../mail.js';
 import { isWhitelisted, normalizeEmail, canonicalEmail, whitelistEnabled } from '../whitelist.js';
 import { registrationRequestHash, verifyPlayIntegrityToken, playIntegrityAvailability } from '../integrity.js';
@@ -322,17 +322,27 @@ router.put('/me', authRequired, (req, res, next) => {
     };
     const avatarValue = safeUrlField(avatar);
     const bannerValue = safeUrlField(banner);
+    // 头像框装扮位：白名单校验 + SVIP 框校验会员身份（服务端硬闸，防直调
+    // API 白嫖装扮）。undefined = 不动；''（目录内）= 摘下。
+    let frameValue = null;
+    if (req.body?.avatar_frame !== undefined) {
+      const frame = AVATAR_FRAMES.find(f => f.id === String(req.body.avatar_frame));
+      if (!frame) throw httpError(400, '未知的头像框');
+      if (frame.svip && !current.svip) throw httpError(403, '该头像框为 SVIP 专属');
+      frameValue = frame.id;
+    }
     db.transaction(() => {
       if (codeRow) {
         const consumed = db.prepare('UPDATE email_codes SET consumed = 1 WHERE id = ? AND consumed = 0 AND expires_at >= ?').run(codeRow.id, Date.now());
         if (consumed.changes !== 1) throw httpError(409, '验证码已被使用，请重新获取');
       }
       db.prepare(`UPDATE users SET display_name=COALESCE(?,display_name), bio=COALESCE(?,bio),
-        avatar=COALESCE(?,avatar), banner=COALESCE(?,banner), email=COALESCE(?,email), email_canon=COALESCE(?,email_canon)
+        avatar=COALESCE(?,avatar), banner=COALESCE(?,banner), email=COALESCE(?,email), email_canon=COALESCE(?,email_canon),
+        avatar_frame=COALESCE(?,avatar_frame)
         WHERE id=?`).run(
         display_name ? String(display_name).slice(0, 30) : null,
         bio ? String(bio).slice(0, 500) : null,
-        avatarValue, bannerValue, email, emailCanon, req.user.id,
+        avatarValue, bannerValue, email, emailCanon, frameValue, req.user.id,
       );
     }).immediate();
     res.json({ user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });

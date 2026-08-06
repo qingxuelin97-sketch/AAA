@@ -10,6 +10,14 @@ export function isVip(user) {
   return !!user?.vip_until && new Date(user.vip_until).getTime() > Date.now();
 }
 
+// 头像框装扮目录（修缮⑤脚手架）：id 落 users.avatar_frame，渲染由客户端
+// FramedAvatar 按 id 决定（静态 CSS 环 / 未来 WebM alpha 动态框同层即插即用）。
+// svip: true 的框仅限 SVIP 佩戴（服务端硬校验，防直调 API 白嫖装扮）。
+export const AVATAR_FRAMES = [
+  { id: '', label: '无' },
+  { id: 'aurora', label: '流光', svip: true },
+];
+
 export function publicUser(u) {
   if (!u) return u;
   return {
@@ -21,7 +29,8 @@ export function publicUser(u) {
     economic_hold_reason: u.economic_hold_reason || '',
     vip_until: u.vip_until, vip: isVip(u),
     checkin_streak: u.checkin_streak, last_checkin: u.last_checkin, is_gm: !!u.is_gm, is_banned: !!u.is_banned,
-    svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, created_at: u.created_at
+    svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, created_at: u.created_at,
+    avatar_frame: u.avatar_frame || ''
   };
 }
 

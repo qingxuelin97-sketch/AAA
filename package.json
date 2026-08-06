@@ -37,6 +37,7 @@
     "test:once-fee": "node server/once-fee-test.mjs",
     "test:hearts": "node server/hearts-test.mjs",
     "test:inbox": "node server/inbox-test.mjs",
+    "test:frame": "node server/frame-test.mjs",
     "test:payments": "node server/payment-test.mjs",
     "test:integrity": "node server/integrity-test.mjs",
     "test:safe-url": "node server/safe-url-test.mjs",
