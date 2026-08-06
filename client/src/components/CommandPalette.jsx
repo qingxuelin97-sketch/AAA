@@ -17,7 +17,7 @@ import {
 const NAV = [
   { to: '/', ic: Compass, label: '发现广场', kw: 'home faxian guangchang discover' },
   { to: '/events', ic: PartyPopper, label: '活动', kw: 'events huodong' },
-  { to: '/gacha', ic: Dices, label: '扭蛋机', kw: 'gacha niudan' },
+  { to: '/gacha', ic: Dices, label: '幸运转盘', kw: 'gacha niudan zhuanpan wheel' },
   { to: '/scripts', ic: ScrollText, label: '剧本', kw: 'scripts juben' },
   { to: '/community', ic: Users, label: '社区', kw: 'community shequ' },
   { to: '/leaderboard', ic: Trophy, label: '排行榜', kw: 'leaderboard paihang' },

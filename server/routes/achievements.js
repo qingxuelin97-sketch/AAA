@@ -39,7 +39,7 @@ const ACHIEVEMENTS = [
   { id: 'checkin_30', name: '月满盈仓', desc: '连续签到 30 天', icon: 'CalendarCheck', cat: '财富', goal: 30, reward: 600, metric: 'checkin_streak', link: '/wallet' },
   { id: 'checkin_100', name: '百日之约', desc: '连续签到 100 天', icon: 'CalendarCheck', cat: '财富', goal: 100, reward: 1500, metric: 'checkin_streak', link: '/wallet' },
   { id: 'gold_10k', name: '腰缠万贯', desc: '累计赚取 10000 金币', icon: 'Coins', cat: '财富', goal: 10000, reward: 300, metric: 'gold_earned', link: '/wallet' },
-  { id: 'gacha_10', name: '欧皇之路', desc: '在扭蛋机抽卡 10 次', icon: 'Dices', cat: '财富', goal: 10, reward: 160, metric: 'gacha_pulls', link: '/gacha' },
+  { id: 'gacha_10', name: '欧皇之路', desc: '转动幸运转盘 10 次', icon: 'Dices', cat: '财富', goal: 10, reward: 160, metric: 'gacha_pulls', link: '/gacha' },
   { id: 'become_vip', name: '尊享会员', desc: '开通 VIP 会员', icon: 'Crown', cat: '财富', goal: 1, reward: 120, metric: 'vip', link: '/wallet' },
 ];
 

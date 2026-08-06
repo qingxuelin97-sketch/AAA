@@ -33,7 +33,7 @@ const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); }
 // 快捷入口 —— 去重：创建类（建角色/写小说/AI绘图/开剧场）已由底栏中央 +AI 按钮
 // 全量承载，这里不再重复；改放启动页顺手要去、且别处没有一键入口的目的地。
 const CREATE_SHORTCUTS = [
-  { to: '/gacha', ic: Dices, label: '扭蛋', tone: 'reward' },
+  { to: '/gacha', ic: Dices, label: '转盘', tone: 'reward' },
   { to: '/events', ic: PartyPopper, label: '活动', tone: 'coral' },
   { to: '/scripts', ic: ScrollText, label: '剧本', tone: 'graphite' },
   { to: '/theater', ic: Drama, label: '互动小说', tone: 'indigo' },

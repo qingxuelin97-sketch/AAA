@@ -485,6 +485,11 @@ export default function Chat() {
     try {
       const full = await streamSSE(endpoint, {
         body: payload, signal: ctrl.signal,
+        // 平台计费事件：聊天次数卡（转盘奖品）抵扣时明示告知并刷新余额显示
+        onJson: (j) => {
+          if (j.credit_used) { toast(`已用 1 张聊天次数卡抵扣本次对话（剩 ${j.chat_credits} 张）`); refreshUser?.(); }
+          else if (j.fee) refreshUser?.();
+        },
         onDelta: (delta) => {
           if (!isCurrent()) return;
           streamBufRef.current = (streamBufRef.current || '') + delta;

@@ -452,6 +452,8 @@ for (const sql of [
   'ALTER TABLE follows ADD COLUMN created_at TEXT',
   // 扭蛋保底计数（服务端唯一真相，旧版 localStorage 保底作废）
   'ALTER TABLE users ADD COLUMN gacha_pity INTEGER DEFAULT 0',
+  // 聊天次数卡（转盘奖品）：平台对话计费时优先抵扣，1 卡 = 1 次平台 AI 回复免金币
+  'ALTER TABLE users ADD COLUMN chat_credits INTEGER DEFAULT 0',
 ]) { try { db.exec(sql); } catch { /* column already exists */ } }
 try {
   db.exec("UPDATE favorites SET created_at = datetime('now') WHERE created_at IS NULL");

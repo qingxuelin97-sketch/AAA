@@ -473,7 +473,7 @@ function seed() {
 const DAILY_TASKS = [
   { id: 'checkin', name: '完成每日签到', target: 1, reward: 15, key: 'checkin' },
   { id: 'chat', name: '发起 1 次角色对话', target: 1, reward: 20, key: 'chat' },
-  { id: 'gacha', name: '在扭蛋机抽卡 1 次', target: 1, reward: 15, key: 'gacha' },
+  { id: 'gacha', name: '转动幸运转盘 1 次', target: 1, reward: 15, key: 'gacha' },
   { id: 'fav', name: '收藏 1 个喜欢的角色', target: 1, reward: 10, key: 'fav' },
   { id: 'like', name: '点赞 2 条社区动态', target: 2, reward: 10, key: 'like' },
   { id: 'novel', name: 'AI 创作 1 段小说', target: 1, reward: 20, key: 'novel' }
@@ -528,7 +528,7 @@ const ACHIEVEMENTS = [
   { id: 'checkin_30', name: '月满盈仓', desc: '连续签到 30 天', icon: 'CalendarCheck', cat: '财富', goal: 30, reward: 600, metric: 'checkin_streak', link: '/wallet' },
   { id: 'checkin_100', name: '百日之约', desc: '连续签到 100 天', icon: 'CalendarCheck', cat: '财富', goal: 100, reward: 1500, metric: 'checkin_streak', link: '/wallet' },
   { id: 'gold_10k', name: '腰缠万贯', desc: '累计赚取 10000 金币', icon: 'Coins', cat: '财富', goal: 10000, reward: 300, metric: 'gold_earned', link: '/wallet' },
-  { id: 'gacha_10', name: '欧皇之路', desc: '在扭蛋机抽卡 10 次', icon: 'Dices', cat: '财富', goal: 10, reward: 160, metric: 'gacha_pulls', link: '/gacha' },
+  { id: 'gacha_10', name: '欧皇之路', desc: '转动幸运转盘 10 次', icon: 'Dices', cat: '财富', goal: 10, reward: 160, metric: 'gacha_pulls', link: '/gacha' },
   { id: 'become_vip', name: '尊享会员', desc: '开通 VIP 会员', icon: 'Crown', cat: '财富', goal: 1, reward: 120, metric: 'vip', link: '/wallet' },
 ];
 function achMetric(me, metric) {
@@ -769,7 +769,10 @@ async function streamCompletion(conv, character, settings, userContent, me) {
         insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() }); conv.updated_at = now();
         if (userContent) conv.affinity = (conv.affinity || 0) + 3; // 好感度随有效互动增长
         // Only now deduct the platform fee — successful reply.
-        if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); send({ fee: feeDue }); } catch { /* */ } }
+        // 聊天次数卡（转盘奖品）优先抵扣，与真实服务端 chargePlatformFee 同语义。
+        if (feeDue && me && (me.chat_credits || 0) > 0) {
+          me.chat_credits -= 1; send({ fee: 0, credit_used: true, chat_credits: me.chat_credits });
+        } else if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); send({ fee: feeDue }); } catch { /* */ } }
         save();
       }
       controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close();
@@ -2395,45 +2398,51 @@ async function route(method, path, search, body, headers) {
     }
     return J({ characters, scripts, authors, me: mine });
   }
-  // 扭蛋统一版（与 server/routes/gacha.js 同步的迷你镜像）：每日免费一抽 +
-  // 付费 300 金，服务端式保底存 me.gacha_pity，seed 由客户端确定性渲染形象。
-  if (method === 'GET' && path === '/gacha/state') {
+  // 幸运转盘（与 server/routes/gacha.js 同步的迷你镜像）：每日免费一转 +
+  // 付费 100 金，奖品=金币/钻石/聊天次数卡，保底存 me.gacha_pity。
+  if (method === 'GET' && path === '/gacha/state' || method === 'POST' && path === '/gacha/spin') {
     need();
-    return J({ free_available: !(dailyOf(me.id).counts.gacha_free >= 1), paid_price: 300,
-      pity: me.gacha_pity || 0, pity_threshold: 70, rates: { N: 52, R: 30, SR: 14, SSR: 4 },
-      total_pulls: me.gacha_pulls || 0, gold: me.gold });
-  }
-  if (method === 'POST' && path === '/gacha/pull') {
-    need();
+    const WHEEL = [
+      { id: 'gold20', kind: 'gold', amount: 20, weight: 26, label: '金币 ×20' },
+      { id: 'gold50', kind: 'gold', amount: 50, weight: 20, label: '金币 ×50' },
+      { id: 'credit1', kind: 'credit', amount: 1, weight: 16, label: '聊天卡 ×1' },
+      { id: 'gold100', kind: 'gold', amount: 100, weight: 12, label: '金币 ×100' },
+      { id: 'credit3', kind: 'credit', amount: 3, weight: 10, label: '聊天卡 ×3' },
+      { id: 'diamond5', kind: 'diamond', amount: 5, weight: 8, label: '钻石 ×5' },
+      { id: 'gold300', kind: 'gold', amount: 300, weight: 5, label: '金币 ×300' },
+      { id: 'diamond20', kind: 'diamond', amount: 20, weight: 3, label: '钻石 ×20', jackpot: true },
+    ];
+    const RARE = new Set(['diamond5', 'gold300', 'diamond20']);
+    if (method === 'GET') {
+      return J({ free_available: !(dailyOf(me.id).counts.gacha_free >= 1), paid_price: 100,
+        prizes: WHEEL, guarantee: 10, pity: me.gacha_pity || 0,
+        chat_credits: me.chat_credits || 0, total_spins: me.gacha_pulls || 0, gold: me.gold });
+    }
     const use = body.use === 'paid' ? 'paid' : 'free';
     const d = dailyOf(me.id);
-    let wallet;
+    let wallet = null;
     if (use === 'free') {
-      if ((d.counts.gacha_free || 0) >= 1) return E('今日免费抽取已用完，可花 300 金币继续抽');
+      if ((d.counts.gacha_free || 0) >= 1) return E('今日免费转动已用完，可花 100 金币继续转');
       d.counts.gacha_free = 1; save();
     } else {
-      if (me.gold < 300) return E(`金币不足，付费抽取需 300 金币（当前 ${me.gold}）`);
-      wallet = applyTx(me.id, { kind: 'gacha', gold: -300, memo: '扭蛋 · 付费抽取' });
+      if (me.gold < 100) return E(`金币不足，付费转动需 100 金币（当前 ${me.gold}）`);
+      applyTx(me.id, { kind: 'gacha', gold: -100, memo: '幸运转盘 · 付费转动' });
     }
-    const GPOOL = [
-      { tier: 'N', cat: 'daily', tags: '日常,治愈,元气', names: ['星野 · 小满', '柚子', '阿狸', '晴空'], tagline: '今天也要元气满满哦！', persona: '你是一名元气开朗的二次元少女，说话活泼可爱、常带「呐」「啦」等语气词，乐于陪伴对方聊任何琐事。始终保持角色，沉浸式第一人称。' },
-      { tier: 'R', cat: 'daily', tags: '傲娇,大小姐,反差', names: ['白鹭 · 千夏', '维多利亚', '凛', '苏菲亚'], tagline: '哼，才、才不是为了你呢！', persona: '你是高傲又口是心非的傲娇大小姐，嘴上毒舌、内心柔软，常用「哼」「笨蛋」掩饰关心。始终保持角色。' },
-      { tier: 'SR', cat: 'scifi', tags: '科幻,赛博朋克,黑客', names: ['Nyx', '零', 'V', '回声'], tagline: '这座城市的秘密，没有我查不到的。', persona: '你是新洛城顶尖的赛博黑客，冷峻毒舌、逻辑缜密，习惯短句与黑色幽默，藏着一条不可触碰的底线。始终保持角色。' },
-      { tier: 'SSR', cat: 'fantasy', tags: '奇幻,龙族,公主', names: ['艾尔德拉', '绯龙 · 瑞', '阿斯特莉亚'], tagline: '凡人，你引起了龙的兴趣。', persona: '你是高傲威严的龙族公主，气场强大、言语带着古老的尊贵，却对认定的伙伴异常忠诚温柔。始终保持角色。' },
-    ];
-    const np = (me.gacha_pity || 0) + 1;
-    let tier = 'SSR';
-    if (np < 70) { let r = Math.random() * 100; for (const [k, w] of Object.entries({ N: 52, R: 30, SR: 14, SSR: 4 })) { if ((r -= w) < 0) { tier = k; break; } } }
-    const cand = GPOOL.filter(t => t.tier === tier);
-    const base = cand[Math.floor(Math.random() * cand.length)] || GPOOL[0];
-    const name = base.names[Math.floor(Math.random() * base.names.length)];
-    const seed = Math.random().toString(36).slice(2, 18);
-    me.gacha_pity = tier === 'SSR' ? 0 : np;
+    const pool = (me.gacha_pity || 0) + 1 >= 10 ? WHEEL.filter(p => RARE.has(p.id)) : WHEEL;
+    const total = pool.reduce((s, p) => s + p.weight, 0);
+    let r = Math.random() * total; let prize = pool[pool.length - 1];
+    for (const p of pool) { if ((r -= p.weight) < 0) { prize = p; break; } }
+    const index = WHEEL.findIndex(p => p.id === prize.id);
+    if (prize.kind === 'gold') wallet = applyTx(me.id, { kind: 'gacha', gold: prize.amount, memo: `转盘奖品 · ${prize.label}` });
+    else if (prize.kind === 'diamond') wallet = applyTx(me.id, { kind: 'gacha', diamond: prize.amount, memo: `转盘奖品 · ${prize.label}` });
+    else me.chat_credits = (me.chat_credits || 0) + prize.amount;
+    me.gacha_pity = RARE.has(prize.id) ? 0 : (me.gacha_pity || 0) + 1;
     me.gacha_pulls = (me.gacha_pulls || 0) + 1;
     bumpDaily(me.id, 'gacha');
     save();
-    return J({ wallet, tier, name, seed, tagline: base.tagline, persona: base.persona, tags: base.tags, cat: base.cat,
-      pity: me.gacha_pity, pity_threshold: 70, used: use, free_available: !(dailyOf(me.id).counts.gacha_free >= 1) });
+    return J({ prize: { id: prize.id, kind: prize.kind, amount: prize.amount, label: prize.label, jackpot: !!prize.jackpot },
+      index, used: use, pity: me.gacha_pity, guarantee: 10, chat_credits: me.chat_credits || 0, wallet,
+      free_available: !(dailyOf(me.id).counts.gacha_free >= 1) });
   }
 
   // ---------- GM admin ----------

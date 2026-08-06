@@ -33,7 +33,7 @@ const NAV_PRIMARY = [
 const NAV_MORE = [
   { title: '探索', items: [
     { to: '/events', ic: PartyPopper, label: '活动' },
-    { to: '/gacha', ic: Dices, label: '扭蛋机' },
+    { to: '/gacha', ic: Dices, label: '幸运转盘' },
     { to: '/leaderboard', ic: Trophy, label: '排行榜' },
     { to: '/parliament', ic: Landmark, label: '议会' },
     { to: '/announcements', ic: Megaphone, label: '公告' },

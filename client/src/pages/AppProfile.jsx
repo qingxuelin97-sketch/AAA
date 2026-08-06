@@ -33,7 +33,7 @@ const QUICK = [
   { to: '/achievements', ic: Medal, label: '成就', tag: '', tone: 'reward' },
   { to: '/insights', ic: Orbit, label: '星轨', tag: 'New', tone: 'indigo' },
   { to: '/events', ic: PartyPopper, label: '活动', tag: '', tone: 'coral' },
-  { to: '/gacha', ic: Dices, label: '扭蛋机', tag: '', tone: 'reward' },
+  { to: '/gacha', ic: Dices, label: '幸运转盘', tag: '', tone: 'reward' },
   { to: '/favorites', ic: Heart, label: '收藏', tag: '', tone: 'rose' }
 ];
 

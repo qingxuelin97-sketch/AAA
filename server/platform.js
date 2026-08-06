@@ -20,12 +20,41 @@ export const platformFee = (u, msgCount) =>
 // 退款（kind='ai_refund'，与预扣同 ref_owner —— 创作者分成池按 ai_fee 减
 // ai_refund 轧差统计，见 routes/me.js，杜绝「刷失败调用虚增分成」）。
 // 崩溃在「已扣未退」窗口的残留由 ai_fee_refund_failed 日志 + GM 钱包补偿兜底。
-export function chargePlatformFee({ req, res, sse, me, eff, historyLen, memo, refOwner = null, convId = null, characterId = null, insufficientHint = '' }) {
-  const ctx = { fee: 0, rejected: false, charged: false, settle: () => {}, refund: () => {} };
+export function chargePlatformFee({ req, res, sse, me, eff, historyLen, memo, refOwner = null, convId = null, characterId = null, insufficientHint = '', allowChatCredit = false }) {
+  const ctx = { fee: 0, rejected: false, charged: false, usedCredit: false, settle: () => {}, refund: () => {} };
   if (!eff?.platform) return ctx;
-  ctx.fee = platformFee(me, historyLen);
-  const logExtra = { conversation_id: convId, character_id: characterId, fee_due: ctx.fee };
+  const logExtra = { conversation_id: convId, character_id: characterId, fee_due: 0 };
   const logBase = { source: 'server', category: 'economy', user_id: me.id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '' };
+  // 聊天次数卡（转盘奖品）优先抵扣：条件 UPDATE 原子扣 1 张，成功则本次回复
+  // 免金币（不写钱包账本——卡非货币，消耗/回退走日志留痕）。仅对话线开启
+  // （allowChatCredit），小说/剧场/语音不吃卡。失败路径原路退卡。
+  if (allowChatCredit) {
+    const upd = db.prepare('UPDATE users SET chat_credits = COALESCE(chat_credits,0) - 1 WHERE id = ? AND COALESCE(chat_credits,0) > 0').run(me.id);
+    if (upd.changes === 1) {
+      ctx.usedCredit = true;
+      let held = true;
+      const creditsLeft = () => db.prepare('SELECT COALESCE(chat_credits,0) c FROM users WHERE id = ?').get(me.id).c;
+      log({ ...logBase, level: 'info', event: 'chat_credit_used', message: '聊天次数卡抵扣 1 次平台对话', extra: { ...logExtra, credits_left: creditsLeft() } });
+      ctx.settle = () => {
+        if (!held) return;
+        held = false;
+        if (!res.destroyed) sse({ fee: 0, credit_used: true, chat_credits: creditsLeft() });
+      };
+      ctx.refund = (reason) => {
+        if (!held) return;
+        held = false;
+        try {
+          db.prepare('UPDATE users SET chat_credits = COALESCE(chat_credits,0) + 1 WHERE id = ?').run(me.id);
+          log({ ...logBase, level: 'info', event: 'chat_credit_refund', message: `聊天次数卡退回（${reason}）`, extra: logExtra });
+        } catch (e) {
+          log({ ...logBase, level: 'error', event: 'ai_fee_refund_failed', message: `聊天次数卡退回失败（${reason}）：${e.message}`, extra: logExtra });
+        }
+      };
+      return ctx;
+    }
+  }
+  ctx.fee = platformFee(me, historyLen);
+  logExtra.fee_due = ctx.fee;
   let charge = null;
   try {
     charge = applyTx(me.id, { kind: 'ai_fee', gold: -ctx.fee, memo, ref_owner: refOwner, share_eligible: false });

@@ -959,7 +959,7 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
   // 余额快照的预检后各自免费送达（applyTx 抛错仅落 warn）—— 可被并发白嫖上游
   // 成本。预扣在 applyTx 事务内校验余额，并发的第二笔当场被原子拒绝。
   const feeCtx = chargePlatformFee({
-    req, res, sse, me, eff, historyLen: history.length,
+    req, res, sse, me, eff, historyLen: history.length, allowChatCredit: true,
     memo: `平台 AI · 面板生成《${character?.name || ''}》`, refOwner: character?.owner_id,
     convId: conv.id, characterId: conv.character_id,
   });
@@ -987,7 +987,7 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
         if (eff2.system_prompt.trim()) system2 = eff2.system_prompt.trim() + '\n\n' + system2;
         const payload2 = [{ role: 'system', content: system2 }, ...payloadMessages.slice(1)];
         const feeCtx2 = chargePlatformFee({
-          req, res, sse, me, eff: eff2, historyLen: history.length,
+          req, res, sse, me, eff: eff2, historyLen: history.length, allowChatCredit: true,
           memo: `平台 AI · 面板生成《${character?.name || ''}》（用户 key 失效回退）`, refOwner: character?.owner_id,
           convId: conv.id, characterId: conv.character_id,
         });
@@ -1046,7 +1046,7 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   const history = db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
   // 平台按回复计费：预扣 + 失败退款（原子防并发白嫖，详见 chargePlatformFee）。
   const feeCtx = chargePlatformFee({
-    req, res, sse, me, eff, historyLen: history.length,
+    req, res, sse, me, eff, historyLen: history.length, allowChatCredit: true,
     memo: `平台 AI · 对话《${character?.name || ''}》`, refOwner: character?.owner_id,
     convId: conv.id, characterId: conv.character_id,
     insufficientHint: '可前往钱包签到/兑换，或在设置中填写自己的 API。',
@@ -1079,7 +1079,7 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
         const payload2 = [{ role: 'system', content: system2 }, ...payloadMessages.slice(1)];
         // 平台按回复计费：回退后按平台计费规则预扣（原用户 key 路径不计费，feeCtx 为 no-op）
         const feeCtx2 = chargePlatformFee({
-          req, res, sse, me, eff: eff2, historyLen: history.length,
+          req, res, sse, me, eff: eff2, historyLen: history.length, allowChatCredit: true,
           memo: `平台 AI · 对话《${character?.name || ''}》（用户 key 失效回退）`, refOwner: character?.owner_id,
           convId: conv.id, characterId: conv.character_id,
           insufficientHint: '可前往钱包签到/兑换，或在设置中更新自己的 API Key。',

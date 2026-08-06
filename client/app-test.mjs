@@ -274,9 +274,13 @@ assert.match(chatSource, /app && !!m\.content && \([\s\S]*生成台词卡/, 'the
 assert.match(chatSource, /speaker: quoteShare\.role === 'user' \? \(user\?\.display_name[\s\S]*: character\.name/, 'quote cards must attribute the line to its real speaker on both sides');
 assert.match(chatSource, /sheetOpenedAtRef\.current = performance\.now\(\);[\s\S]*msg-sheet-mask" onClick=\{\(\) => \{ if \(performance\.now\(\) - sheetOpenedAtRef\.current < 350\) return;/, 'the message sheet mask must swallow the trailing long-press click');
 /* ---- S7-G10 抽卡晒卡与收藏筛选 ---- */
+// 转盘改造（产品定案）：奖品只有数字资产与聊天次数卡，角色卡玩法与晒卡入口
+// 一并退役。守卫改为盯住转盘的两条纪律：摇号在服务端（客户端只拿 index 播
+// 动画）、转盘动画只动 transform（合成层，不卡纪律）。
 const gachaSource = await readFile(new URL('./src/pages/Gacha.jsx', import.meta.url), 'utf8');
-assert.match(gachaSource, /isAppMode\(\) && \([\s\S]*晒出这张卡/, 'the gacha share entry must stay App-only');
-assert.match(gachaSource, /isAppMode\(\) && shareOpen && result &&[\s\S]*kind="character"/, 'gacha results must share through the character template');
+assert.match(gachaSource, /api\('\/gacha\/spin'/, 'the wheel must ask the server for the outcome — the client is a replayer, not a decider');
+assert.doesNotMatch(gachaSource, /Math\.random\(\)\s*\*\s*total|rollTier/, 'no client-side prize rolling may return');
+assert.match(gachaSource, /transform: `rotate\(\$\{rot\}deg\)`/, 'the wheel animation must be transform-only (compositor discipline)');
 const favoritesSource = await readFile(new URL('./src/pages/Favorites.jsx', import.meta.url), 'utf8');
 assert.match(favoritesSource, /app && !loading && cats\.length >= 2[\s\S]*qa-fav-cats/, 'favorite category chips must stay App-only and need two categories');
 assert.match(favoritesSource, /该分类下暂无收藏/, 'an emptied favorite filter must explain itself');

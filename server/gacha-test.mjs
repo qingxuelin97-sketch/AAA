@@ -1,19 +1,36 @@
-// 扭蛋统一版专项测试：每日免费一抽（零经济产出）/ 免费额度用尽 400 /
-// 付费 300 金（kind=gacha）/ 金币不足拒绝 / 服务端保底 69→必出 SSR /
-// 真实抽取推进每日任务与 gacha_pulls（成就「欧皇之路」口径）。
+// 幸运转盘专项测试（扭蛋改造版）：每日免费一转 / 奖品（金币/钻石/次数卡）
+// 与账本或 chat_credits 严格对账 / 免费额度用尽 400 / 付费 100 金 / 金币不足
+// 拒绝 / 保底强制稀有档 / 聊天次数卡在平台对话中优先抵扣且失败退回。
 // 运行：npm run test:gacha
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
+import http from 'node:http';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import Database from 'better-sqlite3';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const PORT = 4195;
+const STUB_PORT = 4193;
 const DB_PATH = path.join(ROOT, 'server', 'gacha-test.tmp.sqlite');
 const BASE = `http://localhost:${PORT}/api`;
 for (const f of [DB_PATH, DB_PATH + '-wal', DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch { /* */ } }
+
+// 桩上游：OpenAI 形状流式 /chat/completions（供平台对话消耗次数卡用例）。
+// 请求体含 FAIL500 时返回 500（触发「已扣卡 → 生成失败 → 退卡」路径）。
+const stub = http.createServer((req, res) => {
+  let body = '';
+  req.on('data', (c) => { body += c; });
+  req.on('end', () => {
+    if (body.includes('FAIL500')) { res.writeHead(500, { 'Content-Type': 'application/json' }); return res.end('{"error":"stub 500"}'); }
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    res.write('data: {"choices":[{"delta":{"content":"你好呀。"}}]}\n\n');
+    res.write('data: [DONE]\n\n');
+    res.end();
+  });
+});
+await new Promise((r) => stub.listen(STUB_PORT, '127.0.0.1', r));
 
 const interceptor = path.join(__dirname, 'gacha-test.interceptor.mjs');
 fs.writeFileSync(interceptor, `
@@ -31,6 +48,7 @@ const srv = spawn(process.execPath, ['--import', pathToFileURL(interceptor).href
   cwd: ROOT, env: {
     ...process.env, NODE_ENV: 'test', TEST_EXPOSE_EMAIL_CODES: '1',
     PORT: String(PORT), DB_PATH,
+    PLATFORM_LLM_BASE_URL: `http://127.0.0.1:${STUB_PORT}`, PLATFORM_LLM_KEY: 'stub-key',
     API_ANON_RATE_LIMIT: '120', API_AUTH_RATE_LIMIT: '1000',
     SMTP_HOST: 'smtp.mock.com', SMTP_PORT: '465', SMTP_SECURE: '1',
     SMTP_USER: 'u@mock.com', SMTP_PASS: 'p', SMTP_FROM: '"T" <u@mock.com>',
@@ -54,6 +72,12 @@ const register = async (username, email) => {
   if (!r.token) throw new Error('注册失败：' + JSON.stringify(r));
   return r;
 };
+// 读完 SSE 全文（对话回复用）
+const sseText = async (p, body, tok) => {
+  const r = await fetch(BASE + p, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify(body) });
+  const text = await r.text();
+  return { status: r.status, text };
+};
 
 for (let i = 0; i < 60; i++) {
   try { const r = await fetch(BASE + '/engage/events'); if (r.ok) break; } catch { /* */ }
@@ -62,50 +86,76 @@ for (let i = 0; i < 60; i++) {
 }
 
 try {
-  console.log('扭蛋统一版专项:');
-  dbWrite((d) => d.prepare("INSERT INTO email_whitelist (email, kind, note) VALUES ('@test.dev', 'domain', 'gacha fixture')").run());
-  const a = await register('gachaUserA', 'gacha-a@test.dev');
+  console.log('幸运转盘专项:');
+  dbWrite((d) => d.prepare("INSERT INTO email_whitelist (email, kind, note) VALUES ('@test.dev', 'domain', 'wheel fixture')").run());
+  const a = await register('wheelUserA', 'wheel-a@test.dev');
   const uid = a.user.id;
-  const goldOf = () => dbRead((d) => d.prepare('SELECT gold FROM users WHERE id = ?').get(uid).gold);
-  const txsOf = () => dbRead((d) => d.prepare('SELECT kind, gold, diamond FROM transactions WHERE user_id = ?').all(uid));
+  const row = () => dbRead((d) => d.prepare('SELECT gold, diamond, COALESCE(chat_credits,0) credits, COALESCE(gacha_pity,0) pity FROM users WHERE id = ?').get(uid));
+  const txs = () => dbRead((d) => d.prepare("SELECT kind, gold, diamond, memo FROM transactions WHERE user_id = ? AND kind = 'gacha' ORDER BY id").all(uid));
 
   // 1) 初始状态
   const st0 = await J(await get('/gacha/state', a.token));
-  ok(st0.free_available === true && st0.paid_price === 300 && st0.pity === 0 && st0.pity_threshold === 70, 'state：免费可用 / 单价 300 / 保底 0/70');
+  ok(st0.free_available === true && st0.paid_price === 100 && Array.isArray(st0.prizes) && st0.prizes.length === 8 && st0.guarantee === 10,
+    `state：免费可用 / 单价 100 / 8 格奖品 / 保底 ${st0.guarantee}`);
 
-  // 2) 免费抽：出货 + 零经济产出 + 推进任务与 gacha_pulls
-  const gold0 = goldOf();
-  const p1 = await J(await post('/gacha/pull', { use: 'free' }, a.token));
-  ok(['N', 'R', 'SR', 'SSR'].includes(p1.tier) && p1.name && p1.seed && p1.persona, `免费抽出货（${p1.tier}·${p1.name}）`);
-  ok(goldOf() === gold0 && txsOf().length === 0, '免费抽零经济产出（余额不变、零流水）');
-  ok(p1.pity === (p1.tier === 'SSR' ? 0 : 1), `保底计数推进正确（pity=${p1.pity}）`);
+  // 2) 免费转：奖品与账本/次数卡严格对账
+  const before = row();
+  const s1 = await J(await post('/gacha/spin', { use: 'free' }, a.token));
+  const after = row();
+  ok(s1.prize?.id && s1.index >= 0 && s1.index < 8, `免费转出奖（${s1.prize.label} @ ${s1.index}）`);
+  if (s1.prize.kind === 'gold') ok(after.gold === before.gold + s1.prize.amount && after.credits === before.credits, '金币奖入账与账本一致');
+  else if (s1.prize.kind === 'diamond') ok(after.diamond === before.diamond + s1.prize.amount && after.gold === before.gold, '钻石奖入账与账本一致');
+  else ok(after.credits === before.credits + s1.prize.amount && after.gold === before.gold, '次数卡奖入 chat_credits');
   const tasks1 = await J(await get('/engage/tasks', a.token));
-  ok(tasks1.tasks.find((t) => t.id === 'gacha')?.progress === 1, '真实抽取推进每日任务「抽卡」');
-  ok(dbRead((d) => d.prepare('SELECT gacha_pulls FROM users WHERE id = ?').get(uid).gacha_pulls) === 1, 'gacha_pulls+1（成就「欧皇之路」口径）');
+  ok(tasks1.tasks.find((t) => t.id === 'gacha')?.progress === 1, '真实转动推进每日任务');
 
   // 3) 同日第二次免费 → 400
-  const p2 = await post('/gacha/pull', { use: 'free' }, a.token);
-  ok(p2.status === 400, `同日免费第二抽拒绝（${p2.status}）`);
+  const s2 = await post('/gacha/spin', { use: 'free' }, a.token);
+  ok(s2.status === 400, `同日免费第二转拒绝（${s2.status}）`);
 
-  // 4) 付费抽 300 金（新号 300 金恰好一抽）
-  const p3 = await J(await post('/gacha/pull', { use: 'paid' }, a.token));
-  ok(p3.used === 'paid' && p3.wallet && goldOf() === gold0 - 300, `付费抽扣 300 金（${gold0} → ${goldOf()}）`);
-  const gtx = txsOf().filter((t) => t.kind === 'gacha');
-  ok(gtx.length === 1 && gtx[0].gold === -300, '流水 kind=gacha 单笔 -300');
+  // 4) 付费转 100 金：净额 = 奖品 - 100，账本留付费/奖品对
+  dbWrite((d) => d.prepare('UPDATE users SET gold = 1000 WHERE id = ?').run(uid));
+  const g0 = row();
+  const s3 = await J(await post('/gacha/spin', { use: 'paid' }, a.token));
+  const g1 = row();
+  const expectGold = 1000 - 100 + (s3.prize.kind === 'gold' ? s3.prize.amount : 0);
+  ok(s3.used === 'paid' && g1.gold === expectGold, `付费转净额正确（1000 → ${g1.gold}，中 ${s3.prize.label}）`);
+  ok(txs().some((t) => t.gold === -100), '账本留下付费 -100 流水');
 
-  // 5) 金币不足 → 400，无新增流水
-  const p4 = await post('/gacha/pull', { use: 'paid' }, a.token);
-  ok(p4.status === 400 && txsOf().length === 1, `金币不足拒绝且零新流水（${p4.status}）`);
+  // 5) 金币不足 → 400
+  dbWrite((d) => d.prepare('UPDATE users SET gold = 50 WHERE id = ?').run(uid));
+  const s4 = await post('/gacha/spin', { use: 'paid' }, a.token);
+  ok(s4.status === 400, `金币不足拒绝（${s4.status}）`);
 
-  // 6) 服务端保底：69 → 下一抽必出 SSR 且归零
-  dbWrite((d) => d.prepare('UPDATE users SET gacha_pity = 69, gold = 300 WHERE id = ?').run(uid));
-  const p5 = await J(await post('/gacha/pull', { use: 'paid' }, a.token));
-  ok(p5.tier === 'SSR' && p5.pity === 0, `保底触发：第 70 抽必出 SSR 并归零（tier=${p5.tier}, pity=${p5.pity}）`);
+  // 6) 保底：pity=9 → 强制稀有档（钻石或大额金币）并归零
+  dbWrite((d) => d.prepare('UPDATE users SET gacha_pity = 9, gold = 500 WHERE id = ?').run(uid));
+  const s5 = await J(await post('/gacha/spin', { use: 'paid' }, a.token));
+  ok(['diamond5', 'gold300', 'diamond20'].includes(s5.prize.id) && s5.pity === 0, `保底触发必中稀有档（${s5.prize.label}）并归零`);
+
+  // 7) 聊天次数卡：平台对话优先抵扣（不扣金币），用完回落金币计费
+  dbWrite((d) => d.prepare('UPDATE users SET chat_credits = 1, gold = 500 WHERE id = ?').run(uid));
+  const ch = await J(await post('/characters', { name: '次数卡角色' }, a.token));
+  const cv = await J(await post('/chat/conversations', { character_id: ch.character?.id || ch.id }, a.token));
+  const r1 = await sseText(`/chat/conversations/${cv.conversation.id}/complete`, { content: '你好' }, a.token);
+  const c1 = row();
+  ok(r1.status === 200 && r1.text.includes('credit_used') && c1.credits === 0 && c1.gold === 500,
+    `次数卡抵扣：卡 1→${c1.credits}，金币分文未动（${c1.gold}）`);
+  const r2 = await sseText(`/chat/conversations/${cv.conversation.id}/complete`, { content: '再聊一句' }, a.token);
+  const c2 = row();
+  ok(r2.status === 200 && c2.gold === 500 - 20 && c2.credits === 0, `卡用完回落金币计费（500 → ${c2.gold}）`);
+
+  // 8) 已扣卡但生成失败 → 退卡（角色名注入 FAIL500 让桩上游报错）
+  dbWrite((d) => d.prepare('UPDATE users SET chat_credits = 1 WHERE id = ?').run(uid));
+  const chBad = await J(await post('/characters', { name: 'FAIL500', persona: 'FAIL500' }, a.token));
+  const cvBad = await J(await post('/chat/conversations', { character_id: chBad.character?.id || chBad.id }, a.token));
+  await sseText(`/chat/conversations/${cvBad.conversation.id}/complete`, { content: '触发失败' }, a.token);
+  const c3 = row();
+  ok(c3.credits === 1, `生成失败退卡（credits=${c3.credits}）`);
 } catch (e) {
   fail++; console.error('  ✗ 异常：', e.message, '\n---- server output ----\n' + serverOutput);
 }
 
-console.log(`\n扭蛋统一版专项: ${pass} passed, ${fail} failed`);
-srv.kill();
+console.log(`\n幸运转盘专项: ${pass} passed, ${fail} failed`);
+srv.kill(); stub.close();
 for (const f of [DB_PATH, DB_PATH + '-wal', DB_PATH + '-shm', interceptor]) { try { fs.unlinkSync(f); } catch { /* */ } }
 process.exit(fail ? 1 : 0);
