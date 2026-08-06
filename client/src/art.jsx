@@ -49,9 +49,10 @@ import ixOnb003Light from './assets/illos/ix-illo-onb-003-light.svg?url';
 import ixOnb003Dark from './assets/illos/ix-illo-onb-003-dark.svg?url';
 // 纪念印章三档 SVG（铜单环/银双环短芒/金三环长芒；
 // 透明底零文字，数字由 UI 活文本叠加）。
-import ixStampBronzeUrl from './assets/illos/ix-stamp-bronze.svg?url';
-import ixStampSilverUrl from './assets/illos/ix-stamp-silver.svg?url';
-import ixStampGoldUrl from './assets/illos/ix-stamp-gold.svg?url';
+// 里程碑印章改用用户提供的 3D 奖章 PNG（160px 透明底，matte 管线抠图）。
+import ixStampBronzeUrl from './assets/app/streak-bronze.png?url';
+import ixStampSilverUrl from './assets/app/streak-silver.png?url';
+import ixStampGoldUrl from './assets/app/streak-gold.png?url';
 
 const IX_ILLUSTRATIONS = {
   chat: { light: ixChatLight, dark: ixChatDark },

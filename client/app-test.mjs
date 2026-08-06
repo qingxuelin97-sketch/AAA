@@ -654,7 +654,9 @@ assert.ok(dockNavStart >= 0 && dockNavEnd > dockNavStart && dockFab > dockNavEnd
 assert.match(layoutSource, /badgeCount=\{badgeCount\}/, 'the Messages tab must receive its numeric unread count');
 assert.match(layoutSource, /data-tone=\{c\.tone\}/, 'create-sheet rows must carry semantic tones instead of positional rainbow styling');
 assert.doesNotMatch(layoutSource, /Sparkles|Wand2/, 'the App shell must use concrete verbs for creation icons, not sparkle/wand metaphors');
-assert.match(chatSource, /AFFINITY_APP_ICONS/, 'the App chat affinity badge must render vector icons in place of emoji chrome');
+// 素材认领版：App 好感徽记改用用户提供的 3D 徽章 PNG（AFFINITY_ART 按等级
+// 1-7 对位），取代此前的 lucide 矢量图标；emoji 仍只留给 Web 壳。
+assert.match(chatSource, /AFFINITY_ART\[\(level \|\| 1\) - 1\]/, 'the App chat affinity badge must render the user-supplied badge art indexed by level');
 assert.match(layoutSource, /useAppOverlay\(true,\s*requestClose,\s*\{\s*rootRef:\s*sheetRef,\s*isolate:\s*true,\s*returnFocusRef\s*\}\)[\s\S]*createPortal/, 'the create sheet must preserve PR4 portal isolation + focus return, with all close paths routed through the animated requestClose');
 assert.match(appSource, /path="\/app-controls"[\s\S]*P\(<AppControlsGallery \/>\)/, 'the control gallery must stay lazy and protected (dual-shell acceptance page since W4)');
 assert.match(routeChunksSource, /AppControlsGallery:[\s\S]*import\('\.\/pages\/AppControlsGallery\.jsx'\)/, 'the control gallery must participate in the route chunk registry');
@@ -693,7 +695,8 @@ for (const scene of ['chat', 'favorites', 'search', 'achievements', 'theater', '
   assert.match(artSource, new RegExp(`ix-illo-${scene}-light\\.svg\\?url`), `the IX empty-art scene "${scene}" must be wired into the App art map`);
 }
 assert.match(artSource, /ix-illo-onb-001-light\.svg\?url[\s\S]*IxOnboardingArt/, 'onboarding must use the reviewed IX SVG media');
-assert.match(artSource, /ix-stamp-bronze\.svg\?url[\s\S]*streakSealForTier/, 'streak seals must use the reviewed IX SVG media');
+// 素材认领版：里程碑印章改用用户提供的 3D 奖章 PNG（铜/银/金三档，分档逻辑不变）。
+assert.match(artSource, /streak-bronze\.png\?url[\s\S]*streakSealForTier/, 'streak seals must use the user-supplied medal art with the three-tier mapping');
 const capacitorConfig = await readFile(new URL('../capacitor.config.json', import.meta.url), 'utf8');
 assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must not return to the purple-navy splash');
 assert.match(capacitorConfig, /"backgroundColor":\s*"#E4F1F6"/, 'native launch colours must match the rainbow cyan-blue canvas');

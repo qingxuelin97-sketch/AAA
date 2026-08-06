@@ -1,4 +1,24 @@
 // 对话页共享常量与好感度工具 —— 从 Chat.jsx 抽出，供 Chat / 各子组件复用。
+import giftCandy from '../assets/app/gift-candy.png?url';
+import giftRose from '../assets/app/gift-rose.png?url';
+import giftCoffee from '../assets/app/gift-coffee.png?url';
+import giftCake from '../assets/app/gift-cake.png?url';
+import giftLetter from '../assets/app/gift-letter.png?url';
+import giftBear from '../assets/app/gift-bear.png?url';
+import giftPendant from '../assets/app/gift-pendant.png?url';
+import giftMystery from '../assets/app/gift-mystery.png?url';
+import aff1 from '../assets/app/aff-1.png?url';
+import aff2 from '../assets/app/aff-2.png?url';
+import aff3 from '../assets/app/aff-3.png?url';
+import aff4 from '../assets/app/aff-4.png?url';
+import aff5 from '../assets/app/aff-5.png?url';
+import aff6 from '../assets/app/aff-6.png?url';
+import aff7 from '../assets/app/aff-7.png?url';
+
+// 美术资产（用户提供的 3D 图标，认领于 scratchpad matte 管线抠图缩放）。
+// GIFT_ART 按礼物 id 索引；AFFINITY_ART 按等级序（1-7），与 AFFINITY_LEVELS 对位。
+export const GIFT_ART = { candy: giftCandy, rose: giftRose, coffee: giftCoffee, cake: giftCake, letter: giftLetter, bear: giftBear, pendant: giftPendant, mystery: giftMystery };
+export const AFFINITY_ART = [aff1, aff2, aff3, aff4, aff5, aff6, aff7];
 
 // 「+」面板 · 送礼物：真金币消耗（服务端扣款 + RP 消息 + 加好感同事务）。
 // 展示镜像：价格与好感增量以 server/routes/chat.js GIFT_CATALOG 为权威，

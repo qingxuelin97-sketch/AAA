@@ -19,10 +19,10 @@ import ChatSearchBar from '../chat/ChatSearchBar.jsx';
 import { isAppMode } from '../appmode.js';
 import { useAppOverlay } from '../overlay.jsx';
 import {
-  GIFTS, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
+  GIFTS, GIFT_ART, AFFINITY_ART, RANDOM_EVENTS, COARSE, LIST_KEY, FONT_KEY, AUTOREAD_KEY, BGM_KEY, BUBBLE_ALPHA_KEY,
   REACTIONS, STARTERS, QUICK_ACTIONS, AFFINITY_LEVELS, affinityInfo, timeDivider,
 } from '../chat/constants.js';
-import { Send, Volume2, Plus, X, ArrowLeft, ArrowUp, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft, ImagePlus, Blend, LayoutTemplate, Sprout, Leaf, Coffee, HeartHandshake, Gem } from 'lucide-react';
+import { Send, Volume2, Plus, X, ArrowLeft, ArrowUp, Copy, RotateCcw, PanelLeftClose, PanelLeftOpen, Square, ArrowDown, Pencil, Trash2, Check, Heart, BookOpen, Brain, Smile, MoreVertical, Type, Download, Eraser, Search, Edit3, Wand2, Music, VolumeX, Sparkles, Bookmark, RefreshCcw, Phone, Dices, Gift, Drama, Zap, CornerUpLeft, ImagePlus, Blend, LayoutTemplate } from 'lucide-react';
 
 // 声波键（参考稿 1:1）：外圈 + 声源点 + 朝右上放射的两道弧。
 function WaveIcon({ size = 22 }) {
@@ -39,11 +39,12 @@ function WaveIcon({ size = 22 }) {
   );
 }
 
-// Liuli v5：App 端好感等级用 lucide 图标表达（Web 保留 emoji 徽章）。
-const AFFINITY_APP_ICONS = [Sprout, Leaf, Coffee, Smile, Heart, HeartHandshake, Gem];
+// App 端好感等级徽记：用户提供的 3D 徽章 PNG（AFFINITY_ART 按等级 1-7 对位，
+// Web 保留 emoji 徽章）。128px 源图透明底，任意小尺寸展示都清晰。
 function AffinityIcon({ level, size }) {
-  const Ic = AFFINITY_APP_ICONS[level] || Heart;
-  return <Ic size={size} aria-hidden="true" />;
+  const src = AFFINITY_ART[(level || 1) - 1] || AFFINITY_ART[0];
+  return <img src={src} width={size} height={size} alt="" aria-hidden="true" draggable="false"
+    style={{ display: 'block', objectFit: 'contain' }} />;
 }
 
 // D3 桌面三栏：角色档案正文（.cd-head + .cd-body）抽成本地组件，App 抽屉与
@@ -771,7 +772,7 @@ export default function Chat() {
                   if (!app && wide) setPanelPinned(p => { const n = !p; try { localStorage.setItem('huanyu_chat_panel', n ? '1' : '0'); } catch { /* */ } return n; });
                   else setDrawerOpen(true);
                 }} title="角色档案 · 好感度 / 记忆 / 世界书">
-                  <span className="af-ic">{app ? <AffinityIcon level={af.level} size={12} /> : af.icon}</span>
+                  <span className="af-ic">{app ? <AffinityIcon level={af.level} size={16} /> : af.icon}</span>
                   <span className="af-tx"><b>{af.name}</b><i><em style={{ width: af.pct + '%' }} /></i></span>
                 </button>
               ); })()}
@@ -1132,7 +1133,10 @@ export default function Chat() {
                       <div className="cps-gifts">
                         {GIFTS.map(g => (
                           <button key={g.id} onClick={() => sendGift(g)}>
-                            <b>{g.e}</b><span>{g.n.replace(/^一[枝块杯只封份枚把]/, '')}</span>
+                            {GIFT_ART[g.id]
+                              ? <img className="cps-gift-img" src={GIFT_ART[g.id]} alt="" draggable="false" />
+                              : <b>{g.e}</b>}
+                            <span>{g.n.replace(/^一[枝块杯只封份枚把]/, '')}</span>
                             <i className="cps-gift-price"><CoinIcon size={9} /> {g.price}</i>
                           </button>
                         ))}

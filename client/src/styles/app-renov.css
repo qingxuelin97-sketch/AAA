@@ -905,6 +905,8 @@ html[data-app="1"] .chat-main.has-bg .starter-chip.on {
 }
 .cps-gifts button:active { transform: scale(0.88); }
 .cps-gifts button b { font-size: 22px; line-height: 1; }
+/* 礼物 3D 图标（用户素材，透明底 192px 源图） */
+.cps-gifts button .cps-gift-img { width: 34px; height: 34px; object-fit: contain; display: block; }
 .cps-gifts button span { font-size: 10.5px; color: rgba(255,255,255,0.72); }
 /* 礼物价格行：真金币消耗披露（服务端权威目录的展示镜像） */
 .cps-gifts button .cps-gift-price { display: inline-flex; align-items: center; gap: 2px; font-size: 9.5px;
