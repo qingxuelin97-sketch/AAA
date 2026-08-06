@@ -42,13 +42,12 @@ html[data-app="1"] .flow-sheen { position: relative; overflow: hidden; }
 
 /* —— 骨架屏 ——
    数据到达前的占位微光。行高由使用处内联 height 控制。 */
+/* 彩虹系性能收口：background-position 微光循环退役 —— 静态底色即可，
+   扫光由 App 级联更晚的 ix-core `.skel::after` ix-shimmer（translateX）承担。 */
 html[data-app="1"] .skel {
   border-radius: 10px;
-  background: linear-gradient(100deg, var(--bg-2) 40%, color-mix(in srgb, var(--panel) 70%, var(--bg-2)) 50%, var(--bg-2) 60%);
-  background-size: 200% 100%;
-  animation: motionSkel 1.4s ease-in-out infinite;
+  background: var(--bg-2);
 }
-@keyframes motionSkel { from { background-position: 120% 0; } to { background-position: -80% 0; } }
 
 /* Liuli v5：未读点为静态语义色点 —— 状态本身即信息，无需呼吸。 */
 

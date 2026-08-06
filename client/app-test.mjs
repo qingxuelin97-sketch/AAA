@@ -580,8 +580,9 @@ assert.doesNotMatch(appLayerCssSansWebHue, /#a78bfa|#7c3aed|#e11d48|#a21caf|#0e7
 const INFINITE_ALLOWLIST = new Set([
   // status/loading loops — the only necessary cycles, they stop with their state
   'appRouteSpin', 'call-pulse', 'caretBlink', 'caretBreath', 'chatCaret', 'chatTyping',
-  'gachaShake', 'liveRing', 'motionSkel', 'qa-spin', 'qa3RefreshSpin', 'qa3Skeleton',
+  'gachaShake', 'ix-shimmer', 'liveRing', 'qa-spin', 'qa3RefreshSpin',
   'skel-shimmer', 'skel-spin', 'spin360',
+  /* motionSkel / qa3Skeleton（background-position 重绘循环）已退役 —— 彩虹系性能收口 */
   // Web-owned legacy loops living unfenced in shared files; the App fence neutralises them
   'chatKenburns', 'emptyFloat', 'insDrift', 'ringSlide', 'vmGoShine', 'vmShine', 'vmSpark',
   // 彩虹青白动效层（用户定稿的呼吸循环；只动 transform/opacity，lite/reduced-motion 全关）

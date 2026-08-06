@@ -629,11 +629,24 @@ html[data-app="1"] .qa3-today .ah-pick-ph {
   border-radius: 14px !important;
 }
 
+/* 骨架微光改扫光带（彩虹系性能收口）：background-position 循环每帧重绘，
+   换 ::after translateX 扫光（合成器直通，同 ix-core 的 ix-shimmer 配方）。 */
 html[data-app="1"] .qa3-today :where(.ah-hero-skel, .ah-rail-skel, .ah-pick-skel) {
-  background: linear-gradient(100deg, var(--ix-composition-canvas-deep) 35%, color-mix(in srgb, var(--ix-composition-teal-soft) 70%, #fff) 50%, var(--ix-composition-canvas-deep) 65%) !important;
-  background-size: 220% 100% !important;
-  animation: qa3Skeleton 1.45s ease-in-out infinite !important;
+  position: relative;
+  overflow: hidden;
+  background: var(--ix-composition-canvas-deep) !important;
+  animation: none !important;
 }
+html[data-app="1"] .qa3-today :where(.ah-hero-skel, .ah-rail-skel, .ah-pick-skel)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent 35%, color-mix(in srgb, var(--ix-composition-teal-soft) 70%, #fff) 50%, transparent 65%);
+  animation: ix-shimmer 1.45s ease-in-out infinite;
+}
+html[data-app="1"][data-perf="lite"] .qa3-today :where(.ah-hero-skel, .ah-rail-skel, .ah-pick-skel)::after,
+html[data-app="1"][data-page-hidden] .qa3-today :where(.ah-hero-skel, .ah-rail-skel, .ah-pick-skel)::after { animation: none; }
 
 /* --------------------------------------------------------------------------
    Messages — large title, one grouped destination surface, separator-based
@@ -2338,10 +2351,7 @@ html[data-app="1"]::view-transition-new(qa-character-art) {
   100% { opacity: 0; transform: translate(-50%, -50%) scale(.92); }
 }
 
-@keyframes qa3Skeleton {
-  from { background-position: 120% 0; }
-  to { background-position: -80% 0; }
-}
+/* qa3Skeleton（background-position 循环）已退役 —— 见上方 ix-shimmer 扫光带。 */
 
 @keyframes qa3RefreshSpin {
   to { transform: rotate(360deg); }
