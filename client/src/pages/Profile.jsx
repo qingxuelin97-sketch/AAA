@@ -15,6 +15,7 @@ import { pid } from '../assets.jsx';
 import { shareUrl } from '../util.js';
 import { CoverArt } from '../art.jsx';
 import ReportButton from '../components/ReportButton.jsx';
+import FramedAvatar from '../components/FramedAvatar.jsx';
 import MembershipBanner from '../components/profile/MembershipBanner.jsx';
 import AssetCard from '../components/profile/AssetCard.jsx';
 import ProfileContentTabs from '../components/profile/ProfileContentTabs.jsx';
@@ -88,7 +89,7 @@ export default function Profile() {
             {listModal.users.map(uu => (
               <div key={uu.id} className="ul-row">
                 <div className="ul-info" onClick={() => { setListModal(null); nav('/user/' + uu.id); }}>
-                  <Avatar src={uu.avatar} name={uu.display_name} size={40} />
+                  <FramedAvatar frame={uu.avatar_frame} src={uu.avatar} name={uu.display_name} size={40} />
                   <div style={{ minWidth: 0 }}>
                     <b style={{ display: 'flex', alignItems: 'center', gap: 5 }}>{uu.display_name}
                       {uu.verified && <BadgeCheck size={13} style={{ color: 'var(--diamond)' }} />}
@@ -146,7 +147,7 @@ export default function Profile() {
             <div className={appMode ? 'qa-user-banner' : undefined} style={{ height: 150, background: u.banner ? `url(${u.banner}) center/cover` : 'linear-gradient(135deg, #e7d8c0, #d8c3a4)' }} />
             <div style={{ padding: '0 24px 22px', marginTop: -42 }}>
               <div className="profile-head" style={{ alignItems: 'flex-end' }}>
-                <div style={{ border: '4px solid var(--panel)', borderRadius: '50%' }}><Avatar src={u.avatar} name={u.display_name} size={84} /></div>
+                <div style={{ border: '4px solid var(--panel)', borderRadius: '50%' }}><FramedAvatar frame={u.avatar_frame} src={u.avatar} name={u.display_name} size={84} /></div>
                 <div style={{ flex: 1, paddingBottom: 6, minWidth: 0 }}>
                   <h2 className="pf-name">{u.display_name}</h2>
                   <IdentityBadges u={u} />
@@ -260,7 +261,7 @@ export default function Profile() {
             <>
               <div className="pfw-banner" style={u.banner ? { backgroundImage: `url(${u.banner})` } : undefined} />
               <div className="pfw-head">
-                <span className="pfw-avatar"><Avatar src={u.avatar} name={u.display_name} size={84} /></span>
+                <span className="pfw-avatar"><FramedAvatar frame={u.avatar_frame} src={u.avatar} name={u.display_name} size={84} /></span>
                 <div className="pfw-head-main">
                   <h2 className="pfw-name">{u.display_name}</h2>
                   <IdentityBadges u={u} className="pfw-badges" />

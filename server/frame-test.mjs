@@ -94,6 +94,12 @@ try {
   ok(r6.user?.avatar_frame === 'aqua', '非 SVIP 佩戴通用动态框「碧波」成功');
   const r7 = await put('/auth/me', { avatar_frame: 'gilt' }, b.token);
   ok(r7.status === 403, `非 SVIP 佩戴「鎏金」403（${r7.status}）`);
+
+  // 7) 装扮可见性（修缮⑥）：公开主页对他人回显框 + 徽章字段 + 成就数
+  const pub = await J(await get(`/users/${b.user.id}`, a.token));
+  ok(pub.user?.avatar_frame === 'aqua', '公开主页对他人回显 avatar_frame');
+  ok('creator_tier' in (pub.user || {}) && pub.user?.is_councilor === false, '公开主页补发 creator_tier / is_councilor');
+  ok(typeof pub.stats?.achievements === 'number', `公开主页 stats 含成就已解锁数（${pub.stats?.achievements}）`);
 } catch (e) {
   fail++; console.error('  ✗ 异常：', e.message, '\n---- server output ----\n' + serverOutput);
 }

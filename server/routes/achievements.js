@@ -99,6 +99,11 @@ function metric(u, m) {
 
 const claimedOf = (u) => { try { return JSON.parse(u.ach_claimed || '[]'); } catch { return []; } };
 
+// 公开主页统计用：已解锁成就数（口径与 GET / 列表完全一致）。入参需整行用户。
+export function achUnlockedCount(u) {
+  return ACHIEVEMENTS.filter(a => metric(u, a.metric) >= a.goal).length;
+}
+
 router.get('/', authRequired, (req, res) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   const claimed = claimedOf(u);

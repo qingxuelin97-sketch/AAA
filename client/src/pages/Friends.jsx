@@ -7,6 +7,7 @@ import { EmptyArt } from '../art.jsx';
 import { useAutoGrow } from '../util.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import AppPressMenu from '../components/AppPressMenu.jsx';
+import FramedAvatar from '../components/FramedAvatar.jsx';
 import { useLongPress } from '../chat/hooks.js';
 import { tick } from '../appgestures.js';
 import { isAppMode } from '../appmode.js';
@@ -186,7 +187,7 @@ export default function Friends() {
               <div className="fr-section-t"><Inbox size={13} /> 好友申请 ({requests.incoming.length})</div>
               {requests.incoming.map(r => (
                 <div className="fr-req" key={r.req_id}>
-                  <Avatar src={r.avatar} name={r.display_name} size={38} />
+                  <FramedAvatar frame={r.avatar_frame} src={r.avatar} name={r.display_name} size={38} />
                   <div className="fr-req-tx"><b>{r.display_name}<CreatorV tier={r.creator_tier} size={12} /></b><span>申请加你为好友</span></div>
                   <div className="fr-req-acts">
                     <AppIconButton className="fr-ok" variant="filled" onClick={() => respond(r.req_id, 'accept')} label="接受好友申请" title="接受"><Check size={16} /></AppIconButton>
@@ -224,7 +225,7 @@ export default function Friends() {
             friends.map(f => (
               <AppButton key={f.id} variant="tertiary" selected={sel === f.id}
                 className={'fr-item' + (sel === f.id ? ' active' : '')} onClick={() => setSel(f.id)}>
-                <div className="fr-ava"><Avatar src={f.avatar} name={f.display_name} size={44} />{f.online && <span className="fr-on" />}</div>
+                <div className="fr-ava"><FramedAvatar frame={f.avatar_frame} src={f.avatar} name={f.display_name} size={44} />{f.online && <span className="fr-on" />}</div>
                 <div className="fr-item-tx">
                   <b>{f.display_name}{f.verified && <BadgeCheck size={12} style={{ color: 'var(--diamond)' }} />}<CreatorV tier={f.creator_tier} size={11} />{f.is_councilor && <CouncilorBadge size={10} />}</b>
                   <span>{f.last_message ? (f.last_message.mine ? '我：' : '') + f.last_message.text : (f.online ? '在线' : '离线')}</span>
@@ -249,7 +250,7 @@ export default function Friends() {
               <AppIconButton className={'btn ghost sm mobile-only' + (appMode ? ' fr-dm-back' : '')} onClick={() => setSel(null)} label="返回好友列表">
                 <ArrowLeft size={20} />
               </AppIconButton>
-              <div className="fr-ava"><Avatar src={dm.peer.avatar} name={dm.peer.display_name} size={40} />{dm.peer.online && <span className="fr-on" />}</div>
+              <div className="fr-ava"><FramedAvatar frame={dm.peer.avatar_frame} src={dm.peer.avatar} name={dm.peer.display_name} size={40} />{dm.peer.online && <span className="fr-on" />}</div>
               <div className="fr-dm-nm"><b>{dm.peer.display_name}<CreatorV tier={dm.peer.creator_tier} size={12} /></b><span>{dm.peer.online ? '在线' : '离线'}</span></div>
               <div className="fr-menu-wrap">
                 <AppIconButton ref={menuButtonRef} className="speak fr-menu-btn" selected={menu}

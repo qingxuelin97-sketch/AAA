@@ -20,7 +20,7 @@ router.get('/', authRequired, (req, res) => {
     const u = U(id); if (!u) return null;
     const msgs = dmThread(me, id); const last = msgs[msgs.length - 1];
     const unread = msgs.filter(d => d.from_id === id && !d.read).length;
-    return { id: u.id, display_name: u.display_name, avatar: u.avatar, online: isOnline(u), friend: areFriends(me, id),
+    return { id: u.id, display_name: u.display_name, avatar: u.avatar, avatar_frame: u.avatar_frame || '', online: isOnline(u), friend: areFriends(me, id),
       last_message: last ? { text: last.text.slice(0, 50), at: last.created_at, mine: last.from_id === me } : null, unread };
   }).filter(Boolean).sort((a, b) => (b.last_message?.at || '').localeCompare(a.last_message?.at || ''));
   res.json({ threads: rows, unread_total: rows.reduce((s, r) => s + r.unread, 0) });
@@ -31,7 +31,7 @@ router.get('/:id', authRequired, (req, res) => {
   if (!target) return res.status(404).json({ error: '用户不存在' });
   db.prepare('UPDATE dm_messages SET read=1 WHERE to_id=? AND from_id=? AND read=0').run(me.id, tid);
   const msgs = dmThread(me.id, tid).map(d => ({ id: d.id, from_id: d.from_id, text: d.text, created_at: d.created_at, mine: d.from_id === me.id }));
-  res.json({ messages: msgs, peer: { id: target.id, display_name: target.display_name, avatar: target.avatar, online: isOnline(target), creator_tier: creatorTier(target.id), is_councilor: !!target.is_councilor, verified: !!target.verified }, can_dm: dmAllowed(me, target), friend: areFriends(me.id, tid) });
+  res.json({ messages: msgs, peer: { id: target.id, display_name: target.display_name, avatar: target.avatar, avatar_frame: target.avatar_frame || '', online: isOnline(target), creator_tier: creatorTier(target.id), is_councilor: !!target.is_councilor, verified: !!target.verified }, can_dm: dmAllowed(me, target), friend: areFriends(me.id, tid) });
 });
 
 router.post('/:id', authRequired, contentLimiter, (req, res) => {

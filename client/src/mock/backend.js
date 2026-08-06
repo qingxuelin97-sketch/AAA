@@ -2085,13 +2085,13 @@ async function route(method, path, search, body, headers) {
       const u = user(id); if (!u) return null;
       const msgs = dmThreadOf(me.id, id); const last = msgs.sort((a, b) => b.id - a.id)[0];
       const unread = msgs.filter(d => d.from_id === id && !d.read).length;
-      return { id: u.id, display_name: u.display_name, avatar: u.avatar, online: isOnline(u), creator_tier: creatorTier(u), is_councilor: !!u.is_councilor, verified: !!u.verified, last_message: last ? { text: last.text.slice(0, 44), at: last.created_at, mine: last.from_id === me.id } : null, unread };
+      return { id: u.id, display_name: u.display_name, avatar: u.avatar, avatar_frame: u.avatar_frame || '', online: isOnline(u), creator_tier: creatorTier(u), is_councilor: !!u.is_councilor, verified: !!u.verified, last_message: last ? { text: last.text.slice(0, 44), at: last.created_at, mine: last.from_id === me.id } : null, unread };
     }).filter(Boolean).sort((a, b) => (b.unread - a.unread) || (b.online - a.online) || ((b.last_message?.at || '').localeCompare(a.last_message?.at || '')));
     return J({ friends: rows, count: rows.length });
   }
   if (path === '/friends/requests' && method === 'GET') {
     need();
-    const incoming = filter('friend_requests', r => r.to_id === me.id && r.status === 'pending').map(r => { const u = user(r.from_id); return u && { req_id: r.id, id: u.id, display_name: u.display_name, avatar: u.avatar, creator_tier: creatorTier(u), bio: u.bio || '', at: r.created_at }; }).filter(Boolean).reverse();
+    const incoming = filter('friend_requests', r => r.to_id === me.id && r.status === 'pending').map(r => { const u = user(r.from_id); return u && { req_id: r.id, id: u.id, display_name: u.display_name, avatar: u.avatar, avatar_frame: u.avatar_frame || '', creator_tier: creatorTier(u), bio: u.bio || '', at: r.created_at }; }).filter(Boolean).reverse();
     const outgoing = filter('friend_requests', r => r.from_id === me.id && r.status === 'pending').map(r => { const u = user(r.to_id); return u && { req_id: r.id, id: u.id, display_name: u.display_name, avatar: u.avatar }; }).filter(Boolean).reverse();
     return J({ incoming, outgoing });
   }
@@ -2125,7 +2125,7 @@ async function route(method, path, search, body, headers) {
   if (path === '/dm' && method === 'GET') {
     need(); const partners = new Set();
     filter('dm_messages', d => d.from_id === me.id || d.to_id === me.id).forEach(d => partners.add(d.from_id === me.id ? d.to_id : d.from_id));
-    const rows = [...partners].map(id => { const u = user(id); if (!u) return null; const msgs = dmThreadOf(me.id, id); const last = msgs.sort((a, b) => b.id - a.id)[0]; const unread = msgs.filter(d => d.from_id === id && !d.read).length; return { id: u.id, display_name: u.display_name, avatar: u.avatar, online: isOnline(u), friend: areFriends(me.id, id), last_message: last ? { text: last.text.slice(0, 50), at: last.created_at, mine: last.from_id === me.id } : null, unread }; }).filter(Boolean).sort((a, b) => (b.last_message?.at || '').localeCompare(a.last_message?.at || ''));
+    const rows = [...partners].map(id => { const u = user(id); if (!u) return null; const msgs = dmThreadOf(me.id, id); const last = msgs.sort((a, b) => b.id - a.id)[0]; const unread = msgs.filter(d => d.from_id === id && !d.read).length; return { id: u.id, display_name: u.display_name, avatar: u.avatar, avatar_frame: u.avatar_frame || '', online: isOnline(u), friend: areFriends(me.id, id), last_message: last ? { text: last.text.slice(0, 50), at: last.created_at, mine: last.from_id === me.id } : null, unread }; }).filter(Boolean).sort((a, b) => (b.last_message?.at || '').localeCompare(a.last_message?.at || ''));
     return J({ threads: rows, unread_total: rows.reduce((s, r) => s + r.unread, 0) });
   }
   if ((m = P(/^\/dm\/(\d+)$/))) {
@@ -2133,7 +2133,7 @@ async function route(method, path, search, body, headers) {
     if (method === 'GET') {
       const msgs = dmThreadOf(me.id, tid).sort((a, b) => a.id - b.id);
       let changed = false; msgs.forEach(d => { if (d.to_id === me.id && !d.read) { d.read = 1; changed = true; } }); if (changed) save();
-      return J({ messages: msgs.map(d => ({ id: d.id, from_id: d.from_id, text: d.text, created_at: d.created_at, mine: d.from_id === me.id })), peer: { id: target.id, display_name: target.display_name, avatar: target.avatar, online: isOnline(target), creator_tier: creatorTier(target), is_councilor: !!target.is_councilor, verified: !!target.verified }, can_dm: dmAllowed(me, target), friend: areFriends(me.id, tid) });
+      return J({ messages: msgs.map(d => ({ id: d.id, from_id: d.from_id, text: d.text, created_at: d.created_at, mine: d.from_id === me.id })), peer: { id: target.id, display_name: target.display_name, avatar: target.avatar, avatar_frame: target.avatar_frame || '', online: isOnline(target), creator_tier: creatorTier(target), is_councilor: !!target.is_councilor, verified: !!target.verified }, can_dm: dmAllowed(me, target), friend: areFriends(me.id, tid) });
     }
     if (method === 'POST') {
       const text = String(body.text || '').trim(); if (!text) return E('消息不能为空');
@@ -2175,7 +2175,7 @@ async function route(method, path, search, body, headers) {
     const moments = filter('moments', x => x.user_id === u.id).sort((a, b) => b.id - a.id).slice(0, 20);
     const stats = { characters: filter('characters', c => c.owner_id === u.id).length, scripts: scripts.length, followers: filter('follows', f => f.following_id === u.id).length, following: filter('follows', f => f.follower_id === u.id).length, achievements: achUnlockedCount(u) };
     const following = me ? !!find('follows', f => f.follower_id === me.id && f.following_id === u.id) : false;
-    return J({ user: { id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, banner: u.banner, bio: u.bio, vip: isVip(u), vip_until: u.vip_until, is_gm: !!u.is_gm, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, creator_tier: creatorTier(u), created_at: u.created_at }, characters, scripts, moments, stats, following });
+    return J({ user: { id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar, avatar_frame: u.avatar_frame || '', banner: u.banner, bio: u.bio, vip: isVip(u), vip_until: u.vip_until, is_gm: !!u.is_gm, svip: !!u.svip, verified: !!u.verified, verified_note: u.verified_note || '', is_councilor: !!u.is_councilor, creator_tier: creatorTier(u), created_at: u.created_at }, characters, scripts, moments, stats, following });
   }
 
   // ---------- groups ----------
@@ -3009,7 +3009,7 @@ async function route(method, path, search, body, headers) {
       ? filter('follows', f => f.following_id === uid).map(f => user(f.follower_id))
       : filter('follows', f => f.follower_id === uid).map(f => user(f.following_id));
     const users = rows.filter(Boolean).reverse().slice(0, 200).map(r => ({
-      id: r.id, username: r.username, display_name: r.display_name, avatar: r.avatar, bio: r.bio || '',
+      id: r.id, username: r.username, display_name: r.display_name, avatar: r.avatar, avatar_frame: r.avatar_frame || '', bio: r.bio || '',
       vip: isVip(r), svip: !!r.svip, verified: !!r.verified,
       following: me ? !!find('follows', f => f.follower_id === me.id && f.following_id === r.id) : false,
     }));

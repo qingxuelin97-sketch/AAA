@@ -15,7 +15,7 @@ router.get('/', authRequired, (req, res) => {
     const u = U(id); if (!u) return null;
     const msgs = dmThread(me, id); const last = msgs[msgs.length - 1];
     const unread = msgs.filter(d => d.from_id === id && !d.read).length;
-    return { id: u.id, display_name: u.display_name, avatar: u.avatar, online: isOnline(u), creator_tier: creatorTier(u.id), is_councilor: !!u.is_councilor, verified: !!u.verified,
+    return { id: u.id, display_name: u.display_name, avatar: u.avatar, avatar_frame: u.avatar_frame || '', online: isOnline(u), creator_tier: creatorTier(u.id), is_councilor: !!u.is_councilor, verified: !!u.verified,
       last_message: last ? { text: last.text.slice(0, 44), at: last.created_at, mine: last.from_id === me } : null, unread };
   }).filter(Boolean).sort((a, b) => (b.unread - a.unread) || (b.online - a.online) || ((b.last_message?.at || '').localeCompare(a.last_message?.at || '')));
   res.json({ friends: rows, count: rows.length });
@@ -24,7 +24,7 @@ router.get('/', authRequired, (req, res) => {
 router.get('/requests', authRequired, (req, res) => {
   const me = req.user.id;
   const incoming = db.prepare("SELECT * FROM friend_requests WHERE to_id=? AND status='pending' ORDER BY id DESC").all(me)
-    .map(r => { const u = U(r.from_id); return u && { req_id: r.id, id: u.id, display_name: u.display_name, avatar: u.avatar, creator_tier: creatorTier(u.id), bio: u.bio || '', at: r.created_at }; }).filter(Boolean);
+    .map(r => { const u = U(r.from_id); return u && { req_id: r.id, id: u.id, display_name: u.display_name, avatar: u.avatar, avatar_frame: u.avatar_frame || '', creator_tier: creatorTier(u.id), bio: u.bio || '', at: r.created_at }; }).filter(Boolean);
   const outgoing = db.prepare("SELECT * FROM friend_requests WHERE from_id=? AND status='pending' ORDER BY id DESC").all(me)
     .map(r => { const u = U(r.to_id); return u && { req_id: r.id, id: u.id, display_name: u.display_name, avatar: u.avatar }; }).filter(Boolean);
   res.json({ incoming, outgoing });
