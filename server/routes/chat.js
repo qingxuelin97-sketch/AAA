@@ -8,6 +8,7 @@ import { bumpDaily } from '../daily.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { log } from '../logger.js';
+import { grantAffinity, affinityPromptFor } from '../affinity.js';
 
 const router = Router();
 
@@ -306,7 +307,7 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
 // 世界书级：scan_depth（回看消息数）、token_budget（注入上限）、recursion（递归触发）、
 //          max_active（每轮最大激活数）、variable_schema（变量声明）、system_pos（注入位置）、
 //          recursion_depth（递归最大轮数）
-function buildSystemPrompt(character, recentText, history) {
+function buildSystemPrompt(character, recentText, history, conv) {
   const beforeParts = []; // 注入位置：角色设定前
   const afterParts = [];  // 注入位置：角色设定后（默认）
   const overlayParts = []; // 专家能力：作者自定义提示词叠加
@@ -554,6 +555,8 @@ function buildSystemPrompt(character, recentText, history) {
     const list = imgTriggers.map(t => `[[wbimg:${t.id}]]`).join(' / ');
     parts.push(`【插图标记协议 / 当叙述自然贴切时，可在对应位置嵌入以下标记以展示该场景的预设插图，每条最多一次，无合适场景则忽略】\n${list}`);
   }
+  // 好感度记忆引擎：关系阶段 + 长期记忆只在服务端组装注入，客户端无法伪造。
+  parts.push(...affinityPromptFor(conv));
   parts.push(`你正在扮演「${character.name}」。请始终保持角色设定，使用沉浸式的第一人称叙述，不要跳出角色，不要提及你是 AI。`);
   return parts.join('\n\n');
 }
@@ -927,7 +930,7 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
     convId: conv.id, characterId: conv.character_id,
   });
   if (feeCtx.rejected) return;
-  const system = buildSystemPrompt(character, userInput, history);
+  const system = buildSystemPrompt(character, userInput, history, conv);
   const payloadMessages = [
     { role: 'system', content: system },
     ...history.map(m => ({ role: m.role, content: m.content })),
@@ -1016,7 +1019,7 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   });
   if (feeCtx.rejected) return;
   const recentText = history.slice(-6).map(m => m.content).join(' ');
-  let system = buildSystemPrompt(character, recentText + ' ' + userContent, history);
+  let system = buildSystemPrompt(character, recentText + ' ' + userContent, history, conv);
   if (eff.platform && eff.system_prompt.trim()) system = eff.system_prompt.trim() + '\n\n' + system;
   const payloadMessages = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
@@ -1084,7 +1087,8 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   if (full.trim()) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
-    if (userContent) { try { db.prepare('UPDATE conversations SET affinity = COALESCE(affinity,0) + 3 WHERE id = ?').run(conv.id); } catch { /* */ } }
+    // 好感 +3/条：经 grantAffinity 走每日共享配额（与礼物同池），打满后 +0。
+    if (userContent) { try { grantAffinity(conv.user_id, conv.id, 3, character?.name || ''); } catch { /* */ } }
     activeFeeCtx.settle();
   } else {
     activeFeeCtx.refund('空产出');

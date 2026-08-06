@@ -747,7 +747,10 @@ export default function Chat() {
                   <span className="ch-status"><i className="ch-dot" />{streaming ? '正在输入…' : '在线'}</span>
                 </div>
               </div>
-              {!app && (() => { const af = affinityInfo(affinity); return (
+              {/* 好感等级徽记（App 恢复展示：服务端权威等级 + 进度，点击开档案抽屉）。
+                  app-shell.css 936-946 的顶栏布局本就为「身份胶囊 + 好感徽章 + 工具组」
+                  设计，1229-1235 的 App 玻璃化样式一直保留着。 */}
+              {(() => { const af = affinityInfo(affinity); return (
                 <button className={'affinity-badge' + (afPulse ? ' pulse' : '')} onClick={() => {
                   // 宽屏 Web：徽章切换常驻侧列的钉住态；窄屏 Web / App：原样开抽屉。
                   if (!app && wide) setPanelPinned(p => { const n = !p; try { localStorage.setItem('huanyu_chat_panel', n ? '1' : '0'); } catch { /* */ } return n; });

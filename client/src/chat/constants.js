@@ -30,7 +30,8 @@ export const BUBBLE_ALPHA_KEY = 'huanyu_bubble_alpha';
 // 触屏设备上不显示「Enter 发送」这类键鼠提示——占位符过长会在窄输入框里折行溢出。
 export const COARSE = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
 
-// 关系等级：由累计好感值驱动（每次对话约 +3）。
+// 关系等级：由累计好感值驱动（每次对话约 +3，每日上限与礼物共享）。
+// 展示镜像：阈值与命名以 server/affinity.js AFFINITY_LEVELS 为权威，两边必须同步。
 export const AFFINITY_LEVELS = [
   { min: 0, name: '初识', icon: '🌱' }, { min: 10, name: '相识', icon: '🌿' },
   { min: 30, name: '熟悉', icon: '☕' }, { min: 60, name: '友好', icon: '😊' },
