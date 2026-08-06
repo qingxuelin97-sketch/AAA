@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useNav } from '../nav.js';
 import { api, getToken, useAuth, getApiBase, assetUrl } from '../api.jsx';
-import { useToast, Avatar, Modal } from '../ui.jsx';
+import { useToast, Avatar, Modal, CoinIcon } from '../ui.jsx';
 import { speakBrowser, stripParensForSpeech, playAudioUrl, stopSpeaking, onVoiceStateChange, detectEmotion } from '../voice.js';
 import { useKeyboardInsetBar } from '../mobile.js';
 import { useAutoGrow, msgPreview, cnToday } from '../util.js';
@@ -564,6 +564,21 @@ export default function Chat() {
     setMessages(m => [...m, { role: 'user', content: text }, { role: 'assistant', content: '', _streaming: true }]);
     await streamInto(`/api/chat/conversations/${id}/complete`, { content: text });
   };
+  // 送礼物：真金币消耗。服务端单事务「扣款 + RP 消息 + 加好感」，成功后
+  // 让角色顺着礼物剧情回应（complete 空内容 = 只续写不再插用户消息，好感
+  // 已由礼物发放、AI 回复不会再 +3）。
+  const sendGift = async (g) => {
+    setGiftOpen(false); setPlusOpen(false);
+    if (streaming) return;
+    try {
+      const d = await api(`/chat/conversations/${id}/gift`, { method: 'POST', body: { gift_id: g.id } });
+      if (d.affinity) setAffinity(d.affinity.affinity);
+      toast(`已送出 ${g.e} ${g.n} · -${g.price} 金币${d.affinity?.granted ? ` · 好感 +${d.affinity.granted}` : ''}`);
+      refreshUser?.();
+      setMessages(m => [...m, d.message, { role: 'assistant', content: '', _streaming: true }]);
+      await streamInto(`/api/chat/conversations/${id}/complete`, { content: '' });
+    } catch (e) { toast(e.message, 'err'); }
+  };
   const insertAction = (a) => { setInput(v => (v ? v.replace(/\s*$/, '') + ' ' : '') + a + ' '); setActionsOpen(false); };
   // （ ）键：在光标处插入全角括号，光标落在括号中间（动作/心理描写速记）。
   const insertParens = () => {
@@ -1116,10 +1131,10 @@ export default function Chat() {
                     {giftOpen && (
                       <div className="cps-gifts">
                         {GIFTS.map(g => (
-                          <button key={g.e} onClick={() => {
-                            setGiftOpen(false); setPlusOpen(false);
-                            send(`*送给${character?.name || '你'}${g.n} ${g.e}*`);
-                          }}><b>{g.e}</b><span>{g.n.replace(/^一[枝块杯只封份枚把]/, '')}</span></button>
+                          <button key={g.id} onClick={() => sendGift(g)}>
+                            <b>{g.e}</b><span>{g.n.replace(/^一[枝块杯只封份枚把]/, '')}</span>
+                            <i className="cps-gift-price"><CoinIcon size={9} /> {g.price}</i>
+                          </button>
                         ))}
                       </div>
                     )}

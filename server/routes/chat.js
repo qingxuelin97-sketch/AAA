@@ -2,11 +2,11 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
-import { applyTx, settleTransaction } from '../wallet.js';
+import { applyTx, settleTransaction, assertEconomicAccess } from '../wallet.js';
 import { getPlatform, voiceReady, featureFee, chargePlatformFee, VOICE_FEE } from '../platform.js';
 import { bumpDaily } from '../daily.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
-import { aiLimiter } from '../limiters.js';
+import { aiLimiter, contentLimiter } from '../limiters.js';
 import { log } from '../logger.js';
 import { grantAffinity, affinityPromptFor } from '../affinity.js';
 import { effectiveLLM } from '../llm.js';
@@ -661,6 +661,54 @@ router.delete('/conversations/:id/memories/:mid', authRequired, (req, res) => {
   mem = mem.filter(x => x.id !== +req.params.mid);
   db.prepare('UPDATE conversations SET memories = ? WHERE id = ?').run(JSON.stringify(mem), conv.id);
   res.json({ memories: mem });
+});
+
+// ---- gifts（礼物：真金币消耗口）----
+// 服务端权威礼物目录：价格与好感增量只认这里，client/src/chat/constants.js 的
+// GIFTS 是展示镜像（两边必须同步）。内测期单件上限 500 金；好感增量与对话
+// +3 共享 affinity.js 的每日配额，配额打满后礼物照送、好感 +0。
+const GIFT_CATALOG = [
+  { id: 'candy',   e: '🍬', n: '一把水果糖',   price: 10,  affinity: 1 },
+  { id: 'rose',    e: '🌹', n: '一枝红玫瑰',   price: 20,  affinity: 2 },
+  { id: 'coffee',  e: '☕', n: '一杯热咖啡',   price: 30,  affinity: 3 },
+  { id: 'cake',    e: '🍰', n: '一块草莓蛋糕', price: 50,  affinity: 4 },
+  { id: 'letter',  e: '💌', n: '一封手写信',   price: 60,  affinity: 5 },
+  { id: 'bear',    e: '🧸', n: '一只小熊玩偶', price: 100, affinity: 8 },
+  { id: 'pendant', e: '🌙', n: '一枚月亮吊坠', price: 300, affinity: 12 },
+  { id: 'mystery', e: '🎁', n: '一份神秘礼物', price: 500, affinity: 15 },
+];
+router.get('/gifts', authRequired, (req, res) => res.json({ gifts: GIFT_CATALOG }));
+router.post('/conversations/:id/gift', authRequired, contentLimiter, (req, res) => {
+  const conv = ownConv(req, res); if (!conv) return;
+  const gift = GIFT_CATALOG.find(g => g.id === req.body?.gift_id);
+  if (!gift) return res.status(400).json({ error: '礼物不存在' });
+  const character = db.prepare('SELECT id, name, owner_id FROM characters WHERE id = ?').get(conv.character_id);
+  if (!character) return res.status(404).json({ error: '角色不存在' });
+  let out = null;
+  try {
+    // 扣款 + RP 消息 + 好感三者同事务：任一失败全回滚，杜绝「扣了钱没送出」。
+    // grantAffinity 内含子事务（better-sqlite3 嵌套自动降级为 savepoint），
+    // 与外层同生共死。流水 ref_owner 记录归因但 share_eligible=false ——
+    // 内测期礼物不入创作者分成结算（me.js 分成池按 kind 白名单 + share_eligible
+    // 双条件统计，gift 天然排除），防「小号送礼刷自己分成」。
+    db.transaction(() => {
+      assertEconomicAccess(req.user.id);
+      const w = applyTx(req.user.id, {
+        kind: 'gift', gold: -gift.price, memo: `礼物 · ${gift.n}《${character.name}》`,
+        ref_owner: character.owner_id, share_eligible: false,
+      });
+      const info = db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)')
+        .run(conv.id, 'user', `*送给${character.name}${gift.n} ${gift.e}*`);
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      const aff = grantAffinity(req.user.id, conv.id, gift.affinity, character.name);
+      out = { message: db.prepare('SELECT * FROM messages WHERE id = ?').get(info.lastInsertRowid), wallet: w, affinity: aff };
+    }).immediate();
+  } catch (e) { return res.status(e.status || 400).json({ error: e.message, ...(e.code ? { code: e.code } : {}) }); }
+  log({ level: 'info', source: 'server', category: 'economy', event: 'gift',
+    message: `礼物 · ${gift.n}《${character.name}》`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
+    endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+    extra: { conversation_id: conv.id, character_id: character.id, gold_fee: gift.price, affinity_granted: out.affinity?.granted || 0 } });
+  res.json(out);
 });
 
 // ---- message edit / delete / react ----

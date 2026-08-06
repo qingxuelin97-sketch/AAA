@@ -31,6 +31,7 @@
     "app:add:ios": "npx cap add ios",
     "test:sec": "node server/sec-test.mjs",
     "test:theater-fee": "node server/theater-fee-test.mjs",
+    "test:gift": "node server/gift-test.mjs",
     "test:payments": "node server/payment-test.mjs",
     "test:integrity": "node server/integrity-test.mjs",
     "test:safe-url": "node server/safe-url-test.mjs",

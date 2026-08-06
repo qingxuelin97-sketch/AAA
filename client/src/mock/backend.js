@@ -1688,6 +1688,23 @@ async function route(method, path, search, body, headers) {
     conv.memories = (conv.memories || []).filter(x => x.id !== +m[2]); save();
     return J({ memories: conv.memories });
   }
+  // 礼物（真金币消耗）：与服务端 GIFT_CATALOG 同步的迷你镜像——扣款 + RP 消息 + 加好感。
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/gift$/)) && method === 'POST') {
+    need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
+    const GIFT_CATALOG = [
+      { id: 'candy', e: '🍬', n: '一把水果糖', price: 10, affinity: 1 }, { id: 'rose', e: '🌹', n: '一枝红玫瑰', price: 20, affinity: 2 },
+      { id: 'coffee', e: '☕', n: '一杯热咖啡', price: 30, affinity: 3 }, { id: 'cake', e: '🍰', n: '一块草莓蛋糕', price: 50, affinity: 4 },
+      { id: 'letter', e: '💌', n: '一封手写信', price: 60, affinity: 5 }, { id: 'bear', e: '🧸', n: '一只小熊玩偶', price: 100, affinity: 8 },
+      { id: 'pendant', e: '🌙', n: '一枚月亮吊坠', price: 300, affinity: 12 }, { id: 'mystery', e: '🎁', n: '一份神秘礼物', price: 500, affinity: 15 },
+    ];
+    const g = GIFT_CATALOG.find(x => x.id === body.gift_id); if (!g) return E('礼物不存在');
+    if (me.gold < g.price) return E(`金币不足，该礼物需 ${g.price} 金币（当前 ${me.gold}）`);
+    const ch = find('characters', x => x.id === conv.character_id);
+    applyTx(me.id, { kind: 'gift', gold: -g.price, memo: `礼物 · ${g.n}《${ch?.name || ''}》` });
+    const msg = insert('messages', { conversation_id: conv.id, role: 'user', content: `*送给${ch?.name || '你'}${g.n} ${g.e}*` });
+    conv.affinity = (conv.affinity || 0) + g.affinity; conv.updated_at = now(); save();
+    return J({ message: msg, wallet: { gold: me.gold }, affinity: { granted: g.affinity, affinity: conv.affinity, levelUp: false } });
+  }
   // ASR（语音转文字）：mock 环境无服务端识别，返回未就绪 —— CallScreen 据此
   // 走浏览器 SpeechRecognition 兜底（此前该路径 404，虽被捕获但徒增报错噪音）。
   if (method === 'GET' && path === '/asr/status') { return J({ ready: false, provider: '', model: '' }); }
