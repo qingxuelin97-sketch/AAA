@@ -190,7 +190,7 @@ html[data-app="1"] .app-dock .app-fab-halo::before {
 
 /* ── 3. 卡片 / 面板：纯白 + 更软圆角 ── */
 html[data-app="1"] :where(.ah-shortcuts, .ah-hero-card, .ah-resume, .qa-weekly-card,
-  .msgs-entry-group, .pf-group, .pf-stats, .qa-glance, .qa-settings-group,
+  .msgs-entry-group, .pf-group, .pf-stats, .qa-glance, .qa-settings-list,
   .qa-achievements-card, .qa-ach-wall, .vm-sheet) {
   background: #FAFDFE !important;
   border-radius: var(--ix-r-card) !important;
@@ -572,4 +572,148 @@ html[data-app="1"] .qa-vip .vipx-ledger.qa-button {
 /* 金融舱渐变卡上的次级标签提亮（金币/钻石等） */
 html[data-app="1"] .qa3-profile .pf-assets :where(small, .muted, .pf-asset-label) {
   color: rgb(255 255 255 / 82%) !important;
+}
+
+/* ============================================================================
+   §8 · 全 App 语言收口（把参考稿的布局/配色铺到剩余页面）
+   ----------------------------------------------------------------------------
+   各页历史层都用「更高特异性 + !important」钉死了自己的图标底色/形状，
+   §1 的通用规则打不过。这里统一用**重复类名**把特异性抬到各页之上，
+   语义色（金币/钻石/勋章金银铜/未读红）不在收口范围内，保持原样。
+   ========================================================================== */
+
+/* ── 8a. 剩余图标芯片 → 渐变圆 ── */
+html[data-app="1"] .msgs-entry-ic.msgs-entry-ic.msgs-entry-ic,
+html[data-app="1"] .qa-gacha-machine-icon.qa-gacha-machine-icon,
+html[data-app="1"] .qa-wallet-v4__quick-icon.qa-wallet-v4__quick-icon,
+html[data-app="1"] .qa-wallet-v4__notice-icon.qa-wallet-v4__notice-icon,
+html[data-app="1"] .qa-wallet-v4__checkin-icon.qa-wallet-v4__checkin-icon,
+html[data-app="1"] .qa-settings-notifications-icon.qa-settings-notifications-icon,
+html[data-app="1"] .qa-settings-row-icon.qa-settings-row-icon {
+  background: var(--ix-rainbow-chip) !important;
+  background-image: var(--ix-rainbow-chip) !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  box-shadow: var(--ix-rainbow-chip-shadow) !important;
+}
+html[data-app="1"] .msgs-entry-ic.msgs-entry-ic.msgs-entry-ic {
+  width: 44px !important;
+  height: 44px !important;
+  flex: 0 0 44px !important;
+}
+html[data-app="1"] .qa-wallet-v4__quick-icon.qa-wallet-v4__quick-icon,
+html[data-app="1"] .qa-settings-notifications-icon.qa-settings-notifications-icon,
+html[data-app="1"] .qa-wallet-v4__notice-icon.qa-wallet-v4__notice-icon,
+html[data-app="1"] .qa-wallet-v4__checkin-icon.qa-wallet-v4__checkin-icon {
+  width: 44px !important;
+  height: 44px !important;
+}
+html[data-app="1"] :where(.msgs-entry-ic, .qa-wallet-v4__quick-icon,
+  .qa-settings-notifications-icon, .qa-wallet-v4__notice-icon,
+  .qa-wallet-v4__checkin-icon, .qa-gacha-machine-icon) svg { color: #fff !important; }
+
+/* 各页自带高特异性规则的主键，统一用重复类名压过去 */
+html[data-app="1"] .fd2-enter.fd2-enter,
+html[data-app="1"] .draw-go.draw-go,
+html[data-app="1"] .ah-hc-cta.ah-hc-cta {
+  background: var(--ix-rainbow-grad-h) !important;
+  background-image: var(--ix-rainbow-grad-h) !important;
+  color: #fff !important;
+  border: 0 !important;
+  box-shadow: var(--ix-rainbow-cta-shadow) !important;
+}
+html[data-app="1"] :where(.fd2-enter, .draw-go, .ah-hc-cta) svg { color: #fff !important; }
+
+/* ── 8b. 二级页顶栏：不透明白条 → 透明，让浅蓝页底连贯 ── */
+html[data-app="1"] .topbar,
+html[data-app="1"] .qa-vip .vm-top {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-app="1"] .topbar :where(h1, h2, b) { color: var(--ix-ink) !important; }
+html[data-app="1"] .topbar :where(small, .muted, p) { color: var(--ix-ink-2) !important; }
+
+/* ── 8c. 渐变资产卡内部：次级文字与分隔件按白色体系走 ── */
+html[data-app="1"] .qa-wallet-v4__balance :where(small, .muted, span, p, dt, dd) {
+  color: rgb(255 255 255 / 84%) !important;
+}
+html[data-app="1"] .qa-wallet-v4__balance :where(b, strong, .qa-wallet-v4__asset-value) {
+  color: #fff !important;
+}
+html[data-app="1"] .qa-wallet-v4__balance .qa-wallet-v4__asset-icon {
+  background: rgb(255 255 255 / 20%) !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 26%) !important;
+}
+/* 渐变卡上的 SVIP 条：深炭补丁 → 半透白玻璃 */
+html[data-app="1"] .qa-wallet-v4__balance .qa-wallet-v4__membership {
+  background: rgb(255 255 255 / 16%) !important;
+  border: 1px solid rgb(255 255 255 / 24%) !important;
+  box-shadow: none !important;
+}
+html[data-app="1"] .qa-wallet-v4__membership :where(b, strong) { color: #fff !important; }
+html[data-app="1"] .qa-wallet-v4__membership :where(small, .muted, span) { color: rgb(255 255 255 / 82%) !important; }
+/* 渐变卡上的充值键：白底蓝字（渐变叠渐变会糊，同今日签到键的处理） */
+html[data-app="1"] .qa-wallet-v4__balance .qa-wallet-v4__recharge.qa-button {
+  background: #fff !important;
+  background-image: none !important;
+  color: var(--ix-act) !important;
+  box-shadow: 0 4px 12px rgb(8 40 70 / 18%) !important;
+}
+
+/* ── 8d. 分段/筛选控件：选中 = 浅蓝底 + 蓝字（撤掉旧的白片投影） ── */
+html[data-app="1"] :where(.seg, .theme-seg, .auth-tabs, .msgs-tabs) {
+  background: rgb(227 241 250 / 72%) !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  padding: 3px !important;
+}
+html[data-app="1"] :where(.seg, .theme-seg, .auth-tabs, .msgs-tabs) > :where(button, a, span[role="tab"]) {
+  border-radius: 999px !important;
+  color: var(--ix-ink-2) !important;
+}
+html[data-app="1"] :where(.seg, .theme-seg, .auth-tabs, .msgs-tabs) > :where(button, a, span[role="tab"]):where(.active, .on, [aria-selected="true"], [data-selected]) {
+  background: #ECF8FE !important;
+  color: var(--ix-act) !important;
+  box-shadow: 0 1px 3px rgb(45 155 200 / 14%) !important;
+}
+
+/* 消息页 App 分段：容器是 .msgs-tabs，内部为 AppButton（非裸 button），
+   单独收口成同一套药丸分段。 */
+html[data-app="1"] .qa3-messages .msgs-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  margin: 12px 16px 14px !important;
+  padding: 3px !important;
+  border-radius: 999px !important;
+  background: rgb(227 241 250 / 72%) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+html[data-app="1"] .qa3-messages .msgs-tabs .qa-button {
+  min-height: 38px !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--ix-ink-2) !important;
+  font-weight: 650 !important;
+}
+html[data-app="1"] .qa3-messages .msgs-tabs .qa-button.on,
+html[data-app="1"] .qa3-messages .msgs-tabs .qa-button[data-selected] {
+  background: #ECF8FE !important;
+  color: var(--ix-act) !important;
+  box-shadow: 0 1px 3px rgb(45 155 200 / 14%) !important;
+}
+html[data-app="1"] .qa3-messages .msgs-tabs .qa-button::after { display: none !important; }
+
+/* ── 8e. 环形/条形进度：主蓝而非深墨蓝，和渐变语言同族 ── */
+html[data-app="1"] :where(.qa-ach-ring, .qa-achievements-ring, .qa-glance-ring) {
+  --ix-act: #2E9FF7;
 }
