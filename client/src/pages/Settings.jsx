@@ -572,13 +572,13 @@ export default function Settings() {
                         role="radio" aria-checked={on}
                         title={locked ? 'SVIP 专属头像框，点击了解会员' : f.label}
                         onClick={() => { if (locked) { nav('/vip'); return; } setProfile({ ...profile, avatar_frame: f.id }); }}>
-                        <FramedAvatar frame={f.id} src={profile.avatar} name={profile.display_name || user?.username} size={46} />
+                        <span className="avf-prev"><FramedAvatar frame={f.id} src={profile.avatar} name={profile.display_name || user?.username} size={46} /></span>
                         <span>{f.label}{f.svip ? (locked ? ' · SVIP 🔒' : ' · SVIP') : ''}</span>
                       </button>
                     );
                   })}
                 </div>
-                <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>头像框会出现在个人主页与侧栏头像上；动态框敬请期待。</div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>头像框会出现在个人主页与侧栏头像上；「流光 / 鎏金」为 SVIP 专属动态框，「碧波」全员可用。</div>
               </div>
               <div className="field"><label>个人简介</label><textarea className="textarea" value={profile.bio} onChange={e => setProfile({ ...profile, bio: e.target.value })} placeholder="介绍一下你自己…" autoCapitalize="off" autoCorrect="off" spellCheck={false} /></div>
               <div className="field"><label>主页横幅</label><Uploader value={profile.banner} onChange={url => setProfile({ ...profile, banner: url })} accept="image/*" /></div>

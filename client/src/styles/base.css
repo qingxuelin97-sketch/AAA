@@ -1096,3 +1096,7 @@ html[data-perf='lite'] .avf .avf-ring { animation: none !important; }
   font-size: 12px; color: var(--muted); }
 .avf-pick.on { border-color: var(--act, #2D9BC8); color: var(--act, #2D9BC8); background: var(--bg); }
 .avf-pick.locked { opacity: 0.66; }
+/* 动态头像框视频/降级图层：居中悬浮在头像之上，不吃指针事件 */
+.avf .avf-art { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  max-width: none; pointer-events: none; object-fit: contain; }
+.avf-pick .avf-prev { display: grid; place-items: center; width: 96px; height: 96px; }

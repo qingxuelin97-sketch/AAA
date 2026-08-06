@@ -87,6 +87,13 @@ try {
   // 5) 摘下（空串在目录内）
   const r5 = await J(await put('/auth/me', { avatar_frame: '' }, a.token));
   ok(r5.user?.avatar_frame === '', '摘下头像框（空串落库）');
+
+  // 6) 动态框目录：碧波全员可戴、鎏金 SVIP 专属
+  const b = await register('frameUserB', 'frame-b@test.dev');
+  const r6 = await J(await put('/auth/me', { avatar_frame: 'aqua' }, b.token));
+  ok(r6.user?.avatar_frame === 'aqua', '非 SVIP 佩戴通用动态框「碧波」成功');
+  const r7 = await put('/auth/me', { avatar_frame: 'gilt' }, b.token);
+  ok(r7.status === 403, `非 SVIP 佩戴「鎏金」403（${r7.status}）`);
 } catch (e) {
   fail++; console.error('  ✗ 异常：', e.message, '\n---- server output ----\n' + serverOutput);
 }

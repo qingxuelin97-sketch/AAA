@@ -16,6 +16,8 @@ export function isVip(user) {
 export const AVATAR_FRAMES = [
   { id: '', label: '无' },
   { id: 'aurora', label: '流光', svip: true },
+  { id: 'gilt', label: '鎏金', svip: true },
+  { id: 'aqua', label: '碧波' },
 ];
 
 export function publicUser(u) {
