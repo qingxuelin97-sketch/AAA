@@ -2357,8 +2357,9 @@ async function route(method, path, search, body, headers) {
   if (method === 'POST' && path === '/community/inbox/seen') { need(); filter('shares', s => s.to_user === me.id).forEach(s => { s.seen = 1; }); save(); return J({ ok: true }); }
 
   // ---------- engagement: views / reviews / reports / leaderboard ----------
-  // 抽卡任务计数只认真实 /gacha/pull（与真实服务端 /track no-op 语义对齐）。
-  if (method === 'POST' && path === '/engage/track') { need(); const a = String(body.action || ''); if (['chat', 'fav', 'like', 'checkin', 'novel'].includes(a)) bumpDaily(me.id, a); return J({ ok: true }); }
+  // 与真实服务端 /track 语义对齐：纯兼容 no-op——任何客户端自报行为都不得
+  // 推进经济奖励，每日任务由各权威路由在真实操作提交后自己 bump。
+  if (method === 'POST' && path === '/engage/track') { need(); return J({ ok: true }); }
   if (method === 'GET' && path === '/engage/tasks') {
     need(); const d = dailyOf(me.id);
     const tasks = DAILY_TASKS.map(t => { const cnt = d.counts[t.key] || 0; return { id: t.id, name: t.name, target: t.target, reward: t.reward, progress: Math.min(cnt, t.target), done: cnt >= t.target, claimed: d.claimed.includes(t.id) }; });

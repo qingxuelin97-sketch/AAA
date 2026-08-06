@@ -134,8 +134,9 @@ export default function App() {
             <Route path="/" element={P(isAppMode() ? <DiscoverFeed /> : <WebHome />)} />
             <Route path="/today" element={isAppMode() ? P(<AppHome />) : <Navigate to="/" replace />} />
             <Route path="/discover" element={isAppMode() ? <Navigate to="/" replace /> : P(<DiscoverFeed />)} />
-            {/* 控件画廊：双壳可达（W4 起 Web 也渲染真实 .lgw-* 控件，画廊即 Web 验收页） */}
-            <Route path="/app-controls" element={P(<AppControlsGallery />)} />
+            {/* 控件画廊：内部验收页（W4 起 Web 也渲染真实 .lgw-* 控件）。
+                生产环境只对 GM 可达，开发构建不设限。 */}
+            <Route path="/app-controls" element={(import.meta.env.DEV || user?.is_gm) ? P(<AppControlsGallery />) : <Navigate to="/" replace />} />
             <Route path="/scripts" element={P(<Scripts />)} />
             <Route path="/script/new" element={P(<ScriptEditor />)} />
             <Route path="/script/:id" element={P(<ScriptDetail />)} />
