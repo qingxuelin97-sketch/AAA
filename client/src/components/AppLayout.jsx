@@ -451,14 +451,26 @@ function Tab({ t, unread, dmUnread, curPath }) {
 function CreateSheet({ onClose, returnFocusRef }) {
   const navTo = useNav();
   const sheetRef = useRef(null);
-  useAppOverlay(true, onClose, { rootRef: sheetRef, isolate: true, returnFocusRef });
-  const go = (to) => { if (navTo(to) !== false) onClose(); };
+  // 彩虹系退场：closing 两段式 —— 先播 ixSheetDown/ixFadeOut，动画完（240ms
+  // 兜底）再真正卸载；reduced-motion 直接即时关。所有关闭路径（遮罩/Esc/
+  // 返回键/×/选行导航）统一走 requestClose，portal 与回焦契约不变。
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
+  const requestClose = () => {
+    if (closingRef.current) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { onClose(); return; }
+    closingRef.current = true;
+    setClosing(true);
+    setTimeout(onClose, 240);
+  };
+  useAppOverlay(true, requestClose, { rootRef: sheetRef, isolate: true, returnFocusRef });
+  const go = (to) => { if (navTo(to) !== false) requestClose(); };
   return createPortal((
-    <div className="app-sheet-mask" onClick={onClose}>
+    <div className={'app-sheet-mask' + (closing ? ' closing' : '')} onClick={requestClose}>
       <section
         id="app-create-sheet"
         ref={sheetRef}
-        className="app-sheet"
+        className={'app-sheet' + (closing ? ' closing' : '')}
         role="dialog"
         aria-modal="true"
         aria-labelledby="app-create-title"
@@ -468,7 +480,7 @@ function CreateSheet({ onClose, returnFocusRef }) {
         <div className="app-sheet-grip" />
         <div className="app-sheet-head">
           <h3 className="app-sheet-title" id="app-create-title">想创作点什么？</h3>
-          <AppIconButton label="关闭创建菜单" onClick={onClose}><X size={19} /></AppIconButton>
+          <AppIconButton label="关闭创建菜单" onClick={requestClose}><X size={19} /></AppIconButton>
         </div>
         {CREATE.map((c, i) => (
           <AppButton

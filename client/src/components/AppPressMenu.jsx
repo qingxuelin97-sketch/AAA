@@ -14,7 +14,17 @@ export default function AppPressMenu({ at, items, onClose, returnFocusRef }) {
   const menuRef = useRef(null);
   const mountedAt = useRef(0);
   const [pos, setPos] = useState(() => clamp(at, items.length));
-  useAppOverlay(true, onClose, { rootRef: menuRef, isolate: appPortal, returnFocusRef });
+  // 彩虹系退场：closing 两段式（120ms ixMenuOut，140ms 兜底卸载）。
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
+  const requestClose = () => {
+    if (closingRef.current) return;
+    if (!appPortal || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { onClose(); return; }
+    closingRef.current = true;
+    setClosing(true);
+    setTimeout(onClose, 140);
+  };
+  useAppOverlay(true, requestClose, { rootRef: menuRef, isolate: appPortal, returnFocusRef });
   useEffect(() => { setPos(clamp(at, items.length)); }, [at, items.length]);
   useEffect(() => { mountedAt.current = performance.now(); }, []);
 
@@ -37,14 +47,14 @@ export default function AppPressMenu({ at, items, onClose, returnFocusRef }) {
   // 忽略挂载 350ms 内的遮罩点击，防止菜单开即被关。
   const maskClose = () => {
     if (performance.now() - mountedAt.current < 350) return;
-    onClose();
+    requestClose();
   };
 
   const menu = (
-    <div className="qa-press-mask" onClick={maskClose}>
+    <div className={'qa-press-mask' + (closing ? ' closing' : '')} onClick={maskClose}>
       <div
         ref={menuRef}
-        className="qa-press-menu"
+        className={'qa-press-menu' + (closing ? ' closing' : '')}
         role="menu"
         aria-label="快捷操作"
         tabIndex={-1}
@@ -57,7 +67,7 @@ export default function AppPressMenu({ at, items, onClose, returnFocusRef }) {
             type="button"
             role="menuitem"
             className={'qa-press-item' + (item.danger ? ' is-danger' : '')}
-            onClick={() => { onClose(); item.onSelect(); }}
+            onClick={() => { requestClose(); item.onSelect(); }}
           >
             {item.icon}{item.label}
           </button>

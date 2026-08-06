@@ -660,7 +660,7 @@ assert.match(layoutSource, /badgeCount=\{badgeCount\}/, 'the Messages tab must r
 assert.match(layoutSource, /data-tone=\{c\.tone\}/, 'create-sheet rows must carry semantic tones instead of positional rainbow styling');
 assert.doesNotMatch(layoutSource, /Sparkles|Wand2/, 'the App shell must use concrete verbs for creation icons, not sparkle/wand metaphors');
 assert.match(chatSource, /AFFINITY_APP_ICONS/, 'the App chat affinity badge must render vector icons in place of emoji chrome');
-assert.match(layoutSource, /useAppOverlay\(true,\s*onClose,\s*\{\s*rootRef:\s*sheetRef,\s*isolate:\s*true,\s*returnFocusRef\s*\}\)[\s\S]*createPortal/, 'the redesigned create sheet must preserve PR4 portal isolation and explicit focus return');
+assert.match(layoutSource, /useAppOverlay\(true,\s*requestClose,\s*\{\s*rootRef:\s*sheetRef,\s*isolate:\s*true,\s*returnFocusRef\s*\}\)[\s\S]*createPortal/, 'the create sheet must preserve PR4 portal isolation + focus return, with all close paths routed through the animated requestClose');
 assert.match(appSource, /path="\/app-controls"[\s\S]*P\(<AppControlsGallery \/>\)/, 'the control gallery must stay lazy and protected (dual-shell acceptance page since W4)');
 assert.match(routeChunksSource, /AppControlsGallery:[\s\S]*import\('\.\/pages\/AppControlsGallery\.jsx'\)/, 'the control gallery must participate in the route chunk registry');
 assert.match(fxSource, /dataset\.perf === 'lite'/, 'ripple injection must stay disabled in the lite power tier (rainbow motion contract)');

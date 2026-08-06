@@ -17,6 +17,10 @@ export function ToastProvider({ children }) {
   const show = useCallback((msg, type = 'ok') => {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t.slice(-3), { id, msg, type }]);
+    // 彩虹系：两段式退场 —— 先标记 .out 播 ixToastOut（App 端旧层覆盖丢了
+    // 退场动画，这里在状态层找回），180ms 后真正出栈；Web 端 .out 无对应
+    // 规则，原 base.css 时间轴行为不变。
+    setTimeout(() => setToasts((t) => t.map((x) => (x.id === id ? { ...x, out: true } : x))), 2620);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2800);
   }, []);
   return (
@@ -26,7 +30,7 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => {
           const Ic = TOAST_IC[t.type] || TOAST_IC.ok;
           return (
-            <div key={t.id} className={'toast toast-' + (t.type === 'err' ? 'err' : t.type === 'info' ? 'info' : 'ok')}>
+            <div key={t.id} className={'toast toast-' + (t.type === 'err' ? 'err' : t.type === 'info' ? 'info' : 'ok') + (t.out ? ' out' : '')}>
               <span className="toast-ic"><Ic size={17} /></span>
               <span className="toast-msg">{t.msg}</span>
             </div>
@@ -277,7 +281,18 @@ export function AvatarPicker({ value, onChange, size = 112 }) {
 export function Modal({ children, onClose, portal = false, className = '', backdropClassName = '' }) {
   const dialogRef = useRef(null);
   const actualPortal = portal || isAppMode();
-  useAppOverlay(true, onClose, { rootRef: dialogRef, isolate: actualPortal });
+  // 彩虹系退场（仅 App 壳）：遮罩/Esc/返回键路径先播 ixModalOut 再卸载；
+  // Web 保持即时关闭。子内容里自带的关闭按钮直接调 onClose，不强改。
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
+  const requestClose = () => {
+    if (!onClose || closingRef.current) return;
+    if (!isAppMode() || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { onClose(); return; }
+    closingRef.current = true;
+    setClosing(true);
+    setTimeout(onClose, 200);
+  };
+  useAppOverlay(true, requestClose, { rootRef: dialogRef, isolate: actualPortal });
   useEffect(() => {
     if (isAppMode() || !onClose) return undefined;
     const onKey = (event) => { if (event.key === 'Escape') onClose(); };
@@ -285,8 +300,8 @@ export function Modal({ children, onClose, portal = false, className = '', backd
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
   const modal = (
-    <div className={'modal-backdrop ' + backdropClassName} onClick={onClose}>
-      <div ref={dialogRef} className={'card modal ' + className} role="dialog" aria-modal="true" tabIndex={-1} onClick={e => e.stopPropagation()}>{children}</div>
+    <div className={'modal-backdrop ' + backdropClassName + (closing ? ' closing' : '')} onClick={requestClose}>
+      <div ref={dialogRef} className={'card modal ' + className + (closing ? ' closing' : '')} role="dialog" aria-modal="true" tabIndex={-1} onClick={e => e.stopPropagation()}>{children}</div>
     </div>
   );
   return actualPortal && typeof document !== 'undefined' ? createPortal(modal, document.body) : modal;
