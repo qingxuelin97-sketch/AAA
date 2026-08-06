@@ -35,6 +35,7 @@ import asrRoutes from './routes/asr.js';
 import paymentRoutes from './routes/payments.js';
 import { MAX_WEBHOOK_BYTES } from './payment.js';
 import { log, purgeOldLogs, genRequestId } from './logger.js';
+import { isBindError } from './validate.js';
 import jwt from 'jsonwebtoken';
 import { SECRET } from './auth.js';
 
@@ -277,8 +278,14 @@ if (fs.existsSync(clientDist)) {
 }
 
 // 统一错误处理：仅暴露带 err.expose 标记的客户端错误，其余返回通用提示，详情写日志。
+// 防呆结构性兜底：better-sqlite3 被喂进对象/数组等非法绑定值时抛 TypeError/RangeError
+//（识别逻辑见 validate.js 的 isBindError）。这本质是客户端送了畸形入参，应判 400
+// 而非 500。有了它，即便将来新写的路由漏了逐字段防呆，也只会干净 4xx，而不会 500
+// 崩溃 —— 把整个 500 崩溃类从「逐路由打补丁」变成结构上兜住。原始报文已由
+// console.error 打印，对外只给通用提示，不回显「SQLite3 can only bind…」等内部细节。
 app.use((err, req, res, next) => {
   console.error(err);
+  if (isBindError(err)) { err.status = 400; err.expose = true; err.message = '请求参数不合法'; }
   const status = err.status || 500;
   const message = err.expose ? err.message : (status < 500 ? err.message : '服务器内部错误');
   // 5xx 错误落库（带堆栈），便于 GM 后台排查；4xx 是客户端错误，访问日志已记录，不重复。

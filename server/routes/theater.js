@@ -4,7 +4,7 @@ import { authRequired } from '../auth.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { push } from '../realtime.js';
-import { clampInt } from '../validate.js';
+import { str, clampInt } from '../validate.js';
 
 const router = Router();
 const memberOf = (tid, uid) => !!db.prepare('SELECT 1 FROM theater_members WHERE theater_id = ? AND user_id = ?').get(tid, uid);
@@ -150,7 +150,7 @@ router.post('/', authRequired, (req, res) => {
   let tid;
   db.transaction(() => {
     const info = db.prepare('INSERT INTO theaters (name, owner_id, scene, cover, is_public, stage_config, worldbook, style) VALUES (?,?,?,?,?,?,?,?)')
-      .run(String(name).slice(0, 80), req.user.id, String(scene || '').slice(0, 4000), cover || null, publicTheater ? 1 : 0,
+      .run(String(name).slice(0, 80), req.user.id, String(scene || '').slice(0, 4000), str(cover, 500) || null, publicTheater ? 1 : 0,
         JSON.stringify(cleanStage(stage_config)), JSON.stringify(cleanWorld(worldbook)), cleanStyle(style));
     tid = Number(info.lastInsertRowid);
     db.prepare('INSERT INTO theater_members (theater_id, user_id) VALUES (?,?)').run(tid, req.user.id);
@@ -187,7 +187,7 @@ router.patch('/:id', authRequired, (req, res) => {
   if (req.body?.worldbook !== undefined) { fields.push('worldbook = ?'); vals.push(JSON.stringify(cleanWorld(req.body.worldbook))); }
   if (typeof req.body?.name === 'string' && req.body.name.trim()) { fields.push('name = ?'); vals.push(req.body.name.trim().slice(0, 80)); }
   if (typeof req.body?.scene === 'string') { fields.push('scene = ?'); vals.push(req.body.scene.slice(0, 4000)); }
-  if (req.body?.cover !== undefined) { fields.push('cover = ?'); vals.push(req.body.cover || null); }
+  if (req.body?.cover !== undefined) { fields.push('cover = ?'); vals.push(str(req.body.cover, 500) || null); }
   // 导演台：文风 / 密令 / 连载状态 / 背景音乐
   if (req.body?.style !== undefined) { fields.push('style = ?'); vals.push(cleanStyle(req.body.style)); }
   if (req.body?.directive !== undefined) { fields.push('directive = ?'); vals.push(cleanDirective(req.body.directive)); }

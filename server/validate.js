@@ -37,6 +37,18 @@ export const num = (v, lo, hi, def) => {
   return Math.max(lo, Math.min(hi, n));
 };
 
+// better-sqlite3 绑定类错误识别（结构性防呆兜底）。
+// 当路由把对象/数组等非法值喂给 `?` 占位符时，better-sqlite3 抛：
+//   · TypeError  "SQLite3 can only bind numbers, strings, bigints, buffers, and null"
+//   · TypeError  "You cannot specify named parameters in two different objects"
+//   · RangeError "Too many parameter values were provided"
+//   · RangeError "Too few parameter values were provided"
+// 这些本质是客户端送了畸形入参 —— 应判 400 而非 500。窄口径只吃「绑定形状」这
+// 一类，绝不吃真正的服务端逻辑错误。index.js 的统一错误处理据此把 500 兜成 400。
+const BIND_ERR_RE = /can only bind|too many parameter|too few parameter|specify named parameters|bind this value/i;
+export const isBindError = (err) =>
+  !!err && !err.status && (err instanceof TypeError || err instanceof RangeError) && BIND_ERR_RE.test(err.message || '');
+
 // 用户对象 → JSON 文本，带体积上限。
 // 裸 JSON.stringify 对深层嵌套会抛 RangeError（V8 约 2 万层），对循环引用会抛
 // TypeError —— 未捕获即变成 500。这里统一转成 400，杜绝「离谱 JSON 打崩接口」。

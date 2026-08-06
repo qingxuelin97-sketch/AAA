@@ -105,6 +105,7 @@ npm run test:server:s7  # 北京时区界 / 排序语义七组验值
 # 后端安全 / 防呆 / 压测
 npm run test:sec        # 安全加固专项回归
 npm run test:abuse      # 防呆：离谱输入矩阵 + ReDoS/越权/上限断言（CI 门禁）
+npm run test:vuln       # 漏洞回归：越权/提权/JWT 篡改/SSRF 矩阵/注入/密钥泄露（CI 门禁）
 npm run test:stress     # 压测：并发双花、SSE 翻搅、事件循环健康度（按需，不进 CI）
 ```
 

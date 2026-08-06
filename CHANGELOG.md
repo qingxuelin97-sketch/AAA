@@ -1,5 +1,51 @@
 # 更新日志
 
+## 后端全方位：漏洞回归 · 系统化防呆 · 压测扩展（2026-08-06）
+
+在首轮加固基础上把交付扩到三条线全覆盖。又做三轮独立审计（越权/注入/鉴权、
+提权/写入清单、SSRF/密钥/覆盖盘点），结论一致：**无可利用越权、无 SQL/查询
+注入、无鉴权绕过、无提权/批量赋值、无 SSRF 绕过、无密钥泄露。** 因此本轮把每
+条安全边界固化为回归门禁，并把防呆从「点到即修」升级为系统化。
+
+### 漏洞回归测试（新增 `npm run test:vuln`，进 CI）
+攻击者视角、确定性、以 victim/attacker/gm 三账号驱动，覆盖现有套件未覆盖的
+6 个缺口，共 51 条断言：
+- **跨账号越权 IDOR**：attacker 对 victim 的角色/世界书/会话+消息/剧本/小说
+  剧情线+节拍/剧场导演台/私有群消息/AI 图 逐一试读改删 → 全部 403 或 no-op，
+  且越权后 victim 资源原样存活；公开 vs 私有房间读边界钉死；DM 三方隔离；
+  parliament 评论删除的 `:id` 松散但受 `user_id` 保护、不可利用。
+- **批量赋值/提权**：建角色 / `PUT /auth/me` / `PUT /settings` 请求体塞
+  `gold/diamond/is_gm/svip/verified/vip_until/owner_id` → 全部被忽略（读库
+  确认余额、GM、封禁位未变；角色 owner_id 强制归调用者）。
+- **JWT 篡改**：`alg:none`、篡改签名、错误密钥签发、过期、畸形 → 全 401；
+  改密后旧令牌（token_version 提升）→ 401。
+- **SSRF 编码 IP 全矩阵**：经真实路由 `/settings/test-llm` 投递 14 类内网/
+  编码目标（十进制/十六进制/八进制/IPv6/`::ffff:`/`127.1`/`0.0.0.0`/云元
+  数据/CGNAT/localhost）→ 全部被拒；`safe-url-test` 另加 302→内网逐跳复检。
+- **注入探针**：搜索端点打 6 类 SQLi 载荷 → 0×5xx、users 表未被破坏、
+  响应无 password_hash/bcrypt 串泄露。
+- **密钥泄露**：`/settings` 不回显 API Key（仅 `*_set`）、`/admin/platform`
+  仅掩码、`/users/:id` 与搜索结果不含 email/password_hash。
+
+### 系统化防呆
+- **修掉最后 5 处「对象/数组入参 → better-sqlite3 崩 → 500」崩溃点**（第一轮
+  的代表性矩阵没覆盖到）：`theater.js` POST/PATCH 的 `cover`、`engage.js`
+  `/view` 与 `/report` 的 `id`、`chat.js` `POST /conversations` 的
+  `character_id` —— 全部收敛为带上限/类型校验的写入。
+- **全局结构性兜底**（`index.js` 统一错误处理）：新增 `validate.js` 的
+  `isBindError()`，把 better-sqlite3 绑定类 TypeError/RangeError 统一兜成
+  400（对外通用提示，原始报文仍进日志）。这样即便将来新写的路由漏了逐字段
+  防呆，也只会干净 4xx，把整个 500 崩溃类从「逐路由打补丁」变成结构上不可能。
+  `isBindError` 用**真实的** better-sqlite3 报错在 `abuse-test` 里做单测，
+  将来某版本改了报文措辞会大声失败。
+- **abuse 矩阵覆盖到每一个写入路由**（theater/engage/chat/dm/friends/
+  parliament/me 等），2106 组「路由×字段×离谱值」+ 90 组离谱路径参数，
+  仍 0×5xx。
+
+### 压测扩展（`npm run test:stress`，按需）
+新增真实竞态双花（余额不足并发生图恰好 K 成功、账本逐分对齐）与内存泄漏检测
+（稳态约 182MB、斜率≈0，无泄漏），详见上一条目。
+
 ## 后端安全加固 · 压力测试 · 防呆（2026-08-06）
 
 一轮针对后端的安全审计 + 压力测试 + 防呆收口。审计结论是底子很扎实

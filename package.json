@@ -30,6 +30,7 @@
     "app:add:ios": "npx cap add ios",
     "test:sec": "node server/sec-test.mjs",
     "test:abuse": "node server/abuse-test.mjs",
+    "test:vuln": "node server/vuln-test.mjs",
     "test:stress": "node server/stress-test.mjs",
     "test:payments": "node server/payment-test.mjs",
     "test:integrity": "node server/integrity-test.mjs",

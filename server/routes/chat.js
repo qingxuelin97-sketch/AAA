@@ -8,7 +8,7 @@ import { bumpDaily } from '../daily.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { log } from '../logger.js';
-import { regexBudget, badRequest } from '../validate.js';
+import { regexBudget, badRequest, clampInt } from '../validate.js';
 
 const router = Router();
 
@@ -596,7 +596,9 @@ router.get('/conversations', authRequired, (req, res) => {
 });
 
 router.post('/conversations', authRequired, (req, res) => {
-  const { character_id } = req.body || {};
+  // 防呆：character_id 此前裸进 .get()/.run() —— 对象/数组会让 better-sqlite3 崩 → 500。
+  const character_id = clampInt(req.body?.character_id, 1, Number.MAX_SAFE_INTEGER, 0);
+  if (!character_id) return res.status(404).json({ error: '角色不存在' });
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(character_id);
   if (!c) return res.status(404).json({ error: '角色不存在' });
   if (!c.is_public && c.owner_id !== req.user.id) return res.status(403).json({ error: '无权使用该角色' });

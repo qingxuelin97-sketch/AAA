@@ -47,6 +47,11 @@ jobs:
       - name: Fool-proofing regression
         run: npm run test:abuse
 
+      # 漏洞回归（攻击者视角）：跨账号越权/批量赋值提权/JWT 篡改/SSRF 编码 IP
+      # 全矩阵/注入探针/密钥泄露。确定性、无时延断言，把每条安全边界固化为门禁。
+      - name: Vulnerability regression
+        run: npm run test:vuln
+
       - name: Payment regression
         run: npm run test:payments
 

@@ -9,7 +9,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
-import { isLinearRegex, compileSafeRegex, num, jsonText } from './validate.js';
+import { isLinearRegex, compileSafeRegex, num, jsonText, isBindError } from './validate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -66,6 +66,24 @@ console.log('\n· 正则安全分析器（ReDoS 静态防护）');
   ok(threw === 2, 'jsonText 把深层嵌套/循环引用转成 400');
   ok(num({}, 0, 2, 0.8) === 0.8 && num([], 0, 2, 0.8) === 0.8 && num(1 / 0, 0, 2, 0.8) === 0.8,
     'num 拒绝 {} / [] / Infinity（Number([])===0 陷阱）');
+
+  // isBindError 是全局兜底（index.js 把 500 兜成 400）的核心判据 —— 用**真实的**
+  // better-sqlite3 报错验证它，将来某个版本改了报文措辞，这里会大声失败。
+  const mem = new Database(':memory:');
+  mem.exec('CREATE TABLE t (id INTEGER, name TEXT)');
+  const grab = (fn) => { try { fn(); return null; } catch (e) { return e; } };
+  const bindErrs = [
+    grab(() => mem.prepare('SELECT * FROM t WHERE id = ?').get({})),          // 对象 → 位置参数
+    grab(() => mem.prepare('INSERT INTO t (id,name) VALUES (?,?)').run([1, 2, 3])), // 数组过多
+    grab(() => mem.prepare('INSERT INTO t (id,name) VALUES (?,?)').run(1)),   // 参数过少
+    grab(() => mem.prepare('SELECT * FROM t WHERE id=@id').run({ id: 1 }, { name: 'x' })), // 两个具名对象
+  ];
+  mem.close();
+  ok(bindErrs.every(isBindError), 'isBindError 命中全部真实 better-sqlite3 绑定错误');
+  ok(!isBindError(new Error('boom')) && !isBindError(new TypeError('cannot read properties of undefined')),
+    'isBindError 不误伤普通服务端错误');
+  ok(!isBindError(Object.assign(new TypeError('can only bind'), { status: 400 })),
+    'isBindError 跳过已带 status 的错误（不覆盖显式状态）');
 }
 
 // ——————————————————————————————————————————————
@@ -141,7 +159,13 @@ try {
 
   const cid = (await jget('/characters/public')).characters?.[0]?.id;
   const convId = (await jget('/chat/conversations')).conversations?.[0]?.id;
+  const tid = (await jget('/theater')).theaters?.[0]?.id;
+  const gid = (await jget('/groups')).groups?.[0]?.id;
+  // 第二账号 id（abuser）——用作 DM / 好友请求的目标，避免打到自己身上。
+  const abuserId = (() => { const db = new Database(DB_PATH, { readonly: true }); const r = db.prepare("SELECT id FROM users WHERE username='abuser'").get(); db.close(); return r?.id; })();
 
+  // 覆盖到**每一个**接受请求体的写入路由族（此前只覆盖代表性子集，遗漏正是
+  // theater.cover / engage.id / chat.character_id 这几处崩溃点的来源）。
   const TARGETS = [
     ['PUT', '/settings', {}, ['llm_base_url', 'llm_api_key', 'llm_model', 'llm_temperature', 'llm_max_tokens', 'theme', 'privacy_profile', 'allow_dm', 'nsfw', 'interests', 'voice_name']],
     ['POST', '/characters', { name: 'probe' }, ['name', 'intro', 'persona', 'greeting', 'tags', 'avatar', 'background', 'background_type', 'is_public', 'world']],
@@ -149,17 +173,28 @@ try {
     ['POST', '/community/posts', { title: 'probe' }, ['title', 'body', 'tags', 'cover', 'payload', 'type', 'character_id']],
     ['POST', '/community/push', { post_id: 1, to_username: 'demo' }, ['post_id', 'to_username', 'note']],
     ['POST', '/groups', { name: 'probe' }, ['name', 'description', 'avatar', 'is_public']],
-    ['POST', '/theater', { name: 'probe' }, ['name', 'stage', 'world', 'style', 'is_public']],
-    ['POST', '/novels', { title: 'probe' }, ['title', 'logline', 'genre', 'tags', 'cover']],
-    ['POST', '/scripts', { title: 'probe' }, ['title', 'summary', 'price', 'tags', 'content']],
+    ['POST', '/theater', { name: 'probe' }, ['name', 'scene', 'stage', 'world', 'style', 'cover', 'is_public', 'stage_config', 'worldbook']],
+    ['POST', '/novels', { title: 'probe' }, ['title', 'logline', 'genre', 'tags', 'cover', 'synopsis', 'style', 'codex']],
+    ['POST', '/scripts', { title: 'probe' }, ['title', 'summary', 'price_gold', 'tags', 'content', 'cover', 'category']],
     ['POST', '/economy/exchange', { diamond: 1 }, ['diamond']],
     ['POST', '/economy/redeem', { code: 'X' }, ['code']],
+    ['POST', '/economy/vip', { plan: 'month' }, ['plan']],
     ['POST', '/social/moments', { text: 'probe' }, ['text', 'image']],
-    ['PUT', '/auth/profile', {}, ['display_name', 'bio', 'avatar', 'banner']],
+    ['POST', '/engage/view', {}, ['type', 'id']],
+    ['POST', '/engage/report', { type: 'character' }, ['type', 'id', 'reason']],
+    ['POST', '/engage/track', {}, ['type', 'id']],
+    ['POST', '/chat/conversations', {}, ['character_id']],
+    ['PUT', '/auth/me', {}, ['display_name', 'bio', 'avatar', 'banner', 'email']],
+    ['POST', '/parliament/proposals', { title: 'probe' }, ['title', 'body', 'category', 'summary']],
     ['POST', '/logs/client', { message: 'probe' }, ['level', 'event', 'message', 'extra', 'session_id']],
+    ...(abuserId ? [['POST', `/dm/${abuserId}`, {}, ['text']]] : []),
+    ...(abuserId ? [['POST', `/friends/request/${abuserId}`, {}, ['note']]] : []),
     ...(convId ? [['POST', `/chat/conversations/${convId}/memories`, {}, ['content']]] : []),
+    ...(convId ? [['POST', `/chat/conversations/${convId}/complete`, {}, ['content']]] : []),
     ...(cid ? [['POST', '/characters/' + cid + '/favorite', {}, ['on']]] : []),
-    ...(cid ? [['PUT', '/characters/' + cid, {}, ['name', 'intro', 'persona', 'tags', 'category', 'avatar', 'voice_speed', 'background_type']]] : []),
+    ...(cid ? [['PUT', '/characters/' + cid, {}, ['name', 'intro', 'persona', 'tags', 'category', 'avatar', 'voice_speed', 'voice_pitch', 'background_type']]] : []),
+    ...(tid ? [['PATCH', `/theater/${tid}`, {}, ['name', 'scene', 'cover', 'style', 'directive', 'stage_config', 'worldbook']]] : []),
+    ...(gid ? [['POST', `/groups/${gid}/messages`, {}, ['content']]] : []),
   ];
 
   let sent = 0, got5xx = 0, got2xx = 0, got4xx = 0;

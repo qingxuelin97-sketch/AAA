@@ -25,6 +25,21 @@ try {
   const streamed = await safeFetch('https://93.184.216.34/chunked', {}, { maxBodyBytes: 100 });
   await assert.rejects(() => streamed.arrayBuffer(), /安全上限/);
 
+  // —— 302 跳内网：逐跳复检必须在真正连内网前拦下 ——
+  // 首跳返回公网响应但 Location 指向 127.0.0.1；safeFetch 的下一跳会对新目标重新
+  // 校验，应在连接内网前抛 SSRF，且绝不对内网主机发起 fetch。
+  {
+    let internalHit = false;
+    globalThis.fetch = async (url) => {
+      const h = new URL(url).hostname;
+      if (h === '127.0.0.1' || h === 'localhost') { internalHit = true; return new Response('SECRET'); }
+      return new Response(null, { status: 302, headers: { location: 'http://127.0.0.1/internal' } });
+    };
+    await assert.rejects(() => safeFetch('https://93.184.216.34/redir'), /内网|不合法|禁止/);
+    assert.equal(internalHit, false, '302 → 127.0.0.1 must be blocked before the internal host is fetched');
+    passed++;
+  }
+
   // —— DNS 重绑定防护：证明「校验通过的 IP」确实被钉给了这次连接 ——
   // 若将来某个 Node 版本不再经由 dns.lookup 解析出站连接，这里会大声失败，
   // 而不是静默失去防护（safeUrl.js 的钉扎依赖该路径）。

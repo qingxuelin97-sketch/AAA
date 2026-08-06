@@ -5,6 +5,7 @@ import { contentLimiter } from '../limiters.js';
 import { applyTx, assertEconomicAccess, notify } from '../wallet.js';
 import { DAILY_TASKS, dailyOf, bumpDaily, saveClaimed } from '../daily.js';
 import { creatorTier } from '../creator.js';
+import { clampInt } from '../validate.js';
 
 const router = Router();
 const TT = (t) => (t === 'script' ? 'script' : 'character');
@@ -74,7 +75,10 @@ router.post('/events/:id/claim', authRequired, (req, res) => {
 // ---- views ----
 // 校验目标存在且公开，防对任意 id 刷浏览量。
 router.post('/view', authRequired, (req, res) => {
-  const { type, id } = req.body || {};
+  const { type } = req.body || {};
+  // 防呆：id 此前裸进查询 —— 传对象/数组会被 better-sqlite3 当成具名参数/参数列表 → 500。
+  const id = clampInt(req.body?.id, 1, Number.MAX_SAFE_INTEGER, 0);
+  if (!id) return res.json({ ok: true }); // 非法 id 与「目标不存在」同样静默，避免存在性泄露
   const isScript = TT(type) === 'script';
   const tbl = isScript ? 'scripts' : 'characters';
   const row = isScript
@@ -119,7 +123,9 @@ router.delete('/reviews/:id', authRequired, (req, res) => {
 // 支持 character / script / moment / user 四类举报，与 reports 表 target_type 设计一致，
 // 也与前端 ReportButton 的 type 取值（character|script|user）对齐。
 router.post('/report', authRequired, (req, res) => {
-  const { type, id, reason } = req.body || {};
+  const { type, reason } = req.body || {};
+  // 防呆：id 先收敛为正整数（truthy 检查挡不住 {} / []，会让 better-sqlite3 崩 → 500）。
+  const id = clampInt(req.body?.id, 1, Number.MAX_SAFE_INTEGER, 0);
   if (!type || !id) return res.status(400).json({ error: '参数不全' });
   const tbl = type === 'script' ? 'scripts'
     : type === 'character' ? 'characters'
