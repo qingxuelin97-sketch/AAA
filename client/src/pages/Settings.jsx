@@ -80,6 +80,35 @@ export default function Settings() {
   const [unread, setUnread] = useState(0);
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState({ display_name: '', bio: '', avatar: '', banner: '', avatar_frame: '' });
+  // 换绑邮箱（修缮⑭）：发码 → 填码 → PUT /auth/me（服务端消费验证码防重放）。
+  // 白名单/占用/限流等错误文案由服务端直透。
+  const [emailForm, setEmailForm] = useState({ email: '', code: '' });
+  const [emailCd, setEmailCd] = useState(0);
+  const [emailBusy, setEmailBusy] = useState(false);
+  useEffect(() => {
+    if (emailCd <= 0) return undefined;
+    const t = setTimeout(() => setEmailCd(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [emailCd]);
+  const sendEmailCode = async () => {
+    try {
+      await api('/auth/email/send-code', { method: 'POST', body: { email: emailForm.email.trim() } });
+      setEmailCd(60);
+      toast('验证码已发送到新邮箱');
+    } catch (e) { toast(e.message, 'err'); }
+  };
+  const changeEmail = async () => {
+    if (emailBusy) return;
+    setEmailBusy(true);
+    try {
+      const d = await api('/auth/me', { method: 'PUT', body: { email: emailForm.email.trim(), email_code: emailForm.code.trim() } });
+      setUser(d.user);
+      setEmailForm({ email: '', code: '' });
+      setEmailCd(0);
+      toast('邮箱已换绑');
+    } catch (e) { toast(e.message, 'err'); }
+    finally { setEmailBusy(false); }
+  };
   const [pwd, setPwd] = useState({ old_password: '', new_password: '' });
   const [models, setModels] = useState([]);
   const [detecting, setDetecting] = useState(false);
@@ -260,35 +289,6 @@ export default function Settings() {
       toast('资料已更新');
     }
     catch (e) { toast(e.message, 'err'); }
-  };
-  // 换绑邮箱（修缮⑭）：发码 → 填码 → PUT /auth/me（服务端消费验证码防重放）。
-  // 白名单/占用/限流等错误文案由服务端直透。
-  const [emailForm, setEmailForm] = useState({ email: '', code: '' });
-  const [emailCd, setEmailCd] = useState(0);
-  const [emailBusy, setEmailBusy] = useState(false);
-  useEffect(() => {
-    if (emailCd <= 0) return undefined;
-    const t = setTimeout(() => setEmailCd(c => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [emailCd]);
-  const sendEmailCode = async () => {
-    try {
-      await api('/auth/email/send-code', { method: 'POST', body: { email: emailForm.email.trim() } });
-      setEmailCd(60);
-      toast('验证码已发送到新邮箱');
-    } catch (e) { toast(e.message, 'err'); }
-  };
-  const changeEmail = async () => {
-    if (emailBusy) return;
-    setEmailBusy(true);
-    try {
-      const d = await api('/auth/me', { method: 'PUT', body: { email: emailForm.email.trim(), email_code: emailForm.code.trim() } });
-      setUser(d.user);
-      setEmailForm({ email: '', code: '' });
-      setEmailCd(0);
-      toast('邮箱已换绑');
-    } catch (e) { toast(e.message, 'err'); }
-    finally { setEmailBusy(false); }
   };
   const changePwd = async () => {
     try {
