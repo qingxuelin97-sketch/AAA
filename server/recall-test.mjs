@@ -126,6 +126,19 @@ try {
   // kind 命名空间：novel 与 theater 同 ref_id 不串
   const rows = dbRead((d) => d.prepare('SELECT kind, ref_id, ratio FROM reading_progress WHERE user_id = ? ORDER BY kind').all(a.user.id));
   ok(rows.length === 2 && new Set(rows.map((r) => r.kind)).size === 2, 'novel/theater 两条进度各自独立（kind 命名空间）');
+
+  // ---------- ⑮ Admin 举报处置（resolve 扩 action:'delete'） ----------
+  dbWrite((d) => d.prepare('UPDATE users SET is_gm = 1 WHERE id = ?').run(a.user.id));
+  const momentId = dbWrite((d) => Number(d.prepare("INSERT INTO moments (user_id, text) VALUES (?, '违规样本动态')").run(b.user.id).lastInsertRowid));
+  const repId = dbWrite((d) => Number(d.prepare("INSERT INTO reports (target_type, target_id, reporter_id, reason) VALUES ('moment', ?, ?, '不当内容')").run(momentId, a.user.id).lastInsertRowid));
+  const rr = await J(await post(`/admin/reports/${repId}/resolve`, { action: 'delete' }, a.token));
+  ok(rr.ok === true, '举报 delete-resolve 一次往返');
+  ok(dbRead((d) => d.prepare('SELECT COUNT(*) n FROM moments WHERE id = ?').get(momentId).n) === 0, '违规动态已删除');
+  ok(dbRead((d) => d.prepare("SELECT status FROM reports WHERE id = ?").get(repId).status) === 'resolved', '举报同步结案');
+  ok(dbRead((d) => d.prepare("SELECT COUNT(*) n FROM logs WHERE category = 'admin' AND event = 'moment_delete'").get().n) >= 1, '处置留痕（audit 落 logs）');
+  const repUser = dbWrite((d) => Number(d.prepare("INSERT INTO reports (target_type, target_id, reporter_id, reason) VALUES ('user', ?, ?, '骚扰')").run(b.user.id, a.user.id).lastInsertRowid));
+  const ru = await post(`/admin/reports/${repUser}/resolve`, { action: 'delete' }, a.token);
+  ok(ru.status === 400, `user 类型不支持 delete 处置 400（${ru.status}）`);
 } catch (e) {
   fail++; console.error('  ✗ 异常：', e.message, '\n---- server output ----\n' + serverOutput);
 }

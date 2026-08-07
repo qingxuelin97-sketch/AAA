@@ -1014,17 +1014,34 @@ function ReportsTab({ toast }) {
   const load = () => api('/admin/reports').then(d => setReports(d.reports || [])).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
-  const resolve = async (id) => { try { await api(`/admin/reports/${id}/resolve`, { method: 'POST' }); await load(); } catch (e) { toast(e.message, 'err'); } };
+  const resolve = async (id, action) => {
+    try { await api(`/admin/reports/${id}/resolve`, { method: 'POST', body: action ? { action } : {} }); await load(); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+  // 处置语义按类型分叉：moment 硬删 / script 软删下架 / character 转私密下架；
+  // user 无删除处置（走封禁流），只给结案。
+  const DELETE_LABEL = { moment: '删除动态并结案', script: '下架剧本并结案', character: '下架角色并结案' };
+  const VIEW_LINK = { character: (id) => '/character/' + id, script: (id) => '/script/' + id, user: (id) => '/user/' + id };
+  const delAndResolve = (r) => {
+    if (!confirm(`确认${DELETE_LABEL[r.target_type]}？（${r.target_type} #${r.target_id}，操作会记入审计）`)) return;
+    resolve(r.id, 'delete');
+  };
 
   if (reports.length === 0) return <div className="empty"><div className="big"><AlertTriangle size={42} /></div>暂无举报</div>;
   return reports.map(r => (
     <div key={r.id} className="adm-row">
       <div className="grow">
         <b>{r.target_type} #{r.target_id}</b>
+        {VIEW_LINK[r.target_type] && (
+          <a href={'#' + VIEW_LINK[r.target_type](r.target_id)} target="_blank" rel="noreferrer" className="btn ghost sm" style={{ marginLeft: 8 }}>查看</a>
+        )}
         <div className="sub2">理由：{r.reason || '-'} · 举报人 {r.reporter_name || '匿名'} · {r.status}</div>
       </div>
       {r.status === 'open' && (
         <div className="adm-actions">
+          {DELETE_LABEL[r.target_type] && (
+            <button className="btn sm danger" onClick={() => delAndResolve(r)}><Trash2 size={13} /> {DELETE_LABEL[r.target_type]}</button>
+          )}
           <button className="btn sm" onClick={() => resolve(r.id)}><Check size={13} /> 标记已处理</button>
         </div>
       )}

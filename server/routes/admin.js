@@ -535,7 +535,30 @@ router.get('/reports', (req, res) => {
   const rows = db.prepare(`SELECT r.*, u.display_name reporter_name FROM reports r LEFT JOIN users u ON u.id=r.reporter_id ORDER BY r.status='open' DESC, r.id DESC LIMIT 80`).all();
   res.json({ reports: rows });
 });
-router.post('/reports/:id/resolve', (req, res) => { db.prepare("UPDATE reports SET status='resolved' WHERE id = ?").run(req.params.id); res.json({ ok: true }); });
+// 结案（修缮⑮扩展）：action='delete' 时按举报类型先处置内容再结案——
+// moment 硬删、script 软删下架、character 转私密下架（创作者资产不硬删）；
+// user 不支持 delete（走封禁流）。全程 audit 留痕。
+router.post('/reports/:id/resolve', (req, res) => {
+  const report = db.prepare('SELECT * FROM reports WHERE id = ?').get(req.params.id);
+  if (!report) return res.status(404).json({ error: '举报不存在' });
+  if (req.body?.action === 'delete') {
+    const t = report.target_type, tid = report.target_id;
+    if (t === 'moment') {
+      db.prepare('DELETE FROM moments WHERE id = ?').run(tid);
+      audit(req, 'moment_delete', `GM 处置举报 #${report.id}：删除动态 #${tid}`, { report_id: report.id, moment_id: tid });
+    } else if (t === 'script') {
+      db.prepare('UPDATE scripts SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?').run(Date.now(), tid);
+      audit(req, 'script_delete', `GM 处置举报 #${report.id}：下架剧本 #${tid}（软删除）`, { report_id: report.id, script_id: tid });
+    } else if (t === 'character') {
+      db.prepare('UPDATE characters SET is_public = 0, featured = 0 WHERE id = ?').run(tid);
+      audit(req, 'character_unlist', `GM 处置举报 #${report.id}：下架角色 #${tid}（转私密）`, { report_id: report.id, character_id: tid });
+    } else {
+      return res.status(400).json({ error: '该类型不支持删除处置，请走封禁流程' });
+    }
+  }
+  db.prepare("UPDATE reports SET status='resolved' WHERE id = ?").run(report.id);
+  res.json({ ok: true });
+});
 
 // ---- 注册白名单（邮箱白名单政策）----
 // 白名单非空时，仅白名单内邮箱可注册本平台。
