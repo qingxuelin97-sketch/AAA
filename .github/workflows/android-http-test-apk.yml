@@ -56,7 +56,7 @@ jobs:
         run: |
           npm i -D --no-save @capacitor/assets
           npx capacitor-assets generate --android --assetPath resources \
-            --iconBackgroundColor '#211c3f' --iconBackgroundColorDark '#211c3f' \
+            --iconBackgroundColor '#8b7ec6' --iconBackgroundColorDark '#8b7ec6' \
             --splashBackgroundColor '#1b1733' --splashBackgroundColorDark '#15120e'
 
       - name: Build debug APK
