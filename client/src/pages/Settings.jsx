@@ -35,6 +35,7 @@ const LLM_PRESETS = {
   siliconflow: ['https://api.siliconflow.cn/v1', 'openai'], spark: ['https://spark-api-open.xf-yun.com/v1', 'openai'],
   baidu: ['https://qianfan.baidubce.com/v2', 'openai'], gemini: ['https://generativelanguage.googleapis.com/v1beta/openai', 'openai'],
   openrouter: ['https://openrouter.ai/api/v1', 'openai'], groq: ['https://api.groq.com/openai/v1', 'openai'],
+  opencodezen: ['https://opencode.ai/zen/v1', 'openai'],
   together: ['https://api.together.xyz/v1', 'openai'], mistral: ['https://api.mistral.ai/v1', 'openai'],
   ollama: ['http://localhost:11434/v1', 'openai'], lmstudio: ['http://localhost:1234/v1', 'openai'], custom: ['', 'openai']
 };
@@ -43,7 +44,7 @@ const PROVIDER_OPTS = [
   ['zhipu', '智谱 GLM（清言）'], ['qwen', '通义千问 Qwen'], ['doubao', '字节豆包 Doubao'],
   ['yi', '零一万物 Yi'], ['stepfun', '阶跃星辰 StepFun'], ['minimax', 'MiniMax'],
   ['siliconflow', '硅基流动 SiliconFlow'], ['spark', '讯飞星火'], ['baidu', '百度文心一言'],
-  ['gemini', 'Google Gemini'], ['mistral', 'Mistral AI'], ['openrouter', 'OpenRouter'], ['groq', 'Groq'],
+  ['gemini', 'Google Gemini'], ['mistral', 'Mistral AI'], ['openrouter', 'OpenRouter'], ['opencodezen', 'OpenCode Zen'], ['groq', 'Groq'],
   ['together', 'Together'], ['ollama', 'Ollama 本地'], ['lmstudio', 'LM Studio 本地'], ['custom', '自定义']
 ];
 
