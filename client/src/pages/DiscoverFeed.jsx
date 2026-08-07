@@ -17,6 +17,7 @@ import { useToast, Avatar, CreatorV } from '../ui.jsx';
 import { CategoryIcon, categoryName } from '../assets.jsx';
 import { EmptyArt, CoverArt, QuietAquaCharacterArt, resolveCharacterMedia } from '../art.jsx';
 import { shareUrl } from '../util.js';
+import { readRecent, pushRecent, hydrateRecent } from '../recent.js';
 import { tick } from '../appgestures.js';
 import CallScreen from '../components/CallScreen.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
@@ -33,15 +34,7 @@ import '../styles/web-lumen-discover.css';
 const cleanGreeting = (t) => (t || '').replace(/\*/g, '').replace(/\n{2,}/g, '\n').trim();
 // 互动计数：过万转「1.2w」，与内容平台习惯一致。
 const fmtW = (n) => { n = n || 0; return n >= 10000 ? (n / 10000).toFixed(n >= 100000 ? 0 : 1) + 'w' : String(n); };
-// 「历史」浏览记录（与角色详情页共用同一份 recent_chars 本地存储）。
-const readRecent = () => { try { return JSON.parse(localStorage.getItem('recent_chars') || '[]'); } catch { return []; } };
-const pushRecent = (c) => {
-  try {
-    const prev = readRecent().filter(x => x.id !== c.id);
-    const item = { id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline, owner_name: c.owner_name, category: c.category, uses: c.uses };
-    localStorage.setItem('recent_chars', JSON.stringify([item, ...prev].slice(0, 12)));
-  } catch { /* */ }
-};
+// 「历史」浏览记录：本地缓存 + 服务端回流统一走 recent.js（修缮⑩）。
 
 const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
@@ -110,9 +103,10 @@ export default function DiscoverFeed() {
 
   useEffect(() => { load(mode); }, [mode, load]);
 
-  // 收藏状态初始拉取（轻量：只取 id 集合）
+  // 收藏状态初始拉取（轻量：只取 id 集合）；顺带回填服务端浏览历史
   useEffect(() => {
     api('/characters/favorites/list').then(d => { setFavSet(new Set((d.characters || []).map(c => c.id))); }).catch(() => {});
+    hydrateRecent();
   }, []);
 
   // 心动回流：以服务端集合为准回填；本机历史标记（feed_liked 时代）一次性
@@ -164,7 +158,10 @@ export default function DiscoverFeed() {
   useEffect(() => {
     const current = chars[activeIdx];
     if (!current) return undefined;
-    const timer = setTimeout(() => pushRecent(current), 600);
+    const timer = setTimeout(() => {
+      pushRecent(current);
+      api('/engage/view', { method: 'POST', body: { type: 'character', id: current.id } }).catch(() => {});
+    }, 600);
     return () => clearTimeout(timer);
   }, [activeIdx, chars]);
 

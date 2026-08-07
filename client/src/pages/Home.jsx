@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNav as useNavigate } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
+import { hydrateRecent } from '../recent.js';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, GridSkeleton, CreatorV, CoinIcon } from '../ui.jsx';
 import { Heart, MessageCircle, Search, Sparkles, ScrollText, Flame, Play, Megaphone, X, Star, Clock, ListChecks, Check, Shuffle } from 'lucide-react';
@@ -59,6 +60,7 @@ export default function Home() {
   useEffect(() => { api('/characters/recommended').then(d => { if (d.personalized) setRecommended(d.characters || []); }).catch(() => {}); }, []);
   useEffect(() => {
     try { setRecent(JSON.parse(localStorage.getItem('recent_chars') || '[]').slice(0, 12)); } catch { /* */ }
+    hydrateRecent().then(list => setRecent(list.slice(0, 12))).catch(() => {});
     api('/announcements').then(d => { const t = d.announcements?.[0]; if (t && localStorage.getItem('ann_seen') !== String(t.id)) setAnn(t); }).catch(() => {});
   }, []);
 

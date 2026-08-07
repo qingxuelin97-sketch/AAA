@@ -83,7 +83,22 @@ router.post('/view', authRequired, (req, res) => {
     : db.prepare('SELECT 1 FROM characters WHERE id = ? AND is_public = 1').get(id);
   if (!row) return res.json({ ok: true }); // 静默忽略，避免泄露目标是否存在
   db.prepare(`UPDATE ${tbl} SET views = views + 1 WHERE id = ?`).run(id);
+  // 浏览历史回流（修缮⑩）：角色浏览顺带 upsert per-user 记录，喂「最近看过」。
+  if (!isScript) {
+    db.prepare(`INSERT INTO character_views (user_id, character_id, viewed_at) VALUES (?,?,datetime('now'))
+      ON CONFLICT(user_id, character_id) DO UPDATE SET viewed_at = datetime('now')`).run(req.user.id, id);
+  }
   res.json({ ok: true });
+});
+
+// 最近看过：服务端浏览历史，字段对齐客户端 recent_chars 本地缓存的 item 结构。
+router.get('/recent', authRequired, (req, res) => {
+  const rows = db.prepare(`SELECT c.id, c.name, c.avatar, c.tagline, c.category, c.uses, c.featured,
+      u.display_name AS owner_name, v.viewed_at
+    FROM character_views v JOIN characters c ON c.id = v.character_id JOIN users u ON u.id = c.owner_id
+    WHERE v.user_id = ? AND (c.is_public = 1 OR c.owner_id = ?)
+    ORDER BY v.viewed_at DESC LIMIT 12`).all(req.user.id, req.user.id);
+  res.json({ characters: rows });
 });
 
 // ---- reviews / ratings ----

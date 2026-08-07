@@ -10,6 +10,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav.js';
 import { api, assetUrl } from '../api.jsx';
+import { hydrateRecent } from '../recent.js';
 import { useRealtimeEvent } from '../realtime.jsx';
 import { useToast, Avatar, GridSkeleton, CreatorV, CoinIcon } from '../ui.jsx';
 import { CategoryIcon, categoryName } from '../assets.jsx';
@@ -120,6 +121,7 @@ export default function WebHome() {
   useEffect(() => { api('/scripts?sort=hot').then(d => setScripts(d.scripts.slice(0, 6))).catch(() => {}); }, []);
   useEffect(() => {
     try { setRecent(JSON.parse(localStorage.getItem('recent_chars') || '[]').slice(0, 12)); } catch { /* */ }
+    hydrateRecent().then(list => setRecent(list.slice(0, 12))).catch(() => {});
     api('/announcements').then(d => { const t = d.announcements?.[0]; if (t && localStorage.getItem('ann_seen') !== String(t.id)) setAnn(t); }).catch(() => {});
   }, []);
 

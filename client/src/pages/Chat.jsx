@@ -645,7 +645,7 @@ export default function Chat() {
   });
 
   // 消息书签（收藏段落随时跳回，纯本地存储、按会话隔离）—— 逻辑收敛到 chat/hooks.js。
-  const { marks, toggleMark, jumpToMark: jumpToMarkRaw } = useBookmarks(id, () => toast('未找到该消息（可能已被删除）', 'err'));
+  const { marks, toggleMark, jumpToMark: jumpToMarkRaw } = useBookmarks(id, () => toast('未找到该消息（可能已被删除）', 'err'), messages);
   const jumpToMark = (mid) => { setMarksOpen(false); jumpToMarkRaw(mid); };
 
   // 专家档世界书的预注入图片映射；引用稳定（随 character 一次性到位），

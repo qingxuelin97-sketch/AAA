@@ -846,12 +846,27 @@ router.get('/:id/read', authRequired, (req, res) => {
   const run = db.prepare('SELECT * FROM novel_runs WHERE id = ? AND novel_id = ?').get(runId, n.id) || db.prepare('SELECT * FROM novel_runs WHERE novel_id = ? ORDER BY id LIMIT 1').get(n.id);
   const author = db.prepare('SELECT * FROM users WHERE id = ?').get(n.owner_id);
   const beats = run ? db.prepare('SELECT id, content, image FROM novel_beats WHERE run_id = ? ORDER BY seq, id').all(run.id) : [];
+  // 阅读进度回流（修缮⑫）：随 read 一并返回，客户端与本机记录取较新者恢复。
+  const prog = db.prepare("SELECT ratio, updated_at FROM reading_progress WHERE user_id = ? AND kind = 'novel' AND ref_id = ?").get(req.user.id, n.id);
   res.json({
     novel: { id: n.id, title: n.title, logline: n.logline, cover: n.cover, genre: n.genre, tags: n.tags, published: n.published, mine: isOwner },
     author: author ? { id: author.id, display_name: author.display_name, avatar: author.avatar } : null,
     run: run ? { id: run.id, name: run.name, words: run.words, summary: run.summary } : null,
     beats,
+    progress: prog || null,
   });
+});
+
+// 阅读进度写入：鉴权对齐 /read（已发布或作者本人），ratio 钳制 [0,1]。
+router.put('/:id/progress', authRequired, (req, res) => {
+  const n = db.prepare('SELECT id, owner_id, published FROM novels WHERE id = ?').get(req.params.id);
+  if (!n) return res.status(404).json({ error: '作品不存在' });
+  if (!n.published && n.owner_id !== req.user.id) return res.status(403).json({ error: '该作品未公开' });
+  const ratio = Math.min(1, Math.max(0, Number(req.body?.ratio) || 0));
+  db.prepare(`INSERT INTO reading_progress (user_id, kind, ref_id, ratio, updated_at) VALUES (?,'novel',?,?,datetime('now'))
+    ON CONFLICT(user_id, kind, ref_id) DO UPDATE SET ratio = excluded.ratio, updated_at = datetime('now')`)
+    .run(req.user.id, n.id, ratio);
+  res.json({ ok: true, ratio });
 });
 
 export default router;

@@ -20,14 +20,9 @@ import {
   Image as ImageIcon, Send
 } from 'lucide-react';
 import { shareUrl } from '../util.js';
+import { pushRecent } from '../recent.js';
 
-function recordRecent(c) {
-  try {
-    const prev = JSON.parse(localStorage.getItem('recent_chars') || '[]').filter(x => x.id !== c.id);
-    const item = { id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline, owner_name: c.owner_name, category: c.category, uses: c.uses, featured: c.featured };
-    localStorage.setItem('recent_chars', JSON.stringify([item, ...prev].slice(0, 12)));
-  } catch { /* */ }
-}
+
 
 export default function CharacterView() {
   const { id } = useParams();
@@ -50,7 +45,7 @@ export default function CharacterView() {
     setLoadError('');
     // 详情接口已带 faved 字段，无需再全量拉一遍公开列表来找收藏态。
     api('/characters/' + id, { signal: controller.signal })
-      .then(d => { setC(d.character); setRelated(d.related || []); setFaved(!!d.character.faved); recordRecent(d.character); })
+      .then(d => { setC(d.character); setRelated(d.related || []); setFaved(!!d.character.faved); pushRecent(d.character); })
       .catch(e => {
         if (e?.name === 'AbortError') return;
         setLoadError(e?.message || '角色暂时无法打开');

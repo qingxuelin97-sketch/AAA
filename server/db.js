@@ -354,6 +354,22 @@ CREATE TABLE IF NOT EXISTS hearts (
   created_at TEXT DEFAULT (datetime('now')),
   PRIMARY KEY (user_id, character_id)
 );
+-- 浏览历史（修缮⑩）：per-user 最近看过的角色，喂「历史 / 最近看过」面板。
+-- 此前只存客户端 recent_chars localStorage，换设备即丢。
+CREATE TABLE IF NOT EXISTS character_views (
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+  viewed_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, character_id)
+);
+-- 阅读进度（修缮⑫）：kind='novel'|'theater'（两套独立 id 空间，必须带命名空间），
+-- ratio 为滚动比例 [0,1]。此前只存本机（且剧场存的是绝对像素）。
+CREATE TABLE IF NOT EXISTS reading_progress (
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL, ref_id INTEGER NOT NULL,
+  ratio REAL DEFAULT 0, updated_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, kind, ref_id)
+);
 `);
 
 // Lightweight column migrations (add new columns to existing DBs; ignore if present).
@@ -381,6 +397,8 @@ for (const sql of [
   "ALTER TABLE users ADD COLUMN avatar_frame TEXT DEFAULT ''",
   // 收件箱剧本卡（修缮⑬）：type='script' 的 post 关联剧本，行点击跳 /script/:id
   'ALTER TABLE posts ADD COLUMN script_id INTEGER',
+  // 消息书签（修缮⑪）：此前只存本机 huanyu_chat_marks_*，现随消息落库
+  'ALTER TABLE messages ADD COLUMN bookmarked INTEGER DEFAULT 0',
   'ALTER TABLE transactions ADD COLUMN ref_owner INTEGER',
   'ALTER TABLE transactions ADD COLUMN payment_order_id TEXT',
   // Ledger correlation/idempotency. share_eligible keeps a reserved upstream

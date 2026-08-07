@@ -1675,6 +1675,11 @@ async function route(method, path, search, body, headers) {
     msg.reaction = msg.reaction === r ? '' : r; save();
     return J({ message: msg });
   }
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/messages\/(\d+)\/bookmark$/)) && method === 'POST') {
+    need(); const conv = find('conversations', c => c.id === +m[1] && c.user_id === me.id); if (!conv) return E('无权访问', 403);
+    const msg = find('messages', x => x.id === +m[2] && x.conversation_id === conv.id); if (!msg) return E('消息不存在', 404);
+    msg.bookmarked = msg.bookmarked ? 0 : 1; save(); return J({ bookmarked: !!msg.bookmarked });
+  }
   if ((m = P(/^\/chat\/conversations\/(\d+)\/complete$/)) && method === 'POST') {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
     const ch = find('characters', x => x.id === conv.character_id); const s = find('settings', x => x.user_id === me.id);
@@ -2331,7 +2336,7 @@ async function route(method, path, search, body, headers) {
     return J({ id: msg.id, reactions: map });
   }
   if ((m = P(/^\/theater\/(\d+)$/)) && method === 'DELETE') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('作品不存在', 404); if (t.owner_id !== me.id) return E('仅作者可删除作品', 403); db.theaters = filter('theaters', x => x.id !== t.id); db.theater_members = filter('theater_members', x => x.theater_id !== t.id); db.theater_cast = filter('theater_cast', x => x.theater_id !== t.id); db.theater_messages = filter('theater_messages', x => x.theater_id !== t.id); save(); return J({ ok: true }); }
-  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'GET') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('作品不存在', 404); const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean); const members = filter('theater_members', x => x.theater_id === t.id).map(x => ({ id: x.user_id, display_name: user(x.user_id)?.display_name, avatar: user(x.user_id)?.avatar })); const messages = filter('theater_messages', x => x.theater_id === t.id); const effL = effectiveLLM(find('settings', x => x.user_id === me.id)); const llm = effL ? { platform: !!effL.platform, fee: effL.platform ? platformFee(me, 0) : 0 } : { platform: false, fee: 0, unconfigured: true }; return J({ theater: { ...t, owner_name: user(t.owner_id)?.display_name, stage_config: cleanStage(t.stage_config), worldbook: t.owner_id === me.id ? cleanWorld(t.worldbook) : undefined, directive: t.owner_id === me.id ? (t.directive || '') : undefined }, cast, members, messages, joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id), llm }); }
+  if ((m = P(/^\/theater\/(\d+)$/)) && method === 'GET') { need(); const t = find('theaters', x => x.id === +m[1]); if (!t) return E('作品不存在', 404); const cast = filter('theater_cast', x => x.theater_id === t.id).map(x => find('characters', c => c.id === x.character_id)).filter(Boolean); const members = filter('theater_members', x => x.theater_id === t.id).map(x => ({ id: x.user_id, display_name: user(x.user_id)?.display_name, avatar: user(x.user_id)?.avatar })); const messages = filter('theater_messages', x => x.theater_id === t.id); const effL = effectiveLLM(find('settings', x => x.user_id === me.id)); const llm = effL ? { platform: !!effL.platform, fee: effL.platform ? platformFee(me, 0) : 0 } : { platform: false, fee: 0, unconfigured: true }; return J({ theater: { ...t, owner_name: user(t.owner_id)?.display_name, stage_config: cleanStage(t.stage_config), worldbook: t.owner_id === me.id ? cleanWorld(t.worldbook) : undefined, directive: t.owner_id === me.id ? (t.directive || '') : undefined }, cast, members, messages, joined: !!find('theater_members', x => x.theater_id === t.id && x.user_id === me.id), llm, progress: (() => { const pr = find('reading_progress', x => x.user_id === me.id && x.kind === 'theater' && x.ref_id === t.id); return pr ? { ratio: pr.ratio, updated_at: pr.updated_at } : null; })() }); }
 
   // ---------- community (cards / inbox) ----------
   if ((m = P(/^\/community\/publish-character\/(\d+)$/)) && method === 'POST') { need(); const c = find('characters', x => x.id === +m[1]); if (!c || c.owner_id !== me.id) return E('无权发布', 403); c.is_public = 1; save(); return J({ ok: true }); }
@@ -2410,7 +2415,21 @@ async function route(method, path, search, body, headers) {
   }
   if (method === 'POST' && path === '/engage/view') {
     const tbl = (body.type === 'script') ? 'scripts' : 'characters';
-    const it = find(tbl, x => x.id === +body.id); if (it) { it.views = (it.views || 0) + 1; save(); } return J({ ok: true });
+    const it = find(tbl, x => x.id === +body.id); if (it) { it.views = (it.views || 0) + 1; }
+    // 浏览历史回流（与服务端 character_views 同构）
+    if (it && tbl === 'characters' && me) {
+      const ex = find('character_views', v => v.user_id === me.id && v.character_id === it.id);
+      if (ex) ex.viewed_at = now(); else insert('character_views', { user_id: me.id, character_id: it.id, viewed_at: now() });
+    }
+    save(); return J({ ok: true });
+  }
+  if (method === 'GET' && path === '/engage/recent') {
+    need();
+    const rows = filter('character_views', v => v.user_id === me.id)
+      .sort((a, b) => String(b.viewed_at).localeCompare(String(a.viewed_at))).slice(0, 12)
+      .map(v => { const c = find('characters', x => x.id === v.character_id); return c && (c.is_public || c.owner_id === me.id) && { id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline, category: c.category, uses: c.uses, featured: c.featured, owner_name: user(c.owner_id)?.display_name, viewed_at: v.viewed_at }; })
+      .filter(Boolean);
+    return J({ characters: rows });
   }
   if ((m = P(/^\/engage\/reviews\/(character|script)\/(\d+)$/))) {
     const type = m[1], id = +m[2];
@@ -3016,7 +3035,15 @@ async function route(method, path, search, body, headers) {
     const run = find('novel_runs', r => r.id === runId && r.novel_id === n.id) || filter('novel_runs', r => r.novel_id === n.id).sort((a, b) => a.id - b.id)[0];
     const au = user(n.owner_id);
     const beats = run ? filter('novel_beats', b => b.run_id === run.id).sort((a, b) => a.seq - b.seq || a.id - b.id).map(b => ({ id: b.id, content: b.content, image: b.image || '' })) : [];
-    return J({ novel: { id: n.id, title: n.title, logline: n.logline, cover: n.cover, genre: n.genre, tags: n.tags, published: n.published, mine: isOwner }, author: au ? { id: au.id, display_name: au.display_name, avatar: au.avatar } : null, run: run ? { id: run.id, name: run.name, words: run.words, summary: run.summary } : null, beats });
+    const prog = find('reading_progress', x => x.user_id === me.id && x.kind === 'novel' && x.ref_id === n.id);
+    return J({ novel: { id: n.id, title: n.title, logline: n.logline, cover: n.cover, genre: n.genre, tags: n.tags, published: n.published, mine: isOwner }, author: au ? { id: au.id, display_name: au.display_name, avatar: au.avatar } : null, run: run ? { id: run.id, name: run.name, words: run.words, summary: run.summary } : null, beats, progress: prog ? { ratio: prog.ratio, updated_at: prog.updated_at } : null });
+  }
+  if ((m = P(/^\/(novels|theater)\/(\d+)\/progress$/)) && method === 'PUT') {
+    need(); const kind = m[1] === 'novels' ? 'novel' : 'theater';
+    const ratio = Math.min(1, Math.max(0, Number(body.ratio) || 0));
+    const ex = find('reading_progress', x => x.user_id === me.id && x.kind === kind && x.ref_id === +m[2]);
+    if (ex) { ex.ratio = ratio; ex.updated_at = now(); } else insert('reading_progress', { user_id: me.id, kind, ref_id: +m[2], ratio, updated_at: now() });
+    save(); return J({ ok: true, ratio });
   }
 
   // ---------- 粉丝 / 关注列表（个人主页弹窗；与服务端 /users/:id/followers|following 同构） ----------

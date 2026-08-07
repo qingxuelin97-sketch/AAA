@@ -161,17 +161,34 @@ export default function TheaterRoom() {
   };
   const stick = () => { atBottomRef.current = true; setAtBottom(true); };
 
-  // —— 阅读进度记忆：离开时保存滚动位置，回来时静默恢复（长篇追更体验）。
+  // —— 阅读进度记忆（修缮⑫回流服务端）：离开时保存滚动比例（原绝对像素
+  // 换比例，跨设备高度不同也能还原；旧像素值直接废弃，损失一次位置），
+  // 回来时本机与服务端取较新者恢复；写入双写（本机即时 + 服务端 PUT）。
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !data) return;
-    const saved = parseInt(localStorage.getItem(posKey(id)), 10);
-    if (saved > 300 && saved < el.scrollHeight - el.clientHeight - 200) {
+    let saved = 0, savedAt = 0;
+    try {
+      const loc = JSON.parse(localStorage.getItem(posKey(id)) || 'null');
+      if (loc && typeof loc === 'object') { saved = loc.ratio || 0; savedAt = loc.at || 0; }
+    } catch { /* 旧版绝对像素（纯数字字符串）：无法跨高度换算，废弃 */ }
+    const sp = data.progress;
+    if (sp && sp.ratio > 0) {
+      const spAt = Date.parse(String(sp.updated_at || '').replace(' ', 'T') + 'Z') || 0;
+      if (spAt >= savedAt) saved = sp.ratio;
+    }
+    const max0 = el.scrollHeight - el.clientHeight;
+    if (saved > 0.02 && saved < 0.98 && max0 > 500) {
       restoredRef.current = true;
-      el.scrollTop = saved;
+      el.scrollTop = saved * max0;
       setAtBottom(false);
     }
-    const save = () => { try { localStorage.setItem(posKey(id), String(Math.round(el.scrollTop))); } catch { /* */ } };
+    const save = () => {
+      const max = el.scrollHeight - el.clientHeight;
+      const ratio = max > 0 ? Math.round(Math.min(1, el.scrollTop / max) * 1000) / 1000 : 0;
+      try { localStorage.setItem(posKey(id), JSON.stringify({ ratio, at: Date.now() })); } catch { /* */ }
+      api(`/theater/${id}/progress`, { method: 'PUT', body: { ratio } }).catch(() => {});
+    };
     const onHide = () => { if (document.hidden) save(); };
     document.addEventListener('visibilitychange', onHide);
     return () => { save(); document.removeEventListener('visibilitychange', onHide); };

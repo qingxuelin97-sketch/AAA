@@ -33,18 +33,26 @@ export default function NovelReader() {
     try { localStorage.setItem('huanyu_read_size', String(size)); } catch { /* */ }
   }, [size]);
 
-  // S7-G10 阅读进度记忆（双壳）：按作品存滚动比例，回来接着读；
-  // 顶部 2px 进度条随滚动即时反馈，落库 300ms 防抖。
+  // S7-G10 阅读进度记忆（双壳 + 修缮⑫回流服务端）：按作品存滚动比例，回来接着读。
+  // 本机 300ms 防抖即时缓存，服务端 1.5s 防抖 PUT（换设备不丢）；恢复取两端较新者。
   useEffect(() => {
     if (!data) return;
     const el = scrollerRef.current;
     if (!el) return;
-    let saved = 0;
-    try { saved = JSON.parse(localStorage.getItem('huanyu_read_' + id) || '{}').ratio || 0; } catch { /* */ }
+    let saved = 0, savedAt = 0;
+    try {
+      const loc = JSON.parse(localStorage.getItem('huanyu_read_' + id) || '{}');
+      saved = loc.ratio || 0; savedAt = loc.at || 0;
+    } catch { /* */ }
+    const sp = data.progress;
+    if (sp && sp.ratio > 0) {
+      const spAt = Date.parse(String(sp.updated_at || '').replace(' ', 'T') + 'Z') || 0;
+      if (spAt >= savedAt) saved = sp.ratio;
+    }
     if (saved > 0.01 && saved < 0.999) {
       requestAnimationFrame(() => { el.scrollTop = saved * (el.scrollHeight - el.clientHeight); });
     }
-    let t = 0;
+    let t = 0, ts = 0;
     const onScroll = () => {
       const max = el.scrollHeight - el.clientHeight;
       const ratio = max > 0 ? Math.min(1, el.scrollTop / max) : 0;
@@ -53,9 +61,13 @@ export default function NovelReader() {
       t = setTimeout(() => {
         try { localStorage.setItem('huanyu_read_' + id, JSON.stringify({ ratio: Math.round(ratio * 1000) / 1000, at: Date.now() })); } catch { /* */ }
       }, 300);
+      clearTimeout(ts);
+      ts = setTimeout(() => {
+        api(`/novels/${id}/progress`, { method: 'PUT', body: { ratio: Math.round(ratio * 1000) / 1000 } }).catch(() => {});
+      }, 1500);
     };
     el.addEventListener('scroll', onScroll, { passive: true });
-    return () => { clearTimeout(t); el.removeEventListener('scroll', onScroll); };
+    return () => { clearTimeout(t); clearTimeout(ts); el.removeEventListener('scroll', onScroll); };
   }, [data, id]);
 
   if (err) return <div className="empty" style={{ paddingTop: 140 }}>{err}<div style={{ marginTop: 16 }}><button className="btn" onClick={() => nav('/atelier')}>返回工坊</button></div></div>;

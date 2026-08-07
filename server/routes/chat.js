@@ -734,6 +734,15 @@ router.post('/conversations/:id/messages/:mid/react', authRequired, (req, res) =
   db.prepare('UPDATE messages SET reaction = ? WHERE id = ?').run(next, msg.id);
   res.json({ message: { ...msg, reaction: next } });
 });
+// 消息书签（修缮⑪）：toggle 落库，随消息行回读——换设备书签不丢。
+router.post('/conversations/:id/messages/:mid/bookmark', authRequired, (req, res) => {
+  const conv = ownConv(req, res); if (!conv) return;
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ? AND conversation_id = ?').get(req.params.mid, conv.id);
+  if (!msg) return res.status(404).json({ error: '消息不存在' });
+  const next = msg.bookmarked ? 0 : 1;
+  db.prepare('UPDATE messages SET bookmarked = ? WHERE id = ?').run(next, msg.id);
+  res.json({ bookmarked: !!next });
+});
 
 // ---- Streaming completion ----
 router.post('/conversations/:id/complete', authRequired, aiLimiter, async (req, res) => {

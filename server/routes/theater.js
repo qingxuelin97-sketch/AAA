@@ -204,7 +204,21 @@ router.get('/:id', authRequired, (req, res) => {
   const llm = eff
     ? { platform: !!eff.platform, fee: eff.platform ? platformFee(meRow, messages.length) : 0 }
     : { platform: false, fee: 0, unconfigured: true };
-  res.json({ theater: t, cast, members, messages, joined: memberOf(t.id, req.user.id), llm });
+  // 阅读进度回流（修缮⑫）：随详情返回，客户端与本机记录取较新者恢复。
+  const prog = db.prepare("SELECT ratio, updated_at FROM reading_progress WHERE user_id = ? AND kind = 'theater' AND ref_id = ?").get(req.user.id, t.id);
+  res.json({ theater: t, cast, members, messages, joined: memberOf(t.id, req.user.id), llm, progress: prog || null });
+});
+
+// 阅读进度写入：鉴权对齐 GET /:id（公开或 owner/成员），ratio 钳制 [0,1]。
+router.put('/:id/progress', authRequired, (req, res) => {
+  const t = db.prepare('SELECT id, owner_id, is_public FROM theaters WHERE id = ?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: '作品不存在' });
+  if (!t.is_public && t.owner_id !== req.user.id && !memberOf(t.id, req.user.id)) return res.status(403).json({ error: '无权访问这部作品' });
+  const ratio = Math.min(1, Math.max(0, Number(req.body?.ratio) || 0));
+  db.prepare(`INSERT INTO reading_progress (user_id, kind, ref_id, ratio, updated_at) VALUES (?,'theater',?,?,datetime('now'))
+    ON CONFLICT(user_id, kind, ref_id) DO UPDATE SET ratio = excluded.ratio, updated_at = datetime('now')`)
+    .run(req.user.id, t.id, ratio);
+  res.json({ ok: true, ratio });
 });
 
 // 更新舞台设定（背景系统）—— 仅作者可改。也可顺带改名称 / 序章 / 封面。

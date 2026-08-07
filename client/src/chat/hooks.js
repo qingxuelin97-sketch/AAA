@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppOverlay } from '../overlay.jsx';
+import { api } from '../api.jsx';
 
 // 长按识别：触屏上取代不可用的 hover 操作行。用一组共享 ref 管理计时，onLongPress(target)
 // 在按住 ms 毫秒且未移动超阈值时触发。返回 bind(target) → 事件处理器（可展开到任意元素，
@@ -34,21 +35,49 @@ export function useOverlayBack(anyOverlayOpen, closeAllOverlays) {
   useAppOverlay(anyOverlayOpen, closeAllOverlays);
 }
 
-// 消息书签：收藏重要段落随时跳回。纯本地存储（三端通用、不依赖服务端），按会话隔离。
+// 消息书签（修缮⑪回流服务端）：收藏重要段落随时跳回，按会话隔离。
+// 服务端 messages.bookmarked 是真相（换设备不丢）；本机旧 huanyu_chat_marks_*
+// 首次加载一次性上迁后清键；离线 toggle 退回本机 key 兜底（下次加载再迁）。
 // 返回 { marks, toggleMark, jumpToMark }；jumpToMark 需一个 onMissing(msg) 回调用于提示。
-export function useBookmarks(id, onMissing) {
+export function useBookmarks(id, onMissing, messages) {
   const [marks, setMarks] = useState(new Set());
+  const hydratedRef = useRef('');
   useEffect(() => {
-    try { setMarks(new Set(JSON.parse(localStorage.getItem('huanyu_chat_marks_' + id) || '[]'))); }
-    catch { setMarks(new Set()); }
-  }, [id]);
+    if (!id || !Array.isArray(messages) || messages.length === 0) return;
+    if (hydratedRef.current === String(id)) return;
+    hydratedRef.current = String(id);
+    const server = new Set(messages.filter(m => m.id && m.bookmarked).map(m => m.id));
+    let legacy = [];
+    try { legacy = JSON.parse(localStorage.getItem('huanyu_chat_marks_' + id) || '[]'); } catch { /* */ }
+    const present = new Set(messages.filter(m => m.id).map(m => m.id));
+    const toUp = legacy.filter(mid => present.has(mid) && !server.has(mid));
+    if (legacy.length) {
+      (async () => {
+        for (const mid of toUp) {
+          try { const r = await api(`/chat/conversations/${id}/messages/${mid}/bookmark`, { method: 'POST' }); if (r.bookmarked) server.add(mid); } catch { /* 离线/已删：跳过 */ }
+        }
+        try { localStorage.removeItem('huanyu_chat_marks_' + id); } catch { /* */ }
+        setMarks(new Set(server));
+      })();
+    } else {
+      setMarks(server);
+    }
+  }, [id, messages]);
   const toggleMark = (m) => {
     if (!m.id) return;
     setMarks(prev => {
       const n = new Set(prev);
       if (n.has(m.id)) n.delete(m.id); else n.add(m.id);
-      try { localStorage.setItem('huanyu_chat_marks_' + id, JSON.stringify([...n])); } catch { /* */ }
       return n;
+    });
+    api(`/chat/conversations/${id}/messages/${m.id}/bookmark`, { method: 'POST' }).catch(() => {
+      // 离线兜底：镜像 toggle 到本机 key，下次加载走一次性迁移
+      try {
+        const key = 'huanyu_chat_marks_' + id;
+        const cur = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+        if (cur.has(m.id)) cur.delete(m.id); else cur.add(m.id);
+        localStorage.setItem(key, JSON.stringify([...cur]));
+      } catch { /* */ }
     });
   };
   const jumpToMark = (mid) => {
