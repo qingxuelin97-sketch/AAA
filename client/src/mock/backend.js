@@ -4,7 +4,6 @@
 // configured provider from the browser.
 
 import { faceAvatar, FACE_PRESETS, animeAvatar, ANIME_PRESETS, BG_PRESETS } from '../faces.js';
-import { QIUSHUOYUE_NOVEL } from '../../../server/seed-data/qiushuoyue-novel.js';
 
 const realFetch = window.fetch.bind(window);
 const KEY = 'huanyu_db_v7';
@@ -211,22 +210,21 @@ function migrate() {
     }
     db._mig.worldbooks = 1;
   }
-  if (!db._mig.qsy_novel) {
-    // 小说工坊：为 demo 预置架空政治小说《朔月当空 · 平行2026》（局外母版 + 主线）。
-    const demo = find('users', u => u.username === 'demo');
-    if (demo) {
-      const codex = (QIUSHUOYUE_NOVEL.codex || []).map((e, i) => ({
-        id: 'q' + Date.now().toString(36) + i, title: e.title, category: e.category, trigger: e.trigger,
-        keys: e.keys || '', content: e.content, source: 'meta', locked: 0, enabled: 1, updated_at: new Date().toISOString(),
-      }));
-      const nv = insert('novels', {
-        owner_id: demo.id, title: QIUSHUOYUE_NOVEL.title, logline: QIUSHUOYUE_NOVEL.logline || '',
-        synopsis: QIUSHUOYUE_NOVEL.synopsis || '', genre: QIUSHUOYUE_NOVEL.genre || '', tags: QIUSHUOYUE_NOVEL.tags || '',
-        style: QIUSHUOYUE_NOVEL.style || {}, codex, pinned: 1, published: 0, published_run_id: null, updated_at: now(),
-      });
-      nvForkRun(nv, '主线');
+  if (!db._mig.qsy_novel_removed) {
+    // 产品决策：下架内置小说《朔月当空 · 平行2026》。老访客的本地演示库若已
+    // 种入，连剧情线/节拍/阅读进度一并清除；qsy_novel 标记保留置位防旧逻辑重种。
+    const olds = filter('novels', n => n.title === '朔月当空 · 平行2026');
+    if (olds.length) {
+      const nids = olds.map(n => n.id);
+      const rids = filter('novel_runs', r => nids.includes(r.novel_id)).map(r => r.id);
+      db.novel_beats = filter('novel_beats', b => !rids.includes(b.run_id));
+      db.novel_runs = filter('novel_runs', r => !nids.includes(r.novel_id));
+      db.reading_progress = filter('reading_progress', x => !(x.kind === 'novel' && nids.includes(x.ref_id)));
+      db.novels = filter('novels', n => !nids.includes(n.id));
     }
     db._mig.qsy_novel = 1;
+    db._mig.qsy_novel_removed = 1;
+    save();
   }
 }
 

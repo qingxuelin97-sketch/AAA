@@ -1007,6 +1007,19 @@ for (const sql of [
   'CREATE INDEX IF NOT EXISTS idx_script_purchases_script ON script_purchases (script_id)',
 ]) { try { db.exec(sql); } catch { /* 表/列可能尚不存在，忽略 */ } }
 
+// —— 产品决策：下架内置小说《朔月当空 · 平行2026》 ——
+// 老库若曾运行过 seed（内置书随 demo 数据种入），启动时幂等清理：
+// 连剧情线 / 节拍 / 阅读进度一并删除。标题为高辨识度精确匹配。
+try {
+  const olds = db.prepare("SELECT id FROM novels WHERE title = '朔月当空 · 平行2026'").all();
+  for (const { id } of olds) {
+    db.prepare('DELETE FROM novel_beats WHERE run_id IN (SELECT id FROM novel_runs WHERE novel_id = ?)').run(id);
+    db.prepare('DELETE FROM novel_runs WHERE novel_id = ?').run(id);
+    db.prepare("DELETE FROM reading_progress WHERE kind = 'novel' AND ref_id = ?").run(id);
+    db.prepare('DELETE FROM novels WHERE id = ?').run(id);
+  }
+} catch { /* 表可能尚不存在（全新库），忽略 */ }
+
 // 进程退出时把 WAL 落盘并截断，抑制 WAL 文件长期膨胀（同步操作，安全）。
 process.on('exit', () => { try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* */ } });
 
