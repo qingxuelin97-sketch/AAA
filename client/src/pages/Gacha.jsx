@@ -142,8 +142,10 @@ export default function Gacha() {
             : `已存入次数卡余额（现有 ${credits} 张），平台 AI 对话时自动抵扣。`}
         </p>
         <div className="row" style={{ marginTop: 14 }}>
-          <button className="btn block" onClick={() => setResult(null)}>{freeAvailable ? '收下' : '再转一次'}</button>
-          {!freeAvailable && <button className="btn primary block" onClick={() => { setResult(null); spin(); }}>用 {price} 金币再转</button>}
+          <button className="btn block" onClick={() => setResult(null)}>收下奖励</button>
+          <button className="btn primary block" onClick={() => { setResult(null); spin(); }}>
+            {freeAvailable ? '免费再转一次' : `手气再来 · ${price} 金币`}
+          </button>
         </div>
       </div>
     </Modal>

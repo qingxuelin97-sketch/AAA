@@ -26,7 +26,7 @@ export default function Admin() {
       <div className="topbar">
         <div style={{ flex: 1 }}><h1><Shield size={18} style={{ verticalAlign: '-3px' }} /> GM 控制台</h1><div className="sub">总览 · 用户 · 内容 · 议会 · 兑换码 · 举报 · 平台</div></div>
       </div>
-      <div className="page">
+      <div className="page adm-page">
         {!ready ? <div className="empty">载入中…</div> : denied ? (
           <div className="empty"><div className="big"><Shield size={46} /></div>需要 GM 权限</div>
         ) : (

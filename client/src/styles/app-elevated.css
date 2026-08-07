@@ -1157,3 +1157,35 @@ html[data-app="1"] .cvx-cta {
    app-controls 以 transform:none !important 钉死）。
    ========================================================================== */
 
+
+/* ── GM 管理后台 App 壳基础适配（实机反馈：桌面布局在窄屏挤压溢出）──
+   管理台是 GM 工具页，不追求原生观感，只保证可用：统计卡两列、行卡
+   可换行、操作按钮不溢出、表格与 tab 条横向滚动、安全区留白。 */
+html[data-app="1"] .adm-page {
+  padding: 12px 14px calc(28px + env(safe-area-inset-bottom));
+}
+html[data-app="1"] .adm-page .adm-tabs {
+  display: flex;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+html[data-app="1"] .adm-page .adm-tabs > * { flex: 0 0 auto; }
+html[data-app="1"] .adm-page .adm-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+html[data-app="1"] .adm-page .adm-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+html[data-app="1"] .adm-page .adm-row .grow { min-width: 0; flex: 1 1 220px; overflow-wrap: anywhere; }
+html[data-app="1"] .adm-page .adm-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+html[data-app="1"] .adm-page table { display: block; max-width: 100%; overflow-x: auto; }
+html[data-app="1"] .adm-page .row { flex-wrap: wrap; }
+html[data-app="1"] .adm-page input.input, html[data-app="1"] .adm-page select { max-width: 100%; }

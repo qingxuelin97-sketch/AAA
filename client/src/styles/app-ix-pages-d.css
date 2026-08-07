@@ -426,16 +426,18 @@ html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .chat-bg > img {
    顶部为悬浮头部、底部为输入岛再各加深一档。 */
 html[data-app="1"] .qa-chat-main.has-bg .chat-bg::after,
 html[data-app="1"][data-theme="dark"] .qa-chat-main.has-bg .chat-bg::after {
+  /* 实机反馈：60-78% 全程压暗像黑玻璃罩住立绘。气泡自带玻璃底保证可读，
+     此处只留顶部（悬浮头）与底部（输入岛）两段淡淡的过渡。 */
   background: linear-gradient(180deg,
-    rgb(8 10 14 / 72%) 0%,
-    rgb(8 10 14 / 60%) 26%,
-    rgb(8 10 14 / 62%) 58%,
-    rgb(8 10 14 / 78%) 100%) !important;
+    rgb(8 10 14 / 30%) 0%,
+    rgb(8 10 14 / 8%) 22%,
+    rgb(8 10 14 / 6%) 62%,
+    rgb(8 10 14 / 38%) 100%) !important;
 }
 /* 顶部状态区渐隐（媒体可读性遮罩的上缘补充） */
 html[data-app="1"] .qa-chat-main.chat-main.has-bg::before {
   height: 132px;
-  background: linear-gradient(180deg, rgb(8 10 14 / 45%), transparent) !important;
+  background: linear-gradient(180deg, rgb(8 10 14 / 26%), transparent) !important;
 }
 
 /* 沉浸头部：白系玻璃 10%（SPEC §1 沉浸页控件配方），白字 */
@@ -3552,17 +3554,11 @@ html[data-app="1"] .qa-wallet-head {
   -webkit-backdrop-filter: var(--ix-blur);
   backdrop-filter: var(--ix-blur);
 }
-html[data-app="1"] .qa-wallet-v4__recharge-balance {
-  background: var(--ix-vault) !important;
-  border-radius: var(--ix-r-panel) !important;
-  color: var(--ix-vault-ink) !important;
-  box-shadow: inset 0 0 0 1px var(--ix-vault-line) !important;
-}
+/* 实机反馈：曜光「金库」深色残留让充值页整片发黑，回归全 App 浅色语言
+   （余额/套餐卡样式放行 experience-v3 的浅玻璃）。 */
 html[data-app="1"] .qa-wallet-v4__recharge-balance strong,
 html[data-app="1"] .qa-wallet-v4__packages strong,
 html[data-app="1"] .qa-wallet-v4__checkout strong {
-  color: var(--ix-vault-gold);
-  font-family: var(--ix-font-mono);
   font-variant-numeric: tabular-nums;
 }
 html[data-app="1"] .qa-wallet-v4__recharge-section,
@@ -3571,14 +3567,6 @@ html[data-app="1"] .qa-wallet-v4__checkout {
   border-radius: var(--ix-r-card);
   background: var(--ix-surface);
   box-shadow: var(--ix-shadow-1);
-}
-html[data-app="1"] .qa-wallet-v4__packages > button {
-  min-height: 76px;
-  border: 0;
-  border-radius: var(--ix-r-card);
-  background: var(--ix-vault-2);
-  color: var(--ix-vault-ink);
-  box-shadow: inset 0 0 0 1px var(--ix-vault-line);
 }
 html[data-app="1"] .qa-wallet-v4__packages > button.selected { box-shadow: inset 0 0 0 2px var(--ix-act), var(--ix-shadow-1); }
 html[data-app="1"] .qa-wallet-v4__packages > button em { background: var(--ix-gold); color: var(--ix-gold-ink); }

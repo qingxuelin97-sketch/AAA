@@ -483,3 +483,11 @@ html[data-app="1"][data-perf="lite"] .chat-main .chat-bg > video { animation: no
   html[data-app="1"] .chat-main .chat-hero .ch-hero-av::after,
   html[data-app="1"] .msg-sheet, html[data-app="1"] .msg-sheet-mask { animation: none !important; }
 }
+
+/* ── 实机反馈：长按气泡应唤出操作菜单，系统文本选择会截胡（菜单里已有复制）── */
+html[data-app="1"] .chat-main .msg .bubble,
+html[data-app="1"] .chat-main .msg .bubble * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

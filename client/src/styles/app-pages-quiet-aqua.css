@@ -1454,7 +1454,7 @@ html[data-app="1"] .qa-discover-page .feed-top {
   min-height: calc(58px + env(safe-area-inset-top));
   justify-content: space-between;
   padding: calc(7px + env(safe-area-inset-top)) 10px 7px;
-  background: linear-gradient(180deg, rgb(3 12 11 / 66%), transparent);
+  background: linear-gradient(180deg, rgb(3 12 11 / 22%), transparent);
 }
 
 html[data-app="1"] .qa-discover-page .feed-modes {

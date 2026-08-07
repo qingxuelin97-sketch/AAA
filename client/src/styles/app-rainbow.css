@@ -265,6 +265,8 @@ html[data-app="1"] .gx-card.gx-ssr {
 }
 /* 我的头像：渐变圆环 */
 html[data-app="1"] .pf-id .pf-av { position: relative; }
+/* 戴头像框（FramedAvatar .avf）时让位：装饰环与渐变描边二选一 */
+html[data-app="1"] .pf-id .pf-av:has(.avf)::before { content: none !important; }
 html[data-app="1"] .pf-id .pf-av::before {
   content: '' !important;
   position: absolute;

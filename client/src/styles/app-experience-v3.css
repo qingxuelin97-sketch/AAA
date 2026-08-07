@@ -1046,6 +1046,17 @@ html[data-app="1"] .qa3-profile .pf-av .avatar {
   border-radius: 22px !important;
 }
 
+/* 戴头像框时（FramedAvatar .avf 在内）：描边底座会「卡住」装饰环——剥掉，
+   头像转正圆让环贴合，放开溢出容纳环的外扩部分 */
+html[data-app="1"] .qa3-profile .pf-av.qa-icon-button:has(.avf) {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+html[data-app="1"] .qa3-profile .pf-av .avf { display: block; }
+html[data-app="1"] .qa3-profile .pf-av .avf .avatar { border-radius: 50% !important; box-shadow: none !important; }
+
 html[data-app="1"] .qa3-profile .pf-id-tx > b {
   display: block;
   overflow: hidden;
@@ -1367,6 +1378,7 @@ html[data-app="1"] .qa3-discover.feed-wrap {
 }
 
 html[data-app="1"] .qa3-discover .feed-top {
+  background: none !important; /* 实机反馈：全宽深色渐变像一块黑盒，分段药丸自带玻璃已够 */
   position: absolute !important;
   z-index: 38 !important;
   top: max(12px, env(safe-area-inset-top)) !important;

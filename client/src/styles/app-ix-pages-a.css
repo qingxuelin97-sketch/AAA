@@ -167,6 +167,7 @@ html[data-app="1"] .qa3-today .ah-task {
   border: 0 !important;
   border-radius: var(--ix-r-card) !important;
   box-shadow: var(--ix-shadow-1) !important;
+  padding: 10px 14px !important; /* 实机反馈：v3 的 9px 0 让文字贴卡边 */
 }
 /* 任务进度：细刻带（槽=grouped，行程=act 实色，方角=机加工） */
 html[data-app="1"] .qa3-today .ah-task-bar {

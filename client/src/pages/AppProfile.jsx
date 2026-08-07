@@ -205,7 +205,7 @@ export default function AppProfile() {
           onClick={() => nav('/profile')}
           style={appMode ? { viewTransitionName: 'qa-profile-avatar' } : undefined}
         >
-          <FramedAvatar frame={user?.avatar_frame} src={user?.avatar} name={user?.display_name} size={68} eager />
+          <FramedAvatar frame={user?.avatar_frame} src={user?.avatar} name={user?.display_name} size={76} eager />
         </AppIconButton>
         <div className="pf-id-tx">
           <b>{user?.display_name || user?.username}</b>
