@@ -261,6 +261,35 @@ export default function Settings() {
     }
     catch (e) { toast(e.message, 'err'); }
   };
+  // 换绑邮箱（修缮⑭）：发码 → 填码 → PUT /auth/me（服务端消费验证码防重放）。
+  // 白名单/占用/限流等错误文案由服务端直透。
+  const [emailForm, setEmailForm] = useState({ email: '', code: '' });
+  const [emailCd, setEmailCd] = useState(0);
+  const [emailBusy, setEmailBusy] = useState(false);
+  useEffect(() => {
+    if (emailCd <= 0) return undefined;
+    const t = setTimeout(() => setEmailCd(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [emailCd]);
+  const sendEmailCode = async () => {
+    try {
+      await api('/auth/email/send-code', { method: 'POST', body: { email: emailForm.email.trim() } });
+      setEmailCd(60);
+      toast('验证码已发送到新邮箱');
+    } catch (e) { toast(e.message, 'err'); }
+  };
+  const changeEmail = async () => {
+    if (emailBusy) return;
+    setEmailBusy(true);
+    try {
+      const d = await api('/auth/me', { method: 'PUT', body: { email: emailForm.email.trim(), email_code: emailForm.code.trim() } });
+      setUser(d.user);
+      setEmailForm({ email: '', code: '' });
+      setEmailCd(0);
+      toast('邮箱已换绑');
+    } catch (e) { toast(e.message, 'err'); }
+    finally { setEmailBusy(false); }
+  };
   const changePwd = async () => {
     try {
       const d = await api('/auth/password', { method: 'PUT', body: pwd });
@@ -582,6 +611,29 @@ export default function Settings() {
               </div>
               <div className="field"><label>个人简介</label><textarea className="textarea" value={profile.bio} onChange={e => setProfile({ ...profile, bio: e.target.value })} placeholder="介绍一下你自己…" autoCapitalize="off" autoCorrect="off" spellCheck={false} /></div>
               <div className="field"><label>主页横幅</label><Uploader value={profile.banner} onChange={url => setProfile({ ...profile, banner: url })} accept="image/*" /></div>
+            </div>
+            <div className="card" style={{ marginBottom: 20 }}>
+              <div className="section-title"><h2>邮箱</h2>
+                <AppButton className={withAppClass('btn sm', 'qa-settings-save')} variant="primary" loading={emailBusy}
+                  disabled={emailBusy || !emailForm.email.trim() || !emailForm.code.trim()} onClick={changeEmail}>确认换绑</AppButton>
+              </div>
+              <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>当前邮箱：{user?.email || '未绑定'}。换绑需先验证新邮箱（验证码 10 分钟内有效）。</p>
+              <div className="field"><label>新邮箱</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input className="input" style={{ flex: 1 }} type="email" value={emailForm.email}
+                    onChange={e => setEmailForm({ ...emailForm, email: e.target.value })}
+                    placeholder="new@example.com" autoComplete="email" autoCapitalize="off" spellCheck={false} />
+                  <AppButton className="btn sm" variant="secondary" disabled={emailCd > 0 || !emailForm.email.trim()} onClick={sendEmailCode}>
+                    {emailCd > 0 ? `${emailCd}s 后可重发` : '发送验证码'}
+                  </AppButton>
+                </div>
+              </div>
+              <div className="field"><label>验证码</label>
+                <input className="input" value={emailForm.code} maxLength={8} inputMode="numeric"
+                  onChange={e => setEmailForm({ ...emailForm, code: e.target.value })}
+                  placeholder="收到的验证码" autoComplete="one-time-code" spellCheck={false}
+                  onKeyDown={e => { if (e.key === 'Enter') changeEmail(); }} />
+              </div>
             </div>
             <div className="card">
               <div className="section-title"><h2>修改密码</h2><AppButton className={withAppClass('btn sm', 'qa-settings-save')} variant="primary" onClick={changePwd}>确认修改</AppButton></div>

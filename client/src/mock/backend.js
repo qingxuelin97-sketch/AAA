@@ -1229,8 +1229,26 @@ async function route(method, path, search, body, headers) {
     return J({ token: tokenFor(u), user: publicUser(u) });
   }
   if (method === 'GET' && path === '/auth/me') { need(); return J({ user: publicUser(me) }); }
+  // 换绑邮箱发码（与服务端 /auth/email/send-code 同构）：演示态验证码固定 888888
+  if (method === 'POST' && path === '/auth/email/send-code') {
+    need();
+    const em = String(body.email || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return E('邮箱格式不正确');
+    if (em === me.email) return E('新邮箱与当前邮箱相同');
+    if (find('users', u => u.id !== me.id && u.email === em)) return E('该邮箱已被其他账号使用', 409);
+    me._pending_email = em; save();
+    return J({ ok: true, ttl_min: 10, test_code: '888888' });
+  }
   if (method === 'PUT' && path === '/auth/me') {
-    need(); ['display_name', 'bio', 'avatar', 'banner', 'email'].forEach(k => { if (body[k] !== undefined && body[k] !== null) me[k] = body[k]; });
+    need();
+    // 换绑分支（与服务端语义对齐）：改 email 必须带匹配的验证码
+    if (body.email !== undefined && body.email !== null && body.email !== me.email) {
+      if (!body.email_code) return E('更换邮箱必须提供新邮箱验证码');
+      if (body.email !== me._pending_email || String(body.email_code) !== '888888') return E('验证码不正确');
+      if (find('users', u => u.id !== me.id && u.email === body.email)) return E('该邮箱已被其他账号使用', 409);
+      me.email = body.email; delete me._pending_email;
+    }
+    ['display_name', 'bio', 'avatar', 'banner'].forEach(k => { if (body[k] !== undefined && body[k] !== null) me[k] = body[k]; });
     // 头像框：白名单 + SVIP 校验（与服务端 AVATAR_FRAMES 同构）
     if (body.avatar_frame !== undefined) {
       const frame = [{ id: '' }, { id: 'aurora', svip: true }, { id: 'gilt', svip: true }, { id: 'aqua' }].find(f => f.id === String(body.avatar_frame));
