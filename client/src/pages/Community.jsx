@@ -156,7 +156,7 @@ export default function Community() {
         </div>
       </div>
 
-      <div className="page">
+      <div className="page qa-unadapted">
         <div className="seg" style={{ marginBottom: 16 }}>
           <button className={scope === 'all' ? 'active' : ''} onClick={() => setScope('all')}>推荐</button>
           <button className={scope === 'following' ? 'active' : ''} onClick={() => setScope('following')}>关注</button>

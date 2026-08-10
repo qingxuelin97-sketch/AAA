@@ -285,3 +285,15 @@ html[data-app="1"] .lgw-error-inline .btn {
   min-height: 44px;      /* 触达下限：这是这一条里唯一可点的东西 */
   padding-inline: 14px;
 }
+
+/* —— App 壳隐藏每条消息下方常驻的操作行 ——
+   .msg-acts 的基线 opacity 是 0.55（base.css:363），桌面靠 hover 提到 1；触屏没有
+   hover，于是它在 App 里**每条气泡下面常驻一整行**，390px 宽还会折成两行。
+   Chat.jsx 曾有注释声称「已由 CSS 在 coarse pointer 隐藏」—— 那条规则并不存在。
+
+   隐藏它不丢功能：长按气泡的操作面板（Chat.jsx 的 bindLongPress → .msg-sheet）
+   覆盖了这一行 8 项里的 7 项（朗读/复制/重新生成/编辑/引用/书签/删除），
+   还多一项「生成台词卡」。唯一不在面板里的是「表情反应」，而那是当初按真机反馈
+   刻意移除的，双击气泡点 ❤️ 的入口仍在。
+   Web 壳不受影响（hover 在那边是好用的）。 */
+html[data-app="1"] .msg-acts { display: none; }

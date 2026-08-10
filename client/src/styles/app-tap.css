@@ -1,0 +1,72 @@
+/* ==========================================================================
+   触达下限兜底（App 壳）
+   --------------------------------------------------------------------------
+   全仓没有任何全局的 44px 规则 —— 所有 44px 都是逐个具名写在 app-experience-v3.css
+   里的 .qa-* 规则（数十处）。凡是没被单独照顾过的控件就一直是桌面尺寸：
+   实测 390px 下 .btn.sm ≈ 32px、.moment .acts button ≈ 18px（社区点赞/评论，
+   base.css:685 既无 padding 也无 min-height）、.tag-cloud-item ≈ 36px、
+   .draw-chip ≈ 32px、.help-q ≈ 40px。
+
+   —— 为什么不写一条「所有 button 都 min-height: 44px」——
+   那会一次性推翻 app-experience-v3.css 里几十处已经调好的具名尺寸，把一个可验证的
+   修复变成一场全站视觉回归。这里改为两段式：
+     ① 对**实测确实不达标的高频控件**逐条兜底（下面第一组）；
+     ② 对**至今没有任何 App 适配**的页面容器整体兜底（第二组）—— 那些页面里本来
+        就没有调好的尺寸可破坏，一刀切反而是最省事且最安全的。
+
+   逃生舱：给元素加 [data-compact] 可以豁免（密集表格、行内小标记等确实不该撑大）。
+
+   ⚠ 这一层必然改变像素，appdiff 会报差异 —— 那正是它该做的事。重建基线前请逐张
+   看过 diff 图，别先建基线再改。
+   ========================================================================== */
+
+/* ① 高频受害控件（实测尺寸见文件头） */
+/* .btn 是 Web 时代的基础按钮类（base.css:127-132，无 min-height，实测约 34px）。
+   App 自己的设计系统用的是 .qa-button（本来就 44px），所以 App 壳里还出现 .btn 的
+   地方，基本就是没被适配过的表面 —— 给它兜底不会动到调好的 qa-* 组件。 */
+html[data-app="1"] .btn:not([data-compact]),
+html[data-app="1"] .btn.sm:not([data-compact]),
+html[data-app="1"] .tag-cloud-item:not([data-compact]),
+html[data-app="1"] .draw-chip:not([data-compact]),
+html[data-app="1"] .help-q:not([data-compact]),
+/* 分段条（剧本市集 / AI 绘图 / 创作中心的 tab 切换，base.css:623 约 34px）。
+   它是这些页面上最常点的东西，却一直比正文按钮还小。 */
+html[data-app="1"] .tabs-bar button:not([data-compact]) {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 图标按钮的**宽度**同样要够。实测社区/收藏里的圆形图标按钮是 42×44、议会是
+   41×44 —— 高度够了宽度差 2~3px，一样点不准。只补到 44，不改内边距与视觉。 */
+html[data-app="1"] .btn:not([data-compact]) {
+  min-width: 44px;
+}
+
+/* 社区动态的点赞/评论/转发：base.css:685 是纯行内文字，约 18px —— 全站最小的可点元素。
+   这里只加内边距把热区撑到 44px，不动字号与颜色，视觉几乎不变。 */
+html[data-app="1"] .moment .acts button:not([data-compact]) {
+  min-height: 44px;
+  padding: 0 10px;
+  margin-inline-start: -10px;   /* 抵掉左侧内边距，保持原本的对齐位置 */
+}
+html[data-app="1"] .moment .acts button + button {
+  margin-inline-start: 0;
+}
+
+/* ② 分段器与分类条 —— 这两类是列表页最常点的东西，却都是 34px。
+   .seg（剧本市集的「广场/我创建的/我购买的」、AI 绘图的比例选择）
+   .cat-bar .cat-chip（分类筛选条）
+   两者都在横向滚动条里，撑高不影响布局宽度。 */
+html[data-app="1"] .seg > button:not([data-compact]),
+html[data-app="1"] .cat-bar .cat-chip:not([data-compact]) {
+  min-height: 44px;
+}
+
+/* ③ 至今零 App 适配的页面：整体兜底。
+   这些容器里没有任何调过的 qa-* 尺寸，一刀切不会破坏既有设计。
+   刻意不含 input/textarea —— 输入框的高度由各自表单控制，撑大反而难看。 */
+html[data-app="1"] .qa-unadapted :is(button, [role="button"], select, summary, a.btn):not([data-compact]) {
+  min-height: 44px;
+}

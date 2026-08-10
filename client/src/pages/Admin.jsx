@@ -6,6 +6,7 @@ import { BarChart, LineChart } from '../components/Charts.jsx';
 import { useRealtimeEvent } from '../realtime.jsx';
 import LogsTab from './AdminLogs.jsx';
 import { playAudioUrl, stopSpeaking } from '../voice.js';
+import AppBackButton from '../components/AppBackButton.jsx';
 
 export default function Admin() {
   const toast = useToast();
@@ -24,9 +25,13 @@ export default function Admin() {
   return (
     <>
       <div className="topbar">
+        <AppBackButton />
         <div style={{ flex: 1 }}><h1><Shield size={18} style={{ verticalAlign: '-3px' }} /> GM 控制台</h1><div className="sub">总览 · 用户 · 内容 · 议会 · 兑换码 · 举报 · 平台</div></div>
       </div>
-      <div className="page adm-page">
+      {/* qa-unadapted：这是 GM 工具页，刻意只保「可用」（有返回、热区达标、不横向溢出），
+          不做视觉重构 —— 1300 行的后台重画一遍性价比太低，且它不面向普通用户。
+          容器类让 app-tap.css 给里面的控件统一兜到 44px。 */}
+      <div className="page adm-page qa-unadapted">
         {!ready ? <div className="empty">载入中…</div> : denied ? (
           <div className="empty"><div className="big"><Shield size={46} /></div>需要 GM 权限</div>
         ) : (

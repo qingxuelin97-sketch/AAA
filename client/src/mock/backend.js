@@ -1538,7 +1538,33 @@ async function route(method, path, search, body, headers) {
   // ---------- upload ----------
   if (method === 'POST' && path === '/upload') {
     const file = body && body.get && body.get('file'); if (!file) return E('未收到文件');
-    const url = await fileToDataUrl(file); return J({ url, type: file.type?.startsWith('video') ? 'video' : file.type?.startsWith('audio') ? 'audio' : 'image' });
+    const url = await fileToDataUrl(file);
+    // 记一笔，好让 /upload/mine 有东西可列（演示态用 data-url 当「文件」）
+    db.user_uploads = db.user_uploads || [];
+    const filename = `demo-${Date.now()}-${db.user_uploads.length}`;
+    if (me) { db.user_uploads.push({ user_id: me.id, filename, mime: file.type || 'image/png', bytes: file.size || 0, created_at: now(), url }); save(); }
+    return J({ url, type: file.type?.startsWith('video') ? 'video' : file.type?.startsWith('audio') ? 'audio' : 'image' });
+  }
+  // 上传空间管理。真后端 upload.js:85/:98 早就有这两个端点，mock 一直缺 ——
+  // 于是设置页新加的「上传空间」入口在静态试玩里一点就报错。
+  if (method === 'GET' && path === '/upload/mine') {
+    need();
+    const rows = (db.user_uploads || []).filter(u => u.user_id === me.id).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    return J({
+      uploads: rows.map(u => ({ filename: u.filename, mime: u.mime, bytes: u.bytes, created_at: u.created_at, url: u.url, missing: false })),
+      total_bytes: rows.reduce((n, u) => n + (u.bytes || 0), 0),
+      quota_bytes: 200 * 1024 * 1024,
+    });
+  }
+  if ((m = P(/^\/upload\/(.+)$/)) && method === 'DELETE') {
+    need();
+    const name = decodeURIComponent(m[1]);
+    const before = (db.user_uploads || []).length;
+    const row = (db.user_uploads || []).find(u => u.user_id === me.id && u.filename === name);
+    if (!row) return E('资源不存在或不属于你', 404);
+    db.user_uploads = db.user_uploads.filter(u => !(u.user_id === me.id && u.filename === name));
+    save();
+    return J({ ok: true, freed_bytes: row.bytes || 0, file_removed: before !== db.user_uploads.length });
   }
 
   // ---------- characters ----------

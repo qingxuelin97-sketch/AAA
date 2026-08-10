@@ -40,7 +40,7 @@ export default function Tags() {
           <div className="sub">按标签发现角色与剧本 · 共 {tags.length} 个热门标签</div>
         </div>
       </div>
-      <div className="page">
+      <div className="page qa-unadapted">
         {loading ? (
           app ? <div className="empty">载入中…</div> : (
             <div className="lgw-skel-list" aria-hidden="true">{[0, 1, 2, 3].map(i => <div key={i} className="skel lgw-skel-sm" />)}</div>

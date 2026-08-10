@@ -28,6 +28,8 @@ import './app-ix-pages-d.css';
 import './app-rainbow.css';
 // 彩虹系动效层：keyframes / 呼吸循环 / 浮层退场 / 降级闸门。
 import './app-rainbow-motion.css';
+// 触达下限兜底：全仓没有任何全局 44px 规则，未被单独照顾的控件一直是桌面尺寸。
+import './app-tap.css';
 // 焦点环收口：主按钮的 CTA 投影（app-rainbow.css）晚于焦点规则加载，把环挤掉了。
 // 必须排在 app-rainbow* 之后，详见文件头注释。
 import './app-focus.css';

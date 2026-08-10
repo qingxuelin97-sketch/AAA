@@ -80,7 +80,7 @@ export default function Studio() {
         </Modal>
       )}
 
-      <div className="page">
+      <div className="page qa-unadapted">
         <div className="studio-cards">
           {cards.map((c, i) => (
             <div key={i} className="studio-card">

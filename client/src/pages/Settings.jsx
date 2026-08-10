@@ -132,6 +132,17 @@ export default function Settings() {
   const [showSecret, setShowSecret] = useState({});
   // 注意：必须在下面 if (!s) 提前返回之前声明（hooks 数量不能随渲染变化）
   const importRef = useRef(null);
+  // —— 上传空间管理 ——
+  // upload.js 在配额满时提示「请删除旧资源后再试」，而 /upload/mine 与
+  // DELETE /upload/:filename 这两个端点上一轮就加好了，却一直没有任何界面入口 ——
+  // 用户被要求做一件在界面上做不到的事，配额一旦占满就永久卡死。
+  //
+  // ⚠ 这两个 useState 必须待在这里（早返回之前）。我上一轮把它们写在
+  // `if (!s) return (…)`（本文件 :188）之后 —— 设置还没加载完时走早返回、少两个
+  // hook，加载完成后多两个，React 直接抛 #310「Rendered more hooks than during the
+  // previous render」，整个设置页白屏。是 appdiff 的三联对比图把它抓出来的。
+  const [uploads, setUploads] = useState(null);
+  const [uploadsBusy, setUploadsBusy] = useState(false);
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -307,12 +318,6 @@ export default function Settings() {
     try { const d = await api('/settings/clear-conversations', { method: 'POST' }); toast(`已清空 ${d.removed} 段对话`); }
     catch (e) { toast(e.message, 'err'); }
   };
-  // —— 上传空间管理 ——
-  // upload.js 在配额满时提示「请删除旧资源后再试」，而 /upload/mine 与
-  // DELETE /upload/:filename 这两个端点上一轮就加好了，却一直**没有任何界面入口** ——
-  // 用户被要求做一件在界面上做不到的事，配额一旦占满就永久卡死。
-  const [uploads, setUploads] = useState(null);
-  const [uploadsBusy, setUploadsBusy] = useState(false);
   const loadUploads = async () => {
     setUploadsBusy(true);
     try { setUploads(await api('/upload/mine')); }

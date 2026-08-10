@@ -62,8 +62,10 @@ export default class ErrorBoundary extends React.Component {
               {this.state.error.message}
             </pre>
           )}
+          {/* 这是整个崩溃页上唯一能点的东西，热区必须够 —— 此前实测只有 38px 高。
+              内联样式是有意的：错误边界不能依赖任何可能一起崩掉的样式层。 */}
           <button onClick={this.handleReload} style={{
-            padding: '10px 24px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            minHeight: 44, padding: '10px 24px', borderRadius: 8, border: 'none', cursor: 'pointer',
             background: 'var(--accent, #1d5fdb)', color: '#fff', fontSize: 14, fontWeight: 500,
           }}>
             刷新页面

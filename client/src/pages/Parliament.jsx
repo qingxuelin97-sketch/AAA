@@ -14,6 +14,7 @@ import {
   Users, Sparkles, BadgeCheck, Trash2, ChevronDown, ChevronUp, Lock, ScrollText, Feather,
   Music, VolumeX, MessageSquare, Search, Send, ArrowLeft
 } from 'lucide-react';
+import AppBackButton from '../components/AppBackButton.jsx';
 
 const BGM_KEY = 'huanyu_pl_bgm';
 
@@ -353,7 +354,11 @@ export default function Parliament() {
         <span className="pl-atmos-vig" />
       </div>
       <div className="topbar pl-topbar">
-        <button className="btn ghost pl-back" onClick={() => nav('/')} title="返回发现广场"><ArrowLeft size={16} /> <span className="pl-back-tx">广场</span></button>
+        {/* App 壳走统一返回（requestBack 认得 appBackTo）—— 这里原本硬编码 nav('/')，
+            从「我的」进来按返回会被扔到发现广场，正是 A8 那个问题。Web 保持原样。 */}
+        {isAppMode()
+          ? <AppBackButton label="返回" />
+          : <button className="btn ghost pl-back" onClick={() => nav('/')} title="返回发现广场"><ArrowLeft size={16} /> <span className="pl-back-tx">广场</span></button>}
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 className="pl-h1">幻域议会</h1>
           <div className="sub pl-sub">PARLIAMENT&nbsp;OF&nbsp;HUANYU</div>
@@ -371,7 +376,7 @@ export default function Parliament() {
         {ov?.is_councilor && !locked && <button className="btn primary pl-draftbtn" onClick={() => setCreating(true)}><Feather size={16} /> <span className="pl-btn-tx">起草议案</span></button>}
       </div>
 
-      <div className="page pl-page" style={{ maxWidth: 980 }}>
+      <div className="page pl-page qa-unadapted" style={{ maxWidth: 980 }}>
         <section className={'pl-hall' + (locked ? ' locked' : '')} ref={hallRef}>
           <div className="pl-hall-rays" aria-hidden="true" />
           <div className="pl-hall-sweep" aria-hidden="true" />

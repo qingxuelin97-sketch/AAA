@@ -619,6 +619,31 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
   assert.doesNotMatch(appFocusRules, /(input|textarea|contenteditable)/,
     'app-focus.css must not touch text inputs (their focus feedback is owned by their containers)');
 }
+// —— 触达下限与对话操作行 ——
+{
+  const tapCss = await readFile(new URL('./src/styles/app-tap.css', import.meta.url), 'utf8');
+  const entry = appEntrySource;
+  assert.ok(entry.includes('app-tap.css'), 'app-tap.css must be loaded by app-entry');
+  // 兜底层必须晚于页面层，否则会被各页的具名尺寸盖掉
+  assert.ok(entry.indexOf('app-tap.css') > entry.indexOf('app-ix-pages-d.css'),
+    'app-tap.css must load after the page layers so its 44px floor actually wins');
+  assert.match(tapCss, /min-height:\s*44px/, 'app-tap.css must set a 44px floor');
+  // 逃生舱必须在：确实该保持紧凑的控件要能豁免
+  assert.match(tapCss, /\[data-compact\]/, 'app-tap.css must offer a [data-compact] opt-out');
+  // 兜底层只管 App 壳，别泄漏到 Web
+  const tapRules = tapCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  const leaked = tapRules.split('\n').filter((l) => l.trim().endsWith('{') && !l.includes('[data-app="1"]'));
+  assert.deepEqual(leaked, [], `app-tap.css rules must stay App-fenced: ${leaked.join(' / ')}`);
+
+  // 对话页常驻操作行在 App 壳隐藏（长按面板已覆盖同一批操作）
+  assert.match(runtimeCss, /html\[data-app="1"\]\s*\.msg-acts\s*\{\s*display:\s*none/,
+    'App shell must hide the always-on .msg-acts row (the long-press sheet already covers it)');
+  // 而 Web 壳不能被牵连
+  const baseCss = await readFile(new URL('./src/styles/base.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(baseCss, /\.msg-acts\s*\{[^}]*display:\s*none/,
+    'Web shell must keep .msg-acts (hover works there)');
+}
+
 // —— 无底栏的可达页面必须有返回控件 ——
 // routeRegistry 的 dock 默认 false，只有 4 条一级 tab 为 true，AppLayout 也没有全局
 // 返回按钮。iOS PWA 没有硬件返回键 —— 这些页面一旦没有页内返回，进去就出不来。

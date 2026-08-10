@@ -18,7 +18,10 @@ export default function PublicShell({ title, subtitle, active, children }) {
   ];
 
   return (
-    <div className="pubpage">
+    // qa-unadapted：公共页（帮助/条款/关于）从没做过 App 适配 —— 实测 /help 上
+    // 87 个可点元素**全部**小于 44px。这里不重画视觉，只让 app-tap.css 把热区兜到
+    // 44px；类名只在 App 壳里有作用，Web 不受影响。
+    <div className={'pubpage' + (isAppMode() ? ' qa-unadapted' : '')}>
       <header className="pubpage-top">
         <button className="pubpage-brand" onClick={() => nav(user ? '/' : '/auth')}>
           <Logo size={34} radius={10} />

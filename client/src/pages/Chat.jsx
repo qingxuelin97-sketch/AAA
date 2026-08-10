@@ -925,7 +925,12 @@ export default function Chat() {
     catch { toast('复制失败', 'err'); }
   };
 
-  // 触屏长按消息 → 打开操作面板（hover 操作行在触屏不可用，已由 CSS 在 coarse pointer 隐藏）。
+  // 触屏长按消息 → 打开操作面板。
+  // ⚠ 这里原本写着「hover 操作行已由 CSS 在 coarse pointer 隐藏」—— 全仓根本没有那条
+  // 规则（grep `pointer: coarse` 只有两处，都与 .msg-acts 无关）。实际情况是 .msg-acts
+  // 的基线 opacity 就是 0.55（base.css:363），桌面与移动端**一直都可见**，
+  // 于是 App 里每条气泡下面常驻一整行按钮，390px 下还会折成两行。
+  // 现在由 app-controls 层在 App 壳真正隐藏它（本面板已覆盖同一批操作）。
   // 长按抬指后浏览器会补发一次 click：若落在刚展开的遮罩上会「开即被关」
   //（与 AppPressMenu 同源问题；居中气泡必现，贴底气泡恰好点进面板所以偶发）。
   // 记录展开时刻，350ms 内忽略遮罩点击。
