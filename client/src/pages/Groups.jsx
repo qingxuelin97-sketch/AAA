@@ -6,6 +6,7 @@ import { EmptyArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { Users, Plus, ArrowLeft, ChevronRight } from 'lucide-react';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 export default function Groups() {
   const app = isAppMode();
@@ -62,13 +63,17 @@ export default function Groups() {
               {[0, 1, 2].map(i => <div key={i} className="skel" style={{ height: 84 }} />)}
             </div>
           )
-        ) : !app && loadError && groups.length === 0 ? (
-          <div className="empty lgw-error" role="alert">
-            <span className="lgw-error-ic"><Users size={22} /></span>
-            <h2 className="lgw-error-title">群聊暂时无法载入</h2>
-            <p className="lgw-error-msg">{loadError}</p>
-            <button className="btn primary lgw-error-retry" onClick={() => load()}>重新载入</button>
-          </div>
+        ) : loadError && groups.length === 0 ? (
+          app ? (
+            <AppErrorState kind="group" title="群聊暂时无法载入" message={loadError} onRetry={() => load()} />
+          ) : (
+            <div className="empty lgw-error" role="alert">
+              <span className="lgw-error-ic"><Users size={22} /></span>
+              <h2 className="lgw-error-title">群聊暂时无法载入</h2>
+              <p className="lgw-error-msg">{loadError}</p>
+              <button className="btn primary lgw-error-retry" onClick={() => load()}>重新载入</button>
+            </div>
+          )
         ) : groups.length === 0 ? (
           app ? (
             <section className="qa-groups-empty" aria-labelledby="qa-groups-empty-title">

@@ -7,6 +7,7 @@ import { AppEmptyArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { ArrowLeft, BookOpen, Plus, Globe, BookLock, BookCheck, ArrowRight, Search, Sparkles, X,
   Image as ImageIcon, Layout, Sliders, Layers, Variable, GitBranch } from 'lucide-react';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 // 能力徽章定义：按字段是否有数据派生，与编辑器一致。
 const CAPS = [
@@ -109,13 +110,17 @@ export default function Worldbooks() {
         </div>
 
         {loading ? <GridSkeleton n={4} /> :
-          !appMode && loadError && list.length === 0 ? (
-            <div className="empty wb-empty lgw-error" role="alert">
-              <span className="lgw-error-ic"><BookLock size={22} /></span>
-              <h2 className="lgw-error-title">世界书暂时无法载入</h2>
-              <p className="lgw-error-msg">{loadError}</p>
-              <button className="btn primary lgw-error-retry" onClick={() => load()}>重新载入</button>
-            </div>
+          loadError && list.length === 0 ? (
+            app ? (
+              <AppErrorState kind="worldbooks" title="世界书暂时无法载入" message={loadError} onRetry={() => load()} />
+            ) : (
+              <div className="empty wb-empty lgw-error" role="alert">
+                <span className="lgw-error-ic"><BookLock size={22} /></span>
+                <h2 className="lgw-error-title">世界书暂时无法载入</h2>
+                <p className="lgw-error-msg">{loadError}</p>
+                <button className="btn primary lgw-error-retry" onClick={() => load()}>重新载入</button>
+              </div>
+            )
           ) :
           visibleList.length === 0 ? (
             <div className={appMode ? 'empty wb-empty qa-worldbooks-empty' : 'empty wb-empty lgw-empty'}>

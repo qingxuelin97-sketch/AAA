@@ -426,7 +426,9 @@ function Tab({ t, unread, dmUnread, curPath }) {
     try {
       // KeepAlive 后其它 tab 的 pane 也在 DOM 里，滚动容器必须在活跃 pane 内找
       const scope = document.querySelector('.tab-pane:not(.off)') || document;
-      const inner = scope.querySelector('.feed-root, .msgs, .apphome, .pf, .cvx-scroll, .vm-scroll');
+      // 这份清单要与 appgestures.js 关心的内滚容器保持一致：好友/私信与创作中心
+      // 收益明细同样是「页面不滚、内部滚」，此前漏在外面，点 Tab 回不了顶。
+      const inner = scope.querySelector('.feed-root, .msgs, .apphome, .pf, .cvx-scroll, .vm-scroll, .fr-scroll, .fr-dm-scroll, .inc-detail-body');
       inner?.scrollTo?.({ top: 0, behavior: 'smooth' });
     } catch { /* */ }
   };

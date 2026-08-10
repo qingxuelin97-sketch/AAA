@@ -24,6 +24,7 @@ import { useAppTabActive } from '../appTabActivity.js';
 import {
   Bell, BellOff, ChevronRight, Heart, Inbox, MessageCircle, Pin, ScrollText, Search, UserRound, Users, X, Flame, Ellipsis
 } from 'lucide-react';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 
 function AppSection({ appMode, children, ...props }) {
@@ -353,12 +354,17 @@ export default function Messages() {
                 <AppButton variant="secondary" size="sm" onClick={() => { setConvs(null); loadConvs(); }}>重新载入</AppButton>
               </div>
             )}
-            {!appMode && convs && convs.length === 0 && convError && (
-              <div className="msgs-empty msgs-error lgw-error" role="alert">
-                <span className="lgw-error-ic"><MessageCircle size={20} /></span>
-                <p className="lgw-error-msg">{convError}</p>
-                <button className="btn primary lgw-error-retry" onClick={() => { setConvs(null); loadConvs(); }}>重新载入</button>
-              </div>
+            {convs && convs.length === 0 && convError && (
+              appMode ? (
+                <AppErrorState kind="chat" title="会话列表暂时无法载入" message={convError}
+                  onRetry={() => { setConvs(null); loadConvs(); }} />
+              ) : (
+                <div className="msgs-empty msgs-error lgw-error" role="alert">
+                  <span className="lgw-error-ic"><MessageCircle size={20} /></span>
+                  <p className="lgw-error-msg">{convError}</p>
+                  <button className="btn primary lgw-error-retry" onClick={() => { setConvs(null); loadConvs(); }}>重新载入</button>
+                </div>
+              )
             )}
             {convs && convs.length === 0 && !convError && (
               <div className="msgs-empty">
@@ -409,12 +415,17 @@ export default function Messages() {
               <AppButton variant="secondary" size="sm" onClick={() => setFavs(null)}>重新载入</AppButton>
             </div>
           )}
-          {!appMode && favs && favs.length === 0 && favError && (
-            <div className="msgs-empty msgs-error lgw-error" role="alert">
-              <span className="lgw-error-ic"><Heart size={20} /></span>
-              <p className="lgw-error-msg">{favError}</p>
-              <button className="btn primary lgw-error-retry" onClick={() => setFavs(null)}>重新载入</button>
-            </div>
+          {favs && favs.length === 0 && favError && (
+            appMode ? (
+              <AppErrorState kind="favorites" title="收藏暂时无法载入" message={favError}
+                onRetry={() => setFavs(null)} />
+            ) : (
+              <div className="msgs-empty msgs-error lgw-error" role="alert">
+                <span className="lgw-error-ic"><Heart size={20} /></span>
+                <p className="lgw-error-msg">{favError}</p>
+                <button className="btn primary lgw-error-retry" onClick={() => setFavs(null)}>重新载入</button>
+              </div>
+            )
           )}
           {favs && favs.length === 0 && !favError && (
             <div className="msgs-empty">

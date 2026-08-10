@@ -8,6 +8,7 @@ import { AppEmptyArt, EmptyArt, CoverArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { Search as SearchIcon, Drama, ScrollText, Play, User, X, History, ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 const TABS = [
   { k: 'user', label: '用户', ph: '用户 ID（如 U3）或用户名 / 昵称' },
@@ -159,13 +160,17 @@ export default function Search() {
           <div className={app ? 'qa-search-loading' : undefined} aria-hidden="true">
             {[72, 72, 72].map((h, i) => <div key={i} className="skel" style={{ height: h, marginBottom: 10 }} />)}
           </div>
-        ) : !app && searchError && !res ? (
-          <div className="empty lgw-error" role="alert">
-            <span className="lgw-error-ic"><RefreshCw size={22} /></span>
-            <h2 className="lgw-error-title">搜索暂时不可用</h2>
-            <p className="lgw-error-msg">{searchError}</p>
-            <button className="btn primary lgw-error-retry" onClick={() => run(q.trim(), { manual: true })}><RefreshCw size={15} /> 重新搜索</button>
-          </div>
+        ) : searchError && !res ? (
+          app ? (
+            <AppErrorState kind="search" title="搜索暂时不可用" message={loadError} onRetry={() => run(q.trim(), { manual: true })} />
+          ) : (
+            <div className="empty lgw-error" role="alert">
+              <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+              <h2 className="lgw-error-title">搜索暂时不可用</h2>
+              <p className="lgw-error-msg">{searchError}</p>
+              <button className="btn primary lgw-error-retry" onClick={() => run(q.trim(), { manual: true })}><RefreshCw size={15} /> 重新搜索</button>
+            </div>
+          )
         ) : !res ? (
           <div className={app ? 'empty qa-search-empty' : 'empty'}><EmptyArt kind="search" />输入上方关键词或 ID 开始搜索</div>
         ) : res.tab === 'user' ? (

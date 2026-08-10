@@ -4,6 +4,7 @@ import { api, useAuth, assetUrl } from '../api.jsx';
 import { useToast, Avatar, CountUp, CoinIcon, Modal } from '../ui.jsx';
 import { BarChart, LineChart } from '../components/Charts.jsx';
 import { Eye, Heart, Star, Play, Users, Drama, ScrollText, TrendingUp, Sparkles, BarChart3, LineChart as LineIcon, Gift, Crown, Check, ChevronRight, Coins, TrendingDown, Calendar, BookOpen, Globe2, Feather } from 'lucide-react';
+import AppBackButton from '../components/AppBackButton.jsx';
 
 const fmt = (n) => (n >= 10000 ? (n / 10000).toFixed(1) + 'w' : String(n ?? 0));
 
@@ -28,7 +29,7 @@ export default function Studio() {
 
   const load = () => api('/me/studio').then(setData).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
-  if (!data) return <><div className="topbar"><div style={{ flex: 1 }}><h1>创作中心</h1><div className="sub">作品数据、收益分析与创作者分成计划</div></div></div><div className="page"><div className="empty">载入中…</div></div></>;
+  if (!data) return <><div className="topbar"><AppBackButton /><div style={{ flex: 1 }}><h1>创作中心</h1><div className="sub">作品数据、收益分析与创作者分成计划</div></div></div><div className="page"><div className="empty">载入中…</div></div></>;
   const t = data.totals;
   const plan = data.revenue_plan;
 
@@ -56,6 +57,7 @@ export default function Studio() {
   return (
     <>
       <div className="topbar">
+        <AppBackButton />
         <div style={{ flex: 1 }}><h1><TrendingUp size={20} style={{ verticalAlign: -3, marginRight: 6 }} />创作中心</h1>
           <div className="sub">作品数据、收益分析与创作者分成计划</div></div>
         <button className="btn" onClick={() => setGuideOpen(true)}><BookOpen size={15} /> 创作指南</button>

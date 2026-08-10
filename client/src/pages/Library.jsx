@@ -7,6 +7,7 @@ import { EmptyArt, CoverArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { ArrowLeft, Globe, MessageCircle, Plus, RefreshCw, Search, X, Upload } from 'lucide-react';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 export default function Library() {
   const appMode = isAppMode();
@@ -139,13 +140,17 @@ export default function Library() {
           </div>
         )}
         {loading ? <GridSkeleton n={6} /> :
-          !appMode && loadError && chars.length === 0 ? (
-            <div className="empty lgw-error" role="alert">
-              <span className="lgw-error-ic"><RefreshCw size={22} /></span>
-              <h2 className="lgw-error-title">角色库暂时无法载入</h2>
-              <p className="lgw-error-msg">{loadError}</p>
-              <button className="btn primary lgw-error-retry" onClick={() => { setLoading(true); load(); }}><RefreshCw size={15} /> 重新载入</button>
-            </div>
+          loadError && chars.length === 0 ? (
+            app ? (
+              <AppErrorState kind="library" title="角色库暂时无法载入" message={loadError} onRetry={() => { setLoading(true); load(); }} />
+            ) : (
+              <div className="empty lgw-error" role="alert">
+                <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+                <h2 className="lgw-error-title">角色库暂时无法载入</h2>
+                <p className="lgw-error-msg">{loadError}</p>
+                <button className="btn primary lgw-error-retry" onClick={() => { setLoading(true); load(); }}><RefreshCw size={15} /> 重新载入</button>
+              </div>
+            )
           ) :
           visibleChars.length === 0 ? (
             <div className={appMode ? 'empty qa-library-empty' : 'empty'}>

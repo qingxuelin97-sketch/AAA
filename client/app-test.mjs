@@ -619,6 +619,52 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
   assert.doesNotMatch(appFocusRules, /(input|textarea|contenteditable)/,
     'app-focus.css must not touch text inputs (their focus feedback is owned by their containers)');
 }
+// —— 无底栏的可达页面必须有返回控件 ——
+// routeRegistry 的 dock 默认 false，只有 4 条一级 tab 为 true，AppLayout 也没有全局
+// 返回按钮。iOS PWA 没有硬件返回键 —— 这些页面一旦没有页内返回，进去就出不来。
+{
+  const pagesDir = new URL('./src/pages/', import.meta.url);
+  const NEED_BACK = ['Community.jsx', 'Tags.jsx', 'Studio.jsx', 'Draw.jsx',
+    'Insights.jsx', 'Publish.jsx', 'Scripts.jsx', 'Favorites.jsx'];
+  for (const file of NEED_BACK) {
+    const src = await readFile(new URL(file, pagesDir), 'utf8');
+    assert.ok(src.includes('AppBackButton'),
+      `${file} has no dock and no back control — App users get trapped there`);
+  }
+  // 返回目标不许写死：AppBackButton 走 requestBack()，它才认得 location.state.appBackTo
+  // （从「我的」进来时回「我的」，而不是注册表里那个静态 parent）。
+  const backSrc = await readFile(new URL('./src/components/AppBackButton.jsx', import.meta.url), 'utf8');
+  assert.match(backSrc, /requestBack\(\)/, 'AppBackButton must delegate to requestBack() rather than a hardcoded target');
+  const profileSrc = await readFile(new URL('AppProfile.jsx', pagesDir), 'utf8');
+  assert.match(profileSrc, /appBackTo: '\/me'/, 'AppProfile entries must carry appBackTo so back returns to 我的');
+}
+
+// —— 加载失败必须在 App 壳里也有出口 ——
+// Web 的三态（.lgw-error / .lgw-empty）被 web-lumen-states.css 用
+// `html:not([data-app="1"])` 整段围栏，App 下那些类名一点样式都没有。所以任何页面
+// 只要用了 .lgw-error，就必须同时给 App 壳一条分支，否则网络失败时用户看到的是
+// 一片「这里还没有内容」的正常空态：既不知道出了错，也没有任何重试入口。
+{
+  const pagesDir = new URL('./src/pages/', import.meta.url);
+  const pageFiles = (await readdir(pagesDir)).filter((f) => f.endsWith('.jsx'));
+  // 这几页用的是自己手写的 App 分支（早于共享组件），同样给了插画 + 重试，允许。
+  // 新增页面请直接用 components/AppErrorState.jsx，不要往这个名单里加。
+  const HAND_ROLLED_APP_BRANCH = new Set(['Community.jsx', 'Wallet.jsx', 'Settings.jsx']);
+  // Publish 用的是窄条 .lgw-error-inline（嵌在区块里，整屏错误态会喧宾夺主），
+  // App 皮在 app-runtime.css 里单独补过。
+  const INLINE_ONLY = new Set(['Publish.jsx']);
+  const missing = [];
+  for (const file of pageFiles) {
+    const src = await readFile(new URL(file, pagesDir), 'utf8');
+    if (!src.includes('lgw-error')) continue;
+    if (src.includes('AppErrorState')) continue;
+    if (HAND_ROLLED_APP_BRANCH.has(file) || INLINE_ONLY.has(file)) continue;
+    missing.push(file);
+  }
+  assert.deepEqual(missing, [],
+    `these pages render .lgw-error with no App-shell counterpart (App users would see a blank empty state instead of an error): ${missing.join(', ')}`);
+}
+
 assert.doesNotMatch(appLayerCss, /background-clip:\s*text/, 'App layers must not restore gradient text');
 // The unfenced `.cps-item.hue-*` palette block is Web-owned (the App fence
 // overrides it with semantic tones); exclude only those lines from the ban.

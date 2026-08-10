@@ -5,6 +5,8 @@ import { useToast } from '../ui.jsx';
 import { EmptyArt, AppEmptyArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
 import { Tags as TagsIcon, RefreshCw } from 'lucide-react';
+import AppBackButton from '../components/AppBackButton.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 // 标签广场：聚合公开角色与剧本的 tags 字段，按热度排成标签云。
 // 点击标签跳转到搜索页（角色卡 tab）按关键词检索 —— 复用现有 LIKE 搜索，无需新后端查询。
@@ -17,9 +19,10 @@ export default function Tags() {
   const [loadError, setLoadError] = useState('');
 
   const load = () => {
-    if (!app) { setLoading(true); setLoadError(''); }
+    if (!app) setLoading(true);
+    setLoadError('');
     return api('/meta/tags').then(d => setTags(d.tags || []))
-      .catch(e => { if (!app) setLoadError(e.message || '标签载入失败，请稍后重试'); toast(e.message, 'err'); })
+      .catch(e => { setLoadError(e.message || '标签载入失败，请稍后重试'); toast(e.message, 'err'); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -31,6 +34,7 @@ export default function Tags() {
   return (
     <>
       <div className="topbar">
+        <AppBackButton />
         <div style={{ flex: 1 }}>
           <h1>标签广场</h1>
           <div className="sub">按标签发现角色与剧本 · 共 {tags.length} 个热门标签</div>
@@ -41,13 +45,17 @@ export default function Tags() {
           app ? <div className="empty">载入中…</div> : (
             <div className="lgw-skel-list" aria-hidden="true">{[0, 1, 2, 3].map(i => <div key={i} className="skel lgw-skel-sm" />)}</div>
           )
-        ) : !app && loadError && tags.length === 0 ? (
-          <div className="empty lgw-error" role="alert">
-            <span className="lgw-error-ic"><TagsIcon size={22} /></span>
-            <h2 className="lgw-error-title">标签广场暂时无法载入</h2>
-            <p className="lgw-error-msg">{loadError}</p>
-            <button className="btn primary lgw-error-retry" onClick={() => void load()}><RefreshCw size={15} /> 重新载入</button>
-          </div>
+        ) : loadError && tags.length === 0 ? (
+          app ? (
+            <AppErrorState kind="generic" title="标签广场暂时无法载入" message={loadError} onRetry={() => void load()} />
+          ) : (
+            <div className="empty lgw-error" role="alert">
+              <span className="lgw-error-ic"><TagsIcon size={22} /></span>
+              <h2 className="lgw-error-title">标签广场暂时无法载入</h2>
+              <p className="lgw-error-msg">{loadError}</p>
+              <button className="btn primary lgw-error-retry" onClick={() => void load()}><RefreshCw size={15} /> 重新载入</button>
+            </div>
+          )
         ) : tags.length === 0 ? (
             app ? (
               <div className="empty" style={{ padding: 60 }}>

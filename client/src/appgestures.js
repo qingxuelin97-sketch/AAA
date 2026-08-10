@@ -34,6 +34,33 @@ export function useAppGestures(scrollRef, handlers) {
       }
       return root.scrollTop || 0;
     };
+    // 找出这次触摸真正会滚动的那个容器。
+    //
+    // 原来只认 [data-scroll-root]，而全仓只有 DiscoverFeed 一个元素带这个属性。
+    // 于是所有「页面本身不滚、内部容器滚」的页面（VIP 的 .vm-scroll、角色详情的
+    // .cvx-scroll、好友/私信的 .fr-scroll / .fr-dm-scroll、创作中心收益明细的
+    // .inc-detail-body）都回落到 document.scrollingElement —— 而 .app-main 自己
+    // 从不滚动，scrollTop 恒为 0 → 恒判「已在页顶」→ onMovePull 对 touchmove
+    // preventDefault，把内层滚动整个吃掉，列表拖不动。
+    //
+    // 改为按 CSS 计算值向上找第一个真正可滚的祖先。这样新增内滚容器不必再记得
+    // 去加属性 —— 分散标注必然再漏（顶栏安全区那一轮已经证明过一次）。
+    // [data-scroll-root] 保留为显式覆盖，优先级最高。
+    const findScrollRoot = (target) => {
+      const explicit = target?.closest?.('[data-scroll-root]');
+      if (explicit) return explicit;
+      let node = target instanceof Element ? target : null;
+      while (node && node !== document.body && node !== document.documentElement) {
+        // 只有内容确实溢出时才算 —— 否则 overflow:auto 但没内容的容器会把
+        // 下拉刷新永久关掉。
+        if (node.scrollHeight - node.clientHeight > 1) {
+          const oy = getComputedStyle(node).overflowY;
+          if (oy === 'auto' || oy === 'scroll') return node;
+        }
+        node = node.parentElement;
+      }
+      return document.scrollingElement;
+    };
     // 非 passive 的 touchmove 只在「本次手势可能变成下拉刷新」（起手时已在页顶）
     // 时临时挂上、touchend 即摘。曾经常驻 { passive: false } —— 全 APP 每一次
     // 滚动的每一帧合成器都要停下来等主线程跑完监听器才敢滚，主线程一忙
@@ -95,7 +122,7 @@ export function useAppGestures(scrollRef, handlers) {
       const t = e.touches[0];
       sx = t.clientX; sy = t.clientY; mode = ''; pull = 0; fired = false;
       fromEdge = sx <= 24;
-      gestureScrollRoot = e.target.closest?.('[data-scroll-root]') || document.scrollingElement;
+      gestureScrollRoot = findScrollRoot(e.target);
       allowHorizontal = !e.target.closest?.(NO_TAB_SWIPE);
       allowPull = !e.target.closest?.(NO_PULL);
       tracking = allowHorizontal || allowPull;

@@ -74,6 +74,14 @@ export default function AppProfile() {
   const nav = useNav();
   const toast = useToast();
   const appMode = isAppMode();
+  // 从「我的」进二级页时把返回目标带上。
+  //
+  // 不带的话，返回只能落到注册表里的静态 parent，而 /tags、/parliament 的 parent
+  // 是「发现」—— 用户从「我的」点进去、按返回却被扔到另一个 Tab，而且用的是
+  // replace，再按一次也回不来。appNavigation.jsx 的 requestBack 早就优先读
+  // location.state.appBackTo，只是全仓一直只有 /notifications 一处在写。
+  // 这里给「我的」页所有入口统一带上，AppBackButton 与硬件返回键都会遵守。
+  const navBack = appMode ? { state: { appBackTo: '/me' } } : undefined;
   const [stats, setStats] = useState(null);
   const [unread, setUnread] = useState(0);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false); // S7-G10 新功能 Sheet
@@ -280,7 +288,7 @@ export default function AppProfile() {
       {/* 快捷功能条 */}
       <div className="pf-quick">
         {QUICK.map(q => (
-          <button key={q.label + q.to} data-tone={q.tone} onClick={() => nav(q.to)}>
+          <button key={q.label + q.to} data-tone={q.tone} onClick={() => nav(q.to, navBack)}>
             <span className="pf-quick-ic"><q.ic size={20} />{q.tag && <i className="pf-quick-tag">{q.tag}</i>}</span>
             <span>{q.label}</span>
           </button>
@@ -305,7 +313,7 @@ export default function AppProfile() {
           <h4>{g.title}</h4>
           <div className="pf-grid stagger-in">
             {g.items.map((n, i) => (
-              <button key={n.to + n.label} className="pf-cell" style={{ '--i': i }} onClick={() => nav(n.to)}>
+              <button key={n.to + n.label} className="pf-cell" style={{ '--i': i }} onClick={() => nav(n.to, navBack)}>
                 <span className="pf-cell-ic"><n.ic size={20} />{n.badge === 'noti' && unread > 0 && <i className="pf-dot sm" />}</span>
                 <span>{n.label}</span>
               </button>

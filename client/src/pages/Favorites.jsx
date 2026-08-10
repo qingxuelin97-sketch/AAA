@@ -6,6 +6,8 @@ import { EmptyArt, CoverArt } from '../art.jsx';
 import { AppButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { Heart, RefreshCw } from 'lucide-react';
+import AppBackButton from '../components/AppBackButton.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 export default function Favorites() {
   const app = isAppMode();
@@ -49,6 +51,7 @@ export default function Favorites() {
   return (
     <>
       <div className="topbar">
+        <AppBackButton />
         <div style={{ flex: 1 }}>
           <h1>我的收藏</h1>
           <div className="sub">收藏的角色，随时开启对话</div>
@@ -67,13 +70,17 @@ export default function Favorites() {
         )}
         {loading ? (
           <GridSkeleton n={4} />
-        ) : !app && loadError && chars.length === 0 ? (
-          <div className="empty lgw-error" role="alert">
-            <span className="lgw-error-ic"><RefreshCw size={22} /></span>
-            <h2 className="lgw-error-title">收藏暂时无法载入</h2>
-            <p className="lgw-error-msg">{loadError}</p>
-            <button className="btn primary lgw-error-retry" onClick={() => load()}><RefreshCw size={15} /> 重新载入</button>
-          </div>
+        ) : loadError && chars.length === 0 ? (
+          app ? (
+            <AppErrorState kind="favorites" title="收藏暂时无法载入" message={loadError} onRetry={() => load()} />
+          ) : (
+            <div className="empty lgw-error" role="alert">
+              <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+              <h2 className="lgw-error-title">收藏暂时无法载入</h2>
+              <p className="lgw-error-msg">{loadError}</p>
+              <button className="btn primary lgw-error-retry" onClick={() => load()}><RefreshCw size={15} /> 重新载入</button>
+            </div>
+          )
         ) : chars.length === 0 ? (
           app
             ? <div className="empty"><EmptyArt kind="favorites" />还没有收藏角色<br /><span style={{ fontSize: 13 }}>在发现广场点亮心形，喜欢的角色就会住进这里</span></div>

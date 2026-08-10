@@ -6,6 +6,8 @@ import { ScrollText, Play, Plus, Inbox, RefreshCw } from 'lucide-react';
 import { CategoryIcon } from '../assets.jsx';
 import { EmptyArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
+import AppBackButton from '../components/AppBackButton.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 function ScriptCard({ s, nav, extra }) {
   return (
@@ -65,15 +67,19 @@ export default function Scripts() {
       .finally(() => setLoading(false));
   };
 
-  // Web 门控错误卡（App 保持原有 toast 行为与 DOM 不变）
-  const webError = (onRetry) => (
+  // 失败卡：App 走统一的 AppErrorState，Web 保持 lgw 三态原样。
+  // 名字仍叫 webError 是历史遗留 —— 它此前只在 Web 渲染，App 侧只弹一条 toast，
+  // 于是三个 tab 在 App 里加载失败时都只剩一片空白。
+  const webError = (onRetry) => (app ? (
+    <AppErrorState kind="scripts" title="剧本暂时无法载入" message={loadError} onRetry={onRetry} />
+  ) : (
     <div className="empty lgw-error" role="alert">
       <span className="lgw-error-ic"><RefreshCw size={22} /></span>
       <h2 className="lgw-error-title">剧本暂时无法载入</h2>
       <p className="lgw-error-msg">{loadError}</p>
       <button className="btn primary lgw-error-retry" onClick={onRetry}><RefreshCw size={15} /> 重新载入</button>
     </div>
-  );
+  ));
 
   useEffect(() => {
     if (tab === 'plaza') loadPlaza();
@@ -86,6 +92,7 @@ export default function Scripts() {
   return (
     <>
       <div className="topbar">
+        <AppBackButton />
         <div style={{ flex: 1 }}>
           <h1>剧本市集</h1>
           <div className="sub">探索付费与免费的沉浸式剧本，开启你的角色扮演冒险</div>
@@ -125,7 +132,7 @@ export default function Scripts() {
             </div>
 
             {loading ? <GridSkeleton n={8} /> :
-              !appMode && loadError && scripts.length === 0 ? webError(loadPlaza) :
+              loadError && scripts.length === 0 ? webError(loadPlaza) :
               scripts.length === 0 ? (
                 appMode ? <div className="empty"><div className="big"><ScrollText size={46} /></div>暂无剧本</div> : (
                   <div className="empty lgw-empty">
@@ -148,7 +155,7 @@ export default function Scripts() {
 
         {tab === 'created' && (
           loading ? <GridSkeleton n={6} /> :
-            !appMode && loadError && mine.created.length === 0 ? webError(loadMine) :
+            loadError && mine.created.length === 0 ? webError(loadMine) :
             mine.created.length === 0 ? (
               <div className="empty">
                 <div className="big"><ScrollText size={46} /></div>你还没有创建剧本
@@ -163,7 +170,7 @@ export default function Scripts() {
 
         {tab === 'purchased' && (
           loading ? <GridSkeleton n={6} /> :
-            !appMode && loadError && mine.purchased.length === 0 ? webError(loadMine) :
+            loadError && mine.purchased.length === 0 ? webError(loadMine) :
             mine.purchased.length === 0 ? (
               appMode ? <div className="empty"><div className="big"><Inbox size={46} /></div>你还没有购买剧本</div> : (
                 <div className="empty lgw-empty">

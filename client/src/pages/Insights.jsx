@@ -12,6 +12,7 @@ import {
   Orbit, MessageCircle, MessagesSquare, CalendarDays, Flame, Sparkles,
   BookOpen, ScrollText, Feather, Wand2, Heart, Users, UserRound, TrendingUp, TrendingDown, RefreshCw
 } from 'lucide-react';
+import AppBackButton from '../components/AppBackButton.jsx';
 
 // 星轨 — 个人幻域旅程数据页。全部只读聚合；单系列条形图用 CSS 画，
 // 深浅色的图表用色已按对比度校验（--chart-fill）。
@@ -74,6 +75,7 @@ export default function Insights() {
   return (
     <>
       <div className="topbar">
+        <AppBackButton />
         <div style={{ flex: 1 }}>
           <h1>星轨</h1>
           <div className="sub">你在幻域留下的每一道轨迹</div>

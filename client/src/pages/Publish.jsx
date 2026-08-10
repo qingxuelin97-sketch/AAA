@@ -5,6 +5,7 @@ import { useToast } from '../ui.jsx';
 import { CoverArt, EmptyArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
 import { Drama, ScrollText, Users, ArrowRight, Globe, RefreshCw } from 'lucide-react';
+import AppBackButton from '../components/AppBackButton.jsx';
 
 export default function Publish() {
   const nav = useNavigate();
@@ -15,9 +16,9 @@ export default function Publish() {
   const [loadError, setLoadError] = useState('');
 
   const load = () => {
-    if (!appMode) setLoadError('');
+    setLoadError('');
     return api('/characters/mine').then(d => setMine(d.characters))
-      .catch(e => { if (!appMode) setLoadError(e.message || '角色列表载入失败，请稍后重试'); })
+      .catch(e => { setLoadError(e.message || '角色列表载入失败，请稍后重试'); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -35,7 +36,7 @@ export default function Publish() {
 
   return (
     <>
-      <div className="topbar"><div style={{ flex: 1 }}><h1>发布作品</h1><div className="sub">把你的创意带给整个幻域社区</div></div></div>
+      <div className="topbar"><AppBackButton /><div style={{ flex: 1 }}><h1>发布作品</h1><div className="sub">把你的创意带给整个幻域社区</div></div></div>
       <div className={appMode ? 'page qa-publish' : 'page'} style={{ maxWidth: 900 }}>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
           {OPTS.map(o => (
@@ -51,7 +52,7 @@ export default function Publish() {
         <div className="section-title" style={{ marginTop: 34 }}><h2>把已有角色发布到广场</h2></div>
         {!appMode && loading ? (
           <div className="lgw-skel-list" aria-hidden="true">{[0, 1, 2].map(i => <div key={i} className="skel" />)}</div>
-        ) : !appMode && loadError && mine.length === 0 ? (
+        ) : loadError && mine.length === 0 ? (
           <div className="lgw-error-inline" role="alert">
             <span>{loadError}</span>
             <button className="btn sm" onClick={() => void load()}><RefreshCw size={14} /> 重试</button>

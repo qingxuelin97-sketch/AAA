@@ -18,6 +18,7 @@ import {
   Users, UserPlus, Search, Send, Check, X, MessageCircle, ArrowLeft, MoreVertical,
   Trash2, BadgeCheck, Inbox,
 } from 'lucide-react';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 export default function Friends() {
   const toast = useToast();
@@ -202,12 +203,17 @@ export default function Friends() {
             <div className="lgw-skel-list" style={{ padding: '10px 12px' }} aria-hidden="true">
               {[0, 1, 2, 3].map(i => <div key={i} className="skel" />)}
             </div>
-          ) : !appMode && frError && friends.length === 0 ? (
-            <div className="fr-empty lgw-error" role="alert">
-              <span className="lgw-error-ic"><Users size={20} /></span>
-              <p className="lgw-error-msg">{frError}</p>
-              <button className="btn primary lgw-error-retry" onClick={() => { setFrLoading(true); loadFriends(); }}>重新载入</button>
-            </div>
+          ) : frError && friends.length === 0 ? (
+            appMode ? (
+              <AppErrorState kind="friends" title="好友列表暂时无法载入" message={frError}
+                onRetry={() => { setFrLoading(true); loadFriends(); }} />
+            ) : (
+              <div className="fr-empty lgw-error" role="alert">
+                <span className="lgw-error-ic"><Users size={20} /></span>
+                <p className="lgw-error-msg">{frError}</p>
+                <button className="btn primary lgw-error-retry" onClick={() => { setFrLoading(true); loadFriends(); }}>重新载入</button>
+              </div>
+            )
           ) : friends.length === 0 && requests.incoming.length === 0 ? (
             appMode
               ? <div className="fr-empty"><EmptyArt kind="friends" size={116} />还没有好友<br /><span>点击右上角「添加」结识新朋友</span></div>

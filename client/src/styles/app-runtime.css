@@ -261,3 +261,27 @@ html[data-app="1"][data-perf="lite"] .app-tabbar {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* —— 行内失败条（App 壳）——
+   Web 的 .lgw-error-inline 定义在 web-lumen-states.css 里，而那份文件整段被
+   `html:not([data-app="1"])` 围栏，所以 App 下这个类**一点样式都没有**：
+   创作页的角色列表、AI 绘图的绘廊，加载失败时只会渲染出一行无格式的裸文字。
+   这两处是嵌在区块里的窄条，用整屏的 AppErrorState 会喧宾夺主，所以只补皮。
+   （整屏那一类已统一走 components/AppErrorState.jsx。） */
+html[data-app="1"] .lgw-error-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--ix-r-card, 14px);
+  font-size: 13px;
+  line-height: 1.5;
+  background: color-mix(in srgb, var(--ix-danger) 8%, transparent);
+  color: var(--ix-danger);
+}
+html[data-app="1"] .lgw-error-inline .btn {
+  flex: none;
+  min-height: 44px;      /* 触达下限：这是这一条里唯一可点的东西 */
+  padding-inline: 14px;
+}

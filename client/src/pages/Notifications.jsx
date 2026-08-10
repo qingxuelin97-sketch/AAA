@@ -6,6 +6,7 @@ import { EmptyArt } from '../art.jsx';
 import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { isAppMode } from '../appmode.js';
 import { ArrowLeft, Bell, Heart, MessageCircle, Gift, Megaphone, Landmark, CheckCheck, Sparkles, RefreshCw } from 'lucide-react';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 // Infer an icon + accent from the notification text (no schema change needed).
 function iconFor(text) {
@@ -100,13 +101,17 @@ export default function Notifications() {
           <div className="noti-list" aria-hidden="true">
             {[64, 64, 64].map((h, i) => <div key={i} className="skel" style={{ height: h, marginBottom: 10 }} />)}
           </div>
-        ) : !appMode && loadError && items.length === 0 ? (
-          <div className="empty lgw-error" role="alert">
-            <span className="lgw-error-ic"><RefreshCw size={22} /></span>
-            <h2 className="lgw-error-title">通知暂时无法载入</h2>
-            <p className="lgw-error-msg">{loadError}</p>
-            <button className="btn primary lgw-error-retry" onClick={() => load()}><RefreshCw size={15} /> 重新载入</button>
-          </div>
+        ) : loadError && items.length === 0 ? (
+          app ? (
+            <AppErrorState kind="notifications" title="通知暂时无法载入" message={loadError} onRetry={() => load()} />
+          ) : (
+            <div className="empty lgw-error" role="alert">
+              <span className="lgw-error-ic"><RefreshCw size={22} /></span>
+              <h2 className="lgw-error-title">通知暂时无法载入</h2>
+              <p className="lgw-error-msg">{loadError}</p>
+              <button className="btn primary lgw-error-retry" onClick={() => load()}><RefreshCw size={15} /> 重新载入</button>
+            </div>
+          )
         ) : shown.length === 0 ? (
           appMode
             ? <div className="empty"><EmptyArt kind="notifications" />{tab === 'unread' ? '没有未读通知' : '暂时没有新通知'}</div>

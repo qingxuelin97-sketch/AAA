@@ -6,6 +6,7 @@ import { EmptyArt, AppEmptyArt } from '../art.jsx';
 import { isAppMode } from '../appmode.js';
 import ReportButton from '../components/ReportButton.jsx';
 import { Heart, MessageCircle, Send, Trash2, UserPlus, Check, Sparkles, RefreshCw, PenLine } from 'lucide-react';
+import AppBackButton from '../components/AppBackButton.jsx';
 
 function SuggestedPeople() {
   const nav = useNavigate();
@@ -148,6 +149,7 @@ export default function Community() {
   return (
     <>
       <div className="topbar">
+        <AppBackButton />
         <div style={{ flex: 1 }}>
           <h1>社区</h1>
           <div className="sub">分享你的此刻，看看大家都在想什么</div>

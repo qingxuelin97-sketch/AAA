@@ -8,6 +8,8 @@ import AppPressMenu from '../components/AppPressMenu.jsx';
 import { useLongPress } from '../chat/hooks.js';
 import { tick } from '../appgestures.js';
 import { Sparkles, Wand2, Download, Trash2, Copy, ImageIcon, Crown, Info, X, RefreshCw } from 'lucide-react';
+import AppBackButton from '../components/AppBackButton.jsx';
+import AppErrorState from '../components/AppErrorState.jsx';
 
 // AI 绘图 — text-to-image studio. The image API is configured by GM in the admin
 // console; each generation costs gold (VIP discount), shown transparently up-front.
@@ -33,9 +35,9 @@ export default function Draw() {
   const bindTilePress = useLongPress((payload) => { tick(8); setTilePress(payload()); });
 
   const load = () => {
-    if (!app) setHistoryError('');
+    setHistoryError('');
     return api('/ai/images').then(d => { setHistory(d.images || []); setFee(d.fee); setReady(d.ready); })
-      .catch(e => { if (!app) setHistoryError(e.message || '绘廊载入失败，请稍后重试'); toast(e.message, 'err'); });
+      .catch(e => { setHistoryError(e.message || '绘廊载入失败，请稍后重试'); toast(e.message, 'err'); });
   };
   useEffect(() => { load(); api('/settings').then(d => setDiscount(d.settings?.image_fee?.discount ?? 1)).catch(() => {}); /* eslint-disable-next-line */ }, []);
 
@@ -47,7 +49,7 @@ export default function Draw() {
     if (!ready) { toast('平台 AI 生图服务尚未开启', 'err'); return; }
     if (!canAfford) { toast(`金币不足，本次需 ${fee} 金币`, 'err'); return; }
     setBusy(true); setResult(null);
-    if (!app) setGenError('');
+    setGenError('');
     try {
       const d = await generateImage({ prompt: composePrompt(p, style), size });
       setResult(d);
@@ -55,7 +57,7 @@ export default function Draw() {
       load();
       toast(`生成成功 · 消耗 ${d.fee} 金币`);
       setTimeout(() => stageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
-    } catch (e) { toast(e.message, 'err'); if (!app) setGenError(e.message || '生成失败，请稍后重试'); } finally { setBusy(false); }
+    } catch (e) { toast(e.message, 'err'); setGenError(e.message || '生成失败，请稍后重试'); } finally { setBusy(false); }
   };
 
   const del = async (id) => {
@@ -68,6 +70,7 @@ export default function Draw() {
     <>
       <div className="draw-screen">
       <div className="topbar">
+        <AppBackButton />
         <div style={{ flex: 1 }}>
           <h1><Wand2 size={20} style={{ verticalAlign: -3, marginRight: 7, color: 'var(--accent)' }} />AI 绘图</h1>
           <div className="sub">用文字描绘画面，让 AI 为你的故事绘制插画</div>
@@ -126,13 +129,19 @@ export default function Draw() {
           <div className="card draw-stage" ref={stageRef}>
             {busy ? (
               <div className="draw-stage-empty"><div className="draw-loader"><Wand2 size={30} /></div><p>正在为你绘制，请稍候…</p></div>
-            ) : !app && genError ? (
-              <div className="lgw-error" role="alert">
-                <span className="lgw-error-ic"><Wand2 size={22} /></span>
-                <h2 className="lgw-error-title">这张图没能生成</h2>
-                <p className="lgw-error-msg">{genError}</p>
-                <button className="btn primary lgw-error-retry" onClick={generate} disabled={busy || !prompt.trim() || !ready || !canAfford}><RefreshCw size={15} /> 重试一次</button>
-              </div>
+            ) : genError ? (
+              app ? (
+                <AppErrorState kind="gallery" title="这张图没能生成" message={genError}
+                  retryLabel="重试一次" busy={busy}
+                  onRetry={busy || !prompt.trim() || !ready || !canAfford ? undefined : generate} />
+              ) : (
+                <div className="lgw-error" role="alert">
+                  <span className="lgw-error-ic"><Wand2 size={22} /></span>
+                  <h2 className="lgw-error-title">这张图没能生成</h2>
+                  <p className="lgw-error-msg">{genError}</p>
+                  <button className="btn primary lgw-error-retry" onClick={generate} disabled={busy || !prompt.trim() || !ready || !canAfford}><RefreshCw size={15} /> 重试一次</button>
+                </div>
+              )
             ) : result ? (
               <div className="draw-result">
                 <div className="draw-result-img" onClick={() => setViewing({ url: result.image, prompt: result.prompt, size: result.size, id: result.id })}>
@@ -151,7 +160,7 @@ export default function Draw() {
         </div>
 
         <div className="section-title" style={{ marginTop: 30 }}><h2><ImageIcon size={16} style={{ verticalAlign: -3, marginRight: 6 }} />我的绘廊</h2></div>
-        {!app && historyError && history.length === 0 ? (
+        {historyError && history.length === 0 ? (
           <div className="lgw-error-inline" role="alert">
             <span>{historyError}</span>
             <button className="btn sm" onClick={() => void load()}><RefreshCw size={14} /> 重试</button>
