@@ -4524,15 +4524,9 @@ html[data-app="1"] .route-fade:has(.qa-script-editor-v4) {
   transform: none !important;
 }
 
-/* app-shell's legacy `overflow-x:hidden` computes overflow-y to `auto`; since
-   the shell grows with document content it becomes a non-scrolling sticky
-   ancestor. `clip/visible` preserves horizontal containment without stealing
-   the vertical sticky reference from the viewport. */
-html[data-app="1"] .app-root:has(.qa-script-detail-v4),
-html[data-app="1"] .app-root:has(.qa-script-editor-v4) {
-  overflow-x: clip;
-  overflow-y: visible;
-}
+/* 这里曾用 :has() 把 clip/visible 单独挂给剧本详情与剧本编辑器两个页面。
+   根因（overflow-x:hidden 使 .app-root 成为非滚动的 sticky 祖先）对**所有**页面
+   都成立，因此该修复已提到 app-shell.css 的 .app-root 本身，这两条特例不再需要。 */
 
 /* --- Detail --------------------------------------------------------------- */
 html[data-app="1"] .qa-script-detail-v4 {

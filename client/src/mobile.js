@@ -58,3 +58,31 @@ export function useKeyboardInsetBar(barRef, deps = []) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }
+
+// 全局软键盘标记 —— 只负责在 <html> 上开关 `kbd-open`，不动任何元素的位置。
+//
+// 原生壳有 Capacitor 的 Keyboard 事件，native.js 会设 `data-keyboard="1"`，
+// App 层 CSS 据此收起整条 Dock。但浏览器 / PWA 预览（?app=1）拿不到那个事件，
+// 于是同一份界面在预览里键盘弹起时 Dock 不会收 —— 而预览恰恰是走查与
+// appdiff/e2e 使用的形态，缺了它等于「看到的不是用户看到的」。
+//
+// 这里用 visualViewport 补上同一个信号（判定口径与 useKeyboardInsetBar 一致）。
+// 与 useKeyboardInsetBar 并存无冲突：两者都是幂等地 toggle 同一个类名。
+export function useGlobalKeyboardFlag() {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return undefined;
+    const apply = () => {
+      const open = (document.documentElement.clientHeight - vv.height - vv.offsetTop) > 8;
+      document.documentElement.classList.toggle('kbd-open', open);
+    };
+    vv.addEventListener('resize', apply);
+    vv.addEventListener('scroll', apply);
+    apply();
+    return () => {
+      vv.removeEventListener('resize', apply);
+      vv.removeEventListener('scroll', apply);
+      document.documentElement.classList.remove('kbd-open');
+    };
+  }, []);
+}

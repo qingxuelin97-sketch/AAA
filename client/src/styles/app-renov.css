@@ -14,6 +14,8 @@ html[data-app="1"] .topbar {
   position: sticky; top: 0; z-index: 30;
   display: flex; align-items: center; gap: 10px;
   padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  /* 顶部负 margin 由 app-safearea.css 统一收口（见该文件注释）——
+     这里只保留下外边距，避免同一件事写在两个地方。 */
   margin: 0 0 4px;
   background: color-mix(in srgb, var(--bg) 76%, transparent);
   backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px);

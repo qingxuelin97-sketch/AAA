@@ -199,8 +199,21 @@ html[data-app="1"] .app-root[data-full-bleed="true"] .app-main {
   padding: 0;
   overflow: hidden;
 }
-html[data-app="1"][data-keyboard="1"] .app-tabbar { display: none; }
-html[data-app="1"][data-keyboard="1"] .app-main { padding-bottom: 0; }
+/* 键盘弹起时收起整条 Dock。
+   此前只隐藏 .app-tabbar，而 FAB 与它的彩虹光环是 .app-tabbar 的**兄弟节点**
+   （AppLayout.jsx 的 .app-dock 下并列三个），且 app-controls.css 显式给 FAB
+   恢复了 pointer-events: auto —— 结果是底栏藏了，一颗 50px 的「＋」还浮在键盘
+   上沿挡住输入内容。选择器提到 .app-dock 才能把三个一起收走。
+
+   触发条件同时认两种来源：
+     [data-keyboard="1"] —— 原生壳由 native.js 依 Capacitor Keyboard 事件设置；
+     html.kbd-open      —— mobile.js 依 visualViewport 设置，浏览器/PWA 预览下
+                           唯一可用的信号。它此前在 App 层 CSS 里无人消费，
+                           于是 ?app=1 预览时整条 Dock 根本不会隐藏。 */
+html[data-app="1"][data-keyboard="1"] .app-dock,
+html[data-app="1"].kbd-open .app-dock { display: none; }
+html[data-app="1"][data-keyboard="1"] .app-main,
+html[data-app="1"].kbd-open .app-main { padding-bottom: 0; }
 @keyframes appRouteSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] .app-route-loading-dot { animation-duration: 1.5s; }

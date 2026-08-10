@@ -28,5 +28,11 @@ import './app-ix-pages-d.css';
 import './app-rainbow.css';
 // 彩虹系动效层：keyframes / 呼吸循环 / 浮层退场 / 降级闸门。
 import './app-rainbow-motion.css';
+// 顶部安全区收口：各页面层的顶栏漏了负 margin，导致刘海机上安全区被算两次。
+// 必须在所有页面层（renov / quiet-aqua / experience-v3 / hig-v5 / ix-*）之后，
+// 否则会被那些 (0,2,1) 的页面规则盖掉。
+// 排在 chat-glass 之前：chat-glass 是「恒最后」的冻结层（app-test.mjs:603 有断言），
+// 且它只管对话输入岛的底部内边距，与本层的 14 个吸顶顶栏零交集。
+import './app-safearea.css';
 // 对话框雾态玻璃收口（参考稿 1:1）：必须最后引入，覆盖上面各层的 chat 输入岛规则。
 import './chat-glass.css';

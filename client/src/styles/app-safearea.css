@@ -1,0 +1,35 @@
+/* ==========================================================================
+   顶部安全区收口层（App 壳）
+   --------------------------------------------------------------------------
+   契约：`.app-main` 统一垫一份 `env(safe-area-inset-top)`（app-shell.css:55），
+   因此**任何自己的 padding 里又含 safe-area 的吸顶顶栏**，都必须用等量负 margin
+   把那一份还回去。否则刘海机上每页顶部会多出一条 30–50px 的死白条
+  （app-elevated.css:287 早有注释写明这个坑）。
+
+   这条契约长期只被三个顶栏遵守（.qa-library-topbar / .qa-worldbooks-topbar /
+   .qa-character-editor__topbar），其余散落在 app-renov / app-pages-quiet-aqua /
+   app-experience-v3 三个文件里的顶栏全都漏了。分散补必然再漏，所以集中收口。
+
+   刻意**不用** :where()：那样特异度为 0，会被各页面层的 (0,2,1) 规则盖掉，
+   这一层就形同虚设。这里逐条写实选择器，靠 app-entry.js 里的末位加载取胜。
+   对那三个已经写对的顶栏，本层设的值与它们原本的完全相同，属幂等覆盖。
+
+   ⚠ 新增吸顶顶栏时把选择器加进下面的列表，不要在各自页面层里再写一遍。
+   ========================================================================== */
+
+html[data-app="1"] .topbar,
+html[data-app="1"] .qa-search-header,
+html[data-app="1"] .qa-announcements-header,
+html[data-app="1"] .qa-events-header,
+html[data-app="1"] .qa-achievements-head,
+html[data-app="1"] .qa-leaderboard-head,
+html[data-app="1"] .qa-gacha-head,
+html[data-app="1"] .qa-theater-head,
+html[data-app="1"] .qa-groups-topbar,
+html[data-app="1"] .qa-wallet-head,
+html[data-app="1"] .qa-notifications-head,
+html[data-app="1"] .qa-library-topbar,
+html[data-app="1"] .qa-worldbooks-topbar,
+html[data-app="1"] .qa-character-editor__topbar {
+  margin-top: calc(-1 * env(safe-area-inset-top));
+}

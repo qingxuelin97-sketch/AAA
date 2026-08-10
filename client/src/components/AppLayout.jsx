@@ -19,6 +19,7 @@ import AppOnboarding from './AppOnboarding.jsx';
 import RouteErrorBoundary from './RouteErrorBoundary.jsx';
 import { AppButton, AppIconButton, AppTabButton } from './AppControls.jsx';
 import { useAppGestures, tick } from '../appgestures.js';
+import { useGlobalKeyboardFlag } from '../mobile.js';
 import { useNav, routeCommitted, computeDir, SWIPE_TABS } from '../nav.js';
 import { notifyAppTabActive } from '../appTabActivity.js';
 import { useAppNavigation } from '../appNavigation.jsx';
@@ -53,6 +54,9 @@ const CREATE = [
 export default function AppLayout({ children }) {
   const loc = useLocation();
   const { route, requestBack } = useAppNavigation();
+  // 全局软键盘标记：原生壳靠 Capacitor 事件设 data-keyboard，浏览器/PWA 预览
+  // 没有那个事件，这里用 visualViewport 补上同一个信号，让预览与 APK 行为一致。
+  useGlobalKeyboardFlag();
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
   const [sheet, setSheet] = useState(false); // create sheet open?

@@ -34,18 +34,31 @@ const ROUTES = ['#/today', '#/', '#/messages', '#/chats/1', '#/me', '#/wallet', 
 // 档位说明：
 //   · dark 已删除 —— theme.js:13 证明 App 壳恒返回 light，dark 基线与 light 逐字节
 //     相同，占掉 1/3 运行时间却换来 0 覆盖。
-//   · balanced 是 perf.js:49 判定下 App 端 auto 的实际落点，也就是 100% 真实用户
-//     所处的档位，而它此前从未被截图过。
+//   · balanced 只能靠「auto + 强机」凑出来，不能直接写进 huanyu_perf。
+//     getPerfPref()（perf.js:19）只认 'high' | 'lite'，其余一律回落 'auto'；
+//     而 resolvePerf('auto') 在 App 壳里走 deviceIsWeak()（perf.js:31：cores <= 4
+//     即判弱机），无头 Chromium 恒报 4 核 → 落 'lite'。
+//     ⚠ 更正：我先前在这里写的「balanced 是 100% 真实用户所处的档位」是错的。
+//     那个配置写的是 huanyu_perf='balanced'，getPerfPref 不认 → 回落 auto →
+//     判弱机 → 实际渲染的是 lite。所谓「balanced 与 lite 逐字节相同」不是覆盖
+//     有限，而是它们本来就是同一组截图。这里改成显式伪造 CPU/内存来真正命中
+//     balanced，并在每次导航后断言 data-perf，杜绝再出现空档。
+// name = 截图文件名前缀；tier = 期望的 data-perf 实测值（两者不总相等：light 档
+// 的 data-perf 是 'high'）。
 const MODES = [
-  { name: 'light', perf: 'high' },
-  { name: 'balanced', perf: 'balanced' },
-  { name: 'lite', perf: 'lite' },
+  { name: 'light', pref: 'high', tier: 'high' },
+  // auto + 8 核 8G → deviceIsWeak() 为 false → App 壳落 'balanced'
+  { name: 'balanced', pref: null, cores: 8, memory: 8, tier: 'balanced' },
+  { name: 'lite', pref: 'lite', tier: 'lite' },
 ];
 
 const srv = await serve();
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium' });
 await mkdir(OUT, { recursive: true });
 let failed = 0;
+// 档位断言与像素比对分开计数：--baseline 跑法本来就允许「没有基线」，
+// 但档位错了连基线都不该存下来，所以这一类失败在两种跑法下都要致命。
+let tierFails = 0;
 
 for (const mode of MODES) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
@@ -78,8 +91,15 @@ for (const mode of MODES) {
       localStorage.setItem('huanyu_onboard_done', new Date().toISOString().slice(0, 10));
       localStorage.setItem('huanyu_token', 'tok.1');
       if (m.theme) localStorage.setItem('huanyu_theme', m.theme); else localStorage.removeItem('huanyu_theme');
-      localStorage.setItem('huanyu_perf', m.perf);
+      // pref 为 null 表示「不写偏好」，让 getPerfPref() 走 auto —— balanced 只有这条路。
+      if (m.pref) localStorage.setItem('huanyu_perf', m.pref); else localStorage.removeItem('huanyu_perf');
     } catch { /* */ }
+    // 伪造硬件画像：无头容器恒报 4 核，deviceIsWeak() 必为 true，auto 档永远
+    // 到不了 balanced。必须在页面脚本前改写 navigator 才来得及被 initPerf 读到。
+    if (m.cores) {
+      try { Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => m.cores, configurable: true }); } catch { /* */ }
+      try { Object.defineProperty(navigator, 'deviceMemory', { get: () => m.memory, configurable: true }); } catch { /* */ }
+    }
   }, mode);
   const page = await ctx.newPage();
   for (const route of ROUTES) {
@@ -89,6 +109,15 @@ for (const mode of MODES) {
     await page.waitForTimeout(500);
     const shot = await page.screenshot();
     const key = `${mode.name}${route.replace(/[#/]+/g, '_') || '_root'}`;
+    // 档位自证：截图前确认 data-perf 真的是这一档。空档（写了个 getPerfPref
+    // 不认的值 → 静默回落）此前让 balanced 与 lite 截出了同一组图，肉眼与
+    // 逐像素比对都发现不了 —— 只有断言能拦住。
+    const tier = await page.evaluate(() => document.documentElement.dataset.perf);
+    if (tier !== mode.tier) {
+      console.log('TIER', key, `期望 data-perf=${mode.tier}，实际 ${tier}`);
+      tierFails += 1;
+      continue;
+    }
     const basePath = join(OUT, `${key}.base.png`);
     if (BASELINE) {
       await writeFile(basePath, shot);
@@ -116,5 +145,6 @@ for (const mode of MODES) {
 
 await browser.close();
 srv.close();
+if (tierFails) console.log(`APPDIFF: ${tierFails} 处档位不符（截图无效，先修档位再谈像素）`);
 console.log(BASELINE ? `BASELINE READY → ${OUT}` : failed === 0 ? 'APPDIFF: 0 changed pixels — PASS' : `APPDIFF: ${failed} FAILURES`);
-process.exit(BASELINE || failed === 0 ? 0 : 1);
+process.exit(tierFails === 0 && (BASELINE || failed === 0) ? 0 : 1);

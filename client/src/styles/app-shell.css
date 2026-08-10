@@ -21,8 +21,15 @@ html[data-app="1"] { --app-top: env(safe-area-inset-top); --app-bot: calc(var(--
 
 /* Phone frame: full-bleed on phones, a centered device column on wide screens
    (handy for the ?app=1 browser preview). Fixed chrome aligns to this column. */
+/* overflow-x 必须用 clip 而不是 hidden。
+   hidden 会把 overflow-y 从 visible 计算成 auto，于是 .app-root 变成一个滚动容器；
+   而它的高度是 auto、自身永不滚动 —— 结果是内部**所有** position: sticky 都失去了
+   有效的滚动参照，永远不触发。App 壳里那些「大标题玻璃顶栏」「分段条」「分类条」
+   一滚就跟着走，根因全在这里。
+   clip 保留横向裁切，同时把纵向的 sticky 参照还给视口。 */
 .app-root { position: relative; min-height: 100vh; min-height: 100dvh; max-width: 480px; margin-inline: auto;
-  background: var(--bg); box-shadow: 0 0 0 1px var(--border), 0 24px 80px rgba(0,0,0,0.22); overflow-x: hidden; }
+  background: var(--bg); box-shadow: 0 0 0 1px var(--border), 0 24px 80px rgba(0,0,0,0.22);
+  overflow-x: clip; overflow-y: visible; }
 @media (max-width: 500px) { .app-root { max-width: none; box-shadow: none; } }
 
 /* ---- pull-to-refresh indicator ---- */
