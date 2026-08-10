@@ -47,7 +47,9 @@ const CREATE = [
   { to: '/character/new', ic: UserRoundPlus, tone: 'indigo', label: '创建角色', hint: '立绘 · 人设 · 世界书' },
   { to: '/atelier', ic: Feather, tone: 'coral', label: '写小说', hint: 'AI 协作长篇创作' },
   { to: '/draw', ic: ImagePlus, tone: 'gold', label: 'AI 绘图', hint: '文生图工作室' },
-  { to: '/theater', ic: Drama, tone: 'blue', label: '互动小说', hint: '以你为主角的 AI 即兴故事' },
+  // 同一个 /theater 入口在 AppHome 是 indigo、这里却是 blue —— 两处落到不同颜色。
+  // 语义色一旦按位次以外的东西分配，同一目的地就该到处同色；统一取 indigo。
+  { to: '/theater', ic: Drama, tone: 'indigo', label: '互动小说', hint: '以你为主角的 AI 即兴故事' },
   { to: '/publish', ic: Send, tone: 'success', label: '发布作品', hint: '角色 / 剧本 / 动态' }
 ];
 

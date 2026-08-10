@@ -92,7 +92,10 @@ html[data-app="1"] body {
    各页历史规则用 !important 钉了自己的底色/形状，这里同带 !important 并靠
    import 末位赢下级联。 */
 html[data-app="1"] .ah-sc .ah-sc-ic,
-html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(1n) .ah-sc-ic,
+/* 这一行只为抬特异度（与下一行 .pf-quick button[data-tone] 同一手法）。
+   原本写的是 :nth-child(1n) —— 权重相同，但它让「彩虹层零位次选择器」这条
+   守卫无法落地，而且读起来像在按位次挑元素。换成 [data-tone]，权重逐位不变。 */
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone] .ah-sc-ic,
 html[data-app="1"] .pf-cell .pf-cell-ic,
 html[data-app="1"] .msgs-entry .msgs-entry-ic,
 html[data-app="1"] .qa3-profile .pf-quick button[data-tone] .pf-quick-ic,
@@ -768,26 +771,51 @@ html[data-app="1"] {
   --ix-rainbow-coral:  linear-gradient(145deg, #FFC08D 0%, #FF7A45 100%);
 }
 
-/* ── 9a. 首页键帽宫格：六色轮转（DOM 序：扭蛋/活动/剧本/剧场/社区/排行榜） ── */
-html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(1) .ah-sc-ic { background-image: var(--ix-rainbow-violet) !important; box-shadow: 0 6px 14px rgb(124 92 240 / 26%) !important; }
-html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(2) .ah-sc-ic { background-image: var(--ix-rainbow-coral) !important;  box-shadow: 0 6px 14px rgb(255 122 69 / 26%) !important; }
-html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(3) .ah-sc-ic { background-image: var(--ix-rainbow-indigo) !important; box-shadow: 0 6px 14px rgb(70 104 238 / 26%) !important; }
-html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(4) .ah-sc-ic { background-image: var(--ix-rainbow-rose) !important;   box-shadow: 0 6px 14px rgb(244 96 143 / 26%) !important; }
-html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(5) .ah-sc-ic { background-image: var(--ix-rainbow-mint) !important;   box-shadow: 0 6px 14px rgb(31 190 128 / 26%) !important; }
-html[data-app="1"] .ah-shortcuts .ah-sc:nth-child(6) .ah-sc-ic { background-image: var(--ix-rainbow-amber) !important;  box-shadow: 0 6px 14px rgb(242 162 21 / 28%) !important; }
+/* ── 9a/9b. 首页快捷条、「我的」宫格与快捷瓦：**按 data-tone 语义取色** ──
+   这两段原本是按 DOM 位次轮转配色（:nth-child(1..6) / :nth-child(6n+k)，共 17 条）。
+   app-test.mjs 里有 11 条断言专门禁止这个模式，覆盖 9 个文件 —— 唯独没覆盖本文件，
+   于是模式在唯一的盲区里回来了。位次配色的实际后果：同一个「转盘」入口在首页是紫、
+   在「我的」是金；插一个入口进去，后面所有颜色整体挪一位。
 
-/* ── 9b. 「我的」宫格与快捷瓦：同一支六色轮转 ── */
-html[data-app="1"] .pf-cell:nth-child(6n+1) .pf-cell-ic { background-image: var(--ix-rainbow-cyan) !important; }
-html[data-app="1"] .pf-cell:nth-child(6n+2) .pf-cell-ic { background-image: var(--ix-rainbow-violet) !important; }
-html[data-app="1"] .pf-cell:nth-child(6n+3) .pf-cell-ic { background-image: var(--ix-rainbow-coral) !important; }
-html[data-app="1"] .pf-cell:nth-child(6n+4) .pf-cell-ic { background-image: var(--ix-rainbow-mint) !important; }
-html[data-app="1"] .pf-cell:nth-child(6n+5) .pf-cell-ic { background-image: var(--ix-rainbow-indigo) !important; }
-html[data-app="1"] .pf-cell:nth-child(6n+6) .pf-cell-ic { background-image: var(--ix-rainbow-rose) !important; }
-html[data-app="1"] .qa3-profile .pf-quick button:nth-child(1) .pf-quick-ic { background-image: var(--ix-rainbow-amber) !important; }
-html[data-app="1"] .qa3-profile .pf-quick button:nth-child(2) .pf-quick-ic { background-image: var(--ix-rainbow-violet) !important; }
-html[data-app="1"] .qa3-profile .pf-quick button:nth-child(3) .pf-quick-ic { background-image: var(--ix-rainbow-coral) !important; }
-html[data-app="1"] .qa3-profile .pf-quick button:nth-child(4) .pf-quick-ic { background-image: var(--ix-rainbow-mint) !important; }
-html[data-app="1"] .qa3-profile .pf-quick button:nth-child(5) .pf-quick-ic { background-image: var(--ix-rainbow-rose) !important; }
+   隔壁 §9c 早就做对了 —— 按 data-tone 语义取色。这里照抄，映射表与 §9c 完全一致：
+     indigo → 紫   graphite / blue → 靛   coral → 珊瑚
+     reward / gold → 琥珀   success / jade → 薄荷   rose → 蔷薇
+   选择器权重与被替换的位次规则逐位相同（.ah-sc[data-tone] 对 .ah-sc:nth-child()
+   都是 (0,4,1)，.pf-cell 一组是 (0,3,1)，.pf-quick 一组是 (0,4,2)），
+   所以级联行为不变，变的只是「凭什么给这个颜色」。 */
+
+/* 首页快捷条（tone 见 AppHome.jsx 的 CREATE_SHORTCUTS） */
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="indigo"] .ah-sc-ic   { background-image: var(--ix-rainbow-violet) !important; box-shadow: 0 6px 14px rgb(124 92 240 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="coral"] .ah-sc-ic    { background-image: var(--ix-rainbow-coral) !important;  box-shadow: 0 6px 14px rgb(255 122 69 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="graphite"] .ah-sc-ic,
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="blue"] .ah-sc-ic     { background-image: var(--ix-rainbow-indigo) !important; box-shadow: 0 6px 14px rgb(70 104 238 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="rose"] .ah-sc-ic     { background-image: var(--ix-rainbow-rose) !important;   box-shadow: 0 6px 14px rgb(244 96 143 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="success"] .ah-sc-ic,
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="jade"] .ah-sc-ic     { background-image: var(--ix-rainbow-mint) !important;   box-shadow: 0 6px 14px rgb(31 190 128 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="reward"] .ah-sc-ic,
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="gold"] .ah-sc-ic     { background-image: var(--ix-rainbow-amber) !important;  box-shadow: 0 6px 14px rgb(242 162 21 / 28%) !important; }
+
+/* 「我的」全部功能宫格（tone 见 AppProfile.jsx 的 GRID） */
+html[data-app="1"] .pf-cell[data-tone="indigo"] .pf-cell-ic { background-image: var(--ix-rainbow-violet) !important; }
+html[data-app="1"] .pf-cell[data-tone="coral"] .pf-cell-ic { background-image: var(--ix-rainbow-coral) !important; }
+html[data-app="1"] .pf-cell[data-tone="graphite"] .pf-cell-ic,
+html[data-app="1"] .pf-cell[data-tone="blue"] .pf-cell-ic { background-image: var(--ix-rainbow-indigo) !important; }
+html[data-app="1"] .pf-cell[data-tone="rose"] .pf-cell-ic { background-image: var(--ix-rainbow-rose) !important; }
+html[data-app="1"] .pf-cell[data-tone="success"] .pf-cell-ic,
+html[data-app="1"] .pf-cell[data-tone="jade"] .pf-cell-ic { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .pf-cell[data-tone="reward"] .pf-cell-ic,
+html[data-app="1"] .pf-cell[data-tone="gold"] .pf-cell-ic { background-image: var(--ix-rainbow-amber) !important; }
+
+/* 「我的」快捷瓦（tone 见 AppProfile.jsx 的 QUICK） */
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="indigo"] .pf-quick-ic { background-image: var(--ix-rainbow-violet) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="coral"] .pf-quick-ic { background-image: var(--ix-rainbow-coral) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="graphite"] .pf-quick-ic,
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="blue"] .pf-quick-ic { background-image: var(--ix-rainbow-indigo) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="rose"] .pf-quick-ic { background-image: var(--ix-rainbow-rose) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="success"] .pf-quick-ic,
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="jade"] .pf-quick-ic { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="reward"] .pf-quick-ic,
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="gold"] .pf-quick-ic { background-image: var(--ix-rainbow-amber) !important; }
 
 /* ── 9c. 带语义 data-tone 的列表（创建面板 / 设置行）按语义取色 ──
    注意：这里**不能**用 :where()，它的特异性为 0，会被 §8a 的双类名规则压住；

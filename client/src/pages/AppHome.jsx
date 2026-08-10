@@ -36,7 +36,9 @@ const CREATE_SHORTCUTS = [
   { to: '/events', ic: PartyPopper, label: '活动', tone: 'coral' },
   { to: '/scripts', ic: ScrollText, label: '剧本', tone: 'graphite' },
   { to: '/theater', ic: Drama, label: '互动小说', tone: 'indigo' },
-  { to: '/community', ic: Users, label: '社区', tone: 'blue' },
+  // 社区改 jade（薄荷）：blue 与 剧本 的 graphite 在 §9c 的映射表里都落到靛色，
+  // 同一屏两块靛读不出差别；社区=聚集/生长，薄荷是语义上说得通的那一档。
+  { to: '/community', ic: Users, label: '社区', tone: 'jade' },
   { to: '/leaderboard', ic: Trophy, label: '排行榜', tone: 'reward' }
 ];
 

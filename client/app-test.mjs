@@ -834,6 +834,31 @@ assert.doesNotMatch(quietControls + quietPages, /^\s*\.qa-[^{,]+/m, 'Quiet Aqua 
 assert.doesNotMatch(quietControlsNoComments, /nth-(?:child|of-type)/, 'Quiet Aqua must not assign rainbow colours by position');
 assert.doesNotMatch(quietPagesNoComments, /nth-(?:child|of-type)/, 'Quiet Aqua page styling must not restore position-driven rainbow colours');
 assert.doesNotMatch(quietExperienceNoComments, /nth-(?:child|of-type)/, 'Quiet Aqua v3 styling must not restore position-driven rainbow colours');
+// D6：这条禁令此前覆盖 9 个文件，唯独漏了 app-rainbow.css —— 而按位次配色恰恰在
+// 那个盲区里活了 17 条（§9a/§9b）。补上覆盖，并且不放行「只是加个 :nth-child
+// 做布局」的软化：彩虹层的职责就是颜色，这里出现位次选择器一律是配色回归。
+{
+  const rainbowNoComments = (await readFile(new URL('./src/styles/app-rainbow.css', import.meta.url), 'utf8'))
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(rainbowNoComments, /nth-(?:child|of-type)/,
+    'the rainbow layer must not assign colours by DOM position — use data-tone (see §9a/§9b/§9c)');
+  // 语义色必须到处同色：同一个目的地在不同入口面板上得是同一个 tone。
+  const toneOf = (src, to) => (new RegExp("to: '" + to + "'[^}]*tone: '([a-z]+)'").exec(src) || [])[1];
+  const homeSrc = await readFile(new URL('./src/pages/AppHome.jsx', import.meta.url), 'utf8');
+  const profileSrc = await readFile(new URL('./src/pages/AppProfile.jsx', import.meta.url), 'utf8');
+  const layoutJsx = await readFile(new URL('./src/components/AppLayout.jsx', import.meta.url), 'utf8');
+  for (const [to, sources] of [['/theater', [homeSrc, profileSrc, layoutJsx]], ['/gacha', [homeSrc, profileSrc]]]) {
+    const tones = [...new Set(sources.map((s) => toneOf(s, to)).filter(Boolean))];
+    assert.equal(tones.length, 1, `"${to}" must carry one tone everywhere it appears (found: ${tones.join(', ')})`);
+  }
+  // 宫格每一项都要有 tone —— 漏一个就会掉回 §1 的通用青蓝芯片，在一片彩色里很显眼
+  const gridBlock = (/const GRID = \[[\s\S]*?\n\];/.exec(profileSrc) || [''])[0];
+  const gridItems = [...gridBlock.matchAll(/\{ to: '[^']+',[^}]*\}/g)].map((m) => m[0]);
+  assert.ok(gridItems.length >= 13, `expected the profile grid to still be enumerated (got ${gridItems.length})`);
+  for (const item of gridItems) {
+    assert.match(item, /tone: '[a-z]+'/, `profile grid entry without a tone: ${item.slice(0, 60)}`);
+  }
+}
 assert.match(quietExperience, /html\[data-app="1"\]/, 'Quiet Aqua v3 experience rules must remain App-scoped');
 assert.match(quietPages, /html\[data-app="1"\]\s+\.qa-messages-page/, 'Messages composition must stay App-scoped');
 assert.match(quietPages, /\.qa-character-view\s+\.cvx-row\s*>\s*\.qa-button__content\s*\{[^}]*width:\s*100%[^}]*justify-content:\s*flex-start/s, 'character rows must keep their full-width content alignment');

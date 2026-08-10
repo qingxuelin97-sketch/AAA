@@ -40,24 +40,28 @@ const QUICK = [
 
 // 「全部功能」宫格 —— 只收录页面其他区块（底部 Tab / VIP 横幅 / 资产卡 / 快捷条）
 // 没有覆盖的入口；每个功能全页仅出现一次，告别四重重复。
+// tone = 语义色档，不是位次。app-rainbow.css §9a/§9b 按 data-tone 取渐变
+//（indigo→紫 / graphite·blue→靛 / coral→珊瑚 / reward·gold→琥珀 /
+//  success·jade→薄荷 / rose→蔷薇）。此前这里没有 tone，颜色由 :nth-child(6n+k)
+// 决定 —— 往中间插一个入口，后面所有图标的颜色整体挪一位。
 const GRID = [
   { title: '探索', items: [
-    { to: '/scripts', ic: ScrollText, label: '剧本' },
-    { to: '/community', ic: Users, label: '社区' },
-    { to: '/leaderboard', ic: Trophy, label: '排行榜' },
-    { to: '/parliament', ic: Landmark, label: '议会' },
-    { to: '/announcements', ic: Megaphone, label: '公告' },
-    { to: '/tags', ic: Tags, label: '标签' }
+    { to: '/scripts', ic: ScrollText, label: '剧本', tone: 'graphite' },
+    { to: '/community', ic: Users, label: '社区', tone: 'jade' },
+    { to: '/leaderboard', ic: Trophy, label: '排行榜', tone: 'reward' },
+    { to: '/parliament', ic: Landmark, label: '议会', tone: 'indigo' },
+    { to: '/announcements', ic: Megaphone, label: '公告', tone: 'coral' },
+    { to: '/tags', ic: Tags, label: '标签', tone: 'rose' }
   ] },
   { title: '互动创作', items: [
     // 「我的角色」不再入宫格：页面中部已有「我的角色」内容 Tab（实机反馈重复）
-    { to: '/atelier', ic: Feather, label: '小说' },
-    { to: '/draw', ic: Wand2, label: 'AI 绘图' },
-    { to: '/theater', ic: Drama, label: '互动小说' },
-    { to: '/friends', ic: UserRound, label: '好友' },
-    { to: '/groups', ic: Users, label: '群聊' },
-    { to: '/worldbooks', ic: BookOpen, label: '世界书' },
-    { to: '/studio', ic: TrendingUp, label: '创作中心' }
+    { to: '/atelier', ic: Feather, label: '小说', tone: 'coral' },
+    { to: '/draw', ic: Wand2, label: 'AI 绘图', tone: 'gold' },
+    { to: '/theater', ic: Drama, label: '互动小说', tone: 'indigo' },
+    { to: '/friends', ic: UserRound, label: '好友', tone: 'success' },
+    { to: '/groups', ic: Users, label: '群聊', tone: 'jade' },
+    { to: '/worldbooks', ic: BookOpen, label: '世界书', tone: 'graphite' },
+    { to: '/studio', ic: TrendingUp, label: '创作中心', tone: 'blue' }
   ] }
 ];
 
@@ -313,7 +317,7 @@ export default function AppProfile() {
           <h4>{g.title}</h4>
           <div className="pf-grid stagger-in">
             {g.items.map((n, i) => (
-              <button key={n.to + n.label} className="pf-cell" style={{ '--i': i }} onClick={() => nav(n.to, navBack)}>
+              <button key={n.to + n.label} className="pf-cell" data-tone={n.tone} style={{ '--i': i }} onClick={() => nav(n.to, navBack)}>
                 <span className="pf-cell-ic"><n.ic size={20} />{n.badge === 'noti' && unread > 0 && <i className="pf-dot sm" />}</span>
                 <span>{n.label}</span>
               </button>
