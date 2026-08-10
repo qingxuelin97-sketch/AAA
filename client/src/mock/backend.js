@@ -2492,8 +2492,11 @@ async function route(method, path, search, body, headers) {
     }
     return J({ characters, scripts, authors, me: mine });
   }
-  // 幸运转盘（与 server/routes/gacha.js 同步的迷你镜像）：每日免费一转 +
-  // 付费 100 金，奖品=金币/钻石/聊天次数卡，保底存 me.gacha_pity。
+  // 幸运转盘（与 server/gacha-rules.js 同步的迷你镜像）：每日免费一转 +
+  // 付费 100 金，奖品=金币/聊天次数卡（**不产出钻石**），保底存 me.gacha_pity。
+  // 这份奖池必须与 server/gacha-rules.js 的 PRIZES 逐字一致——mock 不是演示夹具，
+  // 它是 appdiff 与 e2e 的唯一数据源，漂移会把错误状态固化进像素基线。
+  // client/app-test.mjs 有断言守着这里。
   if (method === 'GET' && path === '/gacha/state' || method === 'POST' && path === '/gacha/spin') {
     need();
     const WHEEL = [
@@ -2501,12 +2504,12 @@ async function route(method, path, search, body, headers) {
       { id: 'gold50', kind: 'gold', amount: 50, weight: 20, label: '金币 ×50' },
       { id: 'credit1', kind: 'credit', amount: 1, weight: 16, label: '聊天卡 ×1' },
       { id: 'gold100', kind: 'gold', amount: 100, weight: 12, label: '金币 ×100' },
-      { id: 'credit3', kind: 'credit', amount: 3, weight: 10, label: '聊天卡 ×3' },
-      { id: 'diamond5', kind: 'diamond', amount: 5, weight: 8, label: '钻石 ×5' },
-      { id: 'gold300', kind: 'gold', amount: 300, weight: 5, label: '金币 ×300' },
-      { id: 'diamond20', kind: 'diamond', amount: 20, weight: 3, label: '钻石 ×20', jackpot: true },
+      { id: 'credit2', kind: 'credit', amount: 2, weight: 10, label: '聊天卡 ×2' },
+      { id: 'gold150', kind: 'gold', amount: 150, weight: 8, label: '金币 ×150' },
+      { id: 'credit6', kind: 'credit', amount: 6, weight: 5, label: '聊天卡 ×6' },
+      { id: 'gold500', kind: 'gold', amount: 500, weight: 3, label: '金币 ×500', jackpot: true },
     ];
-    const RARE = new Set(['diamond5', 'gold300', 'diamond20']);
+    const RARE = new Set(['gold150', 'credit6', 'gold500']);
     if (method === 'GET') {
       return J({ free_available: !(dailyOf(me.id).counts.gacha_free >= 1), paid_price: 100,
         prizes: WHEEL, guarantee: 10, pity: me.gacha_pity || 0,
@@ -2528,7 +2531,6 @@ async function route(method, path, search, body, headers) {
     for (const p of pool) { if ((r -= p.weight) < 0) { prize = p; break; } }
     const index = WHEEL.findIndex(p => p.id === prize.id);
     if (prize.kind === 'gold') wallet = applyTx(me.id, { kind: 'gacha', gold: prize.amount, memo: `转盘奖品 · ${prize.label}` });
-    else if (prize.kind === 'diamond') wallet = applyTx(me.id, { kind: 'gacha', diamond: prize.amount, memo: `转盘奖品 · ${prize.label}` });
     else me.chat_credits = (me.chat_credits || 0) + prize.amount;
     me.gacha_pity = RARE.has(prize.id) ? 0 : (me.gacha_pity || 0) + 1;
     me.gacha_pulls = (me.gacha_pulls || 0) + 1;

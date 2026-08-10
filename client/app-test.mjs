@@ -743,6 +743,27 @@ const phantom = [...backupTables, ...excludedTables].filter((t) => !createdTable
 assert.deepEqual(phantom, [],
   `backup lists must not name tables db.js never creates; phantom: ${phantom.join(', ')}`);
 
+/* ---- 转盘奖池：mock 必须与服务端逐字一致 ---- */
+// mock/backend.js 不是演示夹具 —— appdiff 与 quiet-aqua-e2e 跑的都是它，
+// 它是这两道 UI 门禁的唯一数据源。奖池漂移会把错误状态固化进像素基线。
+// 另：奖池曾因含钻石档（钻石可 1:100 兑金币）导致付费转期望回收 174.31 金 /
+// 售价 100 金，净印 74.3%。钻石不得再出现在任何一侧。
+const gachaRulesSource = await readFile(new URL('../server/gacha-rules.js', import.meta.url), 'utf8');
+const mockSource = await readFile(new URL('./src/mock/backend.js', import.meta.url), 'utf8');
+const prizeTriples = (text, header) => {
+  const block = new RegExp(`${header}[\\s\\S]*?\\n\\s*\\];`).exec(text);
+  assert.ok(block, `prize pool block must be found for ${header}`);
+  return [...block[0].matchAll(/id:\s*'(\w+)',\s*kind:\s*'(\w+)',\s*amount:\s*(\d+),\s*weight:\s*(\d+)/g)]
+    .map((m) => `${m[1]}:${m[2]}:${m[3]}:${m[4]}`);
+};
+const serverPrizes = prizeTriples(gachaRulesSource, 'export const PRIZES = \\[');
+const mockPrizes = prizeTriples(mockSource, 'const WHEEL = \\[');
+assert.ok(serverPrizes.length >= 8, 'server prize pool must parse');
+assert.deepEqual(mockPrizes, serverPrizes, 'the mock wheel must mirror server/gacha-rules.js exactly');
+assert.ok(serverPrizes.every((p) => !p.includes(':diamond:')),
+  'the wheel must never mint diamonds — they exchange back to gold 1:100');
+assert.doesNotMatch(mockSource, /kind: 'gacha', diamond:/, 'the mock wheel must not credit diamonds either');
+
 /* ---- 迁移安全网必须在位 ---- */
 // db.js 里有四处 `for (const sql of [...]) { try { db.exec(sql); } catch {} }`，
 // 迁移失败全被吞掉。assertSchema 是唯一能把「列没加上 / 索引没建成」翻出来的东西，
