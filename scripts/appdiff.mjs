@@ -75,12 +75,17 @@ for (const mode of MODES) {
     // eslint-disable-next-line no-global-assign
     window.Date = FrozenDate;
   });
-  // 已知非确定源：SVG filter 头像的栅格化存在运行间亚像素抖动（±10~20px），
-  // 与令牌无关。基线与复检两侧同时遮蔽，其余画面保持 0px 硬门。
+  // 已知非确定源：SVG 图形的栅格化存在运行间亚像素抖动，与令牌无关。
+  //   · .ah-avatar —— SVG filter 头像（±10~20px）；
+  //   · .msgs-entry-ic svg —— 消息页三个圆形入口里的 lucide 图标字形。实测同一构建
+  //     自比对会在 0px 与 1329px 之间反复横跳，差异区恰好是三个图标的字形本身
+  //     （包围盒 18px 宽、跨三个圆），画面其余部分逐像素相同。
+  // 一个会随机报 1329px 的闸门比没有闸门更糟 —— 它教人忽略失败。基线与复检两侧
+  // 同时遮蔽，其余画面保持 0px 硬门。
   await ctx.addInitScript(() => {
     document.addEventListener('DOMContentLoaded', () => {
       const style = document.createElement('style');
-      style.textContent = '.ah-avatar .avatar, .ah-avatar img { visibility: hidden !important; }';
+      style.textContent = '.ah-avatar .avatar, .ah-avatar img, .msgs-entry-ic svg { visibility: hidden !important; }';
       document.head.appendChild(style);
     });
   });

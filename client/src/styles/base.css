@@ -301,17 +301,25 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .msg.user .bubble { background: linear-gradient(150deg, var(--accent), var(--accent-2)); border-bottom-right-radius: 6px; color: #fff;
   box-shadow: 0 2px 6px rgba(194,90,56,0.22), 0 10px 24px rgba(194,90,56,0.2); }
 /* 失败分型卡片：撞墙时给出可点的下一步，而不是气泡里一句「（连接出错）」。
-   半屏 sheet，从底部升起；桌面宽屏时居中收窄。 */
+   半屏 sheet，从底部升起；桌面宽屏时居中收窄。
+
+   ⚠ 这里原本写的是 var(--bg-1) 与 var(--line) —— 这两个令牌**全仓从未定义**。
+   未定义的自定义属性在计算期无效：background 回落到初始值 transparent、
+   border 塌成 0px none。也就是说失败卡与下面的调试台一直是「深色遮罩上飘着几行
+   字」，按钮也没有描边。base.css 的令牌叫 --panel / --border（没有 -1 / --line
+   这种命名），是我写的时候记混了。同类问题另见 --shadow-md（正确的是 --shadow-lg）。
+   client/web-test.mjs 现在有一条断言扫描全部样式表，禁止再出现无 fallback 的
+   未定义令牌引用。 */
 .fail-mask { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,0.42);
   display: flex; align-items: flex-end; justify-content: center; }
-.fail-sheet { width: 100%; max-width: 460px; background: var(--bg-1); border-radius: 18px 18px 0 0;
+.fail-sheet { width: 100%; max-width: 460px; background: var(--panel); border-radius: 18px 18px 0 0;
   padding: 22px 20px calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 32px rgba(0,0,0,0.22);
   animation: failRise 0.2s ease-out; }
 @keyframes failRise { from { transform: translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
 .fail-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
 .fail-desc { font-size: 13px; color: var(--faint); line-height: 1.6; margin-bottom: 16px; }
 .fail-acts { display: flex; flex-direction: column; gap: 8px; }
-.fail-act { min-height: 46px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line);
+.fail-act { min-height: 46px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border);
   background: var(--bg-2); color: var(--text); font-size: 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
 .fail-act:hover { border-color: var(--accent); }
 .fail-act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -325,7 +333,7 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   background: #c0392b; color: #fff; vertical-align: middle; letter-spacing: 0.3px; }
 
 /* 对话内调试台：把「本轮到底注入了什么」摊开给作者看，含被 max_active 砍掉的条目。 */
-.dbg-sheet { width: 100%; max-width: 560px; max-height: 86vh; overflow-y: auto; background: var(--bg-1);
+.dbg-sheet { width: 100%; max-width: 560px; max-height: 86vh; overflow-y: auto; background: var(--panel);
   border-radius: 18px 18px 0 0; padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
   box-shadow: 0 -8px 32px rgba(0,0,0,0.22); animation: failRise 0.2s ease-out; }
 @media (min-width: 861px) { .dbg-sheet { border-radius: 18px; } }
@@ -356,7 +364,7 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 
 /* 「查看更早」：渲染窗口只画末尾若干条，这颗按钮把更早的部分放出来。 */
 .load-earlier { display: block; margin: 4px auto 12px; padding: 8px 16px; min-height: 44px;
-  background: var(--bg-2); border: 1px solid var(--line); color: var(--faint); font-size: 13px;
+  background: var(--bg-2); border: 1px solid var(--border); color: var(--faint); font-size: 13px;
   border-radius: 999px; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
 .load-earlier:hover { color: var(--accent); border-color: var(--accent); }
 
@@ -579,7 +587,7 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 
 /* —— Chat 内：[[wbimg:id]] 标记直接展示创建者预注入的图片（不生图）—— */
 .wb-inline-imgs { display: block; margin: 8px 0 4px; }
-.wb-inline-img { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; margin: 4px 0; box-shadow: var(--shadow-md); animation: riseIn 0.35s ease both; cursor: zoom-in; transition: transform 0.2s; }
+.wb-inline-img { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; margin: 4px 0; box-shadow: var(--shadow-lg); animation: riseIn 0.35s ease both; cursor: zoom-in; transition: transform 0.2s; }
 .wb-inline-img:active { transform: scale(0.98); }
 
 /* —— 图片全屏预览 lightbox（支持 pinch-zoom / 双指缩放）—— */
@@ -588,7 +596,7 @@ button.wb-ov-stat:hover { background: var(--bg-2); }
 .img-lightbox-close { position: fixed; top: calc(16px + env(safe-area-inset-top)); right: calc(16px + env(safe-area-inset-right)); width: 44px; height: 44px; border-radius: 50%; border: none; background: rgba(0,0,0,0.45); color: #fff; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(8px); }
 .img-lightbox-close:hover { background: rgba(0,0,0,0.65); }
 .wb-img-missing { display: inline-flex; align-items: center; gap: 4px; margin: 2px 4px; padding: 3px 9px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg-2); color: var(--muted); font-size: 11.5px; vertical-align: middle; }
-.wb-front-banner { position: relative; height: 110px; margin: 8px 14px 14px; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, var(--wb-accent, #d4677a), color-mix(in srgb, var(--wb-accent, #d4677a) 40%, #7c5bd9)); box-shadow: var(--shadow-md); }
+.wb-front-banner { position: relative; height: 110px; margin: 8px 14px 14px; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, var(--wb-accent, #d4677a), color-mix(in srgb, var(--wb-accent, #d4677a) 40%, #7c5bd9)); box-shadow: var(--shadow-lg); }
 .wb-front-banner img { width: 100%; height: 100%; object-fit: cover; }
 .wb-front-banner-ph { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 600; gap: 8px; }
 .wb-front-banner-cap { position: absolute; bottom: 8px; right: 10px; font-size: 10.5px; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.25); padding: 2px 7px; border-radius: 999px; backdrop-filter: blur(6px); }

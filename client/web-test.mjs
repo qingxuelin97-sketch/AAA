@@ -219,4 +219,55 @@ match(mainSource, /import '\.\/styles\/web-lumen-tokens\.css';[\s\S]*import '\.\
 const perfSource = await read('./src/perf.js');
 doesNotMatch(perfSource, /if \(!isAppMode\(\) \|\| getPerfPref/, 'adaptive perf degradation must cover the web shell too');
 
+/* ---- 15. 不得引用从未定义的自定义属性 ---- */
+// 未定义的自定义属性在**计算期**失效：`background: var(--nope)` 不是「忽略这条声明」，
+// 而是整条属性回落到初始值 —— background 变透明、border 塌成 0px none。
+// 于是一个拼错的令牌名不会报错、不会警告，只会让一整块 UI 悄悄消失。
+// 实际发生过：失败分型卡与对话内调试台写了 var(--bg-1) / var(--line)（正确的名字是
+// --panel / --border），线上一直是「深色遮罩上飘着几行字、按钮没有描边」；
+// 同期还有 var(--shadow-md)（正确的是 --shadow-lg）。三处都是肉眼可见的缺陷，
+// 却躲过了当时的全部断言与像素比对（因为基线是带着 bug 一起录的）。
+//
+// 只查**没有 fallback** 的引用：`var(--x, 12px)` 是有意的可选令牌，不算问题。
+// 运行时由 JS 写进行内样式的令牌（动画索引 --i / 坐标 --dx --dy / 玻璃配色
+// --hy-cg-* 等）也不算 —— 它们本来就不该出现在样式表的定义位。
+{
+  // CSS 分散在三个目录，必须全扫 —— 只扫 styles/ 会把 chat/chat-app.css 里定义的
+  // --hy-cg-* 误判成未定义。
+  const cssDirs = ['./src/', './src/chat/', './src/styles/'];
+  const defined = new Set();
+  const usedWithoutFallback = new Map();
+  for (const d of cssDirs) {
+    const base = new URL(d, import.meta.url);
+    const cssFiles = (await readdir(base)).filter((f) => f.endsWith('.css'));
+    for (const f of cssFiles) {
+      // 先剥注释：解释「这里曾经错写成 var(--bg-1)」的说明文字不该被当成真引用。
+      const src = (await readFile(new URL(f, base), 'utf8')).replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const m of src.matchAll(/(?:^|[;{\s])(--[\w-]+)\s*:/g)) defined.add(m[1]);
+      for (const m of src.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)) {
+        if (!usedWithoutFallback.has(m[1])) usedWithoutFallback.set(m[1], new Set());
+        usedWithoutFallback.get(m[1]).add(d.replace('./src/', '') + f);
+      }
+    }
+  }
+  // JS 在运行时 setProperty 的令牌：从源码里实测收集，不写死名单（免得清单腐烂）。
+  const jsDirs = ['./src/', './src/components/', './src/pages/', './src/chat/'];
+  const runtimeSet = new Set();
+  for (const d of jsDirs) {
+    const base = new URL(d, import.meta.url);
+    let entries = [];
+    try { entries = await readdir(base); } catch { continue; }
+    for (const f of entries.filter((x) => /\.(js|jsx)$/.test(x))) {
+      const src = await readFile(new URL(f, base), 'utf8');
+      for (const m of src.matchAll(/['"`](--[\w-]+)['"`]/g)) runtimeSet.add(m[1]);
+      for (const m of src.matchAll(/(--[\w-]+)\s*:/g)) runtimeSet.add(m[1]);
+    }
+  }
+  const dangling = [...usedWithoutFallback.keys()]
+    .filter((k) => !defined.has(k) && !runtimeSet.has(k))
+    .sort();
+  ok(dangling.length === 0,
+    `stylesheets must not reference undefined custom properties without a fallback (a typo silently renders the element transparent): ${dangling.map((k) => `${k} in ${[...usedWithoutFallback.get(k)].join('/')}`).join(', ')}`);
+}
+
 console.log(`web invariants: ${passed}/${passed} passed`);
