@@ -146,7 +146,22 @@ html[data-app="1"] {
   --ix-dur-needle: 540ms;          /* 仪表指针入场，一次性 */
 }
 
-/* ═══ 深色 · 石墨仪表台（等价主题，非滤镜） ═══════════════ */
+/* ═══ 深色 · 石墨仪表台（等价主题，非滤镜） ═══════════════
+ * ⚠ 这一整块目前是**死代码**：theme.js:13 让 App 壳恒返回 light，
+ * [data-theme="dark"] 永远不会出现在 App 的 <html> 上。保留它是为了将来重做
+ * 深色时不用从零开始 —— 但**别把「重开深色」估成一件小事**。
+ *
+ * 实测（HEAD，app-rainbow.css）：
+ *   · [data-theme="dark"] 出现 0 次，!important 出现 252 次；
+ *   · 其中大量是**字面色**而不是令牌，最典型的是 :86-88
+ *     html[data-app="1"] body { background: linear-gradient(180deg,#EFF8FD…) !important }，
+ *     整层还散布着几十处 color:#fff!important / #FAFDFE / #C7DEEC 之类的写死色。
+ * 也就是说：**补一套深色令牌对它们毫无作用**。真把 theme.js:13 解开，App 深色下
+ * 依然是「浅蓝页底 + 纯白卡 + 白字」。重开深色的真实代价不是「加一块令牌」，
+ * 而是重写整个彩虹层；再加上 theme.js 与 Settings 的两条断言要改。
+ * 另：带 [data-theme="dark"] 的 .chat-main 钉死块在 chat-glass.css:18-20，
+ * 不在 chat-app.css（后者全文 0 处 data-theme）。
+ * ═══════════════════════════════════════════════════════ */
 html[data-app="1"][data-theme="dark"] {
   color-scheme: dark;
   --ix-canvas: #0F1312;
