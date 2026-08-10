@@ -619,6 +619,46 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
   assert.doesNotMatch(appFocusRules, /(input|textarea|contenteditable)/,
     'app-focus.css must not touch text inputs (their focus feedback is owned by their containers)');
 }
+// —— D3 强调色：设置页承诺的「全站换色」必须兑现 ——
+{
+  const accentJs = await readFile(new URL('./src/accent.js', import.meta.url), 'utf8');
+  const rainbow = await readFile(new URL('./src/styles/app-rainbow.css', import.meta.url), 'utf8');
+  const rainbowClean = rainbow.replace(/\/\*[\s\S]*?\*\//g, '');
+  // ① 渐变族必须跟随强调色。面状渐变（芯片/主 CTA/FAB/金融舱卡）读的是
+  // --ix-rainbow-*，不跟随就会出现「文字是你选的紫、整块卡还是青蓝」。
+  const accentBlock = (rainbowClean.match(/html\[data-app="1"\]\[data-accent\]\s*\{([^}]*)\}/) || [])[1];
+  assert.ok(accentBlock, 'app-rainbow.css must derive the gradient family from the user accent (Settings promises the whole App follows the chosen colour)');
+  for (const token of ['--ix-rainbow-grad', '--ix-rainbow-grad-h', '--ix-rainbow-chip',
+    '--ix-rainbow-chip-shadow', '--ix-rainbow-cta-shadow', '--ix-rainbow-tint', '--ix-rainbow-line']) {
+    assert.ok(new RegExp(token.replace(/-/g, '\\-') + '\\s*:').test(accentBlock), `the accent-following block must redefine ${token}`);
+  }
+  // 必须由 --ix-act 推导，不许手抄色值：色值只有一处真源才不会漏改
+  assert.match(accentBlock, /var\(--ix-act\)/, 'the accent-following block must read var(--ix-act)');
+  assert.doesNotMatch(accentBlock.replace(/#FFFFFF/gi, ''), /#[0-9A-Fa-f]{3,8}/,
+    'the accent-following block must derive every value from var(--ix-act) (only #FFFFFF is allowed, as the color-mix partner) — hard-coded hues drift the moment accent.js changes');
+  // ② 默认态零变化：[data-accent] 只在非 clay 时落到 DOM（accent.js），
+  // 所以默认 clay 完全不匹配这一块，参考稿的逐像素测量值原样保留。
+  assert.match(accentJs, /if \(id === 'clay'\) delete document\.documentElement\.dataset\.accent/,
+    'clay must stay attribute-less so the reference-measured cyan baseline is the default');
+  // ③ 六色轮转族不跟随强调色 —— 那是刻意的多色身份语言
+  assert.doesNotMatch(accentBlock, /--ix-rainbow-(?:violet|coral|indigo|mint|rose|amber|cyan)\s*:/,
+    'the six-hue identity family must not follow the accent (it would collapse to a single hue)');
+  // ④ 色点不许说谎：App 壳的每个 id 都要有 appC，且必须等于 app-ix-accents.css
+  // 里那个 id 实际生效的 --ix-act（clay 无属性 → 落 app-rainbow.css 的品牌青）。
+  const ixAccentsCss = await readFile(new URL('./src/styles/app-ix-accents.css', import.meta.url), 'utf8');
+  const entries = [...accentJs.matchAll(/\{\s*id:\s*'([a-z]+)',[^}]*?c:\s*'(#[0-9a-fA-F]{6})'[^}]*?appC:\s*'(#[0-9a-fA-F]{6})'/g)];
+  assert.equal(entries.length, 6, 'every accent must carry an App-shell swatch colour (the Settings dots used to show Web values inside the App)');
+  const brandAct = (rainbowClean.match(/--ix-act:\s*(#[0-9A-Fa-f]{6})/) || [])[1];
+  for (const [, id, , appC] of entries) {
+    const expected = id === 'clay'
+      ? brandAct
+      : (new RegExp('\\[data-accent="' + id + '"\\][^{]*\\{[^}]*--ix-act:\\s*(#[0-9A-Fa-f]{6})').exec(ixAccentsCss) || [])[1];
+    assert.equal(appC.toUpperCase(), String(expected).toUpperCase(),
+      `accent "${id}": the Settings dot must show what the App actually applies (dot ${appC}, applied ${expected})`);
+  }
+  const settingsSrc = await readFile(new URL('./src/pages/Settings.jsx', import.meta.url), 'utf8');
+  assert.match(settingsSrc, /accentSwatch\(a,\s*app\)/, 'Settings must pick the swatch by shell');
+}
 // —— D4 性能三档：默认档不许再是令牌层的空白 ——
 {
   const perfTokens = ixTokens.replace(/\/\*[\s\S]*?\*\//g, '');

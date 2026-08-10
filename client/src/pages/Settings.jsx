@@ -3,7 +3,7 @@ import { useNav as useNavigate } from '../nav.js';
 import { api, useAuth, getApiBase, setToken } from '../api.jsx';
 import { useToast, Uploader, Avatar, AvatarPicker, CoinIcon } from '../ui.jsx';
 import { getThemeMode, setThemeMode, getGlass, setGlass } from '../theme.js';
-import { ACCENTS, getAccent, setAccent } from '../accent.js';
+import { ACCENTS, accentSwatch, getAccent, setAccent } from '../accent.js';
 import { getPerfPref, setPerfPref, resolvePerf } from '../perf.js';
 import { browserVoices, playAudioUrl, speakBrowser, stopSpeaking } from '../voice.js';
 import HelpCenter from '../components/HelpCenter.jsx';
@@ -792,15 +792,21 @@ export default function Settings() {
             <div className="field">
               <label>主题色</label>
               <div className="accent-row">
-                {ACCENTS.map(a => (
-                  <button key={a.id} type="button" className={'accent-dot' + (accent === a.id ? ' on' : '')}
-                    style={{ '--dot': a.c }} onClick={() => changeAccent(a.id)} aria-label={a.name} title={a.name}>
-                    {accent === a.id && <Check size={17} strokeWidth={3} />}
-                    <small>{a.name}</small>
-                  </button>
-                ))}
+                {ACCENTS.map(a => {
+                  // 色点按壳取值：两壳令牌互斥，同一个 id 落到的颜色本来就不同。
+                  const sw = accentSwatch(a, app);
+                  return (
+                    <button key={a.id} type="button" className={'accent-dot' + (accent === a.id ? ' on' : '')}
+                      style={{ '--dot': sw.c }} onClick={() => changeAccent(a.id)} aria-label={sw.name} title={sw.name}>
+                      {accent === a.id && <Check size={17} strokeWidth={3} />}
+                      <small>{sw.name}</small>
+                    </button>
+                  );
+                })}
               </div>
-              <div className="hint">全站按钮、导航与图表即刻换上你选的颜色，深浅色模式都会各自适配。</div>
+              <div className="hint">{app
+                ? '按钮、图标芯片、主 CTA 与金融卡的渐变都会跟着换色；语义色（危险红/成功绿/金币/钻石）与未读角标永不漂移。'
+                : '全站按钮、导航与图表即刻换上你选的颜色，深浅色模式都会各自适配。'}</div>
             </div>
             <div className="field">
               <label>性能模式</label>

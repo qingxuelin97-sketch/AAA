@@ -53,6 +53,35 @@ html[data-app="1"] {
   --ix-r-panel: 22px;
 }
 
+/* ── 0b. 用户强调色跟随（D3）─────────────────────────────────────────────
+   设置页原文写着「全站按钮、导航与图表即刻换上你选的颜色」。实际上
+   app-ix-accents.css 只改 --ix-act / --ix-act-soft / --ix-focus 三个令牌，而
+   本层的芯片、主 CTA、FAB、金融舱卡、宫格图标读的是上面那组 --ix-rainbow-*
+   且一律带 !important —— **面状渐变锁死青蓝**。于是六个选项里有五个会让同一屏
+   出现两种不相干的颜色：文字/边框是你选的紫，整块金融卡还是青蓝。
+
+   改法：非默认强调色时，渐变族由 --ix-act 推导，一条规则覆盖五个 id。
+   · [data-accent] 属性只在非 clay 时才写到 <html>（accent.js:25），所以默认态
+     **完全不匹配这一块**，参考稿那组逐像素测量值原样保留 —— 默认外观零变化。
+   · 特异度 (0,2,1) 压过 §0 基线块的 (0,1,1)；同时 app-ix-accents.css 的
+     html[data-app="1"][data-accent="x"] 也是 (0,2,1) 且**只定义 --ix-act 四件套**
+     （app-test.mjs:432 有断言钉死），两边各管各的，不冲突。
+   · 用 color-mix 从 --ix-act 推导而不是手抄 5×7 个色值：色值只有一处真源，
+     以后调 accent 不会漏改渐变。明度结构照抄参考稿（浅端约 45% 实色 + 白），
+     保证白字在渐变上的对比度与默认青蓝一致。
+   · 六色轮转族（--ix-rainbow-violet/coral/... ，§8b）**不跟随** —— 那是刻意的
+     多色身份语言，跟着强调色转会退化成单色。
+   ------------------------------------------------------------------------ */
+html[data-app="1"][data-accent] {
+  --ix-rainbow-grad: linear-gradient(135deg, color-mix(in oklab, var(--ix-act) 45%, #FFFFFF) 0%, var(--ix-act) 100%);
+  --ix-rainbow-grad-h: linear-gradient(90deg, color-mix(in oklab, var(--ix-act) 40%, #FFFFFF) 0%, var(--ix-act) 100%);
+  --ix-rainbow-chip: linear-gradient(145deg, color-mix(in oklab, var(--ix-act) 35%, #FFFFFF) 0%, color-mix(in oklab, var(--ix-act) 88%, #FFFFFF) 100%);
+  --ix-rainbow-chip-shadow: 0 6px 14px color-mix(in srgb, var(--ix-act) 26%, transparent);
+  --ix-rainbow-cta-shadow: 0 10px 22px color-mix(in srgb, var(--ix-act) 30%, transparent);
+  --ix-rainbow-tint: color-mix(in srgb, var(--ix-act) 8%, transparent);
+  --ix-rainbow-line: color-mix(in srgb, var(--ix-act) 34%, transparent);
+}
+
 /* 页底浅蓝渐变（纯静态，一次光栅化） */
 html[data-app="1"] body {
   background: linear-gradient(180deg, #EFF8FD 0%, #F3FBFE 60%, #EDF7FD 100%) !important;
