@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { push } from '../realtime.js';
+import { contentLimiter } from '../limiters.js';
 
 const router = Router();
 
@@ -57,7 +58,7 @@ router.get('/:id', authRequired, (req, res) => {
   res.json({ group: g, members, messages, joined: memberOf(g.id, req.user.id) });
 });
 
-router.post('/:id/messages', authRequired, (req, res) => {
+router.post('/:id/messages', authRequired, contentLimiter, (req, res) => {
   const g = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.id);
   if (!g) return res.status(404).json({ error: '群不存在' });
   // 仅成员可发言，不再自动加成员，防任意用户对他人群发消息。

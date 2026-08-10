@@ -5,6 +5,7 @@ import { notify } from '../wallet.js';
 import { creatorTier } from '../creator.js';
 import { areFriends, friendIds, isOnline, dmAllowed, friendState, dmThread, pairKey } from '../relations.js';
 import { push } from '../realtime.js';
+import { contentLimiter } from '../limiters.js';
 
 const router = Router();
 const U = (id) => db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -35,7 +36,7 @@ router.get('/state/:id', authRequired, (req, res) => {
   res.json({ state: friendState(req.user.id, tid), can_dm: t ? dmAllowed(req.user, t) : false, online: isOnline(t) });
 });
 
-router.post('/request/:id', authRequired, (req, res) => {
+router.post('/request/:id', authRequired, contentLimiter, (req, res) => {
   const me = req.user; const tid = +req.params.id;
   if (tid === me.id) return res.status(400).json({ error: '不能添加自己为好友' });
   const target = U(tid); if (!target) return res.status(404).json({ error: '用户不存在' });

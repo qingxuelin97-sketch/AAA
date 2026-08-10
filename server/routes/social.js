@@ -114,7 +114,7 @@ router.get('/suggested', authRequired, (req, res) => {
 });
 
 // ---- Follow ----
-router.post('/follow/:id', authRequired, (req, res) => {
+router.post('/follow/:id', authRequired, contentLimiter, (req, res) => {
   const target = parseInt(req.params.id, 10);
   if (target === req.user.id) return res.status(400).json({ error: '不能关注自己' });
   const has = db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?').get(req.user.id, target);

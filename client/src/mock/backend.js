@@ -2014,7 +2014,8 @@ async function route(method, path, search, body, headers) {
       .filter(d => d.startsWith(month)).map(d => Number(d.slice(8))).sort((a, b) => a - b);
     return J({ month, days, today, last_checkin: me.last_checkin || null, streak: me.checkin_streak || 0, month_total: days.length });
   }
-  if (method === 'POST' && path === '/economy/exchange') { need(); const n = parseInt(body.diamond, 10); if (!n || n <= 0) return E('请输入有效的钻石数量'); try { return J({ wallet: applyTx(me.id, { kind: 'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo: `${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` }) }); } catch (e) { return E(e.message); } }
+  // 单次 / 每日兑换上限与 server/routes/economy.js 同口径（按真实充值档位标定）。
+  if (method === 'POST' && path === '/economy/exchange') { need(); const n = parseInt(body.diamond, 10); if (!n || n <= 0) return E('请输入有效的钻石数量'); if (n > 20000) return E('单次兑换上限 20000 钻石'); const d = dailyOf(me.id); if ((d.counts.exchange_diamond || 0) + n > 50000) return E(`今日兑换额度不足（上限 50000 钻石，已兑 ${d.counts.exchange_diamond || 0}）`); try { const wallet = applyTx(me.id, { kind: 'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo: `${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` }); d.counts.exchange_diamond = (d.counts.exchange_diamond || 0) + n; save(); return J({ wallet }); } catch (e) { return E(e.message); } }
   if (method === 'POST' && path === '/economy/vip') { need(); const plan = VIP_PLANS[body.plan] || VIP_PLANS.month; try { applyTx(me.id, { kind: 'vip', gold: -plan.gold, memo: `购买 ${plan.days} 天 VIP（${plan.label}）` }); } catch (e) { return E(e.message); } const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + plan.days * 86400000).toISOString(); save(); return J({ wallet: publicUser(me) }); }
   if (method === 'POST' && path === '/economy/checkin') {
     need(); const today = todayStr(); if (me.last_checkin === today) return E('今天已经签到过啦', 409, 'ALREADY_CHECKED_IN');

@@ -988,8 +988,22 @@ for (const sql of [
   "ALTER TABLE novel_beats ADD COLUMN history TEXT DEFAULT '[]'",
 ]) { try { db.exec(sql); } catch { /* column exists */ } }
 
+// —— 举报去重 ——
+// 同一用户对同一目标可以无限次提交举报，队列因此可被单人刷爆，而 GM 侧
+// 「待处理举报」的计数也就失去了意义（分不清 1 个人报了 50 次还是 50 个人各报 1 次）。
+// 加唯一索引前必须先清理存量重复，否则索引建不上、assertSchema 会拒绝启动。
+// 只对 reporter_id 非空的行去重：reporter 因账号删除被置空的孤儿举报彼此不算重复
+//（SQLite 的唯一索引里 NULL 互不相等，语义正好一致）。
+try {
+  db.exec(`DELETE FROM reports WHERE reporter_id IS NOT NULL AND id NOT IN (
+    SELECT MIN(id) FROM reports WHERE reporter_id IS NOT NULL GROUP BY reporter_id, target_type, target_id
+  )`);
+} catch { /* 全新库无表 */ }
+
 // —— 性能索引：热点外键/查找列（缺失会随数据量退化为全表扫描）。——
 for (const sql of [
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_unique ON reports (reporter_id, target_type, target_id)',
+  'CREATE INDEX IF NOT EXISTS idx_reports_target ON reports (target_type, target_id)',
   'CREATE INDEX IF NOT EXISTS idx_characters_owner ON characters (owner_id)',
   'CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages (conversation_id, id)',
   'CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations (user_id)',

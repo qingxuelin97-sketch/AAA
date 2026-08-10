@@ -1011,8 +1011,12 @@ function CouncilTab({ toast }) {
 
 function ReportsTab({ toast }) {
   const [reports, setReports] = useState([]);
-  const load = () => api('/admin/reports').then(d => setReports(d.reports || [])).catch(e => toast(e.message, 'err'));
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, pages: 1 });
+  const load = (p = page) => api(`/admin/reports?page=${p}`)
+    .then(d => { setReports(d.reports || []); setMeta({ total: d.total || 0, pages: d.pages || 1 }); })
+    .catch(e => toast(e.message, 'err'));
+  useEffect(() => { load(page); /* eslint-disable-next-line */ }, [page]);
 
   const resolve = async (id, action) => {
     try { await api(`/admin/reports/${id}/resolve`, { method: 'POST', body: action ? { action } : {} }); await load(); }
@@ -1028,25 +1032,36 @@ function ReportsTab({ toast }) {
   };
 
   if (reports.length === 0) return <div className="empty"><div className="big"><AlertTriangle size={42} /></div>暂无举报</div>;
-  return reports.map(r => (
-    <div key={r.id} className="adm-row">
-      <div className="grow">
-        <b>{r.target_type} #{r.target_id}</b>
-        {VIEW_LINK[r.target_type] && (
-          <a href={'#' + VIEW_LINK[r.target_type](r.target_id)} target="_blank" rel="noreferrer" className="btn ghost sm" style={{ marginLeft: 8 }}>查看</a>
-        )}
-        <div className="sub2">理由：{r.reason || '-'} · 举报人 {r.reporter_name || '匿名'} · {r.status}</div>
-      </div>
-      {r.status === 'open' && (
-        <div className="adm-actions">
-          {DELETE_LABEL[r.target_type] && (
-            <button className="btn sm danger" onClick={() => delAndResolve(r)}><Trash2 size={13} /> {DELETE_LABEL[r.target_type]}</button>
+  return (<>
+    {reports.map(r => (
+      <div key={r.id} className="adm-row">
+        <div className="grow">
+          <b>{r.target_type} #{r.target_id}</b>
+          {/* 同一目标被多人举报时给出总数：逐条平铺看不出集中度 */}
+          {r.target_reports > 1 && <span className="badge danger" style={{ marginLeft: 8 }}>共 {r.target_reports} 人举报</span>}
+          {VIEW_LINK[r.target_type] && (
+            <a href={'#' + VIEW_LINK[r.target_type](r.target_id)} target="_blank" rel="noreferrer" className="btn ghost sm" style={{ marginLeft: 8 }}>查看</a>
           )}
-          <button className="btn sm" onClick={() => resolve(r.id)}><Check size={13} /> 标记已处理</button>
+          <div className="sub2">理由：{r.reason || '-'} · 举报人 {r.reporter_name || '匿名'} · {r.status}</div>
         </div>
-      )}
-    </div>
-  ));
+        {r.status === 'open' && (
+          <div className="adm-actions">
+            {DELETE_LABEL[r.target_type] && (
+              <button className="btn sm danger" onClick={() => delAndResolve(r)}><Trash2 size={13} /> {DELETE_LABEL[r.target_type]}</button>
+            )}
+            <button className="btn sm" onClick={() => resolve(r.id)}><Check size={13} /> 标记已处理</button>
+          </div>
+        )}
+      </div>
+    ))}
+    {meta.pages > 1 && (
+      <div className="adm-row" style={{ justifyContent: 'center', gap: 12 }}>
+        <button className="btn sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>上一页</button>
+        <span className="sub2">第 {page} / {meta.pages} 页 · 共 {meta.total} 条</span>
+        <button className="btn sm" disabled={page >= meta.pages} onClick={() => setPage(p => p + 1)}>下一页</button>
+      </div>
+    )}
+  </>);
 }
 
 // 注册邮箱白名单管理 —— 白名单非空时，仅白名单内邮箱可注册本平台。

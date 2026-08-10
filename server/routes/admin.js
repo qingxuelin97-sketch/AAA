@@ -531,9 +531,20 @@ router.delete('/codes/:code', (req, res) => {
 });
 
 // ---- reports ----
+// 分页 + 按目标聚合计数。此前是无条件 LIMIT 80：举报一多就有队列尾部永远看不到，
+// 而且逐条平铺时 GM 无法分辨「一个目标被 30 人举报」和「30 个互不相干的目标」。
+// 处置仍按单条 id（/reports/:id/resolve 契约不变），只是把同目标的总数带出来排序，
+// 让被集中举报的目标浮到最前。
 router.get('/reports', (req, res) => {
-  const rows = db.prepare(`SELECT r.*, u.display_name reporter_name FROM reports r LEFT JOIN users u ON u.id=r.reporter_id ORDER BY r.status='open' DESC, r.id DESC LIMIT 80`).all();
-  res.json({ reports: rows });
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const total = db.prepare('SELECT COUNT(*) n FROM reports').get().n;
+  const rows = db.prepare(`SELECT r.*, u.display_name reporter_name,
+      (SELECT COUNT(*) FROM reports x WHERE x.target_type = r.target_type AND x.target_id = r.target_id) AS target_reports
+    FROM reports r LEFT JOIN users u ON u.id = r.reporter_id
+    ORDER BY (r.status='open') DESC, target_reports DESC, r.id DESC
+    LIMIT ? OFFSET ?`).all(limit, (page - 1) * limit);
+  res.json({ reports: rows, total, page, limit, pages: Math.max(Math.ceil(total / limit), 1) });
 });
 // 结案（修缮⑮扩展）：action='delete' 时按举报类型先处置内容再结案——
 // moment 硬删、script 软删下架、character 转私密下架（创作者资产不硬删）；

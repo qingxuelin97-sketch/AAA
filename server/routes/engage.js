@@ -134,7 +134,7 @@ router.delete('/reviews/:id', authRequired, (req, res) => {
 // ---- reports ----
 // 支持 character / script / moment / user 四类举报，与 reports 表 target_type 设计一致，
 // 也与前端 ReportButton 的 type 取值（character|script|user）对齐。
-router.post('/report', authRequired, (req, res) => {
+router.post('/report', authRequired, contentLimiter, (req, res) => {
   const { type, id, reason } = req.body || {};
   if (!type || !id) return res.status(400).json({ error: '参数不全' });
   const tbl = type === 'script' ? 'scripts'
@@ -145,8 +145,11 @@ router.post('/report', authRequired, (req, res) => {
   if (!tbl) return res.status(400).json({ error: '不支持的举报类型' });
   // 校验目标存在，防对不存在的 id 提举报污染队列。
   if (!db.prepare(`SELECT 1 FROM ${tbl} WHERE id = ?`).get(id)) return res.status(404).json({ error: '目标不存在' });
-  db.prepare('INSERT INTO reports (target_type, target_id, reporter_id, reason) VALUES (?,?,?,?)').run(type, id, req.user.id, (reason || '').slice(0, 500));
-  res.json({ ok: true });
+  // 同一人对同一目标只留一条（idx_reports_unique）。重复提交不报错——用户看到的
+  // 仍是「已收到」，但队列不会被单人刷爆，GM 侧的举报数也才等于举报人数。
+  const r = db.prepare('INSERT INTO reports (target_type, target_id, reporter_id, reason) VALUES (?,?,?,?) ON CONFLICT DO NOTHING')
+    .run(type, id, req.user.id, (reason || '').slice(0, 500));
+  res.json({ ok: true, duplicate: r.changes === 0 });
 });
 
 // ---- leaderboard ----

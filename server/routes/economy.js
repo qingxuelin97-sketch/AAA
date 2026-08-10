@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import db from'../db.js';
 import { authRequired } from'../auth.js';
 import { applyTx, assertEconomicAccess, isVip, publicUser, GOLD_PER_DIAMOND, VIP_COST_GOLD, VIP_DAYS, notify } from'../wallet.js';
-import { bumpDaily, cnToday } from '../daily.js';
+import { bumpDaily, cnToday, dailyOf } from '../daily.js';
 import { log } from '../logger.js';
 import { createPaymentOrder, getPaymentOrder, paymentAvailability, PAYMENT_PACKAGES } from '../payment.js';
 
@@ -62,13 +62,42 @@ router.get('/recharge/orders/:id', authRequired, (req, res) => {
 });
 
 // Exchange diamonds -> gold (1 : 100)
-router.post('/exchange', authRequired, (req, res) => {
+//
+// 兑换口是硬通货转软通货的唯一闸门，也是任何「钻石被超发」事故的放大器：
+// 超发的钻石只有经过这里才会变成能在站内消费的金币。此前这个端点
+//   · 没有任何路由级限流（整个文件里只有 /redeem 挂了 redeemLimiter）
+//   · 单次上限 100 万钻，而最大充值档 ¥648 只给 9360 钻——上限是它的 107 倍，
+//     等于没有上限
+//   · 没有每日累计上限
+// 现在三样都补上。按真实充值档位标定：单次 20000 钻（≈2 个最大档），
+// 每日 50000 钻（≈5 个最大档），对任何真实用户都绰绰有余，
+// 而事故时的爆炸半径缩小约 50 倍。
+const EXCHANGE_MAX_PER_CALL = 20_000;
+const EXCHANGE_MAX_PER_DAY = 50_000;
+const exchangeLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: (req) => (req.user?.id ? `u${req.user.id}` : req.ip),
+  handler: (req, res) => res.status(429).json({ error: '兑换过于频繁，请稍后再试' }) });
+
+router.post('/exchange', authRequired, exchangeLimiter, (req, res) => {
   const n = parseInt((req.body || {}).diamond, 10);
   if (!n || n <= 0) return res.status(400).json({ error:'请输入有效的钻石数量' });
-  if (n > 1_000_000) return res.status(400).json({ error:'单次兑换上限 100 万钻石' });
+  if (n > EXCHANGE_MAX_PER_CALL) return res.status(400).json({ error:`单次兑换上限 ${EXCHANGE_MAX_PER_CALL} 钻石` });
   try {
     assertEconomicAccess(req.user.id);
-    const w = applyTx(req.user.id, { kind:'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo:`${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` });
+    // 每日累计额度与扣款同事务：并发兑换不能各自读到同一份「今日已兑」快照
+    // 后双双通过（否则日上限形同虚设）。
+    const w = db.transaction(() => {
+      const used = dailyOf(req.user.id).counts.exchange_diamond || 0;
+      if (used + n > EXCHANGE_MAX_PER_DAY) {
+        const e = new Error(`今日兑换额度不足（上限 ${EXCHANGE_MAX_PER_DAY} 钻石，已兑 ${used}）`);
+        e.status = 400; e.expose = true; throw e;
+      }
+      const wallet = applyTx(req.user.id, { kind:'exchange', diamond: -n, gold: n * GOLD_PER_DIAMOND, memo:`${n} 钻石兑换为 ${n * GOLD_PER_DIAMOND} 金币` });
+      const d = dailyOf(req.user.id);
+      d.counts.exchange_diamond = (d.counts.exchange_diamond || 0) + n;
+      db.prepare('UPDATE daily_progress SET counts = ? WHERE user_id = ?').run(JSON.stringify(d.counts), req.user.id);
+      return wallet;
+    }).immediate();
     log({ level: 'info', category: 'economy', event: 'exchange',
       message: `用户兑换 ${n} 钻石为 ${n * GOLD_PER_DIAMOND} 金币`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
       endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
