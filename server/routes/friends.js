@@ -44,7 +44,9 @@ router.post('/request/:id', authRequired, contentLimiter, (req, res) => {
   const incoming = db.prepare("SELECT * FROM friend_requests WHERE from_id=? AND to_id=? AND status='pending'").get(tid, me.id);
   if (incoming) {
     db.prepare("UPDATE friend_requests SET status='accepted' WHERE id=?").run(incoming.id);
-    const [a, b] = pairKey(me.id, tid); db.prepare('INSERT INTO friendships (a_id, b_id) VALUES (?,?)').run(a, b);
+    // OR IGNORE + friendships 上的唯一索引（db.js idx_friendships_pair）：
+    // 这条路径此前既无 areFriends 复检也无事务，双方几乎同时点「加好友」就会插出两行。
+    const [a, b] = pairKey(me.id, tid); db.prepare('INSERT OR IGNORE INTO friendships (a_id, b_id) VALUES (?,?)').run(a, b);
     notify(tid, `${me.display_name} 接受了你的好友申请 🎉`, '/friends');
     push(tid, 'friend', { kind: 'accepted', by: { id: me.id, display_name: me.display_name, avatar: me.avatar } });
     return res.json({ state: 'friends' });
@@ -62,7 +64,7 @@ router.post('/requests/:id/:action', authRequired, (req, res) => {
   if (r.status !== 'pending') return res.status(400).json({ error: '该申请已处理' });
   if (req.params.action === 'accept') {
     db.prepare("UPDATE friend_requests SET status='accepted' WHERE id=?").run(r.id);
-    if (!areFriends(me.id, r.from_id)) { const [a, b] = pairKey(me.id, r.from_id); db.prepare('INSERT INTO friendships (a_id, b_id) VALUES (?,?)').run(a, b); }
+    if (!areFriends(me.id, r.from_id)) { const [a, b] = pairKey(me.id, r.from_id); db.prepare('INSERT OR IGNORE INTO friendships (a_id, b_id) VALUES (?,?)').run(a, b); }
     notify(r.from_id, `${me.display_name} 通过了你的好友申请，开始聊天吧～`, '/friends');
     push(r.from_id, 'friend', { kind: 'accepted', by: { id: me.id, display_name: me.display_name, avatar: me.avatar } });
     return res.json({ ok: true, state: 'friends' });

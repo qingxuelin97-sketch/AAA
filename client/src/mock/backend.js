@@ -1345,7 +1345,7 @@ async function route(method, path, search, body, headers) {
     const convs = Array.isArray(body.conversations) ? body.conversations : [];
     const msgTotal = convs.reduce((n, c) => n + (Array.isArray(c?.messages) ? c.messages.length : 0), 0);
     if (chars.length > 200 || scripts.length > 200 || convs.length > 500 || msgTotal > 20000) return E('数据包超出导入上限');
-    const out = { characters: 0, scripts: 0, conversations: 0, messages: 0 };
+    const out = { characters: 0, scripts: 0, conversations: 0, messages: 0, affinity_dropped: 0 };
     let skipped = 0;
     const charMap = new Map();
     for (const c of chars) {
@@ -1369,7 +1369,10 @@ async function route(method, path, search, body, headers) {
     for (const cv of convs) {
       const cid = charMap.get(cv?.character_id);
       if (!cid) { skipped++; continue; }
-      const nc = insert('conversations', { user_id: me.id, character_id: cid, title: cv.title || '', affinity: cv.affinity || 0, memories: cv.memories || '[]', updated_at: now() });
+      // affinity 恒为 0：好感是服务端权威字段（真后端 routes/settings.js 同步收口），
+      // 采信包里的数字等于绕开 grantAffinity 的每日 40 点配额铸成就金币。
+      const nc = insert('conversations', { user_id: me.id, character_id: cid, title: cv.title || '', affinity: 0, memories: cv.memories || '[]', updated_at: now() });
+      if (Number(cv.affinity) > 0) out.affinity_dropped++;
       out.conversations++;
       for (const m of (Array.isArray(cv.messages) ? cv.messages : [])) {
         if (!m || typeof m.content !== 'string') { skipped++; continue; }
@@ -2141,7 +2144,7 @@ async function route(method, path, search, body, headers) {
     need(); const s = find('scripts', x => x.id === +m[1]); if (!s) return E('剧本不存在', 404); if (s.author_id === me.id) return E('这是你自己的剧本');
     if (find('script_purchases', p => p.script_id === s.id && p.user_id === me.id && !p.refunded)) return E('你已拥有该剧本');
     if (s.price_gold === 0) { insert('script_purchases', { script_id: s.id, user_id: me.id, price: 0, refunded: 0 }); return J({ ok: true, free: true }); }
-    try { applyTx(me.id, { kind: 'buy_script', gold: -s.price_gold, memo: `购买剧本《${s.title}》` }); applyTx(s.author_id, { kind: 'sell_script', gold: s.price_gold, memo: `售出剧本《${s.title}》` }); insert('script_purchases', { script_id: s.id, user_id: me.id, price: s.price_gold, refunded: 0 }); s.plays++; save(); notify(s.author_id, `有人购买了你的剧本《${s.title}》，+${s.price_gold} 金币 `); return J({ ok: true, refundable_until: Date.now() + 1800000 }); } catch (e) { return E(e.message); }
+    try { applyTx(me.id, { kind: 'buy_script', gold: -s.price_gold, memo: `购买剧本《${s.title}》` }); applyTx(s.author_id, { kind: 'sell_script', gold: s.price_gold, memo: `售出剧本《${s.title}》` }); insert('script_purchases', { script_id: s.id, user_id: me.id, price: s.price_gold, refunded: 0 }); save(); notify(s.author_id, `有人购买了你的剧本《${s.title}》，+${s.price_gold} 金币 `); return J({ ok: true, refundable_until: Date.now() + 1800000 }); } catch (e) { return E(e.message); }
   }
   if ((m = P(/^\/scripts\/(\d+)\/play$/)) && method === 'POST') {
     need(); const sid = +m[1]; const s = find('scripts', x => x.id === sid); if (!s) return E('剧本不存在', 404);
@@ -3335,8 +3338,10 @@ async function route(method, path, search, body, headers) {
     }
     if (method === 'DELETE') {
       if (!c || c.owner_id !== me.id) return E('无权操作该角色', 403);
+      // 只有确实删掉了一行才减 uses —— 否则对不存在的关联反复 DELETE 能把热度打到 0。
+      const had = !!find('character_worldbooks', x => x.character_id === c.id && x.worldbook_id === +m[1]);
       db.character_worldbooks = filter('character_worldbooks', x => !(x.character_id === c.id && x.worldbook_id === +m[1]));
-      if (w) w.uses = Math.max(0, (w.uses || 0) - 1);
+      if (w && had) w.uses = Math.max(0, (w.uses || 0) - 1);
       save();
       return J({ ok: true });
     }

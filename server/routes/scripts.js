@@ -155,7 +155,14 @@ const buyTx = db.transaction((buyer, script) => {
   const dueAt = Date.now() + REFUND_WINDOW_MS;
   const info = insertPurchase(script, buyer, { dueAt });
   applyTx(buyer, { kind:'buy_script', gold: -script.price_gold, memo:`购买剧本《${script.title}》` });
-  db.prepare('UPDATE scripts SET plays = plays + 1 WHERE id = ?').run(script.id);
+  // ⚠ 这里原本还有一次 `plays = plays + 1`。三个问题：
+  //   ① 口径错 —— 购买不是游玩。真正的游玩计数在 /:id/play（本文件 :250），
+  //      买完不玩会凭空多一次，而免费剧本走 :169 的免费分支反而一次都不加。
+  //   ② 可无限刷 —— 退款只回滚金币不回滚 plays，且退款后 owns() 变回 false，
+  //      于是「买入 → 30 分钟内退款 → 再买入」净支出 0 金、plays 永久 +1。
+  //   ③ 刷到的 plays 直接驱动剧本榜（engage.js:161）、creatorScore（creator.js:9）
+  //      → 创作者徽章与 creator_gold 成就，也就是真金币。
+  // 删掉即三个问题一起解决：plays 只由 /play 产生，购买与退款都不再触碰它。
   return { id: info.lastInsertRowid, dueAt };
 });
 

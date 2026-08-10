@@ -211,16 +211,22 @@ router.post('/:id/attach/:characterId', authRequired, (req, res) => {
   if (!w.is_public && w.owner_id !== req.user.id) return res.status(403).json({ error: '无权使用该世界书' });
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(req.params.characterId);
   if (!c || c.owner_id !== req.user.id) return res.status(403).json({ error: '无权操作该角色' });
-  db.prepare('INSERT OR IGNORE INTO character_worldbooks (character_id, worldbook_id) VALUES (?,?)').run(c.id, w.id);
-  db.prepare('UPDATE worldbooks SET uses = uses + 1 WHERE id = ?').run(w.id);
+  // 计数器只跟着**真实发生的关联变化**动。
+  // 原写法是 INSERT OR IGNORE 之后无条件 +1：对同一本书 + 自己的同一个角色反复
+  // POST，行早就存在、IGNORE 掉了，uses 却每次都涨 —— 而 uses 正是公开广场的
+  // 排序键（本文件 :88）。info.changes 为 0 说明这次没有新建关联，不该计数。
+  const info = db.prepare('INSERT OR IGNORE INTO character_worldbooks (character_id, worldbook_id) VALUES (?,?)').run(c.id, w.id);
+  if (info.changes === 1) db.prepare('UPDATE worldbooks SET uses = uses + 1 WHERE id = ?').run(w.id);
   res.json({ ok: true });
 });
 
 router.delete('/:id/attach/:characterId', authRequired, (req, res) => {
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(req.params.characterId);
   if (!c || c.owner_id !== req.user.id) return res.status(403).json({ error: '无权操作该角色' });
-  db.prepare('DELETE FROM character_worldbooks WHERE character_id = ? AND worldbook_id = ?').run(c.id, req.params.id);
-  db.prepare('UPDATE worldbooks SET uses = MAX(0, uses - 1) WHERE id = ?').run(req.params.id);
+  // 同理：没删掉任何一行就不减。反复 DELETE 一个本就不存在的关联，此前能把
+  // 别人书的 uses 一路打到 0（MAX(0,…) 只挡住负数，挡不住恶意归零）。
+  const info = db.prepare('DELETE FROM character_worldbooks WHERE character_id = ? AND worldbook_id = ?').run(c.id, req.params.id);
+  if (info.changes === 1) db.prepare('UPDATE worldbooks SET uses = MAX(0, uses - 1) WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 

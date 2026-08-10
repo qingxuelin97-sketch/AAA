@@ -217,7 +217,9 @@ router.post('/import', authRequired, (req, res) => {
   if (msgTotal > IMPORT_LIMITS.messages) return res.status(400).json({ error: `消息总量超上限（${IMPORT_LIMITS.messages}）` });
 
   const uid = req.user.id;
-  const out = { characters: 0, scripts: 0, conversations: 0, messages: 0 };
+  // affinity_dropped：包里带了好感、但被服务端清零的会话数。如实回报，
+  // 免得用户以为导入丢了数据（前端可据此提示「好感需重新培养」）。
+  const out = { characters: 0, scripts: 0, conversations: 0, messages: 0, affinity_dropped: 0 };
   let skipped = 0;
   const charMap = new Map(); // 导出包里的角色 id → 新插入 id
 
@@ -254,7 +256,15 @@ router.post('/import', authRequired, (req, res) => {
       for (const cv of convs) {
         const cid = charMap.get(cv?.character_id);
         if (!cid) { skipped++; continue; } // 只重连到本次导入的角色，避免挂到他人角色上
-        const r = insConv.run(uid, cid, clip(cv.title, 200), Number(cv.affinity) || 0, clip(cv.memories) || '[]');
+        // ⚠ affinity 恒为 0，绝不采信包里的值。
+        // 好感是**服务端权威**字段：affinity.js 的全部意义就是把它锁在每日 40 点
+        // 的共享配额内（grantAffinity 是唯一发放口），而 achievements.js 的
+        // affinity_max 直接拿它发金币奖励（aff_close 100 /aff_love 250）。
+        // 这个端点原本把客户端传来的数字直写入库，等于绕开配额一次性铸币 ——
+        // 与本文件开头「经济字段一概不触碰（防作弊）」的既定口径自相矛盾。
+        // 代价是导出再导入会丢好感；这是可接受的：好感记录的是相处过程，不是可搬运的资产。
+        const r = insConv.run(uid, cid, clip(cv.title, 200), 0, clip(cv.memories) || '[]');
+        if (Number(cv.affinity) > 0) out.affinity_dropped++;
         out.conversations++;
         for (const m of (Array.isArray(cv.messages) ? cv.messages : [])) {
           const role = m?.role === 'user' ? 'user' : 'assistant';

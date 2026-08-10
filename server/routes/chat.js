@@ -1315,6 +1315,19 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
 // opts.regenerateOf：把结果写成该消息的新变体而不是新插一条（见 /regenerate）。
 async function streamReply(res, req, conv, character, settings, userContent, event, opts = {}) {
   const regenerateOf = opts.regenerateOf || null;
+  // 扣费被拒 = 本次一个字都没生成，那么调用方在进来之前刚落库的那条用户消息
+  // 必须撤回。这是我上一轮把 userMessageId 提到 streamReply 之外时留下的债：
+  //   ① 会话里会永久挂着一条没有任何回复的孤儿消息；
+  //   ② 用户充值后重发时，这条会连同新发的一条一起进 fullHistory 发给上游 ——
+  //      同样的内容付两次钱，convMsgCount 也把它算进计费档位。
+  // 只删「本请求插入的那一条」，条件带 conversation_id / role 双保险。
+  const rollbackUserMessage = () => {
+    if (!opts.userMessageId) return;
+    try {
+      db.prepare("DELETE FROM messages WHERE id = ? AND conversation_id = ? AND role = 'user'")
+        .run(opts.userMessageId, conv.id);
+    } catch { /* 撤回失败不改变「本次未生成」的结论，SSE 头已发不再改写响应 */ }
+  };
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
   let eff = effectiveLLM(settings);
 
@@ -1329,7 +1342,9 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   // ③ 同步预检只看字面字符串，遇到生产环境 DNS 差异会误伤 DeepSeek 等合法公网域名。
   // 改为：先发 SSE 头，SSRF/网络错误一律经 pumpModelStream 的 catch 转成 SSE 错误事件。
 
-  if (!eff) { sse({ error: '平台 AI 服务当前不可用。你可以在「设置 → 语言模型」填入自己的 API Key 继续对话（自带 Key 永久免费）。', code: 'NO_MODEL' }); sse('[DONE]'); return res.end(); }
+  // 没有可用模型 = 一个字都没生成，同样要撤回刚落库的用户消息。下同：凡是
+  // 「没有产出就返回」的出口都要撤，否则会话里会留下永远等不到回复的孤儿消息。
+  if (!eff) { rollbackUserMessage(); sse({ error: '平台 AI 服务当前不可用。你可以在「设置 → 语言模型」填入自己的 API Key 继续对话（自带 Key 永久免费）。', code: 'NO_MODEL' }); sse('[DONE]'); return res.end(); }
 
   // 重新生成时必须把「正在被重写的那一条」排除出上下文。改造前是靠先 DELETE 掉它
   // 达成的；现在不删了，就得在这里显式排除，否则模型会看到自己上一版回答并顺着往下写，
@@ -1349,7 +1364,7 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
     convId: conv.id, characterId: conv.character_id,
     insufficientHint: '可前往钱包签到/兑换，或在设置中填写自己的 API。',
   });
-  if (feeCtx.rejected) return;
+  if (feeCtx.rejected) { rollbackUserMessage(); return; }
 
   // —— 上下文封顶 ——
   // 长会话此前把整段历史原样发给上游：几百回合后不是变慢就是直接被上游拒绝，
@@ -1415,23 +1430,30 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
           convId: conv.id, characterId: conv.character_id,
           insufficientHint: '可前往钱包签到/兑换，或在设置中更新自己的 API Key。',
         });
-        if (feeCtx2.rejected) return res.end();
+        // 回退路径的扣费同样可能被拒（此时用户 key 已失败、平台也没扣成），
+        // 一个字都没生成 —— 与主路径同样要撤回刚落库的用户消息。
+        if (feeCtx2.rejected) { rollbackUserMessage(); return res.end(); }
         activeFeeCtx = feeCtx2;
         eff = eff2;   // 后续日志/落库用回退后的模型信息
         full = await pumpModelStream(res, eff2, payload2);
       } else {
         // 平台模型未配置：告知用户 key 失效且无回退可用
+        rollbackUserMessage();
         sse({ error: '您的语言模型配置调用失败（可能 Key 失效或 Base URL 有误），且平台未配置回退模型。请前往「设置 → 语言模型」检查配置。', code: 'USER_KEY_FAILED' });
         sse('[DONE]'); return res.end();
       }
     } else {
-      // 非 authFailed 错误（已在 pumpModelStream catch 内处理为 SSE 错误事件），仅结束流
+      // 非 authFailed 错误（已在 pumpModelStream catch 内处理为 SSE 错误事件），仅结束流。
+      // 注：能走到这里的都是平台模型自身出错 —— pumpModelStream 只对用户自带 key 抛错，
+      // 而用户 key 路径的 feeCtx 是 no-op，所以这里不存在「已扣未退」的钱。
+      rollbackUserMessage();
       return res.end();
     }
   }
   // AI 上游返回 null：流已写入错误事件，退款、记录 warn 后结束（不向客户端再写 [DONE]）。
   if (full == null) {
     activeFeeCtx.refund('上游错误');
+    rollbackUserMessage();
     log({ level: 'warn', source: 'server', category: 'chat', event,
       message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}失败《${character?.name || ''}》（上游错误）`,
       user_id: conv.user_id, ip: req.ip, ua: req.header('user-agent') || '',
@@ -1464,6 +1486,11 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
     else db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', delivered);
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
     if (regenerateOf) invalidateWbVars(conv.id); else mergeWbVars(conv.id, delivered);
+    // 好感 +3/条 —— 与正常收尾分支同一口径。
+    // 这条此前漏了（我上一轮写这个分支时只顾着落库与计费）：回复留下了、钱扣了，
+    // 唯独好感凭空消失。「留下就收费」的规则要成立，「留下」就必须处处一视同仁。
+    // grantAffinity 内含每日共享配额，打满后自然 +0，不会因中断而多发。
+    if (userContent) { try { grantAffinity(conv.user_id, conv.id, 3, character?.name || ''); } catch { /* */ } }
     activeFeeCtx.settle();
     log({ level: 'info', source: 'server', category: 'chat', event,
       message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}被中断但已保留《${character?.name || ''}》（${delivered.length} 字，照常计费）`,

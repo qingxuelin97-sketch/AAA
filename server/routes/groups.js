@@ -42,7 +42,19 @@ router.post('/:id/join', authRequired, (req, res) => {
 });
 
 router.post('/:id/leave', authRequired, (req, res) => {
-  db.prepare('DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND role != "owner"').run(req.params.id, req.user.id);
+  // ⚠ 这里原本写的是 role != "owner" —— 双引号在 SQLite 里是**标识符**（列名），
+  // 不是字符串字面量。better-sqlite3 关闭了 DQS，于是 db.prepare() 在准备阶段
+  // 直接抛 `no such column: "owner"`，路由没有 try/catch → 每一次退群都是 500。
+  // 也就是说「退出群聊」自上线起从未成功过一次。
+  const g = db.prepare('SELECT owner_id FROM groups WHERE id = ?').get(req.params.id);
+  if (!g) return res.status(404).json({ error: '群不存在' });
+  const mem = db.prepare('SELECT role FROM group_members WHERE group_id = ? AND user_id = ?').get(req.params.id, req.user.id);
+  // 群主退群会留下一个没人能管的群，口径与 mock 对齐：直接拒绝而不是静默无视。
+  if (g.owner_id === req.user.id || mem?.role === 'owner') {
+    return res.status(400).json({ error: '群主不能退出，请先转让或解散' });
+  }
+  // 不是成员时保持幂等成功（重复点退出不该报错）。
+  db.prepare('DELETE FROM group_members WHERE group_id = ? AND user_id = ?').run(req.params.id, req.user.id);
   res.json({ ok: true });
 });
 

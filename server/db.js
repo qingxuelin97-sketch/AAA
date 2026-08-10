@@ -744,6 +744,29 @@ try {
 try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email IS NOT NULL AND email != ''"); } catch { /* legacy duplicates */ }
 try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_canon ON users (email_canon) WHERE email_canon IS NOT NULL AND email_canon != ''"); } catch { /* legacy duplicates */ }
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_script_purchase_active ON script_purchases (script_id, user_id) WHERE refunded = 0'); } catch { /* legacy duplicates */ }
+
+// —— friendships 去重 + 唯一约束 ——
+// friendships 一直没有唯一索引，而两条建交路径的守卫并不对称：
+// friends.js 的「互相申请自动通过」分支直接 INSERT（无 areFriends 复检、无事务），
+// 显式 accept 分支才有守卫。于是同一对好友可以插出多行，后果是：
+//   · 好友列表里同一个人出现两次（relations.js friendIds 不去重）；
+//   · friends 成就用 COUNT(*) 度量 → 3 个真好友就能解锁 friends_5（180 金）。
+// 这里先把存量修干净再建索引 —— 不能照搬上面那种「建失败就 catch 掉」的写法，
+// 那等于让洞永远开着。
+try {
+  db.exec(`
+    -- ① 规范化方向（pairKey 约定 a_id < b_id；SQLite 的 UPDATE 右侧读的是更新前的值）
+    UPDATE friendships SET a_id = MIN(a_id, b_id), b_id = MAX(a_id, b_id) WHERE a_id > b_id;
+    -- ② 清掉脏行：自己和自己、以及外键悬空的 NULL
+    DELETE FROM friendships WHERE a_id IS NULL OR b_id IS NULL OR a_id = b_id;
+    -- ③ 同一对只留最早的一行（建交时间以最早那次为准）
+    DELETE FROM friendships WHERE id NOT IN (SELECT MIN(id) FROM friendships GROUP BY a_id, b_id);
+  `);
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_pair ON friendships (a_id, b_id)');
+} catch (e) {
+  // 不静默：索引没建上意味着重复好友仍可能产生，必须在启动日志里看得见。
+  console.warn('[db] friendships 唯一索引建立失败，重复好友风险仍在：', e.message);
+}
 // Purchases created before escrow existed already paid their authors. Mark them
 // settled so the new settlement worker never pays them a second time.
 try { db.exec("UPDATE script_purchases SET settled_at = COALESCE(settled_at, CAST(strftime('%s', created_at) AS INTEGER) * 1000) WHERE refunded = 0 AND settlement_due_at IS NULL"); } catch { /* */ }

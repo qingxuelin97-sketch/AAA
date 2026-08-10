@@ -754,7 +754,11 @@ export default function Chat() {
   // Stream a reply from the given endpoint into the trailing assistant bubble.
   // 解析循环收敛到 chat/sse.js（与 CallScreen / tavernbridge 共用，内置 getApiBase 前缀）；
   // 这里只保留 rAF 节流的增量落地逻辑（每帧最多一次 setMessages，降低低端机渲染压力）。
-  const streamInto = async (endpoint, payload) => {
+  // opts.sentText：本轮乐观插入的那条用户消息的原文。仅在「一个字都没生成」的
+  // 拒绝（金币不足 / 经济冻结）时用到 —— 服务端此时会把刚落库的用户消息撤回，
+  // 客户端必须同步撤掉那颗气泡，否则刷新一次它就凭空消失。撤掉的同时把原文放回
+  // 输入框，用户充值回来不必重打一遍。
+  const streamInto = async (endpoint, payload, opts = {}) => {
     clearTimeout(autoReadTimerRef.current);
     autoReadTimerRef.current = 0;
     setStreaming(true);
@@ -829,11 +833,16 @@ export default function Chat() {
         // 失败分型：把服务端带回的 code 转成一张可操作的半屏卡片，而不是在气泡里
         // 留一句「（连接出错）」——后者既解释不了原因，也不给用户任何下一步。
         // 撤掉那颗空的 assistant 气泡，失败不该在对话里留下残骸。
+        // 扣费前就被拒 = 服务端一个字都没生成，也已把那条用户消息撤回；
+        // 这里同步撤掉乐观气泡并把原文还给输入框（详见 streamInto 的 opts.sentText）。
+        const nothingSent = err.code === 'INSUFFICIENT_GOLD' || err.code === 'ECONOMIC_HOLD';
         setMessages(m => { const c = [...m]; const last = c[c.length - 1];
           if (last?._streaming && !last.content) c.pop();
           else if (last?._streaming) c[c.length - 1] = { ...last, _streaming: false };
+          if (nothingSent && opts.sentText && c[c.length - 1]?.role === 'user' && c[c.length - 1]?.id == null) c.pop();
           return c; });
-        setFailure({ code: err.code || 'UNKNOWN', message: err.message, fee: err.fee, balance: err.balance, retry: () => streamInto(endpoint, payload) });
+        if (nothingSent && opts.sentText) setInput(v => (v ? v : opts.sentText));
+        setFailure({ code: err.code || 'UNKNOWN', message: err.message, fee: err.fee, balance: err.balance, retry: () => streamInto(endpoint, payload, opts) });
       }
     } finally {
       if (isCurrent()) {
@@ -861,7 +870,7 @@ export default function Chat() {
     if (override === undefined) setInput('');
     setActionsOpen(false);
     setMessages(m => [...m, { role: 'user', content: text }, { role: 'assistant', content: '', _streaming: true }]);
-    await streamInto(`/api/chat/conversations/${id}/complete`, { content: text });
+    await streamInto(`/api/chat/conversations/${id}/complete`, { content: text }, { sentText: text });
   };
   // 送礼物：真金币消耗。服务端单事务「扣款 + RP 消息 + 加好感」，成功后
   // 让角色顺着礼物剧情回应（complete 空内容 = 只续写不再插用户消息，好感
