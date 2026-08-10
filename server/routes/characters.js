@@ -57,7 +57,20 @@ router.get('/mine', authRequired, (req, res) => {
 // 支持 limit/offset 分页：沉浸式信息流按页加载，避免一次性返回全量。
 router.get('/public', authOptional, (req, res) => {
   const { category, q, sort } = req.query;
-  let sql = `SELECT c.*, u.display_name AS owner_name FROM characters c
+  // 显式列清单，不再 SELECT c.*。列表接口默认一次返回 80 行，而 c.* 会把三个
+  // 重量级字段一并带上：
+  //   front_regex —— 落库上限是 4,000,000 字符（characters.js 的写入处），
+  //                  而旁边注释写的是「约 60KB」，窄了 66 倍。一张卡就能让
+  //                  发现流吐出几 MB。
+  //   persona     —— 完整人设，列表页一个字都不显示。
+  //   alt_greetings —— 备用开场白数组，同样只在详情页用得到。
+  // 保留 greeting：发现流的卡片会截取它做预览（DiscoverFeed.jsx:327）。
+  // owner_avatar 一并带出——此前一级 tab 上作者的脸是隐形的。
+  let sql = `SELECT c.id, c.owner_id, c.name, c.avatar, c.background, c.background_type,
+      c.tagline, c.intro, c.greeting, c.voice_name, c.voice_speed, c.voice_pitch,
+      c.category, c.tags, c.is_public, c.nsfw, c.likes, c.uses, c.views, c.featured, c.created_at, c.bgm,
+      u.display_name AS owner_name, u.avatar AS owner_avatar
+    FROM characters c
     JOIN users u ON u.id = c.owner_id WHERE c.is_public = 1`;
   const args = [];
   if (category && category !== 'all') { sql += ' AND c.category = ?'; args.push(category); }
@@ -182,8 +195,8 @@ router.post('/', authRequired, (req, res) => {
     if (usable !== wbIds.length) return res.status(403).json({ error: '含有不存在、私有或无权使用的世界书' });
   }
   const info = db.prepare(`INSERT INTO characters
-    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, alt_greetings)
-    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@alt_greetings)`)
+    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, alt_greetings, post_history)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@alt_greetings,@post_history)`)
     .run({
       owner_id: req.user.id,
       name: b.name, avatar: b.avatar || null,
@@ -192,7 +205,8 @@ router.post('/', authRequired, (req, res) => {
       persona: b.persona || '', voice_name: b.voice_name || '', voice_speed: clampSpeed(b.voice_speed), voice_pitch: clampPitch(b.voice_pitch),
       category: b.category || '', tags: b.tags || '',
       is_public: b.is_public ? 1 : 0, nsfw: b.nsfw ? 1 : 0,
-      alt_greetings: normAltGreetings(b.alt_greetings)
+      alt_greetings: normAltGreetings(b.alt_greetings),
+      post_history: str(b.post_history, 8000)
     });
   saveWorld(info.lastInsertRowid, b.world);
   // 创建时一并落库，避免「先保存角色、再返回编辑页关联」的断裂流程。
@@ -218,10 +232,12 @@ router.put('/:id', authRequired, (req, res) => {
   db.prepare(`UPDATE characters SET
     name=@name, avatar=@avatar, background=@background, background_type=@background_type, bgm=@bgm,
     tagline=@tagline, intro=@intro, greeting=@greeting, persona=@persona,
-    voice_name=@voice_name, voice_speed=@voice_speed, voice_pitch=@voice_pitch, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw, front_regex=@front_regex, alt_greetings=@alt_greetings WHERE id=@id`)
+    voice_name=@voice_name, voice_speed=@voice_speed, voice_pitch=@voice_pitch, category=@category, tags=@tags, is_public=@is_public, nsfw=@nsfw, front_regex=@front_regex, alt_greetings=@alt_greetings, post_history=@post_history WHERE id=@id`)
     .run({
       id: c.id,
       alt_greetings: normAltGreetings(b.alt_greetings, c.alt_greetings || '[]'),
+      // 未提交该字段时保留原值，避免编辑其它字段时把后置指令清空
+      post_history: b.post_history == null ? (c.post_history || '') : str(b.post_history, 8000),
       front_regex: (() => { if (b.front_regex == null) return c.front_regex || '[]'; try { const v = typeof b.front_regex === 'string' ? JSON.parse(b.front_regex) : b.front_regex; return Array.isArray(v) ? JSON.stringify(v).slice(0, 4000000) : (c.front_regex || '[]'); } catch { return c.front_regex || '[]'; } })(),
       name: b.name ?? c.name, avatar: b.avatar ?? c.avatar,
       background: b.background ?? c.background, background_type: b.background_type ?? c.background_type,
@@ -271,11 +287,81 @@ function normAltGreetings(v, fallback = '[]') {
 // ── 角色卡 JSON 导出 ──────────────────────────────────────────────
 // 返回可移植的角色卡 JSON：含元信息 + 角色字段 + 世界书条目。
 // 公开角色任何人可导出；私有角色仅 owner 可导出。
+// —— 导出 ——
+// ?format=tavern_v2 输出 SillyTavern V2 规范卡（可直接导回酒馆）；缺省输出幻域格式。
+// 两种格式都会带上**关联的独立世界书**：此前只导内嵌 world、不导 linked_worldbooks，
+// 于是把世界书做在独立书里的角色导出后是残的——连自有格式都存在这个洞。
 router.get('/:id/export', authOptional, (req, res) => {
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).json({ error: '角色不存在' });
   if (!c.is_public && (!req.user || req.user.id !== c.owner_id)) return res.status(403).json({ error: '无权导出' });
-  const world = loadWorld(c.id).map(w => ({ keys: w.keys, content: w.content, enabled: !!w.enabled, position: w.position, constant: !!w.constant }));
+
+  const embedded = loadWorld(c.id).map(w => ({
+    keys: w.keys, content: w.content, enabled: !!w.enabled, position: w.position, constant: !!w.constant,
+  }));
+  // 关联的独立世界书条目：全字段带出，导回酒馆时不丢选择性触发 / 概率 / 分组等能力。
+  const linked = db.prepare(`SELECT we.* FROM worldbook_entries we
+    JOIN character_worldbooks cw ON cw.worldbook_id = we.worldbook_id
+    WHERE cw.character_id = ? ORDER BY we.priority DESC, we.position, we.id`).all(c.id);
+
+  const parseJson = (v, fallback) => { try { const x = JSON.parse(v || ''); return x ?? fallback; } catch { return fallback; } };
+  const altGreetings = parseJson(c.alt_greetings, []);
+  const splitKeys = (v) => String(v || '').split(',').map(k => k.trim()).filter(Boolean);
+
+  if (req.query.format === 'tavern_v2') {
+    // character_book：内嵌 + 关联合并为一本，字段按 V2 规范反向映射。
+    const bookEntries = [
+      ...embedded.map((w, i) => ({
+        keys: splitKeys(w.keys), secondary_keys: [], comment: '', content: w.content,
+        constant: !!w.constant, selective: false, insertion_order: i, enabled: w.enabled,
+        position: 'before_char', extensions: {},
+      })),
+      ...linked.map((w, i) => ({
+        keys: splitKeys(w.keys),
+        secondary_keys: splitKeys(w.required_keys),
+        comment: w.comment || '',
+        content: w.content,
+        constant: w.mode === 'always',
+        selective: !!splitKeys(w.required_keys).length,
+        insertion_order: Number.isFinite(w.priority) ? w.priority : embedded.length + i,
+        enabled: !!w.enabled,
+        position: w.inject_pos === 'before' ? 'before_char' : 'after_char',
+        case_sensitive: !!w.case_sensitive,
+        probability: Number.isFinite(w.probability) ? w.probability : 100,
+        useProbability: true,
+        group: w.group_name || '',
+        depth: w.depth || 0,
+        sticky: w.sticky || 0,
+        cooldown: w.cooldown || 0,
+        extensions: {},
+      })),
+    ];
+    const card = {
+      spec: 'chara_card_v2',
+      spec_version: '2.0',
+      data: {
+        name: c.name,
+        description: c.persona || '',
+        personality: '',
+        scenario: '',
+        first_mes: c.greeting || '',
+        mes_example: '',
+        creator_notes: c.intro || '',
+        // 后置指令按语义放回它自己的字段，而不是混进 description。
+        post_history_instructions: c.post_history || '',
+        system_prompt: '',
+        alternate_greetings: Array.isArray(altGreetings) ? altGreetings : [],
+        tags: String(c.tags || '').split(',').map(t => t.trim()).filter(Boolean),
+        creator: '',
+        character_version: '',
+        extensions: { huanyu: { front_regex: parseJson(c.front_regex, []) } },
+        ...(bookEntries.length ? { character_book: { name: `${c.name} 世界书`, entries: bookEntries, extensions: {} } } : {}),
+      },
+    };
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(c.name)}.tavern.json"`);
+    return res.json(card);
+  }
+
   const card = {
     platform: 'huanyu',
     spec: 1,
@@ -285,9 +371,17 @@ router.get('/:id/export', authOptional, (req, res) => {
       tagline: c.tagline, intro: c.intro, greeting: c.greeting, persona: c.persona,
       voice_name: c.voice_name, voice_speed: c.voice_speed, voice_pitch: c.voice_pitch,
       category: c.category, tags: c.tags, nsfw: !!c.nsfw,
-      front_regex: c.front_regex || '[]', alt_greetings: c.alt_greetings || '[]'
+      front_regex: c.front_regex || '[]', alt_greetings: c.alt_greetings || '[]',
+      post_history: c.post_history || '',
     },
-    world
+    world: embedded,
+    // 关联世界书不再被丢掉
+    linked_worldbooks: linked.map(w => ({
+      keys: w.keys, required_keys: w.required_keys || '', content: w.content, comment: w.comment || '',
+      enabled: !!w.enabled, mode: w.mode || 'keyword', inject_pos: w.inject_pos || 'after',
+      priority: w.priority ?? 50, case_sensitive: !!w.case_sensitive, group_name: w.group_name || '',
+      probability: w.probability ?? 100, depth: w.depth || 0, sticky: w.sticky || 0, cooldown: w.cooldown || 0,
+    })),
   };
   res.setHeader('Content-Disposition', `attachment; filename="character-${c.id}-${encodeURIComponent(c.name)}.json"`);
   res.json(card);
@@ -310,8 +404,8 @@ router.post('/import', authRequired, contentLimiter, (req, res) => {
     catch { return '[]'; }
   })();
   const info = db.prepare(`INSERT INTO characters
-    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, front_regex, alt_greetings)
-    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@front_regex,@alt_greetings)`)
+    (owner_id, name, avatar, background, background_type, bgm, tagline, intro, greeting, persona, voice_name, voice_speed, voice_pitch, category, tags, is_public, nsfw, front_regex, alt_greetings, post_history)
+    VALUES (@owner_id,@name,@avatar,@background,@background_type,@bgm,@tagline,@intro,@greeting,@persona,@voice_name,@voice_speed,@voice_pitch,@category,@tags,@is_public,@nsfw,@front_regex,@alt_greetings,@post_history)`)
     .run({
       owner_id: req.user.id,
       name: str(ch.name, 60),
@@ -322,7 +416,8 @@ router.post('/import', authRequired, contentLimiter, (req, res) => {
       voice_speed: clampSpeed(ch.voice_speed), voice_pitch: clampPitch(ch.voice_pitch),
       category: str(ch.category, 40), tags: str(ch.tags, 200),
       is_public: 0, nsfw: ch.nsfw ? 1 : 0, front_regex: frontRegex,
-      alt_greetings: normAltGreetings(ch.alt_greetings)
+      alt_greetings: normAltGreetings(ch.alt_greetings),
+      post_history: str(ch.post_history, 8000)
     });
   saveWorld(info.lastInsertRowid, world);
   const c = db.prepare('SELECT * FROM characters WHERE id = ?').get(info.lastInsertRowid);

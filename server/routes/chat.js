@@ -554,7 +554,11 @@ function buildSystemPrompt(character, recentText, history, conv) {
   });
 
   // max_active：每轮最大激活条目数（防 Token 爆炸）。按优先级降序截断。
-  const maxActive = linked.reduce((m, l) => Math.max(m, l.max_active || 6), 0) || 6;
+  // 默认 20（此前写死 6）。角色内嵌世界书没有关联独立世界书时，linked 为空数组，
+  // reduce 返回 0，`0 || 6` 落回 6 —— 于是一张 40 条 constant 设定的导入卡每轮
+  // 只注入 6 条，静默丢掉 34 条，而作者完全看不到这件事。
+  // 有关联世界书时仍以各书自带的 max_active 最大值为准（作者的显式设置优先）。
+  const maxActive = linked.reduce((m, l) => Math.max(m, l.max_active || 0), 0) || 20;
   const candidateCount = finalEntries.length;
   let droppedByMaxActive = [];
   if (finalEntries.length > maxActive) {
@@ -1250,7 +1254,13 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   const built = buildSystemPrompt(character, recentText + ' ' + userContent, history, conv);
   let system = built.system;
   if (eff.platform && eff.system_prompt.trim()) system = eff.system_prompt.trim() + '\n\n' + system;
-  const payloadMessages = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
+  // post_history（酒馆 post_history_instructions）必须排在**历史之后**——那是它区别于
+  // system_prompt 的全部意义。放进 system 里等于把它降级成普通设定。
+  const payloadMessages = [
+    { role: 'system', content: system },
+    ...history.map(m => ({ role: m.role, content: m.content })),
+    ...(character?.post_history?.trim() ? [{ role: 'system', content: character.post_history.trim() }] : []),
+  ];
 
   let full;
   let activeFeeCtx = feeCtx;   // 跟踪当前生效的计费上下文（回退平台模型后切换为 feeCtx2）

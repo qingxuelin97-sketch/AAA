@@ -1,3 +1,4 @@
+import { fromSillyTavern, needsStandaloneWorldbook, downgradeNotices } from './tavern.js';
 // 角色卡导入解析 —— 支持多来源格式，尽量完整地映射到幻域数据模型。
 // 支持：
 //   · 幻域原生 JSON（{ character, world } 或裸 character 对象）
@@ -79,32 +80,24 @@ function b64ToJson(b64) {
 // 顺序按 insertion_order/order 保留；正则脚本转为禁用条目存档；上限 1000（大 lorebook 不再被 200 卡死）。
 const WORLD_LIMIT = 1000;
 function buildWorldEntries(d, notices) {
-  const book = d.character_book || d.world_info || d.world_book || d.lorebook || null;
-  const rawEntries = book
-    ? (Array.isArray(book.entries) ? book.entries
-      : (book.entries && typeof book.entries === 'object') ? Object.values(book.entries)
-        : Array.isArray(book) ? book : [])
-    : [];
-  // 参照 SillyTavern：V2 规范(keys/secondary_keys/insertion_order/enabled/position字符串) 与
-  // 内部导出(key/keysecondary/order/disable/position数字/extensions) 两套命名都认。
-  const mapped = rawEntries.filter(e => {
-    if (!e) return false;
-    const k = e.keys || e.key; const hasKey = Array.isArray(k) ? k.length : !!k;
-    return e.content || hasKey;
-  }).map((e, i) => {
-    const ext = e.extensions || {};
-    const order = [e.insertion_order, e.order, ext.insertion_order].find(Number.isFinite) ?? i;
-    const enabled = e.enabled !== false && e.disable !== true;
-    // constant（常驻）必须保真：酒馆卡的游戏规则/系统指令多为「constant=true 且带关键词」，
-    // 若丢掉该标记会被降级成关键词触发 → 规则永不注入、卡片引擎失效。
-    const constant = e.constant === true || ext.constant === true;
-    return { _order: order, keys: joinKeys(e.keys || e.key), content: e.content || '', enabled, constant };
-  }).sort((a, b) => a._order - b._order).map(({ _order, ...e }) => e);
-
-  let entries = mapped;
-  if (entries.length > WORLD_LIMIT) { notices.push(`世界书条目 ${entries.length} 条，已保留前 ${WORLD_LIMIT} 条。`); entries = entries.slice(0, WORLD_LIMIT); }
-  const overlay = [d.system_prompt, d.post_history_instructions].filter(Boolean).join('\n\n');
-  return { entries, overlay };
+  // 统一走共享解析（client/src/tavern.js）。此前这里只保留 keys/content/enabled/constant，
+  // secondary_keys / priority / probability / case_sensitive / group / depth / sticky /
+  // cooldown 全部静默丢弃 —— 而 WorldbookEditor 里那份解析本来就是写对的。
+  // 现在两条链路共用一份，不会再分叉。
+  const parsed = fromSillyTavern(d) || [];
+  let entries = parsed;
+  if (entries.length > WORLD_LIMIT) {
+    notices.push(`世界书条目 ${entries.length} 条，已保留前 ${WORLD_LIMIT} 条。`);
+    entries = entries.slice(0, WORLD_LIMIT);
+  }
+  // post_history_instructions（酒馆的「越狱 / 后置指令」）与 system_prompt 语义不同：
+  // 前者必须注入在**对话历史之后**才有效。此前两者一起被折进人设（也就是注入到历史
+  // 之前），等于把它降级成了普通设定。现在分开返回。
+  return {
+    entries,
+    overlay: String(d.system_prompt || ''),
+    postHistory: String(d.post_history_instructions || ''),
+  };
 }
 
 // 任意卡片 JSON → { character, world, worldbook, notices }
@@ -126,7 +119,7 @@ export function normalizeCard(json) {
   }
 
   // 世界书条目（内嵌，可见/可用）+ 系统指令。
-  const { entries, overlay } = buildWorldEntries(d, notices);
+  const { entries, overlay, postHistory } = buildWorldEntries(d, notices);
 
   // 酒馆 → 幻域：描述/性格/场景/示例（+系统指令）拼成人设
   const parts = [];
@@ -134,7 +127,7 @@ export function normalizeCard(json) {
   if (d.personality) parts.push('性格：' + d.personality);
   if (d.scenario) parts.push('场景：' + d.scenario);
   if (d.mes_example) parts.push('对话示例：\n' + d.mes_example);
-  if (overlay) parts.push('【系统指令】\n' + overlay);  // system_prompt / 越狱后置指令 折入人设，避免丢失
+  if (overlay) parts.push('【系统指令】\n' + overlay);  // system_prompt 属于设定，折入人设是对的
   const character = {
     name: trimTo(d.name || json.name || '未命名角色', 60),
     // 上限放宽：酒馆开场白/人设常达数千~上万字（本卡开场白 5772），4000 会截断
@@ -169,8 +162,28 @@ export function normalizeCard(json) {
   character.front_regex = frontRegex;
   if (frontRegex.length) notices.push(`含 ${frontRegex.length} 条前端显示正则：已作为「专家前端」适配，回复中的对应标记将渲染为 HTML 面板。`);
 
-  // 世界书条目落到「内嵌世界书」（编辑页可见、计数正确、单一注入源）。
-  return { character, world: entries, notices };
+  // 后置指令单独带出：它必须注入在对话历史之后，不能和人设混在一起。
+  if (postHistory) {
+    character.post_history = trimTo(postHistory, 8000);
+    notices.push('含「后置指令」（酒馆 post_history_instructions）：已单独保存，注入在对话历史之后。');
+  }
+
+  // 内嵌世界书只有 keys / content / constant 三个维度。这张卡若用到了更细的能力
+  // （选择性触发 / 概率 / 优先级 / 互斥分组 / 深度 / 粘滞 / 冷却），塞进内嵌就是静默降级，
+  // 因此改为建一本独立世界书带出去，由调用方 attach 给角色。
+  const rich = needsStandaloneWorldbook(entries);
+  if (rich) {
+    const downgrades = downgradeNotices(entries);
+    notices.push(`这张卡用到了内嵌世界书表达不了的能力（${downgrades.join('、')}），已为它单独建立世界书以完整保留。`);
+    return {
+      character,
+      world: [],
+      worldbook: { name: `${character.name} · 世界书`, entries },
+      notices,
+    };
+  }
+  // 其余情况仍落「内嵌世界书」（编辑页可见、计数正确、单一注入源）。
+  return { character, world: entries, worldbook: null, notices };
 }
 
 // 入口：File → { character, world, worldbook, notices, imageBlob? }

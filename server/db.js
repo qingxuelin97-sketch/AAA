@@ -1012,6 +1012,10 @@ for (const sql of [
   // 当前生效变体的 message_variants.id。NULL = 这条消息还没有过变体
   //（绝大多数消息都是这种，只有被重新生成过的才会有）。
   'ALTER TABLE messages ADD COLUMN variant_active INTEGER',
+  // 酒馆卡的 post_history_instructions（「越狱 / 后置指令」）。与 system_prompt 语义
+  // 不同：它必须注入在**对话历史之后**才起作用。此前导入时和 system_prompt 一起被
+  // 折进人设（也就是注入到历史之前），等于降级成了普通设定。
+  "ALTER TABLE characters ADD COLUMN post_history TEXT DEFAULT ''",
 ]) { try { db.exec(sql); } catch { /* column exists */ } }
 
 // —— 举报去重 ——

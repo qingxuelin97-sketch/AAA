@@ -11,6 +11,7 @@ import { Plus, ArrowLeft, Trash, BookOpen, Save, Globe, ChevronDown, ChevronUp,
   Settings2, Image as ImageIcon, Layout, Play, Eye, Sliders, Filter, Clock, Percent, Layers,
   Copy, Folder, FolderOpen, Search, Download, Upload, Variable, GitBranch, Sparkles, Timer,
   BookCheck, AlertTriangle, ArrowRight, Wand2, Check } from 'lucide-react';
+import { fromSillyTavern } from '../tavern.js';
 
 const BLANK = {
   name: '', description: '', tags: '', is_public: false,
@@ -199,53 +200,8 @@ export default function WorldbookEditor() {
     a.href = url; a.download = `${wb.name || 'worldbook'}.json`; a.click();
     URL.revokeObjectURL(url);
   };
-  // SillyTavern（酒馆）世界书：兼容多种来源与两套命名，识别后逐字段映射。
-  //   · 独立世界书：entries 为 { uid: {...} } 对象（内部导出）或数组（规范）。
-  //   · 角色卡内嵌世界书：条目在 data.character_book.entries / character_book.entries。
-  //   · 命名两套都认：规范名 keys/secondary_keys/insertion_order/enabled 与
-  //     内部名 key/keysecondary/order/disable。
-  const stEntrySource = (d) => {
-    if (!d || typeof d !== 'object') return null;
-    // 角色卡 → 深入 character_book
-    const book = d.character_book || d.data?.character_book || null;
-    const fromBook = book && (Array.isArray(book.entries) ? book.entries
-      : (book.entries && typeof book.entries === 'object') ? Object.values(book.entries)
-        : Array.isArray(book) ? book : null);
-    if (fromBook && fromBook.length) return fromBook;
-    // 独立世界书：entries 数组或 { uid: {...} } 对象
-    if (Array.isArray(d.entries)) return d.entries;
-    if (d.entries && typeof d.entries === 'object') return Object.values(d.entries);
-    return null;
-  };
-  const fromSillyTavern = (d) => {
-    const src = stEntrySource(d);
-    // 命中「酒馆味」字段才按酒馆映射，避免误吞本平台自有格式。
-    const stish = e => e && (Array.isArray(e.key) || Array.isArray(e.keys) ||
-      'constant' in e || 'uid' in e || 'insertion_order' in e || 'secondary_keys' in e || 'keysecondary' in e);
-    if (!src || !src.length || !src.some(stish)) return null;
-    const kstr = (k) => Array.isArray(k) ? k.filter(Boolean).join(', ') : String(k || '');
-    return src.map(e => {
-      const keys = e.keys != null ? e.keys : e.key;               // 规范 keys / 内部 key
-      const sec = e.secondary_keys != null ? e.secondary_keys : e.keysecondary; // 规范 / 内部
-      const order = [e.insertion_order, e.order].find(v => Number.isFinite(v));
-      const enabled = e.enabled !== false && e.disable !== true;  // 规范 enabled / 内部 disable
-      return {
-        keys: kstr(keys),
-        required_keys: (Array.isArray(sec) && (e.selective || sec.length)) ? kstr(sec) : '',
-        content: String(e.content || ''),
-        comment: String(e.comment || ''),
-        enabled,
-        mode: e.constant ? 'always' : 'keyword',
-        priority: Math.max(0, Math.min(100, parseInt(order ?? 50, 10) || 0)),
-        probability: e.useProbability === false ? 100 : Math.max(0, Math.min(100, parseInt(e.probability ?? 100, 10) || 0)),
-        case_sensitive: !!(e.case_sensitive ?? e.caseSensitive),
-        group_name: String(e.group || ''),
-        depth: Math.max(0, Math.min(50, parseInt(e.depth, 10) || 0)),
-        sticky: Math.max(0, Math.min(99, parseInt(e.sticky, 10) || 0)),
-        cooldown: Math.max(0, Math.min(999, parseInt(e.cooldown, 10) || 0)),
-      };
-    }).filter(e => e.content || e.keys);
-  };
+  // 酒馆世界书解析统一收敛到 client/src/tavern.js —— 角色卡导入链路
+  // （charcard.js）用的是同一份，改一处即两处生效，不会再分叉出两套行为。
   const importJson = (file) => {
     const reader = new FileReader();
     reader.onload = () => {

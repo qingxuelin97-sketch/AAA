@@ -75,6 +75,7 @@ jobs:
           npm run smoke
           npm run test:wb-vars
           npm run test:regen
+          npm run test:worldbook
           npm run test:server:s7
           npm run test:logs
           npm run test:hearts

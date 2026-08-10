@@ -1619,7 +1619,16 @@ async function route(method, path, search, body, headers) {
     if (cat && cat !== 'all') rows = rows.filter(c => c.category === cat);
     if (q) rows = rows.filter(c => (c.name + c.tags + c.tagline).toLowerCase().includes(q));
     rows = rows.sort((a, b) => sort === 'new' ? b.id - a.id : (b.uses - a.uses) || (b.likes - a.likes)).slice(0, 80);
-    rows = rows.map(c => ({ ...c, owner_name: user(c.owner_id)?.display_name, owner_tier: creatorTier(user(c.owner_id)), faved: me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false }));
+    // 与服务端同口径：列表不带 persona / front_regex / alt_greetings 三个重量级字段
+    // （front_regex 落库上限 4,000,000 字符，一张卡就能让发现流吐出几 MB）。
+    // owner_avatar 带出，作者的脸不该在一级 tab 上隐形。
+    rows = rows.map(({ persona, front_regex, alt_greetings, ...c }) => ({
+      ...c,
+      owner_name: user(c.owner_id)?.display_name,
+      owner_avatar: user(c.owner_id)?.avatar,
+      owner_tier: creatorTier(user(c.owner_id)),
+      faved: me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false,
+    }));
     return J({ characters: rows });
   }
   // Personalized recommendations — rank public characters by the categories the

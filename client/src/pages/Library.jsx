@@ -28,7 +28,7 @@ export default function Library() {
     if (file.size > 8 * 1024 * 1024) { toast('文件过大（上限 8MB）', 'err'); return; }
     setImporting(true);
     try {
-      const { character, world, notices, imageBlob } = await parseCharacterCard(file);
+      const { character, world, worldbook, notices, imageBlob } = await parseCharacterCard(file);
       // PNG 卡：图片本身即立绘，上传为托管头像（服务端 avatar 存 URL，不能塞 data-URL）。
       if (imageBlob && !character.avatar) {
         try { const up = await uploadFile(imageBlob); if (up?.url) character.avatar = up.url; }
@@ -36,7 +36,20 @@ export default function Library() {
       }
       // 世界书条目随角色一并落入内嵌世界书（编辑页「世界书(N)」可见、计数正确）。
       const d = await api('/characters/import', { method: 'POST', body: { character, world: world || [] } });
-      toast(`导入成功，已创建角色（世界书 ${world?.length || 0} 条）`);
+      // 卡里用到了内嵌世界书表达不了的能力（选择性触发 / 概率 / 优先级 / 互斥分组 /
+      // 深度 / 粘滞 / 冷却）时，charcard 会带出一本独立世界书 —— 这里建好并挂到角色上，
+      // 完整保留而不是静默降级。建失败不阻断导入，但要如实告知。
+      let wbCount = 0;
+      if (worldbook?.entries?.length) {
+        try {
+          const wb = await api('/worldbooks', { method: 'POST', body: { name: worldbook.name, entries: worldbook.entries, max_active: 50 } });
+          await api(`/worldbooks/${wb.worldbook.id}/attach/${d.character.id}`, { method: 'POST' });
+          wbCount = worldbook.entries.length;
+        } catch (e) {
+          toast(`独立世界书创建失败（${e.message}），角色已导入但世界书需手动补建`, 'err');
+        }
+      }
+      toast(`导入成功，已创建角色（世界书 ${wbCount || world?.length || 0} 条）`);
       (notices || []).forEach((n, i) => setTimeout(() => toast(n), 400 * (i + 1)));
       nav('/character/' + d.character.id + '/edit');
     } catch (err) {
