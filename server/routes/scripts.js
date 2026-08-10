@@ -118,6 +118,13 @@ router.get('/:id', authOptional, (req, res) => {
   if (!unlocked) s.content =''; // hide paid content until purchased
   s.unlocked = unlocked;
   s.purchases = db.prepare('SELECT COUNT(*) n FROM script_purchases WHERE script_id = ? AND refunded = 0').get(s.id).n;
+  // per-user 点赞态。ScriptDetail.jsx 读 d.script.liked，但它带了 typeof 守卫，
+  // 字段缺失时静默保持 false —— 于是刷新后点赞态永远丢失，用户再点一下反而变成取消。
+  // 数据一直是现成的（script_likes 表 + toggle 端点都在），缺的只是详情端点没回查。
+  // 写法照抄 social.js:30 的 moments.liked 与 characters.js 的 faved。
+  s.liked = req.user
+    ? !!db.prepare('SELECT 1 FROM script_likes WHERE script_id = ? AND user_id = ?').get(s.id, req.user.id)
+    : false;
   res.json({ script: s });
 });
 

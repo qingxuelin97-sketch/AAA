@@ -13,7 +13,7 @@ import { AppButton, AppIconButton } from '../components/AppControls.jsx';
 import { tick } from '../appgestures.js';
 import { isAppMode } from '../appmode.js';
 import { useAppNavigationOptional, useUnsavedChanges } from '../appNavigation.jsx';
-import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, Upload, LifeBuoy, LayoutGrid, Scale, Check, ArrowLeft, ChevronRight, Bell } from 'lucide-react';
+import { Cpu, Volume2, UserCog, SlidersHorizontal, RefreshCw, ShieldCheck, Sun, Moon, Monitor, Lock, Globe, Users, EyeOff, Trash2, Eye, Activity, Download, Upload, LifeBuoy, LayoutGrid, Scale, Check, ArrowLeft, ChevronRight, Bell, HardDrive } from 'lucide-react';
 
 // Renders a gold price; when a membership discount applies it shows the full
 // price struck through next to the discounted one so VIP/SVIP can see the deal.
@@ -307,6 +307,27 @@ export default function Settings() {
     try { const d = await api('/settings/clear-conversations', { method: 'POST' }); toast(`已清空 ${d.removed} 段对话`); }
     catch (e) { toast(e.message, 'err'); }
   };
+  // —— 上传空间管理 ——
+  // upload.js 在配额满时提示「请删除旧资源后再试」，而 /upload/mine 与
+  // DELETE /upload/:filename 这两个端点上一轮就加好了，却一直**没有任何界面入口** ——
+  // 用户被要求做一件在界面上做不到的事，配额一旦占满就永久卡死。
+  const [uploads, setUploads] = useState(null);
+  const [uploadsBusy, setUploadsBusy] = useState(false);
+  const loadUploads = async () => {
+    setUploadsBusy(true);
+    try { setUploads(await api('/upload/mine')); }
+    catch (e) { toast(e.message, 'err'); }
+    finally { setUploadsBusy(false); }
+  };
+  const removeUpload = async (filename) => {
+    if (!window.confirm('删除后无法恢复，且引用了它的角色/剧本封面会变成空白。确定删除？')) return;
+    try {
+      await api('/upload/' + encodeURIComponent(filename), { method: 'DELETE' });
+      toast('已删除', 'ok');
+      loadUploads();
+    } catch (e) { toast(e.message, 'err'); }
+  };
+
   const clearLocal = () => {
     try { localStorage.removeItem('recent_chars'); toast('已清除本机浏览痕迹'); } catch { toast('清除失败', 'err'); }
   };
@@ -705,6 +726,39 @@ export default function Settings() {
                 <div><b>清除本机浏览痕迹</b><div className="muted" style={{ fontSize: 12.5 }}>清空「最近浏览」等仅存于本设备的记录</div></div>
                 <AppButton className={withAppClass('btn sm', 'qa-settings-data-action')} variant="secondary" onClick={clearLocal}><EyeOff size={14} /> 清除痕迹</AppButton>
               </div>
+              <div className="priv-data-row">
+                <div>
+                  <b>上传空间</b>
+                  <div className="muted" style={{ fontSize: 12.5 }}>
+                    {uploads
+                      ? `已用 ${(uploads.total_bytes / 1048576).toFixed(1)} MB / ${(uploads.quota_bytes / 1048576).toFixed(0)} MB · ${uploads.uploads.length} 个文件`
+                      : '查看并清理已上传的头像、封面与立绘，腾出配额'}
+                  </div>
+                </div>
+                <AppButton className={withAppClass('btn sm', 'qa-settings-data-action')} variant="secondary"
+                  loading={uploadsBusy} onClick={loadUploads}><HardDrive size={14} /> {uploads ? '刷新' : '查看'}</AppButton>
+              </div>
+              {uploads && (
+                uploads.uploads.length === 0
+                  ? <div className="muted" style={{ fontSize: 12.5, padding: '4px 0 8px' }}>还没有上传过任何文件。</div>
+                  : (
+                    <div className="priv-uploads">
+                      {uploads.uploads.map(u => (
+                        <div key={u.filename} className="priv-upload-row">
+                          {u.missing
+                            ? <span className="priv-upload-thumb priv-upload-thumb--missing" aria-hidden="true"><Trash2 size={14} /></span>
+                            : <img className="priv-upload-thumb" src={u.url} alt="" loading="lazy" />}
+                          <div className="priv-upload-meta">
+                            <b>{(u.bytes / 1024).toFixed(0)} KB{u.missing ? ' · 文件已丢失' : ''}</b>
+                            <small>{String(u.created_at || '').slice(0, 16)}</small>
+                          </div>
+                          <AppButton className={withAppClass('btn sm danger', 'qa-settings-data-action qa-settings-danger')}
+                            variant="secondary" tone="danger" onClick={() => removeUpload(u.filename)}>删除</AppButton>
+                        </div>
+                      ))}
+                    </div>
+                  )
+              )}
               <div className="priv-data-row">
                 <div><b>清空全部对话记录</b><div className="muted" style={{ fontSize: 12.5 }}>永久删除你与所有角色的对话与消息</div></div>
                 <AppButton className={withAppClass('btn sm danger', 'qa-settings-data-action qa-settings-danger')} variant="secondary" tone="danger" onClick={clearConvs}><Trash2 size={14} /> 清空对话</AppButton>

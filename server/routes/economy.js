@@ -236,8 +236,10 @@ router.post('/redeem', authRequired, redeemLimiter, (req, res) => {
       }
     }).immediate();
   } catch (e) {
-    if (/UNIQUE/i.test(e.message || '')) return res.status(409).json({ error: '该兑换码每个账号只能使用一次' });
-    return res.status(e.status || 400).json({ error: e.message });
+    if (/UNIQUE/i.test(e.message || '')) return res.status(409).json({ error: '该兑换码每个账号只能使用一次', code: 'REDEEM_ALREADY_USED' });
+    // applyTx 会抛带 code = 'ECONOMIC_HOLD' 的错（wallet.js:51/:86），此前这里丢掉了它，
+    // 于是被经济冻结的用户在兑换口看到的是一句没有 code 的笼统报错，前端给不出对路的引导。
+    return res.status(e.status || 400).json({ error: e.message, ...(e.code ? { code: e.code } : {}) });
   }
   log({ level: 'warn', category: 'economy', event: 'redeem',
     message: `用户兑换码 ${code}`, user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',

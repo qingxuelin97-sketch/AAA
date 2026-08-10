@@ -6,6 +6,14 @@ import { creatorWorks } from '../creator.js';
 import { log } from '../logger.js';
 import { cnToday } from '../daily.js';
 
+// 剧本自动生成的「主持人」卡不算用户自己的角色。
+// scripts.js 的 /play 会为每个剧本建一张 tags = 'script:<id>' 的私有角色作为 GM，
+// 那是实现细节，不是用户创作 —— 但「我的角色库」「创作中心」「成就计数」此前都
+// 没有排除它，于是每玩一个剧本，角色库里就多一张幽灵卡，创作数与成就也跟着虚高。
+// mock 一直用 from_script 字段过滤，可真后端根本没有这一列（全仓 grep 为 0），
+// 照 mock 的写法搬过来会直接失效 —— 真后端只能按 tags 前缀判。
+const NOT_SCRIPT_CARD = "AND (tags IS NULL OR tags NOT LIKE 'script:%')";
+
 const router = Router();
 
 // ---- creator revenue-share program (创作者收益分成计划) ----
@@ -65,7 +73,7 @@ function incomeSeries(uid, days = 14) {
 // Creator dashboard (创作中心) — aggregate stats + analytics series.
 router.get('/studio', authRequired, (req, res) => {
   const uid = req.user.id;
-  const chars = db.prepare('SELECT * FROM characters WHERE owner_id = ?').all(uid);
+  const chars = db.prepare(`SELECT * FROM characters WHERE owner_id = ? ${NOT_SCRIPT_CARD}`).all(uid);
   const charRows = chars.map(c => ({
     id: c.id, name: c.name, avatar: c.avatar, is_public: !!c.is_public, uses: c.uses || 0, likes: c.likes || 0,
     favs: db.prepare('SELECT COUNT(*) n FROM favorites WHERE character_id = ?').get(c.id).n,
@@ -158,7 +166,7 @@ router.get('/insights', authRequired, (req, res) => {
 
   // —— 创作全景 ——
   const creations = {
-    characters: one('SELECT COUNT(*) n FROM characters WHERE owner_id = ?', uid).n || 0,
+    characters: one(`SELECT COUNT(*) n FROM characters WHERE owner_id = ? ${NOT_SCRIPT_CARD}`, uid).n || 0,
     worldbooks: one('SELECT COUNT(*) n FROM worldbooks WHERE owner_id = ?', uid).n || 0,
     scripts: one('SELECT COUNT(*) n FROM scripts WHERE author_id = ? AND deleted_at IS NULL', uid).n || 0,
     novels: one('SELECT COUNT(*) n FROM novels WHERE owner_id = ?', uid).n || 0,

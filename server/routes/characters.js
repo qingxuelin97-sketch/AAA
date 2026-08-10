@@ -8,6 +8,14 @@ import { broadcast } from '../realtime.js';
 import { log } from '../logger.js';
 import { str } from '../validate.js';
 
+// 剧本自动生成的「主持人」卡不算用户自己的角色。
+// scripts.js 的 /play 会为每个剧本建一张 tags = 'script:<id>' 的私有角色作为 GM，
+// 那是实现细节，不是用户创作 —— 但「我的角色库」「创作中心」「成就计数」此前都
+// 没有排除它，于是每玩一个剧本，角色库里就多一张幽灵卡，创作数与成就也跟着虚高。
+// mock 一直用 from_script 字段过滤，可真后端根本没有这一列（全仓 grep 为 0），
+// 照 mock 的写法搬过来会直接失效 —— 真后端只能按 tags 前缀判。
+const NOT_SCRIPT_CARD = "AND (tags IS NULL OR tags NOT LIKE 'script:%')";
+
 const router = Router();
 
 function loadWorld(characterId) {
@@ -42,19 +50,35 @@ function cardPreview(c, ownerName, ownerAvatar, ownerTier) {
   return {
     id: c.id, name: c.name, avatar: c.avatar, tagline: c.tagline || '',
     category: c.category || '', tags: c.tags || '', nsfw: !!c.nsfw, featured: !!c.featured,
-    owner_id: c.owner_id, owner_name: ownerName || '', owner_avatar: ownerAvatar || '', owner_tier: ownerTier || 0,
+    owner_id: c.owner_id, owner_name: ownerName || '', owner_avatar: ownerAvatar || '', owner_tier: ownerTier ?? null,   // 统一为 null；此前这里兜底成数字 0，与详情/列表两种类型
     created_at: c.created_at,
   };
 }
 
 // List my characters
 router.get('/mine', authRequired, (req, res) => {
-  const rows = db.prepare('SELECT * FROM characters WHERE owner_id = ? ORDER BY created_at DESC').all(req.user.id);
+  const rows = db.prepare(`SELECT * FROM characters WHERE owner_id = ? ${NOT_SCRIPT_CARD} ORDER BY created_at DESC`).all(req.user.id);
   res.json({ characters: rows });
 });
 
 // Public gallery of characters, with category + search filters.
 // 支持 limit/offset 分页：沉浸式信息流按页加载，避免一次性返回全量。
+// —— owner_tier 是列表卡片上的创作者 V 徽章 ——
+// 前端 DiscoverFeed / Home / Spotlight / WebHome 都读这个字段，但三个列表端点
+// （/public、/recommended、/favorites/list）一个都不返回，只有 SSE 推送与详情页返回。
+// 于是首页、发现流、聚光灯上的 V 徽章**永远不显示**；别人新发的卡经 SSE 推上来时
+// 反而有，刷新一下又没了 —— 典型的「功能静默失效」。
+// 而 mock 的同名端点是返回的，所以静态试玩里一切正常，接上真后端才消失。
+// creatorTier 会逐个用户查库，这里按 owner 去重后批量算，避免 N+1。
+function attachOwnerTier(rows) {
+  const tiers = new Map();
+  for (const r of rows) {
+    if (!tiers.has(r.owner_id)) tiers.set(r.owner_id, creatorTier(r.owner_id) ?? null);
+    r.owner_tier = tiers.get(r.owner_id);
+  }
+  return rows;
+}
+
 router.get('/public', authOptional, (req, res) => {
   const { category, q, sort } = req.query;
   // 显式列清单，不再 SELECT c.*。列表接口默认一次返回 80 行，而 c.* 会把三个
@@ -96,7 +120,7 @@ router.get('/public', authOptional, (req, res) => {
     const fav = new Set(db.prepare('SELECT character_id FROM favorites WHERE user_id = ?').all(req.user.id).map(r => r.character_id));
     rows.forEach(r => (r.faved = fav.has(r.id)));
   }
-  res.json({ characters: rows });
+  res.json({ characters: attachOwnerTier(rows) });
 });
 
 // Personalized recommendations — rank public characters by the categories the
@@ -125,7 +149,7 @@ router.get('/recommended', authRequired, (req, res) => {
     .map(c => ({ c, score: (weight[c.category] || 0) * 3 + Math.log10((c.uses || 0) + (c.likes || 0) + 1) + (c.featured ? 0.4 : 0) }))
     .sort((a, b) => b.score - a.score).slice(0, 12)
     .map(({ c }) => ({ ...c, faved: false }));
-  res.json({ characters: rows, personalized });
+  res.json({ characters: attachOwnerTier(rows), personalized });
 });
 
 // Favorites
@@ -134,7 +158,7 @@ router.get('/favorites/list', authRequired, (req, res) => {
     JOIN characters c ON c.id = f.character_id JOIN users u ON u.id = c.owner_id
     WHERE f.user_id = ? AND (c.is_public = 1 OR c.owner_id = ?) ORDER BY c.id DESC`)
     .all(req.user.id, req.user.id);
-  res.json({ characters: rows });
+  res.json({ characters: attachOwnerTier(rows) });
 });
 // characters.likes 是 favorites 的**缓存列**，不是独立账本。
 //

@@ -3,6 +3,14 @@ import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { applyTx, isVip, notify } from '../wallet.js';
 
+// 剧本自动生成的「主持人」卡不算用户自己的角色。
+// scripts.js 的 /play 会为每个剧本建一张 tags = 'script:<id>' 的私有角色作为 GM，
+// 那是实现细节，不是用户创作 —— 但「我的角色库」「创作中心」「成就计数」此前都
+// 没有排除它，于是每玩一个剧本，角色库里就多一张幽灵卡，创作数与成就也跟着虚高。
+// mock 一直用 from_script 字段过滤，可真后端根本没有这一列（全仓 grep 为 0），
+// 照 mock 的写法搬过来会直接失效 —— 真后端只能按 tags 前缀判。
+const NOT_SCRIPT_CARD = "AND (tags IS NULL OR tags NOT LIKE 'script:%')";
+
 const router = Router();
 
 // Mirrors the browser build's achievement set; progress is computed live from the DB.
@@ -68,7 +76,7 @@ function metric(u, m) {
     case 'chats': return count('SELECT COUNT(*) n FROM conversations WHERE user_id=?', uid);
     case 'messages': return count("SELECT COUNT(*) n FROM messages WHERE role='user' AND conversation_id IN (SELECT id FROM conversations WHERE user_id=?)", uid);
     case 'affinity_max': return count('SELECT COALESCE(MAX(affinity),0) n FROM conversations WHERE user_id=?', uid);
-    case 'characters': return count('SELECT COUNT(*) n FROM characters WHERE owner_id=?', uid);
+    case 'characters': return count(`SELECT COUNT(*) n FROM characters WHERE owner_id=? ${NOT_SCRIPT_CARD}`, uid);
     case 'public_characters': return count('SELECT COUNT(*) n FROM characters WHERE owner_id=? AND is_public=1', uid);
     case 'scripts': return count('SELECT COUNT(*) n FROM scripts WHERE author_id=? AND deleted_at IS NULL', uid);
     case 'novels': return count('SELECT COUNT(*) n FROM novels WHERE owner_id=?', uid);

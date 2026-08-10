@@ -1160,3 +1160,15 @@ html[data-perf='lite'] .avf .avf-ring { animation: none !important; }
 .avf .avf-art { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   max-width: none; pointer-events: none; object-fit: contain; }
 .avf-pick .avf-prev { display: grid; place-items: center; width: 96px; height: 96px; }
+
+/* 上传空间清理列表（设置 → 隐私 → 数据管理）。
+   端点 /upload/mine 与 DELETE /upload/:filename 早就存在，但一直没有界面入口 ——
+   而 upload.js 在配额满时会提示用户「删除旧资源」，等于要求做一件做不到的事。 */
+.priv-uploads { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 10px; }
+.priv-upload-row { display: flex; align-items: center; gap: 10px; }
+.priv-upload-thumb { width: 44px; height: 44px; border-radius: 10px; object-fit: cover;
+  background: var(--bg-2); border: 1px solid var(--border); flex: none; }
+.priv-upload-thumb--missing { display: inline-flex; align-items: center; justify-content: center; color: var(--faint); }
+.priv-upload-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.priv-upload-meta b { font-size: 13px; font-weight: 600; }
+.priv-upload-meta small { font-size: 11.5px; color: var(--faint); }

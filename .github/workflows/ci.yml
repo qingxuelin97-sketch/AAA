@@ -78,6 +78,7 @@ jobs:
           npm run test:worldbook
           npm run test:ctx
           npm run test:logic
+          npm run test:contract
           npm run test:server:s7
           npm run test:logs
           npm run test:hearts

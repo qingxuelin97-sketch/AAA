@@ -50,7 +50,8 @@
     "test:regen": "node server/regen-test.mjs",
     "test:worldbook": "node server/worldbook-inject-test.mjs",
     "test:ctx": "node server/ctx-window-test.mjs",
-    "test:logic": "node server/logic-holes-test.mjs"
+    "test:logic": "node server/logic-holes-test.mjs",
+    "test:contract": "node server/contract-test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

@@ -539,7 +539,7 @@ function achMetric(me, metric) {
     case 'chats': return filter('conversations', c => c.user_id === uid).length;
     case 'messages': { const ids = filter('conversations', c => c.user_id === uid).map(c => c.id); return filter('messages', x => ids.includes(x.conversation_id) && x.role === 'user').length; }
     case 'affinity_max': return filter('conversations', c => c.user_id === uid).reduce((mx, c) => Math.max(mx, c.affinity || 0), 0);
-    case 'characters': return filter('characters', c => c.owner_id === uid && !c.from_script).length;
+    case 'characters': return filter('characters', c => c.owner_id === uid && !isScriptCard(c)).length;
     case 'public_characters': return filter('characters', c => c.owner_id === uid && c.is_public).length;
     case 'scripts': return filter('scripts', s => s.author_id === uid).length;
     case 'novels': return filter('novels', n => n.owner_id === uid).length;
@@ -758,7 +758,7 @@ async function streamCompletion(conv, character, settings, userContent, me, opts
     async start(controller) {
       const send = (o) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(o)}\n\n`));
       if (!eff.api_key) {
-        send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key（浏览器将直连你的服务商）。' });
+        send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key（浏览器将直连你的服务商）。', code: 'NO_MODEL' });
         controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close(); return;
       }
       let full = '';
@@ -770,7 +770,7 @@ async function streamCompletion(conv, character, settings, userContent, me, opts
           const t1 = await up.text().catch(() => '');
           const up2 = await realFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify({ ...req.body, stream: false }) }).catch(() => null);
           if (up2 && up2.ok) { const d = await up2.json().catch(() => ({})); const txt = d.choices?.[0]?.message?.content || ''; if (txt) { full = txt; send({ delta: txt }); } up = { ok: true, body: null, _handled: true }; }
-          else { send({ error: `模型服务返回 ${up.status}：${t1.slice(0, 300)}` }); up = { ok: false }; }
+          else { send({ error: `模型服务返回 ${up.status}：${t1.slice(0, 300)}`, code: 'USER_KEY_FAILED' }); up = { ok: false }; }
         }
         if (up.ok && up.body) {
           const reader = up.body.getReader(); const dec = new TextDecoder(); let buf = '';
@@ -783,7 +783,7 @@ async function streamCompletion(conv, character, settings, userContent, me, opts
               const delta = parseDelta(d, eff.protocol); if (delta) { full += delta; send({ delta }); }
             }
           }
-        } else if (!up.ok && !up._handled) { const t = await (up.text ? up.text().catch(() => '') : Promise.resolve('')); if (t || !full) send({ error: `模型服务返回 ${up.status || ''}：${(t || '').slice(0, 300)}` }); }
+        } else if (!up.ok && !up._handled) { const t = await (up.text ? up.text().catch(() => '') : Promise.resolve('')); if (t || !full) send({ code: 'USER_KEY_FAILED', error: `模型服务返回 ${up.status || ''}：${(t || '').slice(0, 300)}` }); }
       } catch (err) { send({ error: '连接模型服务失败：' + err.message + '（可能是服务商的浏览器跨域限制；可尝试在设置中更换协议或服务商）' }); }
       if (full.trim()) {
         let assistantMessageId = regenerateOf || null;
@@ -847,7 +847,7 @@ async function streamSilentGenerate(conv, character, settings, userInput, me, in
     async start(controller) {
       const send = (o) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(o)}\n\n`));
       if (!eff.api_key) {
-        send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key。' });
+        send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key。', code: 'NO_MODEL' });
         controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close(); return;
       }
       let full = '';
@@ -858,7 +858,7 @@ async function streamSilentGenerate(conv, character, settings, userInput, me, in
           const t1 = await up.text().catch(() => '');
           const up2 = await realFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify({ ...req.body, stream: false }) }).catch(() => null);
           if (up2 && up2.ok) { const d = await up2.json().catch(() => ({})); const txt = d.choices?.[0]?.message?.content || ''; if (txt) { full = txt; send({ delta: txt }); } up = { ok: true, body: null, _handled: true }; }
-          else { send({ error: `模型服务返回 ${up.status}：${t1.slice(0, 300)}` }); up = { ok: false }; }
+          else { send({ error: `模型服务返回 ${up.status}：${t1.slice(0, 300)}`, code: 'USER_KEY_FAILED' }); up = { ok: false }; }
         }
         if (up.ok && up.body) {
           const reader = up.body.getReader(); const dec = new TextDecoder(); let buf = '';
@@ -871,7 +871,7 @@ async function streamSilentGenerate(conv, character, settings, userInput, me, in
               const delta = parseDelta(d, eff.protocol); if (delta) { full += delta; send({ delta }); }
             }
           }
-        } else if (!up.ok && !up._handled) { const t = await (up.text ? up.text().catch(() => '') : Promise.resolve('')); if (t || !full) send({ error: `模型服务返回 ${up.status || ''}：${(t || '').slice(0, 300)}` }); }
+        } else if (!up.ok && !up._handled) { const t = await (up.text ? up.text().catch(() => '') : Promise.resolve('')); if (t || !full) send({ code: 'USER_KEY_FAILED', error: `模型服务返回 ${up.status || ''}：${(t || '').slice(0, 300)}` }); }
       } catch (err) { send({ error: '连接模型服务失败：' + err.message }); }
       if (full.trim() && feeDue && me) {
         try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 面板生成《${character?.name || ''}》`, ref_owner: character?.owner_id }); send({ fee: feeDue }); } catch { /* */ }
@@ -1049,7 +1049,7 @@ async function nvStreamWrite({ run, novel, settings, directive, beats, me, rewri
     async start(controller) {
       const send = (o) => controller.enqueue(enc.encode(`data: ${JSON.stringify(o)}\n\n`));
       const done = () => { controller.enqueue(enc.encode('data: [DONE]\n\n')); controller.close(); };
-      if (!eff.api_key) { send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key（浏览器将直连你的服务商）。' }); return done(); }
+      if (!eff.api_key) { send({ error: '尚未配置语言模型 API。请前往「设置 → 语言模型」填写 API Key（浏览器将直连你的服务商）。', code: 'NO_MODEL' }); return done(); }
       let full = '';
       try {
         const req = llmRequest({ ...eff, temperature: eff.temperature ?? 0.9, max_tokens: eff.max_tokens || 1600 }, sysFull, history);
@@ -1057,7 +1057,7 @@ async function nvStreamWrite({ run, novel, settings, directive, beats, me, rewri
         if (!up.ok && eff.protocol === 'openai') {
           const up2 = await realFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify({ ...req.body, stream: false }) }).catch(() => null);
           if (up2 && up2.ok) { const d = await up2.json().catch(() => ({})); const txt = d.choices?.[0]?.message?.content || ''; if (txt) { full = txt; send({ delta: txt }); } up = { ok: true, body: null, _handled: true }; }
-          else { const t1 = await up.text().catch(() => ''); send({ error: `模型服务返回 ${up.status}：${t1.slice(0, 200)}` }); up = { ok: false }; }
+          else { const t1 = await up.text().catch(() => ''); send({ error: `模型服务返回 ${up.status}：${t1.slice(0, 200)}`, code: 'USER_KEY_FAILED' }); up = { ok: false }; }
         }
         if (up.ok && up.body) {
           const reader = up.body.getReader(), dec = new TextDecoder(); let buf = '';
@@ -1213,6 +1213,10 @@ function tallyVotes(votes) {
   return { ...counts, total: votes.length, cast, ratio, status };
 }
 
+// 剧本自动生成的「主持人」卡不是用户创作的角色，不该出现在角色库/创作中心/成就计数里。
+// 判据与真后端一致：tags 恰好是 'script:<剧本 id>'。
+const isScriptCard = (c) => /^script:\d+$/.test(String(c?.tags || ''));
+
 function proposalView(p, meId) {
   const votes = filter('proposal_votes', v => v.proposal_id === p.id);
   const live = tallyVotes(votes);
@@ -1258,20 +1262,50 @@ async function route(method, path, search, body, headers) {
   let m;
 
   // ---------- auth ----------
+  // ⚠ 注册流程必须与真后端同构，否则静态试玩注册的是**另一套产品**。
+  // 真后端是三步：POST /auth/send-code（查重 + 准入判定 + 发码）→ 用户收码 →
+  // POST /auth/register（校验 username/password/email/**code**）。
+  // 准入四选一：全局开放 / 邮箱白名单 / 邀请密钥 / Play Integrity（auth.js:119-126）。
+  // 而 mock 此前**根本没有 /auth/send-code**（只有换绑邮箱用的 /auth/email/send-code），
+  // 于是前端 Auth.jsx:125 一调就 toast「接口不存在」；register 也只要用户名密码 +
+  // 强制邀请码，不要邮箱、不要验证码。演示态固定验证码 888888（与换绑口一致）。
+  if (method === 'GET' && path === '/auth/registration-policy') {
+    return J({ mode: 'restricted', methods: { whitelist: false, invite: true, play_integrity: false } });
+  }
+  if (method === 'POST' && path === '/auth/send-code') {
+    const email = String(body?.email || '').trim().toLowerCase();
+    const invite = String(body?.invite || '').trim();
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return E('邮箱格式不正确');
+    if (find('users', u => (u.email || '').toLowerCase() === email)) return E('该邮箱已注册，请直接登录', 409);
+    // 演示态的准入只保留「邀请密钥」这一路（mock 没有白名单，也无法做 Play Integrity）
+    const key = invite ? find('invite_keys', k => k.code === invite && k.used < k.max_uses) : null;
+    if (invite && !key) return E('邀请密钥无效或已用完');
+    if (!key) return E('请提供有效邀请密钥，或使用经 Google Play 校验的正式 App 注册', 403);
+    db._codes = db._codes || {};
+    db._codes[email] = '888888';
+    save();
+    return J({ ok: true, ttl_min: 10, integrity_ticket: null, test_code: '888888' });
+  }
   if (method === 'POST' && path === '/auth/register') {
-    const { username, password, display_name, email, invite } = body;
+    const { username, password, display_name, email, invite, code } = body;
     if (!username || !password) return E('用户名和密码必填');
+    const mail = String(email || '').trim().toLowerCase();
+    if (!mail) return E('请填写邮箱');
+    // 与真后端一致：验证码是注册的必要条件，不能只凭邀请码就建号
+    if (String(code || '').trim() !== ((db._codes || {})[mail] || '')) return E('验证码不正确或已过期');
     if (!invite) return E('请输入邀请密钥');
     const key = find('invite_keys', k => k.code === String(invite).trim());
     if (!key) return E('邀请密钥无效');
     if (key.used >= key.max_uses) return E('该邀请密钥已被使用完');
     if (find('users', u => u.username === username)) return E('该用户名已被注册', 409);
+    if (find('users', u => (u.email || '').toLowerCase() === mail)) return E('该邮箱已注册，请直接登录', 409);
     const u = insert('users', { username, password, display_name: display_name || username, email: email || '', avatar: null, banner: null, bio: '', gold: 300, diamond: 0, vip_until: null, last_checkin: null, checkin_streak: 0 });
     insert('settings', { user_id: u.id, llm_provider: 'openai', llm_base_url: 'https://api.openai.com/v1', llm_api_key: '', llm_model: 'gpt-4o-mini', llm_temperature: 0.8, llm_max_tokens: 1024, voice_provider: 'openai', voice_protocol: 'openai', voice_base_url: 'https://api.openai.com/v1', voice_api_key: '', voice_model: 'tts-1', voice_name: 'alloy', theme: 'dark', nsfw: 0, notify_email: 0 });
     key.used++;
     if (key.grant_gold || key.grant_diamond) applyTx(u.id, { kind: 'invite', gold: key.grant_gold, diamond: key.grant_diamond, memo: `邀请密钥 ${key.code} 奖励` });
     if (key.grant_vip_days) u.vip_until = new Date(Date.now() + key.grant_vip_days * 86400000).toISOString();
     notify(u.id, '欢迎来到幻域！已为你发放新手金币，快去发现广场逛逛吧 ', '/');
+    if (db._codes) delete db._codes[mail];
     save();
     return J({ token: tokenFor(u), user: publicUser(u) });
   }
@@ -1508,10 +1542,10 @@ async function route(method, path, search, body, headers) {
   }
 
   // ---------- characters ----------
-  if (method === 'GET' && path === '/characters/mine') { need(); return J({ characters: filter('characters', c => c.owner_id === me.id && !c.from_script).sort((a, b) => b.id - a.id) }); }
+  if (method === 'GET' && path === '/characters/mine') { need(); return J({ characters: filter('characters', c => c.owner_id === me.id && !isScriptCard(c)).sort((a, b) => b.id - a.id) }); }
   if (method === 'GET' && path === '/me/studio') {
     need();
-    const charRows = filter('characters', c => c.owner_id === me.id && !c.from_script).map(c => ({
+    const charRows = filter('characters', c => c.owner_id === me.id && !isScriptCard(c)).map(c => ({
       id: c.id, name: c.name, avatar: c.avatar, is_public: !!c.is_public, uses: c.uses || 0, likes: c.likes || 0,
       favs: filter('favorites', f => f.character_id === c.id).length
     }));
@@ -1561,7 +1595,7 @@ async function route(method, path, search, body, headers) {
       chat: { conversations: myConvs.length, messages: myMsgs.length, sent: sent.length, received: myMsgs.length - sent.length, active_days: new Set(sent.map(m => dayKey(m.created_at)).filter(Boolean)).size },
       days, companions,
       creations: {
-        characters: filter('characters', c => c.owner_id === me.id && !c.from_script).length,
+        characters: filter('characters', c => c.owner_id === me.id && !isScriptCard(c)).length,
         worldbooks: filter('worldbooks', w => w.owner_id === me.id).length,
         scripts: filter('scripts', s => s.author_id === me.id).length,
         novels: filter('novels', n => n.owner_id === me.id).length,
@@ -1629,11 +1663,27 @@ async function route(method, path, search, body, headers) {
     return J({ ok: true, reward: amount, wallet: w, plan: revenuePlan(me) });
   }
   if (method === 'GET' && path === '/characters/public') {
+    // ⚠ limit / offset / scope 必须真的实现，不能硬 slice(0, 80)。
+    // 前端 DiscoverFeed 是无限滚动：首屏 limit=20，触底后带 offset 再拉，并按
+    // `list.length >= 20` 决定 hasMore。mock 忽略这两个参数时，每次都返回同样的
+    // 80 条 → 去重后新增 0 条 → chars.length 不变 → hasMore 恒为 true →
+    // loadingMore 翻转又触发同一个 effect，**静态构建里滑到列表尾部会进入无限请求循环**。
+    // 排序也补上唯一 tie-breaker，与真后端 characters.js 一致。
     const cat = search.get('category'), q = (search.get('q') || '').toLowerCase(), sort = search.get('sort');
+    const scope = search.get('scope');
+    const limit = Math.min(Math.max(parseInt(search.get('limit'), 10) || 80, 1), 100);
+    const offset = Math.max(parseInt(search.get('offset'), 10) || 0, 0);
     let rows = filter('characters', c => c.is_public);
+    // scope=following：只看已关注作者的卡（此前忽略该参数 → 「关注」分段展示的是全站热门）
+    if (scope === 'following' && me) {
+      const following = new Set(filter('follows', f => f.follower_id === me.id).map(f => f.following_id));
+      rows = rows.filter(c => following.has(c.owner_id));
+    }
     if (cat && cat !== 'all') rows = rows.filter(c => c.category === cat);
     if (q) rows = rows.filter(c => (c.name + c.tags + c.tagline).toLowerCase().includes(q));
-    rows = rows.sort((a, b) => sort === 'new' ? b.id - a.id : (b.uses - a.uses) || (b.likes - a.likes)).slice(0, 80);
+    rows = rows
+      .sort((a, b) => (sort === 'new' ? b.id - a.id : (b.uses - a.uses) || (b.likes - a.likes) || (b.id - a.id)))
+      .slice(offset, offset + limit);
     // 与服务端同口径：列表不带 persona / front_regex / alt_greetings 三个重量级字段
     // （front_regex 落库上限 4,000,000 字符，一张卡就能让发现流吐出几 MB）。
     // owner_avatar 带出，作者的脸不该在一级 tab 上隐形。
@@ -1664,7 +1714,7 @@ async function route(method, path, search, body, headers) {
     const st = find('settings', x => x.user_id === me.id);
     if (st && st.personalize !== 0 && st.interests) String(st.interests).split(',').filter(Boolean).forEach(slug => bump(slug, 2));
     const personalized = Object.keys(weight).length > 0;
-    const pool = filter('characters', c => c.is_public && c.owner_id !== me.id && !favIds.has(c.id) && !c.from_script);
+    const pool = filter('characters', c => c.is_public && c.owner_id !== me.id && !favIds.has(c.id) && !isScriptCard(c));
     const rows = pool
       .map(c => ({ c, score: (weight[c.category] || 0) * 3 + Math.log10((c.uses || 0) + (c.likes || 0) + 1) + (c.featured ? 0.4 : 0) }))
       .sort((a, b) => b.score - a.score).slice(0, 12)
@@ -1692,10 +1742,10 @@ async function route(method, path, search, body, headers) {
       if (!c) return E('角色不存在', 404); if (!c.is_public && (!me || me.id !== c.owner_id)) return E('无权访问', 403);
       const owner = user(c.owner_id);
       const fav_count = filter('favorites', f => f.character_id === c.id).length;
-      const related = filter('characters', x => x.is_public && x.id !== c.id && !x.from_script && (x.category === c.category || x.owner_id === c.owner_id))
+      const related = filter('characters', x => x.is_public && x.id !== c.id && !isScriptCard(x) && (x.category === c.category || x.owner_id === c.owner_id))
         .map(x => ({ id: x.id, name: x.name, avatar: x.avatar, tagline: x.tagline, uses: x.uses || 0, category: x.category }))
         .sort((a, b) => b.uses - a.uses).slice(0, 6);
-      const author_char_count = filter('characters', x => x.is_public && x.owner_id === c.owner_id && x.id !== c.id && !x.from_script).length;
+      const author_char_count = filter('characters', x => x.is_public && x.owner_id === c.owner_id && x.id !== c.id && !isScriptCard(x)).length;
       const faved = me ? !!find('favorites', f => f.user_id === me.id && f.character_id === c.id) : false;
       return J({ character: { ...charView(c), owner_name: owner?.display_name, owner_avatar: owner?.avatar, owner_verified: !!owner?.verified, owner_tier: creatorTier(owner), fav_count, author_char_count, faved }, related });
     }
@@ -2129,7 +2179,22 @@ async function route(method, path, search, body, headers) {
     if (milestone) w = applyTx(me.id, { kind: 'milestone', gold: milestone, memo: `连签 ${streak} 天里程碑` });
     return J({ wallet: w, reward, streak, milestone });
   }
-  if (method === 'POST' && path === '/economy/redeem') { need(); const key = find('invite_keys', k => k.code === String(body.code || '').trim()); if (!key) return E('密钥无效'); if (key.used >= key.max_uses) return E('该密钥已用完'); key.used++; if (key.grant_gold || key.grant_diamond) applyTx(me.id, { kind: 'reward', gold: key.grant_gold, diamond: key.grant_diamond, memo: `兑换码 ${key.code}` }); if (key.grant_vip_days) { const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + key.grant_vip_days * 86400000).toISOString(); } save(); return J({ wallet: publicUser(me) }); }
+  if (method === 'POST' && path === '/economy/redeem') {
+    // 真后端 economy.js:227 用 code_redemptions 表做「每账号一次」的唯一约束，
+    // 撞约束回 409。mock 此前只看 max_uses、不记录兑换人 —— 同一账号可以对着
+    // 种子码（max_uses = 9999）反复兑换 2000 金币，等于试玩里有个无限金币按钮，
+    // 而这条路径在真环境是走不通的。
+    need(); const key = find('invite_keys', k => k.code === String(body.code || '').trim());
+    if (!key) return E('密钥无效');
+    if (key.used >= key.max_uses) return E('该密钥已用完');
+    db.code_redemptions = db.code_redemptions || [];
+    if (db.code_redemptions.some(r => r.user_id === me.id && r.code === key.code)) {
+      return E('该兑换码每个账号只能使用一次', 409);
+    }
+    db.code_redemptions.push({ user_id: me.id, code: key.code, created_at: now() });
+    key.used++; if (key.grant_gold || key.grant_diamond) applyTx(me.id, { kind: 'reward', gold: key.grant_gold, diamond: key.grant_diamond, memo: `兑换码 ${key.code}` }); if (key.grant_vip_days) { const base = isVip(me) ? new Date(me.vip_until).getTime() : Date.now(); me.vip_until = new Date(base + key.grant_vip_days * 86400000).toISOString(); }
+    save(); return J({ wallet: publicUser(me) });
+  }
 
   // ---------- scripts ----------
   if (method === 'GET' && path === '/scripts') {
@@ -2163,10 +2228,15 @@ async function route(method, path, search, body, headers) {
     const owns = s.price_gold === 0 || s.author_id === me.id || find('script_purchases', p => p.script_id === sid && p.user_id === me.id && !p.refunded);
     if (!owns) return E('请先解锁该剧本再开始扮演', 403);
     // Reuse a hidden script-runner character per user+script, else create one seeded from the script.
-    let ch = find('characters', x => x.owner_id === me.id && x.from_script === sid);
+    // 标记机制与真后端 scripts.js:244 对齐：tags = 'script:<id>'。
+    // 此前 mock 用的是真后端根本没有的 from_script 列（全仓 grep server/ 为 0），
+    // 两边机制不同意味着「照 mock 的写法给真后端加过滤」会直接失效 —— 而真后端
+    // 恰恰一直没过滤，每玩一个剧本用户的角色库就多一张幽灵主持人卡。
+    const scriptTag = `script:${sid}`;
+    let ch = find('characters', x => x.owner_id === me.id && x.tags === scriptTag);
     if (!ch) {
       const persona = `你是互动剧本《${s.title}》的主持人(GM)兼剧中所有角色与旁白的扮演者。\n【剧本设定】\n${s.content || s.summary}\n\n请基于以上设定，以沉浸式第一人称推进剧情：扮演剧中登场的角色与旁白，描写场景与氛围，引导玩家在关键处做出选择。每次回复简洁有画面感（2-4 句），并在合适时给出 2-3 个可选的行动方向。始终保持在剧本世界观内，不要跳出角色。`;
-      ch = insert('characters', { owner_id: me.id, name: s.title, avatar: s.cover || null, background: s.cover || null, background_type: 'image', tagline: s.summary || '', intro: s.summary || '', greeting: `*【${s.title}】*\n\n${(s.content || s.summary || '').split('\n')[0]}\n\n（你想如何开始？）`, persona, category: s.category || '', tags: s.tags || '', is_public: 0, nsfw: s.nsfw || 0, likes: 0, uses: 0, from_script: sid });
+      ch = insert('characters', { owner_id: me.id, name: s.title, avatar: s.cover || null, background: s.cover || null, background_type: 'image', tagline: s.summary || '', intro: s.summary || '', greeting: `*【${s.title}】*\n\n${(s.content || s.summary || '').split('\n')[0]}\n\n（你想如何开始？）`, persona, category: s.category || '', tags: scriptTag, is_public: 0, nsfw: s.nsfw || 0, likes: 0, uses: 0 });
     }
     const conv = insert('conversations', { user_id: me.id, character_id: ch.id, title: s.title, updated_at: now() }); ch.uses++;
     if (ch.greeting) insert('messages', { conversation_id: conv.id, role: 'assistant', content: ch.greeting });
@@ -2830,9 +2900,12 @@ async function route(method, path, search, body, headers) {
   if ((m = P(/^\/admin\/users\/(\d+)\/ban$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_banned = 1; u.ban_reason = body.reason || ''; save(); } return J({ ok: true }); }
   if ((m = P(/^\/admin\/users\/(\d+)\/unban$/)) && method === 'POST') { gmOnly(); const u = user(+m[1]); if (u) { u.is_banned = 0; u.ban_reason = ''; save(); } return J({ ok: true }); }
   if ((m = P(/^\/admin\/users\/(\d+)\/gm$/)) && method === 'POST') {
+    // 真后端 admin.js:437-442 对这个端点**恒 403**（先写一条 gm_change_blocked 审计，
+    // 再回「管理员权限只能通过服务器本地运维命令修改」），无论调用者是不是 GM。
+    // mock 此前真的会改 is_gm —— 于是「设为 GM」按钮在试玩里可用、在真环境里必定失败，
+    // 而 appdiff / e2e 全程给「通过」。演示态跟着拒绝才是如实的。
     gmOnly();
-    if (+m[1] === me.id && !body.value) return E('不能撤销自己的 GM 权限，以防误操作锁定后台。请由另一位 GM 操作。', 400);
-    const u = user(+m[1]); if (u) { u.is_gm = body.value ? 1 : 0; save(); } return J({ ok: true });
+    return E('管理员权限只能通过服务器本地运维命令修改', 403);
   }
   if ((m = P(/^\/admin\/users\/(\d+)\/councilor$/)) && method === 'POST') {
     gmOnly(); const u = user(+m[1]);

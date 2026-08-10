@@ -314,7 +314,16 @@ app.use((err, req, res, next) => {
       request_id: req.requestId || '',
     });
   }
-  res.status(status).json({ error: message, request_id: req.requestId || undefined });
+  // err.code 必须透传。前端 api.jsx 把它读进 ApiError.code，Chat.jsx 的五种失败
+  // 分型卡片、AppHome 的「今日已签到」判断全靠它；丢了 code，凡是走 next(err) 的
+  // 路径都会退化成 UNKNOWN，用户拿到一句笼统的错误而不是可操作的下一步。
+  // 各路由此前是各自手动 `...(e.code ? { code: e.code } : {})` 兜的，两套并存 ——
+  // 这里统一兜底，路由那些写法保持不变（幂等）。
+  // 只透传形如 SCREAMING_SNAKE 的业务码；SQLITE_* / ECONNREFUSED 之类的底层码
+  // 不该泄漏给客户端，也不是前端认得的契约。
+  const code = typeof err.code === 'string' && /^[A-Z][A-Z0-9_]{2,39}$/.test(err.code) && !err.code.startsWith('SQLITE_')
+    ? err.code : undefined;
+  res.status(status).json({ error: message, code, request_id: req.requestId || undefined });
 });
 
 // —— 进程级异常捕获 ——

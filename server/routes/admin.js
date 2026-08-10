@@ -414,8 +414,14 @@ router.get('/users', (req, res) => {
   if (!q) rows = db.prepare('SELECT * FROM users ORDER BY id DESC LIMIT 50').all();
   else if (/^\d+$/.test(q)) rows = db.prepare('SELECT * FROM users WHERE id = ?').all(+q);
   else rows = db.prepare('SELECT * FROM users WHERE username LIKE ? OR display_name LIKE ? LIMIT 50').all(`%${q}%`, `%${q}%`);
+  // is_councilor 必须带上：Admin.jsx 读它决定议员徽章是否显示、按钮写「任命」还是
+  // 「免去」、以及 POST 的 body 是 { value: !u.is_councilor }。字段缺失时它恒为
+  // undefined → 徽章永不出现、文案恒为「任命议员」、body 恒为 { value: true } ——
+  // 也就是在用户列表里**永远无法免去议员**（接收端本身是支持 value:false 的）。
+  // mock 一直有这个字段，所以这个 bug 只在真后端复现。
   res.json({ users: rows.map(u => ({ id: u.id, username: u.username, display_name: u.display_name, avatar: u.avatar,
-    gold: u.gold, diamond: u.diamond, vip: isVip(u), is_gm: !!u.is_gm, is_banned: !!u.is_banned, ban_reason: u.ban_reason })) });
+    gold: u.gold, diamond: u.diamond, vip: isVip(u), is_gm: !!u.is_gm, is_councilor: !!u.is_councilor,
+    is_banned: !!u.is_banned, ban_reason: u.ban_reason })) });
 });
 router.post('/users/:id/ban', (req, res) => {
   const target = db.prepare('SELECT id, is_gm FROM users WHERE id = ?').get(req.params.id);
