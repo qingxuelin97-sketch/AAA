@@ -619,6 +619,48 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
   assert.doesNotMatch(appFocusRules, /(input|textarea|contenteditable)/,
     'app-focus.css must not touch text inputs (their focus feedback is owned by their containers)');
 }
+// —— D5 毛玻璃开关：App 壳必须真的关得掉 ——
+{
+  const glassTokens = ixTokens.replace(/\/\*[\s\S]*?\*\//g, '');
+  // ① 令牌回落：模糊归零，两个玻璃面回落成不透明面（照抄 lite 已验证的路径）
+  const offBlock = glassTokens.match(/html\[data-app="1"\]\[data-glass="off"\]\s*\{([^}]*)\}/);
+  assert.ok(offBlock, 'app-ix-tokens.css must define a [data-glass="off"] token block (the toggle is visible in both shells)');
+  assert.match(offBlock[1], /--ix-blur:\s*none/, 'glass=off must zero --ix-blur');
+  assert.match(offBlock[1], /--ix-glass-nav:\s*var\(--ix-canvas\)/, 'glass=off must fall the nav glass back to an opaque surface (no blur + translucent = unreadable chrome)');
+  // ② 全局熄灭：191 条写死的 blur 只能靠通配规则按掉
+  assert.match(glassTokens,
+    /html\[data-app="1"\]\[data-glass="off"\](?:\[data-glass\])+\s+\*[\s\S]{0,400}?backdrop-filter:\s*none\s*!important/,
+    'app-ix-tokens.css must carry the universal glass-off kill rule (token fallback alone leaves 2/3 of the blurs on)');
+  // 特异度必须压过全仓最高的那条带 !important 的模糊规则（chat-glass.css:48 = (0,6,1)）
+  const killAttrs = (glassTokens.match(/html\[data-app="1"\]\[data-glass="off"\](\[data-glass\])+/) || [, ''])[0];
+  const killWeight = (killAttrs.match(/\[/g) || []).length;   // 属性选择器个数 = 特异度 b 位
+  assert.ok(killWeight >= 8,
+    `the glass-off kill rule needs ≥8 attribute selectors to outweigh chat-glass.css:48 (0,6,1); got ${killWeight}`);
+
+  // ③ 预算守卫（对偶移植自 web-test.mjs:143-158 的 bfCount）。
+  // Web 的上限是 48 且全部读令牌；App 现状是 286 条，其中 191 条写死 —— 差距太大，
+  // 这里先把上限冻结在实测值防增长，收敛到 Web 那个量级是后续独立工程。
+  const APP_GLASS_FILES = ['app-shell.css', 'app-elevated.css', 'app-renov.css', 'app-motion.css',
+    'app-runtime.css', 'app-controls.css', 'app-pages-quiet-aqua.css', 'app-experience-v3.css',
+    'app-hig-v5.css', 'app-ix-core.css', 'app-ix-pages-a.css', 'app-ix-pages-b.css',
+    'app-ix-pages-c.css', 'app-ix-pages-d.css', 'app-rainbow.css', 'app-rainbow-motion.css',
+    'app-tap.css', 'app-focus.css', 'app-safearea.css', 'chat-glass.css'];
+  let bfRules = 0;
+  let bfLiteral = 0;
+  for (const name of [...APP_GLASS_FILES, '../chat/chat-app.css']) {
+    const text = (await readFile(new URL('./src/styles/' + name, import.meta.url), 'utf8'))
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const rule of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const real = [...rule[2].matchAll(/backdrop-filter\s*:\s*([^;!]+)/g)]
+        .map((d) => d[1].trim()).filter((v) => v !== 'none');
+      if (!real.length) continue;
+      bfRules += 1;
+      if (!real.some((v) => v.includes('var(--ix-blur'))) bfLiteral += 1;
+    }
+  }
+  assert.ok(bfRules <= 286, `App backdrop-filter rule count must not grow (got ${bfRules}, frozen ceiling 286)`);
+  assert.ok(bfLiteral <= 191, `hard-coded blur() count must not grow — new glass must read var(--ix-blur) (got ${bfLiteral}, frozen ceiling 191)`);
+}
 // —— 触达下限与对话操作行 ——
 {
   const tapCss = await readFile(new URL('./src/styles/app-tap.css', import.meta.url), 'utf8');

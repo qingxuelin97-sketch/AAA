@@ -211,6 +211,51 @@ html[data-app="1"][data-perf="lite"] {
   --ix-skeleton: none;                 /* 骨架静态化（底色即占位） */
 }
 
+/* ═══ 毛玻璃外观开关（设置 → 外观 → 毛玻璃效果，theme.js:40 写 data-glass） ═══
+ * Web 侧早就实现了这个开关（web-lumen-tokens.css:166），App 侧一直是空的 ——
+ * 开关在设置页两壳都看得见，拨到「关」在 App 里**什么都不会发生**。
+ *
+ * 为什么不能只补令牌块：实测 App 层 286 条带真实模糊的规则里，只有 95 条读
+ * var(--ix-blur)，另外 191 条把 blur(...) 直接写死在声明里（app-shell 的 .topbar、
+ * quiet-aqua 的各类浮层、experience-v3 的对话顶栏、chat-glass 的输入岛……）。
+ * 补令牌只能关掉三分之一，剩下三分之二照旧发糊 —— 那还是个假开关。
+ *
+ * 所以分两段：
+ *   ① 令牌回落（下面这块）—— 复用 lite 档已经验证过的那条路径：模糊置 none，
+ *      两个玻璃面回落成不透明面。这保证「关玻璃」不等于「关层级」：导航条、
+ *      Sheet、菜单仍然是实心的，正文永远压得住。
+ *   ② 全局熄灭（再下面那条）—— 把写死的 blur 一并按掉。
+ * ═════════════════════════════════════════════════════════════ */
+html[data-app="1"][data-glass="off"] {
+  --ix-blur: none;
+  --ix-blur-s: none;
+  --ix-glass-temp: var(--ix-raise);    /* 玻璃 → 不透明浮起面 */
+  --ix-glass-nav: var(--ix-canvas);    /* 导航玻璃 → 不透明底 */
+}
+
+/* ② 写死 blur 的全局熄灭。
+ * 先例：perf-atelier.css:58 用同样的「壳属性 + 通配 + !important」形状暂停后台
+ * 标签页的全部动画。这里照搬那个形状。
+ *
+ * 特异度算术（必须压过全仓最高的那条带 !important 的模糊规则）：
+ *   竞争者 chat-glass.css:48
+ *     html[data-app="1"] .chat-main.has-bg .chat-input-bar×3  → (0,6,1)
+ *   本规则
+ *     html + [data-app="1"] + [data-glass="off"] + [data-glass]×6 → (0,8,1)
+ *   通配 * 与伪元素不改变前缀的权重，(0,8,1) > (0,6,1)，且留了两格余量。
+ * 重复属性选择器抬特异度是本仓既有写法（见 app-focus.css 的 [data-app][data-app]）。
+ *
+ * ⚠ 只熄模糊，不动背景：那 191 条写死的规则各自带着自己的半透明底色，这一层
+ * 无法逐条替换成不透明面。导航与 Sheet 这两类靠 ① 的令牌回落已经是实心的；
+ * 剩下的浮层在关玻璃后是「半透但不糊」，可读性不受影响。真要全站不透明，得把
+ * 那 191 条逐条改成读令牌 —— 那是独立工程，不在本轮。 */
+html[data-app="1"][data-glass="off"][data-glass][data-glass][data-glass][data-glass][data-glass][data-glass] *,
+html[data-app="1"][data-glass="off"][data-glass][data-glass][data-glass][data-glass][data-glass][data-glass] *::before,
+html[data-app="1"][data-glass="off"][data-glass][data-glass][data-glass][data-glass][data-glass][data-glass] *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 /* ═══ reduced-motion：一切时长归零；翻牌/指针直达终值 ═══════ */
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] {
