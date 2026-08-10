@@ -989,6 +989,12 @@ for (const sql of [
   'ALTER TABLE novels ADD COLUMN published_run_id INTEGER',
   "ALTER TABLE novel_beats ADD COLUMN image TEXT DEFAULT ''",
   "ALTER TABLE novel_beats ADD COLUMN history TEXT DEFAULT '[]'",
+  // 世界书变量的持久化状态。此前每轮从整段历史重新解析 {{set:var=value}} 累积得出，
+  // 一旦上下文加窗（被挤出窗口的消息不再被扫描），第 3 回合定下的设定会在第 300 回合
+  // 悄悄消失——剧情倒退且作者无从排查。改为落库累积，与历史长度解耦。
+  // 刻意**不给默认值**：NULL 表示「尚未回扫」，老会话首次读取时据此做一次性全量重建。
+  // 若给了 DEFAULT '{}'，存量会话会被当成「已回扫且变量为空」，历史变量当场全部丢失。
+  'ALTER TABLE conversations ADD COLUMN wb_vars TEXT',
 ]) { try { db.exec(sql); } catch { /* column exists */ } }
 
 // —— 举报去重 ——

@@ -73,6 +73,7 @@ jobs:
       - name: Feature regression (boundaries / logs / social / recall / novels)
         run: |
           npm run smoke
+          npm run test:wb-vars
           npm run test:server:s7
           npm run test:logs
           npm run test:hearts

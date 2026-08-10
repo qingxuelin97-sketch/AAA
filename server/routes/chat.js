@@ -298,6 +298,68 @@ export async function synthesize({ proto, base, key, model, voice, text, speed, 
 // 世界书级：scan_depth（回看消息数）、token_budget（注入上限）、recursion（递归触发）、
 //          max_active（每轮最大激活数）、variable_schema（变量声明）、system_pos（注入位置）、
 //          recursion_depth（递归最大轮数）
+// —— 世界书变量的持久化 ——
+// 变量状态此前完全由「重扫整段历史里的 {{set:var=value}}」推导。这在历史全量注入时
+// 没问题，但一旦上下文加窗，被挤出窗口的消息不再被扫描，第 3 回合定下的设定会在第
+// 300 回合悄悄消失——剧情倒退，而且作者看不到任何错误，只会觉得「AI 忘了」。
+// 现改为落库累积：读时取 conversations.wb_vars，写时只解析新落库的那一条消息。
+// 老会话的 wb_vars 为空，首次读取时做一次性全量回扫并落库，之后不再全扫。
+export function loadWbVars(conv, history) {
+  if (!conv?.id) return {};
+  const row = db.prepare('SELECT wb_vars FROM conversations WHERE id = ?').get(conv.id);
+  if (row?.wb_vars) {
+    try {
+      const parsed = JSON.parse(row.wb_vars);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    } catch { /* 内容损坏，走下面的回扫重建 */ }
+  }
+  // 一次性回扫：从全量历史重建，然后落库。这里刻意读整表而不是用传入的 history
+  //（history 将来会被加窗），否则回扫本身就是残缺的。
+  const all = db.prepare("SELECT content FROM messages WHERE conversation_id = ? AND role = 'assistant' ORDER BY id").all(conv.id);
+  const vars = {};
+  for (const m of all) Object.assign(vars, parseWbSets(m.content));
+  db.prepare('UPDATE conversations SET wb_vars = ? WHERE id = ?').run(JSON.stringify(vars), conv.id);
+  return vars;
+}
+
+export function parseWbSets(content) {
+  const out = {};
+  if (!content) return out;
+  const setRe = /\{\{set:([a-zA-Z_]\w*)=([^}\s]+)\}\}/g;
+  let m;
+  while ((m = setRe.exec(content))) out[m[1]] = m[2];
+  return out;
+}
+
+// 编辑 / 删除消息后调用：置回 NULL，下次读取时全量重建。
+// 改为增量累积后，「改掉某条回复里的 {{set:}}」不会自动反映到已持久化的变量上，
+// 而改造前是每轮重扫、会自动反映。置空强制重扫，保持与改造前完全一致的语义。
+export function invalidateWbVars(convId) {
+  try { db.prepare('UPDATE conversations SET wb_vars = NULL WHERE id = ?').run(convId); } catch { /* */ }
+}
+
+// 新回复落库后调用：只解析这一条，合并进已持久化的变量。
+// 注意只合并 {{set:}}，不合并条目的 variable_write —— 后者是按本轮命中条目重新计算的
+// 临时量，持久化它会改变既有语义。
+export function mergeWbVars(convId, content) {
+  const delta = parseWbSets(content);
+  if (!Object.keys(delta).length) return;
+  try {
+    const row = db.prepare('SELECT wb_vars FROM conversations WHERE id = ?').get(convId);
+    let cur = {};
+    try { cur = JSON.parse(row?.wb_vars || '{}') || {}; } catch { cur = {}; }
+    db.prepare('UPDATE conversations SET wb_vars = ? WHERE id = ?')
+      .run(JSON.stringify({ ...cur, ...delta }), convId);
+  } catch { /* 变量持久化失败不能挡住回复落库 */ }
+}
+
+// 返回 { system, entries, variables, stats }：
+//   system    —— 拼好的系统提示词（此前是本函数的全部返回值）
+//   entries   —— 本轮实际注入的世界书条目，供对话内调试台展示「命中了什么」
+//   variables —— 本轮生效的世界变量快照
+//   stats     —— 候选/命中/被 max_active 砍掉的条数，供调试台解释「为什么没命中」
+// 上下文封顶、变量解耦、调试台三者都要改这个签名，所以一次改到位——
+// 分几次改会让每个调用点反复适配。
 function buildSystemPrompt(character, recentText, history, conv) {
   const beforeParts = []; // 注入位置：角色设定前
   const afterParts = [];  // 注入位置：角色设定后（默认）
@@ -323,16 +385,21 @@ function buildSystemPrompt(character, recentText, history, conv) {
 
   // 每本世界书各自的 scan_depth：取最大值作为本轮回看深度（条目自带所属书的 scan_depth）。
   const maxScan = linked.reduce((m, l) => Math.max(m, l.scan_depth || 4), 0) || 6;
-  // 对话轮数：历史中 assistant 消息条数，用于 min_turns/max_turns/cooldown 判定。
-  const turnCount = (history || []).filter(m => m.role === 'assistant').length;
-  // 历史消息总数（含 user），用于 cooldown 计数与 sticky 持续判定。
-  const msgCount = (history || []).length;
+  // 对话轮数与消息总数：用于 min_turns/max_turns/cooldown/sticky 判定。
+  // 必须取会话的真实计数而不是 history 数组长度——history 将来会被加窗，届时
+  // 「第 50 轮才解锁的条目」会因为窗口里只剩 30 条而永远不触发，且没有任何报错。
+  const counts = conv?.id
+    ? db.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN role='assistant' THEN 1 ELSE 0 END) AS turns FROM messages WHERE conversation_id = ?").get(conv.id)
+    : null;
+  const turnCount = counts ? (counts.turns || 0) : (history || []).filter(m => m.role === 'assistant').length;
+  const msgCount = counts ? counts.total : (history || []).length;
 
   // 基于回看深度构造扫描文本：取最近 maxScan*2 条消息（一轮含 user+assistant）。
   const scanText = (history || []).slice(-Math.max(2, maxScan * 2)).map(m => m.content || '').join(' ') + ' ' + (recentText || '');
 
-  // —— 世界变量状态：从对话历史尾部解析「{{set:var=value}}」指令累积。
-  // variable_schema 提供变量声明（默认值），运行时按对话中 {{set:...}} 指令更新。
+  // —— 世界变量状态 ——
+  // 底座是 variable_schema 声明的默认值，再叠加**已持久化**的 {{set:var=value}} 累积值。
+  // 此前这一层是每轮重扫整段 history 得出的，与上下文长度强耦合（见 loadWbVars 注释）。
   let variables = {};
   for (const l of linked) {
     if (l.variable_schema) {
@@ -344,13 +411,7 @@ function buildSystemPrompt(character, recentText, history, conv) {
       } catch { /* schema 非法，忽略 */ }
     }
   }
-  // 从历史中解析 {{set:var=value}} 指令（仅解析 assistant 消息尾部）
-  for (const m of (history || [])) {
-    if (m.role !== 'assistant' || !m.content) continue;
-    const setRe = /\{\{set:([a-zA-Z_]\w*)=([^}\s]+)\}\}/g;
-    let mm;
-    while ((mm = setRe.exec(m.content))) variables[mm[1]] = mm[2];
-  }
+  Object.assign(variables, loadWbVars(conv, history));
 
   // 统一触发动机：内嵌条目默认 keyword 模式；空 keys => always
   const evalEntry = (w) => {
@@ -453,10 +514,14 @@ function buildSystemPrompt(character, recentText, history, conv) {
 
   // max_active：每轮最大激活条目数（防 Token 爆炸）。按优先级降序截断。
   const maxActive = linked.reduce((m, l) => Math.max(m, l.max_active || 6), 0) || 6;
+  const candidateCount = finalEntries.length;
+  let droppedByMaxActive = [];
   if (finalEntries.length > maxActive) {
-    finalEntries = finalEntries
-      .sort((a, b) => (b.priority || 0) - (a.priority || 0))
-      .slice(0, maxActive);
+    const sorted = finalEntries.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    // 记下被砍掉的条目：作者最需要知道的正是「我写了却没生效」的那些，
+    // 而这件事此前完全静默。
+    droppedByMaxActive = sorted.slice(maxActive).map(t => ({ id: t.id, keys: t.keys || '', priority: t.priority || 0 }));
+    finalEntries = sorted.slice(0, maxActive);
   }
 
   // 专家能力：变量写入 + 分支选择。triggered 条目按 variable_write 更新变量，branch 按变量选 content。
@@ -549,7 +614,26 @@ function buildSystemPrompt(character, recentText, history, conv) {
   // 好感度记忆引擎：关系阶段 + 长期记忆只在服务端组装注入，客户端无法伪造。
   parts.push(...affinityPromptFor(conv));
   parts.push(`你正在扮演「${character.name}」。请始终保持角色设定，使用沉浸式的第一人称叙述，不要跳出角色，不要提及你是 AI。`);
-  return parts.join('\n\n');
+  return {
+    system: parts.join('\n\n'),
+    entries: finalEntries.map(t => ({
+      id: t.id, worldbook_id: t.worldbook_id ?? null, keys: t.keys || '',
+      priority: t.priority || 0, depth: t.depth ?? null, group: t.group_name || '',
+      chars: (t.content || '').length,
+    })),
+    variables,
+    stats: {
+      own: own.length,            // 角色内嵌条目总数
+      linked: linked.length,      // 关联独立世界书条目总数
+      candidates: candidateCount, // 通过触发判定的条数
+      active: finalEntries.length,
+      dropped: droppedByMaxActive,
+      max_active: maxActive,
+      scan_depth: maxScan,
+      turn_count: turnCount,
+      msg_count: msgCount,
+    },
+  };
 }
 
 // ---- Conversations ----
@@ -724,11 +808,13 @@ router.patch('/conversations/:id/messages/:mid', authRequired, (req, res) => {
   const c = String(req.body?.content || '').trim().slice(0, MAX_MESSAGE_CHARS);
   if (!c) return res.status(400).json({ error: '内容不能为空' });
   db.prepare('UPDATE messages SET content = ? WHERE id = ?').run(c, msg.id);
+  invalidateWbVars(conv.id);
   res.json({ message: { ...msg, content: c } });
 });
 router.delete('/conversations/:id/messages/:mid', authRequired, (req, res) => {
   const conv = ownConv(req, res); if (!conv) return;
   db.prepare('DELETE FROM messages WHERE id = ? AND conversation_id = ?').run(req.params.mid, conv.id);
+  invalidateWbVars(conv.id);
   res.json({ ok: true });
 });
 router.post('/conversations/:id/messages/:mid/react', authRequired, (req, res) => {
@@ -974,12 +1060,14 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
   // 余额快照的预检后各自免费送达（applyTx 抛错仅落 warn）—— 可被并发白嫖上游
   // 成本。预扣在 applyTx 事务内校验余额，并发的第二笔当场被原子拒绝。
   const feeCtx = chargePlatformFee({
+    // 面板生成按**实际发出去的**历史长度计费：include_history=false 时确实一条不发，
+    // 上游成本也就没有增长。这里与 streamReply 的口径不同是有意的，不要「统一」掉。
     req, res, sse, me, eff, historyLen: history.length, allowChatCredit: true,
     memo: `平台 AI · 面板生成《${character?.name || ''}》`, refOwner: character?.owner_id,
     convId: conv.id, characterId: conv.character_id,
   });
   if (feeCtx.rejected) return;
-  const system = buildSystemPrompt(character, userInput, history, conv);
+  const { system } = buildSystemPrompt(character, userInput, history, conv);
   const payloadMessages = [
     { role: 'system', content: system },
     ...history.map(m => ({ role: m.role, content: m.content })),
@@ -1059,16 +1147,22 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   if (!eff) { sse({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' }); sse('[DONE]'); return res.end(); }
 
   const history = db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
+  // 计费档位取**会话的真实消息数**，而不是本次注入的 history 数组长度。
+  // 这两者今天恰好相等，但上下文一加窗就会分道扬镳：platform.js 的档位是
+  // msgCount > 100 ? 30 : 20，届时所有重会话会永久落回 20 金档，账面静默下滑 33%
+  // 且不产生任何日志。档位定价的是「这是一段长会话」这个事实，不是内部怎么裁剪上下文。
+  const convMsgCount = db.prepare('SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ?').get(conv.id).n;
   // 平台按回复计费：预扣 + 失败退款（原子防并发白嫖，详见 chargePlatformFee）。
   const feeCtx = chargePlatformFee({
-    req, res, sse, me, eff, historyLen: history.length, allowChatCredit: true,
+    req, res, sse, me, eff, historyLen: convMsgCount, allowChatCredit: true,
     memo: `平台 AI · 对话《${character?.name || ''}》`, refOwner: character?.owner_id,
     convId: conv.id, characterId: conv.character_id,
     insufficientHint: '可前往钱包签到/兑换，或在设置中填写自己的 API。',
   });
   if (feeCtx.rejected) return;
   const recentText = history.slice(-6).map(m => m.content).join(' ');
-  let system = buildSystemPrompt(character, recentText + ' ' + userContent, history, conv);
+  const built = buildSystemPrompt(character, recentText + ' ' + userContent, history, conv);
+  let system = built.system;
   if (eff.platform && eff.system_prompt.trim()) system = eff.system_prompt.trim() + '\n\n' + system;
   const payloadMessages = [{ role: 'system', content: system }, ...history.map(m => ({ role: m.role, content: m.content }))];
 
@@ -1136,6 +1230,9 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   if (full.trim()) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+    // 只解析这一条新回复里的 {{set:var=value}} 并合并进持久化变量。
+    // 与「每轮重扫整段历史」等价，但不随历史被裁剪而丢失。
+    mergeWbVars(conv.id, full.trim());
     // 好感 +3/条：经 grantAffinity 走每日共享配额（与礼物同池），打满后 +0。
     if (userContent) { try { grantAffinity(conv.user_id, conv.id, 3, character?.name || ''); } catch { /* */ } }
     activeFeeCtx.settle();
