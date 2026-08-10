@@ -712,6 +712,18 @@ function buildSystemPrompt(character, recentText) {
 }
 
 /* ----------------------------- LLM (browser → provider) ----------------------------- */
+// 开场白选择：0 / 缺省 = 主开场白；1..N = alt_greetings 备用开场白
+// （对应酒馆卡 alternate_greetings）。与 server/routes/chat.js 的 pickGreeting 同语义。
+function pickGreeting(character, rawIndex) {
+  const main = character?.greeting || '';
+  const gi = Number.parseInt(rawIndex, 10);
+  if (!Number.isFinite(gi) || gi <= 0) return main;
+  try {
+    const alts = JSON.parse(character?.alt_greetings || '[]');
+    return Array.isArray(alts) && alts[gi - 1] ? alts[gi - 1] : main;
+  } catch { return main; }
+}
+
 // opts.regenerateOf：把结果写成该消息的新变体而不是新插一条，与
 // server/routes/chat.js 的 streamReply 同语义（旧回复保留、消息 id 不变）。
 async function streamCompletion(conv, character, settings, userContent, me, opts = {}) {
@@ -1684,7 +1696,8 @@ async function route(method, path, search, body, headers) {
     need(); const ch = find('characters', x => x.id === body.character_id); if (!ch) return E('角色不存在', 404);
     const conv = insert('conversations', { user_id: me.id, character_id: ch.id, title: ch.name, updated_at: now() }); ch.uses++;
     bumpDaily(me.id, 'chat');
-    if (ch.greeting) insert('messages', { conversation_id: conv.id, role: 'assistant', content: ch.greeting }); save();
+    const greeting0 = pickGreeting(ch, body.greeting_index);
+    if (greeting0) insert('messages', { conversation_id: conv.id, role: 'assistant', content: greeting0 }); save();
     return J({ conversation: conv });
   }
   if ((m = P(/^\/chat\/conversations\/(\d+)$/))) {
@@ -1693,17 +1706,14 @@ async function route(method, path, search, body, headers) {
     if (method === 'PATCH') {
       if (typeof body.title === 'string' && body.title.trim()) conv.title = body.title.trim().slice(0, 60);
       if (body.clear) {
-        // wipe the transcript but keep the character greeting as a fresh start
+        // 清空分两种（与服务端同语义）：默认只清消息、保留好感；
+        // reset_affinity 才是「完全重置」。此前两者绑在一起，攒了几十轮的好感
+        // 会在用户以为只是清屏时一起没了。
         const ch = find('characters', x => x.id === conv.character_id);
         db.messages = filter('messages', x => x.conversation_id !== conv.id);
-        // greeting_index：0=主开场白；1..N=备用开场白（酒馆 alternate_greetings 切换开场）
-        let greeting = ch?.greeting || '';
-        const gi = parseInt(body.greeting_index, 10);
-        if (Number.isFinite(gi) && gi > 0) {
-          try { const alts = JSON.parse(ch?.alt_greetings || '[]'); if (alts[gi - 1]) greeting = alts[gi - 1]; } catch { /* */ }
-        }
+        const greeting = pickGreeting(ch, body.greeting_index);
         if (greeting) insert('messages', { conversation_id: conv.id, role: 'assistant', content: greeting });
-        conv.affinity = 0;
+        if (body.reset_affinity) conv.affinity = 0;
       }
       // S7-G10 会话整理（与服务端同构）：置顶/免打扰只改标记，不 bump updated_at
       if (body.pinned !== undefined) conv.pinned = body.pinned ? 1 : 0;

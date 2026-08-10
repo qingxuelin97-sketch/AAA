@@ -338,6 +338,18 @@ const MESSAGES_SQL = `SELECT m.*,
     (SELECT COUNT(*) FROM message_variants v WHERE v.message_id = m.id AND v.id <= m.variant_active) - 1 AS variant_index
   FROM messages m WHERE m.conversation_id = ? ORDER BY m.id`;
 
+// 开场白选择：0 / 缺省 = 主开场白；1..N = alt_greetings 里的备用开场白
+//（对应酒馆卡的 alternate_greetings，作者常把「游戏开始」之类的分支放在这里）。
+function pickGreeting(character, rawIndex) {
+  const main = character?.greeting || '';
+  const gi = Number.parseInt(rawIndex, 10);
+  if (!Number.isFinite(gi) || gi <= 0) return main;
+  try {
+    const alts = JSON.parse(character?.alt_greetings || '[]');
+    return Array.isArray(alts) && alts[gi - 1] ? alts[gi - 1] : main;
+  } catch { return main; }
+}
+
 // —— 回复变体 ——
 // messages.content 恒为当前生效的那一版，所以所有既有读取方（会话列表的
 // last_message 子查询、导出、洞察统计、成就计数、酒馆桥接）都不需要改动。
@@ -683,9 +695,14 @@ router.post('/conversations', authRequired, (req, res) => {
   const info = db.prepare('INSERT INTO conversations (user_id, character_id, title) VALUES (?,?,?)')
     .run(req.user.id, character_id, c.name);
   db.prepare('UPDATE characters SET uses = uses + 1 WHERE id = ?').run(character_id);
-  if (c.greeting) {
+  // 开场白可选：0 = 主开场白，1..n = alt_greetings 里的备用开场白
+  //（酒馆卡常把「游戏开始」之类的分支放在备用开场白里）。
+  // 此前只能开完对话再走 PATCH {clear:true} 换开场白，而那条路会删光消息并把
+  // 好感清零——想换个开头得先毁掉整段关系。
+  const greeting = pickGreeting(c, req.body?.greeting_index);
+  if (greeting) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)')
-      .run(info.lastInsertRowid, 'assistant', c.greeting);
+      .run(info.lastInsertRowid, 'assistant', greeting);
   }
   bumpDaily(req.user.id, 'chat');
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(info.lastInsertRowid);
@@ -732,17 +749,20 @@ router.patch('/conversations/:id', authRequired, (req, res) => {
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
   if (typeof req.body?.title === 'string' && req.body.title.trim()) db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(req.body.title.trim().slice(0, 60), conv.id);
+  // —— 清空对话：拆成两种语义 ——
+  // 此前只有一种「清空」，行为是删光消息 **顺带把好感清零**。这两件事被绑在一起，
+  // 于是「想重开剧情」和「想抹掉这段关系」只能同时发生——攒了几十轮的好感度
+  // 在用户以为只是清屏时一起没了，且不可撤销。
+  //   reset_affinity 未显式指定时默认 false（只清消息），保留好感。
   if (req.body?.clear) {
     const ch = db.prepare('SELECT greeting, alt_greetings FROM characters WHERE id = ?').get(conv.character_id);
     db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(conv.id);
-    // greeting_index：0 = 主开场白；1..N = 备用开场白（酒馆 alternate_greetings，聊天页可切换开场）
-    let greeting = ch?.greeting || '';
-    const gi = parseInt(req.body.greeting_index, 10);
-    if (Number.isFinite(gi) && gi > 0) {
-      try { const alts = JSON.parse(ch?.alt_greetings || '[]'); if (alts[gi - 1]) greeting = alts[gi - 1]; } catch { /* */ }
-    }
+    const greeting = pickGreeting(ch, req.body.greeting_index);
     if (greeting) db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', greeting);
-    db.prepare('UPDATE conversations SET affinity = 0 WHERE id = ?').run(conv.id);
+    if (req.body.reset_affinity) db.prepare('UPDATE conversations SET affinity = 0 WHERE id = ?').run(conv.id);
+    // 消息没了，{{set:}} 累积出来的世界变量也必须跟着重算，否则旧剧情的状态会
+    // 残留到新开的这一局里。
+    invalidateWbVars(conv.id);
   }
   // S7-G10 会话整理：置顶/免打扰只改标记，不 bump updated_at（否则列表会被误排序）
   if (req.body?.pinned !== undefined) db.prepare('UPDATE conversations SET pinned = ? WHERE id = ?').run(req.body.pinned ? 1 : 0, conv.id);

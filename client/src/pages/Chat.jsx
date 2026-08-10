@@ -542,11 +542,20 @@ export default function Chat() {
     try { await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { title: v } }); setConv(c => ({ ...c, title: v })); loadConvs(); toast('已重命名'); }
     catch (e) { toast(e.message, 'err'); } finally { setMenuOpen(false); }
   };
-  const clearConv = async () => {
+  // 清空对话分两种：默认「仅清消息」保留好感度，「完全重置」才把关系一并归零。
+  // 此前只有一种，删消息顺带清好感——攒了几十轮的好感在用户以为只是清屏时一起没了。
+  const clearConv = async (resetAffinity = false) => {
     setMenuOpen(false);
-    if (!confirm('清空本对话的全部消息？将保留角色开场白，好感度归零。')) return;
-    try { const d = await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { clear: true } }); setMessages(d.messages); setAffinity(0); toast('对话已清空'); }
-    catch (e) { toast(e.message, 'err'); }
+    const msg = resetAffinity
+      ? '完全重置这段对话？消息与好感度都会清空，且无法撤销。'
+      : '清空本对话的消息？保留角色开场白，**好感度不受影响**。';
+    if (!confirm(msg)) return;
+    try {
+      const d = await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { clear: true, reset_affinity: resetAffinity } });
+      setMessages(d.messages);
+      setAffinity(d.conversation?.affinity || 0);
+      toast(resetAffinity ? '对话已完全重置' : '消息已清空，好感度保留');
+    } catch (e) { toast(e.message, 'err'); }
   };
   const exportConv = (fmt = 'md') => {
     setMenuOpen(false);
@@ -805,8 +814,9 @@ export default function Chat() {
   const switchGreeting = async (gi) => {
     if (streaming || gi === greetIdx) return;
     try {
+      // 换开场白不应该毁掉关系：只重放开场，好感度原样保留。
       const d = await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { clear: true, greeting_index: gi } });
-      setMessages(d.messages); setAffinity(0); setGreetIdx(gi);
+      setMessages(d.messages); setAffinity(d.conversation?.affinity || 0); setGreetIdx(gi);
     } catch (e) { toast(e.message, 'err'); }
   };
   useEffect(() => { setGreetIdx(0); }, [id]);
@@ -1091,7 +1101,8 @@ export default function Chat() {
                         <button type="button" role={app ? 'menuitem' : undefined} onClick={renameConv}><Edit3 size={15} /> 重命名对话</button>
                         <button type="button" role={app ? 'menuitem' : undefined} onClick={() => exportConv('md')}><Download size={15} /> 导出为 Markdown</button>
                         <button type="button" role={app ? 'menuitem' : undefined} onClick={() => exportConv('json')}><Download size={15} /> 导出为 JSON</button>
-                        <button type="button" role={app ? 'menuitem' : undefined} className="danger" onClick={clearConv}><Eraser size={15} /> 清空消息</button>
+                        <button type="button" role={app ? 'menuitem' : undefined} onClick={() => clearConv(false)}><Eraser size={15} /> 清空消息（保留好感）</button>
+                        <button type="button" role={app ? 'menuitem' : undefined} className="danger" onClick={() => clearConv(true)}><Eraser size={15} /> 完全重置（含好感度）</button>
                         <div className="chat-menu-sep" role={app ? 'separator' : undefined} />
                         <div className="chat-menu-row" role={app ? 'group' : undefined} aria-labelledby={app ? 'chat-font-label' : undefined}>
                           <span id={app ? 'chat-font-label' : undefined}><Type size={15} /> 字号</span>

@@ -28,7 +28,6 @@ import {
   ScrollText, Users, Trophy, CalendarCheck, Sparkles
 } from 'lucide-react';
 
-const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
 // 快捷入口 —— 去重：创建类（建角色/写小说/AI绘图/开剧场）已由底栏中央 +AI 按钮
 // 全量承载，这里不再重复；改放启动页顺手要去、且别处没有一键入口的目的地。
@@ -155,7 +154,7 @@ export default function AppHome() {
           </time>
         </div>
         <div className="aht-acts">
-          <AppIconButton label="搜索" onClick={openCmdk}><Search size={20} /></AppIconButton>
+          <AppIconButton label="搜索" onClick={() => nav('/search')}><Search size={20} /></AppIconButton>
           <AppIconButton label={notificationLabel} onClick={() => nav('/notifications', { state: { appBackTo: '/today' } })} className="aht-bell">
             <Bell size={20} />
             {unread > 0 && <span className="aht-nb">{unread > 99 ? '99+' : unread}</span>}

@@ -25,7 +25,6 @@ import {
   Bell, BellOff, ChevronRight, Heart, Inbox, MessageCircle, Pin, ScrollText, Search, UserRound, Users, X, Flame, Ellipsis
 } from 'lucide-react';
 
-const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
 function AppSection({ appMode, children, ...props }) {
   return appMode ? <section {...props}>{children}</section> : <>{children}</>;
@@ -284,7 +283,7 @@ export default function Messages() {
         <>
           <header className="msgs-head">
             <h1>消息</h1>
-            <AppIconButton className="msgs-search" onClick={openCmdk} label="搜索"><Search size={20} /></AppIconButton>
+            <AppIconButton className="msgs-search" onClick={() => nav('/search')} label="搜索"><Search size={20} /></AppIconButton>
           </header>
           <div className="msgs-tabs" role="tablist" aria-label="消息筛选">
             <AppButton variant="tertiary" selected={tab === 'chatted'} role="tab" aria-selected={tab === 'chatted'}
@@ -307,7 +306,7 @@ export default function Messages() {
               收件箱{inboxUnseen > 0 && <i className="msgs-badge msgs-tab-badge">{inboxUnseen > 99 ? '99+' : inboxUnseen}</i>}
             </button>
           </div>
-          <button className="msgs-search" onClick={openCmdk} aria-label="搜索"><Search size={20} /></button>
+          <button className="msgs-search" onClick={() => nav('/search')} aria-label="搜索"><Search size={20} /></button>
         </div>
       )}
 

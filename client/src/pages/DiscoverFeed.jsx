@@ -36,7 +36,6 @@ const cleanGreeting = (t) => (t || '').replace(/\*/g, '').replace(/\n{2,}/g, '\n
 const fmtW = (n) => { n = n || 0; return n >= 10000 ? (n / 10000).toFixed(n >= 100000 ? 0 : 1) + 'w' : String(n); };
 // 「历史」浏览记录：本地缓存 + 服务端回流统一走 recent.js（修缮⑩）。
 
-const openCmdk = () => { try { window.dispatchEvent(new Event('huanyu-cmdk')); } catch { /* */ } };
 
 export default function DiscoverFeed() {
   const nav = useNav();
@@ -285,7 +284,7 @@ export default function DiscoverFeed() {
         <AppButton variant="tertiary" selected={mode === 'new'} role={appMode ? 'tab' : undefined} aria-selected={appMode ? mode === 'new' : undefined}
           className={'feed-mode' + (mode === 'new' ? ' on' : '')} onClick={() => setMode('new')}>新作</AppButton>
       </div>
-      <AppIconButton className="feed-search" onClick={openCmdk} label="搜索" aria-label="搜索"><Search size={18} /></AppIconButton>
+      <AppIconButton className="feed-search" onClick={() => nav('/search')} label="搜索" aria-label="搜索"><Search size={18} /></AppIconButton>
     </div>
   );
 

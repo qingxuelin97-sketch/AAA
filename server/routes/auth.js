@@ -31,7 +31,22 @@ const BCRYPT_ROUNDS = 12;
 const DUMMY_HASH = bcrypt.hashSync(`timing-equalizer-${crypto.randomUUID()}`, BCRYPT_ROUNDS);
 
 const httpError = (status, message) => Object.assign(new Error(message), { status, expose: true });
+// —— 注册开放度 ——
+// 两条来源：
+//   ① 测试环境的 REGISTRATION_MODE=open（原有行为，被 NODE_ENV 挡在生产之外）；
+//   ② app_config.registration.mode='open'（新增），生产环境可用。
+// 默认仍然是 restricted，行为与改造前完全一致——这里只是把「将来要公开注册」
+// 从一次代码改动降级成一行配置。写死在常量里的话，开闸那天要回来重构这一段，
+// 而那正是最不想同时处理别的事的时刻。
 const openRegistrationForTests = () => process.env.NODE_ENV !== 'production' && process.env.REGISTRATION_MODE === 'open';
+function registrationOpen() {
+  if (openRegistrationForTests()) return true;
+  try {
+    const row = db.prepare("SELECT value FROM app_config WHERE key='registration'").get();
+    if (!row) return false;
+    return JSON.parse(row.value)?.mode === 'open';
+  } catch { return false; }
+}
 const generateCode = () => String(crypto.randomInt(100000, 1_000_000));
 
 function validPassword(password) {
@@ -104,7 +119,7 @@ function readIntegrityTicket(ticket, email, username) {
 function registrationGate({ email, username, invite, integrityTicket }) {
   const key = usableInvite(invite);
   if (invite && !key) throw httpError(400, '邀请密钥无效或已用完');
-  if (openRegistrationForTests()) return { trust: 'test-open', key };
+  if (registrationOpen()) return { trust: 'open', key };
   if (isWhitelisted(email)) return { trust: 'whitelist', key };
   if (key) return { trust: 'invite', key };
   if (readIntegrityTicket(integrityTicket, email, username)) return { trust: 'play-integrity', key: null };
@@ -131,7 +146,7 @@ async function storeAndSendCode({ email, purpose, userId = null }) {
 
 router.get('/registration-policy', (_req, res) => {
   res.json({
-    mode: openRegistrationForTests() ? 'open' : 'restricted',
+    mode: registrationOpen() ? 'open' : 'restricted',
     methods: { whitelist: true, invite: true, play_integrity: playIntegrityAvailability().configured },
   });
 });
@@ -149,7 +164,7 @@ router.post('/send-code', codeLimiter, async (req, res, next) => {
     let integrityTicket = null;
     const key = usableInvite(invite);
     if (invite && !key) throw httpError(400, '邀请密钥无效或已用完');
-    const permitted = openRegistrationForTests() || isWhitelisted(email) || !!key;
+    const permitted = registrationOpen() || isWhitelisted(email) || !!key;
     if (!permitted) {
       if (!req.body?.integrity_token || !NAME_RE.test(username)) {
         throw httpError(403, '请提供有效邀请密钥，或使用经 Google Play 校验的正式 App 注册');
