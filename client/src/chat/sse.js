@@ -35,7 +35,10 @@ export async function streamSSE(path, { body, signal, headers, onDelta, onJson }
       if (payload === '[DONE]') continue;
       let j;
       try { j = JSON.parse(payload); } catch { continue; /* 半包 / 非 JSON 行：忽略 */ }
-      if (j.error) throw new Error(j.error);
+      // 失败分型：error 仍是字符串（历史契约，不能改成对象），服务端把 code / fee /
+      // balance 作为平级字段追加。这里挂到 Error 上，让上层能按 code 给出对路的动作
+      //（金币不足 → 签到/转盘/领新人礼；经济冻结 → 联系客服，不要引导充值）。
+      if (j.error) { const e = new Error(j.error); e.code = j.code; e.fee = j.fee; e.balance = j.balance; throw e; }
       if (j.delta) { full += j.delta; onDelta?.(j.delta); }
       onJson?.(j);
     }

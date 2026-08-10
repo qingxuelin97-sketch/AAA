@@ -1106,7 +1106,7 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
   res.flushHeaders?.();
   const sse = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
 
-  if (!eff) { sse({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' }); sse('[DONE]'); return res.end(); }
+  if (!eff) { sse({ error: '平台 AI 服务当前不可用。你可以在「设置 → 语言模型」填入自己的 API Key 继续对话（自带 Key 永久免费）。', code: 'NO_MODEL' }); sse('[DONE]'); return res.end(); }
   const userInput = String(req.body?.user_input || '').slice(0, 400000);
   if (!userInput.trim()) { sse({ error: 'user_input 不能为空' }); sse('[DONE]'); return res.end(); }
 
@@ -1156,7 +1156,7 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
         eff = eff2;
         full = await pumpModelStream(res, eff2, payload2);
       } else {
-        sse({ error: '您的语言模型配置调用失败，且平台未配置回退模型。请前往「设置 → 语言模型」检查配置。' });
+        sse({ error: '您的语言模型配置调用失败，且平台未配置回退模型。请前往「设置 → 语言模型」检查配置。', code: 'USER_KEY_FAILED' });
         sse('[DONE]'); return res.end();
       }
     } else {
@@ -1203,7 +1203,7 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   // ③ 同步预检只看字面字符串，遇到生产环境 DNS 差异会误伤 DeepSeek 等合法公网域名。
   // 改为：先发 SSE 头，SSRF/网络错误一律经 pumpModelStream 的 catch 转成 SSE 错误事件。
 
-  if (!eff) { sse({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' }); sse('[DONE]'); return res.end(); }
+  if (!eff) { sse({ error: '平台 AI 服务当前不可用。你可以在「设置 → 语言模型」填入自己的 API Key 继续对话（自带 Key 永久免费）。', code: 'NO_MODEL' }); sse('[DONE]'); return res.end(); }
 
   // 重新生成时必须把「正在被重写的那一条」排除出上下文。改造前是靠先 DELETE 掉它
   // 达成的；现在不删了，就得在这里显式排除，否则模型会看到自己上一版回答并顺着往下写，
@@ -1263,7 +1263,7 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
         full = await pumpModelStream(res, eff2, payload2);
       } else {
         // 平台模型未配置：告知用户 key 失效且无回退可用
-        sse({ error: '您的语言模型配置调用失败（可能 Key 失效或 Base URL 有误），且平台未配置回退模型。请前往「设置 → 语言模型」检查配置。' });
+        sse({ error: '您的语言模型配置调用失败（可能 Key 失效或 Base URL 有误），且平台未配置回退模型。请前往「设置 → 语言模型」检查配置。', code: 'USER_KEY_FAILED' });
         sse('[DONE]'); return res.end();
       }
     } else {

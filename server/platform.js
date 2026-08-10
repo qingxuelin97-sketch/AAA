@@ -12,6 +12,28 @@ export const featureFee = (u, base) => Math.max(1, Math.round(base * memberDisco
 export const platformFee = (u, msgCount) =>
   Math.max(1, Math.round((msgCount > PLATFORM_FEE.heavy_threshold ? PLATFORM_FEE.heavy : PLATFORM_FEE.base) * memberDiscount(u)));
 
+// —— 扣款失败分型 ——
+// 两处 catch（SSE 版与 JSON 版）此前都是空 catch：既不记日志，也一律按「金币不足」
+// 回话。而 applyTx 至少还会抛「账户存在充值债务，经济操作已暂停」（code=ECONOMIC_HOLD）
+// 与若干钱包数据损坏错误。结果是：被经济冻结的用户收到「金币不足」的错误指引，
+// 照着去签到充值也解决不了；而真正的钱包损坏在服务端连一行日志都不会留下。
+//
+// 分型后前端才能给出对路的动作（见 code）：
+//   INSUFFICIENT_GOLD —— 引导签到 / 转盘 / 领新人礼 / 填自己的 Key
+//   ECONOMIC_HOLD     —— 引导联系客服，不要引导充值
+//   WALLET_ERROR      —— 平台侧异常，让用户稍后再试，同时落 error 日志告警
+function classifyChargeFailure(error, { fee, balance, hint }) {
+  if (error?.code === 'ECONOMIC_HOLD') {
+    return { code: 'ECONOMIC_HOLD', level: 'warn', message: '账户存在充值债务，经济功能已暂停，请联系客服处理后再试。' };
+  }
+  if (/金币不足/.test(error?.message || '')) {
+    return { code: 'INSUFFICIENT_GOLD', level: 'info', message: `金币不足，本次平台 AI 服务需 ${fee} 金币（当前 ${balance}）。${hint}` };
+  }
+  // 到这里说明是没预料到的失败（钱包数值越界、幂等键冲突等）。对用户说实话，
+  // 并按 error 级别落库告警——这类问题不该像以前那样悄无声息。
+  return { code: 'WALLET_ERROR', level: 'error', message: '扣费失败，请稍后再试。若反复出现请联系客服。' };
+}
+
 // —— 平台 AI 计费：预扣 + 失败退款 ——
 // 旧模式「先出结果、成功后扣费」在并发下可被白嫖：多请求同时通过同一份余额
 // 快照的预检，回复各自送达后 applyTx 才发现扣不动（仅落 warn）——上游 API
@@ -59,9 +81,15 @@ export function chargePlatformFee({ req, res, sse, me, eff, historyLen, memo, re
   try {
     charge = applyTx(me.id, { kind: 'ai_fee', gold: -ctx.fee, memo, ref_owner: refOwner, share_eligible: false });
     ctx.charged = true;
-  } catch {
+  } catch (error) {
     ctx.rejected = true;
-    sse({ error: `金币不足，本次平台 AI 服务需 ${ctx.fee} 金币（当前 ${me.gold}）。${insufficientHint}` });
+    const f = classifyChargeFailure(error, { fee: ctx.fee, balance: me.gold, hint: insufficientHint });
+    log({ ...logBase, level: f.level, event: 'ai_fee_rejected',
+      message: `平台 AI 扣费被拒（${f.code}）：${error?.message || '未知原因'}`,
+      extra: { ...logExtra, code: f.code, balance: me.gold } });
+    // error 必须保持字符串——client/src/chat/sse.js 是 `throw new Error(j.error)`。
+    // code / fee / balance 作为平级字段追加，纯增量、对老客户端零影响。
+    sse({ error: f.message, code: f.code, fee: ctx.fee, balance: me.gold });
     sse('[DONE]'); res.end();
     return ctx;
   }
@@ -106,9 +134,14 @@ export function chargePlatformFeeJson({ req, res, me, eff, historyLen, memo, ref
   try {
     charge = applyTx(me.id, { kind, gold: -ctx.fee, memo, ref_owner: refOwner, share_eligible: false });
     ctx.charged = true;
-  } catch {
+  } catch (error) {
     ctx.rejected = true;
-    res.status(402).json({ error: `金币不足，本次平台 AI 服务需 ${ctx.fee} 金币（当前 ${me.gold}）。${insufficientHint}` });
+    // 与 SSE 版同样分型。只修 SSE 那一处的话，小说 / 互动小说线仍然是黑的。
+    const f = classifyChargeFailure(error, { fee: ctx.fee, balance: me.gold, hint: insufficientHint });
+    log({ ...logBase, level: f.level, event: 'ai_fee_rejected',
+      message: `平台 AI 扣费被拒（${f.code}）：${error?.message || '未知原因'}`,
+      extra: { ...logExtra, code: f.code, balance: me.gold, kind } });
+    res.status(402).json({ error: f.message, code: f.code, fee: ctx.fee, balance: me.gold });
     return ctx;
   }
   ctx.settle = () => {

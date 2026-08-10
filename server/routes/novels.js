@@ -439,7 +439,7 @@ async function streamWrite(req, res, { run, novel, settings, directive, beats, u
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
   const sse = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
-  if (!eff) { sse({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' }); sse('[DONE]'); return res.end(); }
+  if (!eff) { sse({ error: '平台 AI 服务当前不可用。你可以在「设置 → 语言模型」填入自己的 API Key 继续对话（自带 Key 永久免费）。', code: 'NO_MODEL' }); sse('[DONE]'); return res.end(); }
 
   const style = cleanStyle(parseJSON(novel.style, {}));
   const canon = cleanEntries(parseJSON(run.canon, []));

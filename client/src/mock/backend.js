@@ -726,7 +726,9 @@ async function streamCompletion(conv, character, settings, userContent, me, opts
     if (me.gold < feeDue) {
       const enc = new TextEncoder();
       const msg = `金币不足，本次平台 AI 服务需 ${feeDue} 金币（当前 ${me.gold}）。可前往钱包签到/兑换，或在设置中填写自己的 API。`;
-      return new Response(new ReadableStream({ start(c) { c.enqueue(enc.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)); c.enqueue(enc.encode('data: [DONE]\n\n')); c.close(); } }), { headers: { 'content-type': 'text/event-stream' } });
+      // 与服务端同契约：error 保持字符串，code / fee / balance 平级追加。
+      const payload = { error: msg, code: 'INSUFFICIENT_GOLD', fee: feeDue, balance: me.gold };
+      return new Response(new ReadableStream({ start(c) { c.enqueue(enc.encode(`data: ${JSON.stringify(payload)}\n\n`)); c.enqueue(enc.encode('data: [DONE]\n\n')); c.close(); } }), { headers: { 'content-type': 'text/event-stream' } });
     }
   }
   if (userContent) insert('messages', { conversation_id: conv.id, role: 'user', content: userContent });

@@ -185,7 +185,28 @@ try {
     stub.on('request', prev);
   }
 
-  // 8) 删除消息时变体一并清理（ON DELETE CASCADE）
+  // 8) 扣费失败分型：错误里必须带 code，且 error 仍是字符串（sse.js 依赖这个契约）
+  {
+    const convId3 = (await J(await post('/chat/conversations', { character_id: cid }, tok))).conversation.id;
+    dbWrite((d) => d.prepare('UPDATE users SET gold = 0 WHERE id = ?').run(uid));
+    const r = await sse(`/chat/conversations/${convId3}/complete`, { content: '你好' }, tok);
+    const evt = r.text.split('\n').filter(l => l.startsWith('data:') && !l.includes('[DONE]')).map(l => { try { return JSON.parse(l.slice(5)); } catch { return null; } }).find(x => x?.error);
+    ok(typeof evt?.error === 'string', 'error 仍是字符串（client/src/chat/sse.js 是 throw new Error(j.error)）');
+    ok(evt?.code === 'INSUFFICIENT_GOLD', `金币不足带 code=INSUFFICIENT_GOLD（实际 ${evt?.code}）`);
+    ok(typeof evt?.fee === 'number' && typeof evt?.balance === 'number', '带上 fee 与 balance 供前端直接渲染');
+    const logged = dbRead(d => d.prepare("SELECT COUNT(*) n FROM logs WHERE event='ai_fee_rejected'").get().n);
+    ok(logged > 0, `扣费被拒有日志留痕（${logged} 条，改造前是空 catch 完全静默）`);
+
+    // 经济冻结必须与「金币不足」区分开：文案不能引导用户去充值
+    dbWrite((d) => d.prepare('UPDATE users SET gold = 100000, economic_hold = 1, diamond_debt = 5 WHERE id = ?').run(uid));
+    const r2 = await sse(`/chat/conversations/${convId3}/complete`, { content: '再来' }, tok);
+    const evt2 = r2.text.split('\n').filter(l => l.startsWith('data:') && !l.includes('[DONE]')).map(l => { try { return JSON.parse(l.slice(5)); } catch { return null; } }).find(x => x?.error);
+    ok(evt2?.code === 'ECONOMIC_HOLD', `经济冻结带 code=ECONOMIC_HOLD（实际 ${evt2?.code}）`);
+    ok(!/金币不足/.test(evt2?.error || ''), '经济冻结不再谎称「金币不足」（照着去充值也解决不了）');
+    dbWrite((d) => d.prepare('UPDATE users SET economic_hold = 0, diamond_debt = 0 WHERE id = ?').run(uid));
+  }
+
+  // 9) 删除消息时变体一并清理（ON DELETE CASCADE）
   const before = dbRead(d => d.prepare('SELECT COUNT(*) n FROM message_variants WHERE message_id = ?').get(originalId).n);
   ok(before > 0, `删除前该消息有 ${before} 个变体`);
   await fetch(`${BASE}/chat/conversations/${convId}/messages/${originalId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tok}` } });
