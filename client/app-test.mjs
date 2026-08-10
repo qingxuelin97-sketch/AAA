@@ -619,6 +619,34 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
   assert.doesNotMatch(appFocusRules, /(input|textarea|contenteditable)/,
     'app-focus.css must not touch text inputs (their focus feedback is owned by their containers)');
 }
+// —— D4 性能三档：默认档不许再是令牌层的空白 ——
+{
+  const perfTokens = ixTokens.replace(/\/\*[\s\S]*?\*\//g, '');
+  const blockOf = (sel) => (perfTokens.match(new RegExp(sel.replace(/[[\]"]/g, (c) => '\\' + c) + '\\s*\\{([^}]*)\\}')) || [])[1];
+  const base = blockOf('html[data-app="1"]');
+  const balanced = blockOf('html[data-app="1"][data-perf="balanced"]');
+  const lite = blockOf('html[data-app="1"][data-perf="lite"]');
+  assert.ok(balanced, 'app-ix-tokens.css must define a [data-perf="balanced"] block — balanced is the App default tier (perf.js:50), it cannot stay empty at the token layer');
+  // 三档单调：high(基础块) > balanced > lite(none)。档位之间必须真的有差别，
+  // 否则「三档」又会退化成两档 —— 那正是这一条要防的回归。
+  const radiusOf = (block) => {
+    const m = /--ix-blur:\s*([^;]+)/.exec(block || '');
+    if (!m) return null;
+    if (m[1].trim() === 'none') return 0;
+    return Number((/blur\((\d+(?:\.\d+)?)px\)/.exec(m[1]) || [])[1] ?? NaN);
+  };
+  const [rHigh, rBalanced, rLite] = [radiusOf(base), radiusOf(balanced), radiusOf(lite)];
+  assert.ok(rHigh > rBalanced && rBalanced > rLite && rLite === 0,
+    `perf tiers must be strictly monotone in blur radius (high ${rHigh} > balanced ${rBalanced} > lite ${rLite})`);
+  // balanced 只许降材质，不许改配色：青蓝玻璃基面归 app-rainbow.css 所有，
+  // 在这里写死中性玻璃会把默认档的青蓝味洗掉。
+  assert.doesNotMatch(balanced, /--ix-glass-(?:nav|temp)\s*:/,
+    'the balanced tier must not redefine the glass surface colours (app-rainbow.css owns them — overriding here silently drops the cyan tint on the default tier)');
+  for (const name of ['--ix-ink', '--ix-act', '--ix-canvas', '--ix-surface', '--ix-space-4', '--ix-hit-min']) {
+    assert.ok(!new RegExp('(?:^|[;{\\n])\\s*' + name + '\\s*:').test(balanced),
+      `the balanced tier must not touch ${name} — it lowers material cost, never hierarchy/semantics/geometry`);
+  }
+}
 // —— D5 毛玻璃开关：App 壳必须真的关得掉 ——
 {
   const glassTokens = ixTokens.replace(/\/\*[\s\S]*?\*\//g, '');

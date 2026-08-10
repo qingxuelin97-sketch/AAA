@@ -199,6 +199,42 @@ html[data-app="1"][data-theme="dark"] {
   --ix-skeleton: linear-gradient(90deg, rgb(236 241 239 / 5%) 0%, rgb(236 241 239 / 10%) 50%, rgb(236 241 239 / 5%) 100%);
 }
 
+/* ═══ balanced 平衡档：降材质，不降信息 ═══════════════════════
+ * 这一档是 **App 的默认档**：perf.js:50 里 auto → isAppMode() 且非弱机 → balanced，
+ * 而 auto 是 getPerfPref() 的默认返回值。也就是说绝大多数 App 用户看到的就是它。
+ *
+ * 而它此前在令牌层**一条定义都没有**：
+ *   档       规则数   令牌定义
+ *   high        0        无
+ *   balanced   20        0 条   ← 默认档
+ *   lite      298      有（下面那块）
+ * --ix-blur 全仓只有三处定义，high 与 balanced 拿到的是同一个基线值 ——
+ * 所谓「三档」在令牌层其实只有两档：非 lite / lite。那 20 条 balanced 规则
+ * 做的是「内容面剥 blur、装饰动效归零」，chrome 层则**原样保留 high 的材质**，
+ * 于是默认档在最贵的地方（常驻固定层的实时模糊）一分钱没省。
+ *
+ * 口径：半径腰斩、外投影降一级、LED 光晕收小；**颜色、层级、间距、对比度一律不动**。
+ *   · 模糊半径是滚动帧的主要开销（perf-atelier.css 文件头有实测记述），
+ *     18px → 10px 在 86% 不透明度的面上肉眼几乎无差，GPU 采样面积却降一半；
+ *   · 玻璃面的颜色**刻意不在这里重定义** —— 青蓝玻璃基面归 app-rainbow.css 所有
+ *     （它在白名单里覆盖 --ix-glass-nav/-temp）。在这里写死中性值会把默认档的
+ *     青蓝味洗掉，那是配色回归，不是性能优化。
+ *   · --ix-glare / --ix-brushed 是静态渐变，不随帧重算，保留。
+ *
+ * 注：high 档**不另立块** —— 上面那个 html[data-app="1"] 基础块就是 high 的定义，
+ * 再抄一份只会制造漂移。balanced 与 lite 都是它的降档，读这个文件从上往下就是
+ * 三档由高到低。
+ * ═════════════════════════════════════════════════════════════ */
+html[data-app="1"][data-perf="balanced"] {
+  --ix-blur: blur(10px) saturate(125%);
+  --ix-blur-s: blur(6px) saturate(115%);
+  /* 外投影降一级：内嵌的上缘高光与描边是「机加工」身份，保持逐字节不变；
+     只收大半径的落地投影（模糊半径同样是 paint 开销）。 */
+  --ix-shadow-2: inset 0 1px 0 rgb(255 255 255 / 85%), inset 0 0 0 1px rgb(24 29 27 / 10%), 0 6px 16px rgb(24 29 27 / 14%);
+  --ix-shadow-3: inset 0 1px 0 rgb(255 255 255 / 85%), inset 0 0 0 1px rgb(24 29 27 / 11%), 0 -3px 10px rgb(24 29 27 / 7%);
+  --ix-led-halo: 0 0 2px;              /* LED 保留，光晕收小一档 */
+}
+
 /* ═══ lite 省电档：特效归零，层级/语义/间距/对比不变 ═══════ */
 html[data-app="1"][data-perf="lite"] {
   --ix-blur: none;

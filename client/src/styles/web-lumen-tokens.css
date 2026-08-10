@@ -148,6 +148,16 @@ html:not([data-app="1"])[data-theme="dark"][data-accent="dusk"]   { --lg-act: ok
 html:not([data-app="1"])[data-theme="dark"][data-accent="forest"] { --lg-act: oklch(.80 .11 158); --lg-act-ink: #04140D; --lg-act-soft: oklch(.80 .11 158 / 18%); --lg-focus: oklch(.86 .09 158); }
 html:not([data-app="1"])[data-theme="dark"][data-accent="amber"]  { --lg-act: oklch(.79 .12 44);  --lg-act-ink: #1A0C05; --lg-act-soft: oklch(.79 .12 44 / 18%);  --lg-focus: oklch(.85 .10 44); }
 
+/* ── 为什么 Web 没有 balanced 档 ──
+   App 侧刚补了 [data-perf="balanced"]（app-ix-tokens.css），Web 这边**刻意不补**：
+   balanced 在 Web 壳里根本到不了。resolvePerf()（perf.js:37）只有三条出口 ——
+   pref='high' → high，pref='lite' → lite，其余走 auto；而 auto 里
+   `if (isAppMode()) return deviceIsWeak() ? 'lite' : 'balanced'` 是 App 专属分支，
+   Web 落到最后一行的 high/lite。设置页也只提供 auto/high/lite 三个按钮
+   （Settings.jsx:808），没有任何路径能让 <html> 在 Web 壳下带上 data-perf="balanced"。
+   写一块永远不匹配的令牌，只会让下一个人以为这一档在 Web 上是活的。
+   —— 哪天 Web 真要三档，改 perf.js 的同时再补这里。 */
+
 /* ── lite 性能档：零 blur，玻璃回落为不透明分组底；层级/对比度/语义不变 ── */
 html:not([data-app="1"])[data-perf="lite"] {
   --lg-blur: none;
