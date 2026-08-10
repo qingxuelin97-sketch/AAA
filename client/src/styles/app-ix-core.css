@@ -394,7 +394,12 @@ html[data-app="1"] :where(.skel, .skel-av, .skel-line, .skel-card, .skel-bubble,
 html[data-app="1"][data-perf="lite"] :where(.skel, .skel-av, .skel-line, .skel-card, .skel-bubble, .skeleton)::after { animation: none; }
 
 /* ═══ 12 · 焦点：全组件统一双圈（外圈 canvas 隔离 + 内圈 focus 色）。
-   同属性二连抬特异性 + 居于文件末位：焦点态必须压过一切键帽底影。 ═══ */
+   同属性二连抬特异性 + 居于文件末位：焦点态必须压过一切键帽底影。
+
+   ⚠ 「居于文件末位」只保住了本文件内的胜负。app-rainbow.css 在本文件**之后**
+   加载，它的 .qa-button--primary { box-shadow: CTA 投影 !important } 特异度同为
+   (0,2,1)，于是主按钮的焦点环被换成了常态落影 —— 键盘用户看不到焦点。
+   真正的收口现在在 app-focus.css（加载序最末），本条留着作为组件层默认值。 ═══ */
 html[data-app="1"][data-app] :where(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline: none !important;
   box-shadow: var(--ix-focus-ring) !important;

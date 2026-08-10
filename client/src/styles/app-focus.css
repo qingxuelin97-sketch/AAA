@@ -1,0 +1,39 @@
+/* ==========================================================================
+   焦点环收口层（App 壳）
+   --------------------------------------------------------------------------
+   症状：键盘 Tab 到主按钮时**看不到任何焦点提示**。
+   quiet-aqua-e2e 的「focus-visible 外环不可见」一直是红的，报的就是这件事。
+
+   实测（390×844，light 档，程序聚焦 .qa-gallery .qa-button）：
+     .qa-button--secondary  :focus-visible ✓  box-shadow = 双圈焦点环 ✓
+     .qa-button--primary    :focus-visible ✓  box-shadow = CTA 常态投影 ✗
+                                              outline    = none
+   即：焦点态确实命中了，只是环被换成了按钮自己的落影。
+
+   成因是层序，不是选择器写错 —— 与批次 1 的 A2（安全区）一模一样的形状：
+     app-elevated.css:443   自称「APP 壳唯一权威块」，给按钮 outline
+     app-ix-core.css:398    抬特异性 + !important 抢回来，改用 --ix-focus-ring
+     app-rainbow.css:152    .qa-button--primary { box-shadow: CTA 投影 !important }
+                            ← 特异度同为 (0,2,1)，但加载更晚，同属性后写者胜
+     app-rainbow.css:25     --ix-rainbow-cta-shadow: 0 10px 22px rgb(42 160 250 / 30%)
+   secondary 不在那条 rainbow 规则的射程里，所以它的环活了下来 —— 两者的差异
+   正好证明问题出在「谁最后写 box-shadow」。
+
+   本层只做一件事：把焦点环放回**加载序的最后**，不再靠 !important 互相压。
+   刻意**不碰输入类元素**（input / textarea / contenteditable）：
+   app-elevated.css:441 的注释记着真机反馈「蓝色框框」，文本框的焦点反馈由各自
+   容器承担，那是有意为之，不是遗漏。这里只修真正丢了环的按钮/链接一类。
+
+   选择器里那个重复的 [data-app] 不是笔误，是必要的配平（app-ix-core.css 里已有同款
+   写法）：rainbow 那条规则的选择器列表含 `.qa-button--primary:not(:disabled)`，
+   :not() 的参数计入特异度 → (0,3,1)。只写一次属性只有 (0,2,1)，再靠后也压不过。
+   重复一次属性把两边拉平到 (0,3,1)，剩下的胜负交给加载顺序 —— 而顺序有断言守着。
+
+   ⚠ 不要把这条搬回任何页面层或令牌层 —— 它必须晚于 app-rainbow.css。
+   client/app-test.mjs 有一条断言钉住这个顺序。
+   ========================================================================== */
+
+html[data-app="1"][data-app] :where(button, a, [role="button"], select, summary, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--ix-focus-ring) !important;
+}

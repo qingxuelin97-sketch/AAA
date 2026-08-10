@@ -563,6 +563,7 @@ assert.doesNotMatch(
   'legacy App layers must not reintroduce position-driven rainbow tinting',
 );
 const rainbowCss = await readFile(new URL('./src/styles/app-rainbow.css', import.meta.url), 'utf8');
+const appFocusCss = await readFile(new URL('./src/styles/app-focus.css', import.meta.url), 'utf8');
 const rainbowMotionCss = await readFile(new URL('./src/styles/app-rainbow-motion.css', import.meta.url), 'utf8');
 const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls, quietPages, quietExperience,
   await readFile(new URL('./src/chat/chat-app.css', import.meta.url), 'utf8'),
@@ -602,6 +603,21 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
   const iG = entryOrder.indexOf('chat-glass.css');
   assert.ok(iD > -1 && iR > iD && iM > iR && iG > iM && entryOrder.lastIndexOf('.css') < iG + 20,
     'app-entry order must be pages-d < rainbow < rainbow-motion < chat-glass (frozen last)');
+
+  // —— 焦点环必须晚于彩虹层 ——
+  // app-rainbow.css:152 给 .qa-button--primary 写了 box-shadow: CTA 投影 !important，
+  // 特异度与 app-ix-core.css 的焦点规则同为 (0,2,1)。谁后加载谁赢 —— 曾经赢的是投影，
+  // 于是键盘 Tab 到主按钮时一点焦点提示都没有（quiet-aqua-e2e 的 focus-visible 断言
+  // 长期为红，报的就是这件事）。收口层的位置本身就是修复，必须钉住。
+  const iF = entryOrder.indexOf('app-focus.css');
+  assert.ok(iF > iM, 'app-focus.css must load after the rainbow layers (focus ring beats CTA shadow)');
+  assert.match(appFocusCss, /:focus-visible\s*\{[^}]*box-shadow:\s*var\(--ix-focus-ring\)\s*!important/,
+    'app-focus.css must restore the two-layer --ix-focus-ring');
+  // 文本框刻意不画环（app-elevated.css:441 记着真机反馈的「蓝色框框」）——别把它们加回来。
+  // 只看规则体：注释里解释「为什么不碰 input」是应该的，写进选择器才是问题。
+  const appFocusRules = appFocusCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(appFocusRules, /(input|textarea|contenteditable)/,
+    'app-focus.css must not touch text inputs (their focus feedback is owned by their containers)');
 }
 assert.doesNotMatch(appLayerCss, /background-clip:\s*text/, 'App layers must not restore gradient text');
 // The unfenced `.cps-item.hue-*` palette block is Web-owned (the App fence

@@ -289,9 +289,24 @@ async function readSeedFixtures(page) {
       characterId: firstId(characters.characters, (row) => row.name === '沈知微'),
       groupId: firstId(groups.groups, (row) => row.name === '幻域创作者联盟'),
       theaterId: firstId(theaters.theaters, (row) => row.name === '永青森林的不速之客'),
-      novelId: firstId(novels.novels, (row) => String(row.title || '').includes('朔月当空')),
+      // 内置小说《朔月当空 · 平行2026》已被产品决策下架（mock/backend.js 的
+      // qsy_novel_removed 迁移会主动清掉它），所以这里不能再指望播种数据里有小说。
+      // 拿现有的第一部；没有就在下面按需创建一部 —— 删掉这条断言等于把
+      // /atelier/:id 整条详情路由的覆盖一起删掉，那不是修，是掩盖。
+      novelId: firstId(novels.novels, () => true),
     };
   });
+  if (!fixtures.novelId) {
+    fixtures.novelId = await page.evaluate(async () => {
+      const r = await fetch('/api/novels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('huanyu_token') },
+        body: JSON.stringify({ title: 'E2E 夹具作品', logline: '供 /atelier/:id 详情路由断言使用' }),
+      });
+      const j = await r.json().catch(() => ({}));
+      return j?.novel?.id || null;
+    });
+  }
   for (const [kind, id] of Object.entries(fixtures)) {
     assert(Number.isSafeInteger(Number(id)) && Number(id) > 0, `Static mock is missing the ${kind} fixture`, JSON.stringify(fixtures));
   }
@@ -754,9 +769,15 @@ async function characterEditorAssertions(browser, base) {
     overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
     surface: getComputedStyle(document.querySelector('.qa-character-editor__media > .field')).backgroundColor,
   }));
-  assert(darkResult.theme === 'dark' && darkResult.overflow <= 1, '角色编辑器深色模式或宽度回归', JSON.stringify(darkResult));
-  assert(darkResult.surface !== 'rgb(255, 255, 255)', '角色编辑器深色模式仍使用白色表面', JSON.stringify(darkResult));
-  assert(dark.__qaErrors.length === 0, '角色编辑器深色模式产生浏览器错误', dark.__qaErrors.join('\n'));
+  // ⚠ 这里断言的是「App 壳把深色偏好解析成浅色」，不是「深色渲染正确」。
+  // theme.js:11-14 是产品定稿：App 端深色模式暂时关闭，无论 localStorage 存的是
+  // dark 还是 system 一律解析为 light（Web 端不受影响，重开深色时用户偏好原样恢复）。
+  // 原断言要求 theme === 'dark'，与该决定直接矛盾，**永远不可能通过** —— 它此前被
+  // 前面那条 focus-visible 失败挡着，从没跑到过。既然改不了产品决定，就把这条改成
+  // 守住那个决定本身：存 dark 也必须落 light，同时保留宽度与控制台错误的覆盖。
+  assert(darkResult.theme === 'light', 'App 壳必须把深色偏好解析为浅色（theme.js 的产品定稿）', JSON.stringify(darkResult));
+  assert(darkResult.overflow <= 1, '角色编辑器（深色偏好下）出现横向溢出', JSON.stringify(darkResult));
+  assert(dark.__qaErrors.length === 0, '角色编辑器深色偏好下产生浏览器错误', dark.__qaErrors.join('\n'));
   await dark.screenshot({ path: path.join(OUT, 'character-editor-media-390x844-dark.png') });
   await dark.close();
 
@@ -1401,6 +1422,20 @@ async function galleryS7Assertions(browser, base) {
 }
 
 // S7-G10 · 会话整理：长按置顶 → 行标记与列表首位；免打扰标记；标签随态翻转。
+//
+// ⚠ 已知失败（早于 2026-08 这一轮改动，未解决）：下面第一次 pressRow() 的
+// `.qa-press-menu` 恒超时。排查记录，免得下一个人从头再来一遍：
+//   · 在 262861e（本轮全部改动之前）用同样的方式跑，失败点与报错完全一致 ——
+//     **不是本轮引入的**。它此前一直被更靠前的 focus-visible 断言挡着，从没跑到过。
+//   · 功能本身是好的：用独立 puppeteer 页面复刻同一套 preparePage 配置手动长按，
+//     high 与 balanced 两档、等过一个 4s 轮询周期前后，`.qa-press-menu` 都能正常
+//     打开（position:fixed，231×290，parent 为 .qa-press-mask）。
+//   · 失败时 DOM 里既无 .qa-press-menu 也无 .qa-press-mask；无 [inert]、无 aria-hidden、
+//     无任何浮层、scrollY 为 0、page.__qaErrors 为空。触摸确实落在行上
+//     （touchEnd 后 activeElement 就是 .msgs-conv-main），只是 450ms 的长按计时器没触发。
+//   · 清掉前面 20 个用例累积的 mock 库（huanyu_db_v7）后重跑，失败依旧 —— 不是脏状态。
+// 结论：合成 touch 在**本套件的浏览器实例**里没能驱动 useLongPress，而独立实例可以。
+// 属测试宿主问题而非产品缺陷，故不为它改动产品代码。
 async function conversationMarksAssertions(browser, base) {
   const page = await preparePage(browser, base, {
     app: true,

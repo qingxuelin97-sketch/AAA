@@ -28,6 +28,9 @@ import './app-ix-pages-d.css';
 import './app-rainbow.css';
 // 彩虹系动效层：keyframes / 呼吸循环 / 浮层退场 / 降级闸门。
 import './app-rainbow-motion.css';
+// 焦点环收口：主按钮的 CTA 投影（app-rainbow.css）晚于焦点规则加载，把环挤掉了。
+// 必须排在 app-rainbow* 之后，详见文件头注释。
+import './app-focus.css';
 // 顶部安全区收口：各页面层的顶栏漏了负 margin，导致刘海机上安全区被算两次。
 // 必须在所有页面层（renov / quiet-aqua / experience-v3 / hig-v5 / ix-*）之后，
 // 否则会被那些 (0,2,1) 的页面规则盖掉。
