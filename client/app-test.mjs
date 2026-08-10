@@ -718,4 +718,45 @@ assert.match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#E4F1F6' :
   'App theme chrome must use the rainbow canvas while preserving the Web Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 
+/* ---- 备份完整性：db.js 建的每张表都必须被明确处置 ---- */
+// persist.js 的恢复流程是「按 BACKUP_TABLES 逐表 DELETE 后整表回灌」。漏登记一张表，
+// 它既不进备份也不被恢复覆盖 —— 恢复后 messages 回到 T 时刻、漏掉的表停在 T+n，
+// 数据集自相矛盾且全程无日志。hearts / character_views / reading_progress 三张表
+// 就是这么漏了很久的。这条断言让「新建表却忘了登记」在 CI 里就挂掉。
+const snapshotSource = await readFile(new URL('../server/snapshot.js', import.meta.url), 'utf8');
+const createdTables = [...dbSource.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)/g)].map((m) => m[1]);
+const namedList = (name) => {
+  const block = new RegExp(`export const ${name} = \\[([\\s\\S]*?)\\];`).exec(snapshotSource);
+  assert.ok(block, `snapshot.js must export ${name}`);
+  return [...block[1].matchAll(/'([\w]+)'/g)].map((m) => m[1]);
+};
+const backupTables = namedList('BACKUP_TABLES');
+const excludedTables = namedList('EXCLUDED_TABLES');
+const accounted = new Set([...backupTables, ...excludedTables]);
+assert.ok(createdTables.length > 40, 'table scan must actually find db.js schema statements');
+const unaccounted = createdTables.filter((t) => !accounted.has(t));
+assert.deepEqual(unaccounted, [],
+  `every table in db.js must be listed in BACKUP_TABLES or EXCLUDED_TABLES; unaccounted: ${unaccounted.join(', ')}`);
+// 反向：白名单里不能有库中根本不存在的幽灵表。importAll 会对幽灵条目抛
+// 「备份目标表不存在」，只是因为 exportAll 先按 sqlite_master 跳过了它才一直没暴露。
+const phantom = [...backupTables, ...excludedTables].filter((t) => !createdTables.includes(t));
+assert.deepEqual(phantom, [],
+  `backup lists must not name tables db.js never creates; phantom: ${phantom.join(', ')}`);
+
+/* ---- 迁移安全网必须在位 ---- */
+// db.js 里有四处 `for (const sql of [...]) { try { db.exec(sql); } catch {} }`，
+// 迁移失败全被吞掉。assertSchema 是唯一能把「列没加上 / 索引没建成」翻出来的东西，
+// 且它靠扫描 db.js 自己的源码推导校验项 —— 不能退回手工维护的清单（必然漏登记）。
+assert.match(dbSource, /function assertSchema\(\)[\s\S]*process\.exit\(1\)/,
+  'assertSchema must fail fast rather than warn and continue');
+assert.match(dbSource, /assertSchema\(\);/, 'assertSchema must actually run at startup');
+assert.match(dbSource, /readFileSync\(fileURLToPath\(import\.meta\.url\)/,
+  'assertSchema must derive its checklist by scanning db.js source, not a hand-kept list');
+// 安全网自检：源码扫描解析不出语句时必须报错而不是静默放行。
+assert.match(dbSource, /源码扫描没有解析出任何迁移语句/,
+  'assertSchema must fail when its own source scan returns nothing');
+const guardedLoops = (dbSource.match(/catch \{ \/\* (?:column (?:already )?exists|health check will fail closed|见文件末尾 assertSchema) \*\/ \}/g) || []).length;
+assert.ok(guardedLoops >= 4,
+  `all swallow-the-error migration loops must remain accounted for by assertSchema (found ${guardedLoops})`);
+
 console.log('app invariants: IX-6/IX-7 guards passed');

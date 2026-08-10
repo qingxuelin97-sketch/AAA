@@ -2,14 +2,30 @@ import db from './db.js';
 
 // Every table whose contents make up a full site snapshot. Operational logs
 // stay outside snapshots because they grow quickly and are not restore data.
+//
+// 这是一份**显式白名单**，而 persist.js 的恢复流程是「逐表 DELETE 后整表回灌」：
+// 漏登记一张表，它就不进备份、也不被恢复覆盖 —— 结果是恢复后 messages 回到 T 时刻，
+// 漏掉的表却停在 T+n，数据集从此自相矛盾，而且全程没有任何日志。
+// client/app-test.mjs 有一条断言守着这里：db.js 里新建的每张表都必须出现在
+// BACKUP_TABLES 或下面的 EXCLUDED_TABLES 里，二选一，不允许遗漏。
 export const BACKUP_TABLES = [
   'users', 'settings', 'characters', 'world_entries', 'favorites', 'conversations', 'messages',
-  'scripts', 'script_likes', 'reviews', 'reports', 'script_purchases', 'posts', 'post_likes', 'moments', 'moment_likes', 'comments',
+  'scripts', 'script_likes', 'reviews', 'reports', 'script_purchases', 'posts', 'moments', 'moment_likes', 'comments',
   'follows', 'groups', 'group_members', 'group_messages', 'theaters', 'theater_members', 'theater_cast', 'theater_messages',
   'announcements', 'invite_keys', 'transactions', 'categories', 'app_config', 'ai_images', 'daily_progress', 'event_claims',
   'proposals', 'proposal_votes', 'proposal_endorse', 'proposal_comments', 'friendships', 'friend_requests', 'dm_messages',
   'worldbooks', 'worldbook_entries', 'character_worldbooks', 'novels', 'novel_runs', 'novel_beats',
   'notifications', 'shares', 'email_whitelist', 'email_codes', 'payment_orders', 'payment_events', 'code_redemptions', 'user_uploads',
+  // 以下三张是用户数据，此前一直漏登记：hearts 是收藏/喜欢关系，character_views 是
+  // 曝光计数（也是唯一能算 CTR 的分母），reading_progress 是阅读进度。
+  'hearts', 'character_views', 'reading_progress',
+];
+
+// 明确**不进**备份的表，与 BACKUP_TABLES 一起构成对 db.js 全部建表的完整覆盖。
+// 登记在这里表示「已经想过，确实不该备份」，而不是「忘了」。
+export const EXCLUDED_TABLES = [
+  'logs',                  // 运营日志，增长快且有独立的分级保留策略
+  'auth_login_failures',   // 登录失败风控计数，短期时序数据，恢复旧值反而会误锁账号
 ];
 
 export function exportAll() {

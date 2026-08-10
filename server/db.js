@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // DB_PATH lets hosted deploys point at a persistent volume (e.g. a mounted disk).
@@ -987,8 +988,7 @@ for (const sql of [
   "ALTER TABLE novel_beats ADD COLUMN history TEXT DEFAULT '[]'",
 ]) { try { db.exec(sql); } catch { /* column exists */ } }
 
-// —— 性能索引：热点外键/查找列（缺失会随数据量退化为全表扫描）。逐条 try：
-//    个别表/列在旧库可能尚不存在，跳过而非中断启动。——
+// —— 性能索引：热点外键/查找列（缺失会随数据量退化为全表扫描）。——
 for (const sql of [
   'CREATE INDEX IF NOT EXISTS idx_characters_owner ON characters (owner_id)',
   'CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages (conversation_id, id)',
@@ -1005,7 +1005,66 @@ for (const sql of [
   'CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews (target_type, target_id)',
   'CREATE INDEX IF NOT EXISTS idx_script_purchases_user ON script_purchases (user_id)',
   'CREATE INDEX IF NOT EXISTS idx_script_purchases_script ON script_purchases (script_id)',
-]) { try { db.exec(sql); } catch { /* 表/列可能尚不存在，忽略 */ } }
+]) { try { db.exec(sql); } catch { /* 见文件末尾 assertSchema */ } }
+
+// —— 迁移安全网 ——
+// 这个文件里有四处 `for (const sql of [...]) { try { db.exec(sql); } catch {} }`：
+// 列没加上、索引没建成，异常全被吞掉，服务照常启动，直到第一次读写才在某个请求里
+// 炸开，而那时错误已散落各处，没人会联想到是迁移没跑成。
+//
+// assertSchema 在启动的第一秒把它翻出来。校验清单**不手工维护** —— 它直接扫描本
+// 文件的源码，把所有 `ALTER TABLE … ADD COLUMN …` 和 `CREATE INDEX … ON …` 解析成
+// 「启动后应该存在什么」，再逐条核对。这样将来无论谁新加一个迁移循环、往哪个数组里
+// 塞语句，都自动被覆盖，不存在「忘了登记」这种失效方式。
+//
+// 刻意选择 fail-fast 而不是告警后继续：一个缺列的进程能接受注册、能扣钱，却在落库
+// 时静默丢数据 —— 比起不启动要糟得多。
+function assertSchema() {
+  const missing = [];
+  let source;
+  try {
+    source = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8');
+    // 只扫描本函数之前的部分：下面的正则字面量里也含 ALTER/CREATE INDEX 字样。
+    source = source.slice(0, source.indexOf('// —— 迁移安全网 ——'));
+  } catch {
+    // 读不到自己的源码（打包成单文件等）时放弃校验而不是误报阻塞启动。
+    return;
+  }
+
+  const columns = [...source.matchAll(/ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)/gi)];
+  for (const [, table, column] of columns) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+    if (!cols.length) missing.push(`表不存在: ${table}`);
+    else if (!cols.some(c => c.name === column)) missing.push(`列不存在: ${table}.${column}`);
+  }
+
+  const indexes = [...source.matchAll(/CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s+ON\s+(\w+)/gi)];
+  for (const [, index, table] of indexes) {
+    const exists = db.prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='index' AND name=? AND tbl_name=?",
+    ).get(index, table);
+    if (!exists) missing.push(`索引不存在: ${index} ON ${table}`);
+  }
+
+  if (!columns.length || !indexes.length) {
+    missing.push('源码扫描没有解析出任何迁移语句，安全网自身已失效');
+  }
+  if (!missing.length) return;
+
+  const detail = missing.join('; ');
+  const message = `数据库迁移未完成，服务拒绝启动（${missing.length} 项）: ${detail}`;
+  // logger.js 依赖 db.js，这里不能反向 import（循环依赖）。直接写 logs 表，
+  // 让这次失败在 GM 日志台留痕；写不进去也不能挡住退出。
+  try {
+    db.prepare(
+      `INSERT INTO logs (level, source, category, event, message, extra)
+       VALUES ('fatal', 'server', 'system', 'migration_incomplete', ?, ?)`,
+    ).run(message.slice(0, 2000), JSON.stringify({ missing }).slice(0, 4000));
+  } catch { /* 日志表本身可能就是缺失的那一项 */ }
+  console.error(`[FATAL] ${message}`);
+  process.exit(1);
+}
+assertSchema();
 
 // —— 产品决策：下架内置小说《朔月当空 · 平行2026》 ——
 // 老库若曾运行过 seed（内置书随 demo 数据种入），启动时幂等清理：
