@@ -26,6 +26,10 @@ ios/
 *.apk
 *.aab
 *.ipa
+# 签名密钥永不进仓库。android/ 已整体忽略，这里再兜一层通配：
+# 密钥一旦泄露不可撤销——用它签过的包无法与冒名包区分，只能换 applicationId 重来。
+*.keystore
+*.jks
 server/sec-test.tmp.sqlite*
 server/sec-test.interceptor.mjs
 server/diagnostic.tmp.sqlite*

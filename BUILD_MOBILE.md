@@ -8,8 +8,42 @@ PWA 仍可作为网页安装；正式 Android App 则只连接构建时指定的
 
 - `server_url`：正式后端地址，例如 `https://api.example.com`；只接受 HTTPS。
 - `play_cloud_project_number`：已启用 Play Integrity API 的 Google Cloud 数字项目编号。
+- `version_name`（可选）：版本名，如 `1.2.0`。留空沿用模板默认值。
 
-工作流会构建随包 Web 资源、生成 Android 工程、安装 Play Integrity 原生桥、关闭明文网络和 Android 备份，然后输出 debug APK。
+工作流会构建随包 Web 资源、生成 Android 工程、安装 Play Integrity 原生桥、关闭明文网络和 Android 备份，然后输出 APK。
+
+### 正式签名
+
+配置以下四个仓库 Secret 后，工作流自动改出 **release 签名包**；未配置则照旧产出 debug 包，
+构建不会因此失败。
+
+| Secret | 说明 |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | keystore 文件的 base64（`base64 -w0 release.keystore`） |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore 口令 |
+| `ANDROID_KEY_ALIAS` | 密钥别名 |
+| `ANDROID_KEY_PASSWORD` | 密钥口令 |
+
+生成 keystore：
+
+```bash
+keytool -genkeypair -v -keystore release.keystore -alias huanyu \
+  -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 release.keystore    # 贴进 ANDROID_KEYSTORE_BASE64
+```
+
+口令不会写进任何构建产物——Gradle 在运行时经 `System.getenv` 读取。keystore 落在
+`android/app/release.keystore`，而 `android/` 与 `*.keystore` 均已在 `.gitignore` 内。
+
+> **切换签名会强制已装用户卸载重装。** debug 与 release 签名不可互换，Android 会拒绝
+> 用不同密钥签名的更新包。卸载会清空本地 token、草稿与阅读进度，因此装机量越小切换
+> 代价越低——要切就尽早切。
+>
+> **keystore 必须自行备份。** 弄丢就再也无法为同一个应用发布更新，只能换
+> `applicationId` 从零开始，老用户全部留在旧版本上。
+
+`versionCode` 取 GitHub Actions 的构建序号（`github.run_number`），单调递增。
+Capacitor 生成的工程恒为 `versionCode 1`，不递增则无法覆盖安装。
 
 ### 并行 HTTP 内测包
 

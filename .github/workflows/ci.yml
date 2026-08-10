@@ -81,5 +81,10 @@ jobs:
           npm run test:recall
           npm run test:novels:mock
 
+      # configure-android.mjs 掌管整条发版链路，且反馈环最长——改错要等到出完 APK、
+      # 装到真机上才发现，而那时错的可能是「装得上但注册不了」这种不报错的形态。
+      - name: Release-chain regression
+        run: node scripts/configure-android.test.mjs
+
       # 注：npm run reg-flow 目前有 7 项既有失败（注册/业务日志相关，早于本次改动，
       # 已在 e33880f 上复现为同样的 32 passed / 7 failed），修好之前不挂硬闸。

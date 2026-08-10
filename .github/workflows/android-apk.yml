@@ -11,6 +11,10 @@ on:
         description: "已启用 Play Integrity 的 Google Cloud 项目编号"
         required: true
         type: string
+      version_name:
+        description: "版本名，如 1.2.0（留空沿用模板默认值）"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -23,6 +27,16 @@ jobs:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       VITE_API_BASE: ${{ inputs.server_url }}
       PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ inputs.play_cloud_project_number }}
+      # 版本号：Capacitor 生成的工程恒为 versionCode 1，不递增则无法覆盖安装
+      #（用户只能先卸载，而卸载会清空本地数据）。用构建序号做 versionCode，单调递增。
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+      ANDROID_VERSION_NAME: ${{ inputs.version_name }}
+      # release 签名：配了 secret 就出正式签名包，没配则照旧出 debug 包。
+      # debug 签名用的是 SDK 公共调试密钥，任何人都能签出「同一个应用」的更新包。
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +47,11 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # 这个脚本掌管整条发版链路（Play Integrity 桥、明文开关、allowBackup、签名、
+      # 版本号），改错要等出完 APK 装到真机才发现。先跑它的回归。
+      - name: Release-chain regression
+        run: node scripts/configure-android.test.mjs
 
       - name: Validate HTTPS and configure native security
         run: node scripts/configure-android.mjs --before
@@ -62,13 +81,42 @@ jobs:
             --iconBackgroundColor '#8b7ec6' --iconBackgroundColorDark '#8b7ec6' \
             --splashBackgroundColor '#1b1733' --splashBackgroundColorDark '#15120e'
 
+      # 配了签名 secret 就走 release，否则回落 debug —— 密钥没配好不该让整条链路停摆。
+      - name: Decide build variant
+        id: variant
+        run: |
+          if [ -n "${ANDROID_KEYSTORE_BASE64}" ]; then
+            echo "signed=true"  >> "$GITHUB_OUTPUT"
+            echo "::notice::使用 release 签名构建。已装 debug 包的用户需卸载后重装（签名不可互换）。"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::未配置 ANDROID_KEYSTORE_BASE64，产出 debug 签名包，无法用于正式分发。"
+          fi
+
+      - name: Build release APK
+        if: steps.variant.outputs.signed == 'true'
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
       - name: Build debug APK
+        if: steps.variant.outputs.signed != 'true'
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Upload signed APK
+        if: steps.variant.outputs.signed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: huanyu-app-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload debug APK
+        if: steps.variant.outputs.signed != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: huanyu-app-debug-apk
