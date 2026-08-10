@@ -335,7 +335,7 @@ export default function Messages() {
             </button>
             <button className="msgs-entry" onClick={() => nav('/groups')}>
               <span className="msgs-entry-ic grp"><Users size={20} /></span>
-              <span className="msgs-entry-tx"><b>群聊房间</b><small>{appMode ? '你加入的群聊更新' : '多人多 AI 同场闲聊'}</small></span>
+              <span className="msgs-entry-tx"><b>群聊房间</b><small>{appMode ? '你加入的群聊更新' : '和其他玩家一起聊天'}</small></span>
               <ChevronRight size={18} className="msgs-entry-chev" />
             </button>
           </AppSection>

@@ -319,6 +319,11 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   color: var(--faint); font-size: 14px; cursor: pointer; }
 @media (min-width: 861px) { .fail-mask { align-items: center; } .fail-sheet { border-radius: 18px; } }
 
+/* 成人向内容角标：让用户在点进去之前就知道。服务端过滤留到上架 Play 时再做。 */
+.nsfw-badge { display: inline-flex; align-items: center; margin: 0 6px; padding: 1px 6px;
+  font-size: 11px; font-weight: 700; line-height: 1.5; border-radius: 6px;
+  background: #c0392b; color: #fff; vertical-align: middle; letter-spacing: 0.3px; }
+
 /* 对话内调试台：把「本轮到底注入了什么」摊开给作者看，含被 max_active 砍掉的条目。 */
 .dbg-sheet { width: 100%; max-width: 560px; max-height: 86vh; overflow-y: auto; background: var(--bg-1);
   border-radius: 18px 18px 0 0; padding: 22px 20px calc(20px + env(safe-area-inset-bottom));

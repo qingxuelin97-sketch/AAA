@@ -794,7 +794,7 @@ export default function WorldbookEditor() {
                               <input className="input" placeholder="留空=不互斥；同组只触发最高优先级" value={w.group_name || ''} onChange={e => updEntry(i, 'group_name', e.target.value)} disabled={readOnly} />
                             </div>
                             <div className="field" style={{ margin: 0 }}>
-                              <label>注入深度 <span className="muted">（注入到历史第几条之后）</span></label>
+                              <label>注入深度 <span className="muted">（暂未生效：条目会按深度分组，但目前仍全部注入当前轮）</span></label>
                               <input type="number" className="input" min={0} max={50} value={w.depth ?? 0} onChange={e => updEntry(i, 'depth', +e.target.value || 0)} disabled={readOnly} />
                             </div>
                             <div className="field" style={{ margin: 0 }}>
@@ -825,7 +825,7 @@ export default function WorldbookEditor() {
                               <input type="number" className="input" min={0} max={999} value={w.cooldown ?? 0} onChange={e => updEntry(i, 'cooldown', +e.target.value || 0)} disabled={readOnly} />
                             </div>
                             <div className="field" style={{ margin: 0 }}>
-                              <label>粘性轮数 <span className="muted">（触发后持续N轮）</span></label>
+                              <label>粘性轮数 <span className="muted">（暂未生效：字段已保存，注入逻辑尚未接入）</span></label>
                               <input type="number" className="input" min={0} max={99} value={w.sticky ?? 0} onChange={e => updEntry(i, 'sticky', +e.target.value || 0)} disabled={readOnly} />
                             </div>
                             <div className="field" style={{ margin: 0 }}>
@@ -887,7 +887,7 @@ export default function WorldbookEditor() {
                             <label className="switch" style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-end', marginBottom: 8 }}>
                               <input type="checkbox" checked={!!w.vectorize} onChange={e => updEntry(i, 'vectorize', e.target.checked)} disabled={readOnly} />
                               <span className="track" />
-                              <span style={{ fontSize: 12.5 }}><Sparkles size={11} style={{ verticalAlign: -1 }} /> 语义检索触发</span>
+                              <span style={{ fontSize: 12.5 }}><Sparkles size={11} style={{ verticalAlign: -1 }} /> 语义检索触发 <span className="muted">（暂未生效）</span></span>
                             </label>
                           </div>
                         </div>

@@ -743,6 +743,42 @@ const phantom = [...backupTables, ...excludedTables].filter((t) => !createdTable
 assert.deepEqual(phantom, [],
   `backup lists must not name tables db.js never creates; phantom: ${phantom.join(', ')}`);
 
+/* ---- 承诺清算：设置页渲染的开关必须真的有人读 ---- */
+// settings 表里长期躺着五个「存得进去、全站没人读」的隐私开关
+//（privacy_profile / discoverable / activity_visible / leaderboard_visible /
+// read_receipts）。界面就此做出了一个从未兑现的承诺，而隐私恰恰是最不能空口
+// 承诺的东西。这条断言让同类字段无法再悄悄长出来：Settings.jsx 里出现的每个
+// settings 键，都必须在 server/routes|*.js 里有 settings.js 之外的消费点。
+{
+  const settingsSource = await readFile(new URL('./src/pages/Settings.jsx', import.meta.url), 'utf8');
+  const serverDir = new URL('../server/', import.meta.url);
+  const serverFiles = [];
+  const walk = async (dir) => {
+    for (const name of await readdir(dir)) {
+      if (name === 'node_modules' || name.endsWith('.tmp.sqlite')) continue;
+      const child = new URL(`${name}${name.includes('.') ? '' : '/'}`, dir);
+      if (!name.includes('.')) { await walk(child).catch(() => {}); continue; }
+      if (name.endsWith('.js')) serverFiles.push(child);
+    }
+  };
+  await walk(serverDir);
+  const serverText = (await Promise.all(
+    serverFiles.filter(u => !u.pathname.endsWith('/routes/settings.js') && !u.pathname.endsWith('/db.js'))
+      .map(u => readFile(u, 'utf8')),
+  )).join('\n');
+
+  // Settings.jsx 里以 set('key', …) / s.key 形式出现的 settings 字段
+  const referenced = new Set([...settingsSource.matchAll(/set\('([a-z_]+)'/g)].map(m => m[1]));
+  // 这些不是 settings 表字段，或语义上本就只在前端生效
+  // theme 只在前端生效；llm_provider / llm_protocol / voice_provider 是服务商预设
+  // 选择器——服务端读的是由它们推导出的 base_url / model / api_key，这三个字段
+  // 只需往返存储供界面恢复用户的选择，不构成对用户的功能承诺。
+  const LOCAL_ONLY = new Set(['theme', 'llm_provider', 'llm_protocol', 'voice_provider']);
+  const orphans = [...referenced].filter(k => !LOCAL_ONLY.has(k) && !new RegExp(`\\b${k}\\b`).test(serverText));
+  assert.deepEqual(orphans, [],
+    `settings toggles rendered in Settings.jsx must have a server-side consumer; orphaned: ${orphans.join(', ')}`);
+}
+
 /* ---- 转盘奖池：mock 必须与服务端逐字一致 ---- */
 // mock/backend.js 不是演示夹具 —— appdiff 与 quiet-aqua-e2e 跑的都是它，
 // 它是这两道 UI 门禁的唯一数据源。奖池漂移会把错误状态固化进像素基线。

@@ -346,7 +346,8 @@ export default function DiscoverFeed() {
                     ? <QuietAquaCharacterArt className="feed-bg qa-oracle-character" loading={i < 2 ? 'eager' : 'lazy'} style={sharedMediaStyle} />
                     : <div className="feed-bg cover-art-box" style={sharedMediaStyle}><CoverArt name={c.name} /></div>}
               <div className="feed-scrim" />
-              {c.ai_generated && <span className="feed-ai-mark" aria-hidden="true">由 AI 生成</span>}
+              {/* 曾有一个 c.ai_generated 角标，但服务端从未产出这个字段，
+                  也没有任何地方给它赋过值——渲染的是一个永远为假的条件。已移除。 */}
               {/* 双击点赞层：盖住画面区域，按钮层在其上不受影响 */}
               <div className="feed-tap" onClick={e => cardTap(e, c)} />
               {burst && burst.id === c.id && (
@@ -415,7 +416,13 @@ export default function DiscoverFeed() {
                       e.preventDefault();
                       nav('/character/' + c.id);
                     }}>
-                    <h2 className="fd2-name">{c.name} <ChevronRight size={17} /></h2>
+                    <h2 className="fd2-name">
+                      {c.name}
+                      {/* 18+ 角标：服务端过滤等真正上架 Play 时再做，这一轮先让成人向
+                          内容在点进去之前就是可辨认的——用户有权在看到之前知道。 */}
+                      {!!c.nsfw && <span className="nsfw-badge" title="成人向内容">18+</span>}
+                      <ChevronRight size={17} />
+                    </h2>
                     {appMode && c.tagline && <p className="fd2-tagline">{c.tagline}</p>}
                     <div className="fd2-author">
                       <Avatar src={c.owner_avatar} name={c.owner_name} size={20} />

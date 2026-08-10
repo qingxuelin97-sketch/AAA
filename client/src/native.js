@@ -40,10 +40,12 @@ export async function syncStatusBar() {
 }
 
 export async function initNative() {
-  // Warm the standard-token provider before the registration screen needs it.
-  // Failure is intentionally non-fatal: invited/whitelisted users remain able
-  // to register, while the backend still refuses an unverified public signup.
-  await preparePlayIntegrity().catch(() => false);
+  // 预热 Play Integrity 令牌提供方 —— **不等它**。
+  // PlayIntegrityPlugin.java 本来就是懒创建的，这个 await 对已登录用户零收益，
+  // 却在冷启动主路径上挂了一次无上限的 Google 网络往返：网络差时整个 App 卡在
+  // 白屏，而绝大多数启动根本走不到注册页。
+  // 失败仍然是非致命的：受邀/白名单用户照常注册，服务端也依旧拒绝未验证的公开注册。
+  preparePlayIntegrity().catch(() => false);
   // 设备标识（Android = ANDROID_ID，iOS = identifierForVendor）：挂到全局供
   // api.jsx 附加 X-Device-Id 头，服务端用于注册配额（限单设备开小号）。
   // 本文件只在原生壳加载（main.jsx 动态 import），Web 端永远不带此头。

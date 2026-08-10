@@ -8,6 +8,7 @@
 // the hardware and pick the cheaper path on weak devices. Applied before React
 // mounts so there's no flash of the expensive layout.
 import { isAppMode } from './appmode.js';
+import { logEvent } from './logger.js';
 
 const KEY = 'huanyu_perf';
 // 会话级自适应降级标记（不落盘：下次冷启动仍是满血 auto，见 initAdaptivePerf）。
@@ -91,6 +92,13 @@ export function initAdaptivePerf() {
     if (document.hidden) { loafMs = 0; badWindows = 0; return; }
     const ratio = loafMs / 10000;
     loafMs = 0;
+    // 这个比值此前算完就丢。它是全量真机的 jank 指标——是「App 到底卡不卡」
+    // 唯一的客观来源，而我们手上一台真机都没有。1/10 采样上报，量可忽略。
+    // 只在 auto 档采样：手选 lite/high 的用户不代表默认体验。
+    if (Math.random() < 0.1) {
+      logEvent('info', 'perf_loaf', `LoAF 占比 ${(ratio * 100).toFixed(1)}%`,
+        { ratio: Math.round(ratio * 1000) / 1000, tier: resolvePerf(), degraded: badWindows });
+    }
     if (ratio > 0.35) badWindows++; else badWindows = 0;
     if (badWindows >= 3) {
       clearInterval(iv);

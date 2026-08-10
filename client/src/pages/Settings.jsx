@@ -663,16 +663,6 @@ export default function Settings() {
               <p className="muted" style={{ fontSize: 13, marginTop: -8 }}>掌控谁能看到你、谁能联系你，以及你的数据如何被使用。设置即时保存于账号。</p>
 
               <div className="field">
-                <label><Globe size={13} style={{ verticalAlign: -2, marginRight: 5 }} />主页可见范围</label>
-                <div className="seg seg-3">
-                  {[['public', '所有人'], ['followers', '仅关注者'], ['private', '仅自己']].map(([v, l]) => (
-                    <button key={v} type="button" className={(s.privacy_profile || 'public') === v ? 'active' : ''} onClick={() => set('privacy_profile', v)}>{l}</button>
-                  ))}
-                </div>
-                <div className="hint">控制谁可以浏览你的个人主页、作品与资料。</div>
-              </div>
-
-              <div className="field">
                 <label><Users size={13} style={{ verticalAlign: -2, marginRight: 5 }} />谁可以私信我</label>
                 <div className="seg seg-3">
                   {[['all', '所有人'], ['followers', '仅关注者'], ['none', '关闭私信']].map(([v, l]) => (
@@ -682,11 +672,13 @@ export default function Settings() {
               </div>
 
               {[
+                // 这里只保留**服务端真的会读**的开关。
+                // 曾经还有 privacy_profile / discoverable / activity_visible /
+                // leaderboard_visible / read_receipts 五项：它们能存进 settings 表，
+                // 但全站没有任何一处读取它们——也就是说界面在就隐私做出一个从未兑现的承诺，
+                // 而隐私恰恰是最不能空口承诺的东西。数据库列保留，等各自的过滤逻辑真正
+                // 落地时再放回来。
                 ['show_online', '显示在线状态', '允许他人看到你当前是否在线', Activity],
-                ['discoverable', '允许被搜索与推荐', '关闭后你的角色与主页不会出现在搜索 / 推荐中', Eye],
-                ['activity_visible', '公开我的动态', '在社区与主页展示我发布的动态与互动', Globe],
-                ['leaderboard_visible', '出现在排行榜', '关闭后你不会出现在任何排行榜上', Users],
-                ['read_receipts', '已读回执', '关闭后不向对方发送 / 显示已读状态', EyeOff],
                 ['personalize', '个性化推荐', '依据你的浏览与互动优化广场推荐内容', SlidersHorizontal],
               ].map(([k, t, d, Ic]) => (
                 <label className="switch priv-row" key={k}>
@@ -780,10 +772,9 @@ export default function Settings() {
               <div><b style={{ fontSize: 14 }}>显示成人 (NSFW) 内容</b><div className="muted" style={{ fontSize: 12.5 }}>开启后广场将展示标记为成人的角色与剧本</div></div>
               <span><input type="checkbox" checked={!!s.nsfw} onChange={e => set('nsfw', e.target.checked ? 1 : 0)} /><span className="track" /></span>
             </label>
-            <label className="switch" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
-              <div><b style={{ fontSize: 14 }}>邮件通知</b><div className="muted" style={{ fontSize: 12.5 }}>接收关注、评论与系统通知的邮件提醒</div></div>
-              <span><input type="checkbox" checked={!!s.notify_email} onChange={e => set('notify_email', e.target.checked ? 1 : 0)} /><span className="track" /></span>
-            </label>
+            {/* 「邮件通知」开关曾在这里。它能存进 settings 表，但全站从来不会因此发出
+                任何一封邮件——又一个只存在于界面上的承诺。数据库列保留，等通知邮件
+                真正实现时再放回来。 */}
           </div>
           </>
         )}
