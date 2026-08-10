@@ -20,8 +20,14 @@ ENV NODE_ENV=production
 # Listen on 80 by default (matches 微信云托管 default port). Hosts that inject their
 # own PORT env (e.g. Render) override this automatically at runtime.
 ENV PORT=80
-# Optional: point at a mounted volume for a persistent database
+# 持久化：容器文件系统在每次部署时都会重建，因此数据库和用户上传都必须放在挂载卷上。
+# 只需指定 DB_PATH —— 上传目录默认取它所在目录下的 uploads/（见 server/storage.js），
+# 即 /data/data.sqlite 对应 /data/uploads，两者天然同盘。
+# 不设 DB_PATH 时数据库在 server/data.sqlite、上传在 server/uploads，都随容器销毁。
+# 需要把上传单独放到别处（如对象存储挂载点）时用 UPLOAD_DIR 覆盖。
+#   docker run -v huanyu-data:/data -e DB_PATH=/data/data.sqlite ...
 # ENV DB_PATH=/data/data.sqlite
+# ENV UPLOAD_DIR=/data/uploads
 EXPOSE 80
 
 # Seed demo data ONLY when the database has no users yet (seed.js is destructive),

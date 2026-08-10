@@ -36,6 +36,7 @@ import asrRoutes from './routes/asr.js';
 import paymentRoutes from './routes/payments.js';
 import { MAX_WEBHOOK_BYTES } from './payment.js';
 import { log, purgeOldLogs, genRequestId } from './logger.js';
+import { ensureUploadDir, UPLOAD_DIR } from './storage.js';
 import jwt from 'jsonwebtoken';
 import { SECRET } from './auth.js';
 
@@ -201,8 +202,9 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-const uploadsDir = path.join(__dirname, 'uploads');
-fs.mkdirSync(uploadsDir, { recursive: true });
+// 上传目录跟随 DB_PATH 所在盘（见 server/storage.js）：自建部署行为不变，
+// 托管平台上则与数据库同处一块持久盘，不再出现「库还在、文件没了」。
+const uploadsDir = ensureUploadDir();
 // 上传资源以附件形式下发并禁 MIME 嗅探，杜绝存储型 XSS（如 .html/.svg 内嵌脚本）。
 app.use('/uploads', express.static(uploadsDir, {
   maxAge: '7d',

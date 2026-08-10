@@ -13,6 +13,11 @@ services:
       # 否则按 IP 的限流/注册配额/登录锁定全部退化为共享代理 IP（详见 server/index.js）。
       - key: TRUST_PROXY
         value: "1"
+      # 数据库与用户上传文件必须同处这块持久盘。上传目录默认取 DB_PATH 所在目录下的
+      # uploads/（见 server/storage.js），因此这里只配 DB_PATH 就够了：
+      # 实际落盘位置是 /data/uploads。
+      # 早前上传写在容器内的 server/uploads，每次部署容器重建 → 库还在、文件全没，
+      # user_uploads 的行变成占着配额的幽灵记录。需要分离时用 UPLOAD_DIR 显式覆盖。
       - key: DB_PATH
         value: /data/data.sqlite
       - key: JWT_SECRET

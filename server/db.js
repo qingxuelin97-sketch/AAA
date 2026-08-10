@@ -6,6 +6,9 @@ import fs from 'fs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // DB_PATH lets hosted deploys point at a persistent volume (e.g. a mounted disk).
 const dbFile = process.env.DB_PATH || path.join(__dirname, 'data.sqlite');
+// 导出给上传目录定位用：用户上传的文件必须和数据库落在同一块持久化存储上，
+// 否则会出现「库还在、文件没了」的半残状态（见 server/storage.js）。
+export const DB_FILE = dbFile;
 const db = new Database(dbFile);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
