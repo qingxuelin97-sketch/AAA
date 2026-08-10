@@ -185,7 +185,29 @@ try {
     stub.on('request', prev);
   }
 
-  // 8) 扣费失败分型：错误里必须带 code，且 error 仍是字符串（sse.js 依赖这个契约）
+  // 8) 收尾事件：本轮 id 必须随流带回，客户端不再需要重拉整个会话
+  {
+    const convId4 = (await J(await post('/chat/conversations', { character_id: cid }, tok))).conversation.id;
+    const r = await sse(`/chat/conversations/${convId4}/complete`, { content: '带回 id' }, tok);
+    const tail = r.text.split('\n').filter(l => l.startsWith('data:') && !l.includes('[DONE]'))
+      .map(l => { try { return JSON.parse(l.slice(5)); } catch { return null; } })
+      .find(x => x?.assistant_message_id);
+    ok(!!tail, '流里带回了收尾事件');
+    const stored = dbRead(d => d.prepare("SELECT id, role FROM messages WHERE conversation_id = ? ORDER BY id").all(convId4));
+    ok(tail?.user_message_id === stored.find(m => m.role === 'user')?.id, `user_message_id 与落库一致（${tail?.user_message_id}）`);
+    ok(tail?.assistant_message_id === stored.find(m => m.role === 'assistant')?.id, `assistant_message_id 与落库一致（${tail?.assistant_message_id}）`);
+    ok(typeof tail?.affinity === 'number', '带回好感度，省掉一次会话重拉');
+
+    // 重新生成时 id 不变、变体计数随流带回，气泡上的翻页器才能立刻出现
+    const r2 = await sse(`/chat/conversations/${convId4}/regenerate`, {}, tok);
+    const tail2 = r2.text.split('\n').filter(l => l.startsWith('data:') && !l.includes('[DONE]'))
+      .map(l => { try { return JSON.parse(l.slice(5)); } catch { return null; } })
+      .find(x => x?.assistant_message_id);
+    ok(tail2?.assistant_message_id === tail?.assistant_message_id, '重新生成后 id 不变');
+    ok(tail2?.variant_count === 2 && tail2?.variant_index === 1, `变体计数随流带回（${tail2?.variant_count}/${tail2?.variant_index}）`);
+  }
+
+  // 9) 扣费失败分型：错误里必须带 code，且 error 仍是字符串（sse.js 依赖这个契约）
   {
     const convId3 = (await J(await post('/chat/conversations', { character_id: cid }, tok))).conversation.id;
     dbWrite((d) => d.prepare('UPDATE users SET gold = 0 WHERE id = ?').run(uid));

@@ -731,7 +731,8 @@ async function streamCompletion(conv, character, settings, userContent, me, opts
       return new Response(new ReadableStream({ start(c) { c.enqueue(enc.encode(`data: ${JSON.stringify(payload)}\n\n`)); c.enqueue(enc.encode('data: [DONE]\n\n')); c.close(); } }), { headers: { 'content-type': 'text/event-stream' } });
     }
   }
-  if (userContent) insert('messages', { conversation_id: conv.id, role: 'user', content: userContent });
+  let userMessageId = null;
+  if (userContent) userMessageId = insert('messages', { conversation_id: conv.id, role: 'user', content: userContent }).id;
   const history = filter('messages', m => m.conversation_id === conv.id);
   const recent = history.slice(-6).map(m => m.content).join(' ');
   let system = buildSystemPrompt(character, recent + ' ' + userContent);
@@ -773,6 +774,8 @@ async function streamCompletion(conv, character, settings, userContent, me, opts
         } else if (!up.ok && !up._handled) { const t = await (up.text ? up.text().catch(() => '') : Promise.resolve('')); if (t || !full) send({ error: `模型服务返回 ${up.status || ''}：${(t || '').slice(0, 300)}` }); }
       } catch (err) { send({ error: '连接模型服务失败：' + err.message + '（可能是服务商的浏览器跨域限制；可尝试在设置中更换协议或服务商）' }); }
       if (full.trim()) {
+        let assistantMessageId = regenerateOf || null;
+        let variantCount = 0, variantIndex = 0;
         if (regenerateOf) {
           // 追加变体：旧版本留着可回看，消息 id 不变（书签与表情反应因此存活）。
           const target = find('messages', x => x.id === regenerateOf);
@@ -782,9 +785,10 @@ async function streamCompletion(conv, character, settings, userContent, me, opts
             target.content = full.trim();
             target.variant_index = target.variants.length - 1;
             target.variant_count = target.variants.length;
+            variantCount = target.variant_count; variantIndex = target.variant_index;
           }
         } else {
-          insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() });
+          assistantMessageId = insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() }).id;
         }
         conv.updated_at = now();
         if (userContent) conv.affinity = (conv.affinity || 0) + 3; // 好感度随有效互动增长
@@ -794,6 +798,11 @@ async function streamCompletion(conv, character, settings, userContent, me, opts
           me.chat_credits -= 1; send({ fee: 0, credit_used: true, chat_credits: me.chat_credits });
         } else if (feeDue && me) { try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 对话《${character?.name || ''}》`, ref_owner: character?.owner_id }); send({ fee: feeDue }); } catch { /* */ } }
         save();
+        // 收尾事件：与服务端同契约，把本轮 id 直接带回，客户端不必再重拉整个会话。
+        if (assistantMessageId) {
+          send({ user_message_id: userMessageId, assistant_message_id: assistantMessageId,
+            affinity: conv.affinity || 0, variant_count: variantCount, variant_index: variantIndex });
+        }
       }
       controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close();
     }
@@ -855,6 +864,11 @@ async function streamSilentGenerate(conv, character, settings, userInput, me, in
       if (full.trim() && feeDue && me) {
         try { applyTx(me.id, { kind: 'ai_fee', gold: -feeDue, memo: `平台 AI · 面板生成《${character?.name || ''}》`, ref_owner: character?.owner_id }); send({ fee: feeDue }); } catch { /* */ }
         save();
+        // 收尾事件：与服务端同契约，把本轮 id 直接带回，客户端不必再重拉整个会话。
+        if (assistantMessageId) {
+          send({ user_message_id: userMessageId, assistant_message_id: assistantMessageId,
+            affinity: conv.affinity || 0, variant_count: variantCount, variant_index: variantIndex });
+        }
       }
       controller.enqueue(encoder.encode('data: [DONE]\n\n')); controller.close();
     }

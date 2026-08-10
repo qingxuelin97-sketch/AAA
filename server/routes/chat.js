@@ -873,10 +873,12 @@ router.post('/conversations/:id/complete', authRequired, aiLimiter, async (req, 
   const settings = getSettings(req.user.id);
 
   const userContent = String(req.body?.content || '').trim().slice(0, MAX_MESSAGE_CHARS);
+  let userMessageId = null;
   if (userContent) {
-    db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'user', userContent);
+    userMessageId = Number(db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)')
+      .run(conv.id, 'user', userContent).lastInsertRowid);
   }
-  await streamReply(res, req, conv, character, settings, userContent, 'ai_reply');
+  await streamReply(res, req, conv, character, settings, userContent, 'ai_reply', { userMessageId });
 });
 
 // —— 重新生成：追加变体，不删除旧回复 ——
@@ -1313,6 +1315,7 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
       extra: { conversation_id: conv.id, character_id: conv.character_id, chars: delivered.length, gold_fee: activeFeeCtx.fee || 0, interrupted: true } });
     return;
   }
+  let assistantMessageId = regenerateOf || null;
   if (full.trim()) {
     if (regenerateOf) {
       // 追加为新变体：旧版本留在 message_variants 里可回看，消息 id 不变，
@@ -1321,7 +1324,8 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
       // 内容整个换了一版，其中的 {{set:}} 可能不同，强制重扫而不是增量合并。
       invalidateWbVars(conv.id);
     } else {
-      db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
+      assistantMessageId = Number(db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)')
+        .run(conv.id, 'assistant', full.trim()).lastInsertRowid);
       // 只解析这一条新回复里的 {{set:var=value}} 并合并进持久化变量。
       // 与「每轮重扫整段历史」等价，但不随历史被裁剪而丢失。
       mergeWbVars(conv.id, full.trim());
@@ -1339,6 +1343,23 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
     user_id: conv.user_id, ip: req.ip, ua: req.header('user-agent') || '',
     endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
     extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: feeDue || 0, chars: full.length, platform: !!eff?.platform } });
+  // —— 收尾事件：把本轮产生的 id 直接带回去 ——
+  // 客户端此前为了拿这两个自增 id（编辑/删除/书签都要用），会在每轮结束后重新
+  // GET 整个会话——连同角色、世界书、全部历史消息一起重拉。400 条消息的会话每轮
+  // 约 180KB，而真正需要的只有两个整数。一次性带回，客户端不必再拉。
+  if (assistantMessageId) {
+    const v = db.prepare(`SELECT
+        (SELECT COUNT(*) FROM message_variants x WHERE x.message_id = ?) AS variant_count,
+        (SELECT COUNT(*) FROM message_variants x WHERE x.message_id = ? AND x.id <= m.variant_active) - 1 AS variant_index
+      FROM messages m WHERE m.id = ?`).get(assistantMessageId, assistantMessageId, assistantMessageId);
+    sse({
+      user_message_id: opts.userMessageId ?? null,
+      assistant_message_id: assistantMessageId,
+      affinity: db.prepare('SELECT affinity FROM conversations WHERE id = ?').get(conv.id)?.affinity ?? 0,
+      variant_count: v?.variant_count ?? 0,
+      variant_index: v?.variant_index ?? 0,
+    });
+  }
   res.write('data: [DONE]\n\n');
   res.end();
 }

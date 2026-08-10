@@ -349,7 +349,6 @@ export default function Chat() {
     if (bgmOn && character?.bgm) { el.volume = 0.45; el.play().catch(() => {}); }
     else { el.pause(); }
   }, [character?.bgm, bgmOn]);
-  const syncMessages = () => api('/chat/conversations/' + id).then(d => { setMessages(d.messages); setAffinity(d.conversation.affinity || 0); setMemories(d.conversation.memories || []); }).catch(() => {});
 
   const addMemory = async () => {
     const c = newMem.trim(); if (!c) return;
@@ -482,6 +481,28 @@ export default function Chat() {
   };
   useEffect(() => () => { if (bgParaRef.current) cancelAnimationFrame(bgParaRef.current); }, []);
 
+  // 把服务端收尾事件带回的 id 贴到本轮的乐观消息上。
+  // 编辑 / 删除 / 书签 / 表情反应都要用真实 id，此前是靠重拉整个会话拿到的。
+  const setIds = ({ user, assistant, variantCount, variantIndex }) => {
+    setMessages(m => {
+      const copy = [...m];
+      for (let i = copy.length - 1; i >= 0; i--) {
+        if (copy[i].role === 'assistant') {
+          // 重新生成时消息 id 不变（服务端追加变体而非新建），这里一并更新变体计数，
+          // 气泡上的 ‹ 2/3 › 翻页器才能立刻出现。
+          copy[i] = { ...copy[i], id: assistant, variant_count: variantCount, variant_index: variantIndex };
+          break;
+        }
+      }
+      if (user != null) {
+        for (let i = copy.length - 1; i >= 0; i--) {
+          if (copy[i].role === 'user' && copy[i].id == null) { copy[i] = { ...copy[i], id: user }; break; }
+        }
+      }
+      return copy;
+    });
+  };
+
   // Stream a reply from the given endpoint into the trailing assistant bubble.
   // 解析循环收敛到 chat/sse.js（与 CallScreen / tavernbridge 共用，内置 getApiBase 前缀）；
   // 这里只保留 rAF 节流的增量落地逻辑（每帧最多一次 setMessages，降低低端机渲染压力）。
@@ -500,6 +521,14 @@ export default function Chat() {
         onJson: (j) => {
           if (j.credit_used) { toast(`已用 1 张聊天次数卡抵扣本次对话（剩 ${j.chat_credits} 张）`); refreshUser?.(); }
           else if (j.fee) refreshUser?.();
+          // 收尾事件：服务端把本轮产生的消息 id 直接带回来了，就地贴到乐观消息上。
+          // 此前这两个 id 要靠再 GET 一次整个会话来取（连角色和世界书一起重拉，
+          // 400 条消息的会话每轮约 180KB），而真正需要的只有两个整数。
+          if (j.assistant_message_id) {
+            setIds({ user: j.user_message_id ?? null, assistant: j.assistant_message_id,
+              variantCount: j.variant_count ?? 0, variantIndex: j.variant_index ?? 0 });
+            if (typeof j.affinity === 'number') setAffinity(j.affinity);
+          }
         },
         onDelta: (delta) => {
           if (!isCurrent()) return;
@@ -541,7 +570,7 @@ export default function Chat() {
       }
       loadConvs();
       refreshUser?.();
-      syncMessages(); // pull server IDs so edit/delete work on the new turn
+      // 不再 syncMessages()：id / 好感 / 变体计数都已由收尾事件带回（见 onJson）。
     } catch (err) {
       if (!isCurrent()) return;
       // User-initiated stop: keep whatever streamed so far, no error toast.
