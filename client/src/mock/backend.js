@@ -712,7 +712,10 @@ function buildSystemPrompt(character, recentText) {
 }
 
 /* ----------------------------- LLM (browser → provider) ----------------------------- */
-async function streamCompletion(conv, character, settings, userContent, me) {
+// opts.regenerateOf：把结果写成该消息的新变体而不是新插一条，与
+// server/routes/chat.js 的 streamReply 同语义（旧回复保留、消息 id 不变）。
+async function streamCompletion(conv, character, settings, userContent, me, opts = {}) {
+  const regenerateOf = opts.regenerateOf || null;
   const eff = effectiveLLM(settings);
   // When falling back to the platform service, verify the user can afford the fee
   // up-front, but only DEDUCT it after a successful reply (no charge on failure).
@@ -768,7 +771,20 @@ async function streamCompletion(conv, character, settings, userContent, me) {
         } else if (!up.ok && !up._handled) { const t = await (up.text ? up.text().catch(() => '') : Promise.resolve('')); if (t || !full) send({ error: `模型服务返回 ${up.status || ''}：${(t || '').slice(0, 300)}` }); }
       } catch (err) { send({ error: '连接模型服务失败：' + err.message + '（可能是服务商的浏览器跨域限制；可尝试在设置中更换协议或服务商）' }); }
       if (full.trim()) {
-        insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() }); conv.updated_at = now();
+        if (regenerateOf) {
+          // 追加变体：旧版本留着可回看，消息 id 不变（书签与表情反应因此存活）。
+          const target = find('messages', x => x.id === regenerateOf);
+          if (target) {
+            target.variants = target.variants?.length ? target.variants : [target.content];
+            target.variants.push(full.trim());
+            target.content = full.trim();
+            target.variant_index = target.variants.length - 1;
+            target.variant_count = target.variants.length;
+          }
+        } else {
+          insert('messages', { conversation_id: conv.id, role: 'assistant', content: full.trim() });
+        }
+        conv.updated_at = now();
         if (userContent) conv.affinity = (conv.affinity || 0) + 3; // 好感度随有效互动增长
         // Only now deduct the platform fee — successful reply.
         // 聊天次数卡（转盘奖品）优先抵扣，与真实服务端 chargePlatformFee 同语义。
@@ -1715,8 +1731,19 @@ async function route(method, path, search, body, headers) {
     const ch = find('characters', x => x.id === conv.character_id); const s = find('settings', x => x.user_id === me.id);
     const msgs = filter('messages', x => x.conversation_id === conv.id);
     const last = msgs[msgs.length - 1];
-    if (last && last.role === 'assistant') { db.messages = filter('messages', x => x.id !== last.id); save(); }
-    return streamCompletion(conv, ch, s, '');
+    // 不再删除旧回复——改为追加变体（与服务端同语义）。
+    return streamCompletion(conv, ch, s, '', me, { regenerateOf: last && last.role === 'assistant' ? last.id : null });
+  }
+  // 变体切换（气泡上的 ‹ 2/3 › 翻页）：只改指向哪一版，不产生内容、不计费。
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/messages\/(\d+)\/variant$/)) && method === 'POST') {
+    need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
+    const msg = find('messages', x => x.id === +m[2] && x.conversation_id === conv.id); if (!msg) return E('消息不存在', 404);
+    const variants = msg.variants || [];
+    if (!variants.length) return E('这条消息没有其它版本');
+    const idx = Number.parseInt(body.index, 10);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= variants.length) return E(`版本序号无效（应在 0 ~ ${variants.length - 1} 之间）`);
+    msg.content = variants[idx]; msg.variant_index = idx; msg.variant_count = variants.length; save();
+    return J({ message: msg, variant_index: idx, variant_count: variants.length });
   }
   if ((m = P(/^\/chat\/conversations\/(\d+)\/messages\/(\d+)$/))) {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);

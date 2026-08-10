@@ -982,6 +982,20 @@ CREATE INDEX IF NOT EXISTS idx_logs_event ON logs (event, id);
 CREATE INDEX IF NOT EXISTS idx_logs_request ON logs (request_id);
 CREATE INDEX IF NOT EXISTS idx_logs_endpoint ON logs (endpoint, id);
 CREATE INDEX IF NOT EXISTS idx_logs_session ON logs (session_id);
+
+-- —— 回复变体（重新生成 / 左右翻看）——
+-- 「重新生成」此前是先 DELETE 掉上一条 assistant 消息再重新生成：生成失败时旧回复
+-- 已经没了，用户凭空丢内容；成功时也无法回看上一版。
+-- 改为追加变体：messages.content 恒为**当前生效的那一版**，因此会话列表的
+-- last_message 子查询、导出、洞察统计、成就计数、酒馆桥接等所有读取方零改动；
+-- 消息 id 不变，书签与表情反应在重新生成后依然挂在同一条消息上。
+CREATE TABLE IF NOT EXISTS message_variants (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_message_variants_msg ON message_variants (message_id, id);
 `);
 // 迁移：为已有数据库补齐新列（忽略已存在）。
 for (const sql of [
@@ -995,6 +1009,9 @@ for (const sql of [
   // 刻意**不给默认值**：NULL 表示「尚未回扫」，老会话首次读取时据此做一次性全量重建。
   // 若给了 DEFAULT '{}'，存量会话会被当成「已回扫且变量为空」，历史变量当场全部丢失。
   'ALTER TABLE conversations ADD COLUMN wb_vars TEXT',
+  // 当前生效变体的 message_variants.id。NULL = 这条消息还没有过变体
+  //（绝大多数消息都是这种，只有被重新生成过的才会有）。
+  'ALTER TABLE messages ADD COLUMN variant_active INTEGER',
 ]) { try { db.exec(sql); } catch { /* column exists */ } }
 
 // —— 举报去重 ——

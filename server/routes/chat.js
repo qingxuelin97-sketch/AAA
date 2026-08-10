@@ -331,6 +331,35 @@ export function parseWbSets(content) {
   return out;
 }
 
+// 会话内消息列表。带上 variant_count / variant_index 让气泡能画出 ‹ 2/3 › 翻页器；
+// 绝大多数消息没有变体，子查询命中 idx_message_variants_msg，代价可忽略。
+const MESSAGES_SQL = `SELECT m.*,
+    (SELECT COUNT(*) FROM message_variants v WHERE v.message_id = m.id) AS variant_count,
+    (SELECT COUNT(*) FROM message_variants v WHERE v.message_id = m.id AND v.id <= m.variant_active) - 1 AS variant_index
+  FROM messages m WHERE m.conversation_id = ? ORDER BY m.id`;
+
+// —— 回复变体 ——
+// messages.content 恒为当前生效的那一版，所以所有既有读取方（会话列表的
+// last_message 子查询、导出、洞察统计、成就计数、酒馆桥接）都不需要改动。
+// 变体表只在「用户想回看上一版」时才被查询。
+const listVariants = (messageId) =>
+  db.prepare('SELECT id, content FROM message_variants WHERE message_id = ? ORDER BY id').all(messageId);
+
+// 追加一个新版本并置为生效。首次追加时先把当前 content 存成第 1 版，
+// 否则原始那一版就成了唯一没有被记录下来的版本。
+const appendVariant = db.transaction((messageId, newContent) => {
+  const msg = db.prepare('SELECT content FROM messages WHERE id = ?').get(messageId);
+  if (!msg) return null;
+  const existing = db.prepare('SELECT COUNT(*) AS n FROM message_variants WHERE message_id = ?').get(messageId).n;
+  if (existing === 0) {
+    db.prepare('INSERT INTO message_variants (message_id, content) VALUES (?,?)').run(messageId, msg.content);
+  }
+  const info = db.prepare('INSERT INTO message_variants (message_id, content) VALUES (?,?)').run(messageId, newContent);
+  db.prepare('UPDATE messages SET content = ?, variant_active = ? WHERE id = ?')
+    .run(newContent, info.lastInsertRowid, messageId);
+  return Number(info.lastInsertRowid);
+});
+
 // 编辑 / 删除消息后调用：置回 NULL，下次读取时全量重建。
 // 改为增量累积后，「改掉某条回复里的 {{set:}}」不会自动反映到已持久化的变量上，
 // 而改造前是每轮重扫、会自动反映。置空强制重扫，保持与改造前完全一致的语义。
@@ -695,7 +724,7 @@ router.get('/conversations/:id', authRequired, (req, res) => {
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
   const character = withWorld(db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id));
-  const messages = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
+  const messages = db.prepare(MESSAGES_SQL).all(conv.id);
   res.json({ conversation: parseMem(conv), character, messages });
 });
 
@@ -722,7 +751,7 @@ router.patch('/conversations/:id', authRequired, (req, res) => {
     && !(typeof req.body?.title === 'string' && req.body.title.trim()) && !req.body?.clear;
   if (!markOnly) db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   const updated = parseMem(db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id));
-  res.json({ conversation: updated, messages: db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id) });
+  res.json({ conversation: updated, messages: db.prepare(MESSAGES_SQL).all(conv.id) });
 });
 
 router.delete('/conversations/:id', authRequired, (req, res) => {
@@ -850,15 +879,43 @@ router.post('/conversations/:id/complete', authRequired, aiLimiter, async (req, 
   await streamReply(res, req, conv, character, settings, userContent, 'ai_reply');
 });
 
-// Regenerate: drop the trailing assistant message, then produce a fresh reply.
+// —— 重新生成：追加变体，不删除旧回复 ——
+// 此前是「先 DELETE 掉上一条 assistant 消息，再重新生成」。两个后果：
+//   ① 生成失败时旧回复已经没了，用户凭空丢内容，且无法撤销；
+//   ② 即使成功，上一版也永远消失，没法比较或退回。
+// 现在旧内容作为变体保留，messages.content 恒为当前生效的那一版，消息 id 不变
+//（书签与表情反应因此在重新生成后依然存活）。
 router.post('/conversations/:id/regenerate', authRequired, aiLimiter, async (req, res) => {
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
   if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
   const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
   const settings = getSettings(req.user.id);
   const last = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 1').get(conv.id);
-  if (last && last.role === 'assistant') db.prepare('DELETE FROM messages WHERE id = ?').run(last.id);
-  await streamReply(res, req, conv, character, settings, '', 'regenerate');
+  // 只有末尾确实是 assistant 才走「改写这一条」；否则退化为追加一条新回复
+  //（例如用户刚发完话还没有回复时点了重新生成）。
+  const targetId = last && last.role === 'assistant' ? last.id : null;
+  await streamReply(res, req, conv, character, settings, '', 'regenerate', { regenerateOf: targetId });
+});
+
+// —— 变体切换（气泡上的 ‹ 2/3 › 翻页）——
+// 只改 messages.content 指向哪一版，不产生新内容、不计费。
+router.post('/conversations/:id/messages/:mid/variant', authRequired, (req, res) => {
+  const conv = ownConv(req, res); if (!conv) return;
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ? AND conversation_id = ?').get(req.params.mid, conv.id);
+  if (!msg) return res.status(404).json({ error: '消息不存在' });
+  const variants = listVariants(msg.id);
+  if (!variants.length) return res.status(400).json({ error: '这条消息没有其它版本' });
+  // 这里要的是「越界即拒绝」，不能用 clampInt——夹紧会把 index=99 悄悄变成最后一版，
+  // 用户以为翻到了某一版，实际看到的是另一版。
+  const idx = Number.parseInt(req.body?.index, 10);
+  if (!Number.isInteger(idx) || idx < 0 || idx >= variants.length) {
+    return res.status(400).json({ error: `版本序号无效（应在 0 ~ ${variants.length - 1} 之间）` });
+  }
+  const picked = variants[idx];
+  db.prepare('UPDATE messages SET content = ?, variant_active = ? WHERE id = ?').run(picked.content, picked.id, msg.id);
+  // 变体切换等同于改写了这条回复的内容，其中的 {{set:}} 可能不同——强制重扫。
+  invalidateWbVars(conv.id);
+  res.json({ message: { ...msg, content: picked.content, variant_active: picked.id }, variant_index: idx, variant_count: variants.length });
 });
 
 // 共用：把上游 OpenAI 兼容流转发为本平台 SSE（data:{delta}）。
@@ -1129,7 +1186,9 @@ router.post('/conversations/:id/generate', authRequired, aiLimiter, async (req, 
 });
 
 // Shared SSE streaming of a model reply; persists the assistant message.
-async function streamReply(res, req, conv, character, settings, userContent, event) {
+// opts.regenerateOf：把结果写成该消息的新变体而不是新插一条（见 /regenerate）。
+async function streamReply(res, req, conv, character, settings, userContent, event, opts = {}) {
+  const regenerateOf = opts.regenerateOf || null;
   const me = db.prepare('SELECT id, gold, vip_until, svip FROM users WHERE id = ?').get(conv.user_id);
   let eff = effectiveLLM(settings);
 
@@ -1146,7 +1205,12 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
 
   if (!eff) { sse({ error: '尚未配置语言模型 API，且平台服务未开启。请前往「设置 → 语言模型」填写 API Key。' }); sse('[DONE]'); return res.end(); }
 
-  const history = db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
+  // 重新生成时必须把「正在被重写的那一条」排除出上下文。改造前是靠先 DELETE 掉它
+  // 达成的；现在不删了，就得在这里显式排除，否则模型会看到自己上一版回答并顺着往下写，
+  // 「重新生成」退化成「续写」。
+  const history = regenerateOf
+    ? db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? AND id <> ? ORDER BY id').all(conv.id, regenerateOf)
+    : db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
   // 计费档位取**会话的真实消息数**，而不是本次注入的 history 数组长度。
   // 这两者今天恰好相等，但上下文一加窗就会分道扬镳：platform.js 的档位是
   // msgCount > 100 ? 30 : 20，届时所有重会话会永久落回 20 金档，账面静默下滑 33%
@@ -1228,11 +1292,19 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
     return;
   }
   if (full.trim()) {
-    db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
+    if (regenerateOf) {
+      // 追加为新变体：旧版本留在 message_variants 里可回看，消息 id 不变，
+      // 因此这条消息上的书签与表情反应都不受影响。
+      appendVariant(regenerateOf, full.trim());
+      // 内容整个换了一版，其中的 {{set:}} 可能不同，强制重扫而不是增量合并。
+      invalidateWbVars(conv.id);
+    } else {
+      db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', full.trim());
+      // 只解析这一条新回复里的 {{set:var=value}} 并合并进持久化变量。
+      // 与「每轮重扫整段历史」等价，但不随历史被裁剪而丢失。
+      mergeWbVars(conv.id, full.trim());
+    }
     db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
-    // 只解析这一条新回复里的 {{set:var=value}} 并合并进持久化变量。
-    // 与「每轮重扫整段历史」等价，但不随历史被裁剪而丢失。
-    mergeWbVars(conv.id, full.trim());
     // 好感 +3/条：经 grantAffinity 走每日共享配额（与礼物同池），打满后 +0。
     if (userContent) { try { grantAffinity(conv.user_id, conv.id, 3, character?.name || ''); } catch { /* */ } }
     activeFeeCtx.settle();

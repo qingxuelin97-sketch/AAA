@@ -19,6 +19,8 @@ export const BACKUP_TABLES = [
   // 以下三张是用户数据，此前一直漏登记：hearts 是收藏/喜欢关系，character_views 是
   // 曝光计数（也是唯一能算 CTR 的分母），reading_progress 是阅读进度。
   'hearts', 'character_views', 'reading_progress',
+  // 回复变体：被重新生成过的消息的历史版本，属于用户内容
+  'message_variants',
 ];
 
 // 明确**不进**备份的表，与 BACKUP_TABLES 一起构成对 db.js 全部建表的完整覆盖。
