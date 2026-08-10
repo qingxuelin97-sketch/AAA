@@ -10,6 +10,13 @@ export const clampInt = (v, lo, hi, def = lo) => {
   return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
 };
 
+// 浮点夹紧：解析失败或非有限值回落 def；否则夹到 [lo, hi]。
+// 与 clampInt 对称——采样温度一类的实数参数此前没有对应工具，各处只能裸传。
+export const clampFloat = (v, lo, hi, def = lo) => {
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
+};
+
 // 宽松布尔：true / 1 / '1' / 'true' 视为真。
 export const bool = (v) => v === true || v === 1 || v === '1' || v === 'true';
 

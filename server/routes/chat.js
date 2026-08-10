@@ -13,6 +13,11 @@ import { effectiveLLM } from '../llm.js';
 
 const router = Router();
 
+// 单条消息落库上限。此前发消息与编辑消息都不限长：一条超大消息不仅撑爆 messages
+// 表，还会在之后的**每一轮**对话里被重新读进上下文并发给上游，成本按轮次持续累加。
+// 8000 字对中文长文本足够宽松，同时把单条的爆炸半径限住。
+const MAX_MESSAGE_CHARS = 8000;
+
 function getSettings(userId) {
   return db.prepare('SELECT * FROM settings WHERE user_id = ?').get(userId);
 }
@@ -716,7 +721,8 @@ router.patch('/conversations/:id/messages/:mid', authRequired, (req, res) => {
   const conv = ownConv(req, res); if (!conv) return;
   const msg = db.prepare('SELECT * FROM messages WHERE id = ? AND conversation_id = ?').get(req.params.mid, conv.id);
   if (!msg) return res.status(404).json({ error: '消息不存在' });
-  const c = String(req.body?.content || '').trim(); if (!c) return res.status(400).json({ error: '内容不能为空' });
+  const c = String(req.body?.content || '').trim().slice(0, MAX_MESSAGE_CHARS);
+  if (!c) return res.status(400).json({ error: '内容不能为空' });
   db.prepare('UPDATE messages SET content = ? WHERE id = ?').run(c, msg.id);
   res.json({ message: { ...msg, content: c } });
 });
@@ -751,7 +757,7 @@ router.post('/conversations/:id/complete', authRequired, aiLimiter, async (req, 
   const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
   const settings = getSettings(req.user.id);
 
-  const userContent = (req.body?.content || '').trim();
+  const userContent = String(req.body?.content || '').trim().slice(0, MAX_MESSAGE_CHARS);
   if (userContent) {
     db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'user', userContent);
   }
