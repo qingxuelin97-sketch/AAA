@@ -61,16 +61,18 @@ function Entrance() {
 
 const STATUS = {
   pending: { label: '征集中', seal: '待\n采', cls: 'pending', desc: '已公开陈列，候主席团采纳付诸表决' },
-  voting: { label: '审议表决', seal: '表\n决', cls: 'voting', desc: '议员表决中：赞成逾半数成一般决议，逾三分之二成特别决议' },
-  passed_general: { label: '一般决议', seal: '通\n过', cls: 'g', desc: '赞成逾二分之一，已成一般决议' },
-  passed_special: { label: '特别决议', seal: '特\n别', cls: 's', desc: '赞成逾三分之二，已成特别决议' },
-  failed: { label: '未获通过', seal: '未\n通', cls: 'failed', desc: '赞成未达半数' },
+  // 文案按服务端实际口径写：阈值取到（>=）即通过，且分母只算赞成+反对，弃权不计入。
+  voting: { label: '审议表决', seal: '表\n决', cls: 'voting', desc: '议员表决中：赞成占比（不含弃权）达半数成一般决议，达三分之二成特别决议' },
+  passed_general: { label: '一般决议', seal: '通\n过', cls: 'g', desc: '赞成占比达二分之一，已成一般决议' },
+  passed_special: { label: '特别决议', seal: '特\n别', cls: 's', desc: '赞成占比达三分之二，已成特别决议' },
+  failed: { label: '未获通过', seal: '未\n通', cls: 'failed', desc: '赞成占比未达半数' },
   rejected: { label: '未予采纳', seal: '驳\n回', cls: 'rejected', desc: '主席团未予采纳' },
 };
 
 function SupportBar({ ratio, total, animate }) {
   const pct = Math.round((ratio || 0) * 100);
-  const tier = ratio > 2 / 3 ? 's' : ratio > 0.5 ? 'g' : 'f';
+  // 与服务端 tallyVotes 同款：阈值取到即算达标（>=，不是 >）。
+  const tier = ratio >= 2 / 3 ? 's' : ratio >= 0.5 ? 'g' : 'f';
   return (
     <div className="pl-bar-wrap">
       <div className={'pl-bar tier-' + tier}>

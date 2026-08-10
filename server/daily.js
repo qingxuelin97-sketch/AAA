@@ -16,11 +16,18 @@ export const DAILY_TASKS = [
 export const cnToday = (d = new Date()) => new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10);
 const today = cnToday;
 
+// ⚠ 名字是读，实际会写：首次访问要建行，跨日要重置。它被 GET /engage/tasks、
+// gacha 的状态查询、affinity 等纯读路径调用，所以「一个 GET 会写库」是既有事实。
+// 这里只堵住那个真问题：原来的裸 INSERT 没有任何冲突保护，而 daily_progress 的
+// 主键是 user_id —— 新用户首日两个并发请求，必有一个撞 UNIQUE 抛错。
 export function dailyOf(userId) {
   let row = db.prepare('SELECT * FROM daily_progress WHERE user_id = ?').get(userId);
   if (!row) {
-    db.prepare('INSERT INTO daily_progress (user_id, date, counts, claimed) VALUES (?,?,?,?)').run(userId, today(), '{}', '[]');
-    row = { user_id: userId, date: today(), counts: '{}', claimed: '[]' };
+    db.prepare('INSERT INTO daily_progress (user_id, date, counts, claimed) VALUES (?,?,?,?) ON CONFLICT(user_id) DO NOTHING')
+      .run(userId, today(), '{}', '[]');
+    // 并发下可能是别人建的行，回读一次拿真值，不要臆造。
+    row = db.prepare('SELECT * FROM daily_progress WHERE user_id = ?').get(userId)
+      || { user_id: userId, date: today(), counts: '{}', claimed: '[]' };
   }
   if (row.date !== today()) {
     db.prepare('UPDATE daily_progress SET date = ?, counts = ?, claimed = ? WHERE user_id = ?').run(today(), '{}', '[]', userId);

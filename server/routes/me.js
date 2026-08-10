@@ -43,12 +43,17 @@ function revenuePlan(u) {
 }
 // 创作者收入明细序列：按天 + 按来源拆分，供创作中心展示「每段情况」。
 // 来源分类：sell_script 剧本销售 / revenue_share 分成领取 / other 其他（签到/任务/成就/活动等）。
+// 日期口径统一走北京日（cnToday）。
+// 原来这里按 UTC 日切桶，而同一个响应体里的 /weekly 走的是北京日 —— 用户在
+// 00:00–08:00（北京）产生的记录会被算进「昨天」，于是收入曲线与周报对不上，
+// 且没有任何报错。created_at 是 SQLite 的 datetime('now')，即 UTC 串。
 function incomeSeries(uid, days = 14) {
   const txs = db.prepare('SELECT gold, kind, created_at FROM transactions WHERE user_id = ? AND gold > 0').all(uid);
+  const cnDayOf = (ts) => (ts ? cnToday(new Date(String(ts).replace(' ', 'T') + 'Z')) : '');
   const out = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-    const dayTxs = txs.filter(t => (t.created_at || '').slice(0, 10) === d);
+    const d = cnToday(new Date(Date.now() - i * 86400000));
+    const dayTxs = txs.filter(t => cnDayOf(t.created_at) === d);
     const sell = dayTxs.filter(t => t.kind === 'sell_script').reduce((s, t) => s + t.gold, 0);
     const share = dayTxs.filter(t => t.kind === 'revenue_share').reduce((s, t) => s + t.gold, 0);
     const other = dayTxs.filter(t => t.kind !== 'sell_script' && t.kind !== 'revenue_share').reduce((s, t) => s + t.gold, 0);
@@ -131,13 +136,14 @@ router.get('/insights', authRequired, (req, res) => {
     WHERE c.user_id = ? AND m.role = 'user'`, uid).n || 0;
 
   // 近 14 天逐日消息量（含 0 的日子，前端画条形图）。
-  const perDay = Object.fromEntries(all(`SELECT substr(m.created_at, 1, 10) d, COUNT(*) n
+  // 同样按北京日分桶（date(..., '+8 hours')），与 /weekly、签到日历、收入曲线一致。
+  const perDay = Object.fromEntries(all(`SELECT date(m.created_at, '+8 hours') d, COUNT(*) n
     FROM messages m JOIN conversations c ON c.id = m.conversation_id
     WHERE c.user_id = ? AND m.created_at >= datetime('now', '-14 days')
     GROUP BY d`, uid).map(r => [r.d, r.n]));
   const days = [];
   for (let i = 13; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    const d = cnToday(new Date(Date.now() - i * 86400000));
     days.push({ date: d.slice(5), n: perDay[d] || 0 });
   }
 

@@ -54,13 +54,24 @@ router.delete('/moments/:id', authRequired, (req, res) => {
   res.json({ ok: true });
 });
 
+// 原写法是裸 INSERT + 无条件 likes+1，且无事务、路由无 try/catch：
+//   · 并发同用户点赞时第二次撞 moment_likes 的 PK 直接抛错 → 500（不是双计数，
+//     但同样是用户点一下就报错）；
+//   · 返回给客户端的 likes 用的是进函数时读到的**陈旧快照** ±1，并发下必然对不上。
+// 收口方式与 characters / scripts 一致：明细增删 + 计数器重算同事务，响应读真值。
+const toggleMomentLike = db.transaction((momentId, userId, want) => {
+  if (want) db.prepare('INSERT OR IGNORE INTO moment_likes (moment_id, user_id) VALUES (?,?)').run(momentId, userId);
+  else db.prepare('DELETE FROM moment_likes WHERE moment_id = ? AND user_id = ?').run(momentId, userId);
+  db.prepare('UPDATE moments SET likes = (SELECT COUNT(*) FROM moment_likes WHERE moment_id = ?) WHERE id = ?').run(momentId, momentId);
+});
+const likesOf = (momentId) => db.prepare('SELECT likes FROM moments WHERE id = ?').get(momentId)?.likes ?? 0;
+
 router.post('/moments/:id/like', authRequired, (req, res) => {
   const m = db.prepare('SELECT * FROM moments WHERE id = ?').get(req.params.id);
   if (!m) return res.status(404).json({ error: '动态不存在' });
   const has = db.prepare('SELECT 1 FROM moment_likes WHERE moment_id = ? AND user_id = ?').get(m.id, req.user.id);
   if (has) {
-    db.prepare('DELETE FROM moment_likes WHERE moment_id = ? AND user_id = ?').run(m.id, req.user.id);
-    db.prepare('UPDATE moments SET likes = MAX(0, likes - 1) WHERE id = ?').run(m.id);
+    toggleMomentLike.immediate(m.id, req.user.id, false);
     log({
       level: 'info', category: 'social', event: 'moment_like',
       user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
@@ -68,10 +79,9 @@ router.post('/moments/:id/like', authRequired, (req, res) => {
       extra: { moment_id: m.id, author_id: m.user_id, liked: false },
       message: `用户 ${req.user.id} 取消点赞动态 ${m.id}`,
     });
-    return res.json({ liked: false, likes: m.likes - 1 });
+    return res.json({ liked: false, likes: likesOf(m.id) });
   }
-  db.prepare('INSERT INTO moment_likes (moment_id, user_id) VALUES (?,?)').run(m.id, req.user.id);
-  db.prepare('UPDATE moments SET likes = likes + 1 WHERE id = ?').run(m.id);
+  toggleMomentLike.immediate(m.id, req.user.id, true);
   if (m.user_id !== req.user.id) notify(m.user_id, `${req.user.display_name || req.user.username} 赞了你的动态`, '/community');
   log({
     level: 'info', category: 'social', event: 'moment_like',
@@ -80,7 +90,7 @@ router.post('/moments/:id/like', authRequired, (req, res) => {
     extra: { moment_id: m.id, author_id: m.user_id, liked: true },
     message: `用户 ${req.user.id} 点赞动态 ${m.id}`,
   });
-  res.json({ liked: true, likes: m.likes + 1 });
+  res.json({ liked: true, likes: likesOf(m.id) });
 });
 
 router.get('/moments/:id/comments', (req, res) => {
@@ -117,6 +127,12 @@ router.get('/suggested', authRequired, (req, res) => {
 router.post('/follow/:id', authRequired, contentLimiter, (req, res) => {
   const target = parseInt(req.params.id, 10);
   if (target === req.user.id) return res.status(400).json({ error: '不能关注自己' });
+  // 此前只挡了「关注自己」。关注一个不存在的 id（或非数字 id 得到 NaN）会一路走到
+  // INSERT，靠外键抛错，而路由没有 try/catch —— 用户看到的是 500 而不是 404。
+  if (!Number.isInteger(target)) return res.status(400).json({ error: '用户 ID 无效' });
+  const targetUser = db.prepare('SELECT id, is_banned FROM users WHERE id = ?').get(target);
+  if (!targetUser) return res.status(404).json({ error: '用户不存在' });
+  if (targetUser.is_banned) return res.status(403).json({ error: '该用户已被封禁' });
   const has = db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?').get(req.user.id, target);
   if (has) {
     db.prepare('DELETE FROM follows WHERE follower_id = ? AND following_id = ?').run(req.user.id, target);

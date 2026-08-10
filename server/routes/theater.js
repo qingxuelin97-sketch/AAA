@@ -378,7 +378,20 @@ router.post('/:id/retry', authRequired, aiLimiter, async (req, res) => {
   const body = last.sender_type === 'narrator' ? { narrator: true } : { character_id: last.sender_id };
   try {
     const gen = await runGeneration(t, gc.eff, body, last.id);
-    db.prepare('DELETE FROM theater_messages WHERE id = ?').run(last.id);
+    // ⚠ runGeneration 是一次真实的上游调用（theater.js:328 的超时上限是 60 秒）。
+    // 这中间房间里的其他人可以经 /say、/act 继续追加段落 —— 多人房间本来就允许。
+    // 原来这里无条件按 id 删掉 last 再把新段落插到队尾，两个后果：
+    //   ① 别人在这期间写的段落还在，重写出来的那段却排到了它们后面 —— 剧情顺序错乱；
+    //   ② 两个并发 retry 读到同一个 last，先到者删了，后到者 DELETE 影响 0 行却照样
+    //      插入 —— 平白多出一段，而且两笔费用都 settle 了。
+    // 改成条件删除：只有 last 仍然是队尾时才替换，否则原样退款并让用户重试。
+    const removed = db.prepare(
+      'DELETE FROM theater_messages WHERE id = ? AND id = (SELECT MAX(id) FROM theater_messages WHERE theater_id = ?)',
+    ).run(last.id, t.id);
+    if (removed.changes !== 1) {
+      gc.feeCtx.refund('重写期间已有新段落');
+      return res.status(409).json({ error: '这段生成期间已经有新的进展，请刷新后再重写', code: 'THEATER_STALE_RETRY' });
+    }
     const info = insertReply(t, gen);
     gc.feeCtx.settle();
     const msg = db.prepare('SELECT * FROM theater_messages WHERE id = ?').get(info.lastInsertRowid);

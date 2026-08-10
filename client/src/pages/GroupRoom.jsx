@@ -13,7 +13,7 @@ import { useLongPress } from '../chat/hooks.js';
 import { tick } from '../appgestures.js';
 import { isAppMode } from '../appmode.js';
 import { AppEmptyArt } from '../art.jsx';
-import { Send, ArrowLeft, Users, LogOut, MessageCircle, X } from 'lucide-react';
+import { Send, ArrowLeft, Users, LogOut, MessageCircle, X, UserPlus } from 'lucide-react';
 
 // 仪与匣：发言人名固定内容语义色 —— 按成员 id 稳定散列到
 // act/dia/gold/success。禁止按列表位置配色：同一成员在任何会话、
@@ -60,6 +60,21 @@ export default function GroupRoom() {
   // 移动端沉浸式布局下输入栏是 fixed 的：键盘弹起时顶到键盘上方（与对话页一致）
   useKeyboardInsetBar(barRef, [group]);
   useAutoGrow(inputRef, input);
+
+  // 私有群此前根本进不了人 —— join 的两个条件互斥（详见 server/routes/groups.js
+  // 的注释），而「受邀」承诺的邀请端点全仓不存在。后端补上 /invite/:userId 之后，
+  // 这里给群主一个入口，那句文案才算兑现。
+  const isOwner = String(group?.owner_id) === String(user?.id);
+  const invite = async () => {
+    const raw = window.prompt('输入要邀请的用户 ID（可在对方主页地址里看到）');
+    const uid = Number(String(raw || '').trim());
+    if (!uid) return;
+    try {
+      const d = await api(`/groups/${id}/invite/${uid}`, { method: 'POST' });
+      toast(`已把 ${d.member?.display_name || ('用户 ' + uid)} 拉进群`, 'ok');
+      load();
+    } catch (e) { toast(e.message, 'err'); }
+  };
 
   const leave = async () => {
     if (!confirm('确定退出该群聊？')) return;
@@ -227,7 +242,12 @@ export default function GroupRoom() {
                 </div>
               ))}
             </div>
-            <AppButton className="qa-group-room-leave" variant="secondary" tone="danger" onClick={leave}><LogOut size={16} /> 退出群聊</AppButton>
+            {isOwner && (
+              <AppButton className="qa-group-room-invite" variant="secondary" onClick={invite}>
+                <UserPlus size={16} /> 邀请成员
+              </AppButton>
+            )}
+            {!isOwner && <AppButton className="qa-group-room-leave" variant="secondary" tone="danger" onClick={leave}><LogOut size={16} /> 退出群聊</AppButton>}
           </Modal>
         )}
         <div className={app ? 'chat-scroll qa-group-room-scroll' : 'chat-scroll'} ref={scrollRef} onScroll={trackScroll} role={app ? 'log' : undefined} aria-live={app ? 'polite' : undefined} aria-label={app ? `${group.name}的群聊消息` : undefined}>

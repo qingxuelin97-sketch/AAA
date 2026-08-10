@@ -1199,11 +1199,23 @@ function parliamentLocked() { return !!councilCfg().locked; }
 /* ----------------------------- parliament ----------------------------- */
 function councilSize() { return filter('users', u => u.is_councilor).length; }
 // Build a public view of a proposal with live tallies + the caller's vote/endorsement.
+// 与真后端 server/routes/parliament.js 的 tallyVotes 逐条对齐：
+// 阈值取到即通过（>=），分母只算赞成+反对（弃权不计入表决基数）。
+const PL_THRESHOLDS = { general: 0.5, special: 2 / 3 };
+function tallyVotes(votes) {
+  const counts = { for: 0, against: 0, abstain: 0 };
+  votes.forEach(v => { if (counts[v.choice] !== undefined) counts[v.choice] += 1; });
+  const cast = counts.for + counts.against;
+  const ratio = cast ? counts.for / cast : 0;
+  let status = 'failed';
+  if (cast > 0 && ratio >= PL_THRESHOLDS.special) status = 'passed_special';
+  else if (cast > 0 && ratio >= PL_THRESHOLDS.general) status = 'passed_general';
+  return { ...counts, total: votes.length, cast, ratio, status };
+}
+
 function proposalView(p, meId) {
   const votes = filter('proposal_votes', v => v.proposal_id === p.id);
-  const live = { for: 0, against: 0, abstain: 0 };
-  votes.forEach(v => { live[v.choice] = (live[v.choice] || 0) + 1; });
-  const total = votes.length; live.total = total; live.ratio = total ? live.for / total : 0;
+  const live = tallyVotes(votes);
   const endorses = filter('proposal_endorse', e => e.proposal_id === p.id);
   const author = user(p.author_id);
   return {
@@ -2301,7 +2313,29 @@ async function route(method, path, search, body, headers) {
   // ---------- groups ----------
   if (method === 'GET' && path === '/groups') { need(); const rows = filter('groups', g => g.is_public || g.owner_id === me.id).sort((a, b) => b.id - a.id).map(g => ({ ...g, owner_name: user(g.owner_id)?.display_name, member_count: filter('group_members', x => x.group_id === g.id).length, joined: find('group_members', x => x.group_id === g.id && x.user_id === me.id) ? 1 : 0 })); return J({ groups: rows }); }
   if (method === 'POST' && path === '/groups') { need(); if (!body.name) return E('群名称必填'); const g = insert('groups', { name: body.name, owner_id: me.id, avatar: body.avatar || null, description: body.description || '', is_public: body.is_public === false ? 0 : 1 }); insert('group_members', { group_id: g.id, user_id: me.id, role: 'owner' }); return J({ group: g }); }
-  if ((m = P(/^\/groups\/(\d+)\/join$/)) && method === 'POST') { need(); const gid = +m[1]; if (!find('group_members', x => x.group_id === gid && x.user_id === me.id)) insert('group_members', { group_id: gid, user_id: me.id, role: 'member' }); return J({ ok: true }); }
+  if ((m = P(/^\/groups\/(\d+)\/join$/)) && method === 'POST') {
+    // 与真后端对齐：私有群非成员一律 403（此前 mock 谁都能加入任何群，
+    // 于是试玩里「私有群」形同虚设，接真后端才发现进不去）。
+    need(); const gid = +m[1]; const g = find('groups', x => x.id === gid);
+    if (!g) return E('群不存在', 404);
+    if (!g.is_public && g.owner_id !== me.id && !find('group_members', x => x.group_id === gid && x.user_id === me.id)) {
+      return E('私有群仅限群主邀请加入', 403);
+    }
+    if (!find('group_members', x => x.group_id === gid && x.user_id === me.id)) insert('group_members', { group_id: gid, user_id: me.id, role: 'member' });
+    return J({ ok: true });
+  }
+  if ((m = P(/^\/groups\/(\d+)\/invite\/(\d+)$/)) && method === 'POST') {
+    need(); const gid = +m[1]; const uid = +m[2];
+    const g = find('groups', x => x.id === gid);
+    if (!g) return E('群不存在', 404);
+    if (g.owner_id !== me.id) return E('只有群主可以邀请成员', 403);
+    const target = user(uid);
+    if (!target || target.is_banned) return E('用户不存在', 404);
+    if (find('group_members', x => x.group_id === gid && x.user_id === uid)) return E('对方已在群里');
+    insert('group_members', { group_id: gid, user_id: uid, role: 'member' }); save();
+    notify(uid, `${me.display_name || '群主'} 邀请你加入群聊「${g.name}」`, '/groups/' + gid);
+    return J({ ok: true, member: { id: target.id, display_name: target.display_name } });
+  }
   if ((m = P(/^\/groups\/(\d+)\/leave$/)) && method === 'POST') { need(); const gid = +m[1]; const g = find('groups', x => x.id === gid); if (g && g.owner_id === me.id) return E('群主不能退出，请先转让或解散', 400); db.group_members = filter('group_members', x => !(x.group_id === gid && x.user_id === me.id)); save(); return J({ ok: true }); }
   if ((m = P(/^\/groups\/(\d+)\/messages$/))) {
     const gid = +m[1];
@@ -2634,7 +2668,7 @@ async function route(method, path, search, body, headers) {
   // ---------- parliament (议会提案系统) ----------
   if (path === '/parliament/overview' && method === 'GET') {
     need(); const c = councilCfg();
-    return J({ is_councilor: !!me.is_councilor, is_gm: !!me.is_gm, council_size: councilSize(), seats: councilSeats(), term: c.term || 1, locked: !!c.locked, locked_at: c.locked_at || null, me_id: me.id, thresholds: { general: 0.5, special: 2 / 3 } });
+    return J({ is_councilor: !!me.is_councilor, is_gm: !!me.is_gm, council_size: councilSize(), seats: councilSeats(), term: c.term || 1, locked: !!c.locked, locked_at: c.locked_at || null, me_id: me.id, thresholds: { ...PL_THRESHOLDS, basis: 'for_plus_against' } });
   }
   // Public roster of sitting councilors (anyone may view).
   if (path === '/parliament/councilors' && method === 'GET') {
@@ -2715,12 +2749,9 @@ async function route(method, path, search, body, headers) {
     gmOnly(); const p = find('proposals', x => x.id === +m[1]); if (!p) return E('提案不存在', 404);
     if (p.status !== 'voting') return E('只有表决中的提案可以计票结束');
     const votes = filter('proposal_votes', v => v.proposal_id === p.id);
-    const tally = { for: 0, against: 0, abstain: 0 }; votes.forEach(v => { tally[v.choice]++; });
-    const total = votes.length; const ratio = total ? tally.for / total : 0;
-    let status = 'failed';
-    if (total > 0 && ratio > 2 / 3) status = 'passed_special';
-    else if (total > 0 && ratio > 0.5) status = 'passed_general';
-    p.status = status; p.tally = { ...tally, total, ratio }; p.decided_at = now(); save();
+    const tally = tallyVotes(votes);
+    const { status, ratio } = tally;
+    p.status = status; p.tally = tally; p.decided_at = now(); save();
     const label = status === 'passed_special' ? '特别决议通过' : status === 'passed_general' ? '一般决议通过' : '未获通过';
     notify(p.author_id, `提案「${p.title.slice(0, 20)}」表决结束：${label}（赞成率 ${Math.round(ratio * 100)}%）。`, '/parliament');
     return J({ proposal: proposalView(p, me.id) });

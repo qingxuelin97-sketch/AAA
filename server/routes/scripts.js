@@ -79,7 +79,9 @@ router.get('/', authOptional, (req, res) => {
   const args = [];
   if (category && category !=='all') { sql +=' AND s.category = ?'; args.push(category); }
   if (q) { sql +=' AND (s.title LIKE ? OR s.tags LIKE ? OR s.summary LIKE ?)'; const k =`%${q}%`; args.push(k, k, k); }
-  sql += sort ==='new' ?' ORDER BY s.created_at DESC' :' ORDER BY s.plays DESC, s.likes DESC';
+  // 同 characters：补唯一 tie-breaker。这里目前是硬 LIMIT、没有 offset，
+  // 所以还不会丢卡，只表现为同名次顺序抖动 —— 但一旦加分页就会立刻中招，补它是零成本。
+  sql += sort ==='new' ?' ORDER BY s.created_at DESC, s.id DESC' :' ORDER BY s.plays DESC, s.likes DESC, s.id DESC';
   sql +=' LIMIT 100';
   res.json({ scripts: db.prepare(sql).all(...args) });
 });
@@ -211,21 +213,25 @@ router.post('/:id/refund', authRequired, (req, res) => {
   } catch (err) { res.status(err.status || 400).json({ error: err.message }); }
 });
 
+const toggleScriptLike = db.transaction((scriptId, userId) => {
+  const had = db.prepare('SELECT 1 FROM script_likes WHERE script_id = ? AND user_id = ?').get(scriptId, userId);
+  if (had) db.prepare('DELETE FROM script_likes WHERE script_id = ? AND user_id = ?').run(scriptId, userId);
+  else db.prepare('INSERT OR IGNORE INTO script_likes (script_id, user_id) VALUES (?,?)').run(scriptId, userId);
+  db.prepare('UPDATE scripts SET likes = (SELECT COUNT(*) FROM script_likes WHERE script_id = ?) WHERE id = ?').run(scriptId, scriptId);
+  return !had;
+});
+
 router.post('/:id/like', authRequired, (req, res) => {
   const id = +req.params.id;
   const s = db.prepare('SELECT id FROM scripts WHERE id = ? AND deleted_at IS NULL').get(id);
   if (!s) return res.status(404).json({ error: '剧本不存在' });
-  // toggle 去重：已点赞则取消，未点赞则新增，PRIMARY KEY 原子防重复刷数。
-  const exist = db.prepare('SELECT 1 FROM script_likes WHERE script_id = ? AND user_id = ?').get(id, req.user.id);
-  if (exist) {
-    db.prepare('DELETE FROM script_likes WHERE script_id = ? AND user_id = ?').run(id, req.user.id);
-    db.prepare('UPDATE scripts SET likes = MAX(0, likes - 1) WHERE id = ?').run(id);
-    res.json({ ok: true, liked: false });
-  } else {
-    db.prepare('INSERT OR IGNORE INTO script_likes (script_id, user_id) VALUES (?,?)').run(id, req.user.id);
-    db.prepare('UPDATE scripts SET likes = likes + 1 WHERE id = ?').run(id);
-    res.json({ ok: true, liked: true });
-  }
+  // ⚠ 原注释写着「PRIMARY KEY 原子防重复刷数」—— 那是错的：PK 只挡住了明细表里的
+  // 重复行，而 INSERT OR IGNORE 之后那句 `likes + 1` 是**无条件**执行的。两个并发的
+  // 同用户请求都会走进 else 分支：明细表 1 行，计数器 +2。这是真的双计数。
+  // 与 characters.likes 同样的收口：明细增删 + 计数器重算放进同一个事务，
+  // 计数器恒等于实算值，并发与重放都不会让它漂移。
+  const liked = toggleScriptLike.immediate(id, req.user.id);
+  res.json({ ok: true, liked });
 });
 
 // 进入剧本 · 开始互动扮演：以剧本内容作为主持人设定，开一条对话。

@@ -440,11 +440,35 @@ router.post('/users/:id/gm', (req, res) => {
     request_id: req.requestId || '' });
   res.status(403).json({ error: '管理员权限只能通过服务器本地运维命令修改' });
 });
+
+// 按名字定位用户。display_name **没有唯一约束**，用户还能自行改名，所以
+// `WHERE username = ? OR display_name = ?` + .get() 会在重名时取到不确定的一行 ——
+// GM 发钱打错账号、推送发错人，都是这么来的。而且某人把昵称改成别人的用户名，
+// 就能把发给对方的东西截走。
+// 规则：username 是唯一的，命中即用；否则按 display_name 查，命中多行就拒绝并
+// 要求用 id 指定 —— 宁可让调用方多说一句，也不能悄悄打给错的人。
+function resolveUserByName(name) {
+  const key = String(name ?? '').trim();
+  if (!key) return { error: '请提供用户名', status: 400 };
+  const byUsername = db.prepare('SELECT * FROM users WHERE username = ?').get(key);
+  if (byUsername) return { user: byUsername };
+  const byDisplay = db.prepare('SELECT * FROM users WHERE display_name = ? LIMIT 2').all(key);
+  if (byDisplay.length === 0) return { error: '目标用户不存在', status: 404 };
+  if (byDisplay.length > 1) return { error: `有多个用户叫「${key}」，请改用用户 ID 指定`, status: 409 };
+  return { user: byDisplay[0] };
+}
+
 router.post('/gift', (req, res) => {
   const { user_id, username, gold = 0, diamond = 0, vip_days = 0, memo } = req.body || {};
-  const target = user_id ? db.prepare('SELECT * FROM users WHERE id = ?').get(user_id)
-    : db.prepare('SELECT * FROM users WHERE username = ? OR display_name = ?').get(username, username);
-  if (!target) return res.status(404).json({ error: '目标用户不存在' });
+  let target;
+  if (user_id) {
+    target = db.prepare('SELECT * FROM users WHERE id = ?').get(user_id);
+    if (!target) return res.status(404).json({ error: '目标用户不存在' });
+  } else {
+    const r = resolveUserByName(username);
+    if (r.error) return res.status(r.status).json({ error: r.error });
+    target = r.user;
+  }
   const amounts = { gold: Number(gold), diamond: Number(diamond), vip_days: Number(vip_days) };
   const caps = {
     gold: Number(process.env.ADMIN_GIFT_GOLD_MAX) || 1_000_000,

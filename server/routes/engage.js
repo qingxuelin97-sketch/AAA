@@ -28,17 +28,29 @@ router.post('/tasks/:id/claim', authRequired, (req, res) => {
   const t = DAILY_TASKS.find(x => x.id === req.params.id);
   if (!t) return res.status(404).json({ error: '任务不存在' });
   // 用事务包住「检查-标记-发奖」，防并发重复领取。
+  //
+  // 这里原本有三个问题，且是全仓唯一一个这么写的领奖事务（同文件 :65 的活动领奖、
+  // achievements / gacha / economy / me 的领取全都是下面这个写法）：
+  //   ① 没有 .immediate()：DEFERRED 事务先以读事务开始，写到一半才升级 —— 并发下
+  //      第二个请求可能读到旧快照再升级，正是 .immediate() 要堵的重复领取窗口；
+  //      升级失败还会抛 SQLITE_BUSY，而 tx() 外面没有 try/catch，直接 500。
+  //   ② 在事务体内写响应：那两个 return res.status(400) 只是结束回调，事务照常提交。
+  //   ③ applyTx 抛错回滚时 result 仍是 null，于是**一个字节的响应都不发** ——
+  //      请求就那么挂着，直到客户端超时。
   let result = null;
-  const tx = db.transaction(() => {
-    const d = dailyOf(req.user.id);
-    if ((d.counts[t.key] || 0) < t.target) return res.status(400).json({ error: '任务尚未完成' });
-    if (d.claimed.includes(t.id)) return res.status(400).json({ error: '该奖励已领取' });
-    d.claimed.push(t.id); saveClaimed(req.user.id, d.claimed);
-    applyTx(req.user.id, { kind: 'reward', gold: t.reward, memo: `每日任务：${t.name}` });
-    result = { ok: true, reward: t.reward };
-  });
-  tx();
-  if (result) res.json(result);
+  try {
+    db.transaction(() => {
+      const d = dailyOf(req.user.id);
+      if ((d.counts[t.key] || 0) < t.target) throw Object.assign(new Error('任务尚未完成'), { status: 400, expose: true });
+      if (d.claimed.includes(t.id)) throw Object.assign(new Error('该奖励已领取'), { status: 400, expose: true });
+      d.claimed.push(t.id); saveClaimed(req.user.id, d.claimed);
+      applyTx(req.user.id, { kind: 'reward', gold: t.reward, memo: `每日任务：${t.name}` });
+      result = { ok: true, reward: t.reward };
+    }).immediate();
+  } catch (e) {
+    return res.status(e.status || 400).json({ error: e.message || '领取失败，请稍后再试', ...(e.code ? { code: e.code } : {}) });
+  }
+  res.json(result);
 });
 
 // ---- events ----

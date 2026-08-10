@@ -3,6 +3,7 @@ import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { push } from '../realtime.js';
 import { contentLimiter } from '../limiters.js';
+import { notify } from '../wallet.js';
 
 const router = Router();
 
@@ -33,12 +34,32 @@ router.post('/', authRequired, (req, res) => {
 router.post('/:id/join', authRequired, (req, res) => {
   const g = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.id);
   if (!g) return res.status(404).json({ error: '群不存在' });
+  // 这两个条件原本自相矛盾：第一道闸只放行「已经是成员或群主」的人，而下面又只在
+  // 「不是成员」时才插入 —— 两者互斥，非成员必被 403 拦下，是成员则什么都不做。
+  // 于是私有群的成员集合从建群那一刻起就冻死在 1 人，而错误文案还承诺着「受邀」，
+  // 可全仓根本不存在任何邀请端点或邀请表（invite_keys 是注册码，与群无关）。
+  // 现在邀请机制补上了（见下面的 /:id/invite/:userId），文案终于是实话。
   if (!g.is_public && g.owner_id !== req.user.id && !memberOf(g.id, req.user.id)) {
-    return res.status(403).json({ error: '私有群仅限受邀成员加入' });
+    return res.status(403).json({ error: '私有群仅限群主邀请加入' });
   }
   if (!memberOf(g.id, req.user.id))
     db.prepare('INSERT INTO group_members (group_id, user_id) VALUES (?,?)').run(g.id, req.user.id);
   res.json({ ok: true });
+});
+
+// 群主邀请成员入群。私有群唯一的进人通道；公开群也可用（省得对方自己找）。
+// 刻意做成「群主直接拉人」而不是「申请—审批」：这个产品目前没有任何审批收件箱，
+// 加一套只为群聊用的审批流会是更大的面，而群主拉人已经能让私有群跑起来。
+router.post('/:id/invite/:userId', authRequired, (req, res) => {
+  const g = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.id);
+  if (!g) return res.status(404).json({ error: '群不存在' });
+  if (g.owner_id !== req.user.id) return res.status(403).json({ error: '只有群主可以邀请成员' });
+  const target = db.prepare('SELECT id, display_name FROM users WHERE id = ? AND is_banned = 0').get(req.params.userId);
+  if (!target) return res.status(404).json({ error: '用户不存在' });
+  if (memberOf(g.id, target.id)) return res.status(400).json({ error: '对方已在群里' });
+  db.prepare('INSERT INTO group_members (group_id, user_id) VALUES (?,?)').run(g.id, target.id);
+  notify(target.id, `${req.user.display_name || '群主'} 邀请你加入群聊「${g.name}」`, '/groups/' + g.id);
+  res.json({ ok: true, member: { id: target.id, display_name: target.display_name } });
 });
 
 router.post('/:id/leave', authRequired, (req, res) => {

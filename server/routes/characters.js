@@ -80,7 +80,13 @@ router.get('/public', authOptional, (req, res) => {
     sql += ' AND c.owner_id IN (SELECT following_id FROM follows WHERE follower_id = ?)';
     args.push(req.user.id);
   }
-  sql += sort === 'new' ? ' ORDER BY c.created_at DESC' : ' ORDER BY c.uses DESC, c.likes DESC';
+  // ⚠ 排序键必须唯一，否则 LIMIT/OFFSET 分页会重复发牌或漏牌。
+  // created_at 是 datetime('now') 的秒级精度（同秒创建即并列），热门分支的
+  // uses/likes 并列面更大 —— 新站上大量角色 uses=0 & likes=0，全都并列。
+  // 这是全仓唯一一个真 OFFSET 分页端点，而前端 DiscoverFeed 真的在无限滚动：
+  // 并列行在相邻两页之间顺序不稳，同一张卡出现两次、另一张永远刷不出来。
+  // worldbooks.js:88 早就写对了（带 w.id DESC），这里照抄。
+  sql += sort === 'new' ? ' ORDER BY c.created_at DESC, c.id DESC' : ' ORDER BY c.uses DESC, c.likes DESC, c.id DESC';
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 80, 1), 100);
   const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
   sql += ' LIMIT ? OFFSET ?';
@@ -130,10 +136,23 @@ router.get('/favorites/list', authRequired, (req, res) => {
     .all(req.user.id, req.user.id);
   res.json({ characters: rows });
 });
+// characters.likes 是 favorites 的**缓存列**，不是独立账本。
+//
+// 原写法是「先查、再增删、再给计数器 ±1」，三步无事务，于是：
+//   · 并发收藏时裸 INSERT 撞 PK 抛错（路由无 try/catch → 500），而计数器可能已经加过；
+//   · favorites 行会随用户/角色被删经 ON DELETE CASCADE 无声消失，likes 却不会跟着动；
+//   · MAX(0, likes-1) 把负漂移吃掉而不是修正，误差只增不减。
+// 而这个数字最终是钱：creator.js:8 里 likes 以 ×2 权重进 creatorScore，直接决定
+// 创作者等级与分成。所以改成「增删与重算在同一个事务里完成」，likes 恒等于实算值。
+const setFavorite = db.transaction((userId, charId, want) => {
+  if (want) db.prepare("INSERT OR IGNORE INTO favorites (user_id, character_id, created_at) VALUES (?,?,datetime('now'))").run(userId, charId);
+  else db.prepare('DELETE FROM favorites WHERE user_id = ? AND character_id = ?').run(userId, charId);
+  db.prepare('UPDATE characters SET likes = (SELECT COUNT(*) FROM favorites WHERE character_id = ?) WHERE id = ?').run(charId, charId);
+});
+
 router.post('/:id/favorite', authRequired, (req, res) => {
   const has = db.prepare('SELECT 1 FROM favorites WHERE user_id = ? AND character_id = ?').get(req.user.id, req.params.id);
-  if (has) { db.prepare('DELETE FROM favorites WHERE user_id = ? AND character_id = ?').run(req.user.id, req.params.id);
-    db.prepare('UPDATE characters SET likes = MAX(0, likes - 1) WHERE id = ?').run(req.params.id);
+  if (has) { setFavorite.immediate(req.user.id, Number(req.params.id), false);
     log({ category: 'character', level: 'info', event: 'favorite', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: Number(req.params.id), faved: false }, message: '取消收藏角色' });
     return res.json({ faved: false }); }
   const character = db.prepare('SELECT id, owner_id, is_public FROM characters WHERE id = ?').get(req.params.id);
@@ -142,8 +161,7 @@ router.post('/:id/favorite', authRequired, (req, res) => {
   if (!character || (!character.is_public && character.owner_id !== req.user.id)) {
     return res.status(404).json({ error: '角色不存在或不可收藏' });
   }
-  db.prepare("INSERT INTO favorites (user_id, character_id, created_at) VALUES (?,?,datetime('now'))").run(req.user.id, req.params.id);
-  db.prepare('UPDATE characters SET likes = likes + 1 WHERE id = ?').run(req.params.id);
+  setFavorite.immediate(req.user.id, Number(req.params.id), true);
   bumpDaily(req.user.id, 'fav');
   log({ category: 'character', level: 'info', event: 'favorite', user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '', endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '', extra: { character_id: Number(req.params.id), faved: true }, message: '收藏角色' });
   res.json({ faved: true });

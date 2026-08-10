@@ -69,7 +69,15 @@ router.post('/push', authRequired, contentLimiter, (req, res) => {
     }
   }
   if (!post) return res.status(404).json({ error: '内容不存在' });
-  const target = db.prepare('SELECT id FROM users WHERE username = ? OR display_name = ?').get(to_username, to_username);
+  // 同 admin /gift：username 唯一，命中即用；display_name 重名要求用 id 消歧，
+  // 否则推送会静默发给同名的另一个人。
+  const key = String(to_username ?? '').trim();
+  let target = db.prepare('SELECT id FROM users WHERE username = ?').get(key);
+  if (!target) {
+    const byDisplay = db.prepare('SELECT id FROM users WHERE display_name = ? LIMIT 2').all(key);
+    if (byDisplay.length > 1) return res.status(409).json({ error: `有多个用户叫「${key}」，请改用用户 ID 指定` });
+    target = byDisplay[0];
+  }
   if (!target) return res.status(404).json({ error: '目标用户不存在' });
   db.prepare('INSERT INTO shares (post_id, from_user, to_user, note) VALUES (?,?,?,?)')
     .run(post.id, req.user.id, target.id, str(note, 200));

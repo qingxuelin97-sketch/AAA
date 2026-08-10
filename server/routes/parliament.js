@@ -9,11 +9,38 @@ import { log } from '../logger.js';
 const router = Router();
 const meRow = (id) => db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 
+// —— 计票口径（对外公示 / 实时进度条 / 最终判定共用这一个函数）——
+//
+// 两处与原实现不同，都是把代码改成与已经对外公示的规则一致：
+//
+// ① 阈值用 >=，不是 >。/overview 一直对外公示 { general: 0.5, special: 2/3 }，
+//    前端 Parliament.jsx 也按这两个数画刻度。而判定写的是严格大于，于是
+//    6 人 4 赞成（恰好 2/3）会被判成一般决议、4 人 2 赞成（恰好一半）直接算否决，
+//    而用户看到的进度条明明是满格。公示了阈值就要按阈值算。
+//
+// ② 分母是「赞成 + 反对」，不含弃权。原来 total = votes.length 把弃权算进分母，
+//    等于弃权在算术上与反对完全等价 —— 那三选一的 UI 就是在骗人。弃权的含义是
+//    出席但不表态，不构成表决基数。
+//
+// 提案表没有决议类型列（db.js:309-315），「特别/一般」本来就是事后按比例分类，
+// 判定顺序不变：先看够不够 2/3，再看够不够半数。
+export const THRESHOLDS = { general: 0.5, special: 2 / 3 };
+
+export function tallyVotes(votes) {
+  const counts = { for: 0, against: 0, abstain: 0 };
+  votes.forEach((v) => { if (counts[v.choice] !== undefined) counts[v.choice] += 1; });
+  const cast = counts.for + counts.against;      // 表决基数：弃权不计入
+  const ratio = cast ? counts.for / cast : 0;
+  let status = 'failed';
+  if (cast > 0 && ratio >= THRESHOLDS.special) status = 'passed_special';
+  else if (cast > 0 && ratio >= THRESHOLDS.general) status = 'passed_general';
+  // total 保留为「投票总人次」供展示（含弃权），cast 才是算比例用的分母。
+  return { ...counts, total: votes.length, cast, ratio, status };
+}
+
 function proposalView(p, meId) {
   const votes = db.prepare('SELECT user_id, choice FROM proposal_votes WHERE proposal_id = ?').all(p.id);
-  const live = { for: 0, against: 0, abstain: 0 };
-  votes.forEach(v => { live[v.choice] = (live[v.choice] || 0) + 1; });
-  live.total = votes.length; live.ratio = votes.length ? live.for / votes.length : 0;
+  const live = tallyVotes(votes);
   const endorses = db.prepare('SELECT user_id FROM proposal_endorse WHERE proposal_id = ?').all(p.id);
   const author = db.prepare('SELECT display_name, avatar, verified FROM users WHERE id = ?').get(p.author_id);
   let tally = null; try { tally = p.tally ? JSON.parse(p.tally) : null; } catch { /* */ }
@@ -31,7 +58,9 @@ function proposalView(p, meId) {
 router.get('/overview', authRequired, (req, res) => {
   const me = meRow(req.user.id); const c = councilCfg();
   res.json({ is_councilor: !!me.is_councilor, is_gm: !!me.is_gm, council_size: councilSize(), seats: councilSeats(),
-    term: c.term || 1, locked: !!c.locked, locked_at: c.locked_at || null, me_id: me.id, thresholds: { general: 0.5, special: 2 / 3 } });
+    term: c.term || 1, locked: !!c.locked, locked_at: c.locked_at || null, me_id: me.id,
+    // 分母口径一并公示：前端据此写文案，免得用户以为弃权不影响结果。
+    thresholds: { ...THRESHOLDS, basis: 'for_plus_against' } });
 });
 
 router.get('/councilors', authRequired, (req, res) => {
@@ -157,19 +186,16 @@ router.post('/proposals/:id/close', authRequired, requireGm, ensureUnlocked, (re
   if (!p) return res.status(404).json({ error: '提案不存在' });
   if (p.status !== 'voting') return res.status(400).json({ error: '只有表决中的提案可以计票结束' });
   const votes = db.prepare('SELECT choice FROM proposal_votes WHERE proposal_id = ?').all(p.id);
-  const tally = { for: 0, against: 0, abstain: 0 }; votes.forEach(v => { tally[v.choice]++; });
-  const total = votes.length; const ratio = total ? tally.for / total : 0;
-  let status = 'failed';
-  if (total > 0 && ratio > 2 / 3) status = 'passed_special';
-  else if (total > 0 && ratio > 0.5) status = 'passed_general';
-  db.prepare("UPDATE proposals SET status=?, tally=?, decided_at=datetime('now') WHERE id=?").run(status, JSON.stringify({ ...tally, total, ratio }), p.id);
+  const tally = tallyVotes(votes);
+  const { status, ratio, total } = tally;
+  db.prepare("UPDATE proposals SET status=?, tally=?, decided_at=datetime('now') WHERE id=?").run(status, JSON.stringify(tally), p.id);
   const label = status === 'passed_special' ? '特别决议通过' : status === 'passed_general' ? '一般决议通过' : '未获通过';
   notify(p.author_id, `提案「${p.title.slice(0, 20)}」表决结束：${label}（赞成率 ${Math.round(ratio * 100)}%）。`, '/parliament');
   log({
     level: 'info', category: 'parliament', event: 'proposal_close',
     user_id: req.user.id, ip: req.ip, ua: req.header('user-agent') || '',
     endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
-    extra: { proposal_id: p.id, author_id: p.author_id, status, tally: { ...tally, total, ratio }, title: p.title.slice(0, 80) },
+    extra: { proposal_id: p.id, author_id: p.author_id, status, tally, title: p.title.slice(0, 80) },
     message: `GM ${req.user.id} 计票结束提案 ${p.id}：${label}（赞成率 ${Math.round(ratio * 100)}%）`,
   });
   res.json({ proposal: proposalView(db.prepare('SELECT * FROM proposals WHERE id=?').get(p.id), req.user.id) });

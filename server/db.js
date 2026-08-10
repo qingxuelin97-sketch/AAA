@@ -767,6 +767,24 @@ try {
   // 不静默：索引没建上意味着重复好友仍可能产生，必须在启动日志里看得见。
   console.warn('[db] friendships 唯一索引建立失败，重复好友风险仍在：', e.message);
 }
+
+// —— characters.likes 与 favorites 对账（一次性回填）——
+// likes 是 favorites 的缓存列，但历史上它是被独立 ±1 维护的：三步无事务、
+// 级联删除不会触碰它、MAX(0, likes-1) 又把负漂移吃掉而不是修正。routes/characters.js
+// 已改为在同一事务里按实算重写，但**存量的偏差不会自己消失**，而这个数字以 ×2
+// 权重进 creatorScore（creator.js:8）→ 创作者等级与分成，属于钱。
+// 只改确实对不上的行，日志里报出修了几行，免得静默改数据。
+try {
+  const drift = db.prepare(`SELECT COUNT(*) n FROM characters c
+    WHERE COALESCE(c.likes, 0) <> (SELECT COUNT(*) FROM favorites f WHERE f.character_id = c.id)`).get().n;
+  if (drift > 0) {
+    db.exec(`UPDATE characters SET likes = (SELECT COUNT(*) FROM favorites f WHERE f.character_id = characters.id)
+      WHERE COALESCE(likes, 0) <> (SELECT COUNT(*) FROM favorites f WHERE f.character_id = characters.id)`);
+    console.warn(`[db] characters.likes 与 favorites 对账：修正 ${drift} 行`);
+  }
+} catch (e) {
+  console.warn('[db] characters.likes 对账失败：', e.message);
+}
 // Purchases created before escrow existed already paid their authors. Mark them
 // settled so the new settlement worker never pays them a second time.
 try { db.exec("UPDATE script_purchases SET settled_at = COALESCE(settled_at, CAST(strftime('%s', created_at) AS INTEGER) * 1000) WHERE refunded = 0 AND settlement_due_at IS NULL"); } catch { /* */ }
