@@ -148,7 +148,44 @@ try {
   ok(!sentToModel.includes('第2版回复'), '被重写的那一版没有出现在发给模型的上下文里');
   ok(sentToModel.includes('你好'), '用户消息仍然在上下文里');
 
-  // 7) 删除消息时变体一并清理（ON DELETE CASCADE）
+  // 7) 中断：已送达的内容必须保留并照常计费；一字未达才退款
+  {
+    // 桩上游改为「先吐一段、再拖住不结束」，客户端中途 abort 模拟点「停止」。
+    const prev = stub.listeners('request')[0];
+    stub.removeAllListeners('request');
+    stub.on('request', (req, res) => {
+      let b = ''; req.on('data', c => { b += c; });
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+        res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: '这段已经送到用户眼前了' } }] })}\n\n`);
+        // 故意不结束，让客户端有机会中途断开
+      });
+    });
+
+    const convId2 = (await J(await post('/chat/conversations', { character_id: cid }, tok))).conversation.id;
+    const goldBefore = dbRead(d => d.prepare('SELECT gold FROM users WHERE id = ?').get(uid).gold);
+    const ac = new AbortController();
+    const p = fetch(`${BASE}/chat/conversations/${convId2}/complete`, {
+      method: 'POST', signal: ac.signal,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ content: '你好' }),
+    }).catch(() => null);
+    await new Promise(r => setTimeout(r, 600));
+    ac.abort();                       // ← 相当于用户点了「停止」
+    await p;
+    await new Promise(r => setTimeout(r, 900));
+
+    const kept2 = dbRead(d => d.prepare("SELECT content FROM messages WHERE conversation_id = ? AND role='assistant'").all(convId2));
+    const goldAfter = dbRead(d => d.prepare('SELECT gold FROM users WHERE id = ?').get(uid).gold);
+    ok(kept2.length === 1 && kept2[0].content.includes('这段已经送到用户眼前了'),
+      `中断时已送达的内容被保留（${kept2.length} 条）`);
+    ok(goldAfter < goldBefore, `中断且有内容送达时照常计费（${goldBefore} → ${goldAfter}）`);
+
+    stub.removeAllListeners('request');
+    stub.on('request', prev);
+  }
+
+  // 8) 删除消息时变体一并清理（ON DELETE CASCADE）
   const before = dbRead(d => d.prepare('SELECT COUNT(*) n FROM message_variants WHERE message_id = ?').get(originalId).n);
   ok(before > 0, `删除前该消息有 ${before} 个变体`);
   await fetch(`${BASE}/chat/conversations/${convId}/messages/${originalId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tok}` } });

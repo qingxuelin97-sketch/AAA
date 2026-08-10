@@ -1281,14 +1281,36 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
       extra: { conversation_id: conv.id, character_id: conv.character_id, model: eff?.model || '', gold_fee: 0 } });
     return res.end();
   }
-  // 客户端流式中途断开（socket 已销毁）：full 可能被截断且未确认送达。不落库、退款
-  //（避免把截断回复当成品持久化、并为用户没看到的内容全额计费）；用户重连后可重新生成。
+  // —— 客户端流式中途断开（点「停止」/ 切后台 / 断网 / 关页面）——
+  // 改造前：一律不落库 + 全额退款。这条规则同时坑了两边——
+  //   · 平台：上游 token 已经生成并计费完毕，退款等于白送算力，而「点停止」是
+  //     用户日常操作（觉得跑偏了就停），不是异常路径；
+  //   · 用户：屏幕上已经看到的那段文字，刷新后凭空消失。
+  // 现在的规则是「留下就收费，不留就退款」——简单、可解释，也和用户的直觉一致：
+  // 已经送达并保留的内容照常计费，一个字都没送出去才退款。
+  //
+  // ⚠ res.destroyed 在反向代理（Render / Nginx）后面的行为与本地直连不同：本地
+  // 断开会立刻销毁 socket，经代理时可能延迟或根本不触发。因此本地测试必然通过，
+  // 也必然不能说明问题——这条路径需要在真实部署上复验。
   if (res.destroyed) {
-    activeFeeCtx.refund('客户端断开');
-    log({ level: 'warn', source: 'server', category: 'chat', event,
-      message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}中断《${character?.name || ''}》（客户端断开，未落库/已退款）`,
+    const delivered = full.trim();
+    if (!delivered) {
+      activeFeeCtx.refund('客户端断开（无内容送达）');
+      log({ level: 'warn', source: 'server', category: 'chat', event,
+        message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}中断《${character?.name || ''}》（一字未达，已退款）`,
+        user_id: conv.user_id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
+        extra: { conversation_id: conv.id, character_id: conv.character_id, chars: 0, gold_fee: 0 } });
+      return;
+    }
+    if (regenerateOf) appendVariant(regenerateOf, delivered);
+    else db.prepare('INSERT INTO messages (conversation_id, role, content) VALUES (?,?,?)').run(conv.id, 'assistant', delivered);
+    db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+    if (regenerateOf) invalidateWbVars(conv.id); else mergeWbVars(conv.id, delivered);
+    activeFeeCtx.settle();
+    log({ level: 'info', source: 'server', category: 'chat', event,
+      message: `${event === 'regenerate' ? '重新生成' : 'AI 回复'}被中断但已保留《${character?.name || ''}》（${delivered.length} 字，照常计费）`,
       user_id: conv.user_id, ip: req.ip, endpoint: req.path, method: req.method, status: 200, request_id: req.requestId || '',
-      extra: { conversation_id: conv.id, character_id: conv.character_id, chars: full.length, gold_fee: 0 } });
+      extra: { conversation_id: conv.id, character_id: conv.character_id, chars: delivered.length, gold_fee: activeFeeCtx.fee || 0, interrupted: true } });
     return;
   }
   if (full.trim()) {
