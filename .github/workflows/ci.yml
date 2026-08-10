@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - "agent/**"
+      - "claude/**"
 
 permissions:
   contents: read
@@ -53,3 +54,32 @@ jobs:
 
       - name: Web invariants
         run: npm run test:web
+
+      # —— 直接守钱的回归 ——
+      # 这五个测试此前全都写好了却从不运行。转盘反向印钞（付费转期望回收
+      # 174.31 金 / 售价 100 金）就是在这个空档里长出来的：奖池怎么改都没人拦。
+      # 全部合计约 12 秒。
+      - name: Economy regression (wheel / gift / fees / milestones)
+        run: |
+          npm run test:gacha
+          npm run test:gift
+          npm run test:theater-fee
+          npm run test:once-fee
+          npm run test:milestone
+
+      # —— 其余已写好但同样从不运行的回归 ——
+      # 合计约 20 秒。「测试存在但不跑」和「没有测试」的防护力完全相同，
+      # 区别只是前者让人误以为有防护。
+      - name: Feature regression (boundaries / logs / social / recall / novels)
+        run: |
+          npm run smoke
+          npm run test:server:s7
+          npm run test:logs
+          npm run test:hearts
+          npm run test:inbox
+          npm run test:frame
+          npm run test:recall
+          npm run test:novels:mock
+
+      # 注：npm run reg-flow 目前有 7 项既有失败（注册/业务日志相关，早于本次改动，
+      # 已在 e33880f 上复现为同样的 32 passed / 7 failed），修好之前不挂硬闸。
