@@ -1,4 +1,28 @@
 import { getPlatform } from './platform.js';
+import { safeFetch } from './safeUrl.js';
+
+// 一次性（非流式）补全。原本只存在于 routes/novels.js 内部，摘要功能同样需要，
+// 与其复制第二份不如收敛到这里——SSRF 防护的写法一旦分叉，第二份多半会写漏。
+//
+// 用户自填 base_url 不可信：safeFetch 做 DNS 复检 + 逐跳重定向复检 + 超时，
+// 防止「域名解析到内网 / 公网 302 跳内网」绕过同步校验。平台配置由 GM 控制台
+// 设置、视为可信，走原生 fetch（可能部署在内网）。
+export async function llmOnce(eff, system, user, { maxTokens = 1200, temperature, timeoutMs = 60000 } = {}) {
+  const doFetch = eff.platform ? fetch : (u, o) => safeFetch(u, o, { timeoutMs });
+  const url = `${String(eff.base_url || '').split('?')[0].replace(/\/$/, '')}/chat/completions`;
+  const r = await doFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
+    body: JSON.stringify({
+      model: eff.model,
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      temperature: temperature ?? eff.temperature ?? 0.8, max_tokens: maxTokens, stream: false,
+    }),
+  });
+  if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(`模型服务返回 ${r.status}：${t.slice(0, 160)}`); }
+  const d = await r.json().catch(() => ({}));
+  return (d.choices?.[0]?.message?.content || '').trim();
+}
 
 // 统一「本次请求用哪套 LLM 凭据」的判定：用户自带 Key（免费）优先，否则回退
 // 平台语言服务（按回复计费，platform: true）。

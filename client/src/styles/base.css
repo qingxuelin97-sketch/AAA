@@ -319,6 +319,24 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
   color: var(--faint); font-size: 14px; cursor: pointer; }
 @media (min-width: 861px) { .fail-mask { align-items: center; } .fail-sheet { border-radius: 18px; } }
 
+/* 对话内调试台：把「本轮到底注入了什么」摊开给作者看，含被 max_active 砍掉的条目。 */
+.dbg-sheet { width: 100%; max-width: 560px; max-height: 86vh; overflow-y: auto; background: var(--bg-1);
+  border-radius: 18px 18px 0 0; padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.22); animation: failRise 0.2s ease-out; }
+@media (min-width: 861px) { .dbg-sheet { border-radius: 18px; } }
+.dbg-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.dbg-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+.dbg-k { color: var(--faint); flex: none; }
+.dbg-v { text-align: right; font-variant-numeric: tabular-nums; }
+.dbg-h { margin: 16px 0 6px; font-size: 13px; font-weight: 600; }
+.dbg-note { font-size: 12px; color: var(--faint); line-height: 1.6; }
+.dbg-entry { font-size: 12px; padding: 6px 8px; margin-top: 4px; border-radius: 8px; background: var(--bg-2); }
+.dbg-entry.off { opacity: 0.62; text-decoration-color: var(--faint); }
+.dbg-keys { color: var(--faint); margin-top: 2px; word-break: break-all; }
+.dbg-pre { font-size: 12px; line-height: 1.62; white-space: pre-wrap; word-break: break-word;
+  background: var(--bg-2); border-radius: 10px; padding: 10px 12px; max-height: 220px; overflow-y: auto; }
+.dbg-pre.tall { max-height: 340px; }
+
 /* 回复变体翻页器：重新生成不再吃掉旧回复，这里左右翻看历次版本。
    ‹ › 的触达热区固定 44×44（e2e 的 pageQualityAssertions 按此判定），
    视觉上靠字号收敛，不因为热区大就显得笨重。 */

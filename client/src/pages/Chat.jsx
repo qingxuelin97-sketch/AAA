@@ -198,6 +198,78 @@ const MessageRow = React.memo(function MessageRow({
   );
 });
 
+// —— 对话内调试台 ——
+// 作者此前完全看不到「这一轮到底注入了什么」。世界书条目没生效，是关键词没匹配、
+// 被 max_active 砍掉、还是 probability 没中？三种原因表现完全一样：什么都没发生。
+// 这里把服务端的结构化诊断如实摊开——包括那些被砍掉的条目。
+function DebugDrawer({ data, onClose, onCopy }) {
+  if (!data) return null;
+  const s = data.stats || {};
+  const rows = [
+    ['系统提示词', `${data.system_chars} 字 · 约 ${data.system_tokens_est} token`],
+    ['注入历史', `${s.history_messages} 条 · ${s.history_chars} 字 · 约 ${s.history_tokens_est} token`],
+    ['窗口外未注入', `${s.dropped_by_window} 条（上限 ${s.window_max_messages} 条 / ${s.window_max_chars} 字）`],
+    ['世界书候选', `内嵌 ${s.own} + 关联 ${s.linked}，触发 ${s.candidates}，实际注入 ${s.active}`],
+    ['回看深度', `${s.scan_depth}（窗口下限 ${s.scan_floor} 条）`],
+    ['对话轮数', `${s.turn_count} 轮 / ${s.msg_count} 条`],
+  ];
+  return (
+    <div className="fail-mask" onClick={onClose}>
+      <div className="dbg-sheet" onClick={e => e.stopPropagation()}>
+        <div className="fail-title">本轮注入了什么</div>
+        <div className="dbg-grid">
+          {rows.map(([k, v]) => <div key={k} className="dbg-row"><span className="dbg-k">{k}</span><span className="dbg-v">{v}</span></div>)}
+        </div>
+
+        {!!(s.dropped || []).length && (
+          <>
+            <div className="dbg-h">被 max_active 砍掉（{s.dropped.length} 条）</div>
+            <div className="dbg-note">这些条目通过了触发判定，但超出了每轮注入上限。想让它们生效请调高世界书的「每轮最大激活数」，或提高它们的优先级。</div>
+            {s.dropped.map(d => (
+              <div key={d.id} className="dbg-entry off">#{d.id} · 优先级 {d.priority} · 关键词 {d.keys || '（常驻）'}</div>
+            ))}
+          </>
+        )}
+
+        <div className="dbg-h">实际注入的条目（{(data.entries || []).length} 条）</div>
+        {(data.entries || []).length === 0
+          ? <div className="dbg-note">本轮没有任何世界书条目被注入。</div>
+          : data.entries.map(e => (
+            <div key={e.id} className="dbg-entry">
+              #{e.id} · 优先级 {e.priority} · {e.chars} 字{e.group ? ` · 分组 ${e.group}` : ''}
+              <div className="dbg-keys">{e.keys || '（常驻，无需关键词）'}</div>
+            </div>
+          ))}
+
+        {!!Object.keys(data.variables || {}).length && (
+          <>
+            <div className="dbg-h">世界变量</div>
+            <div className="dbg-note">{Object.entries(data.variables).map(([k, v]) => `${k} = ${v}`).join('　')}</div>
+          </>
+        )}
+
+        {data.summary && (<>
+          <div className="dbg-h">前情提要（窗口外剧情的梗概）</div>
+          <div className="dbg-pre">{data.summary}</div>
+        </>)}
+
+        {data.post_history && (<>
+          <div className="dbg-h">后置指令（注入在对话历史之后）</div>
+          <div className="dbg-pre">{data.post_history}</div>
+        </>)}
+
+        <div className="dbg-h">完整系统提示词</div>
+        <div className="dbg-pre tall">{data.system}</div>
+
+        <div className="fail-acts">
+          <button className="fail-act" onClick={() => onCopy(data.system)}>复制系统提示词</button>
+        </div>
+        <button className="fail-close" onClick={onClose}>关闭</button>
+      </div>
+    </div>
+  );
+}
+
 // —— 失败分型卡片 ——
 // 改造前所有失败都表现为气泡里一行「（连接出错）+ 原始错误文本」：解释不了原因，
 // 也不给任何下一步。服务端现在带回 code，这里按 code 给出真正能点的动作。
@@ -351,6 +423,7 @@ export default function Chat() {
   const [reactFor, setReactFor] = useState(null);
   // 失败分型卡片：{ code, message, fee, balance, retry }
   const [failure, setFailure] = useState(null);
+  const [debugData, setDebugData] = useState(null);
   const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
   const [previewImg, setPreviewImg] = useState(null);
   // 当前正在朗读的消息标识（消息 id 或 true）；用于切换「朗读 / 停止」按钮态
@@ -542,6 +615,13 @@ export default function Chat() {
     try { await api(`/chat/conversations/${id}`, { method: 'PATCH', body: { title: v } }); setConv(c => ({ ...c, title: v })); loadConvs(); toast('已重命名'); }
     catch (e) { toast(e.message, 'err'); } finally { setMenuOpen(false); }
   };
+  // 调试台：拉一次服务端诊断（只读、不调模型、不计费）。
+  const openDebug = async () => {
+    setMenuOpen(false);
+    try { setDebugData(await api(`/chat/conversations/${id}/debug`)); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+
   // 清空对话分两种：默认「仅清消息」保留好感度，「完全重置」才把关系一并归零。
   // 此前只有一种，删消息顺带清好感——攒了几十轮的好感在用户以为只是清屏时一起没了。
   const clearConv = async (resetAffinity = false) => {
@@ -1101,6 +1181,7 @@ export default function Chat() {
                         <button type="button" role={app ? 'menuitem' : undefined} onClick={renameConv}><Edit3 size={15} /> 重命名对话</button>
                         <button type="button" role={app ? 'menuitem' : undefined} onClick={() => exportConv('md')}><Download size={15} /> 导出为 Markdown</button>
                         <button type="button" role={app ? 'menuitem' : undefined} onClick={() => exportConv('json')}><Download size={15} /> 导出为 JSON</button>
+                        <button type="button" role={app ? 'menuitem' : undefined} onClick={openDebug}><Wand2 size={15} /> 查看本轮注入了什么</button>
                         <button type="button" role={app ? 'menuitem' : undefined} onClick={() => clearConv(false)}><Eraser size={15} /> 清空消息（保留好感）</button>
                         <button type="button" role={app ? 'menuitem' : undefined} className="danger" onClick={() => clearConv(true)}><Eraser size={15} /> 完全重置（含好感度）</button>
                         <div className="chat-menu-sep" role={app ? 'separator' : undefined} />
@@ -1448,6 +1529,7 @@ export default function Chat() {
       )}
       {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
       <FailureSheet failure={failure} onClose={() => setFailure(null)} nav={nav} />
+      <DebugDrawer data={debugData} onClose={() => setDebugData(null)} onCopy={copyMsg} />
       {callOpen && character && <CallScreen character={character} onClose={() => setCallOpen(false)} />}
       {previewImg && (
         <div className="img-lightbox" onClick={() => setPreviewImg(null)}>

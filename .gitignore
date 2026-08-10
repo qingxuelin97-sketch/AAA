@@ -38,3 +38,4 @@ client/appdiff.tmp/
 server/wb-vars-test.tmp.sqlite*
 server/regen-test.tmp.sqlite*
 server/regen-test.interceptor.mjs
+server/ctx-test.tmp.sqlite*

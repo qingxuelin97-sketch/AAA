@@ -48,7 +48,8 @@
     "test:app:e2e": "npm run build:static && node server/quiet-aqua-e2e.mjs",
     "test:wb-vars": "node server/wb-vars-test.mjs",
     "test:regen": "node server/regen-test.mjs",
-    "test:worldbook": "node server/worldbook-inject-test.mjs"
+    "test:worldbook": "node server/worldbook-inject-test.mjs",
+    "test:ctx": "node server/ctx-window-test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

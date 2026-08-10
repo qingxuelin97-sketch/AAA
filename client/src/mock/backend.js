@@ -1769,6 +1769,29 @@ async function route(method, path, search, body, headers) {
     // 不再删除旧回复——改为追加变体（与服务端同语义）。
     return streamCompletion(conv, ch, s, '', me, { regenerateOf: last && last.role === 'assistant' ? last.id : null });
   }
+  // 对话内调试台（与服务端 GET /conversations/:id/debug 同形状）。
+  // mock 是 appdiff 与 e2e 的唯一数据源，缺这个端点会让调试台在像素自证里永远打不开。
+  if ((m = P(/^\/chat\/conversations\/(\d+)\/debug$/)) && method === 'GET') {
+    need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);
+    const ch = find('characters', x => x.id === conv.character_id);
+    const msgs = filter('messages', x => x.conversation_id === conv.id);
+    const system = buildSystemPrompt(ch, msgs.slice(-6).map(x => x.content).join(' '));
+    const est = (t) => Math.round([...String(t || '')].reduce((n, c) => n + (/[一-龥]/.test(c) ? 0.67 : 0.25), 0));
+    const world = (ch?.world || []);
+    return J({
+      system, system_chars: system.length, system_tokens_est: est(system),
+      post_history: ch?.post_history || '', summary: conv.summary || '', summary_upto_msg_id: 0,
+      variables: {},
+      entries: world.map((w, i) => ({ id: i + 1, worldbook_id: null, keys: w.keys || '', priority: 50, depth: null, group: '', chars: (w.content || '').length })),
+      stats: {
+        own: world.length, linked: 0, candidates: world.length, active: world.length, dropped: [],
+        max_active: 20, scan_depth: 4, turn_count: msgs.filter(x => x.role === 'assistant').length, msg_count: msgs.length,
+        history_messages: msgs.length, history_chars: msgs.reduce((n, x) => n + (x.content || '').length, 0),
+        history_tokens_est: est(msgs.map(x => x.content).join('')),
+        dropped_by_window: 0, window_max_messages: 80, window_max_chars: 48000, scan_floor: 12,
+      },
+    });
+  }
   // 变体切换（气泡上的 ‹ 2/3 › 翻页）：只改指向哪一版，不产生内容、不计费。
   if ((m = P(/^\/chat\/conversations\/(\d+)\/messages\/(\d+)\/variant$/)) && method === 'POST') {
     need(); const conv = find('conversations', c => c.id === +m[1]); if (!conv || conv.user_id !== me.id) return E('无权访问', 403);

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authRequired } from '../auth.js';
 import { getPlatform, chargePlatformFee, billedOnce } from '../platform.js';
-import { effectiveLLM as effectiveLLMBase } from '../llm.js';
+import { effectiveLLM as effectiveLLMBase, llmOnce } from '../llm.js';
 import { assertPublicUrl, safeFetch } from '../safeUrl.js';
 import { aiLimiter } from '../limiters.js';
 import { bumpDaily } from '../daily.js';
@@ -18,25 +18,8 @@ const router = Router();
 function getSettings(userId) { return db.prepare('SELECT * FROM settings WHERE user_id = ?').get(userId); }
 const effectiveLLM = (settings) => effectiveLLMBase(settings, { platformTemperature: 0.9, platformMinTokens: 1600 });
 
-// One-shot (non-streaming) completion — used for brainstorm / codex generation /
-// canon extraction / next-beat suggestions. Returns trimmed text or throws.
-async function llmOnce(eff, system, user, { maxTokens = 1200, temperature } = {}) {
-  // 用户自填 base_url 不可信：safeFetch 做 DNS 复检 + 逐跳重定向复检 + 请求头超时，
-  // 防止同步 assertPublicUrl 被「域名解析到内网 / 公网 302 跳内网」绕过（同 chat.js 范式）。
-  // 平台配置由 GM 控制台设置、视为可信，走原生 fetch（可能部署在内网）。
-  const doFetch = eff.platform ? fetch : (u, o) => safeFetch(u, o, { timeoutMs: 60000 });
-  const r = await doFetch(String(eff.base_url || '').split('?')[0].replace(/\/$/, '') + '/chat/completions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eff.api_key}` },
-    body: JSON.stringify({
-      model: eff.model,
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-      temperature: temperature ?? eff.temperature ?? 0.8, max_tokens: maxTokens, stream: false,
-    }),
-  });
-  if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(`模型服务返回 ${r.status}：${t.slice(0, 160)}`); }
-  const d = await r.json().catch(() => ({}));
-  return (d.choices?.[0]?.message?.content || '').trim();
-}
+// 一次性（非流式）补全已收敛到 ../llm.js —— 滚动摘要用的是同一份。
+// SSRF 防护的写法一旦分叉，第二份多半会写漏，因此不再各留一份。
 
 // Pull the first JSON value out of a model reply (handles ```json fences / prose wrapping).
 function extractJSON(text) {

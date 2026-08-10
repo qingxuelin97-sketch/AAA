@@ -10,6 +10,7 @@ import { aiLimiter, contentLimiter } from '../limiters.js';
 import { log } from '../logger.js';
 import { grantAffinity, affinityPromptFor } from '../affinity.js';
 import { effectiveLLM } from '../llm.js';
+import { updateSummary, getSummary } from '../summary.js';
 
 const router = Router();
 
@@ -337,6 +338,57 @@ const MESSAGES_SQL = `SELECT m.*,
     (SELECT COUNT(*) FROM message_variants v WHERE v.message_id = m.id) AS variant_count,
     (SELECT COUNT(*) FROM message_variants v WHERE v.message_id = m.id AND v.id <= m.variant_active) - 1 AS variant_index
   FROM messages m WHERE m.conversation_id = ? ORDER BY m.id`;
+
+// —— 上下文封顶 ——
+// 默认值刻意给得宽松：目的是挡住「几百回合后整段历史发上去把上游打爆」这一类事故，
+// 而不是主动省钱。收得太紧会让用户觉得 AI 变笨了，那是更贵的代价。
+const CTX_MAX_MESSAGES = 80;
+const CTX_MAX_CHARS = 48000;
+
+// kill switch：app_config.flags 一行 JSON。上下文窗口与摘要都是「一旦出错就影响
+// 所有人、且症状是剧情不对劲而非报错」的改动，必须能不发版关掉。
+// readConfig 没有缓存，这里做 10 秒进程缓存，且只在请求入口读一次——
+// 绝不能放进逐行循环里。
+let flagsCache = { at: 0, value: {} };
+function readFlags() {
+  const now = Date.now();
+  if (now - flagsCache.at < 10_000) return flagsCache.value;
+  let value = {};
+  try {
+    const row = db.prepare("SELECT value FROM app_config WHERE key='flags'").get();
+    if (row) { const p = JSON.parse(row.value); if (p && typeof p === 'object') value = p; }
+  } catch { value = {}; }
+  flagsCache = { at: now, value };
+  return value;
+}
+
+// 本角色关联世界书里最大的 scan_depth（回看深度）。窗口不能小于它的两倍，
+// 否则关键词扫描看不到足够的历史，世界书会随会话变长而静默失效。
+function built0ScanDepth(character) {
+  if (!character?.id) return 0;
+  try {
+    const row = db.prepare(`SELECT MAX(w.scan_depth) AS d FROM worldbooks w
+      JOIN character_worldbooks cw ON cw.worldbook_id = w.id WHERE cw.character_id = ?`).get(character.id);
+    return row?.d || 0;
+  } catch { return 0; }
+}
+
+// 从尾部保留：条数与字符数任一触顶即停。始终至少保留最后一条，
+// 否则超长单条消息会让上下文变成空的。
+function clampHistory(rows, maxMessages, maxChars) {
+  if (!rows.length) return { rows, dropped: 0 };
+  const kept = [];
+  let chars = 0;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const len = (rows[i].content || '').length;
+    if (kept.length >= maxMessages) break;
+    if (kept.length && chars + len > maxChars) break;
+    kept.push(rows[i]);
+    chars += len;
+  }
+  kept.reverse();
+  return { rows: kept, dropped: rows.length - kept.length };
+}
 
 // 开场白选择：0 / 缺省 = 主开场白；1..N = alt_greetings 里的备用开场白
 //（对应酒馆卡的 alternate_greetings，作者常把「游戏开始」之类的分支放在这里）。
@@ -923,6 +975,54 @@ router.post('/conversations/:id/regenerate', authRequired, aiLimiter, async (req
   await streamReply(res, req, conv, character, settings, '', 'regenerate', { regenerateOf: targetId });
 });
 
+// —— 对话内调试台 ——
+// 作者此前完全看不到「这一轮到底注入了什么」：世界书条目没生效，是因为关键词没匹配、
+// 被 max_active 砍掉、还是 probability 没中？三种原因表现完全一样——什么都没发生。
+// 这个端点把 buildSystemPrompt 的结构化返回值原样吐出来（它本来就是为此改的签名）。
+// 只读，不调用模型，不计费。
+router.get('/conversations/:id/debug', authRequired, (req, res) => {
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
+  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({ error: '无权访问' });
+  const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(conv.character_id);
+  if (!character) return res.status(404).json({ error: '角色不存在' });
+
+  const fullHistory = db.prepare('SELECT id, role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
+  const flags = readFlags();
+  const scanFloor = Math.max(built0ScanDepth(character) * 2, 12);
+  const maxTurns = Math.max(flags.ctx_max_messages ?? CTX_MAX_MESSAGES, scanFloor);
+  const windowed = clampHistory(fullHistory, maxTurns, flags.ctx_max_chars ?? CTX_MAX_CHARS);
+  const history = windowed.rows;
+  const recentText = history.slice(-6).map(m => m.content).join(' ');
+  const built = buildSystemPrompt(character, recentText, history, conv);
+  const summary = getSummary(conv.id);
+  const system = summary.text ? `${built.system}\n\n【前情提要 / 更早的剧情梗概】\n${summary.text}` : built.system;
+
+  // token 估算：中文约 1.5 字/token、英文约 4 字符/token。只给量级参考，不做精确计算。
+  const estTokens = (s) => Math.round([...String(s || '')].reduce((n, ch) => n + (/[一-龥]/.test(ch) ? 0.67 : 0.25), 0));
+  const historyChars = history.reduce((n, m) => n + (m.content || '').length, 0);
+
+  res.json({
+    system,
+    system_chars: system.length,
+    system_tokens_est: estTokens(system),
+    post_history: character.post_history || '',
+    summary: summary.text,
+    summary_upto_msg_id: summary.upto,
+    variables: built.variables,
+    entries: built.entries,
+    stats: {
+      ...built.stats,
+      history_messages: history.length,
+      history_chars: historyChars,
+      history_tokens_est: estTokens(history.map(m => m.content).join('')),
+      dropped_by_window: windowed.dropped,
+      window_max_messages: maxTurns,
+      window_max_chars: flags.ctx_max_chars ?? CTX_MAX_CHARS,
+      scan_floor: scanFloor,
+    },
+  });
+});
+
 // —— 变体切换（气泡上的 ‹ 2/3 › 翻页）——
 // 只改 messages.content 指向哪一版，不产生新内容、不计费。
 router.post('/conversations/:id/messages/:mid/variant', authRequired, (req, res) => {
@@ -1234,9 +1334,9 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
   // 重新生成时必须把「正在被重写的那一条」排除出上下文。改造前是靠先 DELETE 掉它
   // 达成的；现在不删了，就得在这里显式排除，否则模型会看到自己上一版回答并顺着往下写，
   // 「重新生成」退化成「续写」。
-  const history = regenerateOf
-    ? db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? AND id <> ? ORDER BY id').all(conv.id, regenerateOf)
-    : db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
+  const fullHistory = regenerateOf
+    ? db.prepare('SELECT id, role, content FROM messages WHERE conversation_id = ? AND id <> ? ORDER BY id').all(conv.id, regenerateOf)
+    : db.prepare('SELECT id, role, content FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
   // 计费档位取**会话的真实消息数**，而不是本次注入的 history 数组长度。
   // 这两者今天恰好相等，但上下文一加窗就会分道扬镳：platform.js 的档位是
   // msgCount > 100 ? 30 : 20，届时所有重会话会永久落回 20 金档，账面静默下滑 33%
@@ -1250,9 +1350,35 @@ async function streamReply(res, req, conv, character, settings, userContent, eve
     insufficientHint: '可前往钱包签到/兑换，或在设置中填写自己的 API。',
   });
   if (feeCtx.rejected) return;
+
+  // —— 上下文封顶 ——
+  // 长会话此前把整段历史原样发给上游：几百回合后不是变慢就是直接被上游拒绝，
+  // 而用户看到的只是「服务繁忙」。现在按条数与字符数双重封顶。
+  // 窗口下限硬绑 scan_depth*2：世界书的关键词扫描依赖回看深度，窗口小于它时
+  // 关键词触发会随会话变长而静默退化——那比上下文超限更难排查。
+  const flags = readFlags();
+  const scanFloor = Math.max((built0ScanDepth(character) * 2) || 0, 12);
+  const maxTurns = Math.max(flags.ctx_max_messages ?? CTX_MAX_MESSAGES, scanFloor);
+  const windowed = clampHistory(fullHistory, maxTurns, flags.ctx_max_chars ?? CTX_MAX_CHARS);
+  const history = windowed.rows;
+
+  // 被挤出窗口的部分压成滚动摘要。
+  // 关键：本轮**用现有摘要**，刷新放到后台跑，不 await。摘要是一次完整的模型调用，
+  // 放在回复之前等它意味着长会话每发一条消息都要先干等几秒——为了一个用户看不见的
+  // 东西牺牲最核心的手感，不值得。滞后一轮的代价被窗口大小兜住（窗口内的原文仍在），
+  // 而收益是首字延迟完全不受影响。
+  // updateSummary 内部吞掉所有异常并留痕，这里再挂一层 catch 防止未处理的 rejection。
+  let summaryText = '';
+  if (windowed.dropped > 0 && flags.summary !== false) {
+    summaryText = getSummary(conv.id).text;
+    updateSummary({ convId: conv.id, eff, windowStartId: history[0]?.id || 0, userId: conv.user_id })
+      .catch(() => { /* 摘要绝不影响主流程 */ });
+  }
+
   const recentText = history.slice(-6).map(m => m.content).join(' ');
-  const built = buildSystemPrompt(character, recentText + ' ' + userContent, history, conv);
+  const built = buildSystemPrompt(character, `${recentText} ${userContent}`, history, conv);
   let system = built.system;
+  if (summaryText) system += `\n\n【前情提要 / 更早的剧情梗概】\n${summaryText}`;
   if (eff.platform && eff.system_prompt.trim()) system = eff.system_prompt.trim() + '\n\n' + system;
   // post_history（酒馆 post_history_instructions）必须排在**历史之后**——那是它区别于
   // system_prompt 的全部意义。放进 system 里等于把它降级成普通设定。

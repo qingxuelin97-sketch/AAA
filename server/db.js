@@ -1016,6 +1016,11 @@ for (const sql of [
   // 不同：它必须注入在**对话历史之后**才起作用。此前导入时和 system_prompt 一起被
   // 折进人设（也就是注入到历史之前），等于降级成了普通设定。
   "ALTER TABLE characters ADD COLUMN post_history TEXT DEFAULT ''",
+  // 长会话滚动摘要：窗口外的剧情压成梗概，注入在 system 之后、history 之前。
+  // summary_upto_msg_id 记录摘要覆盖到哪条消息为止，单调递增——保证同一段历史
+  // 不被重复压缩，也保证摘要与窗口之间不留缝隙。
+  "ALTER TABLE conversations ADD COLUMN summary TEXT DEFAULT ''",
+  'ALTER TABLE conversations ADD COLUMN summary_upto_msg_id INTEGER DEFAULT 0',
 ]) { try { db.exec(sql); } catch { /* column exists */ } }
 
 // —— 举报去重 ——
