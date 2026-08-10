@@ -4,19 +4,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
-import pixelmatch from 'pixelmatch';
-import { PNG } from 'pngjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'client', 'dist');
 const OUT = path.join(DIST, 'quiet-aqua-e2e');
-const BASELINES = path.join(ROOT, 'docs', 'ui-baselines', 'quiet-aqua-e2e');
 const HOST = '127.0.0.1';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const UPDATE_BASELINES = process.argv.includes('--update-baselines');
 const DETAIL_ROUTES_ONLY = process.argv.includes('--detail-routes-only');
 const WALLET_ONLY = process.argv.includes('--wallet-only');
-const MAX_VISUAL_DIFF_RATIO = 0.02;
 
 const MIME = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -182,43 +177,9 @@ async function settlePage(page) {
   await sleep(560);
 }
 
-function compareScreenshot(name, actualPath) {
-  const baselinePath = path.join(BASELINES, name);
-  if (UPDATE_BASELINES) {
-    fs.mkdirSync(BASELINES, { recursive: true });
-    fs.copyFileSync(actualPath, baselinePath);
-    return;
-  }
-  assert(fs.existsSync(baselinePath), `Missing reviewed UI baseline: ${name}`);
-  const actual = PNG.sync.read(fs.readFileSync(actualPath));
-  const expected = PNG.sync.read(fs.readFileSync(baselinePath));
-  assert(
-    actual.width === expected.width && actual.height === expected.height,
-    `UI baseline dimensions changed: ${name}`,
-    `expected ${expected.width}x${expected.height}, got ${actual.width}x${actual.height}`,
-  );
-  const diff = new PNG({ width: actual.width, height: actual.height });
-  const changed = pixelmatch(
-    expected.data,
-    actual.data,
-    diff.data,
-    actual.width,
-    actual.height,
-    { threshold: 0.12, includeAA: false },
-  );
-  const ratio = changed / (actual.width * actual.height);
-  if (ratio > MAX_VISUAL_DIFF_RATIO) {
-    fs.writeFileSync(path.join(OUT, `${path.parse(name).name}.diff.png`), PNG.sync.write(diff));
-  }
-  assert(ratio <= MAX_VISUAL_DIFF_RATIO, `Visual regression exceeded ${MAX_VISUAL_DIFF_RATIO * 100}%: ${name}`, `${(ratio * 100).toFixed(2)}% pixels changed`);
-}
-
-async function captureScreenshot(page, name) {
-  const actualPath = path.join(OUT, name);
-  fs.mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: actualPath });
-  compareScreenshot(name, actualPath);
-}
+// 注：这里曾有一对 compareScreenshot / captureScreenshot（pixelmatch 逐像素比对
+// docs/ui-baselines 下的基线）。它们从未被调用过——像素自证由 scripts/appdiff.mjs
+// 承担，本文件只做行为与可访问性断言。留着会让人误以为 e2e 有像素防护，已删除。
 
 async function saveScreenshot(page, name) {
   // Vite clears client/dist at the beginning of a rebuild. Recreate the

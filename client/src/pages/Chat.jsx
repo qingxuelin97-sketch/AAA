@@ -98,6 +98,163 @@ function CharPanelBody({ app, character, affinity, memories, newMem, setNewMem, 
 // 只是离线兜底镜像，不含 affinity），首开礼物面板拉一次全程复用。
 let giftCatalogCache = null;
 
+// —— 单条消息 ——
+// 独立出来并 React.memo：流式回复每帧都会 setMessages，若整份列表在同一个组件里
+// 展开，每帧都要重新协调全部消息节点。这里把「会随流变化的东西」拆成标量 prop
+// （memo 能逐个比较），把回调统一放进一个 ref 容器（身份恒定，不参与比较），
+// 于是流式期间只有最后一条真正重渲染。
+//
+// row 里的 firstOfRun / isLast / divider 都是在**完整**消息数组上算好的：
+// 渲染窗口只决定画哪一段，不参与这些判定。此前它们直接依赖 map 的下标
+// （firstOfRun 取 messages[i-1]、「重新生成」按钮取 i === messages.length-1），
+// 一旦切片就会错位——窗口首条永远多一个头像、按钮跑到窗口第一条上。
+const MessageRow = React.memo(function MessageRow({
+  row, h, character, imageMap, frontRegex, streaming,
+  isEditing, editText, isReacting, isPlaying, isVoiceLoading, isVoiced, isMarked,
+}) {
+  const { m, firstOfRun, divider, isLast } = row;
+  return (
+    <>
+      {divider && <div className="msg-daydivider" aria-hidden="true"><span>{divider}</span></div>}
+      <div id={m.id ? `msg-${m.id}` : undefined} className={`msg ${m.role}${m._streaming ? ' streaming' : ''}${firstOfRun ? ' run-start' : ' run-cont'}`}>
+        {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={38} />}
+        <div className="msg-col">
+          {m.role === 'assistant' && firstOfRun && (
+            <div className="msg-name">{character?.name}
+              {m.created_at && <span className="msg-time">{String(m.created_at).slice(11, 16)}</span>}
+            </div>
+          )}
+          {isEditing ? (
+            <div className="msg-edit">
+              <textarea value={editText} autoFocus autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
+                enterKeyHint="done"
+                onChange={e => h.current.setEditText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); h.current.saveEdit(m); } if (e.key === 'Escape') h.current.setEditingId(null); }} />
+              <div className="msg-edit-acts">
+                <button className="btn sm primary" onClick={() => h.current.saveEdit(m)}><Check size={13} /> 保存</button>
+                <button className="btn sm ghost" onClick={() => h.current.setEditingId(null)}>取消</button>
+              </div>
+            </div>
+          ) : (
+            <div className="bubble" {...h.current.bindLongPress(m)}
+              onContextMenu={m.content ? (e) => {
+                // 触屏长按会触发 contextmenu：只拦默认菜单，操作交给长按面板
+                //（此前这里直接 copyMsg = 长按即自动复制，真机反馈的 bug）。
+                // 桌面鼠标右键保留「右键即复制」。
+                e.preventDefault();
+                if (!COARSE) h.current.copyMsg(m.content);
+              } : undefined}
+              onDoubleClick={m.role === 'assistant' && m.id ? () => h.current.react(m, '❤️') : undefined}
+              title={m.content ? '长按操作 · 双击喜欢' : undefined}>
+              {m._streaming && !m.content
+                ? <span className="typing"><span></span><span></span><span></span></span>
+                : <BubbleContent content={m.content} role={m.role} imageMap={imageMap} onPreview={h.current.setPreviewImg} frontRegex={frontRegex} />}
+              {m.reaction && <span className="msg-reaction" title="我的反应">{m.reaction}</span>}
+            </div>
+          )}
+          {/* 变体翻页器：重新生成不再吃掉旧回复，这里让用户左右翻看历次版本。
+              热区 ≥44px，否则 pageQualityAssertions 会判触达不达标。 */}
+          {!m._streaming && m.variant_count > 1 && !isEditing && (
+            <div className="msg-variants" role="group" aria-label="回复版本">
+              <button className="variant-nav" disabled={streaming || m.variant_index <= 0}
+                onClick={() => h.current.pickVariant(m, m.variant_index - 1)} aria-label="上一个版本">‹</button>
+              <span className="variant-count" aria-live="polite">{(m.variant_index ?? 0) + 1}/{m.variant_count}</span>
+              <button className="variant-nav" disabled={streaming || m.variant_index >= m.variant_count - 1}
+                onClick={() => h.current.pickVariant(m, m.variant_index + 1)} aria-label="下一个版本">›</button>
+            </div>
+          )}
+          {!m._streaming && m.content && !isEditing && (
+            <div className="msg-acts">
+              {m.role === 'assistant' && <>
+                {isPlaying || isVoiceLoading
+                  ? <button className="speak on" onClick={() => { h.current.cancelPendingVoice(); h.current.stopSpeaking(); }} title="停止播放"><Square size={12} fill="currentColor" /> 停止</button>
+                  : <button className="speak" onClick={() => h.current.toggleSpeak(m)} title={isVoiced ? '重放已生成的语音（不再重新合成）' : '朗读这段话'}><Volume2 size={13} /> {isVoiced ? '再听一遍' : '朗读'}</button>}
+                <button className="speak" onClick={() => h.current.copyMsg(m.content)}><Copy size={13} /> 复制</button>
+                {isLast && <button className="speak" onClick={h.current.regenerate} disabled={streaming}><RotateCcw size={13} /> 重新生成</button>}
+                {m.id && (
+                  <div className="react-wrap">
+                    <button className="speak" onClick={() => h.current.setReactFor(isReacting ? null : m.id)}><Smile size={13} /> 反应</button>
+                    {isReacting && (
+                      <>
+                        <div className="react-mask" onClick={() => h.current.setReactFor(null)} />
+                        <div className="react-pop">
+                          {REACTIONS.map(e => <button key={e} className={m.reaction === e ? 'on' : ''} onClick={() => h.current.react(m, e)}>{e}</button>)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>}
+              {m.role === 'user' && <button className="speak" onClick={() => h.current.startEdit(m)} disabled={streaming}><Pencil size={13} /> 编辑</button>}
+              {/* 引用只是往输入框放素材，不写库 —— 流式期间照样可用 */}
+              <button className="speak" onClick={() => h.current.quote(m)} title="引用这条消息回复"><CornerUpLeft size={13} /> 引用</button>
+              {m.id && <button className={`speak${isMarked ? ' on' : ''}`} onClick={() => h.current.toggleMark(m)} title={isMarked ? '取消书签' : '加入书签，可从菜单快速跳回'}><Bookmark size={13} /> {isMarked ? '已收藏' : '书签'}</button>}
+              {m.id && <button className="speak" onClick={() => h.current.delMsg(m)} disabled={streaming}><Trash2 size={13} /> 删除</button>}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+});
+
+// —— 失败分型卡片 ——
+// 改造前所有失败都表现为气泡里一行「（连接出错）+ 原始错误文本」：解释不了原因，
+// 也不给任何下一步。服务端现在带回 code，这里按 code 给出真正能点的动作。
+// 尤其是「金币不足」——它是撞墙时刻，用户此刻最需要的是四个按钮而不是一句抱怨。
+function FailureSheet({ failure, onClose, nav }) {
+  if (!failure) return null;
+  const { code, message, fee, balance } = failure;
+  const PLANS = {
+    INSUFFICIENT_GOLD: {
+      title: '金币不够了',
+      desc: fee != null && balance != null ? `本次对话需要 ${fee} 金币，你还有 ${balance} 金币。` : message,
+      actions: [
+        { label: '每日签到领金币', to: '/wallet' },
+        { label: '转一次幸运转盘', to: '/gacha' },
+        { label: '看看新人礼包', to: '/events' },
+        { label: '用我自己的 Key（永久免费）', to: '/settings' },
+      ],
+    },
+    ECONOMIC_HOLD: {
+      title: '账户经济功能已暂停',
+      // 刻意不给「去充值」——充值解决不了债务冻结，指过去只会浪费用户的时间和钱。
+      desc: message,
+      actions: [{ label: '查看钱包明细', to: '/wallet' }],
+    },
+    NO_MODEL: {
+      title: '平台 AI 暂时不可用',
+      desc: '这是平台侧的问题，不是你的配置有误。你可以填入自己的 API Key 继续对话，自带 Key 永久免费。',
+      actions: [{ label: '去设置填 Key', to: '/settings' }],
+    },
+    USER_KEY_FAILED: {
+      title: '你的模型配置调用失败',
+      desc: message,
+      actions: [{ label: '检查语言模型设置', to: '/settings' }],
+    },
+    WALLET_ERROR: { title: '扣费失败', desc: message, actions: [] },
+  };
+  const plan = PLANS[code] || { title: '这次没能发出去', desc: message, actions: [] };
+  const canRetry = code !== 'INSUFFICIENT_GOLD' && code !== 'ECONOMIC_HOLD';
+  return (
+    <div className="fail-mask" onClick={onClose}>
+      <div className="fail-sheet" role="alertdialog" aria-label={plan.title} onClick={e => e.stopPropagation()}>
+        <div className="fail-title">{plan.title}</div>
+        <div className="fail-desc">{plan.desc}</div>
+        <div className="fail-acts">
+          {plan.actions.map(a => (
+            <button key={a.to} className="fail-act" onClick={() => { onClose(); nav(a.to); }}>{a.label}</button>
+          ))}
+          {canRetry && failure.retry && (
+            <button className="fail-act primary" onClick={() => { onClose(); failure.retry(); }}>重试一次</button>
+          )}
+        </div>
+        <button className="fail-close" onClick={onClose}>知道了</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Chat() {
   const app = isAppMode();
   const withAppClass = (base, hook) => app ? [base, hook].filter(Boolean).join(' ') : base;
@@ -192,6 +349,8 @@ export default function Chat() {
   });
   const [autoRead, setAutoRead] = useState(() => localStorage.getItem(AUTOREAD_KEY) === '1');
   const [reactFor, setReactFor] = useState(null);
+  // 失败分型卡片：{ code, message, fee, balance, retry }
+  const [failure, setFailure] = useState(null);
   const [bgmOn, setBgmOn] = useState(() => localStorage.getItem(BGM_KEY) !== '0');
   const [previewImg, setPreviewImg] = useState(null);
   // 当前正在朗读的消息标识（消息 id 或 true）；用于切换「朗读 / 停止」按钮态
@@ -578,9 +737,14 @@ export default function Chat() {
         setMessages(m => { const c = [...m]; const last = c[c.length - 1];
           if (last?._streaming) c[c.length - 1] = { ...last, content: last.content || '（已停止）', _streaming: false }; return c; });
       } else {
-        toast(err.message, 'err');
+        // 失败分型：把服务端带回的 code 转成一张可操作的半屏卡片，而不是在气泡里
+        // 留一句「（连接出错）」——后者既解释不了原因，也不给用户任何下一步。
+        // 撤掉那颗空的 assistant 气泡，失败不该在对话里留下残骸。
         setMessages(m => { const c = [...m]; const last = c[c.length - 1];
-          if (last?._streaming) c[c.length - 1] = { role: 'assistant', content: '（连接出错）' + err.message, _streaming: false }; return c; });
+          if (last?._streaming && !last.content) c.pop();
+          else if (last?._streaming) c[c.length - 1] = { ...last, _streaming: false };
+          return c; });
+        setFailure({ code: err.code || 'UNKNOWN', message: err.message, fee: err.fee, balance: err.balance, retry: () => streamInto(endpoint, payload) });
       }
     } finally {
       if (isCurrent()) {
@@ -681,6 +845,32 @@ export default function Chat() {
   // 保证 BubbleContent 的 memo 对老消息始终命中。
   const imageMap = character?.wb_image_map;
 
+  // —— 渲染窗口 ——
+  // 只限制**渲染**多少条，messages 数组本身始终全量在内存里：会话内搜索、导出、
+  // 书签跳转都依赖完整数组，做成数据窗口会一并弄坏这三件事。
+  // 搜索时自动全开，否则搜到窗口外的内容会「搜得到但跳不过去」。
+  const RENDER_WINDOW = 60;
+  const [showAllMessages, setShowAllMessages] = useState(false);
+  useEffect(() => { setShowAllMessages(false); }, [id]);   // 换会话时收回窗口
+
+  // 所有依赖相邻关系的标记都在**完整**数组上算好，切片只决定画哪一段。
+  const allRows = useMemo(() => {
+    const q = searchQ.trim().toLowerCase();
+    const rows = messages.map((m, i) => ({
+      m,
+      key: m.id ?? `i${i}`,
+      firstOfRun: i === 0 || messages[i - 1].role !== m.role,
+      // 时间分隔：与上一条间隔 > 10min（或会话首条）时插入居中时间胶囊。
+      divider: q ? null : timeDivider(messages[i - 1]?.created_at, m.created_at),
+      isLast: i === messages.length - 1,
+    }));
+    return q ? rows.filter(r => (r.m.content || '').toLowerCase().includes(q)) : rows;
+  }, [messages, searchQ]);
+
+  const searching = !!searchQ.trim();
+  const windowStart = (showAllMessages || searching) ? 0 : Math.max(0, allRows.length - RENDER_WINDOW);
+  const visibleRows = useMemo(() => allRows.slice(windowStart), [allRows, windowStart]);
+
   // 标记一条助手消息已生成过语音（已生成的不再重新合成，只能停止或再听一遍）。
   const markVoiced = (mid) => { if (mid != null) setVoicedIds(s => { if (s.has(mid)) return s; const n = new Set(s); n.add(mid); return n; }); };
 
@@ -753,6 +943,34 @@ export default function Chat() {
   };
 
   const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+
+  // 切换到某条消息的另一个版本（重新生成产生的变体）。乐观更新后再落库，
+  // 失败则回滚——翻页应当是零延迟的手感。
+  const pickVariant = async (msg, index) => {
+    if (!msg.id || index < 0 || index >= (msg.variant_count || 0)) return;
+    const prev = { content: msg.content, variant_index: msg.variant_index };
+    setMessages(ms => ms.map(x => (x.id === msg.id ? { ...x, variant_index: index, _switching: true } : x)));
+    try {
+      const d = await api(`/chat/conversations/${id}/messages/${msg.id}/variant`, { method: 'POST', body: { index } });
+      setMessages(ms => ms.map(x => (x.id === msg.id
+        ? { ...x, content: d.message.content, variant_index: d.variant_index, variant_count: d.variant_count, _switching: false }
+        : x)));
+    } catch (e) {
+      setMessages(ms => ms.map(x => (x.id === msg.id ? { ...x, ...prev, _switching: false } : x)));
+      toast(e.message, 'err');
+    }
+  };
+
+  // MessageRow 是 memo 组件：把回调收进一个身份恒定的 ref 容器，让 memo 的比较
+  // 只落在真正会变的标量 prop 上。每次渲染刷新 .current 以保证闭包不过期；
+  // 子组件在同一渲染批次内读取，赋值必须在返回 JSX 之前。
+  const handlersRef = useRef({});
+  handlersRef.current = {
+    setEditText, saveEdit, setEditingId, bindLongPress, copyMsg, react, setPreviewImg,
+    pickVariant, cancelPendingVoice, stopSpeaking, toggleSpeak, regenerate, setReactFor,
+    startEdit, toggleMark, delMsg,
+    quote: (m) => { setReplyTo(m); inputRef.current?.focus(); },
+  };
 
   return (
     <div className={withAppClass('chat-layout' + (conv ? ' immersive' : '') + (docked && conv ? ' has-side' : ''), 'qa-chat-page')}>
@@ -945,84 +1163,29 @@ export default function Chat() {
                   ))}
                 </div>
               )}
-              {messages.map((m, i) => {
-                const q = searchQ.trim().toLowerCase();
-                if (q && !(m.content || '').toLowerCase().includes(q)) return null;
-                const firstOfRun = i === 0 || messages[i - 1].role !== m.role;
-                // 时间分隔：与上一条间隔 > 10min（或会话首条）时插入居中时间胶囊。
-                const divider = !q ? timeDivider(messages[i - 1]?.created_at, m.created_at) : null;
-                return (
-                <React.Fragment key={m.id || i}>
-                {divider && <div className="msg-daydivider" aria-hidden="true"><span>{divider}</span></div>}
-                <div id={m.id ? 'msg-' + m.id : undefined} className={'msg ' + m.role + (m._streaming ? ' streaming' : '') + (firstOfRun ? ' run-start' : ' run-cont')}>
-                  {m.role === 'assistant' && <Avatar src={character?.avatar} name={character?.name} size={38} />}
-                  <div className="msg-col">
-                    {m.role === 'assistant' && firstOfRun && (
-                      <div className="msg-name">{character?.name}
-                        {m.created_at && <span className="msg-time">{String(m.created_at).slice(11, 16)}</span>}
-                      </div>
-                    )}
-                    {editingId === m.id ? (
-                      <div className="msg-edit">
-                        <textarea value={editText} autoFocus autoCapitalize="sentences" autoCorrect="on" spellCheck={false}
-                          enterKeyHint="done"
-                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(m); } if (e.key === 'Escape') setEditingId(null); }} />
-                        <div className="msg-edit-acts">
-                          <button className="btn sm primary" onClick={() => saveEdit(m)}><Check size={13} /> 保存</button>
-                          <button className="btn sm ghost" onClick={() => setEditingId(null)}>取消</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bubble" {...bindLongPress(m)}
-                        onContextMenu={m.content ? (e) => {
-                          // 触屏长按会触发 contextmenu：只拦默认菜单，操作交给长按面板
-                          //（此前这里直接 copyMsg = 长按即自动复制，真机反馈的 bug）。
-                          // 桌面鼠标右键保留「右键即复制」。
-                          e.preventDefault();
-                          if (!COARSE) copyMsg(m.content);
-                        } : undefined}
-                        onDoubleClick={m.role === 'assistant' && m.id ? () => react(m, '❤️') : undefined}
-                        title={m.content ? '长按操作 · 双击喜欢' : undefined}>
-                        {m._streaming && !m.content
-                          ? <span className="typing"><span></span><span></span><span></span></span>
-                          : <BubbleContent content={m.content} role={m.role} imageMap={imageMap} onPreview={setPreviewImg} frontRegex={frontRegex} />}
-                        {m.reaction && <span className="msg-reaction" title="我的反应">{m.reaction}</span>}
-                      </div>
-                    )}
-                    {!m._streaming && m.content && editingId !== m.id && (
-                      <div className="msg-acts">
-                        {m.role === 'assistant' && <>
-                          {playingId === m.id || voiceLoadingId === m.id
-                            ? <button className="speak on" onClick={() => { cancelPendingVoice(); stopSpeaking(); }} title="停止播放"><Square size={12} fill="currentColor" /> 停止</button>
-                            : <button className="speak" onClick={() => toggleSpeak(m)} title={voicedIds.has(m.id) ? '重放已生成的语音（不再重新合成）' : '朗读这段话'}><Volume2 size={13} /> {voicedIds.has(m.id) ? '再听一遍' : '朗读'}</button>}
-                          <button className="speak" onClick={() => copyMsg(m.content)}><Copy size={13} /> 复制</button>
-                          {i === messages.length - 1 && <button className="speak" onClick={regenerate} disabled={streaming}><RotateCcw size={13} /> 重新生成</button>}
-                          {m.id && (
-                            <div className="react-wrap">
-                              <button className="speak" onClick={() => setReactFor(reactFor === m.id ? null : m.id)}><Smile size={13} /> 反应</button>
-                              {reactFor === m.id && (
-                                <>
-                                  <div className="react-mask" onClick={() => setReactFor(null)} />
-                                  <div className="react-pop">
-                                    {REACTIONS.map(e => <button key={e} className={m.reaction === e ? 'on' : ''} onClick={() => react(m, e)}>{e}</button>)}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </>}
-                        {m.role === 'user' && <button className="speak" onClick={() => startEdit(m)} disabled={streaming}><Pencil size={13} /> 编辑</button>}
-                        {/* 引用只是往输入框放素材，不写库 —— 流式期间照样可用 */}
-                        <button className="speak" onClick={() => { setReplyTo(m); inputRef.current?.focus(); }} title="引用这条消息回复"><CornerUpLeft size={13} /> 引用</button>
-                        {m.id && <button className={'speak' + (marks.has(m.id) ? ' on' : '')} onClick={() => toggleMark(m)} title={marks.has(m.id) ? '取消书签' : '加入书签，可从菜单快速跳回'}><Bookmark size={13} /> {marks.has(m.id) ? '已收藏' : '书签'}</button>}
-                        {m.id && <button className="speak" onClick={() => delMsg(m)} disabled={streaming}><Trash2 size={13} /> 删除</button>}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                </React.Fragment>
-                );
-              })}
+              {windowStart > 0 && (
+                <button className="load-earlier" onClick={() => setShowAllMessages(true)}>
+                  查看更早的 {windowStart} 条消息
+                </button>
+              )}
+              {visibleRows.map(row => (
+                <MessageRow
+                  key={row.key}
+                  row={row}
+                  h={handlersRef}
+                  character={character}
+                  imageMap={imageMap}
+                  frontRegex={frontRegex}
+                  streaming={streaming}
+                  isEditing={editingId === row.m.id}
+                  editText={editingId === row.m.id ? editText : ''}
+                  isReacting={reactFor === row.m.id}
+                  isPlaying={playingId === row.m.id}
+                  isVoiceLoading={voiceLoadingId === row.m.id}
+                  isVoiced={voicedIds.has(row.m.id)}
+                  isMarked={marks.has(row.m.id)}
+                />
+              ))}
               </div>
             </div>
 
@@ -1273,6 +1436,7 @@ export default function Chat() {
         />
       )}
       {illusOpen && <IllustrateModal initialPrompt={illusSeed()} onClose={() => setIllusOpen(false)} />}
+      <FailureSheet failure={failure} onClose={() => setFailure(null)} nav={nav} />
       {callOpen && character && <CallScreen character={character} onClose={() => setCallOpen(false)} />}
       {previewImg && (
         <div className="img-lightbox" onClick={() => setPreviewImg(null)}>

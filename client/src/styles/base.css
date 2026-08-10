@@ -300,6 +300,43 @@ h4 { font-weight: 600; letter-spacing: -0.008em; font-variation-settings: "opsz"
 .msg.user { align-self: flex-end; flex-direction: row-reverse; }
 .msg.user .bubble { background: linear-gradient(150deg, var(--accent), var(--accent-2)); border-bottom-right-radius: 6px; color: #fff;
   box-shadow: 0 2px 6px rgba(194,90,56,0.22), 0 10px 24px rgba(194,90,56,0.2); }
+/* 失败分型卡片：撞墙时给出可点的下一步，而不是气泡里一句「（连接出错）」。
+   半屏 sheet，从底部升起；桌面宽屏时居中收窄。 */
+.fail-mask { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,0.42);
+  display: flex; align-items: flex-end; justify-content: center; }
+.fail-sheet { width: 100%; max-width: 460px; background: var(--bg-1); border-radius: 18px 18px 0 0;
+  padding: 22px 20px calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 32px rgba(0,0,0,0.22);
+  animation: failRise 0.2s ease-out; }
+@keyframes failRise { from { transform: translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
+.fail-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.fail-desc { font-size: 13px; color: var(--faint); line-height: 1.6; margin-bottom: 16px; }
+.fail-acts { display: flex; flex-direction: column; gap: 8px; }
+.fail-act { min-height: 46px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--bg-2); color: var(--text); font-size: 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.fail-act:hover { border-color: var(--accent); }
+.fail-act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.fail-close { width: 100%; min-height: 44px; margin-top: 14px; background: none; border: none;
+  color: var(--faint); font-size: 14px; cursor: pointer; }
+@media (min-width: 861px) { .fail-mask { align-items: center; } .fail-sheet { border-radius: 18px; } }
+
+/* 回复变体翻页器：重新生成不再吃掉旧回复，这里左右翻看历次版本。
+   ‹ › 的触达热区固定 44×44（e2e 的 pageQualityAssertions 按此判定），
+   视觉上靠字号收敛，不因为热区大就显得笨重。 */
+.msg-variants { display: inline-flex; align-items: center; gap: 2px; margin-top: 4px; user-select: none; }
+.msg.user .msg-variants { align-self: flex-end; }
+.variant-nav { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; color: var(--faint); font-size: 18px; line-height: 1; border-radius: 10px;
+  cursor: pointer; transition: color 0.15s, background 0.15s; }
+.variant-nav:hover:not(:disabled) { color: var(--accent); background: var(--bg-2); }
+.variant-nav:disabled { opacity: 0.3; cursor: default; }
+.variant-count { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; min-width: 34px; text-align: center; }
+
+/* 「查看更早」：渲染窗口只画末尾若干条，这颗按钮把更早的部分放出来。 */
+.load-earlier { display: block; margin: 4px auto 12px; padding: 8px 16px; min-height: 44px;
+  background: var(--bg-2); border: 1px solid var(--line); color: var(--faint); font-size: 13px;
+  border-radius: 999px; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+.load-earlier:hover { color: var(--accent); border-color: var(--accent); }
+
 .msg-acts { display: flex; gap: 2px; margin-top: 6px; flex-wrap: wrap; opacity: 0.55; transition: opacity 0.16s; }
 .msg-acts .speak { margin-top: 0; }
 .msg.user .msg-acts { justify-content: flex-end; }

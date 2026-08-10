@@ -28,10 +28,17 @@ const serve = () => new Promise((resolve) => {
 });
 
 // S7 终态：insights 纳入自证网（星轨页含 App 年鉴卡入口，属重构敏感面）
-const ROUTES = ['#/today', '#/', '#/messages', '#/me', '#/wallet', '#/achievements', '#/events', '#/insights', '#/settings', '#/app-controls'];
+// #/chats/1 —— 对话详情页此前完全不在像素自证网内，而它是改动最密集的一页
+//（消息渲染、变体翻页器、失败卡片、渲染窗口全在这里）。
+const ROUTES = ['#/today', '#/', '#/messages', '#/chats/1', '#/me', '#/wallet', '#/achievements', '#/events', '#/insights', '#/settings', '#/app-controls'];
+// 档位说明：
+//   · dark 已删除 —— theme.js:13 证明 App 壳恒返回 light，dark 基线与 light 逐字节
+//     相同，占掉 1/3 运行时间却换来 0 覆盖。
+//   · balanced 是 perf.js:49 判定下 App 端 auto 的实际落点，也就是 100% 真实用户
+//     所处的档位，而它此前从未被截图过。
 const MODES = [
   { name: 'light', perf: 'high' },
-  { name: 'dark', theme: 'dark', perf: 'high' },
+  { name: 'balanced', perf: 'balanced' },
   { name: 'lite', perf: 'lite' },
 ];
 
