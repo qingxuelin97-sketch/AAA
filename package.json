@@ -52,7 +52,7 @@
     "test:ctx": "node server/ctx-window-test.mjs",
     "test:logic": "node server/logic-holes-test.mjs",
     "test:contract": "node server/contract-test.mjs",
-    "audit:css": "vite build --config client/vite.config.js --mode static --minify false && node scripts/cssaudit.mjs"
+    "audit:css": "vite build --config client/vite.config.js --mode static && node scripts/cssaudit.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

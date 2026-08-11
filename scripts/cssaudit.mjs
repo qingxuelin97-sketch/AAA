@@ -8,9 +8,17 @@
 //   2. 非承重 !important：把它模拟降级后每一处获胜元素上的胜者都不变 → 摘除候选。
 //   3. 打架对：降级后胜者变成另一条声明 → 记录谁在压谁，供定向删除前代。
 //
-// 用法：npm run audit:css
-//   （先做 --minify false 的构建 —— 压缩器会合并相邻同选择器规则，破坏归因；
-//    普查完请重跑正常 build 再跑 appdiff。）
+// ⚠ 报告有效期 = 生成它的那棵源码树。任何一批删除落地后，报告立即过期 ——
+// 同值遮蔽链（A 赢，B 同值垫后，C 异值再后）里删掉 A 是零像素的，但报告里
+// B 仍标「从未获胜」；拿旧报告再删 B，C 就浮出来了（P1 批次 B 实翻过这个车：
+// 设置行 56px 的三连遮蔽，删到第三层露出 68px）。每批删除之间必须重跑本工具。
+//
+// 用法：npm run audit:css（普通压缩构建 + 普查）
+//   ⚠ 必须在**与发布完全相同的压缩构建**上普查。曾用 --minify false 求归因方便，
+//   结果压缩器的规则合并/去重会改变级联 —— 同一棵树两种构建的设置页差 6 万像素，
+//   普查在未压缩世界判的「从未获胜」在压缩世界里是承重的（P1 批次 B 实翻车）。
+//   压缩产物的选择器用 normSel() 规范化后与源链对齐；合并产物对不上号则记未归因
+//   （保守：未归因规则永不进候选）。
 // 输出：client/cssaudit.tmp/report.json（不入库）+ 终端汇总表。
 //
 // 已知保守面（宁可漏报不误报）：
@@ -30,6 +38,13 @@ const SRC = join(ROOT, 'client/src');
 
 /* ── 1. 源文件解析：递归解 import 链，得到「链 → 有序 (file, rule)」 ── */
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+// 压缩器会去掉组合器/逗号旁空白、把 ::before 缩成 :before、去掉可省的属性引号。
+// 两侧选择器都过这个规范化再比对。
+const normSel = (s) => s.replace(/\s+/g, ' ')
+  .replace(/\s*([,>+~])\s*/g, '$1')
+  .replace(/::/g, ':')
+  .replace(/\[([-\w]+)([~^$*|]?=)["']?([^"'\]]*)["']?\]/g, '[$1$2$3]')
+  .trim();
 function parseRules(text, file) {
   // 括号深度游走；@media/@supports 递归进 body；@keyframes/@font-face 整块跳过。
   const rules = [];
@@ -116,6 +131,7 @@ const serve = () => new Promise((r) => {
 /* ── 4. 主流程 ── */
 const chains = [await loadChain(join(SRC, 'styles.css')), await loadChain(join(SRC, 'styles/app-entry.js'))];
 const chainRules = chains.map((files) => files.flatMap((f) => parseRules(f.text, f.path.slice(ROOT.length + 1))));
+for (const r of chainRules.flat()) r.nsel = normSel(r.selector);
 
 // 规则全集登记表：key = file + ' ' + line
 const ledger = new Map();
@@ -154,6 +170,7 @@ for (const mode of MODES) {
     try {
       const { text } = await cdp.send('CSS.getStyleSheetText', { styleSheetId: header.styleSheetId });
       const parsed = parseRules(stripComments(text), '');
+      for (const r of parsed) r.nsel = normSel(r.selector);   // 预计算，别在 O(n²) 循环里跑正则
       // 与两条链逐一对齐：按选择器序列前向匹配，取命中率高的链
       let best = null;
       for (const chain of chainRules) {
@@ -161,7 +178,7 @@ for (const mode of MODES) {
         for (const r of parsed) {
           // 可恢复搜索：miss 不吞指针（否则一条对不上会让后面整链失配）
           let j = ci;
-          while (j < chain.length && chain[j].selector !== r.selector) j++;
+          while (j < chain.length && chain[j].nsel !== r.nsel) j++;
           if (j < chain.length) { map.set(r.bodyStart, chain[j].file + ' ' + chain[j].line); hit++; ci = j + 1; }
         }
         if (!best || hit > best.hit) best = { map, hit, total: parsed.length, chainLen: chain.length };
