@@ -50,6 +50,11 @@ const MODES = [
   // auto + 8 核 8G → deviceIsWeak() 为 false → App 壳落 'balanced'
   { name: 'balanced', pref: null, cores: 8, memory: 8, tier: 'balanced' },
   { name: 'lite', pref: 'lite', tier: 'lite' },
+  // D5/D3 状态帧：毛玻璃关 与 强调色 dusk 是两条真实的用户可达状态，
+  // 级联清理（cssaudit 批次）若只在默认态过闸，会漏掉只在这两态生效的规则。
+  // attrs = 导航后必须实测到的 <html> dataset（同 tier 断言：错态的截图不许入库）。
+  { name: 'glassoff', pref: 'high', tier: 'high', extra: { huanyu_glass: '0' }, attrs: { glass: 'off' } },
+  { name: 'accentdusk', pref: 'high', tier: 'high', extra: { huanyu_accent: 'dusk' }, attrs: { accent: 'dusk' } },
 ];
 
 const srv = await serve();
@@ -98,6 +103,7 @@ for (const mode of MODES) {
       if (m.theme) localStorage.setItem('huanyu_theme', m.theme); else localStorage.removeItem('huanyu_theme');
       // pref 为 null 表示「不写偏好」，让 getPerfPref() 走 auto —— balanced 只有这条路。
       if (m.pref) localStorage.setItem('huanyu_perf', m.pref); else localStorage.removeItem('huanyu_perf');
+      for (const [k, v] of Object.entries(m.extra || {})) localStorage.setItem(k, v);
     } catch { /* */ }
     // 伪造硬件画像：无头容器恒报 4 核，deviceIsWeak() 必为 true，auto 档永远
     // 到不了 balanced。必须在页面脚本前改写 navigator 才来得及被 initPerf 读到。
@@ -123,6 +129,13 @@ for (const mode of MODES) {
       tierFails += 1;
       continue;
     }
+    // glassoff / accentdusk 两档同理：dataset 没落上就说明状态没生效，截图无效。
+    let attrBad = false;
+    for (const [attr, want] of Object.entries(mode.attrs || {})) {
+      const got = await page.evaluate((a) => document.documentElement.dataset[a], attr);
+      if (got !== want) { console.log('ATTR', key, `期望 data-${attr}=${want}，实际 ${got}`); tierFails += 1; attrBad = true; }
+    }
+    if (attrBad) continue;
     const basePath = join(OUT, `${key}.base.png`);
     if (BASELINE) {
       await writeFile(basePath, shot);

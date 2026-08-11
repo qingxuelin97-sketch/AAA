@@ -35,6 +35,7 @@ server/sec-test.interceptor.mjs
 server/diagnostic.tmp.sqlite*
 client/*-smoke.png
 client/appdiff.tmp/
+client/cssaudit.tmp/
 server/wb-vars-test.tmp.sqlite*
 server/regen-test.tmp.sqlite*
 server/regen-test.interceptor.mjs
