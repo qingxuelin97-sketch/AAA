@@ -742,6 +742,27 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
   assert.ok(bfRules <= 286, `App backdrop-filter rule count must not grow (got ${bfRules}, frozen ceiling 286)`);
   assert.ok(bfLiteral <= 191, `hard-coded blur() count must not grow — new glass must read var(--ix-blur) (got ${bfLiteral}, frozen ceiling 191)`);
 }
+// —— !important 棘轮：级联打架只许收敛，不许再堆 ——
+// P1 用级联普查删掉 457 条被压死的规则后，全层 !important 从 3099 降到 2887（按次）。
+// 这张表把每个文件冻结在当下实测值：新代码要覆盖前代，去删前代的声明
+//（npm run audit:css 会告诉你在跟谁打架），不许再用 !important 往上压。
+// 数字只许降 —— 降了就把表改小，把新低点锁住。
+{
+  const IMPORTANT_CEILING = {
+    'app-shell.css': 12, 'app-elevated.css': 3, 'app-renov.css': 26, 'app-motion.css': 0,
+    '../chat/chat-app.css': 2, 'app-runtime.css': 6, 'app-controls.css': 113,
+    'app-pages-quiet-aqua.css': 378, 'app-experience-v3.css': 1408, 'app-hig-v5.css': 20,
+    'app-ix-core.css': 109, 'app-ix-pages-a.css': 75, 'app-ix-pages-b.css': 38,
+    'app-ix-pages-c.css': 59, 'app-ix-pages-d.css': 309, 'app-rainbow.css': 244,
+    'app-rainbow-motion.css': 9, 'chat-glass.css': 76,
+  };
+  for (const [name, ceiling] of Object.entries(IMPORTANT_CEILING)) {
+    const text = await readFile(new URL('./src/styles/' + name, import.meta.url), 'utf8');
+    const count = (text.match(/!important/g) || []).length;
+    assert.ok(count <= ceiling,
+      `${name}: !important count must only go down (got ${count}, frozen ceiling ${ceiling}) — delete the predecessor declaration instead of out-piling it (run audit:css to see the fight)`);
+  }
+}
 // —— 触达下限与对话操作行 ——
 {
   const tapCss = await readFile(new URL('./src/styles/app-tap.css', import.meta.url), 'utf8');
@@ -945,11 +966,13 @@ assert.match(artSource, /ix-illo-onb-001-light\.svg\?url[\s\S]*IxOnboardingArt/,
 assert.match(artSource, /streak-bronze\.png\?url[\s\S]*streakSealForTier/, 'streak seals must use the user-supplied medal art with the three-tier mapping');
 const capacitorConfig = await readFile(new URL('../capacitor.config.json', import.meta.url), 'utf8');
 assert.doesNotMatch(capacitorConfig, /#1b1733/i, 'the native launch surface must not return to the purple-navy splash');
-assert.match(capacitorConfig, /"backgroundColor":\s*"#E4F1F6"/, 'native launch colours must match the rainbow cyan-blue canvas');
+// P4 色缝修复：原生启动色曾钉 #E4F1F6，而页底渐变起点是 #EFF8FD、导航玻璃是
+// rgb(244 250 254/86%) —— 三者互不相等，刘海机状态栏下沿一道可见横缝。统一 #EFF8FD。
+assert.match(capacitorConfig, /"backgroundColor":\s*"#EFF8FD"/, 'native launch colours must match the rainbow cyan-blue canvas (#EFF8FD = page gradient start, seam-free)');
 const nativeSource = await readFile(new URL('./src/native.js', import.meta.url), 'utf8');
-assert.match(nativeSource, /dark \? '#0F1312' : '#E4F1F6'/, 'native system chrome must follow the light rainbow canvas (dark tier dormant)');
+assert.match(nativeSource, /dark \? '#0F1312' : '#EFF8FD'/, 'native system chrome must follow the light rainbow canvas (dark tier dormant)');
 const themeSource = await readFile(new URL('./src/theme.js', import.meta.url), 'utf8');
-assert.match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#E4F1F6' : '#EDEFF6'/,
+assert.match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#EFF8FD' : '#EDEFF6'/,
   'App theme chrome must use the rainbow canvas while preserving the Web Lumen canvas');
 assert.match(artSource, /isAppMode\(\)[\s\S]*AppEmptyArt/, 'EmptyArt must dispatch to the App media only inside the App shell');
 

@@ -175,7 +175,9 @@ for (const to of ['/discover', '/messages', '/vip']) {
   ok(layoutSource.includes(`'${to}'`) || layoutSource.includes(`"${to}"`), `the web sidebar must link ${to}`);
 }
 const themeSource = await read('./src/theme.js');
-match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#E4F1F6' : '#EDEFF6'/,
+// App 侧浅色启动色已随 P4 色缝修复统一到 #EFF8FD（= rainbow 页底渐变起点）；
+// 本断言只守 Web 分支的 Lumen 画布值不动。
+match(themeSource, /app \? '#0F1312' : '#0A0C12'[\s\S]*app \? '#EFF8FD' : '#EDEFF6'/,
   'the Web branch of the dual-shell meta theme-color must retain the Lumen canvas');
 doesNotMatch(themeSource, /#f4f2ec|#15120e/, 'the retired warm meta colors must not linger');
 const indexHtml = await read('../client/index.html');

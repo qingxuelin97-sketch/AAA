@@ -1,3 +1,7 @@
+// ⚠ 级联协议（2026-08 打架清除工程立下）：要覆盖前代皮肤，去**删前代的声明**
+//（npm run audit:css 的打架对报告会告诉你在跟谁打），不许再用 !important 往上压 ——
+// app-test.mjs 有逐文件 !important 棘轮，计数只许降。四代皮肤叠穿曾把全层堆到
+// 3099 处 !important，P1 删掉 457 条被压死的规则才把它拉回头。
 // App 壳样式包（W6 CSS 按模式分包）—— IX App 层只在 App 模式加载，
 // import 顺序即级联权威，禁止重排。
 // main.jsx 在 isAppMode() 时于 render 前 await import 本模块；Web 用户不再

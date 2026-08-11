@@ -2,7 +2,7 @@
   "appId": "ai.huanyu.app",
   "appName": "幻域",
   "webDir": "client/dist",
-  "backgroundColor": "#E4F1F6",
+  "backgroundColor": "#EFF8FD",
   "server": {
     "androidScheme": "https",
     "cleartext": false
@@ -11,7 +11,7 @@
     "SplashScreen": {
       "launchShowDuration": 700,
       "launchAutoHide": false,
-      "backgroundColor": "#E4F1F6",
+      "backgroundColor": "#EFF8FD",
       "showSpinner": false,
       "androidScaleType": "CENTER_CROP"
     },

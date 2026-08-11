@@ -27,7 +27,7 @@ export function applyTheme(mode = getThemeMode()) {
     const app = isAppMode();
     meta.setAttribute('content', resolved === 'dark'
       ? (app ? '#0F1312' : '#0A0C12')
-      : (app ? '#E4F1F6' : '#EDEFF6'));
+      : (app ? '#EFF8FD' : '#EDEFF6'));
   }
   try { window.dispatchEvent(new Event('huanyu-theme')); } catch { /* */ }
 }
