@@ -6,6 +6,13 @@
 //   1. 死规则：匹配过元素、但从未在任何元素任何属性上获胜 → 删除候选。
 //      （从未匹配的规则不判死 —— 可能属于未探测到的动态面。）
 //   2. 非承重 !important：把它模拟降级后每一处获胜元素上的胜者都不变 → 摘除候选。
+//      ⚠ 2026-08-11 裁定：**摘除候选仅供人工逐条核对，禁止批量应用。**
+//      三次批量尝试三次被 55 帧闸拦下，每次翻在更深一层的模型缝隙上：
+//      ① 只考虑非 important 备胎，漏了第二条 important（§9c 语义色被洗掉）；
+//      ② 简化到「无争议」（该键全场无第二声明）后仍出 29238px —— Chrome 的实际
+//      级联仍有本模拟看不见的参与者（UA 样式 / 逻辑属性 / 简写展开细节）。
+//      安全的只有整条死规则删除（P1 457 条，全部 0px 过闸）。要真做批量摘除，
+//      得换真正的特异度计算级联或逐条摘除逐条过闸，不许再赌列表序模型。
 //   3. 打架对：降级后胜者变成另一条声明 → 记录谁在压谁，供定向删除前代。
 //
 // ⚠ 报告有效期 = 生成它的那棵源码树。任何一批删除落地后，报告立即过期 ——
@@ -227,9 +234,15 @@ for (const mode of MODES) {
         const inlineKeys = new Set((g.inline?.cssProperties || []).filter((p) => p.text && !p.disabled).flatMap((p) => keysOf(p.name)));
         // 每个覆盖键：最后一个非 important 与最后一个 important
         const byKey = new Map();
+        for (const d of decls) {
+          if (d.imp && d.ledgerRule) {
+            const seen = d.ledgerRule.impSeen || (d.ledgerRule.impSeen = new Map());
+            seen.set(d.name, (seen.get(d.name) || 0) + 1);
+          }
+        }
         for (const d of decls) for (const k of d.keys) {
           const slot = byKey.get(k) || {};
-          if (d.imp) slot.imp = d; else slot.norm = d;
+          if (d.imp) { slot.imp2 = slot.imp; slot.imp = d; } else slot.norm = d;
           byKey.set(k, slot);
         }
         for (const [k, slot] of byKey) {
@@ -239,10 +252,18 @@ for (const mode of MODES) {
           if (winner.imp) {
             winner.ledgerRule.wonImp++;
             // 模拟降级：没有 important 时的胜者
-            const alt = inlineKeys.has(k) ? { key: 'inline' } : slot.norm;
-            const rec = winner.ledgerRule.impDecls.get(winner.name) || { won: 0, loadBearing: 0 };
+            // 摘掉胜者后的接管顺序：第二条 important > 内联 > 最后的非 important。
+            // 只看非 important 备胎是 P2 首翻车的根因（§9c 摘掉后输给 §1 的 important）。
+            const alt = slot.imp2 || (inlineKeys.has(k) ? { key: 'inline' } : slot.norm);
+            const rec = winner.ledgerRule.impDecls.get(winner.name) || { won: 0, loadBearing: 0, contested: 0 };
             rec.won++;
-            if (alt && alt !== winner && alt.i > winner.i) {
+            // 只要该键上存在任何第二声明（另一条 important / 非 important / 内联），
+            // 就记有争议 —— P2 两次翻车证明我的级联序模型对不齐 Chrome，
+            // 摘除只做「无争议」子集：没有竞争者时摘掉在任何排序模型下都不变。
+            if (slot.imp2 || slot.norm || inlineKeys.has(k)) rec.contested++;
+            // alt 是内联样式时永远算承重：内联非 important 压过作者非 important，
+            // 摘掉这个 !important 就轮到内联赢 —— alt.i 是 undefined，旧写法会漏判。
+            if (alt && alt !== winner && (alt === slot.imp2 || alt.key === 'inline' || alt.i > winner.i)) {
               rec.loadBearing++;
               const loser = alt.key ? (ledger.get(alt.key) ? `${ledger.get(alt.key).file}:${ledger.get(alt.key).line}` : 'inline') : 'inline';
               const fk = `${winner.ledgerRule.file}:${winner.ledgerRule.line} [${winner.name}] >> ${loser}`;
@@ -263,14 +284,19 @@ srv.close();
 const INTERACTIVE = /:(hover|active|focus|target|checked)|\.open\b|\.active\b|\[aria-|\[data-(?!app|theme|perf|glass|accent|tone|compact)/;
 const perFile = new Map();
 for (const r of ledger.values()) {
-  const f = perFile.get(r.file) || { rules: 0, matched: 0, dead: [], strippable: [], loadBearing: [] };
+  const f = perFile.get(r.file) || { rules: 0, matched: 0, dead: [], strippable: [], loadBearing: [], deadDecls: [] };
   f.rules++;
   if (r.matched) f.matched++;
   const safe = !INTERACTIVE.test(r.selector) && !r.media;
   if (r.matched && !r.won && safe) f.dead.push({ line: r.line, selector: r.selector.slice(0, 120) });
   for (const [prop, rec] of r.impDecls) {
-    if (rec.loadBearing === 0 && safe) f.strippable.push({ line: r.line, prop, selector: r.selector.slice(0, 80) });
+    if (rec.loadBearing === 0 && !rec.contested && safe) f.strippable.push({ line: r.line, prop, selector: r.selector.slice(0, 80) });
     else if (rec.loadBearing > 0) f.loadBearing.push({ line: r.line, prop, hits: rec.loadBearing });
+  }
+  // 死声明：这条 important 在所有探测面出现过竞争、却一场都没赢 —— 整条删掉，
+  // 删掉它之后压着它的那条 !important 下一轮就能安全降级（解锁堆叠的钥匙）。
+  for (const [prop] of r.impSeen || []) {
+    if (!(r.impDecls.get(prop)?.won > 0) && r.matched && safe) f.deadDecls.push({ line: r.line, prop, selector: r.selector.slice(0, 80) });
   }
   perFile.set(r.file, f);
 }
@@ -281,9 +307,9 @@ await writeFile(join(OUT, 'report.json'), JSON.stringify({
   fighters: [...fighters.entries()].sort((a, b) => b[1] - a[1]).slice(0, 200),
 }, null, 1));
 console.log(`归因 ${attributed} / 未归因 ${unattributed}`);
-console.log('file'.padEnd(44), 'rules matched dead strip loadB');
+console.log('file'.padEnd(44), 'rules matched dead strip loadB deadD');
 for (const [file, f] of [...perFile].sort((a, b) => b[1].dead.length + b[1].strippable.length - a[1].dead.length - a[1].strippable.length)) {
   if (!file.includes('app') && !file.includes('chat')) continue;
-  console.log(file.padEnd(44), String(f.rules).padStart(5), String(f.matched).padStart(7), String(f.dead.length).padStart(4), String(f.strippable.length).padStart(5), String(f.loadBearing.length).padStart(5));
+  console.log(file.padEnd(44), String(f.rules).padStart(5), String(f.matched).padStart(7), String(f.dead.length).padStart(4), String(f.strippable.length).padStart(5), String(f.loadBearing.length).padStart(5), String(f.deadDecls.length).padStart(5));
 }
 console.log(`报告 → ${join(OUT, 'report.json')}`);
