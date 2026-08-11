@@ -39,17 +39,9 @@ html[data-app="1"] :is(button, a, [role="button"], .card, .msgs-conv, .msgs-entr
    act 实底圆钮）。本层的 v1 磨砂/描边发光块已删除（外发光与二层玻璃违反
    Lumen 硬规则）。 */
 
-/* —— 今日页头行：更精致的品牌胶囊 —— */
-html[data-app="1"] .aht {
-  padding: 8px 4px 2px; align-items: center;
-}
 html[data-app="1"] .aht-brand {
   display: inline-flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800;
   padding: 4px 0; letter-spacing: 1.4px;
-}
-/* 品牌字左侧的装饰方块已按用户反馈移除（渐变字本身即品牌视觉） */
-html[data-app="1"] .aht-acts button {
-  color: color-mix(in srgb, var(--text) 65%, transparent);
 }
 html[data-app="1"] .aht-acts button:hover { color: var(--text); }
 /* 未读角标 = 珊瑚内容语义（Lumen：禁无语义渐变与外发光） */
@@ -60,11 +52,6 @@ html[data-app="1"] .aht-nb {
   letter-spacing: 0;
 }
 
-/* —— 今日页 hero 卡：更立体的天色 + 更漂亮的余晖 —— */
-html[data-app="1"] .ah-hero {
-  padding: 22px 20px 18px; border-radius: 26px;
-  box-shadow: 0 12px 36px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
-}
 html[data-app="1"] .ah-hero.sky-morning { background: linear-gradient(145deg, #f0b169 0%, #e18a55 42%, #b25a3e 100%); }
 html[data-app="1"] .ah-hero.sky-dusk { background: linear-gradient(145deg, #e07c56 0%, #ad4d5c 46%, #6b3f74 100%); }
 html[data-app="1"] .ah-hero.sky-night { background: linear-gradient(150deg, #4a3f68 0%, #2b234a 52%, #16112b 100%); }
@@ -74,12 +61,6 @@ html[data-app="1"] .ah-hero::after {
   filter: blur(2px);
 }
 html[data-app="1"] .ah-greet { font-size: 13px; font-weight: 500; letter-spacing: 0.6px; color: rgba(255,255,255,0.82); }
-html[data-app="1"] .ah-name { font-size: 28px; letter-spacing: -0.02em; text-shadow: 0 2px 14px rgba(0,0,0,0.25); }
-html[data-app="1"] .ah-coin {
-  background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.32);
-  padding: 8px 14px; backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
-  transition: transform 0.16s var(--hy-spring), background 0.2s;
-}
 html[data-app="1"] .ah-coin:active { transform: scale(0.95); }
 html[data-app="1"] .ah-checkin {
   padding: 10px 18px; letter-spacing: 0.2px;
@@ -100,25 +81,9 @@ html[data-app="1"] .ah-checkin.done {
 }
 html[data-app="1"] .ah-checkin:not(.done):hover { transform: translateY(-1px); }
 
-/* —— 今日页快捷入口：磁贴更精致 —— */
-html[data-app="1"] .ah-sc { transition: transform 0.18s var(--hy-spring); }
-html[data-app="1"] .ah-sc-ic {
-  width: 52px; height: 52px; border-radius: 18px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.06), inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent);
-  transition: transform 0.22s var(--hy-spring), box-shadow 0.2s;
-}
 html[data-app="1"] .ah-sc:hover .ah-sc-ic { transform: translateY(-2px); }
 html[data-app="1"] .ah-sc:active .ah-sc-ic { transform: scale(0.92) translateY(0); }
 
-/* —— 今日页精选卡：更清晰的层次 —— */
-html[data-app="1"] .ah-hero-card {
-  border-radius: 26px;
-  box-shadow: 0 12px 34px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.08);
-}
-html[data-app="1"] .ah-hc-scrim {
-  background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.18) 42%, rgba(0,0,0,0.82) 100%);
-}
-html[data-app="1"] .ah-hc-body b { font-size: 24px; letter-spacing: -0.02em; }
 html[data-app="1"] .ah-hc-tag {
   background: rgba(255,255,255,0.22); padding: 4px 11px;
   backdrop-filter: blur(6px) saturate(140%); -webkit-backdrop-filter: blur(6px) saturate(140%);
@@ -140,8 +105,6 @@ html[data-app="1"] .ah-resume:hover .avatar {
   box-shadow: 0 0 0 2px var(--panel), 0 8px 20px color-mix(in srgb, var(--accent) 32%, rgba(0,0,0,0.28));
 }
 
-/* —— 今日页「为你挑选」两列：更工整的比例 —— */
-html[data-app="1"] .ah-picks { gap: 12px; }
 html[data-app="1"] .ah-pick {
   border-radius: 18px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.06);
@@ -151,7 +114,6 @@ html[data-app="1"] .ah-pick:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 28px rgba(0,0,0,0.14);
 }
-html[data-app="1"] .ah-pick-tx { padding: 10px 12px 13px; }
 html[data-app="1"] .ah-pick-tx b { font-size: 14.5px; letter-spacing: -0.005em; }
 
 /* —— 任务卡：进度条液体色 —— */
@@ -167,8 +129,6 @@ html[data-app="1"] .ah-task-bar i {
   transition: width 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-/* —— 发现流 · 顶部分类条更贴合原生 —— */
-html[data-app="1"] .feed-top { padding-top: calc(env(safe-area-inset-top) + 10px); }
 html[data-app="1"] .feed-cat {
   padding: 7px 14px; font-size: 13px; letter-spacing: 0.4px;
   border-color: rgba(255,255,255,0.14); background: rgba(0,0,0,0.36);
@@ -182,33 +142,14 @@ html[data-app="1"] .feed-cat.on {
   border-color: transparent; opacity: 1;
   box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 44%, transparent);
 }
-html[data-app="1"] .feed-search {
-  width: 36px; height: 36px;
-  border-color: rgba(255,255,255,0.16); background: rgba(0,0,0,0.36);
-  backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
-  transition: transform 0.16s var(--hy-spring), background 0.2s;
-}
 html[data-app="1"] .feed-search:hover { background: rgba(0,0,0,0.55); }
 html[data-app="1"] .feed-search:active { transform: scale(0.9); }
 
-/* —— 发现流 · 信息层更干净的字距与投影 —— */
-html[data-app="1"] .fd2-name { font-size: 26px; letter-spacing: -0.01em; }
-html[data-app="1"] .fd2-author { font-size: 13px; }
-html[data-app="1"] .fd2-cat {
-  background: rgba(255,255,255,0.2);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-}
 html[data-app="1"] .fd2-intro {
   border-radius: 18px; padding: 14px 42px 14px 16px;
   background: rgba(10, 8, 14, 0.58);
   border-color: rgba(255,255,255,0.1);
   backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%);
-}
-html[data-app="1"] .fd2-greet {
-  border-radius: 20px; border-top-left-radius: 6px;
-  padding: 14px 16px; font-size: 14.5px; line-height: 1.72;
-  background: rgba(255, 253, 249, 0.94);
-  box-shadow: 0 8px 26px rgba(0,0,0,0.32);
 }
 html[data-app="1"] .fd2-act {
   gap: 4px; font-size: 11px; letter-spacing: 0.4px;
@@ -219,7 +160,6 @@ html[data-app="1"] .fd2-act svg {
   transition: transform 0.22s var(--hy-spring);
 }
 html[data-app="1"] .fd2-act:hover svg { transform: scale(1.1); }
-html[data-app="1"] .fd2-act.on svg { filter: drop-shadow(0 2px 12px rgba(255,93,126,0.5)); }
 html[data-app="1"] .fd2-act.on.gold svg { filter: drop-shadow(0 2px 12px rgba(245,196,81,0.55)); }
 html[data-app="1"] .fd2-say {
   padding: 8px 10px; border-radius: 999px;
@@ -238,43 +178,18 @@ html[data-app="1"] .fd2-say-go.send {
   box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
-/* —— 消息中心：分段控件 + 入口卡更精致 —— */
-html[data-app="1"] .msgs { padding: 4px 16px 20px; gap: 4px; }
-html[data-app="1"] .msgs-head { padding-top: 6px; margin-bottom: 14px; align-items: center; }
 html[data-app="1"] .msgs-tabs { gap: 30px; }
-html[data-app="1"] .msgs-tabs button {
-  font-size: 16px; padding: 8px 4px;
-  color: color-mix(in srgb, var(--text) 42%, transparent);
-  transition: color 0.2s;
-}
-html[data-app="1"] .msgs-tabs button.on { font-size: 18px; color: var(--text); font-weight: 800; }
 html[data-app="1"] .msgs-tabs button.on::after {
   width: 24px; height: 3px; border-radius: 2px;
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
   box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent);
 }
-html[data-app="1"] .msgs-entry {
-  padding: 13px 12px; border-radius: 18px; gap: 14px;
-  transition: background 0.2s, transform 0.16s var(--hy-spring);
-}
 html[data-app="1"] .msgs-entry:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
 html[data-app="1"] .msgs-entry:active { transform: scale(0.98); background: var(--bg-2); }
-html[data-app="1"] .msgs-entry-ic {
-  width: 50px; height: 50px; border-radius: 16px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.18);
-}
-html[data-app="1"] .msgs-entry-ic.noti { background: linear-gradient(140deg, #f36e94, #d43868); }
-html[data-app="1"] .msgs-entry-ic.dm { background: linear-gradient(140deg, #6ba4f5, #4270d8); }
-html[data-app="1"] .msgs-entry-ic.grp { background: linear-gradient(140deg, #a279e6, #7d4bc9); }
-html[data-app="1"] .msgs-entry-tx b { font-size: 15px; letter-spacing: -0.005em; }
 html[data-app="1"] .msgs-badge {
   min-width: 22px; height: 20px; padding: 0 7px; border-radius: 12px; font-size: 11.5px;
   background: var(--ix-danger);
   box-shadow: none;
-}
-html[data-app="1"] .msgs-conv {
-  padding: 12px 12px; border-radius: 18px; gap: 13px;
-  transition: background 0.2s;
 }
 html[data-app="1"] .msgs-conv:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
 html[data-app="1"] .msgs-conv .avatar {
@@ -283,20 +198,10 @@ html[data-app="1"] .msgs-conv .avatar {
 html[data-app="1"] .msgs-sep { margin: 14px 12px 6px; }
 html[data-app="1"] .msgs-sep span { font-size: 11.5px; letter-spacing: 1.2px; }
 
-/* —— 我的页 · 资料头 / 会员横幅 更立体 —— */
-html[data-app="1"] .pf { padding-top: 6px; } /* .app-main 已含 safe-area 顶部内边距，勿重复叠加（否则刘海机顶部空一大条） */
+/* .app-main 已含 safe-area 顶部内边距，勿重复叠加（否则刘海机顶部空一大条） */
 html[data-app="1"] .pf-top { gap: 6px; padding-right: 2px; }
-html[data-app="1"] .pf-top button { transition: transform 0.16s var(--hy-spring), background 0.2s; }
 html[data-app="1"] .pf-top button:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
 html[data-app="1"] .pf-top button:active { transform: scale(0.9); }
-html[data-app="1"] .pf-av .avatar {
-  box-shadow:
-    0 0 0 3px var(--panel),
-    0 0 0 4.5px color-mix(in srgb, var(--accent) 32%, transparent),
-    0 10px 26px rgba(0,0,0,0.32);
-}
-html[data-app="1"] .pf-id-tx > b { font-size: 23px; letter-spacing: -0.01em; }
-html[data-app="1"] .pf-uid { font-size: 11.5px; padding: 4px 10px; border-radius: 999px; }
 html[data-app="1"] .pf-vip {
   border-radius: 22px; padding: 16px 18px; overflow: hidden; position: relative;
   color: #fff;
@@ -305,23 +210,12 @@ html[data-app="1"] .pf-vip {
   transition: transform 0.18s var(--hy-spring), box-shadow 0.25s;
 }
 html[data-app="1"] .pf-vip:hover { transform: translateY(-1px); box-shadow: 0 20px 42px rgba(15, 18, 26, 0.36); }
-html[data-app="1"] .pf-vip.svip { background: linear-gradient(120deg, #b48432, #f5c451 52%, #d99a2b); color: #3a2606; }
 html[data-app="1"] .pf-vip-glow {
   right: -40px; top: -50px; width: 180px; height: 180px;
   background: radial-gradient(circle, rgba(255,255,255,0.36), transparent 70%);
   filter: blur(4px);
 }
 html[data-app="1"] .pf-vip-l b { font-size: 17px; letter-spacing: 0.4px; }
-/* pf-vip-go 不挂 blur：它坐在 pf-vip 的不透明渐变上，模糊不可见 */
-html[data-app="1"] .pf-vip-go {
-  padding: 9px 18px; background: rgba(255,255,255,0.22); color: #fff;
-  border: 1px solid rgba(255,255,255,0.32);
-}
-html[data-app="1"] .pf-vip.svip .pf-vip-go { background: rgba(58, 38, 6, 0.14); color: #3a2606; border-color: rgba(58, 38, 6, 0.2); }
-html[data-app="1"] .pf-assets {
-  border-radius: 20px; padding: 16px 18px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-}
 html[data-app="1"] .pf-asset-bal b { font-size: 18px; letter-spacing: -0.01em; }
 html[data-app="1"] .pf-asset-acts button {
   padding: 11px 12px; border-radius: 13px;
@@ -337,10 +231,6 @@ html[data-app="1"] .pf-cell {
 }
 html[data-app="1"] .pf-cell:hover { border-color: color-mix(in srgb, var(--accent) 32%, var(--border)); }
 html[data-app="1"] .pf-cell:active { transform: scale(0.9); }
-html[data-app="1"] .pf-cell-ic {
-  width: 42px; height: 42px; border-radius: 14px;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
-}
 @keyframes pfCellIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { html[data-app="1"] .pf-cell { animation: none; } }
 html[data-app="1"] .pf-quick-ic {
@@ -349,13 +239,6 @@ html[data-app="1"] .pf-quick-ic {
   transition: transform 0.2s var(--hy-spring);
 }
 html[data-app="1"] .pf-quick button:hover .pf-quick-ic { transform: translateY(-2px); }
-html[data-app="1"] .pf-tabs { margin: 22px 4px 12px; gap: 24px; }
-html[data-app="1"] .pf-tabs button { font-size: 15.5px; }
-html[data-app="1"] .pf-tabs button.on { font-size: 17px; }
-html[data-app="1"] .pf-tabs button.on::after {
-  height: 3px; border-radius: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-}
 html[data-app="1"] .pf-cc-cover {
   border-radius: 16px; overflow: hidden; position: relative;
   transition: transform 0.2s var(--hy-spring), box-shadow 0.2s;
@@ -363,10 +246,6 @@ html[data-app="1"] .pf-cc-cover {
 html[data-app="1"] .pf-cc:hover .pf-cc-cover {
   transform: translateY(-2px);
   box-shadow: 0 12px 28px rgba(0,0,0,0.16);
-}
-html[data-app="1"] .pf-foot-btn {
-  padding: 13px; border-radius: 14px; font-weight: 700;
-  transition: transform 0.16s var(--hy-spring), border-color 0.2s;
 }
 html[data-app="1"] .pf-foot-btn:hover { border-color: color-mix(in srgb, var(--text) 22%, var(--border)); }
 html[data-app="1"] .pf-foot-btn:active { transform: scale(0.98); }
@@ -394,19 +273,7 @@ html[data-app="1"] .msg .bubble {
   border-radius: 22px; letter-spacing: 0.002em;
   transition: box-shadow 0.2s;
 }
-html[data-app="1"] .msg.user .bubble {
-  background: linear-gradient(145deg, var(--accent), var(--accent-2));
-  color: #fff; box-shadow: 0 8px 22px rgba(240,113,63,0.32);
-}
 html[data-app="1"] .msg .bubble:hover { box-shadow: 0 8px 26px rgba(0,0,0,0.16); }
-
-/* —— 通用「面板」层：细发丝阴影统一 —— */
-html[data-app="1"] .card,
-html[data-app="1"] .msgs-entry,
-html[data-app="1"] .msgs-conv,
-html[data-app="1"] .ah-task {
-  border: 1px solid var(--hy-hairline);
-}
 
 /* —— App bottom sheet：材质权威在 app-controls（L2 基线）+ hig-v5（shim 收口），
    本层只保留排版细节 —— */
@@ -484,8 +351,6 @@ html[data-app="1"] img { -webkit-user-drag: none; user-select: none; }
 }
 
 html[data-app="1"] .aht-nb { top: 2px; right: 2px; }
-
-html[data-app="1"] .feed-top { padding-left: 12px; }
 
 /* —— 加载态更精致的骨架 —— */
 html[data-app="1"] .ah-hero-skel,
@@ -575,25 +440,11 @@ html[data-app="1"][data-theme="light"] .glass-noise::before { opacity: 0.05; }
    外发光违反「一层玻璃+发丝边+内高光、禁外发光」硬规则，一并移除；lite 回
    落由 IX 令牌与 app-runtime 统一处理。 */
 
-/* —— 今日页头行：磨砂胶囊 hover 沁光 —— */
-html[data-app="1"] .aht-acts button {
-  background: color-mix(in srgb, var(--panel) 26%, transparent);
-  border: 1px solid transparent;
-  backdrop-filter: blur(10px) saturate(160%);
-  -webkit-backdrop-filter: blur(10px) saturate(160%);
-  transition: background 0.2s, border-color 0.2s, transform 0.15s var(--hy-spring);
-}
 html[data-app="1"] .aht-acts button:hover {
   background: color-mix(in srgb, var(--panel) 44%, transparent);
   border-color: var(--ix-hairline);
 }
-html[data-app="1"][data-perf="lite"] .aht-acts button {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--bg-2);
-}
 
-/* —— 今日页问候卡：叠玻璃 hero，光晕透出主色 —— */
-html[data-app="1"] .ah-hero { overflow: hidden; }
 html[data-app="1"] .ah-hero > * { position: relative; z-index: 2; }
 html[data-app="1"] .ah-hero::after {
   /* 覆盖既有的圆光晕，改为漂移沁光 */
@@ -603,9 +454,6 @@ html[data-app="1"] .ah-hero::after {
     radial-gradient(60% 45% at 85% 80%, rgba(255,255,255,0.12), transparent 62%);
   border-radius: inherit;
 }
-/* heroDrift 定义在角色详情动效段 —— 同名后写者全局获胜（此处曾有的
-   translate3d 旧版从未生效，已删；如需独立节奏请另起名字） */
-html[data-app="1"][data-perf="lite"] .ah-hero::after { animation: none; }
 @media (prefers-reduced-motion: reduce) { html[data-app="1"] .ah-hero::after { animation: none; } }
 /* hero 内的胶囊按钮真玻璃 */
 html[data-app="1"] .ah-hero .ah-coin {
@@ -620,10 +468,6 @@ html[data-app="1"] .ah-hero .ah-coin::after {
   background: linear-gradient(120deg, color-mix(in srgb, #fff 34%, transparent), transparent 55%);
   opacity: 0.7;
 }
-html[data-app="1"][data-perf="lite"] .ah-hero .ah-coin {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: color-mix(in srgb, #fff 26%, transparent);
-}
 
 /* —— 快捷入口磁贴：玻璃底 + 高光反射 —— */
 html[data-app="1"] .ah-sc-ic {
@@ -637,12 +481,6 @@ html[data-app="1"] .ah-sc-ic::after {
   background: linear-gradient(140deg, color-mix(in srgb, #fff 24%, transparent), transparent 50%);
   opacity: 0.7;
 }
-html[data-app="1"][data-perf="lite"] .ah-sc-ic {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-}
-
-/* —— 快捷入口色调轮换：底色改为强调色 mix，玻璃透出更纯 —— */
-html[data-app="1"] .ah-sc .ah-sc-ic { background: color-mix(in srgb, var(--ix-act, var(--accent)) 12%, var(--ix-surface, #fff)); color: var(--ix-act, var(--accent)); }
 
 /* —— 精选卡：内嵌玻璃标签「今日精选」+ CTA 玻璃钮 —— */
 html[data-app="1"] .ah-hc-tag {
@@ -652,33 +490,6 @@ html[data-app="1"] .ah-hc-tag {
   -webkit-backdrop-filter: blur(10px) saturate(170%);
   color: #fff;
   box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
-}
-html[data-app="1"] .ah-hc-cta {
-  background: color-mix(in srgb, #fff 88%, transparent);
-  backdrop-filter: blur(10px) saturate(160%);
-  -webkit-backdrop-filter: blur(10px) saturate(160%);
-  box-shadow: 0 6px 22px rgba(0,0,0,0.32), inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
-}
-
-/* —— 任务卡：玻璃层 —— */
-html[data-app="1"] .ah-task {
-  background: var(--ix-surface);
-  border: 1px solid var(--ix-hairline);
-  box-shadow: var(--ix-hairline-in), 0 4px 14px rgba(0,0,0,0.08);
-}
-html[data-app="1"][data-perf="lite"] .ah-task {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--panel);
-}
-
-/* —— 「为你挑选」两列卡：玻璃盒 —— */
-html[data-app="1"] .ah-pick {
-  background: var(--ix-surface);
-  border: 1px solid var(--ix-hairline);
-}
-html[data-app="1"][data-perf="lite"] .ah-pick {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--panel);
 }
 
 /* —— 「继续故事」rail 与「空态」CTA 玻璃化 —— */
@@ -704,14 +515,6 @@ html[data-app="1"] .feed-cat.on {
     inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent),
     0 6px 20px color-mix(in srgb, var(--accent) 52%, transparent);
 }
-/* —— 搜索圆钮 —— */
-html[data-app="1"] .feed-search {
-  background: color-mix(in srgb, #000 32%, transparent);
-  border-color: color-mix(in srgb, #fff 18%, transparent);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
-}
 /* —— 沉浸卡介绍面板：厚玻璃 —— */
 html[data-app="1"] .fd2-intro {
   background: color-mix(in srgb, #0a0812 55%, transparent);
@@ -730,19 +533,6 @@ html[data-app="1"] .fd2-intro::before {
 html[data-app="1"][data-perf="lite"] .fd2-intro {
   backdrop-filter: none; -webkit-backdrop-filter: none;
   background: rgba(10, 8, 18, 0.86);
-}
-/* —— 开场白气泡：更精致的珍珠白玻璃 —— */
-html[data-app="1"] .fd2-greet {
-  background: color-mix(in srgb, #fff8ef 88%, transparent);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.9),
-    0 8px 28px rgba(0,0,0,0.32);
-}
-html[data-app="1"][data-perf="lite"] .fd2-greet {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: rgba(255, 253, 249, 0.96);
 }
 /* —— 自由输入胶囊：厚玻璃 + 顶部反射条 —— */
 html[data-app="1"] .fd2-say {
@@ -803,67 +593,13 @@ html[data-app="1"] .msgs-head {
   margin: 0 -16px 8px;
   border-radius: 0;
 }
-html[data-app="1"][data-perf="lite"] .msgs-head {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--bg);
-}
-/* 消息入口卡 + 会话行：高不透明实底卡（每行一层实时模糊 ≈ 20-30 层同屏，
-   是消息页最大 GPU 开销，改实底后描边/内高光质感保留） */
-html[data-app="1"] .msgs-entry,
-html[data-app="1"] .msgs-conv {
-  background: color-mix(in srgb, var(--panel) 90%, transparent);
-  border: 1px solid var(--ix-hairline);
-  transition: background 0.2s, transform 0.15s var(--hy-spring), box-shadow 0.2s;
-  box-shadow: var(--ix-hairline-in);
-}
 html[data-app="1"] .msgs-entry:hover,
 html[data-app="1"] .msgs-conv:hover {
   background: var(--ix-glass-nav);
   box-shadow: var(--ix-hairline-in), 0 6px 20px rgba(0,0,0,0.14);
 }
-html[data-app="1"][data-perf="lite"] .msgs-entry,
-html[data-app="1"][data-perf="lite"] .msgs-conv {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--panel);
-}
 html[data-app="1"] .msgs-badge {
   box-shadow: none;
-}
-
-/* 我的页 · 资料卡 & VIP 横幅 & 资产卡：玻璃 */
-html[data-app="1"] .pf-assets {
-  background: var(--ix-surface);
-  border: 1px solid var(--ix-hairline);
-  box-shadow: var(--ix-hairline-in);
-}
-html[data-app="1"][data-perf="lite"] .pf-assets {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--panel);
-}
-/* 宫格/快捷小图标 chip 不再挂 blur：面积小但数量 20+（每个都是一层实时
-   模糊），底色本就近实底，模糊感知为零、GPU 白算 */
-html[data-app="1"] .pf-cell {
-  background: color-mix(in srgb, var(--panel) 88%, transparent);
-  border: 1px solid var(--ix-hairline);
-  box-shadow: var(--ix-hairline-in);
-}
-html[data-app="1"][data-perf="lite"] .pf-cell,
-html[data-app="1"][data-perf="lite"] .pf-cell-ic,
-html[data-app="1"][data-perf="lite"] .pf-quick-ic {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-}
-/* VIP 横幅内嵌玻璃 CTA */
-html[data-app="1"] .pf-vip-go {
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
-}
-/* 底部功能按钮玻璃化 */
-html[data-app="1"] .pf-foot-btn {
-  background: var(--ix-surface);
-  border: 1px solid var(--ix-hairline);
-}
-html[data-app="1"][data-perf="lite"] .pf-foot-btn {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--panel);
 }
 
 /* ============================================================================
@@ -923,49 +659,6 @@ html[data-app="1"][data-perf="lite"] .pf-foot-btn {
 [data-perf="lite"] .vm-go::before { animation: none; }
 @media (prefers-reduced-motion: reduce) { .vm-go::before { animation: none; } }
 
-/* ============================================================================
-   沉浸对话（chat）：气泡玻璃化 + 输入胶囊真磨砂
-   注：既有规则里已有 .has-bg 场景的玻璃，这里再补齐无背景的常态。
-   ========================================================================== */
-html[data-app="1"] .chat-main .chat-head {
-  background: var(--ix-surface);
-  border-bottom: 1px solid var(--ix-hairline);
-  backdrop-filter: var(--ix-blur-s);
-  -webkit-backdrop-filter: var(--ix-blur-s);
-}
-html[data-app="1"][data-perf="lite"] .chat-main .chat-head {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--panel);
-}
-/* 有背景图的沉浸对话：头部必须保持透明深色渐变 —— 上两条常态玻璃规则与
-   前文 has-bg 透明规则同特异性且更靠后，lite 档会把头部刷成纯白，
-   压在深色立绘上就是「顶部白屏」（用户实机截图的根因）。这里以更高特异性收口。 */
-html[data-app="1"] .chat-main.has-bg .chat-head,
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-head {
-  background: linear-gradient(180deg, rgba(10,8,14,0.55), rgba(10,8,14,0));
-  border-bottom: none;
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-}
-/* Lumen S2：输入岛是单层玻璃 —— 外层玻璃条（hig-v5 经 shim 收口）+ 内层普通
-   inset 输入位，内层不再挂 blur/玻璃（原双层玻璃块已删）。 */
-html[data-app="1"] .chat-main .chat-input-bar .box {
-  background: var(--ix-surface);
-  border: 1px solid var(--ix-hairline);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: none;
-}
-html[data-app="1"] .msg.assistant .bubble {
-  background: var(--ix-glass-nav);
-  border: 1px solid var(--ix-hairline);
-  backdrop-filter: var(--ix-blur-s);
-  -webkit-backdrop-filter: var(--ix-blur-s);
-  box-shadow: var(--ix-hairline-in), 0 4px 14px rgba(0,0,0,0.14);
-}
-html[data-app="1"][data-perf="lite"] .msg.assistant .bubble {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: var(--panel);
-}
 html[data-app="1"] .msg.user .bubble {
   /* 用户气泡保留渐变主色（识别度），但加一层高光 */
   position: relative; overflow: hidden;
@@ -1015,16 +708,6 @@ html[data-app="1"][data-perf="lite"] .cmdk-panel {
   backdrop-filter: none; -webkit-backdrop-filter: none;
 }
 
-/* ============================================================================
-   顶栏（沉浸次级页 .topbar）：真玻璃化
-   ========================================================================== */
-html[data-app="1"] .topbar {
-  background: var(--ix-glass-nav);
-  border-bottom: 1px solid var(--ix-hairline);
-  backdrop-filter: var(--ix-blur);
-  -webkit-backdrop-filter: var(--ix-blur);
-  box-shadow: 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
-}
 html[data-app="1"][data-perf="lite"] .topbar {
   backdrop-filter: none; -webkit-backdrop-filter: none;
   background: var(--bg);
@@ -1156,7 +839,6 @@ html[data-app="1"] .cvx-cta {
    曾经的 transform 居中合并补丁随旧布局一并退役（.app-dock 围栏内由
    app-controls 以 transform:none !important 钉死）。
    ========================================================================== */
-
 
 /* ── GM 管理后台 App 壳基础适配（实机反馈：桌面布局在窄屏挤压溢出）──
    管理台是 GM 工具页，不追求原生观感，只保证可用：统计卡两列、行卡

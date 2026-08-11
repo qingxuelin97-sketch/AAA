@@ -64,8 +64,6 @@ html[data-app="1"] { --app-top: env(safe-area-inset-top); --app-bot: calc(var(--
   padding-bottom: var(--app-bot, calc(60px + env(safe-area-inset-bottom)));
   transition: transform 0.26s var(--spring); }
 .app-main > .route-fade { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-/* app 壳内的路由切换：轻微上滑淡入，更接近原生页面推入手感 */
-html[data-app="1"] .route-fade { animation: appRouteIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 @keyframes appRouteIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { html[data-app="1"] .route-fade { animation: none; } }
 
@@ -184,8 +182,6 @@ html[data-app="1"] .friends-layout { height: calc(100dvh - var(--app-top) - var(
 /* Toasts ride above the flat tab bar; the back-to-top FAB too. */
 html[data-app="1"] .toast-stack { bottom: calc(74px + env(safe-area-inset-bottom)); }
 
-/* Lite perf tier: drop the (expensive) chrome blur for a flat fill. */
-html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; background: var(--bg); }
 @media (prefers-reduced-motion: reduce) { .app-ptr.spin svg { animation: none; } .app-main { transition: none; } }
 
 /* ---- 扁平全宽底栏（原生形态）：今日 / 发现 / [+AI] / 消息 / 我的 ---- */
@@ -391,7 +387,6 @@ html[data-app="1"][data-perf="lite"] .app-tabbar { backdrop-filter: none; backgr
 /* 外层 wrap 拿确定高度：app 壳下显式按视口减去 header/dock 计算，
    彻底摆脱「flex 百分比链在部分 WebView 下解析为 auto → 模块塌掉」的老 bug。 */
 .feed-wrap { position: relative; height: 100%; min-height: 0; overflow: hidden; background: #000; }
-html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-top) - var(--app-bot)); }
 .feed-root { height: 100%; min-height: 0; overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain; scrollbar-width: none; background: #000; position: relative; }
 .feed-root::-webkit-scrollbar { display: none; }
@@ -732,9 +727,6 @@ html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-top) - var(--app
    仅新增类名，不改老组件语义；lite 档一律去 blur。
    ============================================================ */
 
-
-
-
 /* ============ 角色详情 · App 沉浸布局（cvx） ============ */
 .cvx { position: fixed; inset: 0; z-index: 80; background: #0d0b12; color: #f4f1ec;
   display: flex; flex-direction: column; max-width: 480px; margin-inline: auto;
@@ -925,27 +917,11 @@ html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-top) - var(--app
 
 /* ============ 沉浸对话打磨（app 壳 + 背景图时的玻璃层） ============ */
 /* 顶栏：完全透明悬浮，信息直接压在立绘上 */
-/* 深色沉浸底打底：背景图加载中/透明边缘时不闪白，且与状态栏语境色 #0e1013 衔接 */
-html[data-app="1"] .chat-main.has-bg { background: #0e1013; }
-html[data-app="1"] .chat-main.has-bg .chat-head { background: linear-gradient(180deg, rgba(10,8,14,0.55), rgba(10,8,14,0)); border-bottom: none; }
-html[data-app="1"] .chat-main.has-bg .chat-head .nm b,
-html[data-app="1"] .chat-main.has-bg .chat-head .ch-status { color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
-/* 气泡：助手深色玻璃白字 / 用户暖色实心，皆带足对比度 */
-html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble { background: rgba(16, 13, 22, 0.66); color: #f2eee8;
-  border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .msg.assistant .bubble { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(16,13,22,0.85); }
 html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act { color: #e8b563; }
-html[data-app="1"] .chat-main.has-bg .msg-name { color: rgba(255,255,255,0.85); text-shadow: 0 1px 5px rgba(0,0,0,0.5); }
 html[data-app="1"] .chat-main.has-bg .msg-acts .speak { color: rgba(255,255,255,0.75); text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
 /* 输入栏胶囊：玻璃材质统一到 --hy-cg-*（见「统一玻璃」小节），此处仅留文字色 */
 html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea { color: #fff; }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea::placeholder { color: rgba(255,255,255,0.45); }
-/* app 壳对话顶栏：名字紧贴头像成第一行（截断不换行），好感度与工具收进第二行 */
-html[data-app="1"] .chat-main .chat-head { row-gap: 6px; }
-/* nm 在 app 壳只放「在线」状态（角色名已从身份胶囊移除，见 Chat.jsx），
-   却沿用了 web 版角色名的 140px 弹性基线 → 白白撑宽身份胶囊，把好感徽章 +
-   工具组一起挤出屏幕，右上角 ⋮ 被裁掉半个（实机反馈）。改为按内容自适应。 */
-html[data-app="1"] .chat-main .chat-head .nm { flex: 0 1 auto; min-width: 0; }
 html[data-app="1"] .chat-main .chat-head .nm b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html[data-app="1"] .chat-main .chat-head .ch-status { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* 工具组（搜索 / 更多）绝不参与收缩：宁可让身份胶囊与好感徽章先让位，
@@ -967,8 +943,6 @@ html[data-app="1"] .chat-main .chat-head .chat-tools { margin-left: auto; flex-s
 .aht-nb { position: absolute; top: 0; right: 0; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
   background: var(--accent); color: #fff; font-size: 9px; font-weight: 800; display: grid; place-items: center; }
 
-/* ---- 发现流：全屏出血（内容顶到状态栏之下），顶部条避让安全区 ---- */
-html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-bot)); margin-top: calc(-1 * var(--app-top)); }
 .feed-top { position: absolute; top: 0; left: 0; right: 0; z-index: 4; display: flex; align-items: center; gap: 8px;
   padding: calc(env(safe-area-inset-top) + 8px) 12px 0 0; }
 .feed-top .feed-cats { position: static; flex: 1; min-width: 0; padding-right: 0; }
@@ -995,15 +969,7 @@ html[data-app="1"] .feed-wrap { height: calc(100dvh - var(--app-bot)); margin-to
 .msgs-head { gap: 6px; }
 .msgs-head .msgs-tabs { padding-right: 30px; } /* 视觉居中补偿左侧 logo 宽度 */
 
-/* ---- 次级页面统一收编：app 壳下 .topbar/.page 变为紧凑原生风格 ---- */
-html[data-app="1"] .topbar { position: sticky; top: 0; z-index: 30;
-  padding: calc(10px + env(safe-area-inset-top)) 16px 10px; margin-top: calc(-1 * var(--app-top));
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: saturate(150%) blur(14px); -webkit-backdrop-filter: saturate(150%) blur(14px);
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
 html[data-app="1"][data-perf="lite"] .topbar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
-html[data-app="1"] .topbar h1 { font-size: 18px; }
-html[data-app="1"] .topbar .sub { font-size: 12px; margin-top: 2px; }
 html[data-app="1"] .page { padding: 14px 16px 84px; }
 
 /* ============================================================
@@ -1224,19 +1190,9 @@ html[data-app="1"] .page { padding: 14px 16px 84px; }
 html[data-app="1"] .chat-main.has-bg .chat-head { background: none; border-bottom: none; flex-wrap: nowrap; }
 /* 头像 + 名称合成一枚磨砂身份胶囊 */
 .ch-idpill { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto; }
-html[data-app="1"] .chat-main.has-bg .ch-idpill { flex: 0 1 auto; padding: 4px 15px 4px 4px; border-radius: 999px;
-  background: rgba(0,0,0,0.34); border: 1px solid rgba(255,255,255,0.12);
-  -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); }
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .ch-idpill { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(0,0,0,0.62); }
-html[data-app="1"] .chat-main.has-bg .ch-idpill .nm b { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.55); }
-html[data-app="1"] .chat-main.has-bg .ch-idpill .ch-status { color: rgba(255,255,255,0.85); text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
 /* 返回键磨砂圆钮 */
 html[data-app="1"] .chat-main.has-bg .chat-back { flex: 0 0 auto; width: 34px; height: 34px; padding: 0; border-radius: 50%;
   background: rgba(0,0,0,0.34); color: #fff; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-/* 好感度徽章磨砂化 */
-html[data-app="1"] .chat-main.has-bg .affinity-badge { background: rgba(0,0,0,0.34); border-color: rgba(255,255,255,0.12);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .affinity-badge { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(0,0,0,0.6); }
 html[data-app="1"] .chat-main.has-bg .affinity-badge .af-ic { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
 html[data-app="1"] .chat-main.has-bg .affinity-badge .af-tx b { color: #fff; }
 html[data-app="1"] .chat-main.has-bg .affinity-badge .af-tx i { background: rgba(255,255,255,0.28); }
@@ -1246,18 +1202,7 @@ html[data-app="1"] .chat-main.has-bg .chat-ai-mark { display: block; position: a
   top: calc(env(safe-area-inset-top) + 66px); font-size: 11px; letter-spacing: 0.5px; color: rgba(255,255,255,0.55);
   text-shadow: 0 1px 4px rgba(0,0,0,0.6); pointer-events: none; }
 
-/* v1 深色磨砂气泡层已删除 —— 现行气泡皮肤见 chat/chat-app.css §3 */
-html[data-app="1"] .chat-main.has-bg .msg-acts .speak { color: rgba(255,255,255,0.75); text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
-
-/* 居中时间戳磨砂胶囊 */
-html[data-app="1"] .chat-main.has-bg .msg-name .msg-time { color: rgba(255,255,255,0.7); }
-
-/* 输入栏胶囊：仅定几何尺寸，玻璃材质走统一 --hy-cg-* 令牌 */
-html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { border-radius: 26px; padding: 6px 6px 6px 8px; }
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-input-bar .box { background: var(--hy-cg-bg-solid); }
-html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea { color: #fff; }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar textarea::placeholder { color: rgba(255,255,255,0.5); }
-html[data-app="1"] .chat-main.has-bg .chat-input-bar .act-btn { color: rgba(255,255,255,0.85); }
 
 /* 动作面板（快捷动作）磨砂化 */
 html[data-app="1"] .chat-main.has-bg .action-panel { background: none; box-shadow: none; }
@@ -1371,10 +1316,6 @@ html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) :where(
   background-color: color-mix(in srgb, var(--panel) 62%, transparent);
   border-color: color-mix(in srgb, var(--border) 60%, transparent);
 }
-/* 悬浮 Dock：玻璃档也走实底（理由同上，常驻模糊带太贵），仅提高一点透感 */
-html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .app-tabbar {
-  background-color: color-mix(in srgb, var(--panel) 92%, transparent);
-}
 html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .fd2-say {
   background-color: rgba(20,16,28,0.42);
   -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
@@ -1463,26 +1404,7 @@ html[data-app="1"][data-theme="light"] {
   --shadow-lg: 0 2px 8px rgba(13, 74, 88, 0.10), 0 24px 56px rgba(13, 74, 88, 0.16);
   --shadow-float: 0 2px 8px rgba(13, 74, 88, 0.09), 0 18px 44px rgba(13, 74, 88, 0.15);
 }
-/* App 浅色底纹：极淡青光晕，替代深色壳的暗底（body 背景由 :root 暖白改为白青） */
-html[data-app="1"][data-theme="light"] body {
-  background: var(--bg);
-  background-image:
-    radial-gradient(900px 520px at 88% -8%, rgba(14, 156, 184, 0.10), transparent 60%),
-    radial-gradient(760px 480px at -6% 108%, rgba(34, 211, 238, 0.09), transparent 55%);
-}
 
-/* 卡片：统一圆角、细边、更足内边距，去杂色更干净 */
-html[data-app="1"] .card,
-html[data-app="1"] .app-card {
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-}
-/* 底部 Dock：更中性、更薄的玻璃分隔，悬浮更轻 */
-html[data-app="1"] .app-tabbar {
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 12px 40px rgba(0,0,0,0.5);
-}
 /* 顶部条：细发丝分隔取代块面 */
 html[data-app="1"] .app-header { border-bottom: 1px solid var(--border); }
 
@@ -1497,27 +1419,12 @@ html[data-app="1"] .fd2-cat.on, html[data-app="1"] .feed-cat.on {
 /* 右侧互动条：更精细的图标与计数排布 */
 html[data-app="1"] .fd2-act span, html[data-app="1"] .feed-act span { font-weight: 600; letter-spacing: 0.01em; }
 
-/* 聊天气泡：助手气泡更干净的发丝边，用户气泡单一强调渐变，字距微调 */
-html[data-app="1"] .msg.assistant .bubble {
-  background: var(--panel); border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm); letter-spacing: 0.002em;
-}
-html[data-app="1"] .msg.user .bubble {
-  background: linear-gradient(155deg, var(--accent), var(--accent-2));
-  box-shadow: 0 6px 18px rgba(240,113,63,0.28);
-}
 /* 输入区：更沉的底 + 细边 + 聚焦时强调环 */
 html[data-app="1"] .chat-composer, html[data-app="1"] .composer {
   border-top: 1px solid var(--border);
 }
 
-/* 主按钮：单一强调、克制阴影、按压微缩（一线质感） */
-html[data-app="1"] .btn.primary {
-  background: linear-gradient(150deg, var(--accent), var(--accent-2));
-  color: #1a0f08; border: none; box-shadow: 0 6px 18px rgba(240,113,63,0.3);
-}
 html[data-app="1"] .btn.primary:active { transform: translateY(1px) scale(0.99); }
-html[data-app="1"] .btn { transition: transform 0.14s ease, background 0.2s ease, border-color 0.2s ease; }
 
 /* 统一滚动条隐形、点选态更克制（已在别处隐藏，这里补充选中色） */
 html[data-app="1"] ::selection { background: var(--accent-soft); }

@@ -17,17 +17,7 @@
   --dur-slow: 0.5s;
 }
 
-/* —— 列表入场 stagger ——
-   容器挂 .stagger-in，直接子元素按 30ms 步进依次浮现；第 9 项起不再追加延迟
-   （长列表尾部等待感 > 仪式感）。入场动画结束即回归静态，滚动零成本。 */
-html[data-app="1"] .stagger-in > * { animation: motionRise var(--dur-base) cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 html[data-app="1"] .stagger-in > :nth-child(1) { animation-delay: 0.03s; }
-html[data-app="1"] .stagger-in > :nth-child(2) { animation-delay: 0.06s; }
-html[data-app="1"] .stagger-in > :nth-child(3) { animation-delay: 0.09s; }
-html[data-app="1"] .stagger-in > :nth-child(4) { animation-delay: 0.12s; }
-html[data-app="1"] .stagger-in > :nth-child(5) { animation-delay: 0.15s; }
-html[data-app="1"] .stagger-in > :nth-child(6) { animation-delay: 0.18s; }
-html[data-app="1"] .stagger-in > :nth-child(7) { animation-delay: 0.21s; }
 html[data-app="1"] .stagger-in > :nth-child(8) { animation-delay: 0.24s; }
 @keyframes motionRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 

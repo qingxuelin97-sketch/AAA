@@ -21,7 +21,6 @@ html[data-app="1"] .topbar {
   backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
 }
-html[data-app="1"][data-perf="lite"] .topbar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
 html[data-app="1"] .topbar h1 { font-size: 20px; letter-spacing: 0.2px; margin: 0; }
 html[data-app="1"] .topbar .sub { font-size: 12px; color: var(--faint); margin-top: 1px; }
 html[data-app="1"] .page { padding: 14px 14px calc(26px + var(--app-bot, 60px)); }
@@ -29,23 +28,12 @@ html[data-app="1"] .page { padding: 14px 14px calc(26px + var(--app-bot, 60px));
 html[data-app="1"] .topbar .btn { border-radius: 999px; }
 html[data-app="1"] .topbar .btn:active { transform: scale(0.94); }
 
-/* ---- 2. 卡片语言：纯白圆角 + 青发丝 + 悬浮阴影 ---- */
-html[data-app="1"] .card {
-  border-radius: 20px; border: 1px solid var(--border);
-  background: var(--panel);
-  box-shadow: 0 1px 2px rgba(13,74,88,0.05), 0 10px 30px rgba(13,74,88,0.07);
-}
 html[data-app="1"] .card + .card { margin-top: 12px; }
 html[data-app="1"] .section-title { margin: 26px 2px 12px; }
-html[data-app="1"] .section-title h2 { font-size: 17px; }
 
 /* ---- 3. 控件：按钮 / 输入 / 分段 / 开关 ---- */
 html[data-app="1"] .btn { border-radius: 14px; transition: transform 0.12s, box-shadow 0.15s, background 0.15s; }
 html[data-app="1"] .btn:active { transform: scale(0.96); }
-html[data-app="1"] .btn.primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 6px 16px rgba(14,156,184,0.28); border: none;
-}
 html[data-app="1"] .btn.primary:active { box-shadow: 0 3px 8px rgba(14,156,184,0.22); }
 html[data-app="1"] .input, html[data-app="1"] select.input, html[data-app="1"] textarea.input {
   border-radius: 14px; background: var(--panel);
@@ -136,7 +124,6 @@ html[data-app="1"] .wallet-ach {
   box-shadow: 0 6px 18px rgba(178,134,26,0.12);
 }
 html[data-app="1"] .wallet-ach:active { transform: scale(0.985); }
-html[data-app="1"] .wallet-ach b { font-size: 14px; }
 html[data-app="1"] .wallet-ach p { margin: 2px 0 0; font-size: 12px; color: #8a6a1f; }
 
 /* ---- 7. 设置页：分组卡 + 行内控件呼吸感 ---- */
@@ -189,14 +176,6 @@ html[data-app="1"] .html-panel {
   background: #0d0f14; /* 深底打底：面板多为深色游戏 UI，加载间隙不闪白 */
 }
 
-/* ---- 10. 页面入场节奏：内容区块渐次浮现（尊重减弱动效 / lite 档）---- */
-html[data-app="1"] .page > .card,
-html[data-app="1"] .page > .section-title,
-html[data-app="1"] .page > .wallet-hero,
-html[data-app="1"] .page > .editor-grid,
-html[data-app="1"] .page > .recharge-wrap {
-  animation: appBlockIn 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both;
-}
 html[data-app="1"] .page > *:nth-child(2) { animation-delay: 0.03s; }
 html[data-app="1"] .page > *:nth-child(3) { animation-delay: 0.06s; }
 html[data-app="1"] .page > *:nth-child(4) { animation-delay: 0.09s; }
@@ -232,8 +211,6 @@ html[data-app="1"] .ach-grid { gap: 12px; }
 html[data-app="1"] .ach-body { border-radius: 18px; }
 html[data-app="1"] .ach-go { border-radius: 999px; }
 
-/* ---- 活动 / 任务 ---- */
-html[data-app="1"] .ev-ic { border-radius: 14px; }
 html[data-app="1"] .ev-reward { font-weight: 700; }
 html[data-app="1"] .ev-done { color: #0a8f6c; }
 
@@ -275,7 +252,6 @@ html[data-app="1"] .tag-cloud-count { color: var(--accent); font-weight: 700; }
 /* ---- 创作中心 / 星轨（数据卡）---- */
 html[data-app="1"] .chart-grid { gap: 12px; }
 html[data-app="1"] .gold-num { font-variant-numeric: tabular-nums; }
-html[data-app="1"] .ins-card { border-radius: 20px; }
 html[data-app="1"] .ins-chart { border-radius: 16px; }
 
 /* ---- 剧本分类条 ---- */
@@ -341,16 +317,8 @@ html[data-app="1"][data-theme="dark"] .wallet-ach p { color: #c9a44d; }
 html[data-app="1"] .chat-main .affinity-badge { padding: 5px 10px; max-width: 118px; flex: 0 0 auto; }
 html[data-app="1"] .chat-main .affinity-badge .af-tx i { width: 44px; }
 html[data-app="1"] .chat-main .affinity-badge .af-tx b { font-size: 11.5px; }
-/* 工具按钮紧凑（原 40px 触控由 34px + 外扩热区平衡） */
-html[data-app="1"] .chat-main .chat-tools { gap: 6px; }
 html[data-app="1"] .chat-main .chat-tool { width: 34px; height: 34px; position: relative; }
 html[data-app="1"] .chat-main .chat-tool::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; }
-/* lite 档收口：返回键 / 工具按钮在深色立绘上绝不允许亮底（毛玻璃关闭时用实深底） */
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-back,
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .chat-head .chat-tool {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: rgba(0,0,0,0.58); color: #fff;
-}
 html[data-app="1"] .chat-main.has-bg .chat-back:active { transform: scale(0.9); }
 
 /* ---- 2. 背景：Ken Burns 慢速漂移 + 滚动视差 ---- */
@@ -478,8 +446,6 @@ html[data-app="1"] .ah-sc:active .ah-sc-ic svg { animation: icPop 0.36s cubic-be
 /* 底栏 Tab：点按图标上跳 */
 html[data-app="1"] .app-tab:active .app-tab-ic svg { animation: tabHop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes tabHop { 40% { transform: translateY(-3px) scale(1.14); } }
-/* FAB：按下压缩，展开时 + 旋转成 × */
-html[data-app="1"] .app-fab { transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, box-shadow 0.2s; }
 html[data-app="1"] .app-fab:active { transform: scale(0.88); }
 html[data-app="1"] .app-fab.open > svg { transform: rotate(45deg); }
 html[data-app="1"] .app-fab > svg { transition: transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -544,11 +510,8 @@ html[data-app="1"] .chat-main .chat-head .ch-idpill .nm { min-width: 52px; }
    仍然全部受 lite / prefers-reduced-motion 总闸控制。
    ========================================================================== */
 
-/* ---- 发现流：操作键按压涟漪 + 抽屉把手呼吸 ---- */
-html[data-app="1"] .fd2-act { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); }
 html[data-app="1"] .fd2-act:active { transform: scale(0.82); }
 html[data-app="1"] .fd2-act:active svg { animation: icPop 0.36s cubic-bezier(0.34, 1.56, 0.64, 1); }
-html[data-app="1"] .fd2-greet { animation: appBlockIn 0.4s 0.15s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 
 /* ---- 角色详情：hero 视差呼吸 + 开聊 CTA 待机微光 ---- */
 /* 开聊 CTA（overflow:hidden 容不下外扩辉光）：改为轻微 scale 呼吸（合成器直通） */
@@ -585,8 +548,6 @@ html[data-app="1"] .ach-grid > *:nth-child(5) { animation-delay: 0.20s; }
 html[data-app="1"] .ach-grid > *:nth-child(6) { animation-delay: 0.25s; }
 /* .ach-go 待机微光：见 checkin 段的伪元素 opacity 呼吸（此处不再动 box-shadow） */
 
-/* ---- 星轨：KPI 数字卡登场 + 图表条生长 ---- */
-html[data-app="1"] .ins-kpis > * { animation: appBlockIn 0.36s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 html[data-app="1"] .ins-kpis > *:nth-child(2) { animation-delay: 0.06s; }
 html[data-app="1"] .ins-kpis > *:nth-child(3) { animation-delay: 0.12s; }
 html[data-app="1"] .ins-kpis > *:nth-child(4) { animation-delay: 0.18s; }
@@ -600,17 +561,12 @@ html[data-app="1"] .ins-chart .bar { animation: barGrow 0.7s cubic-bezier(0.22, 
 .auth-feats-grid > *:nth-child(4) { animation-delay: 0.21s; }
 .auth-card-badge { animation: emptyFloat 4.6s ease-in-out infinite; }
 
-/* ---- 消息中心：会话行浮入 + 入口卡按压 ---- */
-html[data-app="1"] .msgs-conv { animation: appBlockIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both; transition: transform 0.14s; }
-html[data-app="1"] .msgs-conv:nth-child(-n+8) { animation-delay: calc(0.03s * var(--i, 1)); }
 html[data-app="1"] .msgs-conv:active { transform: scale(0.98); }
-html[data-app="1"] .msgs-entry { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); }
 html[data-app="1"] .msgs-entry:active { transform: scale(0.97); }
 
 /* ---- 今日页：问候卡天体缓动 + 精选卡呼吸阴影 ---- */
 html[data-app="1"] .ah-hero-card { transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
 html[data-app="1"] .ah-hero-card:active { transform: scale(0.975); }
-html[data-app="1"] .ah-resume { transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1); }
 html[data-app="1"] .ah-resume:active { transform: scale(0.92); }
 
 /* ---- v3.5 lite / 减弱动效 总闸 ---- */
@@ -746,13 +702,6 @@ html[data-app="1"] .chat-main.has-bg .chat-bg::after {
 .chat-main:not(.has-bg) .cps-item { color: var(--muted); }
 .chat-main:not(.has-bg) .cps-item:active { background: var(--bg-2); }
 
-/* ---- 输入栏：与「+」面板共用同一层透明玻璃（统一材质） ---- */
-html[data-app="1"] .chat-main.has-bg .chat-input-bar .box {
-  background: var(--hy-cg-bg);
-  border: 1px solid var(--hy-cg-brd);
-  -webkit-backdrop-filter: var(--hy-cg-blur); backdrop-filter: var(--hy-cg-blur);
-  box-shadow: var(--hy-cg-sh);
-}
 /* 聚焦反馈只留极弱的边框变化 —— 青蓝描边+3px 外发光是真机反馈的"蓝框"之一 */
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box:focus-within {
   border-color: color-mix(in srgb, var(--ix-focus) 30%, transparent);
@@ -763,21 +712,7 @@ html[data-app="1"] .chat-main.has-bg .send-btn:not(.stop) {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 18px rgba(29,95,219,0.40);
   color: #fff;
 }
-html[data-app="1"] .chat-main.has-bg .act-btn { color: rgba(255,255,255,0.85); }
 
-/* ---- 气泡：渐变玻璃 + 细腻描边 ---- */
-html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble {
-  background: linear-gradient(160deg, rgba(40,35,50,0.62), rgba(20,17,27,0.72));
-  border: 1px solid rgba(255,255,255,0.11);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 10px 32px rgba(0,0,0,0.35);
-  border-radius: 20px 20px 20px 7px;
-}
-html[data-app="1"] .chat-main.has-bg .msg.user .bubble {
-  background: linear-gradient(135deg, rgba(34,211,238,0.88), rgba(10,127,151,0.92));
-  border: 1px solid rgba(255,255,255,0.22);
-  color: #fff; border-radius: 20px 20px 7px 20px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.30), 0 8px 26px rgba(14,156,184,0.35);
-}
 /* 消息操作行 → 迷你胶囊组（不再是裸文字漂浮） */
 html[data-app="1"] .chat-main.has-bg .msg-acts { gap: 6px; }
 html[data-app="1"] .chat-main.has-bg .msg-acts .speak {
@@ -971,13 +906,7 @@ html[data-app="1"] .ac-ic { border-radius: 15px; box-shadow: inset 0 1px 0 rgba(
 /* Liuli v5：创建面板图标不再按位置染彩虹；语义 tone 由 JSX data-tone + 后层规则表达。 */
 html[data-app="1"] .app-create-row .ac-ic { background: var(--ix-act-soft); color: var(--ix-act); box-shadow: none; }
 
-/* ---- 今日页：问候卡资产行玻璃胶囊 + 签到连击徽章 ---- */
-html[data-app="1"] .ah-coin { border-radius: 999px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  transition: transform 0.14s; }
 html[data-app="1"] .ah-coin:active { transform: scale(0.92); }
-html[data-app="1"] .ah-checkin { box-shadow: 0 6px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.25); }
-/* .ah-checkin 待机微光：见 checkin 段的伪元素 opacity 呼吸（此处不再动 box-shadow） */
-html[data-app="1"] .ah-sc-ic { box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 12px rgba(13,74,88,0.10); }
 
 /* ---- 消息中心：入口卡渐变图标统一挂投影 ---- */
 html[data-app="1"] .msgs-entry .msgs-entry-ic, html[data-app="1"] .msgs-entry svg { filter: drop-shadow(0 2px 4px rgba(13,74,88,0.10)); }
@@ -1041,26 +970,11 @@ html[data-app="1"][data-theme="dark"] {
   --gls-panel-bg: color-mix(in srgb, var(--panel) 72%, transparent);
   --gls-hairline: rgba(255, 255, 255, 0.10);
 }
-/* 浅色语境氛围强化：卡面半透明后，底下要有「东西」可透 —— 三层青光晕 + 顶部辉光 */
-html[data-app="1"][data-theme="light"] body {
-  background-image:
-    radial-gradient(1000px 560px at 88% -6%, rgba(34, 211, 238, 0.16), transparent 58%),
-    radial-gradient(820px 540px at -12% 24%, rgba(14, 156, 184, 0.12), transparent 55%),
-    radial-gradient(900px 640px at 50% 112%, rgba(125, 226, 245, 0.14), transparent 60%);
-  background-attachment: fixed;
-}
 
 /* ============================================================
    1. 沉浸对话（chat 皮肤）—— 已整体迁移至 chat/chat-app.css（app 对话皮肤唯一权威来源）
    ============================================================ */
 
-/* ============================================================
-   2. 全局 chrome 玻璃化 —— 顶栏 / 分段 / 弹层 / 菜单 / 输入
-   ============================================================ */
-html[data-app="1"] .topbar {
-  background: color-mix(in srgb, var(--bg) 62%, transparent);
-  -webkit-backdrop-filter: saturate(170%) blur(22px); backdrop-filter: saturate(170%) blur(22px);
-}
 html[data-app="1"] .tabs-bar {
   background: color-mix(in srgb, var(--panel) 66%, transparent);
   -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
@@ -1098,17 +1012,6 @@ html[data-app="1"] .btn.ghost { background: transparent; -webkit-backdrop-filter
 /* ============================================================
    3. 内容表面玻璃化 —— 卡片 / 列表行 / 宫格（浅色语境青光透底）
    ============================================================ */
-/* in-flow 列表卡/内容卡不再挂 backdrop-filter（气泡与共享玻璃配方的同一课）：
-   它们随内容一起滚，背后只有静态白青渐变，blur 视觉上是无操作，GPU 却要
-   每卡每帧读回+模糊一次。玻璃感由半透明底+描边+阴影承担，观感像素级不变。 */
-html[data-app="1"] .card,
-html[data-app="1"] .noti-item, html[data-app="1"] .lb-row,
-html[data-app="1"] .ann-item, html[data-app="1"] .room-row,
-html[data-app="1"] .fr-add, html[data-app="1"] .fr-add-row,
-html[data-app="1"] .wallet-ach, html[data-app="1"] .vip-entry,
-html[data-app="1"] .msgs-conv, html[data-app="1"] .msgs-entry {
-  background: var(--gls-panel-bg);
-}
 html[data-app="1"] .wallet-hero {
   background:
     radial-gradient(120% 90% at 0% 0%, rgba(14,156,184,0.12), transparent 55%),
@@ -1116,21 +1019,6 @@ html[data-app="1"] .wallet-hero {
     color-mix(in srgb, var(--panel) 74%, transparent);
 }
 html[data-app="1"] .wallet-hero .col { background: color-mix(in srgb, var(--panel-2) 55%, transparent); }
-/* pf-vip 的底是不透明渐变（紫/暗金）—— 它曾挂 blur(20px)，被自己的背景完全
-   挡住，一像素都看不见，纯烧 GPU；连同 pf-assets 一起摘除 */
-html[data-app="1"] .pf-assets { background: color-mix(in srgb, var(--panel) 72%, transparent); }
-/* （pf/今日小图标 chip 的 blur 已移除 —— 见 pf-cell 段注释） */
-html[data-app="1"] .pf-cc, html[data-app="1"] .char-card {
-  background: var(--gls-panel-bg);
-}
-html[data-app="1"] .ah-resume, html[data-app="1"] .ah-task, html[data-app="1"] .ah-pick,
-html[data-app="1"] .ah-empty, html[data-app="1"] .ah-sc {
-  background: var(--gls-panel-bg);
-  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-  border-radius: 18px;
-}
-html[data-app="1"] .ah-sc { border-radius: 16px; }
-html[data-app="1"] .ah-hero-card { border-radius: 22px; overflow: hidden; }
 /* 成就 / 活动 / 扭蛋 / 星轨 / 排行榜内容卡 */
 html[data-app="1"] .ach-body, html[data-app="1"] .ins-card, html[data-app="1"] .gx-meta,
 html[data-app="1"] .ev-actions, html[data-app="1"] .lb-pod-base {
@@ -1146,10 +1034,6 @@ html[data-app="1"] .comment {
 /* ============================================================
    4. 逐页专项补充
    ============================================================ */
-/* 今日页问候卡：叠一层玻璃辉光边 */
-html[data-app="1"] .ah-hero { border: 1px solid rgba(255,255,255,0.35); border-radius: 24px; }
-/* 消息中心入口卡图标底 */
-html[data-app="1"] .msgs-entry { border-radius: 20px; }
 /* 通知未读行：左缘青光提示线 */
 html[data-app="1"] .noti-item.unread { border-left: 3px solid var(--accent); }
 /* 设置分组卡与危险区 */
@@ -1224,9 +1108,6 @@ html[data-app="1"][data-perf="lite"] .chat-drawer-mask, html[data-app="1"][data-
 html[data-app="1"][data-perf="lite"] .chat-menu-mask {
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
-html[data-app="1"][data-perf="lite"] .chat-main.has-bg .msg.assistant .bubble {
-  -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255, 253, 248, 0.94);
-}
 html[data-app="1"][data-perf="lite"] .chat-main.has-bg .msg.assistant .msg-name,
 html[data-app="1"][data-perf="lite"] .chat-main.has-bg .ch-idpill,
 html[data-app="1"][data-perf="lite"] .chat-main.has-bg .affinity-badge,
@@ -1242,14 +1123,6 @@ html[data-app="1"][data-perf="lite"] .chat-main.has-bg .react-pop { -webkit-back
 /* ============================================================
    7. Glass 3.0 · 二段 —— 剩余页面专项 + 玻璃高光细节体系
    ============================================================ */
-/* ---- 玻璃高光通用细节：内容卡统一「顶部内高光 + 发丝描边」质感 ---- */
-html[data-app="1"] .card, html[data-app="1"] .msgs-conv, html[data-app="1"] .msgs-entry,
-html[data-app="1"] .noti-item, html[data-app="1"] .lb-row, html[data-app="1"] .ann-item,
-html[data-app="1"] .room-row, html[data-app="1"] .ah-resume, html[data-app="1"] .ah-pick,
-html[data-app="1"] .pf-cc, html[data-app="1"] .char-card, html[data-app="1"] .wallet-hero,
-html[data-app="1"] .pf-assets {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 1px 2px rgba(13,74,88,0.05), 0 10px 30px rgba(13,74,88,0.08);
-}
 html[data-app="1"][data-theme="dark"] .card, html[data-app="1"][data-theme="dark"] .msgs-conv,
 html[data-app="1"][data-theme="dark"] .msgs-entry, html[data-app="1"][data-theme="dark"] .noti-item,
 html[data-app="1"][data-theme="dark"] .lb-row, html[data-app="1"][data-theme="dark"] .ann-item,
@@ -1309,10 +1182,6 @@ html[data-app="1"] .ann-banner {
   -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
 }
 
-/* ---- 底部 Dock 玻璃升级：更深邃的多层光效 ---- */
-html[data-app="1"] .app-tabbar {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 -8px 30px rgba(13,74,88,0.08);
-}
 html[data-app="1"][data-theme="dark"] .app-tabbar {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 -8px 30px rgba(0,0,0,0.35);
 }
@@ -1357,8 +1226,6 @@ html[data-app="1"] .empty {
   border: 1px dashed color-mix(in srgb, var(--border-2) 70%, transparent);
 }
 
-/* ---- 页面标题排版精修（大标题化，接近原生导航密度）---- */
-html[data-app="1"] .topbar h1 { font-size: 21px; font-weight: 750; letter-spacing: 0.2px; }
 html[data-app="1"] .section-title h2 { font-weight: 700; }
 html[data-app="1"] .page > .section-title:first-child { margin-top: 4px; }
 
@@ -1409,7 +1276,6 @@ html[data-app="1"][data-theme="light"] .app-root::after {
 }
 /* 内容层必须浮在光斑之上 */
 html[data-app="1"] .app-main, html[data-app="1"] .app-tabbar { position: relative; z-index: 1; }
-html[data-app="1"] .app-tabbar { position: fixed; }
 
 /* ---- 编辑器与工作台（角色/世界书/发布/创作中心）---- */
 html[data-app="1"] .editor-grid .card {
@@ -1481,14 +1347,6 @@ html[data-app="1"] .ev-tag {
 }
 html[data-app="1"] .ev-top { border-radius: 20px 20px 0 0; }
 
-/* ---- 星轨：hero 数据卡星空玻璃 ---- */
-html[data-app="1"] .ins-hero {
-  background:
-    radial-gradient(140% 120% at 85% -10%, rgba(34,211,238,0.18), transparent 55%),
-    linear-gradient(150deg, #1d2947, #131a30);
-  border-radius: 24px; color: #eaf6ff;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 14px 40px rgba(19,26,48,0.35);
-}
 html[data-app="1"] .ins-kpi {
   background: rgba(255,255,255,0.07);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
@@ -1559,14 +1417,6 @@ html[data-app="1"][data-perf="lite"] .chat-main:not(.has-bg) .react-pop {
 /* ============================================================
    9. Glass 3.0 · 终段 —— 细节收尾与一致性巡检
    ============================================================ */
-/* ---- 发现流：开场白亮玻璃卡（对标参考图的米白信息卡）+ 历史面板 ---- */
-html[data-app="1"] .fd2-greet {
-  background: rgba(255, 253, 248, 0.82);
-  -webkit-backdrop-filter: blur(22px) saturate(165%); backdrop-filter: blur(22px) saturate(165%);
-  border: 1px solid rgba(255,255,255,0.6);
-  color: #2b2420;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 10px 30px rgba(0,0,0,0.25);
-}
 html[data-app="1"] .fd2-hist-panel, html[data-app="1"] .fd2-hist {
   background: rgba(22, 18, 28, 0.82);
   -webkit-backdrop-filter: blur(26px) saturate(155%); backdrop-filter: blur(26px) saturate(155%);
@@ -1620,8 +1470,6 @@ html[data-app="1"][data-theme="dark"] .fd2-greet {
 }
 html[data-app="1"][data-theme="dark"] .pf-foot-btn { border-color: rgba(255,255,255,0.10); }
 html[data-app="1"][data-theme="dark"] .adm-row { border-color: rgba(255,255,255,0.08); }
-/* ---- lite 终段降级 ---- */
-html[data-app="1"][data-perf="lite"] .fd2-greet { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255,253,248,0.95); }
 html[data-app="1"][data-perf="lite"] .fd2-hist-panel, html[data-app="1"][data-perf="lite"] .fd2-hist,
 html[data-app="1"][data-perf="lite"] .msgs-tabs, html[data-app="1"][data-perf="lite"] .msgs-top,
 html[data-app="1"][data-perf="lite"] .adm-row, html[data-app="1"][data-perf="lite"] .pf-foot-btn,
@@ -1633,7 +1481,6 @@ html[data-app="1"][data-perf="lite"] .topbar .btn.sm, html[data-app="1"][data-pe
    气泡透明度三档（用户可调：实底/半透/极透）+ 细节修正包
    ============================================================ */
 html[data-app="1"] .chat-main.has-bg.ba-solid .msg.assistant .bubble { background: rgba(255, 253, 248, 0.94); }
-html[data-app="1"] .chat-main.has-bg.ba-mid .msg.assistant .bubble   { background: rgba(255, 253, 248, 0.86); }
 html[data-app="1"] .chat-main.has-bg.ba-clear .msg.assistant .bubble {
   background: rgba(255, 253, 248, 0.55);
   -webkit-backdrop-filter: blur(30px) saturate(175%); backdrop-filter: blur(30px) saturate(175%);
@@ -1682,7 +1529,6 @@ html[data-app="1"] .feed-card:not(.cur) .fd2-greet {
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
 html[data-app="1"] .feed-card:not(.cur) .fd2-intro { background: rgba(12,10,16,0.8); }
-html[data-app="1"] .feed-card:not(.cur) .fd2-call { background: rgba(255,255,255,0.92); }
 
 /* ============================================================================
    幻域 · App「白 + 青」毛玻璃重设计（材质层，仅 html[data-app="1"]）
@@ -1722,10 +1568,6 @@ html[data-app="1"] {
   --hyd-btn-sh: 0 1px 2px rgb(18 24 44 / 8%), 0 6px 16px color-mix(in srgb, var(--ix-act) 22%, transparent);
   --hyd-badge-sh: 0 2px 8px color-mix(in srgb, var(--ix-act) 18%, transparent);
 }
-
-/* —— 2. 页面底：瓷白（浅色屏），沉浸页各自覆盖 —— */
-html[data-app="1"] body { background: var(--ix-canvas); }
-html[data-app="1"] .app-root { background-color: var(--ix-canvas); background-image: var(--ix-ambient-none); background-attachment: fixed; }
 
 /* —— 3. 标准玻璃卡：列表 / 信息卡 / 面板 / 弹层 ——
    玻璃分两级（对话页气泡早已走过同样的收敛，列表页这次补课）：
@@ -1775,13 +1617,6 @@ html[data-app="1"][data-perf="lite"] :where(
   box-shadow: 0 8px 20px rgba(16,64,60,0.06);
 }
 
-/* —— 4. 主按钮 / 胶囊 / 标签 —— */
-html[data-app="1"] .btn.primary,
-html[data-app="1"] .app-primary,
-html[data-app="1"] button.primary {
-  background: var(--grad);
-  box-shadow: var(--hyd-btn-sh);
-}
 /* 青色标签胶囊（chip / tag / seg 激活态） */
 html[data-app="1"] :where(.chip, .tag).on,
 html[data-app="1"] .seg > .on,
@@ -1797,78 +1632,18 @@ html[data-app="1"] :where(.divider, hr) { border-color: rgba(15,50,46,0.06); }
 /* ============================================================================
    幻域重设计 · 今日 / 首页（AppHome）
    ========================================================================== */
-/* 问候卡：保留天色渐变作背景，叠加玻璃描边 + 高光内阴影 + 大圆角（材质升级，不夺信息层级） */
-html[data-app="1"] .ah-hero {
-  border: 1px solid rgba(255,255,255,0.7);
-  border-radius: 26px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), 0 12px 30px rgba(16,64,60,0.12);
-}
-/* 钱包余额胶囊：白玻璃药丸 + 新币/钻纹样 */
-html[data-app="1"] .ah-coin {
-  background: rgba(255,255,255,0.66);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.7);
-  color: #0B3A36; border-radius: 999px;
-}
 html[data-app="1"][data-glass="off"] .ah-coin,
 html[data-app="1"][data-perf="lite"] .ah-coin { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
-/* 签到领币：teal 渐变强调（已领取态保持既有弱化样式） */
-html[data-app="1"] .ah-checkin:not(.done) {
-  background: var(--grad); color: #fff; border-color: transparent;
-  box-shadow: var(--hyd-badge-sh);
-}
-/* 快捷入口图标底：青雾 */
-html[data-app="1"] .ah-sc-ic {
-  background: var(--hyd-mist); color: var(--accent);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
-}
-/* 精选大卡 CTA：白药丸 + teal 字 */
-html[data-app="1"] .ah-hc-cta { background: rgba(255,255,255,0.92); color: var(--accent); }
-/* 顶部通知红点 → 珊瑚 */
-html[data-app="1"] .aht-nb { background: var(--hyd-coral); color: #fff; border: 1.5px solid #fff; }
 
 /* ============================================================================
    幻域重设计 · 消息列表（Messages）
    ========================================================================== */
-/* 会话/入口行圆角对齐设计（玻璃已由 §3 白名单赋予） */
-html[data-app="1"] :where(.msgs-conv, .msgs-entry) { border-radius: 20px; }
-/* 头像/图标底：有光泽的内高光 + 底压暗（保留各自同色系渐变） */
-html[data-app="1"] .msgs-entry-ic {
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.5), inset 0 -7px 13px rgba(0,0,0,0.17);
-}
-/* 未读数 → 珊瑚胶囊 */
-html[data-app="1"] .msgs-badge { background: var(--hyd-coral); color: #fff; }
-/* 分段：激活 teal 渐变胶囊，未激活白玻璃 */
-html[data-app="1"] .msgs-tabs > .on,
-html[data-app="1"] .msgs-tabs button.on {
-  background: var(--grad); color: #fff; border-color: transparent; box-shadow: var(--hyd-badge-sh);
-}
-/* 顶栏搜索圆钮：白玻璃（只作用于搜索钮本身，不波及分段 tab） */
-html[data-app="1"] .msgs-search {
-  background: rgba(255,255,255,0.7); border: 1px solid rgba(15,181,166,0.2); color: var(--accent);
-}
 
 /* ============================================================================
    幻域重设计 · 我的 / 个人主页（AppProfile）
    ========================================================================== */
 /* 资料/资产玻璃卡圆角；功能格/快捷条圆角 */
 html[data-app="1"] :where(.pf-id, .pf-assets) { border-radius: 22px; }
-html[data-app="1"] :where(.pf-cell, .pf-quick) { border-radius: 18px; }
-/* 功能图标底：青雾 + teal 图标 */
-html[data-app="1"] :where(.pf-cell-ic, .pf-quick-ic) {
-  background: var(--hyd-mist); color: var(--accent);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
-}
-/* 角标红点 → 珊瑚 */
-html[data-app="1"] .pf-dot { background: var(--hyd-coral); }
-/* VIP 横幅：唯一暗金反差（玻璃基调之外） */
-html[data-app="1"] .pf-vip {
-  background: linear-gradient(135deg, #20201A, #14140F);
-  border: 1px solid rgba(240,212,136,0.28);
-  color: var(--hyd-gold-a);
-  box-shadow: 0 10px 26px rgba(20,16,4,0.28), inset 0 1px 0 rgba(240,212,136,0.14);
-}
-html[data-app="1"] .pf-vip .pf-vip-go { background: linear-gradient(135deg, var(--hyd-gold-a), var(--hyd-gold-b)); color: var(--hyd-gold-ink); }
 
 /* ============================================================================
    幻域重设计 · 发现（方案 B：右侧竖排互动 · 更通透）
@@ -1893,17 +1668,7 @@ html[data-app="1"] .feed-state {
   height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 12px; padding: 0 32px; text-align: center; color: rgba(255,255,255,0.9); font-size: 14px;
 }
-/* 互动条移到右缘竖排（JSX 已提出至 .feed-card 层级）——
-   紧凑成组、靠下靠边，对标星野：大图标 + 小字号 + 紧间距，不再散落半屏。 */
-html[data-app="1"] .fd2-acts {
-  position: absolute; right: 8px; bottom: 150px; z-index: 4;
-  flex-direction: column; align-items: center; gap: 15px;
-}
-html[data-app="1"] .fd2-act { gap: 2px; }
-html[data-app="1"] .fd2-act svg { width: 27px; height: 27px; }
 html[data-app="1"] .fd2-act span { font-size: 10.5px; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,0.55); }
-/* 上部信息（介绍/开场白）让位给右侧竖排，留出更宽的呼吸间隙 */
-html[data-app="1"] :where(.fd2-intro, .fd2-greet) { max-width: calc(100% - 64px); }
 /* 介绍卡：压暗玻璃（更通透），保证立绘上可读 */
 html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .fd2-intro {
   background: linear-gradient(180deg, rgba(16,38,42,0.42), rgba(10,28,32,0.56));
@@ -1911,8 +1676,6 @@ html[data-app="1"][data-glass="on"]:not([data-perf="lite"]) .fd2-intro {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 10px 26px rgba(0,0,0,0.3);
 }
 html[data-app="1"][data-glass="off"] .fd2-intro { background: rgba(12,10,16,0.8); }
-/* 开场白气泡：亮面玻璃 */
-html[data-app="1"] .fd2-greet { background: rgba(255,255,255,0.86); color: #123834; }
 /* 底部 CTA：进入对话（醒目青色）+ 语音电话（白玻璃圆钮），点击即聊 */
 html[data-app="1"] .fd2-cta { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 html[data-app="1"] .fd2-enter {
@@ -1933,17 +1696,11 @@ html[data-app="1"] .fd2-call {
   transition: transform 0.16s var(--hy-spring);
 }
 html[data-app="1"] .fd2-call:active { transform: scale(0.9); }
-html[data-app="1"][data-glass="off"] .fd2-call,
-html[data-app="1"][data-perf="lite"] .fd2-call { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 /* ============================================================================
    幻域重设计 · 沉浸聊天（方案 A：全屏沉浸）
    —— 立绘全屏 + AI 压暗玻璃气泡 + 「我」青色实心，多数已就位；此处对齐设计明度。
    ========================================================================== */
-/* 「我」气泡：设计的亮青渐变（比默认 accent 更亮） */
-html[data-app="1"] .msg.user .bubble { background: linear-gradient(135deg, #2BD0BF, #0A8C93); }
-/* 立绘上的旁白（rp-act）：青色斜体（覆盖默认暖色） */
-html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act { color: #8FD8CE; }
 
 /* ============================================================================
    幻域重设计 · AI 绘图（Draw）—— 唯一深青玻璃场景
@@ -2097,28 +1854,12 @@ html[data-app="1"] .cvx-tile svg { color: var(--accent); }
   html[data-app="1"] .fd2-enter::after { animation: none !important; }
 }
 
-/* ② 发现页顶部「关注/推荐/新作」真正屏幕居中（搜索钮脱离布局流，绝对定位右上） */
-html[data-app="1"] .feed-modes { flex: 1; gap: 26px; }
 html[data-app="1"] .feed-top .feed-search {
   position: absolute; right: 14px; top: calc(env(safe-area-inset-top) + 8px);
 }
-html[data-app="1"] .feed-modes .feed-mode { padding: 6px 4px; font-size: 15.5px; }
 
-/* ③ 消息「聊过/赞过」→ 圆润加长的胶囊分段（此前误被搜索钮样式套成方框） */
-html[data-app="1"] .msgs-tabs { gap: 12px; }
-html[data-app="1"] .msgs-tabs button {
-  border-radius: 999px; padding: 9px 26px; font-size: 15px; font-weight: 700;
-  background: rgba(255,255,255,0.62); border: 1px solid rgba(15,181,166,0.16); color: #5A7A76;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
-  transition: transform 0.16s var(--hy-spring), background 0.2s, color 0.2s;
-}
-html[data-app="1"] .msgs-tabs button.on {
-  background: var(--grad); color: #fff; border-color: transparent; font-size: 15px; font-weight: 800;
-  box-shadow: var(--hyd-badge-sh);
-}
-html[data-app="1"] .msgs-tabs button.on::after { display: none; } /* 胶囊态不要下划线 */
+/* 胶囊态不要下划线 */
 html[data-app="1"] .msgs-tabs button:active { transform: scale(0.95); }
-
 
 /* ============================================================
    v3 · 被遗忘 UI 附带更新 —— 创作/列表/阅读面的 APP 化补课
@@ -2164,7 +1905,6 @@ html[data-app="1"] .cat-chip.active {
   color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 html[data-app="1"] .cat-chip:active { transform: scale(0.94); }
-html[data-app="1"] .page > .card, html[data-app="1"] .studio-cards .card { border-radius: 18px; }
 html[data-app="1"] .pill-pub { border-radius: 999px; font-weight: 650; }
 html[data-app="1"] .tag.tag-link { border-radius: 999px; padding: 4px 11px; }
 
