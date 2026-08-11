@@ -38,12 +38,6 @@ html[data-app="1"][data-theme="dark"] {
   --app-surface-raised: var(--ix-raise, #1d222a);
 }
 
-/* Static depth is cheaper and clearer than stacking translucent blur layers. */
-html[data-app="1"] :where(.card, .set-card, .msgs-conv, .msgs-entry, .room-row, .noti-item, .gm-row) {
-  background: var(--app-surface);
-  border-color: var(--app-depth-border);
-  box-shadow: var(--app-depth-shadow);
-}
 html[data-app="1"] :where(.card, .set-card, .msgs-conv, .room-row):active {
   box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 3px 10px rgba(6,74,78,0.09);
 }
@@ -52,16 +46,8 @@ html[data-app="1"] :where(.modal, .app-sheet, .group-members) {
   border-color: var(--app-depth-border);
   box-shadow: var(--app-depth-shadow-raised);
 }
-html[data-app="1"] :where(.input, textarea, select, .chat-input-bar .box) {
-  border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
-  box-shadow: 0 1px 0 rgba(255,255,255,0.55), 0 2px 7px rgba(5,74,79,0.05) inset;
-}
 html[data-app="1"][data-theme="dark"] :where(.input, textarea, select, .chat-input-bar .box) {
   box-shadow: 0 1px 0 rgba(255,255,255,0.045) inset, 0 3px 9px rgba(0,0,0,0.22) inset;
-}
-html[data-app="1"] :where(.btn.primary, .send-btn) {
-  background: var(--ix-act, var(--app-ink));
-  box-shadow: 0 1px 0 rgba(255,255,255,0.20) inset, 0 6px 16px rgba(29,95,219,0.20);
 }
 html[data-app="1"] .section-title::before {
   content: '';
@@ -95,14 +81,6 @@ html[data-app="1"][data-perf="balanced"] :where(
 html[data-app="1"][data-perf="balanced"] .flow-sheen::after,
 html[data-app="1"][data-perf="balanced"] .msg.user .bubble::before {
   animation: none !important;
-}
-/* Liuli：balanced 保留 chrome 层真玻璃（Dock/顶栏/分类条是导航材质，
-   内容卡才是被剥掉 blur 的对象）。lite 由 tokens 的 lite 块回落不透明。 */
-html[data-app="1"][data-perf="balanced"] :where(.app-tabbar, .topbar, .tabs-bar, .cat-bar) {
-  background: var(--ix-glass-nav) !important;
-  -webkit-backdrop-filter: var(--ix-blur);
-  backdrop-filter: var(--ix-blur);
-  box-shadow: 0 -1px 0 var(--ix-hairline) inset;
 }
 
 /* Group chat has its own two-sided conversation geometry. The old page placed
@@ -246,21 +224,6 @@ html[data-app="1"].kbd-open .app-main { padding-bottom: 0; }
 /* Recommendation badges sit 10px above their plan card. Reserve that space so
    the first row is never clipped by the sheet header on short viewports. */
 html[data-app="1"] .vm-plans { padding-top: 12px; }
-
-/* Dock material contract (Liuli v5): real chrome glass on high AND balanced —
-   navigation chrome is where glass lives; content stays opaque. lite drops
-   every blur and returns to an opaque surface with unchanged hierarchy. */
-html[data-app="1"] .app-tabbar,
-html[data-app="1"][data-perf="balanced"] .app-tabbar {
-  background: var(--ix-glass-nav) !important;
-  -webkit-backdrop-filter: var(--ix-blur);
-  backdrop-filter: var(--ix-blur);
-}
-html[data-app="1"][data-perf="lite"] .app-tabbar {
-  background: var(--ix-surface) !important;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
 
 /* —— 行内失败条（App 壳）——
    Web 的 .lgw-error-inline 定义在 web-lumen-states.css 里，而那份文件整段被

@@ -5,14 +5,6 @@
  * 货币图标本体不动（用户特批），只重排其周边读数与材质。
  */
 
-/* ═══ ① 今日 · 页头：问候 + 34 大标题 + mono 日期行 ═══ */
-html[data-app="1"] .aht-eyebrow { color: var(--ix-ink-2); font-size: 12.5px; }
-html[data-app="1"] .aht-brand {
-  font-size: var(--ix-type-hero) !important;
-  font-weight: 700;
-  letter-spacing: var(--ix-track-tight);
-  color: var(--ix-ink);
-}
 html[data-app="1"] .aht-date {
   display: block;
   margin-top: 2px;
@@ -40,8 +32,6 @@ html[data-app="1"] .qa3-today .ah-hero::before {
   background: var(--ix-glare);
   pointer-events: none;
 }
-html[data-app="1"] .qa3-today .ah-hero .ah-name { color: var(--ix-vault-ink); }
-html[data-app="1"] .qa3-today .ah-hero .ah-presence { color: var(--ix-vault-ink-2); }
 html[data-app="1"] .qa3-today .ah-hero .ah-presence i {
   background: #3FD2B4;
   box-shadow: var(--ix-led-halo) #3FD2B4;
@@ -59,7 +49,6 @@ html[data-app="1"] .qa3-today .ah-hero .ah-coin .ah-balance-value {
   font-variant-numeric: tabular-nums;
   color: var(--ix-vault-gold);
 }
-html[data-app="1"] .qa3-today .ah-hero .ah-coin.di .ah-balance-value { color: #8FBCE8; }
 /* 舱内签到主键：固定亮青（不随用户 accent），键帽高光 + 下沉反馈由核心层继承 */
 html[data-app="1"] .qa3-today .ah-hero .ah-checkin.qa-button {
   background: #3FD2B4 !important;
@@ -116,34 +105,11 @@ html[data-app="1"] .qa3-today .ah-shortcuts {
   backdrop-filter: none !important;
   padding: 0 !important;
 }
-html[data-app="1"] .qa3-today .ah-sc {
-  min-height: 72px;
-  background: var(--ix-surface) !important;
-  border: 0 !important;
-  border-radius: var(--ix-r-card) !important;
-  box-shadow: var(--ix-shadow-1) !important;
-  color: var(--ix-ink) !important;
-  transition: transform var(--ix-dur-press) var(--ix-ease), box-shadow var(--ix-dur-press) var(--ix-ease);
-}
 html[data-app="1"] .qa3-today .ah-sc:active {
   transform: translateY(var(--ix-key-travel));
   box-shadow: var(--ix-shadow-key-down) !important;
 }
-/* 图标退中性（[data-tone] 语义软底在仪与匣里由文字承担语义，键帽全部同材）；
-   带 data-tone 的旧规则特异性 (0,5,1)，此处同级压制 */
-html[data-app="1"] .qa3-today .ah-sc .ah-sc-ic,
-html[data-app="1"] .qa3-today .ah-sc[data-tone] .ah-sc-ic {
-  background: transparent !important;
-  color: var(--ix-ink-2) !important;
-  box-shadow: none !important;
-}
 
-/* ═══ ① 今日 · 精选开窗卡 + 铭牌 CTA ═══ */
-html[data-app="1"] .qa3-today .ah-hero-card {
-  border-radius: var(--ix-r-card) !important;
-  box-shadow: inset 0 0 0 var(--ix-window-ring) var(--ix-hairline-strong), var(--ix-shadow-1) !important;
-  border: 0 !important;
-}
 html[data-app="1"] .qa3-today .ah-hc-cta.qa-button {
   border: 0 !important;
   border-radius: var(--ix-r-key) !important;
@@ -210,47 +176,13 @@ html[data-app="1"] .qa-weekly-stats b {
 }
 html[data-app="1"] .qa-weekly-stats .qa-weekly-gold b { color: var(--ix-gold); }
 
-/* ═══ ② 发现 · 沉浸流 chrome（媒体即第一层；遮罩是唯一媒体渐变） ═══ */
-html[data-app="1"] .fd2-enter {
-  background: var(--ix-act) !important;
-  color: var(--ix-act-ink) !important;
-  border: 0 !important;
-  border-radius: var(--ix-r-key) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%) !important;
-}
 html[data-app="1"] .fd2-enter:active { transform: translateY(var(--ix-key-travel)); }
-html[data-app="1"] .fd2-call {
-  color: var(--ix-act) !important;
-}
 html[data-app="1"] .fd2-cat {
   border-radius: var(--ix-r-micro) !important;
   font-family: var(--ix-font-mono);
   letter-spacing: .08em;
 }
 
-/* ═══ ④ 消息 · 入口行（32 图标位 · 语义 soft 底）+ 会话行 72 ═══ */
-html[data-app="1"] .msgs-entry {
-  min-height: 56px;
-  border-radius: var(--ix-r-card) !important;
-  background: var(--ix-surface) !important;
-  border: 0 !important;
-  box-shadow: var(--ix-shadow-1) !important;
-}
-html[data-app="1"] .qa3-messages .msgs-entry-ic {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--ix-r-key) !important;
-}
-html[data-app="1"] .qa3-messages .msgs-entry-ic.noti { background: var(--ix-act-soft) !important; color: var(--ix-act) !important; }
-html[data-app="1"] .qa3-messages .msgs-entry-ic.dm { background: var(--ix-success-soft) !important; color: var(--ix-success) !important; }
-html[data-app="1"] .qa3-messages .msgs-entry-ic.grp { background: var(--ix-dia-soft) !important; color: var(--ix-dia) !important; }
-html[data-app="1"] .msgs-conv--app {
-  min-height: 72px;
-  border-radius: var(--ix-r-card) !important;
-  background: var(--ix-surface) !important;
-  border: 0 !important;
-  box-shadow: var(--ix-shadow-1) !important;
-}
 /* 标记语义：顶=act 微章 · 免打扰=三阶墨 · 草稿=danger 明示 · 未读=badge 胶囊 */
 html[data-app="1"] .msgs-marks { color: var(--ix-ink-3); }
 html[data-app="1"] .msgs-marks svg:first-child { color: var(--ix-act); }

@@ -23,8 +23,6 @@ html[data-app="1"] .qa-wallet-v4__balance::before {
   background: var(--ix-glare);
   pointer-events: none;
 }
-html[data-app="1"] .qa-wallet-v4__balance-head > div > span { color: var(--ix-vault-ink); }
-html[data-app="1"] .qa-wallet-v4__balance-head small { color: var(--ix-vault-ink-2); }
 /* 双列并排资产：用 28px 读数档（40px 主读数档留给单读数舱面，360px 视口不溢出） */
 html[data-app="1"] .qa-wallet-v4__asset strong {
   font-family: var(--ix-font-mono);
@@ -33,21 +31,10 @@ html[data-app="1"] .qa-wallet-v4__asset strong {
   line-height: var(--ix-lh-tight);
   font-variant-numeric: tabular-nums;
 }
-/* 金/钻读数各归其色（:has 定位，禁 nth；货币图标本体原样保留） */
-html[data-app="1"] .qa-wallet-v4__asset:has(.qa-wallet-v4__asset-icon.gold) strong { color: var(--ix-vault-gold); }
-html[data-app="1"] .qa-wallet-v4__asset:has(.qa-wallet-v4__asset-icon.diamond) strong { color: #8FBCE8; }
-html[data-app="1"] .qa-wallet-v4__asset small { color: var(--ix-vault-ink-2); }
 html[data-app="1"] .qa-wallet-v4__asset-icon {
   background: var(--ix-vault-2) !important;
   box-shadow: inset 0 0 0 1px var(--ix-vault-line) !important;
   border-radius: var(--ix-r-card) !important;
-}
-/* 舱内充值 CTA：固定亮青（不随用户 accent） */
-html[data-app="1"] .qa-wallet-v4__recharge.qa-button {
-  background: #3FD2B4 !important;
-  color: #06211B !important;
-  border: 0 !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%) !important;
 }
 html[data-app="1"] .qa-wallet-v4__membership {
   background: var(--ix-vault-2) !important;
@@ -66,10 +53,6 @@ html[data-app="1"] .qa-wallet-v4__tx-amount {
   font-family: var(--ix-font-mono);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-}
-html[data-app="1"] .qa-wallet-v4__quick-icon {
-  background: var(--ix-grouped) !important;
-  color: var(--ix-ink-2) !important;
 }
 
 /* ═══ ⑤ 成就殿堂（App 分支 = qa-achievements-*）· 金属牌只在奖章本体 ═══ */

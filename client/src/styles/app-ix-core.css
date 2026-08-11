@@ -16,7 +16,6 @@ html[data-app="1"][data-theme="dark"] {
   --ix-act-pressed: color-mix(in oklab, var(--ix-act) 86%, #FFFFFF);
 }
 
-
 /* ═══ 0 · 基元工具类（读数/铭牌/LED/刻度带，供各页阶段复用） ═══ */
 html[data-app="1"] .ix-readout {
   font-family: var(--ix-font-mono);
@@ -69,12 +68,6 @@ html[data-app="1"] .qa-button {
   font-family: var(--ix-font-ui);
   font-weight: 700;
   transition: transform var(--ix-dur-press) var(--ix-ease), box-shadow var(--ix-dur-press) var(--ix-ease), background-color var(--ix-dur-state) var(--ix-ease), color var(--ix-dur-state) var(--ix-ease), opacity var(--ix-dur-state) var(--ix-ease);
-}
-html[data-app="1"] .qa-button--primary {
-  background: var(--ix-act) !important;
-  color: var(--ix-act-ink) !important;
-  border: 0 !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%) !important;
 }
 html[data-app="1"] .qa-button--secondary {
   background: var(--ix-surface) !important;

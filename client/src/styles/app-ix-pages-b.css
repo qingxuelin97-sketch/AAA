@@ -6,13 +6,6 @@
  * 全围栏 html[data-app="1"]，只消费 --ix-*（剧场衬线保留）。
  */
 
-/* ═══ ③ 对话 · 身份栏（开窗头像 + 在线 LED + mono 状态行） ═══ */
-html[data-app="1"] .chat-head {
-  background: var(--ix-glass-nav) !important;
-  -webkit-backdrop-filter: var(--ix-blur);
-  backdrop-filter: var(--ix-blur);
-  border-bottom: 1px solid var(--ix-hairline) !important;
-}
 html[data-app="1"] .chat-head .ch-status {
   font-family: var(--ix-font-mono);
   font-size: 11px;
@@ -43,21 +36,9 @@ html[data-app="1"] .chat-main .msg.user .bubble {
   border-radius: var(--ix-r-card) var(--ix-r-card) var(--ix-r-micro) var(--ix-r-card) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%) !important;
 }
-html[data-app="1"] .chat-main .msg.assistant .bubble :where(em, i) {
-  font-style: italic;
-  color: var(--ix-ink-3);
-}
 html[data-app="1"] .chat-main .msg.user .bubble :where(em, i) {
   font-style: italic;
   color: color-mix(in srgb, var(--ix-act-ink) 78%, transparent);
-}
-/* 沉浸立绘态：气泡浮在媒体上时保持面板实体（正文永远在面板上，不上玻璃） */
-html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble {
-  background: var(--ix-surface) !important;
-}
-html[data-app="1"] .chat-main .msg-name {
-  font-size: var(--ix-type-meta);
-  color: var(--ix-ink-2);
 }
 /* 日分隔 = mono 铭牌小字 */
 html[data-app="1"] .chat-main .msg-daydivider span {
@@ -84,12 +65,6 @@ html[data-app="1"] .chat-input-bar {
   -webkit-backdrop-filter: var(--ix-blur);
   backdrop-filter: var(--ix-blur);
   border-top: 1px solid var(--ix-hairline) !important;
-}
-html[data-app="1"] .chat-input-bar .box {
-  background: var(--ix-surface) !important;
-  border: 1px solid var(--ix-hairline) !important;
-  border-radius: var(--ix-r-panel) !important;
-  box-shadow: var(--ix-shadow-dial) !important;
 }
 html[data-app="1"] .chat-input-bar .send-btn {
   width: 40px;

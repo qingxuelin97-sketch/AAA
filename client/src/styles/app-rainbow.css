@@ -271,11 +271,6 @@ html[data-app="1"] .app-ptr::before {
   transform: rotate(calc(var(--pull-progress, 0) * 300deg));
   pointer-events: none;
 }
-/* 发现页分类芯片：统一浅蓝，不再按位次配色 */
-html[data-app="1"] .fd2-cat {
-  background: rgb(255 255 255 / 88%) !important;
-  color: var(--ix-act) !important;
-}
 html[data-app="1"] .fd2-cat.on {
   background: var(--ix-rainbow-grad-h) !important;
   color: #fff !important;
@@ -647,16 +642,6 @@ html[data-app="1"] :where(.msgs-entry-ic, .qa-wallet-v4__quick-icon,
   .qa-settings-notifications-icon, .qa-wallet-v4__notice-icon,
   .qa-wallet-v4__checkin-icon, .qa-gacha-machine-icon) svg { color: #fff !important; }
 
-/* 各页自带高特异性规则的主键，统一用重复类名压过去 */
-html[data-app="1"] .fd2-enter.fd2-enter,
-html[data-app="1"] .draw-go.draw-go,
-html[data-app="1"] .ah-hc-cta.ah-hc-cta {
-  background: var(--ix-rainbow-grad-h) !important;
-  background-image: var(--ix-rainbow-grad-h) !important;
-  color: #fff !important;
-  border: 0 !important;
-  box-shadow: var(--ix-rainbow-cta-shadow) !important;
-}
 html[data-app="1"] :where(.fd2-enter, .draw-go, .ah-hc-cta) svg { color: #fff !important; }
 
 /* ── 8b. 二级页顶栏：不透明白条 → 透明，让浅蓝页底连贯 ── */
@@ -698,18 +683,6 @@ html[data-app="1"] .qa-wallet-v4__balance .qa-wallet-v4__recharge.qa-button {
   box-shadow: 0 4px 12px rgb(8 40 70 / 18%) !important;
 }
 
-/* ── 8d. 分段/筛选控件：选中 = 浅蓝底 + 蓝字（撤掉旧的白片投影） ── */
-html[data-app="1"] :where(.seg, .theme-seg, .auth-tabs, .msgs-tabs) {
-  background: rgb(227 241 250 / 72%) !important;
-  border: 0 !important;
-  border-radius: 999px !important;
-  box-shadow: none !important;
-  padding: 3px !important;
-}
-html[data-app="1"] :where(.seg, .theme-seg, .auth-tabs, .msgs-tabs) > :where(button, a, span[role="tab"]) {
-  border-radius: 999px !important;
-  color: var(--ix-ink-2) !important;
-}
 html[data-app="1"] :where(.seg, .theme-seg, .auth-tabs, .msgs-tabs) > :where(button, a, span[role="tab"]):where(.active, .on, [aria-selected="true"], [data-selected]) {
   background: #ECF8FE !important;
   color: var(--ix-act) !important;
@@ -898,7 +871,6 @@ html[data-app="1"] .pf-vip.pf-vip {
   border-radius: var(--ix-r-card) !important;
   box-shadow: 0 8px 20px rgb(200 140 20 / 26%) !important;
 }
-html[data-app="1"] .pf-vip :where(b, strong, h3, h4) { color: #4A3000 !important; }
 html[data-app="1"] .pf-vip :where(small, p, .muted, span) { color: rgb(74 48 0 / 78%) !important; }
 html[data-app="1"] .pf-vip .pf-vip-ic {
   background: rgb(255 255 255 / 42%) !important;

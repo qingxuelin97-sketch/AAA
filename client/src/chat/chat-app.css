@@ -44,10 +44,6 @@ html[data-app="1"] .chat-main.has-bg::before {
    视频背景不加缩放动画：视频帧本身在动，叠加 transform 只多花合成费。
    滚动视差（--chat-para）已随此一并移除，动效来源收敛为一。 */
 html[data-app="1"] .chat-main.has-bg .chat-bg { will-change: transform; }
-html[data-app="1"] .chat-main.has-bg .chat-bg > img {
-  transform: scale(1.06);
-  animation: chatKenBurns 24s ease-out 1 both;
-}
 html[data-app="1"] .chat-main.has-bg .chat-bg > video { transform: none; animation: none; }
 @keyframes chatKenBurns {
   from { transform: scale(1.06); }
@@ -63,7 +59,6 @@ html[data-app="1"] .chat-head .ch-av {
     conic-gradient(from -90deg, var(--chat-accent) 0, var(--chat-accent-2) calc(var(--af, 0) * 1%), transparent 0);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14) inset;
 }
-html[data-app="1"] .chat-head .ch-av .avatar { border: 2px solid rgba(255, 255, 255, 0.16); }
 /* 在线状态点：呼吸绿。扩散环从 box-shadow 逐帧动画改为 ::after 的
    scale+opacity 环（合成器直通，零 repaint）。 */
 html[data-app="1"] .chat-head .ch-dot {
@@ -93,7 +88,6 @@ html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble {
   box-shadow: 0 12px 38px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.7);
   text-shadow: none;
 }
-html[data-app="1"] .chat-main .msg.assistant.run-start .bubble { border-top-left-radius: var(--chat-anchor-radius); }
 html[data-app="1"] .chat-main .msg.assistant.run-cont .bubble { border-top-left-radius: var(--chat-glass-radius); }
 /* 顶缘高光丝：一道极细青色渐变，点出「玻璃边」 */
 html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble::before {
@@ -109,16 +103,6 @@ html[data-app="1"] .chat-main:not(.has-bg) .msg.assistant .bubble {
   box-shadow: 0 8px 26px rgba(13, 74, 88, 0.10);
 }
 html[data-app="1"] .chat-main:not(.has-bg) .msg.assistant.run-start .bubble { border-top-left-radius: var(--chat-anchor-radius); }
-
-/* 用户气泡：青渐变玻璃（品牌色，主客区分），run-start 右上锚角 */
-html[data-app="1"] .chat-main .msg.user .bubble {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--chat-accent) 92%, transparent), color-mix(in srgb, var(--chat-accent-ink) 96%, transparent));
-  border: 1px solid rgba(255, 255, 255, 0.30);
-  color: #fff;
-  border-radius: var(--chat-glass-radius);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 10px 26px color-mix(in srgb, var(--chat-accent-2) 34%, transparent);
-}
-html[data-app="1"] .chat-main .msg.user.run-start .bubble { border-top-right-radius: var(--chat-anchor-radius); }
 
 /* 角色名 → 深色小胶囊，前置一枚青点。
    注：不再挂 backdrop-filter —— 每条 run-start 消息一枚的小胶囊是叠层里
@@ -144,9 +128,6 @@ html[data-app="1"] .chat-main .msg.assistant .bubble .rp-act {
   color: color-mix(in srgb, var(--chat-accent-ink) 72%, var(--gls-lite-muted, #6b6b6b));
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--chat-accent) 55%, transparent);
   padding-left: 6px; border-radius: 1px;
-}
-html[data-app="1"] .chat-main.has-bg .msg.assistant .bubble .rp-act {
-  color: color-mix(in srgb, var(--chat-accent) 45%, var(--gls-lite-muted));
 }
 
 /* 消息内嵌图片圆角与卡面一致 */
@@ -188,10 +169,6 @@ html[data-app="1"] .chat-main .msg-daydivider span {
   background: var(--gls-panel-bg);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
-}
-html[data-app="1"] .chat-main.has-bg .msg-daydivider span {
-  color: rgba(255, 255, 255, 0.82); background: rgba(20, 17, 26, 0.42);
-  border-color: rgba(255, 255, 255, 0.12); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 /* ── 6. 引用回复（新）—— 输入上方引用条 + 气泡内引用嵌块 ── */
@@ -254,16 +231,6 @@ html[data-app="1"] .chat-main.has-bg {
   --hy-cg-brd: rgba(255, 255, 255, 0.16);
   --hy-cg-sh: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 -4px 16px rgba(0, 0, 0, 0.14), 0 18px 50px rgba(0, 0, 0, 0.36);
 }
-/* 输入岛：浮起圆角卡（有无立绘统一为岛，不再全宽贴底） */
-html[data-app="1"] .chat-main .chat-input-bar {
-  left: 10px; right: 10px;
-  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
-  border-radius: 26px;
-  background: var(--hy-cg-bg);
-  border: 1px solid var(--hy-cg-brd);
-  -webkit-backdrop-filter: var(--hy-cg-blur); backdrop-filter: var(--hy-cg-blur);
-  box-shadow: var(--hy-cg-sh);
-}
 /* 聚焦反馈只留极弱边框变化（原 3px 青环 = 真机反馈的"蓝框"主源，已去） */
 html[data-app="1"] .chat-main .chat-input-bar:focus-within {
   border-color: color-mix(in srgb, var(--chat-accent) 28%, transparent);
@@ -278,7 +245,6 @@ html[data-app="1"] .chat-main .action-panel {
   -webkit-backdrop-filter: none; backdrop-filter: none;
   box-shadow: none;
 }
-html[data-app="1"] .chat-main .chat-input-bar .box { padding: 4px 4px 4px 8px; }
 html[data-app="1"] .chat-main .chat-plus-sheet,
 html[data-app="1"] .chat-main .chat-plus-sheet.paged { margin: 6px 0 0; padding: 6px 4px 2px; border-radius: 0; }
 html[data-app="1"] .chat-main .chat-plus-sheet::before { display: none; }
@@ -300,12 +266,6 @@ html[data-app="1"] .chat-main.has-bg .affinity-badge {
   background: var(--gls-dark-bg);
   -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
   border: 1px solid rgba(255, 255, 255, 0.13);
-}
-html[data-app="1"] .chat-main.has-bg .chat-tool,
-html[data-app="1"] .chat-main.has-bg .chat-back {
-  background: var(--gls-dark-bg);
-  -webkit-backdrop-filter: var(--gls-dark-blur); backdrop-filter: var(--gls-dark-blur);
-  border: 1px solid rgba(255, 255, 255, 0.10);
 }
 html[data-app="1"] .chat-main.has-bg .chat-menu {
   background: rgba(24, 20, 30, 0.92);
@@ -363,8 +323,6 @@ html[data-app="1"] .chat-main.has-bg .hy-search input::placeholder { color: rgba
 html[data-app="1"] .chat-main.has-bg .hy-search .hy-search-ic,
 html[data-app="1"] .chat-main.has-bg .hy-search button { color: rgba(255, 255, 255, 0.85); }
 html[data-app="1"] .chat-main.has-bg .hy-search .hy-search-count { color: var(--chat-accent); }
-/* 关键词高亮（CSS Custom Highlight API）：全部命中淡青底，当前条实心青底 */
-::highlight(chat-search) { background-color: rgba(34, 211, 238, 0.30); }
 ::highlight(chat-search-cur) { background-color: rgba(34, 211, 238, 0.85); color: #06282e; }
 /* lite 档：去模糊换实底 */
 html[data-app="1"][data-perf="lite"] .chat-main .hy-search {
@@ -449,27 +407,11 @@ html[data-app="1"] .chat-thread .msg {
   contain-intrinsic-size: auto 96px;
 }
 
-/* ── 12. 动效编排 —— 消息入场（一次性，进入视口即停）── */
-html[data-app="1"] .chat-main .msg { animation: chatMsgIn 0.34s var(--chat-ease) both; }
-html[data-app="1"] .chat-main .msg.user { animation-name: chatMsgInR; }
 @keyframes chatMsgIn { from { opacity: 0; transform: translateY(10px) translateX(-4px); } to { opacity: 1; transform: none; } }
 @keyframes chatMsgInR { from { opacity: 0; transform: translateY(10px) translateX(4px); } to { opacity: 1; transform: none; } }
 @keyframes chatFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes chatSheetUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 
-/* ── 降级：lite 档去模糊/动画；reduced-motion 去动画 ── */
-html[data-app="1"][data-perf="lite"] .chat-main .chat-input-bar {
-  background: var(--hy-cg-bg-solid); -webkit-backdrop-filter: none; backdrop-filter: none;
-}
-html[data-app="1"][data-perf="lite"] .chat-main .chat-bg > img,
-html[data-app="1"][data-perf="lite"] .chat-main .chat-bg > video { animation: none; }
-[data-perf="lite"] .chat-main .msg,
-[data-perf="lite"] .chat-main .ch-av .avatar,
-[data-perf="lite"] .chat-main .chat-input-bar .send-btn,
-[data-perf="lite"] .chat-main .chat-input-bar .send-btn::before,
-[data-perf="lite"] .chat-main .ch-dot,
-[data-perf="lite"] .chat-main .ch-dot::after,
-[data-perf="lite"] .chat-main .chat-hero .ch-hero-av::after { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
   html[data-app="1"] .chat-main .msg,
   html[data-app="1"] .chat-main .ch-av .avatar,

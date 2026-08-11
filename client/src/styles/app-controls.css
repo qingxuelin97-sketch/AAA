@@ -63,13 +63,6 @@ html[data-app="1"] .qa-button--lg {
   font-size: 15px;
 }
 
-/* SPEC §4：primary = act 实底胶囊 */
-html[data-app="1"] .qa-button--primary {
-  border-radius: var(--ix-r-dial);
-  background: var(--ix-act);
-  color: var(--ix-act-ink);
-}
-
 /* UI kit：secondary = --ix-raise 玻璃 + shadow-1（小档 blur），按下提亮为选中片 */
 html[data-app="1"] .qa-button--secondary {
   border-color: transparent;
@@ -82,21 +75,6 @@ html[data-app="1"] .qa-button--secondary {
 
 html[data-app="1"] .qa-button--secondary:active:not(:disabled):not([aria-disabled="true"]) {
   background: var(--ix-surface);
-}
-
-/* SPEC §4：tertiary = 纯文字 act 色 */
-html[data-app="1"] .qa-button--tertiary {
-  background: transparent;
-  color: var(--ix-act);
-}
-
-/* UI kit：danger = 珊瑚 1.6px 描边默认；确认（data-confirming）或按压时实底 */
-html[data-app="1"] .qa-button--danger,
-html[data-app="1"] .qa-button.qa-tone--danger {
-  border-color: transparent;
-  background: transparent;
-  box-shadow: inset 0 0 0 1.6px var(--ix-danger);
-  color: var(--ix-danger);
 }
 
 html[data-app="1"] .qa-button--danger[data-confirming],
@@ -177,11 +155,6 @@ html[data-app="1"] .qa-icon-button--secondary {
   box-shadow: var(--ix-shadow-1);
   -webkit-backdrop-filter: var(--ix-blur-s);
   backdrop-filter: var(--ix-blur-s);
-}
-
-html[data-app="1"] .qa-icon-button--filled {
-  background: var(--ix-act);
-  color: var(--ix-act-ink);
 }
 
 html[data-app="1"] .qa-icon-button[data-selected] {
@@ -385,10 +358,6 @@ html[data-app="1"] .app-dock .app-tab.active .qa-tab-button__glyph {
   transform: translateY(-1px) scale(1.06);
 }
 
-html[data-app="1"] .app-dock .qa-tab-button__glyph {
-  transition: transform 320ms var(--ix-ease);
-}
-
 html[data-app="1"] .app-dock .app-tab::before,
 html[data-app="1"] .app-dock .app-tab::after {
   content: none !important;
@@ -545,99 +514,14 @@ html[data-app="1"] .app-create-row .ac-tx small {
   font-size: 12px;
 }
 
-/* Today controls: opaque surfaces, fixed semantic states, no rainbow index. */
-html[data-app="1"] .apphome {
-  background: var(--ix-canvas);
-  color: var(--ix-ink);
-}
-
-html[data-app="1"] .aht-acts {
-  display: flex;
-  gap: 4px;
-}
-
-html[data-app="1"] .aht-acts .qa-icon-button {
-  color: var(--ix-ink-2);
-}
-
-html[data-app="1"] .aht-acts .aht-nb {
-  background: var(--ix-danger);
-  color: var(--ix-badge-ink);
-}
-
-html[data-app="1"] .ah-avatar.qa-icon-button {
-  width: 52px;
-  height: 52px;
-  border-radius: 17px;
-}
-
-html[data-app="1"] .ah-wallet {
-  gap: var(--ix-space-2);
-}
-
-html[data-app="1"] .ah-coin.qa-button {
-  min-height: var(--ix-hit-min);
-  padding-inline: var(--ix-space-3);
-  border: 1px solid var(--ix-hairline) !important;
-  background: var(--ix-surface) !important;
-  color: var(--ix-ink) !important;
-  box-shadow: var(--ix-shadow-1);
-}
-
-html[data-app="1"] .ah-checkin.qa-button {
-  min-height: var(--ix-hit-min);
-  background: var(--ix-act) !important;
-  color: var(--ix-act-ink) !important;
-  box-shadow: none !important;
-}
-
 html[data-app="1"] .ah-checkin.qa-button.done {
   border-color: color-mix(in srgb, var(--ix-success) 24%, transparent) !important;
   background: var(--ix-success-soft) !important;
   color: var(--ix-success) !important;
 }
 
-html[data-app="1"] .ah-shortcuts {
-  gap: var(--ix-space-2);
-}
-
-html[data-app="1"] .ah-sc.qa-button {
-  min-width: 0;
-  min-height: 82px;
-  padding: 10px 4px;
-  border: 1px solid var(--ix-hairline) !important;
-  border-radius: var(--ix-r-card) !important;
-  background: var(--ix-surface) !important;
-  color: var(--ix-ink-2) !important;
-  box-shadow: var(--ix-shadow-1) !important;
-  font-size: 11px;
-}
-
-html[data-app="1"] .ah-sc .qa-button__content {
-  flex-direction: column;
-  gap: 7px;
-}
-
-html[data-app="1"] .ah-sc .ah-sc-ic {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: 13px;
-  background: var(--ix-act-soft) !important;
-  color: var(--ix-act) !important;
-  box-shadow: none !important;
-}
-
 html[data-app="1"] .ah-sc .ah-sc-ic::after {
   content: none !important;
-}
-
-html[data-app="1"] .ah-more.qa-button {
-  min-height: var(--ix-hit-min);
-  padding-inline: var(--ix-space-3);
-  background: transparent !important;
-  color: var(--ix-act) !important;
 }
 
 /* Authentication: segmented semantics stay owned by the integration markup. */
@@ -728,10 +612,6 @@ html[data-app="1"] .chat-tools .qa-icon-button {
   padding: 0 !important;
 }
 
-html[data-app="1"] .chat-tools {
-  gap: 4px;
-}
-
 html[data-app="1"] .chat-tool.qa-icon-button.on {
   background: var(--ix-act-soft) !important;
   color: var(--ix-act) !important;
@@ -739,19 +619,6 @@ html[data-app="1"] .chat-tool.qa-icon-button.on {
 
 html[data-app="1"] .chat-tool.qa-icon-button::after {
   content: none !important;
-}
-
-html[data-app="1"] .chat-head .ch-av .avatar {
-  animation: none !important;
-}
-
-/* 输入岛 = L3 系统玻璃基线（会话语境的悬浮岛细化由 hig-v5 经 shim 收口） */
-html[data-app="1"] .chat-input-bar {
-  border-color: transparent !important;
-  background: var(--ix-glass-nav) !important;
-  box-shadow: var(--ix-shadow-3) !important;
-  -webkit-backdrop-filter: var(--ix-blur);
-  backdrop-filter: var(--ix-blur);
 }
 
 html[data-app="1"] .chat-input-bar .act-btn.qa-icon-button {
@@ -893,15 +760,6 @@ html[data-app="1"] .qa-gallery__swatch--danger { background: var(--ix-danger); c
 html[data-app="1"] .qa-gallery__swatch--success { background: var(--ix-success); color: var(--ix-success-ink); }
 html[data-app="1"] .qa-gallery__swatch--reward { background: var(--ix-gold); color: var(--ix-gold-ink); }
 html[data-app="1"] .qa-gallery__swatch--unread { background: var(--ix-danger); color: var(--ix-badge-ink); }
-
-/* Lite is intentionally opaque. Balanced retains one sampled navigation layer
-   so the control plane still responds to moving content beneath it. */
-html[data-app="1"][data-perf="lite"] .app-dock .app-tabbar,
-html[data-app="1"][data-perf="lite"] .app-sheet,
-html[data-app="1"][data-perf="lite"] .chat-input-bar {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
 
 @media (hover: hover) and (pointer: fine) {
   html[data-app="1"] .qa-button--primary:hover:not(:disabled):not([aria-disabled="true"]) {

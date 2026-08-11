@@ -137,8 +137,6 @@ html[data-app="1"] .chat-main.has-bg .chat-input-bar .plus-btn.plus-btn.plus-btn
 html[data-app="1"] .chat-main .chat-input-bar .act-btn.act-btn.act-btn:active {
   transform: scale(0.92) !important;
 }
-/* 声波键开/关两态亮度 */
-html[data-app="1"] .chat-main .chat-input-bar .wave-btn.wave-btn.wave-btn { color: rgb(255 255 255 / 62%) !important; }
 html[data-app="1"] .chat-main .chat-input-bar .wave-btn.wave-btn.wave-btn.on { color: #fff !important; }
 /* ⊕：细圆环空心加号（参考稿）；44px 保住触控热区纪律。
    .on（面板开，图标切 ×）保持同一只圆环 —— 参考稿的 (×)。 */

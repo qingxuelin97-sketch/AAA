@@ -36,18 +36,6 @@ html[data-app="1"] .qa3-today .ah-hero {
   color: var(--ix-vault-ink) !important;
   box-shadow: var(--ix-shadow-2) !important;
 }
-html[data-app="1"] .qa3-today .ah-name {
-  color: var(--ix-vault-ink) !important;
-}
-html[data-app="1"] .qa3-today .ah-balance-value {
-  font-variant-numeric: tabular-nums;
-}
-/* 签到 CTA = 主动作实底胶囊（act 唯一随用户 accent 漂移）；
-   done 态由 v3 的白系玻璃规则（更高特异度）接管。 */
-html[data-app="1"] .qa3-today .ah-checkin.qa-button {
-  background: var(--ix-act) !important;
-  color: var(--ix-act-ink) !important;
-}
 
 /* 快捷组：整组一层 L1 玻璃（发丝边在 shadow-1 内，border 归零防双描边） */
 html[data-app="1"] .qa3-today .ah-shortcuts {
@@ -94,9 +82,6 @@ html[data-app="1"] .qa3-discover .feed-modes {
   -webkit-backdrop-filter: var(--ix-blur-s);
   backdrop-filter: var(--ix-blur-s);
 }
-html[data-app="1"] .qa3-discover .feed-mode.on.qa-button {
-  background: rgb(255 255 255 / 14%) !important;
-}
 html[data-app="1"] .qa3-discover .feed-search.qa-icon-button,
 html[data-app="1"] .qa3-discover .feed-history.qa-icon-button {
   border: 1px solid rgb(255 255 255 / 14%);
@@ -128,10 +113,6 @@ html[data-app="1"][data-perf="lite"] .qa3-discover .feed-modes,
 html[data-app="1"][data-perf="lite"] .qa3-discover .fd2-act,
 html[data-app="1"][data-perf="lite"] .qa3-discover .fd2-greet {
   background: rgb(0 0 0 / 44%) !important;
-}
-html[data-app="1"][data-perf="lite"] .qa3-discover .feed-search.qa-icon-button,
-html[data-app="1"][data-perf="lite"] .qa3-discover .feed-history.qa-icon-button {
-  background: rgb(0 0 0 / 44%);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -351,7 +332,6 @@ html[data-app="1"] #app-create-sheet .app-create-row[data-tone="success"] .ac-ic
   color: var(--ix-success) !important;
 }
 
-
 /* IX-7 migrated composition: s4 */
 /* 曜光玻璃 Lumen Glass v1.0 · 阶段文件（s4）。全部选择器从 html[data-app="1"] 开始；
    只用 var(--ix-*)/var(--ix-*) 令牌；禁新增颜色/nth 彩虹/循环装饰动画/渐变字。 */
@@ -465,15 +445,6 @@ html[data-app="1"][data-perf="lite"] .qa-chat-main.has-bg .qa-chat-header.chat-h
   background: rgb(8 10 14 / 82%) !important;
 }
 
-/* 气泡 2.0（性能纪律不变：气泡不挂 backdrop-filter —— 同屏几十条实时模糊
-   是 865 级真机最大常驻开销；玻璃感由发丝+内高光+短阴影承担）。
-   无立绘：助手气泡 = L1 白玻璃原值。 */
-html[data-app="1"] .qa-chat-main .msg.assistant .bubble {
-  border: 0 !important;
-  background: var(--ix-surface) !important;
-  color: var(--ix-ink) !important;
-  box-shadow: var(--ix-shadow-1) !important;
-}
 /* 有立绘（浅色主题）：glass-1 系白玻璃提到 86% 不透明——立绘内容不可控，
    58% 原值压不住花底，正文对比必须 ≥4.5:1。 */
 html[data-app="1"] .qa-chat-main.has-bg .msg.assistant .bubble,
@@ -837,16 +808,10 @@ html[data-app="1"] .qa-chat-main .qa-chat-input-island.box :where(textarea, inpu
 html[data-app="1"] .chat-main .chat-input-bar .box :where(textarea, .qa-chat-textarea)::placeholder {
   color: var(--ix-ink-3);
 }
-/* 沉浸立绘语境：白字 + 半透明白占位；岛内辅助图标同步提亮 */
-html[data-app="1"] .chat-main.has-bg .chat-input-bar .box :where(textarea, input, .qa-chat-textarea),
-html[data-app="1"] .qa-chat-main.has-bg .qa-chat-input-island.box :where(textarea, input, .qa-chat-textarea) {
-  color: rgb(255 255 255 / 94%);
-}
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box :where(textarea, .qa-chat-textarea)::placeholder {
   color: rgb(255 255 255 / 55%);
 }
 html[data-app="1"] .chat-main.has-bg .chat-input-bar .box { color: rgb(255 255 255 / 88%); }
-
 
 /* IX-7 migrated composition: s5 */
 /* 曜光玻璃 Lumen Glass v1.0 · 阶段文件（s5）。全部选择器从 html[data-app="1"] 开始；
@@ -899,26 +864,6 @@ html[data-app="1"] .qa-wallet-v4 .qa-wallet-head > .qa-icon-button {
   backdrop-filter: var(--ix-blur-s);
 }
 
-/* 资产仪表 = L0 实体（--ix-vault）+ 一处暖金光点（--ix-gold）。
-   qa3WalletLight 入场光线（760ms 一次性）与 backdrop 契约保持原样。 */
-html[data-app="1"] .qa-wallet-v4__balance {
-  border-color: rgb(255 255 255 / 14%);
-  background:
-    radial-gradient(88% 62% at 88% -4%, color-mix(in srgb, var(--ix-gold) 52%, transparent), transparent 56%),
-    var(--ix-vault);
-  color: var(--ix-vault-ink);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), 0 18px 38px rgb(0 0 0 / 24%);
-}
-
-html[data-app="1"] .qa-wallet-v4__balance-head span { color: var(--ix-vault-ink); }
-
-html[data-app="1"] .qa-wallet-v4__recharge.qa-button {
-  border-color: transparent !important;
-  background: rgb(255 255 255 / 94%) !important;
-  color: var(--ix-vault) !important;
-  box-shadow: 0 7px 18px rgb(0 0 0 / 22%) !important;
-}
-
 /* 金额一律 tabular-nums */
 html[data-app="1"] .qa-wallet-v4__asset strong,
 html[data-app="1"] .qa-wallet-v4__exchange-result strong,
@@ -929,16 +874,6 @@ html[data-app="1"] .qa-wallet-v4__checkout strong {
   font-variant-numeric: tabular-nums;
 }
 
-/* 会员行 / 通知行 / 签到行语义重调：金=会员奖励 · 玉=签到 */
-html[data-app="1"] .qa-wallet-v4__membership { color: color-mix(in srgb, var(--ix-gold) 52%, #fff); }
-html[data-app="1"] .qa-wallet-v4__notice-icon {
-  background: color-mix(in srgb, var(--ix-gold) 15%, transparent);
-  color: var(--ix-gold);
-}
-html[data-app="1"] .qa-wallet-v4__checkin-icon {
-  background: color-mix(in srgb, var(--ix-success) 13%, transparent);
-  color: var(--ix-success);
-}
 html[data-app="1"] .qa-wallet-v4__tx-icon.gold {
   background: color-mix(in srgb, var(--ix-gold) 14%, transparent);
   color: var(--ix-gold);
@@ -1153,23 +1088,9 @@ html[data-app="1"] .qa-achievements-head {
   backdrop-filter: var(--ix-blur);
 }
 
-html[data-app="1"] .qa-achievements-summary,
-html[data-app="1"] .qa-achievements-card,
-html[data-app="1"] .qa-achievements-skeleton {
-  border-color: transparent;
-  background: var(--ix-surface);
-  box-shadow: var(--ix-shadow-1);
-}
-
 html[data-app="1"] .qa-achievements-summary {
   -webkit-backdrop-filter: var(--ix-blur-s);
   backdrop-filter: var(--ix-blur-s);
-}
-
-html[data-app="1"] .qa-achievements-tabs .qa-button {
-  border-color: transparent;
-  background: var(--ix-surface);
-  box-shadow: var(--ix-shadow-1);
 }
 
 html[data-app="1"] .qa-achievements-tabs .qa-button[data-selected] {
@@ -1177,12 +1098,6 @@ html[data-app="1"] .qa-achievements-tabs .qa-button[data-selected] {
   background: var(--ix-act-soft);
   box-shadow: none;
   color: var(--ix-act);
-}
-
-/* 已解锁 = 内容语义金；解锁勾保持玉（成功） */
-html[data-app="1"] .qa-achievements-card.is-unlocked .qa-achievements-card-icon {
-  background: color-mix(in srgb, var(--ix-gold) 15%, transparent);
-  color: var(--ix-gold);
 }
 
 html[data-app="1"] .qa-achievements-card-icon > i { border-color: var(--ix-canvas); }
@@ -1216,11 +1131,9 @@ html[data-app="1"] .ins-kpi .k-value { font-variant-numeric: tabular-nums; }
 
 /* 柱状图：单一 act 色相，透明度分档；峰值满饱和；零值退为发丝底。 */
 html[data-app="1"] .ins-chart { background: none; border: 0; box-shadow: none; }
-html[data-app="1"] .ins-bar i { background: color-mix(in srgb, var(--ix-act) 55%, transparent); }
 html[data-app="1"] .ins-bar:hover i,
 html[data-app="1"] .ins-bar:focus-visible i { background: var(--ix-act); filter: none; }
 html[data-app="1"] .ins-bar b { color: var(--ix-act); font-variant-numeric: tabular-nums; }
-html[data-app="1"] .ins-bar.zero i { background: var(--ix-hairline); }
 
 html[data-app="1"] .ins-made {
   border: 0;
@@ -1839,7 +1752,6 @@ html[data-app="1"] :where(.skel, .msgs-skel-row, .ah-hero-skel, .ah-pick-skel, .
 html[data-app="1"] .modal [role="alertdialog"] .btn.danger,
 html[data-app="1"] .app-sheet .btn.danger { background: var(--ix-danger); color: #ffffff; }
 
-
 /* IX-7 migrated composition: s6 */
 /* ============================================================================
    曜光玻璃 · S7「仪式与相伴」新组件层（app-ix-pages-d.css）
@@ -2275,10 +2187,6 @@ html[data-app="1"] .qa-cal-cell.today {
   color: var(--ix-ink);
 }
 
-html[data-app="1"] .qa-cal-cell.on.today {
-  color: var(--ix-act);
-}
-
 html[data-app="1"] .qa-cal-cell.future {
   opacity: 0.38;
 }
@@ -2613,7 +2521,6 @@ html[data-app="1"] .qa-task-claim.qa-button {
   }
 }
 
-
 /* IX-7 migrated composition: s7 */
 /*
  * Lumen S7-G10「相伴加深」层 —— 周报卡、台词卡入口、Gallery S7 展区。
@@ -2659,10 +2566,6 @@ html[data-app="1"] .qa-weekly-bar i {
   background: color-mix(in srgb, var(--ix-act) 32%, transparent);
 }
 
-html[data-app="1"] .qa-weekly-bar.today i {
-  background: var(--ix-act);
-}
-
 html[data-app="1"] .qa-weekly-bar span {
   font-size: 11px;
   line-height: 1;
@@ -2688,10 +2591,6 @@ html[data-app="1"] .qa-weekly-stats b {
   color: var(--ix-ink);
   font-variant-numeric: tabular-nums;
   margin-right: 2px;
-}
-
-html[data-app="1"] .qa-weekly-gold b {
-  color: var(--ix-gold);
 }
 
 html[data-app="1"] .qa-weekly-comp {
@@ -3134,7 +3033,6 @@ html[data-app="1"][data-perf="lite"] .qa-weekly-card {
   backdrop-filter: none;
 }
 
-
 /*
  * 仪与匣 · IX-6 长尾、首启与状态层
  * 覆盖首启三屏、分享卡、创作工坊、设置等长尾屏，以及尚未收口的 App-only 页面族。
@@ -3445,28 +3343,6 @@ html[data-app="1"] .qa-settings-page.page {
 html[data-app="1"] .qa-settings-root { gap: var(--ix-space-4); }
 html[data-app="1"] .qa-settings-intro,
 html[data-app="1"] .qa-settings-group > h2 { color: var(--ix-ink-2); }
-html[data-app="1"] .qa-settings-list,
-html[data-app="1"] .qa-settings-detail > .card {
-  border: 0;
-  border-radius: var(--ix-r-card);
-  background: var(--ix-surface);
-  box-shadow: var(--ix-shadow-1);
-}
-html[data-app="1"] .qa-settings-row.qa-button {
-  min-height: 56px;
-  color: var(--ix-ink);
-}
-html[data-app="1"] .qa-settings-row.qa-button:not(:last-child) { border-bottom-color: var(--ix-hairline); }
-html[data-app="1"] .qa-settings-row-icon,
-html[data-app="1"] .qa-settings-detail .priv-ic {
-  border-radius: var(--ix-r-key);
-  background: var(--ix-act-soft);
-  color: var(--ix-act);
-}
-html[data-app="1"] .qa-settings-row-copy b,
-html[data-app="1"] .qa-settings-detail .section-title h2 { color: var(--ix-ink); }
-html[data-app="1"] .qa-settings-row-copy small,
-html[data-app="1"] .qa-settings-detail :where(.hint, .muted) { color: var(--ix-ink-2); }
 html[data-app="1"] .qa-settings-detail :where(.input, .select, .textarea) {
   border-color: var(--ix-hairline);
   border-radius: var(--ix-r-key);
@@ -3547,13 +3423,6 @@ html[data-app="1"] .qa-wallet {
   background: var(--ix-canvas);
   color: var(--ix-ink);
 }
-html[data-app="1"] .qa-wallet-head {
-  background: var(--ix-glass-nav);
-  border-bottom: 1px solid var(--ix-hairline);
-  color: var(--ix-ink);
-  -webkit-backdrop-filter: var(--ix-blur);
-  backdrop-filter: var(--ix-blur);
-}
 /* 实机反馈：曜光「金库」深色残留让充值页整片发黑，回归全 App 浅色语言
    （余额/套餐卡样式放行 experience-v3 的浅玻璃）。 */
 html[data-app="1"] .qa-wallet-v4__recharge-balance strong,
@@ -3624,20 +3493,6 @@ html[data-app="1"] .qa-vip .vm-plan-price,
 html[data-app="1"] .qa-vip .vm-plan-rec { color: var(--ix-gold); }
 html[data-app="1"] .qa-vip .vm-go { min-height: var(--ix-hit-submit); background: var(--ix-gold) !important; color: var(--ix-gold-ink) !important; }
 html[data-app="1"] .qa-profile { min-height: 100%; background: var(--ix-canvas); color: var(--ix-ink); }
-html[data-app="1"] .qa-profile .pf-vip,
-html[data-app="1"] .qa-profile .pf-assets,
-html[data-app="1"] .qa-profile .pf-group,
-html[data-app="1"] .qa-profile .qa-glance {
-  border: 0;
-  border-radius: var(--ix-r-card);
-  background: var(--ix-surface);
-  box-shadow: var(--ix-shadow-1);
-}
-html[data-app="1"] .qa-profile .pf-vip { background: var(--ix-vault); color: var(--ix-vault-ink); }
-html[data-app="1"] .qa-profile .pf-vip-glow,
-html[data-app="1"] .qa-profile .pf-vip-mark { color: var(--ix-gold); }
-html[data-app="1"] .qa-profile .pf-group-title,
-html[data-app="1"] .qa-profile .pf-cell { color: var(--ix-ink); }
 html[data-app="1"] .qa-profile .pf-cell-ic,
 html[data-app="1"] .qa-profile .qa-glance-ring { background: var(--ix-act-soft); color: var(--ix-act); }
 html[data-app="1"] .qa-profile .pf-cell,

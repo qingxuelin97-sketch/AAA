@@ -394,8 +394,15 @@ assert.ok(
 assert.match(runtimeCss, /\.topbar h1,[\s\S]*word-break:\s*keep-all/, 'narrow App topbar titles must not stack vertically');
 assert.match(runtimeCss, /\.topbar\s*\{[^}]*flex-wrap:\s*wrap;[^}]*row-gap:\s*10px;/, 'dense narrow App topbars must wrap whole controls without horizontal overflow');
 assert.match(runtimeCss, /\.vm-plans\s*\{\s*padding-top:\s*12px/, 'VIP plans must reserve space for the raised badge');
-assert.match(runtimeCss, /\.app-tabbar[\s\S]*var\(--ix-blur\)/, 'App Dock must use the IX chrome blur authority directly on high and balanced tiers');
-assert.match(runtimeCss, /\[data-perf="lite"\]\s*\.app-tabbar\s*\{[^}]*backdrop-filter:\s*none/s, 'lite tier must drop the Dock blur and fall back to an opaque surface');
+// Dock 玻璃契约的权威早已从 runtime 迁到 app-ix-core.css:220 的 .app-dock 机身条
+//（内层 .app-tabbar 被同文件钉成 transparent 防双层玻璃）。runtime 里那两条
+// tabbar 模糊规则在级联普查里被证死并删除 —— 断言跟着指向真实权威，别再锁尸体。
+// lite 的回落走令牌（app-ix-tokens.css lite 块 --ix-blur: none，另有三档单调断言）。
+{
+  const ixCoreForDock = await readFile(new URL('./src/styles/app-ix-core.css', import.meta.url), 'utf8');
+  assert.match(ixCoreForDock, /\.app-dock\s*\{[^}]*backdrop-filter:\s*var\(--ix-blur\)/s, 'the Dock body rail (app-ix-core) must read the IX chrome blur token');
+  assert.match(ixCoreForDock, /\.app-dock\s+\.app-tabbar\s*\{[^}]*background:\s*transparent/s, 'the inner tabbar must stay transparent (no double glass inside the rail)');
+}
 
 // W6 CSS 按模式分包：App 层样式的静态 import 与级联顺序整体迁入
 // styles/app-entry.js；main.jsx 只保留 isAppMode() 门控的 render 前动态加载。
@@ -479,7 +486,10 @@ assert.doesNotMatch(appEntrySource, /(?:lumen-glass-tokens|app-quiet-aqua-tokens
   assert.doesNotMatch(ixPagesBClean, /nth-(?:child|of-type)/, 'the IX pages-b layer must not style by position');
   assert.doesNotMatch(ixPagesBClean, /var\(--(?:lg|qa)-/, 'the IX pages-b layer must consume --ix-* only');
   assert.match(ixPagesB, /\.msg\.assistant \.bubble\s*\{[^}]*var\(--ix-surface\)/s, 'character bubbles must sit on the opaque instrument surface (body text never rides glass)');
-  assert.match(ixPagesB, /has-bg \.msg\.assistant \.bubble\s*\{[^}]*var\(--ix-surface\)/s, 'immersive portrait mode must keep character bubbles opaque');
+  // 沉浸立绘下气泡不透底的权威在 pages-d:450（.qa-chat-main 前缀，86% 白 —— 注释里
+  // 有对比度论证）；pages-b 里那条 .chat-main 旧前缀规则被级联普查证死并删除。
+  const ixPagesDForBubble = await readFile(new URL('./src/styles/app-ix-pages-d.css', import.meta.url), 'utf8');
+  assert.match(ixPagesDForBubble, /\.qa-chat-main\.has-bg \.msg\.assistant \.bubble[^{]*\{[^}]*background:\s*rgb\(255 255 255 \/ 86%\)/s, 'immersive portrait mode must keep character bubbles near-opaque (contrast contract lives in pages-d)');
   assert.match(ixPagesB, /\.send-btn\s*\{[^}]*width:\s*40px[^}]*var\(--ix-act\)/s, 'the send key must be the 40px act circle');
   assert.match(ixPagesB, /\.ch-dot\s*\{[^}]*var\(--ix-led-halo\)/s, 'online presence must speak LED, not glow washes');
   /* ---- IX-5 value/identity + ritual contract ---- */
@@ -489,7 +499,10 @@ assert.doesNotMatch(appEntrySource, /(?:lumen-glass-tokens|app-quiet-aqua-tokens
   assert.doesNotMatch(ixPagesCClean, /nth-(?:child|of-type)/, 'the IX pages-c layer must not style by position');
   assert.doesNotMatch(ixPagesCClean, /var\(--(?:lg|qa)-/, 'the IX pages-c layer must consume --ix-* only');
   assert.doesNotMatch(ixPagesCClean, /animation:[^;]*infinite/, 'ritual motion plays once and stops (no loops in pages-c)');
-  assert.match(ixPagesC, /qa-wallet-v4__asset-icon\.gold\) strong \{ color: var\(--ix-vault-gold\); \}/, 'the vault gold readout must use the fixed vault gold');
+  // 金读数的权威已随青蓝渐变改版移到 rainbow §1b：金融卡整体渐变化、读数一律白字
+  //（pages-c 那条 --ix-vault-gold 规则被级联普查证死并删除）。
+  const rainbowForVault = await readFile(new URL('./src/styles/app-rainbow.css', import.meta.url), 'utf8');
+  assert.match(rainbowForVault, /\.qa-wallet-v4__balance :where\(strong, b\) \{ color: #fff !important; \}/, 'the gradient vault card must keep white readouts (rainbow §1b owns the vault identity now)');
   assert.match(ixPagesC, /\[data-medal="gold"\] \.qa-achievements-card-icon\s*\{[^}]*radial-gradient/s, 'medal metal may only exist as the radial on the medal body');
   assert.match(ixPagesC, /\.qa-cal-cell\.on\s*\{[^}]*var\(--ix-act\)/s, 'checked calendar cells must be solid act with inverse ink');
   assert.match(ixPagesC, /ix-flip-old::before \{ content: attr\(data-ch\); \}/, 'flip ghosts must render via CSS content so text flow only ever carries the current value');
