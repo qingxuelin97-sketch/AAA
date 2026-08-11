@@ -90,7 +90,12 @@ for (const mode of MODES) {
   await ctx.addInitScript(() => {
     document.addEventListener('DOMContentLoaded', () => {
       const style = document.createElement('style');
-      style.textContent = '.ah-avatar .avatar, .ah-avatar img, .msgs-entry-ic svg { visibility: hidden !important; }';
+      // 2026-08-11 追记：只藏 svg 已不够。对照实验（同源码重建 vs 同源基线）在
+      // balanced/accentdusk 两档的消息页稳定复现 1338/1343px 差异，bbox 是
+      // x52-70 一条竖条跨三个圆形入口 —— 跨构建的光栅化漂移（同构建内逐位稳定，
+      // 两次复跑像素数相同）。圆形入口整体并入遮蔽；渐变芯片的样式覆盖由其它
+      // 页面的同款芯片（设置行/宫格）继续承担。
+      style.textContent = '.ah-avatar .avatar, .ah-avatar img, .msgs-entry-ic { visibility: hidden !important; }';
       document.head.appendChild(style);
     });
   });

@@ -44,11 +44,6 @@ html[data-app="1"][data-theme="dark"] {
   --ix-composition-shadow-float: var(--ix-shadow-2);
 }
 
-html[data-app="1"] :where(.qa3-today, .qa3-messages, .qa3-profile) {
-  color: var(--ix-composition-ink);
-  background: var(--ix-composition-canvas);
-}
-
 /* --------------------------------------------------------------------------
    Today — large title, continuous identity, editorial media and horizontal
    continuation. No dashboard-card template is shared with the other tabs.
@@ -62,10 +57,6 @@ html[data-app="1"] .qa3-today.apphome {
   padding: 9px 16px calc(var(--ix-dock-height, 66px) + var(--ix-dock-bottom, 12px) + 40px + env(safe-area-inset-bottom, 0px)) !important;
   gap: 10px !important;
   overflow: visible;
-}
-
-html[data-app="1"] .qa3-today.apphome > * {
-  animation: none;
 }
 
 html[data-app="1"] .qa3-today .aht {
@@ -190,18 +181,6 @@ html[data-app="1"] .qa3-today .ah-avatar .avatar {
   border-radius: 16px !important;
 }
 
-html[data-app="1"] .qa3-today .ah-tier {
-  right: -5px !important;
-  bottom: -5px !important;
-  padding: 2px 5px !important;
-  border: 2px solid #174dbb !important;
-  border-radius: 999px !important;
-  background: #d7b352 !important;
-  color: #3d2c08 !important;
-  font-size: 8px !important;
-  font-weight: 850 !important;
-}
-
 html[data-app="1"] .qa3-today .ah-member-copy {
   min-width: 66px;
   flex: 1 1 auto;
@@ -268,10 +247,6 @@ html[data-app="1"] .qa3-today .ah-checkin.qa-button {
   font-weight: 760 !important;
 }
 
-html[data-app="1"] .qa3-today .ah-more.qa-button {
-  min-height: 44px !important;
-}
-
 html[data-app="1"] .qa3-today .ah-checkin.qa-button.done {
   background: rgb(255 255 255 / 11%) !important;
   color: rgb(255 255 255 / 74%) !important;
@@ -331,35 +306,9 @@ html[data-app="1"] .qa3-today .ah-sc:active .ah-sc-ic {
   background: var(--ix-composition-teal-soft) !important;
 }
 
-/* Contextual accents keep the App expressive without turning every surface
-   into the same aqua pill. Teal remains reserved for primary navigation and
-   action; content categories carry their own stable semantic colour. */
-html[data-app="1"] .qa3-today .ah-sc[data-tone="reward"] .ah-sc-ic,
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="reward"] .pf-quick-ic {
-  color: var(--ix-gold) !important;
-  background: var(--ix-gold-soft) !important;
-}
-html[data-app="1"] .qa3-today .ah-sc[data-tone="coral"] .ah-sc-ic,
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="coral"] .pf-quick-ic {
-  color: var(--ix-danger) !important;
-  background: var(--ix-danger-soft) !important;
-}
-html[data-app="1"] .qa3-today .ah-sc[data-tone="indigo"] .ah-sc-ic,
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="indigo"] .pf-quick-ic {
-  color: var(--ix-act) !important;
-  background: var(--ix-act-soft) !important;
-}
 html[data-app="1"] .qa3-today .ah-sc[data-tone="blue"] .ah-sc-ic {
   color: var(--ix-dia) !important;
   background: var(--ix-dia-soft) !important;
-}
-html[data-app="1"] .qa3-today .ah-sc[data-tone="graphite"] .ah-sc-ic {
-  color: var(--ix-ink-2) !important;
-  background: var(--ix-ink-2) !important;
-}
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="rose"] .pf-quick-ic {
-  color: var(--ix-danger) !important;
-  background: var(--ix-danger-soft) !important;
 }
 
 html[data-app="1"] .qa3-today .ah-hero-card {
@@ -742,10 +691,6 @@ html[data-app="1"] .qa3-messages .msgs-tabs .qa-button {
   font-size: 12.5px !important;
 }
 
-html[data-app="1"] .qa3-messages .msgs-tabs .qa-button.on {
-  color: var(--ix-composition-teal) !important;
-}
-
 /* 收件箱 tab 未读角标：行内小药丸，复用全局 .msgs-badge 配色 */
 html[data-app="1"] .qa3-messages .msgs-tabs .msgs-tab-badge {
   display: inline-flex;
@@ -787,10 +732,6 @@ html[data-app="1"] .qa3-messages .msgs-conv-main:active {
   background: color-mix(in srgb, var(--ix-composition-teal-soft) 46%, transparent) !important;
 }
 
-html[data-app="1"] .qa3-messages .msgs-entry:last-child {
-  border-bottom: 0 !important;
-}
-
 html[data-app="1"] .qa3-messages .msgs-entry-ic {
   display: grid;
   width: 42px !important;
@@ -800,16 +741,6 @@ html[data-app="1"] .qa3-messages .msgs-entry-ic {
   background: var(--ix-dia-soft) !important;
   color: var(--ix-dia) !important;
   box-shadow: inset 0 1px rgb(255 255 255 / 56%);
-}
-
-html[data-app="1"] .qa3-messages .msgs-entry-ic.noti {
-  background: var(--ix-danger-soft) !important;
-  color: var(--ix-danger) !important;
-}
-
-html[data-app="1"] .qa3-messages .msgs-entry-ic.grp {
-  background: var(--ix-act-soft) !important;
-  color: var(--ix-act) !important;
 }
 
 html[data-app="1"] .qa3-messages .msgs-entry-tx b {
@@ -828,15 +759,6 @@ html[data-app="1"] .qa3-messages .msgs-section-title {
   font-size: 12px !important;
   font-weight: 680 !important;
   letter-spacing: .02em;
-}
-
-html[data-app="1"] .qa3-messages .msgs-conv-group {
-  margin: 0 !important;
-  overflow: visible !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
 }
 
 html[data-app="1"] .qa3-messages .msgs-conv--app {
@@ -1004,11 +926,6 @@ html[data-app="1"] .qa3-profile .pf-top {
   margin: 0 !important;
 }
 
-html[data-app="1"] .qa3-profile .pf-top .qa-icon-button {
-  border-radius: 50%;
-  color: var(--ix-composition-ink);
-}
-
 html[data-app="1"] .qa3-profile .pf-identity-card {
   margin: -2px 0 2px !important;
   padding: 0 !important;
@@ -1105,10 +1022,6 @@ html[data-app="1"] .qa3-profile .pf-stats button {
   min-height: 48px !important;
   border-right: 1px solid var(--ix-composition-line) !important;
   background: transparent !important;
-}
-
-html[data-app="1"] .qa3-profile .pf-stats button:last-child {
-  border-right: 0 !important;
 }
 
 html[data-app="1"] .qa3-profile .pf-stats b {
@@ -1283,10 +1196,6 @@ html[data-app="1"] .qa3-profile .pf-tabs .qa-button.on::after {
   transform: scaleX(1);
 }
 
-html[data-app="1"] .qa3-profile .pf-tabs .qa-button.on {
-  color: var(--ix-composition-ink) !important;
-}
-
 html[data-app="1"] .qa3-profile .pf-content-grid {
   display: flex !important;
   gap: 10px !important;
@@ -1344,15 +1253,6 @@ html[data-app="1"] .qa3-profile .pf-cell {
   background: transparent !important;
   color: var(--ix-composition-muted) !important;
   font-size: 9.5px !important;
-}
-
-html[data-app="1"] .qa3-profile .pf-cell-ic {
-  width: 38px !important;
-  height: 38px !important;
-  border: 1px solid var(--ix-composition-line) !important;
-  border-radius: 13px !important;
-  background: var(--ix-composition-canvas-deep) !important;
-  color: var(--ix-composition-teal) !important;
 }
 
 html[data-app="1"] .qa3-profile .pf-foot {
@@ -1424,11 +1324,6 @@ html[data-app="1"] .qa3-discover .feed-mode.qa-button {
   text-shadow: 0 1px 5px rgb(0 0 0 / 24%);
 }
 
-html[data-app="1"] .qa3-discover .feed-mode.on.qa-button {
-  background: rgb(255 255 255 / 15%) !important;
-  color: #fff !important;
-}
-
 html[data-app="1"] .qa3-discover .feed-search.qa-icon-button,
 html[data-app="1"] .qa3-discover .feed-history.qa-icon-button {
   border: 1px solid rgb(255 255 255 / 13%);
@@ -1473,10 +1368,6 @@ html[data-app="1"] .qa3-discover .feed-bg {
   object-position: 61% 40% !important;
   transform: scale(1.035) translateY(5px);
   filter: saturate(.88) contrast(1.02);
-}
-
-html[data-app="1"] .qa3-discover .feed-card.cur .feed-bg {
-  animation: qa3MediaSettle 580ms var(--ix-composition-spring-soft) both;
 }
 
 html[data-app="1"] .qa3-discover .feed-scrim {
@@ -1943,10 +1834,6 @@ html[data-app="1"] .qa-chat-main.chat-main {
   --chat-anchor-radius: 7px;
 }
 
-html[data-app="1"] .qa-chat-main.chat-main.has-bg {
-  background: #e8efed !important;
-}
-
 html[data-app="1"] .qa-chat-main.chat-main.has-bg::before {
   z-index: 2;
   height: 112px;
@@ -1963,12 +1850,6 @@ html[data-app="1"] .qa-chat-main .chat-bg > img {
   filter: saturate(.78) contrast(.93) brightness(1.08);
   transform: scale(1.035);
   animation: qa3ChatArtSettle 720ms var(--ix-composition-spring-soft) 1 both !important;
-}
-
-html[data-app="1"] .qa-chat-main.has-bg .chat-bg::after {
-  background:
-    linear-gradient(180deg, rgb(246 249 248 / 68%) 0%, rgb(246 249 248 / 12%) 22%, transparent 46%, rgb(242 247 245 / 24%) 68%, rgb(242 247 245 / 94%) 100%),
-    linear-gradient(90deg, rgb(235 242 240 / 14%), transparent 56%) !important;
 }
 
 html[data-app="1"] .qa-chat-main .qa-chat-header.chat-head,
@@ -2068,12 +1949,6 @@ html[data-app="1"] .qa-chat-main.has-bg .qa-chat-header .qa-chat-identity .ch-st
   text-shadow: none !important;
 }
 
-html[data-app="1"] .qa-chat-header .ch-dot {
-  width: 6px;
-  height: 6px;
-  background: #25aa79;
-}
-
 html[data-app="1"] .qa-chat-header .ch-dot::after {
   display: none;
 }
@@ -2168,12 +2043,6 @@ html[data-app="1"] .qa-chat-main .msg.user .bubble::before {
   display: none !important;
 }
 
-html[data-app="1"] .qa-chat-main .msg .bubble .rp-act,
-html[data-app="1"] .qa-chat-main.has-bg .msg.assistant .bubble .rp-act {
-  color: color-mix(in srgb, var(--ix-composition-teal-deep) 72%, var(--ix-composition-muted)) !important;
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--ix-composition-teal) 36%, transparent);
-}
-
 html[data-app="1"] .qa-chat-main .msg-daydivider span,
 html[data-app="1"] .qa-chat-main.has-bg .msg-daydivider span {
   border: 0;
@@ -2183,19 +2052,6 @@ html[data-app="1"] .qa-chat-main.has-bg .msg-daydivider span {
   text-shadow: none;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-}
-
-html[data-app="1"] .qa-chat-main .qa-chat-composer.chat-input-bar,
-html[data-app="1"] .qa-chat-main.has-bg .qa-chat-composer.chat-input-bar {
-  right: 0;
-  left: 0;
-  padding: 20px 12px calc(10px + env(safe-area-inset-bottom));
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--ix-composition-canvas) 94%, transparent) 28%) !important;
-  box-shadow: none !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
 }
 
 html[data-app="1"] .qa-chat-main .qa-chat-input-island.box,
@@ -2217,21 +2073,9 @@ html[data-app="1"] .qa-chat-main.has-bg .qa-chat-input-island.box:focus-within {
   box-shadow: var(--ix-composition-shadow-float), 0 0 0 3px color-mix(in srgb, var(--ix-composition-teal) 9%, transparent) !important;
 }
 
-html[data-app="1"] .qa-chat-input-island :where(.qa-chat-action-toggle, .qa-chat-tools-toggle).qa-icon-button {
-  border-radius: 50% !important;
-  background: transparent !important;
-  color: var(--ix-composition-muted) !important;
-  box-shadow: none !important;
-}
-
 html[data-app="1"] .qa-chat-input-island :where(.qa-chat-action-toggle, .qa-chat-tools-toggle)[aria-pressed="true"] {
   background: var(--ix-composition-teal-soft) !important;
   color: var(--ix-composition-teal-deep) !important;
-}
-
-html[data-app="1"] .qa-chat-main .qa-chat-textarea,
-html[data-app="1"] .qa-chat-main.has-bg .qa-chat-textarea {
-  color: var(--ix-composition-ink) !important;
 }
 
 html[data-app="1"] .qa-chat-main .qa-chat-textarea::placeholder,
@@ -2514,13 +2358,6 @@ html[data-app="1"] .qa-group-room-composer.chat-input-bar {
    and Character Editor a focused creation tool.
    -------------------------------------------------------------------------- */
 
-/* Wallet — one deep asset instrument followed by a quiet ledger. */
-html[data-app="1"] .qa-wallet {
-  min-height: 100%;
-  color: var(--ix-composition-ink);
-  background: var(--ix-composition-canvas) !important;
-}
-
 html[data-app="1"] .qa-wallet-head {
   position: sticky;
   z-index: 32;
@@ -2545,19 +2382,6 @@ html[data-app="1"] .qa-wallet-head h1 {
 html[data-app="1"] .qa-wallet-head span,
 html[data-app="1"] .qa-wallet-head .qa-wallet-head-mark {
   color: var(--ix-composition-muted) !important;
-}
-
-html[data-app="1"] .qa-wallet-head > .qa-icon-button,
-html[data-app="1"] .qa-wallet-head .qa-wallet-head-mark {
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-html[data-app="1"] .qa-wallet > .page {
-  width: min(100%, 430px);
-  margin: 0 auto;
-  padding: 8px 16px calc(104px + env(safe-area-inset-bottom)) !important;
 }
 
 html[data-app="1"] .qa-wallet .wallet-load-error {
@@ -2913,9 +2737,6 @@ html[data-app="1"] .qa-wallet-v4__asset-icon {
   background: rgb(255 255 255 / 10%);
 }
 
-html[data-app="1"] .qa-wallet-v4__asset-icon.gold { color: #f4d083; }
-html[data-app="1"] .qa-wallet-v4__asset-icon.diamond { color: #aee9e3; }
-html[data-app="1"] .qa-wallet-v4__asset-icon.credit { color: #d8c6ff; }
 html[data-app="1"] .qa-wallet-v4__asset-icon img {
   display: block;
   width: 34px;
@@ -2976,11 +2797,6 @@ html[data-app="1"] .qa-wallet-v4__quick-icon {
   color: var(--ix-composition-teal);
 }
 
-html[data-app="1"] .qa-wallet-v4__quick-icon.warm { background: var(--ix-gold-soft); color: var(--ix-gold); }
-html[data-app="1"] .qa-wallet-v4__quick-icon.coral { background: var(--ix-danger-soft); color: var(--ix-danger); }
-html[data-app="1"] .qa-wallet-v4__quick-icon.blue { background: var(--ix-dia-soft); color: var(--ix-dia); }
-html[data-app="1"] .qa-wallet-v4__quick-icon.indigo { background: var(--ix-act-soft); color: var(--ix-act); }
-
 html[data-app="1"] .qa-wallet-v4__notice.qa-button,
 html[data-app="1"] .qa-wallet-v4__checkin.qa-button {
   width: 100%;
@@ -3015,7 +2831,6 @@ html[data-app="1"] .qa-wallet-v4__checkin-icon {
   color: var(--ix-composition-gold);
 }
 
-html[data-app="1"] .qa-wallet-v4__checkin-icon { background: var(--ix-dia-soft); color: var(--ix-dia); }
 html[data-app="1"] .qa-wallet-v4__notice-copy,
 html[data-app="1"] .qa-wallet-v4__checkin-copy { display: grid; gap: 2px; min-width: 0; }
 html[data-app="1"] .qa-wallet-v4__notice b,
@@ -3104,7 +2919,6 @@ html[data-app="1"] .qa-wallet-v4__tx {
 
 html[data-app="1"] .qa-wallet-v4__tx:last-child { border-bottom: 0; }
 html[data-app="1"] .qa-wallet-v4__tx-icon { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 12px; background: var(--ix-composition-teal-soft); color: var(--ix-composition-teal); }
-html[data-app="1"] .qa-wallet-v4__tx-icon.gold { background: color-mix(in srgb, #f6e8c7 82%, var(--ix-composition-canvas)); color: var(--ix-composition-gold); }
 html[data-app="1"] .qa-wallet-v4__tx-icon img { display: block; width: 30px; height: 30px; object-fit: contain; }
 html[data-app="1"] .qa-wallet-v4__tx-copy { display: grid; min-width: 0; gap: 3px; }
 html[data-app="1"] .qa-wallet-v4__tx b { overflow: hidden; color: var(--ix-composition-ink); font-size: 13px; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; }
@@ -3339,8 +3153,6 @@ html[data-app="1"][data-perf="lite"] :where(
   backdrop-filter: none;
 }
 
-html[data-app="1"][data-perf="lite"] .qa-wallet-v4__balance::after { animation: none; }
-
 /* SVIP — a single metallic object, followed by a linear benefits ledger. */
 html[data-app="1"] .qa-vip.vm {
   color: var(--ix-composition-ink);
@@ -3573,7 +3385,6 @@ html[data-app="1"] .qa-settings-group > h2 { margin: 0 0 7px 12px !important; co
 html[data-app="1"] .qa-settings-list { padding: 0 14px !important; overflow: hidden; border: 1px solid var(--ix-composition-line) !important; border-radius: 17px !important; background: color-mix(in srgb, var(--ix-composition-material) 78%, var(--ix-composition-canvas)) !important; box-shadow: var(--ix-composition-shadow-short) !important; }
 html[data-app="1"] .qa-settings-row.qa-button { min-height: 56px !important; padding: 9px 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: var(--ix-composition-ink) !important; box-shadow: none !important; }
 html[data-app="1"] .qa-settings-row.qa-button:not(:last-child) { border-bottom: 1px solid var(--ix-composition-line) !important; }
-html[data-app="1"] .qa-settings-row-icon { width: 36px !important; height: 36px !important; border: 0 !important; border-radius: 11px !important; background: var(--ix-composition-teal-soft) !important; color: var(--ix-composition-teal) !important; box-shadow: none !important; }
 html[data-app="1"] .qa-settings-row-copy b { color: var(--ix-composition-ink) !important; }
 html[data-app="1"] .qa-settings-row-copy small,
 html[data-app="1"] .qa-settings-row-chevron { color: var(--ix-composition-muted) !important; }
@@ -5341,17 +5152,5 @@ html[data-app="1"] .vm-go::before { animation: none; content: none; }
 html[data-app="1"] .ins-star { display: none; }
 html[data-app="1"] .ring-track,
 html[data-app="1"] .ring-row.rev .ring-track { animation: none; }
-html[data-app="1"] .ins-hero {
-  background: var(--ix-surface);
-  border: 1px solid var(--ix-hairline);
-  box-shadow: var(--ix-shadow-1);
-}
 
-/* Liuli v5 · 身份徽章语义化：SVIP 在 App 内走会员金实体（Web 的紫红渐变不变）。 */
-html[data-app="1"] .idb-svip {
-  background: var(--ix-vault);
-  color: var(--ix-gold);
-  border-color: color-mix(in srgb, var(--ix-gold) 40%, transparent);
-  box-shadow: none;
-}
 html[data-app="1"] .idb-vip { box-shadow: none; }

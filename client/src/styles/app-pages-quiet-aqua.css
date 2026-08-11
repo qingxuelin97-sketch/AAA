@@ -22,13 +22,6 @@ html[data-app="1"] .app-main {
   color: var(--ix-ink);
 }
 
-html[data-app="1"] :where(.card, .set-card, .msgs-entry, .msgs-conv, .room-row, .noti-item, .gm-row) {
-  border: 1px solid var(--ix-hairline);
-  background: var(--ix-surface) !important;
-  background-image: none !important;
-  box-shadow: var(--ix-shadow-1);
-}
-
 html[data-app="1"] :where(.btn.primary:not(.qa-button), button.btn.primary:not(.qa-button), a.btn.primary:not(.qa-button)) {
   border-color: var(--ix-act) !important;
   background: var(--ix-act) !important;
@@ -57,11 +50,6 @@ html[data-app="1"] .apphome {
   color: var(--ix-ink);
 }
 
-html[data-app="1"] .apphome .aht {
-  min-height: 52px;
-  padding: 0 2px;
-}
-
 html[data-app="1"] .apphome .aht-brand {
   background: none;
   color: var(--ix-act);
@@ -70,17 +58,6 @@ html[data-app="1"] .apphome .aht-brand {
   font-size: var(--ix-type-readout);
   font-weight: 760;
   letter-spacing: -0.04em;
-}
-
-html[data-app="1"] .apphome .aht-acts {
-  gap: 4px;
-}
-
-html[data-app="1"] .apphome .aht-acts .qa-icon-button {
-  border-color: var(--ix-hairline);
-  background: var(--ix-surface);
-  color: var(--ix-ink-2);
-  box-shadow: var(--ix-shadow-1);
 }
 
 html[data-app="1"] .apphome .aht-nb {
@@ -145,26 +122,6 @@ html[data-app="1"] .apphome .ah-member-row {
   gap: 12px;
 }
 
-html[data-app="1"] .apphome .ah-avatar.qa-icon-button {
-  width: 56px;
-  height: 56px;
-  min-width: 56px;
-  min-height: 56px;
-  border: 2px solid var(--ix-surface);
-  border-radius: 50%;
-  background: var(--ix-surface);
-  box-shadow: 0 0 0 1px var(--ix-hairline), 0 5px 14px rgb(14 18 28 / 12%);
-}
-
-html[data-app="1"] .apphome .ah-tier,
-html[data-app="1"] .apphome .ah-tier.vip,
-html[data-app="1"] .apphome .ah-tier.svip {
-  border: 1px solid color-mix(in srgb, var(--ix-gold) 28%, var(--ix-surface));
-  background: var(--ix-gold-soft);
-  background-image: none;
-  color: var(--ix-gold);
-}
-
 html[data-app="1"] .apphome .ah-wallet {
   display: grid;
   min-width: 0;
@@ -181,13 +138,6 @@ html[data-app="1"] .apphome .ah-wallet .qa-button {
   font-size: 12.5px;
 }
 
-html[data-app="1"] .apphome .ah-coin.qa-button {
-  border-color: transparent !important;
-  background: transparent !important;
-  color: var(--ix-ink) !important;
-  box-shadow: none;
-}
-
 html[data-app="1"] .apphome .ah-checkin.qa-button {
   margin-left: 0;
   padding-inline: 10px;
@@ -202,65 +152,6 @@ html[data-app="1"] .apphome .ah-checkin.qa-button.done {
   background: var(--ix-grouped) !important;
   color: var(--ix-ink-2) !important;
   text-shadow: none;
-}
-
-html[data-app="1"] .apphome .ah-shortcuts {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
-  padding: 5px 6px;
-  border: 1px solid var(--ix-hairline);
-  border-radius: 16px;
-  background: var(--ix-surface);
-  box-shadow: var(--ix-shadow-1);
-}
-
-html[data-app="1"] .apphome .ah-sc.qa-button {
-  min-width: 0;
-  min-height: 67px;
-  padding: 6px 2px;
-  border: 0 !important;
-  border-radius: 12px !important;
-  background: transparent !important;
-  color: var(--ix-ink-2) !important;
-  box-shadow: none !important;
-}
-
-html[data-app="1"] .apphome .ah-sc .qa-button__content {
-  flex-direction: column;
-  gap: 6px;
-}
-
-html[data-app="1"] .apphome .ah-sc .ah-sc-ic {
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent !important;
-  color: var(--ix-act) !important;
-  box-shadow: none !important;
-}
-
-html[data-app="1"] .apphome .ah-hero-card {
-  border: 1px solid var(--ix-hairline);
-  border-radius: 16px;
-  background: var(--ix-grouped);
-  box-shadow: var(--ix-shadow-1);
-}
-
-html[data-app="1"] .apphome .ah-hc-media {
-  position: absolute;
-  inset: 0;
-}
-
-html[data-app="1"] .apphome .ah-hc-scrim {
-  background: linear-gradient(180deg, transparent 22%, rgb(4 24 23 / 18%) 48%, rgb(4 24 23 / 84%) 100%);
-}
-
-html[data-app="1"] .apphome .ah-hc-tag {
-  border: 1px solid rgb(255 255 255 / 42%);
-  background: rgb(13 34 33 / 70%);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 html[data-app="1"] .apphome .ah-hc-name {
@@ -313,19 +204,6 @@ html[data-app="1"] .apphome .ah-resume-section {
   gap: 4px;
 }
 
-html[data-app="1"] .apphome .ah-rail {
-  gap: 2px;
-  margin-inline: -4px;
-  padding: 2px 4px 4px;
-}
-
-html[data-app="1"] .apphome .ah-resume {
-  width: 76px;
-  min-height: 102px;
-  padding: 2px 3px 4px;
-  border-radius: 14px;
-}
-
 html[data-app="1"] .apphome .ah-empty,
 html[data-app="1"] .apphome .ah-task,
 html[data-app="1"] .apphome .ah-pick {
@@ -353,24 +231,8 @@ html[data-app="1"] .apphome .ah-aff.dim {
   color: var(--ix-ink-3);
 }
 
-html[data-app="1"] .apphome .ah-task {
-  border-radius: 16px;
-}
-
 html[data-app="1"] .apphome .ah-task-tx span {
   color: var(--ix-gold);
-}
-
-html[data-app="1"] .apphome .ah-task-bar {
-  background: var(--ix-grouped);
-}
-
-html[data-app="1"] .apphome .ah-task-bar i {
-  background: var(--ix-act);
-}
-
-html[data-app="1"] .apphome .ah-pick {
-  border-radius: 18px;
 }
 
 html[data-app="1"] .apphome .ah-pick-av,
@@ -379,16 +241,8 @@ html[data-app="1"] .apphome .ah-pick-ph {
   color: var(--ix-ink-3);
 }
 
-html[data-app="1"] .apphome .ah-resume {
-  color: var(--ix-ink);
-}
-
 html[data-app="1"] .apphome .ah-resume .avatar {
   box-shadow: 0 0 0 2px var(--ix-surface), 0 5px 13px rgb(14 18 28 / 12%);
-}
-
-html[data-app="1"] .apphome .ah-aff {
-  color: var(--ix-gold);
 }
 
 html[data-app="1"] .apphome :where(.ah-hero-skel, .ah-rail-skel, .ah-pick-skel) {
@@ -489,15 +343,6 @@ html[data-app="1"] .qa-messages-page .msgs-search.qa-icon-button {
   box-shadow: none;
 }
 
-html[data-app="1"] .qa-messages-page .msgs-entry-group,
-html[data-app="1"] .qa-messages-page .msgs-conv-group {
-  overflow: hidden;
-  border: 1px solid var(--ix-hairline);
-  border-radius: 18px;
-  background: var(--ix-surface);
-  box-shadow: var(--ix-shadow-1);
-}
-
 html[data-app="1"] .qa-messages-page .msgs-entry,
 html[data-app="1"] .qa-messages-page .msgs-conv {
   position: relative;
@@ -508,34 +353,6 @@ html[data-app="1"] .qa-messages-page .msgs-conv {
   background: var(--ix-surface) !important;
   color: var(--ix-ink);
   box-shadow: none;
-}
-
-html[data-app="1"] .qa-messages-page :where(.msgs-entry, .msgs-conv):last-child {
-  border-bottom: 0;
-}
-
-html[data-app="1"] .qa-messages-page .msgs-entry {
-  min-height: 70px;
-  padding: 9px 11px;
-}
-
-html[data-app="1"] .qa-messages-page .msgs-entry-ic,
-html[data-app="1"] .qa-messages-page .msgs-entry-ic.noti,
-html[data-app="1"] .qa-messages-page .msgs-entry-ic.dm,
-html[data-app="1"] .qa-messages-page .msgs-entry-ic.grp {
-  width: 44px;
-  height: 44px;
-  border: 1px solid color-mix(in srgb, var(--ix-act) 14%, transparent);
-  border-radius: 14px;
-  background: var(--ix-act-soft) !important;
-  background-image: none !important;
-  color: var(--ix-act) !important;
-  box-shadow: none !important;
-}
-
-html[data-app="1"] .qa-messages-page .msgs-entry-tx b,
-html[data-app="1"] .qa-messages-page .msgs-conv-tx b {
-  color: var(--ix-ink);
 }
 
 html[data-app="1"] .qa-messages-page .msgs-entry-tx small,
@@ -557,11 +374,6 @@ html[data-app="1"] .qa-messages-page .msgs-conv-tx span {
   line-height: 1.35;
 }
 
-html[data-app="1"] .qa-messages-page .msgs-badge {
-  background: var(--ix-danger);
-  color: var(--ix-badge-ink);
-}
-
 html[data-app="1"] .qa-messages-page .msgs-section-title {
   margin: 17px 4px 9px;
   color: var(--ix-ink-2);
@@ -570,11 +382,6 @@ html[data-app="1"] .qa-messages-page .msgs-section-title {
   font-weight: 740;
   line-height: 1.2;
   letter-spacing: -0.02em;
-}
-
-html[data-app="1"] .qa-messages-page .msgs-conv {
-  min-height: 70px;
-  padding: 9px 11px;
 }
 
 html[data-app="1"] .qa-messages-page .msgs-conv-meta {
@@ -656,24 +463,6 @@ html[data-app="1"] .qa-messages-page .msgs-skel-row:last-child {
    Profile
    -------------------------------------------------------------------------- */
 
-html[data-app="1"] .qa-profile {
-  gap: 0;
-  min-height: 100%;
-  padding: 6px 14px calc(20px + env(safe-area-inset-bottom));
-  background: var(--ix-canvas);
-  color: var(--ix-ink);
-}
-
-html[data-app="1"] .qa-profile .pf-top {
-  min-height: 48px;
-  margin-bottom: 5px;
-}
-
-html[data-app="1"] .qa-profile .pf-top .qa-icon-button {
-  background: transparent;
-  color: var(--ix-ink-2);
-}
-
 html[data-app="1"] .qa-profile .pf-dot {
   border: 2px solid var(--ix-canvas);
   background: var(--ix-danger);
@@ -687,14 +476,6 @@ html[data-app="1"] .qa-profile .qa-profile__identity {
   border-radius: 20px;
   background: var(--ix-surface);
   box-shadow: var(--ix-shadow-1);
-}
-
-html[data-app="1"] .qa-profile .qa-profile__identity .pf-id {
-  gap: 12px;
-}
-
-html[data-app="1"] .qa-profile .pf-av {
-  border-radius: 18px;
 }
 
 html[data-app="1"] .qa-profile .pf-av .avatar {
@@ -718,12 +499,6 @@ html[data-app="1"] .qa-profile .pf-uid.qa-button {
   color: var(--ix-ink-2);
 }
 
-html[data-app="1"] .qa-profile .pf-edit.qa-icon-button {
-  border-color: var(--ix-hairline);
-  background: var(--ix-surface);
-  color: var(--ix-act);
-}
-
 html[data-app="1"] .qa-profile .pf-bio {
   margin: 10px 2px 7px;
   padding: 0;
@@ -733,10 +508,6 @@ html[data-app="1"] .qa-profile .pf-bio {
   color: var(--ix-ink-2);
   font-size: 13px;
   line-height: 1.5;
-}
-
-html[data-app="1"] .qa-profile .pf-badges {
-  margin: 0 2px 2px;
 }
 
 html[data-app="1"] .qa-profile .pf-stats {
@@ -752,10 +523,6 @@ html[data-app="1"] .qa-profile .pf-stats {
 html[data-app="1"] .qa-profile .pf-stats button {
   min-height: 44px;
   color: var(--ix-ink);
-}
-
-html[data-app="1"] .qa-profile .pf-stats span {
-  color: var(--ix-ink-3);
 }
 
 html[data-app="1"] .qa-profile .pf-stats b {
@@ -776,10 +543,6 @@ html[data-app="1"] .qa-profile .qa-profile__membership.svip {
   background-image: none !important;
   color: var(--ix-gold) !important;
   box-shadow: var(--ix-shadow-1);
-}
-
-html[data-app="1"] .qa-profile .pf-vip-glow {
-  display: none;
 }
 
 html[data-app="1"] .qa-profile .pf-vip-mark {
@@ -825,31 +588,6 @@ html[data-app="1"] .qa-profile .pf-vip .pf-vip-go {
   box-shadow: none;
 }
 
-html[data-app="1"] .qa-profile .qa-profile__assets {
-  margin-top: 10px;
-  padding: 13px 14px;
-  border: 1px solid var(--ix-hairline);
-  border-radius: 18px;
-  background: var(--ix-surface);
-  box-shadow: var(--ix-shadow-1);
-}
-
-html[data-app="1"] .qa-profile .pf-asset-bal {
-  color: var(--ix-ink-2);
-}
-
-html[data-app="1"] .qa-profile .pf-asset-bal b {
-  color: var(--ix-ink);
-}
-
-html[data-app="1"] .qa-profile .pf-asset-acts .qa-button {
-  min-height: 44px;
-  border-color: var(--ix-hairline);
-  background: var(--ix-grouped);
-  color: var(--ix-ink);
-  box-shadow: none;
-}
-
 html[data-app="1"] .qa-profile .pf-quick {
   display: grid;
   overflow: visible;
@@ -870,16 +608,6 @@ html[data-app="1"] .qa-profile .pf-quick button {
   padding-inline: 1px;
   color: var(--ix-ink-2);
   font-size: 11px;
-}
-
-html[data-app="1"] .qa-profile .pf-quick-ic {
-  width: 40px;
-  height: 40px;
-  border: 0;
-  border-radius: 13px;
-  background: var(--ix-act-soft) !important;
-  color: var(--ix-act) !important;
-  box-shadow: none !important;
 }
 
 html[data-app="1"] .qa-profile :where(.pf-quick-ic, .pf-cell-ic)::after {
@@ -922,10 +650,6 @@ html[data-app="1"] .qa-profile .pf-tabs .qa-button.on::after {
   content: none !important;
 }
 
-html[data-app="1"] .qa-profile .pf-content-grid {
-  gap: 9px;
-}
-
 html[data-app="1"] .qa-profile .pf-cc {
   color: var(--ix-ink);
 }
@@ -958,25 +682,6 @@ html[data-app="1"] .qa-profile .pf-cell {
   background: var(--ix-surface);
   color: var(--ix-ink-2);
   box-shadow: var(--ix-shadow-1);
-}
-
-html[data-app="1"] .qa-profile .pf-cell-ic {
-  background: var(--ix-act-soft) !important;
-  color: var(--ix-act) !important;
-  box-shadow: none !important;
-}
-
-html[data-app="1"] .qa-profile .pf-foot-btn.qa-button {
-  border-color: var(--ix-hairline);
-  background: var(--ix-surface);
-  color: var(--ix-ink);
-  box-shadow: var(--ix-shadow-1);
-}
-
-html[data-app="1"] .qa-profile .pf-foot-btn.qa-button.qa-tone--danger {
-  border-color: color-mix(in srgb, var(--ix-danger) 20%, var(--ix-hairline));
-  background: var(--ix-danger-soft);
-  color: var(--ix-danger);
 }
 
 /* --------------------------------------------------------------------------
@@ -1466,18 +1171,6 @@ html[data-app="1"] .qa-discover-page .feed-modes {
   padding: 0;
 }
 
-html[data-app="1"] .qa-discover-page .feed-mode.qa-button {
-  min-width: 54px;
-  min-height: 44px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: transparent;
-  color: rgb(255 255 255 / 68%);
-  text-shadow: 0 1px 6px rgb(0 0 0 / 45%);
-  box-shadow: none;
-}
-
 html[data-app="1"] .qa-discover-page .feed-mode.qa-button.on,
 html[data-app="1"] .qa-discover-page .feed-mode.qa-button[data-selected] {
   border-color: rgb(255 255 255 / 18%);
@@ -1504,19 +1197,9 @@ html[data-app="1"] .qa-discover-page :where(.feed-back, .feed-search).qa-icon-bu
   -webkit-backdrop-filter: blur(12px) saturate(1.08);
 }
 
-html[data-app="1"] .qa-discover-page .feed-scrim {
-  background: linear-gradient(180deg, rgb(0 0 0 / 22%) 0%, transparent 28%, transparent 47%, rgb(2 10 9 / 40%) 70%, rgb(2 10 9 / 94%) 100%);
-}
-
 html[data-app="1"] .qa-discover-page .feed-ai-mark {
   color: rgb(255 255 255 / 42%);
   text-shadow: 0 1px 4px rgb(0 0 0 / 44%);
-}
-
-html[data-app="1"] .qa-discover-page .fd2-acts {
-  right: 7px;
-  bottom: 148px;
-  gap: 5px;
 }
 
 html[data-app="1"] .qa-discover-page .fd2-act {
@@ -1532,19 +1215,6 @@ html[data-app="1"] .qa-discover-page .fd2-act svg {
   width: 25px;
   height: 25px;
   filter: drop-shadow(0 2px 5px rgb(0 0 0 / 45%));
-}
-
-html[data-app="1"] .qa-discover-page .fd2-act.on {
-  color: var(--ix-danger);
-}
-
-html[data-app="1"] .qa-discover-page .fd2-act.on.gold {
-  color: var(--ix-gold);
-}
-
-html[data-app="1"] .qa-discover-page .fd2-stack {
-  gap: 7px;
-  padding: 0 13px calc(12px + env(safe-area-inset-bottom));
 }
 
 html[data-app="1"] .qa-discover-page .fd2-meta {
@@ -1652,17 +1322,6 @@ html[data-app="1"] .qa-discover-page .fd2-greet {
   -webkit-line-clamp: 2;
 }
 
-html[data-app="1"] .qa-discover-page .fd2-cat {
-  border: 1px solid rgb(255 255 255 / 16%);
-  background: rgb(8 27 25 / 74%);
-}
-
-html[data-app="1"] .qa-discover-page .fd2-cta {
-  gap: 8px;
-  margin-top: 3px;
-  padding-right: 58px;
-}
-
 html[data-app="1"] .qa-discover-page .fd2-enter.qa-button {
   height: 52px;
   border-radius: 16px;
@@ -1675,25 +1334,6 @@ html[data-app="1"] .qa-discover-page .fd2-enter.qa-button::after {
   content: none !important;
   display: none;
   animation: none !important;
-}
-
-html[data-app="1"] .qa-discover-page .fd2-call.qa-icon-button {
-  width: 52px;
-  height: 52px;
-  border: 1px solid rgb(255 255 255 / 56%);
-  border-radius: 16px;
-  background: rgb(255 255 255 / 94%);
-  color: var(--ix-act);
-  box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html[data-app="1"][data-perf="balanced"] .qa-discover-page :where(.feed-back, .feed-search).qa-icon-button,
-html[data-app="1"][data-perf="lite"] .qa-discover-page :where(.feed-back, .feed-search).qa-icon-button {
-  background: rgb(8 27 25 / 82%);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 html[data-app="1"] .qa-discover-page .feed-hint {
@@ -2046,44 +1686,6 @@ html[data-app="1"] .auth-wrap .auth-explore-btn.qa-button {
   box-shadow: none;
 }
 
-html[data-app="1"] .chat-layout,
-html[data-app="1"] .chat-main:not(.has-bg) {
-  background: var(--ix-canvas);
-  color: var(--ix-ink);
-}
-
-html[data-app="1"] .chat-main .chat-head {
-  min-height: 58px;
-  gap: 5px;
-  padding: 7px 10px;
-  border-color: var(--ix-hairline);
-  background: var(--ix-glass-nav);
-  box-shadow: 0 1px 0 var(--ix-hairline);
-  backdrop-filter: blur(18px) saturate(1.16);
-  -webkit-backdrop-filter: blur(18px) saturate(1.16);
-}
-
-html[data-app="1"] .qa-chat-header .qa-chat-back,
-html[data-app="1"] .qa-chat-header .qa-chat-header-button {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  border: 0;
-  border-radius: 14px;
-  background: transparent;
-  color: var(--ix-ink-2);
-}
-
-html[data-app="1"] .qa-chat-header .qa-chat-identity {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-html[data-app="1"] .qa-chat-header .qa-chat-header-actions {
-  gap: 0;
-  margin-left: 0;
-}
-
 html[data-app="1"] .qa-chat-header .qa-chat-more-menu {
   border: 1px solid var(--ix-hairline);
   border-radius: 16px;
@@ -2092,40 +1694,9 @@ html[data-app="1"] .qa-chat-header .qa-chat-more-menu {
   box-shadow: var(--ix-shadow-2);
 }
 
-html[data-app="1"] .chat-main .chat-input-bar {
-  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, transparent, var(--ix-canvas) 24%);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html[data-app="1"] .chat-main .chat-input-bar .box {
-  min-height: 56px;
-  gap: 2px;
-  padding: 5px;
-  border-color: var(--ix-hairline);
-  border-radius: 22px;
-  background: var(--ix-surface);
-  box-shadow: var(--ix-shadow-1);
-}
-
 html[data-app="1"] .chat-main .chat-input-bar .box:focus-within {
   border-color: var(--ix-act);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ix-act) 15%, transparent), var(--ix-shadow-2);
-}
-
-html[data-app="1"] .qa-chat-input-island :where(.qa-chat-action-toggle, .qa-chat-tools-toggle, .qa-chat-send) {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  margin: 0;
-  border-radius: 14px;
-}
-
-html[data-app="1"] .qa-chat-input-island :where(.qa-chat-action-toggle, .qa-chat-tools-toggle) {
-  background: transparent;
-  color: var(--ix-ink-3);
 }
 
 html[data-app="1"] .qa-chat-input-island :where(.qa-chat-action-toggle, .qa-chat-tools-toggle)[data-selected],
@@ -2166,13 +1737,6 @@ html[data-app="1"] :where(.qa-chat-actions-panel, .qa-chat-tools-panel) {
   border: none;
   background: none;
   box-shadow: none;
-}
-
-html[data-app="1"][data-perf="balanced"] .qa-chat-header,
-html[data-app="1"][data-perf="lite"] .qa-chat-header {
-  background: var(--ix-surface);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -2371,14 +1935,6 @@ html[data-app="1"] .qa-discover-page .feed-bg.qa-oracle-character {
   filter: none;
 }
 
-html[data-app="1"] .apphome .ah-hc-bg.qa-oracle-character {
-  object-position: 55% 29%;
-}
-
-html[data-app="1"] .qa-discover-page .feed-bg.qa-oracle-character {
-  object-position: 50% 50%;
-}
-
 /* --------------------------------------------------------------------------
    Wallet · App asset and ledger page
    -------------------------------------------------------------------------- */
@@ -2403,12 +1959,6 @@ html[data-app="1"] .qa-wallet-head {
   border-bottom: 1px solid color-mix(in srgb, var(--ix-hairline) 62%, transparent);
   background: color-mix(in srgb, var(--ix-canvas) 90%, transparent);
   backdrop-filter: saturate(1.1) blur(16px);
-}
-
-html[data-app="1"][data-perf="balanced"] .qa-wallet-head,
-html[data-app="1"][data-perf="lite"] .qa-wallet-head {
-  background: var(--ix-canvas);
-  backdrop-filter: none;
 }
 
 html[data-app="1"] .qa-wallet-head > div {
@@ -2992,14 +2542,6 @@ html[data-app="1"] .qa-settings-group > h2 {
   letter-spacing: 0.01em;
 }
 
-html[data-app="1"] .qa-settings-list {
-  overflow: hidden;
-  border: 1px solid var(--ix-hairline);
-  border-radius: var(--ix-r-card);
-  background: var(--ix-surface);
-  box-shadow: var(--ix-shadow-1);
-}
-
 html[data-app="1"] .qa-settings-row.qa-button {
   width: 100%;
   min-height: 68px;
@@ -3012,26 +2554,12 @@ html[data-app="1"] .qa-settings-row.qa-button {
   text-align: left;
 }
 
-html[data-app="1"] .qa-settings-row.qa-button:not(:last-child) {
-  border-bottom: 1px solid var(--ix-hairline);
-}
-
 html[data-app="1"] .qa-settings-row.qa-button .qa-button__content {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) 18px;
   align-items: center;
   width: 100%;
   gap: 11px;
-}
-
-html[data-app="1"] .qa-settings-row-icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: var(--ix-act-soft);
-  color: var(--ix-act);
 }
 
 html[data-app="1"] .qa-settings-row-copy {
@@ -3054,10 +2582,6 @@ html[data-app="1"] .qa-settings-row-copy small {
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-html[data-app="1"] .qa-settings-row-chevron {
-  color: var(--ix-ink-3);
 }
 
 html[data-app="1"] .qa-settings-detail {
@@ -3228,12 +2752,6 @@ html[data-app="1"] .qa-settings-detail .priv-data-row > div {
 html[data-app="1"] .qa-settings-detail .priv-danger {
   border-color: color-mix(in srgb, var(--ix-danger) 22%, var(--ix-hairline));
   background: color-mix(in srgb, var(--ix-danger-soft) 34%, var(--ix-surface));
-}
-
-html[data-app="1"][data-perf="lite"] .qa-settings-topbar {
-  background: var(--ix-canvas);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 @media (max-width: 600px) {
@@ -6307,10 +5825,6 @@ html[data-app="1"] :where(.qa-search-header, .qa-announcements-header, .qa-event
   backdrop-filter: blur(18px) saturate(1.08);
 }
 
-html[data-app="1"] :where(.qa-search-header, .qa-announcements-header, .qa-events-header).topbar > div {
-  min-width: 0;
-}
-
 html[data-app="1"] :where(.qa-search-header, .qa-announcements-header, .qa-events-header).topbar h1,
 html[data-app="1"] :where(.qa-search-header, .qa-announcements-header, .qa-events-header).topbar .sub {
   overflow: hidden;
@@ -6945,11 +6459,6 @@ html[data-app="1"] .qa-events-empty.empty {
   border-radius: 20px;
   background: var(--ix-grouped);
   color: var(--ix-ink-2);
-}
-
-html[data-app="1"][data-perf="lite"] :where(.qa-search-header, .qa-announcements-header, .qa-events-header, .qa-announcements-modal),
-html[data-app="1"][data-perf="lite"] .qa-announcements-modal-backdrop {
-  backdrop-filter: none;
 }
 
 @media (max-width: 390px) {
@@ -9886,10 +9395,6 @@ html[data-app="1"] .qa-achievements-tabs {
   scrollbar-width: none;
 }
 
-html[data-app="1"] .qa-achievements-tabs::-webkit-scrollbar {
-  display: none;
-}
-
 html[data-app="1"] .qa-achievements-tabs .qa-button {
   min-width: 68px;
   flex: 0 0 auto;
@@ -9933,11 +9438,6 @@ html[data-app="1"] .qa-achievements-skeleton-icon {
   border-radius: 15px;
   background: var(--ix-grouped);
   color: var(--ix-ink-3);
-}
-
-html[data-app="1"] .qa-achievements-card.is-unlocked .qa-achievements-card-icon {
-  background: var(--ix-act-soft);
-  color: var(--ix-act);
 }
 
 html[data-app="1"] .qa-achievements-card-icon > i {
@@ -10734,10 +10234,6 @@ html[data-app="1"] .qa-achievements-list .qa-achievements-card:last-child {
   border-bottom: 0;
 }
 
-html[data-app="1"] .qa-achievements-list .qa-achievements-card.is-unlocked {
-  background: color-mix(in srgb, var(--ix-success-soft) 24%, transparent);
-}
-
 /* Gacha facts share one panel; the draw machine is the only hero card. */
 html[data-app="1"] .qa-gacha-facts {
   display: grid;
@@ -10782,11 +10278,6 @@ html[data-app="1"] .qa-events-section-head span {
   font-size: 11px;
 }
 
-html[data-app="1"] .qa-events-card {
-  --event-fill: var(--ix-act);
-  --event-soft: var(--ix-act-soft);
-}
-
 html[data-app="1"] .qa-events-card[data-tone="gold"] {
   --event-fill: var(--ix-gold);
   --event-soft: var(--ix-gold-soft);
@@ -10815,10 +10306,6 @@ html[data-app="1"] .qa-events-card[data-tone="rose"] {
 html[data-app="1"] .qa-events-card[data-tone="graphite"] {
   --event-fill: var(--ix-ink-2);
   --event-soft: var(--ix-ink-2);
-}
-
-html[data-app="1"] .qa-events-card::before {
-  background: var(--event-fill);
 }
 
 html[data-app="1"] .qa-events-card .ev-tag {
@@ -10883,34 +10370,3 @@ html[data-app="1"] .qa-theater-intro p {
   color: var(--ix-vault-ink-2);
 }
 
-/* Settings rows carry a restrained functional colour language rather than
-   six copies of the current global accent. */
-html[data-app="1"] .qa-settings-row-icon[data-tone="indigo"] {
-  background: var(--ix-act-soft) !important;
-  color: var(--ix-act) !important;
-}
-
-html[data-app="1"] .qa-settings-row-icon[data-tone="blue"] {
-  background: var(--ix-dia-soft) !important;
-  color: var(--ix-dia) !important;
-}
-
-html[data-app="1"] .qa-settings-row-icon[data-tone="graphite"] {
-  background: var(--ix-ink-2) !important;
-  color: var(--ix-ink-2) !important;
-}
-
-html[data-app="1"] .qa-settings-row-icon[data-tone="rose"] {
-  background: var(--ix-danger-soft) !important;
-  color: var(--ix-danger) !important;
-}
-
-html[data-app="1"] .qa-settings-row-icon[data-tone="gold"] {
-  background: var(--ix-gold-soft) !important;
-  color: var(--ix-gold) !important;
-}
-
-html[data-app="1"] .qa-settings-row-icon[data-tone="coral"] {
-  background: var(--ix-danger-soft) !important;
-  color: var(--ix-danger) !important;
-}
