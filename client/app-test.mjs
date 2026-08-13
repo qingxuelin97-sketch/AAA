@@ -758,7 +758,11 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
     '../chat/chat-app.css': 2, 'app-runtime.css': 6, 'app-controls.css': 113,
     'app-pages-quiet-aqua.css': 378, 'app-experience-v3.css': 1408, 'app-hig-v5.css': 20,
     'app-ix-core.css': 109, 'app-ix-pages-a.css': 75, 'app-ix-pages-b.css': 38,
-    'app-ix-pages-c.css': 59, 'app-ix-pages-d.css': 309, 'app-rainbow.css': 244,
+    // app-rainbow 244 → 210：D7 撤形把 §9a–§9e 三十多条 per-tone 规则从
+    // 「自己画一层带 !important 的渐变」改成「只写自定义属性」，34 个 !important
+    // 随之退役。设计稿原本预期这一步要**加**新层（因而要求本批不下调天花板），
+    // 属性驱动的写法把它反过来了 —— 既然是实测新低点，就当场锁住。
+    'app-ix-pages-c.css': 59, 'app-ix-pages-d.css': 309, 'app-rainbow.css': 210,
     'app-rainbow-motion.css': 9, 'chat-glass.css': 76,
   };
   for (const [name, ceiling] of Object.entries(IMPORTANT_CEILING)) {

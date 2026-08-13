@@ -108,24 +108,40 @@ html[data-app="1"] #app-create-sheet .app-create-row .ac-ic,
 html[data-app="1"] .qa-settings-row[data-tone] .qa-settings-row-icon,
 html[data-app="1"] .qa-settings-row .qa-settings-row-icon,
 html[data-app="1"] .vm-perk .vm-perk-ic {
-  background: var(--ix-rainbow-chip) !important;
-  background-image: var(--ix-rainbow-chip) !important;
-  color: #fff !important;
+  /* D7 撤形：这六条一条不增一条不减，只把**值**换成读四支自定义属性。
+     这么写的理由：新承载不能靠叠一层新规则拿下（experience-v3:291/:735 的
+     background / color / border-radius 全带 !important，而本文件的 !important
+     棘轮此前是 244/244 零余量，加新层在物理上非法）。改成属性驱动之后，
+     §9a–§9e 的每一条 per-tone 规则都只写自定义属性、一个 !important 都不用，
+     整批反而把本文件的 !important 计数往下压。
+     缺省值 = 中性 cyan 档：无 data-tone 的芯片此前读 --ix-rainbow-chip 渐变，
+     白字对它的浅端只有 1.46 —— 那正是七个不合格面里最低的一档之一。 */
+  background: var(--ix-rainbow-tw, var(--ix-rainbow-cyan-wash)) !important;
+  /* -tg 只给「保留渐变」的豁免处用（创建面板行芯片）。缺省 none：
+     background 简写已经把 background-image 复位成 none，这条是防止更早的层
+     把一张渐变图漏进来压在 wash 上（深墨 glyph 压饱和渐变就是最坏的那一档）。 */
+  background-image: var(--ix-rainbow-tg, none) !important;
+  color: var(--ix-rainbow-tk, var(--ix-rainbow-cyan-ink)) !important;
   border: 0 !important;
-  border-radius: 50% !important;
-  box-shadow: var(--ix-rainbow-chip-shadow) !important;
+  border-radius: var(--ix-rainbow-tr, var(--ix-r-key)) !important;
+  /* 彩色外投影 → 内描边环：外投影把色相漏到白卡外，六个芯片各漏一种色；
+     内描边把色相收在芯片边界内。16% 的环对自家 wash 实测 ΔE00 6.2–8.1，
+     看得见但不喧哗。 */
+  box-shadow: var(--ix-rainbow-ts,
+    inset 0 0 0 1px color-mix(in oklab, var(--ix-rainbow-tk, var(--ix-rainbow-cyan-ink)) 16%, transparent)) !important;
 }
-/* 芯片内 glyph 一律纯白描边图标 */
+/* 芯片内 glyph：跟随该 hue 的 ink（豁免处由 -tk 显式钉回 #fff）。 */
 html[data-app="1"] :where(.ah-sc-ic, .pf-cell-ic, .msgs-entry-ic, .pf-quick-ic, .ac-ic, .qa-settings-row-icon, .vm-perk-ic) svg {
-  color: #fff !important;
+  color: var(--ix-rainbow-tk, var(--ix-rainbow-cyan-ink)) !important;
   stroke: currentColor;
 }
-/* 尺寸：参考稿 46px 圆（宫格类）/ 40px（列表行类） */
+/* 尺寸：撤形后芯片不再是「一块饱和色」，46px 的存在感过重 —— 宫格 46 → 38。
+   列表行类（settings 40 / messages 44）的收口在 §8a。 */
 html[data-app="1"] .ah-sc .ah-sc-ic,
 html[data-app="1"] .pf-cell .pf-cell-ic,
 html[data-app="1"] .qa3-profile .pf-quick button .pf-quick-ic {
-  width: 46px !important;
-  height: 46px !important;
+  width: 38px !important;
+  height: 38px !important;
 }
 
 /* ── 1b. 金融舱卡：深炭 → 青蓝渐变（参考稿是全浅色语言，深卡在其中很突兀）。
@@ -164,11 +180,18 @@ html[data-app="1"] .qa3-today .ah-hero .ah-checkin.qa-button {
   color: var(--ix-act) !important;
   box-shadow: 0 4px 12px rgb(8 40 70 / 18%) !important;
 }
-html[data-app="1"] .msgs-entry .msgs-entry-ic,
-html[data-app="1"] #app-create-sheet .app-create-row .ac-ic,
-html[data-app="1"] .qa-settings-row .qa-settings-row-icon {
+/* 创建面板行芯片是 D7 明文豁免的两处渐变之一（五行互斥选择，颜色是第二编码通道），
+   形态整条不动，尺寸也就留在 40。 */
+html[data-app="1"] #app-create-sheet .app-create-row .ac-ic {
   width: 40px !important;
   height: 40px !important;
+}
+/* 撤形后这两处收到 34：设置行 40 → 34、消息入口 44 → 34（后者的真正落点在 §8a
+   那条三类名规则，这里同步以免两处打架）。行高、分组卡、chevron 一律不动。 */
+html[data-app="1"] .msgs-entry .msgs-entry-ic,
+html[data-app="1"] .qa-settings-row .qa-settings-row-icon {
+  width: 34px !important;
+  height: 34px !important;
 }
 
 /* ── 2. 主按钮 / FAB / CTA —— 渐变胶囊 ── */
@@ -622,28 +645,38 @@ html[data-app="1"] .qa-wallet-v4__notice-icon.qa-wallet-v4__notice-icon,
 html[data-app="1"] .qa-wallet-v4__checkin-icon.qa-wallet-v4__checkin-icon,
 html[data-app="1"] .qa-settings-notifications-icon.qa-settings-notifications-icon,
 html[data-app="1"] .qa-settings-row-icon.qa-settings-row-icon {
-  background: var(--ix-rainbow-chip) !important;
-  background-image: var(--ix-rainbow-chip) !important;
-  color: #fff !important;
+  /* 与 §1 同构改成属性驱动（这条特异度更高，只改 §1 对设置行无效）。 */
+  background: var(--ix-rainbow-tw, var(--ix-rainbow-cyan-wash)) !important;
+  background-image: var(--ix-rainbow-tg, none) !important;
+  color: var(--ix-rainbow-tk, var(--ix-rainbow-cyan-ink)) !important;
   border: 0 !important;
-  border-radius: 50% !important;
-  box-shadow: var(--ix-rainbow-chip-shadow) !important;
+  border-radius: var(--ix-rainbow-tr, var(--ix-r-key)) !important;
+  box-shadow: var(--ix-rainbow-ts,
+    inset 0 0 0 1px color-mix(in oklab, var(--ix-rainbow-tk, var(--ix-rainbow-cyan-ink)) 16%, transparent)) !important;
 }
+/* 44 → 34：与下方会话行头像形状统一（此前同屏两种形状：入口正圆 + 会话圆角方）。
+   44px 是实测值，处方里写的 42 是错的 —— 这条规则自己就是证据。 */
 html[data-app="1"] .msgs-entry-ic.msgs-entry-ic.msgs-entry-ic {
-  width: 44px !important;
-  height: 44px !important;
-  flex: 0 0 44px !important;
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
 }
 html[data-app="1"] .qa-wallet-v4__quick-icon.qa-wallet-v4__quick-icon,
 html[data-app="1"] .qa-settings-notifications-icon.qa-settings-notifications-icon,
 html[data-app="1"] .qa-wallet-v4__notice-icon.qa-wallet-v4__notice-icon,
 html[data-app="1"] .qa-wallet-v4__checkin-icon.qa-wallet-v4__checkin-icon {
-  width: 44px !important;
-  height: 44px !important;
+  width: 34px !important;
+  height: 34px !important;
 }
+/* ⚠ 这是 glyph 描边色的**第二条**落点，且它赢。两条特异度相同
+   （html(0,0,1) + [data-app="1"](0,1,0) + :where()(0,0,0) + svg(0,0,1) = (0,1,2)），
+   靠先后决胜，这条在后面。.msgs-entry-ic 同时出现在两条里 —— 只改 §1 那条
+   对这六类元素零效果，白 glyph 会压在淡染底上，比撤形前更不可读。 */
 html[data-app="1"] :where(.msgs-entry-ic, .qa-wallet-v4__quick-icon,
   .qa-settings-notifications-icon, .qa-wallet-v4__notice-icon,
-  .qa-wallet-v4__checkin-icon, .qa-gacha-machine-icon) svg { color: #fff !important; }
+  .qa-wallet-v4__checkin-icon, .qa-gacha-machine-icon) svg {
+  color: var(--ix-rainbow-tk, var(--ix-rainbow-cyan-ink)) !important;
+}
 
 html[data-app="1"] :where(.fd2-enter, .draw-go, .ah-hc-cta) svg { color: #fff !important; }
 
@@ -745,6 +778,35 @@ html[data-app="1"] {
   --ix-rainbow-mint:   linear-gradient(145deg, #86E7B6 0%, #1FBE80 100%);
   --ix-rainbow-indigo: linear-gradient(145deg, #8FB7FF 0%, #4668EE 100%);
   --ix-rainbow-coral:  linear-gradient(145deg, #FFC08D 0%, #FF7A45 100%);
+
+  /* ── D7 撤形：wash（淡染面）/ ink（深墨字形）双令牌 ──
+     上面七支渐变**不删**：Dock FAB 与创建面板行芯片是 D7 明文豁免的两处，仍要读它们。
+     撤的是「芯片默认长什么样」，不是色相，也不是渐变这个能力本身。
+
+     为什么必须换：芯片渲染的是渐变全幅，用户看到的最差处是**浅端**，而 glyph 是纯白。
+     白字对七个浅端实测 1.41 / 1.46 / 1.49 / 1.59 / 1.83 / 2.02 / 2.31 ——
+     WCAG 1.4.11 非文本图形门槛 3:1，七个面无一通过。
+     （此前有一处把 indigo 记成「4.69 通过」，那是拿渐变**暗端** #4668EE 算的。）
+
+     新的一对逐档实算（ink 对自家 wash / 对 #FFFFFF / 对页底 canvas #EFF8FD）：
+       violet 4.80 / 5.80 / 5.39 · indigo 4.89 / 5.97 / 5.54 · coral 4.60 / 5.30 / 4.92
+       amber  5.00 / 5.59 / 5.19 · mint   4.57 / 5.23 / 4.86 · rose  4.57 / 5.37 / 4.99
+       cyan   4.59 / 5.19 / 4.82（cyan 是无 data-tone 时的默认档，正是 1.46 那一档）
+     全部 ≥ 4.5（按正文级要，因为 glyph 是 1.75px 细描边而不是大字）。
+
+     ⚠ coral / rose / mint 三支的 ink 是**压深过的**：设计稿原值 #C4521F / #C93E68 /
+     #0B7F52 实算只有 3.99 / 4.08 / 4.40，过不了它自己立的门槛。按恒色相恒饱和只压
+     明度改深，ΔE00 只有 4.05 / 3.04 / 1.06，色相语言不变。
+     ⚠ amber-ink 与 cyan-ink 刻意钉字面值，不写 var(--ix-gold) / var(--ix-act)：
+     前者在深色档会被翻成 #E0A83E（对同一 wash 只剩 1.91），后者跟随用户强调色，
+     五档里 forest #3E7C33 掉到 4.49。两处都是留给下一代皮肤的雷。 */
+  --ix-rainbow-violet-wash: #EBE7FD;  --ix-rainbow-violet-ink: #6D4AD8;
+  --ix-rainbow-indigo-wash: #E3E8FC;  --ix-rainbow-indigo-ink: #3B57D6;
+  --ix-rainbow-coral-wash:  #FFEBE3;  --ix-rainbow-coral-ink:  #B44B1D;
+  --ix-rainbow-amber-wash:  #FDF1DC;  --ix-rainbow-amber-ink:  #8A600A;
+  --ix-rainbow-mint-wash:   #DDF5EC;  --ix-rainbow-mint-ink:   #0B7C50;
+  --ix-rainbow-rose-wash:   #FDE7EE;  --ix-rainbow-rose-ink:   #BF365F;
+  --ix-rainbow-cyan-wash:   #DEF5FD;  --ix-rainbow-cyan-ink:   #0B72B0;
 }
 
 /* ── 9a/9b. 首页快捷条、「我的」宫格与快捷瓦：**按 data-tone 语义取色** ──
@@ -758,76 +820,87 @@ html[data-app="1"] {
      reward / gold → 琥珀   success / jade → 薄荷   rose → 蔷薇
    选择器权重与被替换的位次规则逐位相同（.ah-sc[data-tone] 对 .ah-sc:nth-child()
    都是 (0,4,1)，.pf-cell 一组是 (0,3,1)，.pf-quick 一组是 (0,4,2)），
-   所以级联行为不变，变的只是「凭什么给这个颜色」。 */
+   所以级联行为不变，变的只是「凭什么给这个颜色」。
+
+   ── D7 撤形后的承载方式（本段整体改写）──
+   这些规则此前每条都写 `background-image: var(--ix-rainbow-<hue>) !important`，
+   自己画一层饱和渐变。现在改成**只写自定义属性**，由 §1 那条唯一的芯片规则统一读取：
+     --ix-rainbow-tw  淡染面    --ix-rainbow-tk  深墨字形
+     --ix-rainbow-tg  渐变图（只给豁免处）  --ix-rainbow-tr 圆角  --ix-rainbow-ts 投影
+   三个好处：① 色相仍由 data-tone 决定，语义一个不丢；② 自定义属性不需要
+   !important，本段因此净减 42 个 —— 撤形反而把级联打架的存量往下压；
+   ③ 「芯片长什么样」只剩 §1 一处真源，下次改形态不用再逐条追 30 多条规则。
+   七支渐变令牌一个不删：§9c 的创建面板行芯片仍在读它们（D7 明文豁免的两处之一），
+   删了它们那一屏会连渐变可读的来源都没有。 */
 
 /* 首页快捷条（tone 见 AppHome.jsx 的 CREATE_SHORTCUTS） */
-html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="indigo"] .ah-sc-ic   { background-image: var(--ix-rainbow-violet) !important; box-shadow: 0 6px 14px rgb(124 92 240 / 26%) !important; }
-html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="coral"] .ah-sc-ic    { background-image: var(--ix-rainbow-coral) !important;  box-shadow: 0 6px 14px rgb(255 122 69 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="indigo"] .ah-sc-ic   { --ix-rainbow-tw: var(--ix-rainbow-violet-wash); --ix-rainbow-tk: var(--ix-rainbow-violet-ink); }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="coral"] .ah-sc-ic    { --ix-rainbow-tw: var(--ix-rainbow-coral-wash); --ix-rainbow-tk: var(--ix-rainbow-coral-ink); }
 html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="graphite"] .ah-sc-ic,
-html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="blue"] .ah-sc-ic     { background-image: var(--ix-rainbow-indigo) !important; box-shadow: 0 6px 14px rgb(70 104 238 / 26%) !important; }
-html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="rose"] .ah-sc-ic     { background-image: var(--ix-rainbow-rose) !important;   box-shadow: 0 6px 14px rgb(244 96 143 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="blue"] .ah-sc-ic     { --ix-rainbow-tw: var(--ix-rainbow-indigo-wash); --ix-rainbow-tk: var(--ix-rainbow-indigo-ink); }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="rose"] .ah-sc-ic     { --ix-rainbow-tw: var(--ix-rainbow-rose-wash); --ix-rainbow-tk: var(--ix-rainbow-rose-ink); }
 html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="success"] .ah-sc-ic,
-html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="jade"] .ah-sc-ic     { background-image: var(--ix-rainbow-mint) !important;   box-shadow: 0 6px 14px rgb(31 190 128 / 26%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="jade"] .ah-sc-ic     { --ix-rainbow-tw: var(--ix-rainbow-mint-wash); --ix-rainbow-tk: var(--ix-rainbow-mint-ink); }
 html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="reward"] .ah-sc-ic,
-html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="gold"] .ah-sc-ic     { background-image: var(--ix-rainbow-amber) !important;  box-shadow: 0 6px 14px rgb(242 162 21 / 28%) !important; }
+html[data-app="1"] .ah-shortcuts .ah-sc[data-tone="gold"] .ah-sc-ic     { --ix-rainbow-tw: var(--ix-rainbow-amber-wash); --ix-rainbow-tk: var(--ix-rainbow-amber-ink); }
 
 /* 「我的」全部功能宫格（tone 见 AppProfile.jsx 的 GRID） */
-html[data-app="1"] .pf-cell[data-tone="indigo"] .pf-cell-ic { background-image: var(--ix-rainbow-violet) !important; }
-html[data-app="1"] .pf-cell[data-tone="coral"] .pf-cell-ic { background-image: var(--ix-rainbow-coral) !important; }
+html[data-app="1"] .pf-cell[data-tone="indigo"] .pf-cell-ic { --ix-rainbow-tw: var(--ix-rainbow-violet-wash); --ix-rainbow-tk: var(--ix-rainbow-violet-ink); }
+html[data-app="1"] .pf-cell[data-tone="coral"] .pf-cell-ic { --ix-rainbow-tw: var(--ix-rainbow-coral-wash); --ix-rainbow-tk: var(--ix-rainbow-coral-ink); }
 html[data-app="1"] .pf-cell[data-tone="graphite"] .pf-cell-ic,
-html[data-app="1"] .pf-cell[data-tone="blue"] .pf-cell-ic { background-image: var(--ix-rainbow-indigo) !important; }
-html[data-app="1"] .pf-cell[data-tone="rose"] .pf-cell-ic { background-image: var(--ix-rainbow-rose) !important; }
+html[data-app="1"] .pf-cell[data-tone="blue"] .pf-cell-ic { --ix-rainbow-tw: var(--ix-rainbow-indigo-wash); --ix-rainbow-tk: var(--ix-rainbow-indigo-ink); }
+html[data-app="1"] .pf-cell[data-tone="rose"] .pf-cell-ic { --ix-rainbow-tw: var(--ix-rainbow-rose-wash); --ix-rainbow-tk: var(--ix-rainbow-rose-ink); }
 html[data-app="1"] .pf-cell[data-tone="success"] .pf-cell-ic,
-html[data-app="1"] .pf-cell[data-tone="jade"] .pf-cell-ic { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .pf-cell[data-tone="jade"] .pf-cell-ic { --ix-rainbow-tw: var(--ix-rainbow-mint-wash); --ix-rainbow-tk: var(--ix-rainbow-mint-ink); }
 html[data-app="1"] .pf-cell[data-tone="reward"] .pf-cell-ic,
-html[data-app="1"] .pf-cell[data-tone="gold"] .pf-cell-ic { background-image: var(--ix-rainbow-amber) !important; }
+html[data-app="1"] .pf-cell[data-tone="gold"] .pf-cell-ic { --ix-rainbow-tw: var(--ix-rainbow-amber-wash); --ix-rainbow-tk: var(--ix-rainbow-amber-ink); }
 
 /* 「我的」快捷瓦（tone 见 AppProfile.jsx 的 QUICK） */
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="indigo"] .pf-quick-ic { background-image: var(--ix-rainbow-violet) !important; }
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="coral"] .pf-quick-ic { background-image: var(--ix-rainbow-coral) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="indigo"] .pf-quick-ic { --ix-rainbow-tw: var(--ix-rainbow-violet-wash); --ix-rainbow-tk: var(--ix-rainbow-violet-ink); }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="coral"] .pf-quick-ic { --ix-rainbow-tw: var(--ix-rainbow-coral-wash); --ix-rainbow-tk: var(--ix-rainbow-coral-ink); }
 html[data-app="1"] .qa3-profile .pf-quick button[data-tone="graphite"] .pf-quick-ic,
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="blue"] .pf-quick-ic { background-image: var(--ix-rainbow-indigo) !important; }
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="rose"] .pf-quick-ic { background-image: var(--ix-rainbow-rose) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="blue"] .pf-quick-ic { --ix-rainbow-tw: var(--ix-rainbow-indigo-wash); --ix-rainbow-tk: var(--ix-rainbow-indigo-ink); }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="rose"] .pf-quick-ic { --ix-rainbow-tw: var(--ix-rainbow-rose-wash); --ix-rainbow-tk: var(--ix-rainbow-rose-ink); }
 html[data-app="1"] .qa3-profile .pf-quick button[data-tone="success"] .pf-quick-ic,
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="jade"] .pf-quick-ic { background-image: var(--ix-rainbow-mint) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="jade"] .pf-quick-ic { --ix-rainbow-tw: var(--ix-rainbow-mint-wash); --ix-rainbow-tk: var(--ix-rainbow-mint-ink); }
 html[data-app="1"] .qa3-profile .pf-quick button[data-tone="reward"] .pf-quick-ic,
-html[data-app="1"] .qa3-profile .pf-quick button[data-tone="gold"] .pf-quick-ic { background-image: var(--ix-rainbow-amber) !important; }
+html[data-app="1"] .qa3-profile .pf-quick button[data-tone="gold"] .pf-quick-ic { --ix-rainbow-tw: var(--ix-rainbow-amber-wash); --ix-rainbow-tk: var(--ix-rainbow-amber-ink); }
 
 /* ── 9c. 带语义 data-tone 的列表（创建面板 / 设置行）按语义取色 ──
    注意：这里**不能**用 :where()，它的特异性为 0，会被 §8a 的双类名规则压住；
    必须写足类名把特异性抬到 §8a 之上。 */
-html[data-app="1"] .qa-settings-row-icon[data-tone="indigo"].qa-settings-row-icon,
-html[data-app="1"] #app-create-sheet .app-create-row[data-tone="indigo"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-violet) !important; }
-html[data-app="1"] .qa-settings-row-icon[data-tone="graphite"].qa-settings-row-icon,
-html[data-app="1"] #app-create-sheet .app-create-row[data-tone="graphite"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-indigo) !important; }
-html[data-app="1"] .qa-settings-row-icon[data-tone="blue"].qa-settings-row-icon,
-html[data-app="1"] #app-create-sheet .app-create-row[data-tone="blue"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-indigo) !important; }
-html[data-app="1"] .qa-settings-row-icon[data-tone="coral"].qa-settings-row-icon,
-html[data-app="1"] #app-create-sheet .app-create-row[data-tone="coral"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-coral) !important; }
-html[data-app="1"] .qa-settings-row-icon[data-tone="gold"].qa-settings-row-icon,
-html[data-app="1"] #app-create-sheet .app-create-row[data-tone="gold"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-amber) !important; }
-html[data-app="1"] .qa-settings-row-icon[data-tone="reward"].qa-settings-row-icon,
-html[data-app="1"] #app-create-sheet .app-create-row[data-tone="reward"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-amber) !important; }
-html[data-app="1"] .qa-settings-row-icon[data-tone="success"].qa-settings-row-icon,
-html[data-app="1"] #app-create-sheet .app-create-row[data-tone="success"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-mint) !important; }
-html[data-app="1"] .qa-settings-row-icon[data-tone="jade"].qa-settings-row-icon,
-html[data-app="1"] #app-create-sheet .app-create-row[data-tone="jade"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-mint) !important; }
-html[data-app="1"] .qa-settings-row-icon[data-tone="rose"].qa-settings-row-icon,
-html[data-app="1"] #app-create-sheet .app-create-row[data-tone="rose"] .ac-ic.ac-ic { background-image: var(--ix-rainbow-rose) !important; }
+html[data-app="1"] .qa-settings-row-icon[data-tone="indigo"].qa-settings-row-icon { --ix-rainbow-tw: var(--ix-rainbow-violet-wash); --ix-rainbow-tk: var(--ix-rainbow-violet-ink); }
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="indigo"] .ac-ic.ac-ic { --ix-rainbow-tg: var(--ix-rainbow-violet); --ix-rainbow-tw: transparent; --ix-rainbow-tk: #fff; --ix-rainbow-tr: 50%; --ix-rainbow-ts: var(--ix-rainbow-chip-shadow); }
+html[data-app="1"] .qa-settings-row-icon[data-tone="graphite"].qa-settings-row-icon { --ix-rainbow-tw: var(--ix-rainbow-indigo-wash); --ix-rainbow-tk: var(--ix-rainbow-indigo-ink); }
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="graphite"] .ac-ic.ac-ic { --ix-rainbow-tg: var(--ix-rainbow-indigo); --ix-rainbow-tw: transparent; --ix-rainbow-tk: #fff; --ix-rainbow-tr: 50%; --ix-rainbow-ts: var(--ix-rainbow-chip-shadow); }
+html[data-app="1"] .qa-settings-row-icon[data-tone="blue"].qa-settings-row-icon { --ix-rainbow-tw: var(--ix-rainbow-indigo-wash); --ix-rainbow-tk: var(--ix-rainbow-indigo-ink); }
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="blue"] .ac-ic.ac-ic { --ix-rainbow-tg: var(--ix-rainbow-indigo); --ix-rainbow-tw: transparent; --ix-rainbow-tk: #fff; --ix-rainbow-tr: 50%; --ix-rainbow-ts: var(--ix-rainbow-chip-shadow); }
+html[data-app="1"] .qa-settings-row-icon[data-tone="coral"].qa-settings-row-icon { --ix-rainbow-tw: var(--ix-rainbow-coral-wash); --ix-rainbow-tk: var(--ix-rainbow-coral-ink); }
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="coral"] .ac-ic.ac-ic { --ix-rainbow-tg: var(--ix-rainbow-coral); --ix-rainbow-tw: transparent; --ix-rainbow-tk: #fff; --ix-rainbow-tr: 50%; --ix-rainbow-ts: var(--ix-rainbow-chip-shadow); }
+html[data-app="1"] .qa-settings-row-icon[data-tone="gold"].qa-settings-row-icon { --ix-rainbow-tw: var(--ix-rainbow-amber-wash); --ix-rainbow-tk: var(--ix-rainbow-amber-ink); }
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="gold"] .ac-ic.ac-ic { --ix-rainbow-tg: var(--ix-rainbow-amber); --ix-rainbow-tw: transparent; --ix-rainbow-tk: #fff; --ix-rainbow-tr: 50%; --ix-rainbow-ts: var(--ix-rainbow-chip-shadow); }
+html[data-app="1"] .qa-settings-row-icon[data-tone="reward"].qa-settings-row-icon { --ix-rainbow-tw: var(--ix-rainbow-amber-wash); --ix-rainbow-tk: var(--ix-rainbow-amber-ink); }
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="reward"] .ac-ic.ac-ic { --ix-rainbow-tg: var(--ix-rainbow-amber); --ix-rainbow-tw: transparent; --ix-rainbow-tk: #fff; --ix-rainbow-tr: 50%; --ix-rainbow-ts: var(--ix-rainbow-chip-shadow); }
+html[data-app="1"] .qa-settings-row-icon[data-tone="success"].qa-settings-row-icon { --ix-rainbow-tw: var(--ix-rainbow-mint-wash); --ix-rainbow-tk: var(--ix-rainbow-mint-ink); }
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="success"] .ac-ic.ac-ic { --ix-rainbow-tg: var(--ix-rainbow-mint); --ix-rainbow-tw: transparent; --ix-rainbow-tk: #fff; --ix-rainbow-tr: 50%; --ix-rainbow-ts: var(--ix-rainbow-chip-shadow); }
+html[data-app="1"] .qa-settings-row-icon[data-tone="jade"].qa-settings-row-icon { --ix-rainbow-tw: var(--ix-rainbow-mint-wash); --ix-rainbow-tk: var(--ix-rainbow-mint-ink); }
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="jade"] .ac-ic.ac-ic { --ix-rainbow-tg: var(--ix-rainbow-mint); --ix-rainbow-tw: transparent; --ix-rainbow-tk: #fff; --ix-rainbow-tr: 50%; --ix-rainbow-ts: var(--ix-rainbow-chip-shadow); }
+html[data-app="1"] .qa-settings-row-icon[data-tone="rose"].qa-settings-row-icon { --ix-rainbow-tw: var(--ix-rainbow-rose-wash); --ix-rainbow-tk: var(--ix-rainbow-rose-ink); }
+html[data-app="1"] #app-create-sheet .app-create-row[data-tone="rose"] .ac-ic.ac-ic { --ix-rainbow-tg: var(--ix-rainbow-rose); --ix-rainbow-tw: transparent; --ix-rainbow-tk: #fff; --ix-rainbow-tr: 50%; --ix-rainbow-ts: var(--ix-rainbow-chip-shadow); }
 
 /* ── 9d. 消息入口按语义分色（互动=珊瑚 / 私信=薄荷 / 群聊=靛） ── */
-html[data-app="1"] .msgs-entry-ic.noti.noti { background-image: var(--ix-rainbow-coral) !important; }
-html[data-app="1"] .msgs-entry-ic.dm.dm { background-image: var(--ix-rainbow-mint) !important; }
-html[data-app="1"] .msgs-entry-ic.grp.grp { background-image: var(--ix-rainbow-indigo) !important; }
+html[data-app="1"] .msgs-entry-ic.noti.noti { --ix-rainbow-tw: var(--ix-rainbow-coral-wash); --ix-rainbow-tk: var(--ix-rainbow-coral-ink); }
+html[data-app="1"] .msgs-entry-ic.dm.dm { --ix-rainbow-tw: var(--ix-rainbow-mint-wash); --ix-rainbow-tk: var(--ix-rainbow-mint-ink); }
+html[data-app="1"] .msgs-entry-ic.grp.grp { --ix-rainbow-tw: var(--ix-rainbow-indigo-wash); --ix-rainbow-tk: var(--ix-rainbow-indigo-ink); }
 
 /* ── 9e. 脱离青蓝的身份色 UI ── */
 /* 会员：金。钱包「会员中心」瓦、成就奖励瓦、签到瓦各归其身份色 */
-html[data-app="1"] .qa-wallet-v4__quick-icon.warm.warm { background-image: var(--ix-rainbow-amber) !important; }
-html[data-app="1"] .qa-wallet-v4__quick-icon.indigo.indigo { background-image: var(--ix-rainbow-violet) !important; }
-html[data-app="1"] .qa-wallet-v4__notice-icon.qa-wallet-v4__notice-icon { background-image: var(--ix-rainbow-amber) !important; }
-html[data-app="1"] .qa-wallet-v4__checkin-icon.qa-wallet-v4__checkin-icon { background-image: var(--ix-rainbow-mint) !important; }
-html[data-app="1"] .qa-settings-notifications-icon.qa-settings-notifications-icon { background-image: var(--ix-rainbow-coral) !important; }
-html[data-app="1"] .qa-gacha-machine-icon.qa-gacha-machine-icon { background-image: var(--ix-rainbow-violet) !important; }
+html[data-app="1"] .qa-wallet-v4__quick-icon.warm.warm { --ix-rainbow-tw: var(--ix-rainbow-amber-wash); --ix-rainbow-tk: var(--ix-rainbow-amber-ink); }
+html[data-app="1"] .qa-wallet-v4__quick-icon.indigo.indigo { --ix-rainbow-tw: var(--ix-rainbow-violet-wash); --ix-rainbow-tk: var(--ix-rainbow-violet-ink); }
+html[data-app="1"] .qa-wallet-v4__notice-icon.qa-wallet-v4__notice-icon { --ix-rainbow-tw: var(--ix-rainbow-amber-wash); --ix-rainbow-tk: var(--ix-rainbow-amber-ink); }
+html[data-app="1"] .qa-wallet-v4__checkin-icon.qa-wallet-v4__checkin-icon { --ix-rainbow-tw: var(--ix-rainbow-mint-wash); --ix-rainbow-tk: var(--ix-rainbow-mint-ink); }
+html[data-app="1"] .qa-settings-notifications-icon.qa-settings-notifications-icon { --ix-rainbow-tw: var(--ix-rainbow-coral-wash); --ix-rainbow-tk: var(--ix-rainbow-coral-ink); }
+html[data-app="1"] .qa-gacha-machine-icon.qa-gacha-machine-icon { --ix-rainbow-tw: var(--ix-rainbow-violet-wash); --ix-rainbow-tk: var(--ix-rainbow-violet-ink); }
 
 /* ── 9f. 会员徽章重做：撤掉深蓝描边 + 扁平土黄，改金质渐变药丸 + 白圈 ── */
 html[data-app="1"] .qa3-today .ah-tier,
