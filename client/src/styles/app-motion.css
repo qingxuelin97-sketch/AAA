@@ -17,9 +17,10 @@
   --dur-slow: 0.5s;
 }
 
-html[data-app="1"] .stagger-in > :nth-child(1) { animation-delay: 0.03s; }
-html[data-app="1"] .stagger-in > :nth-child(8) { animation-delay: 0.24s; }
-@keyframes motionRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* .stagger-in 的入场动画已退役：全仓没有任何规则给 .stagger-in > * 声明 animation，
+   所以这里原有的两条 :nth-child animation-delay、@keyframes motionRise、以及下面三道
+   「挡位门控」全都在守空气。JSX 侧五个页面仍挂着 .stagger-in，保留为 no-op
+   （与 .flow-sheen 的既有退役范式一致）。顺带清掉本层最后两条按 DOM 位次的选择器。 */
 
 /* —— 统一按压弹性 ——
    挂 .pressable：按下 0.05s 内缩到 0.96（即时确认，快过人眼可察觉的迟滞），
@@ -48,10 +49,7 @@ html[data-app="1"] .skel {
 .ck-dots i.on { opacity: 1; transform: scale(1.15); }
 
 /* —— 挡位门控：lite / 减弱动效 / 后台标签页 全体退化为立即就位 —— */
-html[data-perf="lite"] .stagger-in > *,
-html[data-page-hidden] .stagger-in > * { animation: none; }
 html[data-perf="lite"] .pressable { transition-duration: 0.05s; }
 @media (prefers-reduced-motion: reduce) {
-  html[data-app="1"] .stagger-in > * { animation: none; }
   html[data-app="1"] .pressable, html[data-app="1"] .pressable:active { transform: none; }
 }

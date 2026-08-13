@@ -1058,11 +1058,6 @@ html[data-app="1"] .gx-stage::after {
   background: radial-gradient(ellipse, rgba(14,156,184,0.28), transparent 70%);
   filter: blur(4px); pointer-events: none;
 }
-/* 会员中心权益宫格玻璃 */
-html[data-app="1"] .vm-perk {
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-}
-
 /* ============================================================
    5. 深色主题（手动深色 APP）玻璃变体
    ============================================================ */
@@ -1357,19 +1352,6 @@ html[data-app="1"] .ins-comp-row {
   border-radius: 12px;
 }
 
-/* ---- 扭蛋机：出货面玻璃与彩带层级 ---- */
-html[data-app="1"] .gx-face {
-  background: var(--gls-panel-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
-  border-radius: 22px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 16px 44px rgba(13,74,88,0.16);
-}
-html[data-app="1"] .gx-hint {
-  background: color-mix(in srgb, var(--panel) 65%, transparent);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  border-radius: 999px;
-}
-
 /* ---- 剧场房间（复用 chat 骨架的沉浸页）：舞台层深玻璃菜单继承 ----
    TheaterRoom/GroupRoom 复用 .chat-* 类，Glass 3.0 的沉浸段自动生效；
    这里只补舞台专属的非 has-bg 场景卡面。 ---- */
@@ -1414,14 +1396,6 @@ html[data-app="1"][data-perf="lite"] .chat-main:not(.has-bg) .react-pop {
   html[data-app="1"] .app-root::before, html[data-app="1"] .app-root::after { animation: none; }
 }
 
-/* ============================================================
-   9. Glass 3.0 · 终段 —— 细节收尾与一致性巡检
-   ============================================================ */
-html[data-app="1"] .fd2-hist-panel, html[data-app="1"] .fd2-hist {
-  background: rgba(22, 18, 28, 0.82);
-  -webkit-backdrop-filter: blur(26px) saturate(155%); backdrop-filter: blur(26px) saturate(155%);
-  border: 1px solid rgba(255,255,255,0.12);
-}
 /* ---- 消息中心顶部双分段（聊过/赞过）玻璃胶囊 ---- */
 html[data-app="1"] .msgs-tabs, html[data-app="1"] .msgs-top {
   -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
@@ -1521,10 +1495,22 @@ html[data-app="1"] .chat-main.has-bg .msg.assistant .msg-name .msg-time { font-s
 /* 沉浸流每屏一卡：把布局/绘制影响锁在卡内，滑动时相邻卡互不牵连 */
 /* content-visibility:auto：屏外卡整棵跳过 layout/paint（图/scrim/玻璃层都不算）；
    卡高是显式 100%，size containment 不影响 specified height，滚动条不跳。 */
-.feed-card { contain: layout paint style; content-visibility: auto; contain-intrinsic-size: auto 100%; }
+/* contain-intrinsic-size 的百分比不合法 —— 浏览器实测 containIntrinsicSize 返回 "auto none"，
+   整条声明被丢弃。改成 svh 让它合法。注意上面那条注释属于 .ach-card；
+   .feed-card 自己是显式 100% 高，size containment 本就不影响 specified height，
+   所以这里修的不是「机制建在死声明上」，只是让声明本身合法。 */
+.feed-card { contain: layout paint style; content-visibility: auto; contain-intrinsic-size: auto 100svh; }
 /* 滑动窗口期（相邻卡可见但未成 .cur）不算实时模糊：玻璃只留给当前卡 */
 html[data-app="1"] .feed-card:not(.cur) .fd2-intro,
 html[data-app="1"] .feed-card:not(.cur) .fd2-call,
+/* .fd2-act 每卡 5 个、.fd2-cat 1 个 —— 两个漏网类。并进既有列表而不是新写规则：
+   值是 none，所以 backdrop-filter 规则数与写死 blur 数都不变。
+   实测（high 档 · #/ 发现页 · 7 张卡）：改前 .fd2-act 35 个全部 blur(10px)、
+   .fd2-cat 7 个全部 blur(14px)；改后只剩 .cur 卡内的 5 + 1 带 blur，
+   非当前卡的 30 + 6 = 36 个面归零。同一批改动在 55 帧像素闸上是 0px ——
+   被摘的面全在屏外卡里，改的是材质预算不是画面。 */
+html[data-app="1"] .feed-card:not(.cur) .fd2-act,
+html[data-app="1"] .feed-card:not(.cur) .fd2-cat,
 html[data-app="1"] .feed-card:not(.cur) .fd2-greet {
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }

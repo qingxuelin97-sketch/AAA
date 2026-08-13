@@ -739,8 +739,13 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
       if (!real.some((v) => v.includes('var(--ix-blur'))) bfLiteral += 1;
     }
   }
-  assert.ok(bfRules <= 286, `App backdrop-filter rule count must not grow (got ${bfRules}, frozen ceiling 286)`);
-  assert.ok(bfLiteral <= 191, `hard-coded blur() count must not grow — new glass must read var(--ix-blur) (got ${bfLiteral}, frozen ceiling 191)`);
+  // 2026-08-11 下调到实测新低点。此前 286/191 是**空转的** —— 实测只有 259/172，
+  // 27 与 19 条虚位对任何人敞开，被静默吸收后棘轮就永远拦不住东西。
+  // 删掉 13 条「全部选择器皆死」的模糊规则（fd2-say / vm-perk / gx-face / gx-hint /
+  // call-tools / fd2-hist / glass-2 / glass-3 等零引用类）后锁到 246/162。
+  // 纪律：以后每次删 blur 规则都必须同批把这两个数字改到新低点，否则等于把额度让给下一个人。
+  assert.ok(bfRules <= 246, `App backdrop-filter rule count must not grow (got ${bfRules}, frozen ceiling 246)`);
+  assert.ok(bfLiteral <= 162, `hard-coded blur() count must not grow — new glass must read var(--ix-blur) (got ${bfLiteral}, frozen ceiling 162)`);
 }
 // —— !important 棘轮：级联打架只许收敛，不许再堆 ——
 // P1 用级联普查删掉 457 条被压死的规则后，全层 !important 从 3099 降到 2887（按次）。
@@ -761,6 +766,21 @@ const appLayerCss = legacyAppCss + '\n' + [motionCss, runtimeCss, quietControls,
     const count = (text.match(/!important/g) || []).length;
     assert.ok(count <= ceiling,
       `${name}: !important count must only go down (got ${count}, frozen ceiling ${ceiling}) — delete the predecessor declaration instead of out-piling it (run audit:css to see the fight)`);
+  }
+}
+// —— JSX 内联 style 棘轮（与 !important 棘轮同构，只许降）——
+// 立项登记：Admin 与 AdminLogs 两页合计 346 处内联 style，优先级高于任何非 !important
+// 规则，而 !important 逐文件棘轮全线零余量 —— 这两页在**物理上无法靠 CSS 收编**，
+// 只能改 JSX。本轮零改动，先把计数锁住防止继续长。
+// ⚠ 已知不完全：AdminLogs 的颜色主体不是 style={{}} 而是模块级导出的 LEVEL_COLORS，
+// 只数 `style={{` 会漏掉它 —— 这个棘轮拦的是增量，不是全部内联样式。
+{
+  const INLINE_STYLE_CEILING = { 'AdminLogs.jsx': 214, 'Admin.jsx': 132 };
+  for (const [name, ceiling] of Object.entries(INLINE_STYLE_CEILING)) {
+    const src = await readFile(new URL('./src/pages/' + name, import.meta.url), 'utf8');
+    const count = (src.match(/style=\{\{/g) || []).length;
+    assert.ok(count <= ceiling,
+      `${name}: inline style={{}} count must only go down (got ${count}, frozen ceiling ${ceiling}) — inline styles outrank every non-!important rule, and the !important ratchet has zero headroom, so these cannot be reclaimed by CSS at all`);
   }
 }
 // —— 触达下限与对话操作行 ——

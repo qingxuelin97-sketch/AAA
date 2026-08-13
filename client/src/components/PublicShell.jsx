@@ -4,6 +4,10 @@ import { useAuth } from '../api.jsx';
 import { Logo } from '../assets.jsx';
 import { LegalModal, LegalLinks } from './LegalModal.jsx';
 import { ArrowLeft, LogIn, LayoutGrid, LifeBuoy } from 'lucide-react';
+// 漏 import 必崩：下面的 qa-unadapted 分支无条件求值 isAppMode()，而它从来没被引进来 ——
+// /help 与 /features 两页在**两个壳**里都是 ReferenceError，进去就是错误边界。
+// 这也是这批里唯一一条「不是样式问题」的修复。
+import { isAppMode } from '../appmode.js';
 
 // Standalone shell for public marketing/help pages (/features, /help). Works both
 // before and after login: header with brand + back/login, content, legal footer.

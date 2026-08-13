@@ -285,7 +285,9 @@ html[data-app="1"] .route-fade.tab-pane .pane-enter {
   html[data-app="1"] :where(.btn, button.primary, .qa-button, .chip, .tag, .switch .track, .switch .track::after) {
     transition-duration: 0s !important;
   }
-  html[data-app="1"] :where(.route-fade, .pane-enter, .stagger-in > *) {
+  /* 只摘掉 .stagger-in > *（其动画已退役），.route-fade 与 .pane-enter 是真在跑的
+     路由转场，它们的 reduced-motion 保护必须留着。 */
+  html[data-app="1"] :where(.route-fade, .pane-enter) {
     animation-duration: 0s !important;
   }
 }

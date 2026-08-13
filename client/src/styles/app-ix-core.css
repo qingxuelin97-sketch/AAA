@@ -17,49 +17,7 @@ html[data-app="1"][data-theme="dark"] {
 }
 
 /* ═══ 0 · 基元工具类（读数/铭牌/LED/刻度带，供各页阶段复用） ═══ */
-html[data-app="1"] .ix-readout {
-  font-family: var(--ix-font-mono);
-  font-size: var(--ix-type-readout);
-  font-weight: 600;
-  line-height: var(--ix-lh-tight);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-}
-html[data-app="1"] .ix-readout-xl {
-  font-family: var(--ix-font-mono);
-  font-size: var(--ix-type-readout-xl);
-  font-weight: 600;
-  line-height: var(--ix-lh-tight);
-  font-variant-numeric: tabular-nums;
-}
-html[data-app="1"] .ix-plate {
-  font-family: var(--ix-font-mono);
-  font-size: var(--ix-type-micro);
-  font-weight: 600;
-  letter-spacing: var(--ix-track-label);
-  text-transform: uppercase;
-  color: var(--ix-ink-3);
-}
-html[data-app="1"] .ix-led {
-  display: inline-block;
-  width: var(--ix-led);
-  height: var(--ix-led);
-  border-radius: var(--ix-r-dial);
-  background: currentColor;
-  box-shadow: var(--ix-led-halo) currentColor;
-}
-html[data-app="1"] .ix-led--sm { width: var(--ix-led-sm); height: var(--ix-led-sm); }
 /* 刻度带：每根刻线必须绑定真实数据点（页面层往 .ix-ticks 里放 .on/.off 刻） */
-html[data-app="1"] .ix-ticks { display: flex; align-items: flex-end; gap: var(--ix-tick-gap); }
-html[data-app="1"] .ix-ticks i {
-  width: var(--ix-tick);
-  height: var(--ix-tick-minor);
-  border-radius: 1px;
-  background: var(--ix-hairline-strong);
-}
-html[data-app="1"] .ix-ticks i.on { background: var(--ix-act); }
-html[data-app="1"] .ix-ticks i.major { height: var(--ix-tick-major); }
-
 /* 焦点双圈规则在文件末尾（须压过本层所有键帽底影，见 ═ 12 ═） */
 
 /* ═══ 1 · 按钮（ui-kit §01：4 型 × 6 态，键帽语法） ═══ */

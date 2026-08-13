@@ -195,6 +195,14 @@ for (const mode of MODES) {
     const diff = pixelmatch(a.data, b.data, diffImg.data, a.width, a.height, { threshold: 0 });
     // 实测渲染噪声上限：Chromium 对渐变/conic 边缘的 AA 存在 ≤2px 运行间抖动
     //（同一构建自比对可复现）。令牌回归的量级是成百上千像素，2px 门不放走任何真实回归。
+    //
+    // ⚠ 已知的**非稳定**大额闪失（2026-08-13，S1 批次期间记录，未定位）：
+    //   glassoff_today 报过一次 7679px，bbox y=1416–1490（折叠线以下，靠 fullPage 才拍到），
+    //   最大通道差 4/255、99.7% 像素一致、无位移 —— 是同一画面的极轻微重新栅格化。
+    //   同一份源码此后连跑 4 次（2 次单帧 + 2 次全 55 帧）全部 0px，复现不出来。
+    //   带 backdrop-filter 的位图（该带内是 .ah-picks 的图片）跨进程栅格化存在这种偶发。
+    //   处置：**不**为此抬 NOISE（抬到 7679 等于把闸门废掉），也**不**重录基线。
+    //   下次再遇到 ≤5/255 的整片低幅差异，先原地复跑三次；三次都复现才当回归查。
     const NOISE = 2;
     console.log(diff <= NOISE ? 'OK  ' : 'FAIL', key, diff, 'px');
     if (diff > NOISE) {
