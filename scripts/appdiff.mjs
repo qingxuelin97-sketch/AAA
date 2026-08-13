@@ -95,6 +95,13 @@ for (const mode of MODES) {
       // x52-70 一条竖条跨三个圆形入口 —— 跨构建的光栅化漂移（同构建内逐位稳定，
       // 两次复跑像素数相同）。圆形入口整体并入遮蔽；渐变芯片的样式覆盖由其它
       // 页面的同款芯片（设置行/宫格）继续承担。
+      //
+      // ⚠ 已知盲区（设计审计发现，必须记在这里）：这条遮蔽罩住的是**整个元素**，
+      // 不只是注释里说的 svg。后果是 /messages 这一帧对「芯片本身长什么样」是瞎的 ——
+      // 底色、圆角、投影的改动在闸门里看不见。D7 撤形的第 ③ 处落点正好在这里。
+      // 收窄条件：撤形把渐变底换成平色淡染之后，上面那条光栅漂移的来源（渐变 dithering）
+      // 消失，届时把遮蔽收回 `.msgs-entry-ic svg` 并复跑三次确认稳定。
+      // 在那之前，/messages 对芯片类改动**不是证据帧**，别拿它当通过依据。
       style.textContent = '.ah-avatar .avatar, .ah-avatar img, .msgs-entry-ic { visibility: hidden !important; }';
       document.head.appendChild(style);
     });
@@ -123,7 +130,12 @@ for (const mode of MODES) {
     await page.waitForTimeout(1700);
     await page.evaluate(() => document.fonts?.ready?.then(() => {}));
     await page.waitForTimeout(500);
-    const shot = await page.screenshot();
+    // fullPage：此前是 page.screenshot() 无参 —— 只拍视口顶部 844px。设计审计实测出的
+    // 后果是一整类改动既证不实也证不伪：底部死区（108→40px）、成就页的小字号、空态、
+    // 浮层投影，全部落在折叠线以下。改成整页取样，取样面从「首屏」扩到「整页」。
+    // ⚠ 换成 fullPage 会让全部基线的高度改变，所以这次改动必须单独提交、单独重建基线，
+    // 不能与任何源码删改同批 —— 否则那一次运行不构成自证。
+    const shot = await page.screenshot({ fullPage: true });
     const key = `${mode.name}${route.replace(/[#/]+/g, '_') || '_root'}`;
     // 档位自证：截图前确认 data-perf 真的是这一档。空档（写了个 getPerfPref
     // 不认的值 → 静默回落）此前让 balanced 与 lite 截出了同一组图，肉眼与
@@ -141,6 +153,34 @@ for (const mode of MODES) {
       if (got !== want) { console.log('ATTR', key, `期望 data-${attr}=${want}，实际 ${got}`); tierFails += 1; attrBad = true; }
     }
     if (attrBad) continue;
+    // ── 材质预算探针（报告模式：只打印，不断言）──
+    // 三档的材质预算此前没有任何量化。先量一段时间、把数字摊开，再谈阈值 ——
+    // 直接开断言会让 CI 当天红，而红着的 CI 会训练人忽略 CI。
+    // ⚠ 严格只读：不许注入元素或类名，否则探针自己会扰动这 55 帧基线。
+    // ⚠ 已知偏差：被上面那条遮蔽 visibility:hidden 的元素，getComputedStyle 照样返回
+    //   backdrop-filter 值，所以 blur 面数把 .msgs-entry-ic 也算了进来。
+    const probe = await page.evaluate(() => {
+      let blurFaces = 0, maxBlur = 0, maxShadow = 0, loops = 0, glassArea = 0;
+      const vw = innerWidth * innerHeight;
+      for (const el of document.querySelectorAll('*')) {
+        const cs = getComputedStyle(el);
+        const bf = cs.backdropFilter || cs.webkitBackdropFilter;
+        if (bf && bf !== 'none') {
+          blurFaces += 1;
+          const m = /blur\((\d+(?:\.\d+)?)px\)/.exec(bf);
+          if (m) maxBlur = Math.max(maxBlur, parseFloat(m[1]));
+          const r = el.getBoundingClientRect();
+          glassArea += Math.max(0, r.width) * Math.max(0, r.height);
+        }
+        if (cs.animationIterationCount.split(',').some((v) => v.trim() === 'infinite')
+            && cs.animationName !== 'none') loops += 1;
+        for (const s of (cs.boxShadow || '').matchAll(/(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px/g)) {
+          maxShadow = Math.max(maxShadow, parseFloat(s[2]));
+        }
+      }
+      return { blurFaces, maxBlur, maxShadow, loops, glassPct: vw ? Math.round(glassArea / vw * 100) : 0 };
+    });
+    console.log(`  probe ${key.padEnd(26)} blur面 ${String(probe.blurFaces).padStart(3)} · 最大半径 ${String(probe.maxBlur).padStart(4)}px · 玻璃覆盖 ${String(probe.glassPct).padStart(4)}% · 同屏循环 ${String(probe.loops).padStart(3)} · 最大外投影 ${probe.maxShadow}px`);
     const basePath = join(OUT, `${key}.base.png`);
     if (BASELINE) {
       await writeFile(basePath, shot);
