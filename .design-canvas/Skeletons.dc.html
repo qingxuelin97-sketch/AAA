@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+  :root{
+    --canvas:#EFF8FD; --surface:#FFFFFF; --grouped:#E3F1FA;
+    --ink:#0A1330; --ink2:#44557A; --ink3:#58677F;
+    --act:#0B72B0; --focus:#064766;
+    --hair:rgb(20 70 110 / 10%); --hair2:rgb(20 70 110 / 18%);
+    --rk:12px; --rc:16px; --rp:22px;
+    --grad:linear-gradient(135deg,#38DAD2 0%,#2E9FF7 100%);
+    --violet-w:#EBE7FD; --violet-i:#6D4AD8;
+    --indigo-w:#E3E8FC; --indigo-i:#3B57D6;
+    --coral-w:#FFEBE3;  --coral-i:#B44B1D;
+    --amber-w:#FDF1DC;  --amber-i:#8A600A;
+    --mint-w:#DDF5EC;   --mint-i:#0B7C50;
+    --rose-w:#FDE7EE;   --rose-i:#BF365F;
+    --cyan-w:#DEF5FD;   --cyan-i:#0B72B0;
+    --sans:"Inter Variable","Inter","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);background:var(--canvas);color:var(--ink);
+       -webkit-font-smoothing:antialiased}
+  a{color:var(--act)} a:hover{color:var(--focus)}
+  .scr{width:390px;min-height:844px;background:linear-gradient(180deg,#EFF8FD 0%,#F3FBFE 60%,#EDF7FD 100%);padding:0 16px 96px}
+  .top{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 0 14px}
+  .h1{font-size:34px;font-weight:700;letter-spacing:-.01em;margin:0;line-height:1.1}
+  .kick{font-size:13px;color:var(--ink2);margin:0 0 2px}
+  .card{background:var(--surface);border-radius:var(--rc);padding:14px;
+        box-shadow:0 1px 2px rgb(20 70 110 / 6%)}
+  .sect{font-size:13px;color:var(--ink2);margin:22px 0 8px;font-weight:500}
+  .chip{width:38px;height:38px;border-radius:var(--rk);display:grid;place-items:center;flex:none;
+        box-shadow:inset 0 0 0 1px color-mix(in oklab,currentColor 16%,transparent)}
+  .chip.sm{width:34px;height:34px}
+  .row{display:flex;align-items:center;gap:12px;min-height:60px}
+  .row b{font-size:15px;font-weight:600;display:block;line-height:1.35}
+  .row small{font-size:13px;color:var(--ink2);display:block;line-height:1.35}
+  .grow{flex:1;min-width:0}
+  .chev{color:var(--ink3);flex:none}
+  .divider{height:1px;background:var(--hair);margin:0 0 0 46px}
+
+  .sheet{width:980px;padding:36px 40px 48px;background:var(--canvas)}
+  .sh1{font-size:30px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{font-size:15px;color:var(--ink2);margin:0 0 26px;line-height:1.7;max-width:70ch}
+  .sh2{font-size:17px;font-weight:600;margin:32px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--hair)}
+  .note{font-size:13px;color:var(--ink2);line-height:1.75;margin:10px 0 0;max-width:78ch}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{text-align:left;font-weight:600;color:var(--ink2);padding:8px 10px;border-bottom:1px solid var(--hair2);white-space:nowrap}
+  td{padding:9px 10px;border-bottom:1px solid var(--hair);vertical-align:top;line-height:1.6}
+  code{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+       background:var(--grouped);padding:1px 5px;border-radius:4px}
+  .bad{color:#9E1B32}.good{color:var(--mint-i)}
+  .pane{width:302px;background:var(--surface);border-radius:var(--rc);padding:22px 18px;
+        display:grid;justify-items:center;gap:10px;text-align:center;min-height:250px;align-content:center;
+        box-shadow:0 1px 2px rgb(20 70 110 / 6%)}
+  .pane b{font-size:16px;font-weight:600}
+  .pane p{font-size:13px;color:var(--ink2);margin:0;line-height:1.6}
+  .tag{font-size:11px;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;font-weight:600}
+  .btn{min-height:44px;padding:0 20px;border-radius:999px;background:var(--act);color:#fff;
+       font-size:14px;font-weight:600;display:inline-grid;place-items:center;grid-auto-flow:column;gap:7px}
+  .btn.ghost{background:var(--grouped);color:var(--ink2)}
+  .skel{background:linear-gradient(90deg,#E4EEF6 25%,#EFF5FA 50%,#E4EEF6 75%);background-size:400% 100%;
+        border-radius:6px;animation:sk 1.4s var(--e,cubic-bezier(.4,0,.2,1)) infinite}
+  @keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+  @media (prefers-reduced-motion: reduce){.skel{animation:none;background:#E4EEF6}}
+
+  </style>
+</helmet>
+
+<div class="sheet">
+  <p class="tag">规范 · 骨架</p>
+  <h1 class="sh1">页面壳与骨架</h1>
+  <p class="lede">全 App 的取数页面只有四种版式。骨架不是通用灰条 —— 每一种壳配一套与真实版式同形的骨架，
+    收起时不跳动。这是「载入态必须与真实版式同形」那条规矩的具体落法。</p>
+
+  <h2 class="sh2">四种壳</h2>
+  <div style="display:flex;gap:22px"><div style="width:210px"><div style="background:var(--canvas);border:1px solid var(--hair);border-radius:var(--rc);padding:12px;min-height:238px"><div style="background:var(--surface);border-radius:var(--rc);padding:4px 0"><div style="display:flex;gap:12px;align-items:center;padding:11px 14px"><div class="skel" style="width:34px;height:34px;border-radius:12px;flex:none"></div><div style="flex:1;display:grid;gap:6px"><div class="skel" style="height:12px;width:38%"></div><div class="skel" style="height:11px;width:66%"></div></div></div><div style="display:flex;gap:12px;align-items:center;padding:11px 14px"><div class="skel" style="width:34px;height:34px;border-radius:12px;flex:none"></div><div style="flex:1;display:grid;gap:6px"><div class="skel" style="height:12px;width:30%"></div><div class="skel" style="height:11px;width:58%"></div></div></div><div style="display:flex;gap:12px;align-items:center;padding:11px 14px"><div class="skel" style="width:34px;height:34px;border-radius:12px;flex:none"></div><div style="flex:1;display:grid;gap:6px"><div class="skel" style="height:12px;width:44%"></div><div class="skel" style="height:11px;width:72%"></div></div></div></div></div><b style="display:block;font-size:14px;font-weight:600;margin:12px 0 3px">列表壳</b><span style="font-size:12px;color:var(--ink2);line-height:1.55;display:block">/settings · /messages · /wallet 流水</span></div><div style="width:210px"><div style="background:var(--canvas);border:1px solid var(--hair);border-radius:var(--rc);padding:12px;min-height:238px"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px"><div style="display:grid;gap:7px"><div class="skel" style="aspect-ratio:3/4;border-radius:10px"></div><div class="skel" style="height:11px;width:72%"></div></div><div style="display:grid;gap:7px"><div class="skel" style="aspect-ratio:3/4;border-radius:10px"></div><div class="skel" style="height:11px;width:72%"></div></div><div style="display:grid;gap:7px"><div class="skel" style="aspect-ratio:3/4;border-radius:10px"></div><div class="skel" style="height:11px;width:72%"></div></div><div style="display:grid;gap:7px"><div class="skel" style="aspect-ratio:3/4;border-radius:10px"></div><div class="skel" style="height:11px;width:72%"></div></div></div></div><b style="display:block;font-size:14px;font-weight:600;margin:12px 0 3px">宫格壳</b><span style="font-size:12px;color:var(--ink2);line-height:1.55;display:block">/library · /favorites · 角色墙</span></div><div style="width:210px"><div style="background:var(--canvas);border:1px solid var(--hair);border-radius:var(--rc);padding:12px;min-height:238px"><div style="display:grid;gap:10px"><div class="skel" style="height:150px;border-radius:14px"></div><div class="skel" style="height:13px;width:56%"></div><div class="skel" style="height:11px;width:82%"></div><div class="skel" style="height:11px;width:70%"></div></div></div><b style="display:block;font-size:14px;font-weight:600;margin:12px 0 3px">沉浸流壳</b><span style="font-size:12px;color:var(--ink2);line-height:1.55;display:block">/ 发现 · 单卡满屏</span></div><div style="width:210px"><div style="background:var(--canvas);border:1px solid var(--hair);border-radius:var(--rc);padding:12px;min-height:238px"><div style="display:grid;gap:10px"><div style="display:flex;justify-content:flex-start"><div class="skel" style="height:52px;width:62%;border-radius:14px"></div></div><div style="display:flex;justify-content:flex-end"><div class="skel" style="height:34px;width:44%;border-radius:14px"></div></div><div style="display:flex;justify-content:flex-start"><div class="skel" style="height:52px;width:78%;border-radius:14px"></div></div></div></div><b style="display:block;font-size:14px;font-weight:600;margin:12px 0 3px">会话壳</b><span style="font-size:12px;color:var(--ink2);line-height:1.55;display:block">/chats/:id · 气泡左右交替</span></div></div>
+
+  <h2 class="sh2">规则</h2>
+  <table>
+    <tr><th style="width:170px">项</th><th>规定</th></tr>
+    <tr><td>延迟显示</td><td>取数 <code>&lt; 300ms</code> 完成则**不显示**骨架 —— 闪一下比等一下更烦</td></tr>
+    <tr><td>最短驻留</td><td>一旦显示，至少停 <code>400ms</code> 再收，避免骨架一闪而过的抽搐感</td></tr>
+    <tr><td>条数</td><td>按首屏能装下的条数给，不多给：骨架比真实内容长会造成「加载完变短」的塌陷</td></tr>
+    <tr><td>动效</td><td>横向微光 <code>1.4s</code> 线性循环；<code>prefers-reduced-motion</code> 下停成静态灰块</td></tr>
+    <tr><td>颜色</td><td>底 <code>#E4EEF6</code> / 高光 <code>#EFF5FA</code> —— 取自 <code>--ix-grouped</code> 邻域，不引入新灰</td></tr>
+    <tr><td>复用</td><td>已有 <code>GridSkeleton</code>（ui.jsx:210）就是宫格壳，改造它而不是新写一个</td></tr>
+  </table>
+  <p class="note">为什么不做「一个通用骨架」：通用骨架必然与四种版式都不同形，收起时四种页面全会跳。
+    四套的维护成本远低于四处跳动的观感成本。</p>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+  :root{
+    --canvas:#EFF8FD; --surface:#FFFFFF; --grouped:#E3F1FA;
+    --ink:#0A1330; --ink2:#44557A; --ink3:#58677F;
+    --act:#0B72B0; --focus:#064766;
+    --hair:rgb(20 70 110 / 10%); --hair2:rgb(20 70 110 / 18%);
+    --rk:12px; --rc:16px; --rp:22px;
+    --grad:linear-gradient(135deg,#38DAD2 0%,#2E9FF7 100%);
+    --violet-w:#EBE7FD; --violet-i:#6D4AD8;
+    --indigo-w:#E3E8FC; --indigo-i:#3B57D6;
+    --coral-w:#FFEBE3;  --coral-i:#B44B1D;
+    --amber-w:#FDF1DC;  --amber-i:#8A600A;
+    --mint-w:#DDF5EC;   --mint-i:#0B7C50;
+    --rose-w:#FDE7EE;   --rose-i:#BF365F;
+    --cyan-w:#DEF5FD;   --cyan-i:#0B72B0;
+    --sans:"Inter Variable","Inter","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);background:var(--canvas);color:var(--ink);
+       -webkit-font-smoothing:antialiased}
+  a{color:var(--act)} a:hover{color:var(--focus)}
+  .scr{width:390px;min-height:844px;background:linear-gradient(180deg,#EFF8FD 0%,#F3FBFE 60%,#EDF7FD 100%);padding:0 16px 96px}
+  .top{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 0 14px}
+  .h1{font-size:34px;font-weight:700;letter-spacing:-.01em;margin:0;line-height:1.1}
+  .kick{font-size:13px;color:var(--ink2);margin:0 0 2px}
+  .card{background:var(--surface);border-radius:var(--rc);padding:14px;
+        box-shadow:0 1px 2px rgb(20 70 110 / 6%)}
+  .sect{font-size:13px;color:var(--ink2);margin:22px 0 8px;font-weight:500}
+  .chip{width:38px;height:38px;border-radius:var(--rk);display:grid;place-items:center;flex:none;
+        box-shadow:inset 0 0 0 1px color-mix(in oklab,currentColor 16%,transparent)}
+  .chip.sm{width:34px;height:34px}
+  .row{display:flex;align-items:center;gap:12px;min-height:60px}
+  .row b{font-size:15px;font-weight:600;display:block;line-height:1.35}
+  .row small{font-size:13px;color:var(--ink2);display:block;line-height:1.35}
+  .grow{flex:1;min-width:0}
+  .chev{color:var(--ink3);flex:none}
+  .divider{height:1px;background:var(--hair);margin:0 0 0 46px}
+
+  </style>
+</helmet>
+
+<div class="scr" style="padding:0;position:relative;overflow:hidden;background:#141A20">
+  <div style="position:absolute;inset:0;background:
+       radial-gradient(120% 70% at 30% 12%, #3C5568 0%, transparent 60%),
+       linear-gradient(170deg,#1B242C 0%,#2A3A46 52%,#161D24 100%)"></div>
+  <div style="position:absolute;inset:0;background:
+       linear-gradient(180deg, rgb(0 0 0 / 26%), transparent 24%),
+       linear-gradient(0deg, rgb(0 0 0 / 90%) 0%, rgb(0 0 0 / 60%) 30%, transparent 64%)"></div>
+  <div style="position:absolute;right:14px;bottom:150px;display:grid;gap:16px;justify-items:center"><div style="display:grid;justify-items:center;gap:5px;color:#fff"><span style="width:38px;height:38px;border-radius:12px;background:rgb(255 255 255 / 14%);display:grid;place-items:center;backdrop-filter:blur(10px)"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16s-5.5-3.4-5.5-7A3 3 0 0 1 10 7.2 3 3 0 0 1 15.5 9c0 3.6-5.5 7-5.5 7z"/></svg></span><span style="font-size:11px;opacity:.9">2.3k</span></div><div style="display:grid;justify-items:center;gap:5px;color:#fff"><span style="width:38px;height:38px;border-radius:12px;background:rgb(255 255 255 / 14%);display:grid;place-items:center;backdrop-filter:blur(10px)"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v4A2.5 2.5 0 0 1 13.5 13H8l-4 3z"/></svg></span><span style="font-size:11px;opacity:.9">184</span></div><div style="display:grid;justify-items:center;gap:5px;color:#fff"><span style="width:38px;height:38px;border-radius:12px;background:rgb(255 255 255 / 14%);display:grid;place-items:center;backdrop-filter:blur(10px)"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5l2 4.3 4.6.6-3.4 3.2.9 4.6L10 14l-4.1 2.2.9-4.6L3.4 8.4l4.6-.6z"/></svg></span><span style="font-size:11px;opacity:.9">收藏</span></div><div style="display:grid;justify-items:center;gap:5px;color:#fff"><span style="width:38px;height:38px;border-radius:12px;background:rgb(255 255 255 / 14%);display:grid;place-items:center;backdrop-filter:blur(10px)"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="14.5" cy="5.5" r="2"/><circle cx="5.5" cy="10" r="2"/><circle cx="14.5" cy="14.5" r="2"/><path d="M7.3 9.1l5.4-2.7M7.3 10.9l5.4 2.7"/></svg></span><span style="font-size:11px;opacity:.9">分享</span></div><div style="display:grid;justify-items:center;gap:5px;color:#fff"><span style="width:38px;height:38px;border-radius:12px;background:rgb(255 255 255 / 14%);display:grid;place-items:center;backdrop-filter:blur(10px)"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="4.5" r="1.2"/><circle cx="10" cy="10" r="1.2"/><circle cx="10" cy="15.5" r="1.2"/></svg></span><span style="font-size:11px;opacity:.9"></span></div></div>
+  <div style="position:absolute;left:16px;right:92px;bottom:120px;color:#fff">
+    <span style="display:inline-block;background:var(--cyan-w);color:var(--cyan-i);font-size:11px;
+                 font-weight:600;border-radius:8px;padding:3px 8px">古风 · 沉浸</span>
+    <b style="display:block;font-size:22px;font-weight:700;margin:10px 0 6px">森灵 · 薇尔</b>
+    <p style="margin:0;font-size:14px;line-height:1.6;opacity:.88">
+      藤蔓在她指尖生长。「你带回来的那卷残页，我认得。」</p>
+  </div>
+  <div style="position:absolute;left:16px;right:16px;bottom:66px;display:flex;gap:10px">
+    <div style="flex:1;background:rgb(255 255 255 / 12%);border:1px solid rgb(255 255 255 / 16%);
+                border-radius:999px;min-height:44px;display:flex;align-items:center;padding:0 16px;
+                color:rgb(255 255 255 / 55%);font-size:14px;backdrop-filter:blur(14px)">说点什么…</div>
+    <div style="width:44px;height:44px;border-radius:999px;background:var(--grad);display:grid;
+                place-items:center;color:#fff"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l12-5-4.5 12L9.5 12z"/></svg></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

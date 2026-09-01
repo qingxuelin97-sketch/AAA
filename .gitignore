@@ -40,3 +40,9 @@ server/wb-vars-test.tmp.sqlite*
 server/regen-test.tmp.sqlite*
 server/regen-test.interceptor.mjs
 server/ctx-test.tmp.sqlite*
+
+# 设计画布：只忽略产物，源文件要入库。
+# 产物内含画布编辑器约 2.5MB，可用 /design 的 seed-canvas.mjs 从 *.dc.html 重新生成。
+# 注意顺序：先忽略全部 .html，再把 .dc.html 源文件放回来 —— 反过来写不生效。
+.design-canvas/*.html
+!.design-canvas/*.dc.html

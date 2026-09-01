@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+  :root{
+    --canvas:#EFF8FD; --surface:#FFFFFF; --grouped:#E3F1FA;
+    --ink:#0A1330; --ink2:#44557A; --ink3:#58677F;
+    --act:#0B72B0; --focus:#064766;
+    --hair:rgb(20 70 110 / 10%); --hair2:rgb(20 70 110 / 18%);
+    --rk:12px; --rc:16px; --rp:22px;
+    --grad:linear-gradient(135deg,#38DAD2 0%,#2E9FF7 100%);
+    --violet-w:#EBE7FD; --violet-i:#6D4AD8;
+    --indigo-w:#E3E8FC; --indigo-i:#3B57D6;
+    --coral-w:#FFEBE3;  --coral-i:#B44B1D;
+    --amber-w:#FDF1DC;  --amber-i:#8A600A;
+    --mint-w:#DDF5EC;   --mint-i:#0B7C50;
+    --rose-w:#FDE7EE;   --rose-i:#BF365F;
+    --cyan-w:#DEF5FD;   --cyan-i:#0B72B0;
+    --sans:"Inter Variable","Inter","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);background:var(--canvas);color:var(--ink);
+       -webkit-font-smoothing:antialiased}
+  a{color:var(--act)} a:hover{color:var(--focus)}
+  .scr{width:390px;min-height:844px;background:linear-gradient(180deg,#EFF8FD 0%,#F3FBFE 60%,#EDF7FD 100%);padding:0 16px 96px}
+  .top{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 0 14px}
+  .h1{font-size:34px;font-weight:700;letter-spacing:-.01em;margin:0;line-height:1.1}
+  .kick{font-size:13px;color:var(--ink2);margin:0 0 2px}
+  .card{background:var(--surface);border-radius:var(--rc);padding:14px;
+        box-shadow:0 1px 2px rgb(20 70 110 / 6%)}
+  .sect{font-size:13px;color:var(--ink2);margin:22px 0 8px;font-weight:500}
+  .chip{width:38px;height:38px;border-radius:var(--rk);display:grid;place-items:center;flex:none;
+        box-shadow:inset 0 0 0 1px color-mix(in oklab,currentColor 16%,transparent)}
+  .chip.sm{width:34px;height:34px}
+  .row{display:flex;align-items:center;gap:12px;min-height:60px}
+  .row b{font-size:15px;font-weight:600;display:block;line-height:1.35}
+  .row small{font-size:13px;color:var(--ink2);display:block;line-height:1.35}
+  .grow{flex:1;min-width:0}
+  .chev{color:var(--ink3);flex:none}
+  .divider{height:1px;background:var(--hair);margin:0 0 0 46px}
+
+  .sheet{width:980px;padding:36px 40px 48px;background:var(--canvas)}
+  .sh1{font-size:30px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{font-size:15px;color:var(--ink2);margin:0 0 26px;line-height:1.7;max-width:70ch}
+  .sh2{font-size:17px;font-weight:600;margin:32px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--hair)}
+  .note{font-size:13px;color:var(--ink2);line-height:1.75;margin:10px 0 0;max-width:78ch}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{text-align:left;font-weight:600;color:var(--ink2);padding:8px 10px;border-bottom:1px solid var(--hair2);white-space:nowrap}
+  td{padding:9px 10px;border-bottom:1px solid var(--hair);vertical-align:top;line-height:1.6}
+  code{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+       background:var(--grouped);padding:1px 5px;border-radius:4px}
+  .bad{color:#9E1B32}.good{color:var(--mint-i)}
+  .pane{width:302px;background:var(--surface);border-radius:var(--rc);padding:22px 18px;
+        display:grid;justify-items:center;gap:10px;text-align:center;min-height:250px;align-content:center;
+        box-shadow:0 1px 2px rgb(20 70 110 / 6%)}
+  .pane b{font-size:16px;font-weight:600}
+  .pane p{font-size:13px;color:var(--ink2);margin:0;line-height:1.6}
+  .tag{font-size:11px;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;font-weight:600}
+  .btn{min-height:44px;padding:0 20px;border-radius:999px;background:var(--act);color:#fff;
+       font-size:14px;font-weight:600;display:inline-grid;place-items:center;grid-auto-flow:column;gap:7px}
+  .btn.ghost{background:var(--grouped);color:var(--ink2)}
+  .skel{background:linear-gradient(90deg,#E4EEF6 25%,#EFF5FA 50%,#E4EEF6 75%);background-size:400% 100%;
+        border-radius:6px;animation:sk 1.4s var(--e,cubic-bezier(.4,0,.2,1)) infinite}
+  @keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+  @media (prefers-reduced-motion: reduce){.skel{animation:none;background:#E4EEF6}}
+
+  </style>
+</helmet>
+
+<div class="sheet">
+  <p class="tag">规范 · 状态</p>
+  <h1 class="sh1">空 · 载 · 错</h1>
+  <p class="lede">三态不是装饰，是缺件。现在多数页面首载时是白屏、拿不到数据时是永久空白，
+    用户分不清「没有内容」和「加载失败」。这一张定的是：每一个会取数的区域，
+    都必须能落到下面三个盒子中的一个，不许落到「什么都没有」。</p>
+
+  <h2 class="sh2">现状（仓内实测）</h2>
+  <table>
+    <tr><th style="width:150px">件</th><th style="width:120px">现状</th><th>问题</th></tr>
+    <tr><td><code>AppErrorState</code></td><td class="good">已有，20 处在用</td>
+        <td>只覆盖错误态；已经带重试出口与错误码，形态可以直接沿用</td></tr>
+    <tr><td><code>GridSkeleton</code></td><td>已有，仅宫格</td>
+        <td>只有一种形状。列表页、沉浸流、会话页套上去与真实版式对不上，反而更晃眼</td></tr>
+    <tr><td>空态</td><td class="bad">没有共享件</td>
+        <td>散落 <b>86</b> 条不同写法的「暂无 / 还没有…」，多数只有一行灰字，没有出口</td></tr>
+    <tr><td>载入态</td><td class="bad">多数页面没有</td><td>首载即白屏；慢网下看起来像卡死</td></tr>
+  </table>
+
+  <h2 class="sh2">规范三态</h2>
+  <div style="display:flex;gap:20px">
+    <div class="pane">
+      <div style="width:100%;display:grid;gap:9px">
+        <div class="skel" style="height:74px;border-radius:10px"></div>
+        <div class="skel" style="height:13px;width:64%"></div>
+        <div class="skel" style="height:13px;width:88%"></div>
+        <div class="skel" style="height:13px;width:40%"></div>
+      </div>
+      <b style="margin-top:6px">载入</b>
+      <p>骨架照抄这一页真实的版式，不是通用灰条。<br>低于 300ms 不显示 —— 闪一下比等一下更烦。</p>
+    </div>
+    <div class="pane">
+      <span style="width:76px;height:76px;border-radius:22px;background:var(--cyan-w);color:var(--cyan-i);
+                   display:grid;place-items:center"><svg width="34" height="34" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5.5"/><path d="M4 11.5h3l1 2h4l1-2h3v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg></span>
+      <b>空</b>
+      <p>说清楚「这里将来会有什么」，并给一个能立刻做的动作。<br>没有动作可给时才只写一句话。</p>
+      <span class="btn" style="margin-top:4px"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5v10M5 10h10"/></svg> 创建第一个角色</span>
+    </div>
+    <div class="pane">
+      <span style="width:76px;height:76px;border-radius:22px;background:var(--coral-w);color:var(--coral-i);
+                   display:grid;place-items:center"><svg width="34" height="34" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15a3.5 3.5 0 0 1-.3-7A4.6 4.6 0 0 1 15 8.8 3.1 3.1 0 0 1 14.6 15z"/></svg></span>
+      <b>错</b>
+      <p>永远给重试出口，绝不伪装成空态。<br>错误码留着，出问题时用户能报给你。</p>
+      <span class="btn" style="margin-top:4px"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 8A5.8 5.8 0 0 0 5.2 6.5M4.5 12A5.8 5.8 0 0 0 14.8 13.5"/><path d="M15.5 4.5V8h-3.4M4.5 15.5V12h3.4"/></svg> 重试</span>
+      <span style="font-size:11px;color:var(--ink3);letter-spacing:.06em">ERR · LOAD_FAILED</span>
+    </div>
+  </div>
+  <p class="note">三条不许违反的：① <b>错误态不许伪装成空态</b> —— 拿不到数据写「暂无内容」是在骗用户，
+    他会以为自己没有数据而不是网断了；② <b>空态必须给出口</b>，除非真的无事可做；
+    ③ <b>载入态必须与真实版式同形</b>，否则骨架收起时会整页跳动。</p>
+</div>
+</x-dc>
+</body>
+</html>

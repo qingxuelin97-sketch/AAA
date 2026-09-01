@@ -1,0 +1,26 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "屏 · 改后全貌" },
+    { "id": "page-2", "name": "规范 · 四张" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html",       "page": "page-1", "title": "今日 /today",     "x": 0,    "y": 0, "w": 390, "h": 980 },
+    { "file": "Discover.dc.html",   "page": "page-1", "title": "发现 /",          "x": 490,  "y": 0, "w": 390, "h": 980 },
+    { "file": "Messages.dc.html",   "page": "page-1", "title": "消息 /messages",  "x": 980,  "y": 0, "w": 390, "h": 980 },
+    { "file": "Settings.dc.html",   "page": "page-1", "title": "设置 /settings",  "x": 1470, "y": 0, "w": 390, "h": 980 },
+    { "file": "Profile.dc.html",    "page": "page-1", "title": "我的 /me",        "x": 1960, "y": 0, "w": 390, "h": 980 },
+    { "file": "Wallet.dc.html",     "page": "page-1", "title": "钱包 /wallet",    "x": 2450, "y": 0, "w": 390, "h": 980 },
+
+    { "file": "States.dc.html",     "page": "page-2", "title": "空 · 载 · 错",    "x": 0,    "y": 0,    "w": 980, "h": 1000 },
+    { "file": "Skeletons.dc.html",  "page": "page-2", "title": "页面壳与骨架",     "x": 1100, "y": 0,    "w": 980, "h": 1000 },
+    { "file": "Motion.dc.html",     "page": "page-2", "title": "动效与材质",       "x": 0,    "y": 1180, "w": 980, "h": 1140 },
+    { "file": "Voice.dc.html",      "page": "page-2", "title": "文案口径",         "x": 1100, "y": 1180, "w": 980, "h": 1140 }
+  ],
+  "annotations": [
+    { "id": "note-screens", "page": "page-1", "x": 0, "y": -150, "w": 900,
+      "text": "改后全貌 · 六屏\n色值、字号、圆角、间距全部取自仓内真源（app-rainbow.css 的 wash/ink 十四支、app-ix-tokens.css 的字号与间距阶梯），没有臆造新值。\n芯片已是撤形后的形态：淡染面 + 深墨字形 + 内描边环，34/38px 圆角方 —— 这一部分已经落地（提交 b65fecd）。\n渐变只剩两处：发现页的主行动点与创建面板；金融舱卡沿用既有渐变，不在撤形范围内。" },
+    { "id": "note-specs", "page": "page-2", "x": 0, "y": -170, "w": 900,
+      "text": "四张规范 · 这才是还没落地的部分\n空/载/错三态、页面壳骨架、动效材质预算、文案口径 —— 七张设计卡里剩下的四张，逐条转成可施工的规格。\n每一张都标了仓内现状与实测数字：已有 AppErrorState（20 处在用）与 GridSkeleton（仅宫格），空态没有共享件、86 条不同写法的「暂无」。\n文案板最后一段有一处需要你拍板：错误码要不要一直显示。" }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+  :root{
+    --canvas:#EFF8FD; --surface:#FFFFFF; --grouped:#E3F1FA;
+    --ink:#0A1330; --ink2:#44557A; --ink3:#58677F;
+    --act:#0B72B0; --focus:#064766;
+    --hair:rgb(20 70 110 / 10%); --hair2:rgb(20 70 110 / 18%);
+    --rk:12px; --rc:16px; --rp:22px;
+    --grad:linear-gradient(135deg,#38DAD2 0%,#2E9FF7 100%);
+    --violet-w:#EBE7FD; --violet-i:#6D4AD8;
+    --indigo-w:#E3E8FC; --indigo-i:#3B57D6;
+    --coral-w:#FFEBE3;  --coral-i:#B44B1D;
+    --amber-w:#FDF1DC;  --amber-i:#8A600A;
+    --mint-w:#DDF5EC;   --mint-i:#0B7C50;
+    --rose-w:#FDE7EE;   --rose-i:#BF365F;
+    --cyan-w:#DEF5FD;   --cyan-i:#0B72B0;
+    --sans:"Inter Variable","Inter","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);background:var(--canvas);color:var(--ink);
+       -webkit-font-smoothing:antialiased}
+  a{color:var(--act)} a:hover{color:var(--focus)}
+  .scr{width:390px;min-height:844px;background:linear-gradient(180deg,#EFF8FD 0%,#F3FBFE 60%,#EDF7FD 100%);padding:0 16px 96px}
+  .top{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 0 14px}
+  .h1{font-size:34px;font-weight:700;letter-spacing:-.01em;margin:0;line-height:1.1}
+  .kick{font-size:13px;color:var(--ink2);margin:0 0 2px}
+  .card{background:var(--surface);border-radius:var(--rc);padding:14px;
+        box-shadow:0 1px 2px rgb(20 70 110 / 6%)}
+  .sect{font-size:13px;color:var(--ink2);margin:22px 0 8px;font-weight:500}
+  .chip{width:38px;height:38px;border-radius:var(--rk);display:grid;place-items:center;flex:none;
+        box-shadow:inset 0 0 0 1px color-mix(in oklab,currentColor 16%,transparent)}
+  .chip.sm{width:34px;height:34px}
+  .row{display:flex;align-items:center;gap:12px;min-height:60px}
+  .row b{font-size:15px;font-weight:600;display:block;line-height:1.35}
+  .row small{font-size:13px;color:var(--ink2);display:block;line-height:1.35}
+  .grow{flex:1;min-width:0}
+  .chev{color:var(--ink3);flex:none}
+  .divider{height:1px;background:var(--hair);margin:0 0 0 46px}
+
+  .sheet{width:980px;padding:36px 40px 48px;background:var(--canvas)}
+  .sh1{font-size:30px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{font-size:15px;color:var(--ink2);margin:0 0 26px;line-height:1.7;max-width:70ch}
+  .sh2{font-size:17px;font-weight:600;margin:32px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--hair)}
+  .note{font-size:13px;color:var(--ink2);line-height:1.75;margin:10px 0 0;max-width:78ch}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{text-align:left;font-weight:600;color:var(--ink2);padding:8px 10px;border-bottom:1px solid var(--hair2);white-space:nowrap}
+  td{padding:9px 10px;border-bottom:1px solid var(--hair);vertical-align:top;line-height:1.6}
+  code{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+       background:var(--grouped);padding:1px 5px;border-radius:4px}
+  .bad{color:#9E1B32}.good{color:var(--mint-i)}
+  .pane{width:302px;background:var(--surface);border-radius:var(--rc);padding:22px 18px;
+        display:grid;justify-items:center;gap:10px;text-align:center;min-height:250px;align-content:center;
+        box-shadow:0 1px 2px rgb(20 70 110 / 6%)}
+  .pane b{font-size:16px;font-weight:600}
+  .pane p{font-size:13px;color:var(--ink2);margin:0;line-height:1.6}
+  .tag{font-size:11px;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;font-weight:600}
+  .btn{min-height:44px;padding:0 20px;border-radius:999px;background:var(--act);color:#fff;
+       font-size:14px;font-weight:600;display:inline-grid;place-items:center;grid-auto-flow:column;gap:7px}
+  .btn.ghost{background:var(--grouped);color:var(--ink2)}
+  .skel{background:linear-gradient(90deg,#E4EEF6 25%,#EFF5FA 50%,#E4EEF6 75%);background-size:400% 100%;
+        border-radius:6px;animation:sk 1.4s var(--e,cubic-bezier(.4,0,.2,1)) infinite}
+  @keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+  @media (prefers-reduced-motion: reduce){.skel{animation:none;background:#E4EEF6}}
+
+  </style>
+</helmet>
+
+<div class="sheet">
+  <p class="tag">规范 · 动效与材质</p>
+  <h1 class="sh1">动效与材质</h1>
+  <p class="lede">动效的作用是解释「刚才发生了什么」，不是表演。材质的作用是分层，不是好看。
+    两者都有预算 —— 超预算的直接后果是弱机上掉帧，而掉帧比没有动效难看得多。</p>
+
+  <h2 class="sh2">时长阶梯（令牌已在仓内，此处只是把口径钉死）</h2>
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:34px;align-items:start">
+    <table><tr><th style="width:180px">令牌</th><th style="width:70px">值</th>
+      <th style="width:100px">用途</th><th>为什么是这个数</th></tr><tr><td><code>--ix-dur-press</code></td><td style="font-variant-numeric:tabular-nums">80ms</td><td>按压反馈</td><td style="color:var(--ink2)">手指按下即刻回应，超过 100ms 就会被感知为「按了没反应」</td></tr><tr><td><code>--ix-dur-flick</code></td><td style="font-variant-numeric:tabular-nums">120ms</td><td>开关到位</td><td style="color:var(--ink2)">拨杆/开关，零回弹 —— 回弹会让人怀疑没切成功</td></tr><tr><td><code>--ix-dur-state</code></td><td style="font-variant-numeric:tabular-nums">180ms</td><td>状态切换</td><td style="color:var(--ink2)">选中、展开、角标变化</td></tr><tr><td><code>--ix-dur-push</code></td><td style="font-variant-numeric:tabular-nums">220ms</td><td>页面推入</td><td style="color:var(--ink2)">路由转场与列表位移</td></tr><tr><td><code>--ix-dur-sheet</code></td><td style="font-variant-numeric:tabular-nums">300ms</td><td>Sheet 升起</td><td style="color:var(--ink2)">底部面板，唯一允许超过 300ms 的常规转场</td></tr><tr><td><code>--ix-dur-needle</code></td><td style="font-variant-numeric:tabular-nums">540ms</td><td>仪表入场</td><td style="color:var(--ink2)">一次性，只在首次进入时跑</td></tr></table>
+    <div style="display:grid;gap:12px;background:var(--surface);border-radius:var(--rc);padding:18px">
+      <b style="font-size:13px;font-weight:600">相对长度</b><div style="display:grid;gap:5px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)"><span>按压反馈</span><span style="font-variant-numeric:tabular-nums">80ms</span></div><div style="height:8px;border-radius:99px;background:var(--grouped)"><div style="height:8px;border-radius:99px;width:100%;background:var(--act);opacity:.75"></div></div></div><div style="display:grid;gap:5px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)"><span>开关到位</span><span style="font-variant-numeric:tabular-nums">120ms</span></div><div style="height:8px;border-radius:99px;background:var(--grouped)"><div style="height:8px;border-radius:99px;width:100%;background:var(--act);opacity:.75"></div></div></div><div style="display:grid;gap:5px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)"><span>状态切换</span><span style="font-variant-numeric:tabular-nums">180ms</span></div><div style="height:8px;border-radius:99px;background:var(--grouped)"><div style="height:8px;border-radius:99px;width:100%;background:var(--act);opacity:.75"></div></div></div><div style="display:grid;gap:5px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)"><span>页面推入</span><span style="font-variant-numeric:tabular-nums">220ms</span></div><div style="height:8px;border-radius:99px;background:var(--grouped)"><div style="height:8px;border-radius:99px;width:100%;background:var(--act);opacity:.75"></div></div></div><div style="display:grid;gap:5px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)"><span>Sheet 升起</span><span style="font-variant-numeric:tabular-nums">300ms</span></div><div style="height:8px;border-radius:99px;background:var(--grouped)"><div style="height:8px;border-radius:99px;width:100%;background:var(--act);opacity:.75"></div></div></div><div style="display:grid;gap:5px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)"><span>仪表入场</span><span style="font-variant-numeric:tabular-nums">540ms</span></div><div style="height:8px;border-radius:99px;background:var(--grouped)"><div style="height:8px;border-radius:99px;width:100%;background:var(--act);opacity:.75"></div></div></div></div>
+  </div>
+  <p class="note">缓动只有两条：<code>--ix-ease</code> <code>cubic-bezier(.4,0,.2,1)</code> 快进慢停，
+    是默认；<code>--ix-ease-stop</code> <code>cubic-bezier(.2,.9,.3,1)</code> 只给「指针到位」这类需要落定感的。
+    <b>不许现场写第三条</b> —— 缓动一旦允许自由发挥，全站的节奏感就散了。</p>
+
+  <h2 class="sh2">材质预算</h2>
+  <table>
+    <tr><th style="width:150px">项</th><th style="width:110px">上限</th><th>理由与现状</th></tr>
+    <tr><td>同屏 blur 面数</td><td>high 档不设硬上限<br>lite 档 ≤ 2</td>
+        <td>已有像素闸探针逐帧打印实测值。撤形批把非当前卡的 36 个 blur 面摘掉后，
+            发现页高档从 42 降到 6</td></tr>
+    <tr><td>blur 半径</td><td>≤ 26px</td><td>超过之后视觉收益趋零、GPU 代价继续涨</td></tr>
+    <tr><td>同屏无限循环动画</td><td class="bad">0</td>
+        <td>常驻循环动画会持续占用合成器。当前实测各页均为 0，<b>保持</b></td></tr>
+    <tr><td>外投影</td><td>≤ 16px 模糊<br>不带彩色</td>
+        <td>彩色外投影会把色相漏到容器外；撤形批已全部换成内描边环</td></tr>
+    <tr><td>渐变</td><td>全 App ≤ 2 处</td>
+        <td>已用满：创建面板行芯片 + Dock 主行动点。第三处需要先撤掉一处</td></tr>
+  </table>
+
+  <h2 class="sh2">三条不许违反的</h2>
+  <p class="note">① <b><code>prefers-reduced-motion</code> 下所有位移与循环归零</b>，只留透明度；
+    仓内已有这条保护，扩动效时不许绕过。<br>
+    ② <b>lite 档不是「效果差一点」，是「结构一样、材质归零」</b> —— 版式绝不能因为档位不同而变。<br>
+    ③ <b>动效不承载信息</b>。任何只靠动画才能看懂的状态变化，都要有一个静态的表达兜底。</p>
+</div>
+</x-dc>
+</body>
+</html>

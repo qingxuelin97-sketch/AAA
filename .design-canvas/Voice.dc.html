@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+  :root{
+    --canvas:#EFF8FD; --surface:#FFFFFF; --grouped:#E3F1FA;
+    --ink:#0A1330; --ink2:#44557A; --ink3:#58677F;
+    --act:#0B72B0; --focus:#064766;
+    --hair:rgb(20 70 110 / 10%); --hair2:rgb(20 70 110 / 18%);
+    --rk:12px; --rc:16px; --rp:22px;
+    --grad:linear-gradient(135deg,#38DAD2 0%,#2E9FF7 100%);
+    --violet-w:#EBE7FD; --violet-i:#6D4AD8;
+    --indigo-w:#E3E8FC; --indigo-i:#3B57D6;
+    --coral-w:#FFEBE3;  --coral-i:#B44B1D;
+    --amber-w:#FDF1DC;  --amber-i:#8A600A;
+    --mint-w:#DDF5EC;   --mint-i:#0B7C50;
+    --rose-w:#FDE7EE;   --rose-i:#BF365F;
+    --cyan-w:#DEF5FD;   --cyan-i:#0B72B0;
+    --sans:"Inter Variable","Inter","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);background:var(--canvas);color:var(--ink);
+       -webkit-font-smoothing:antialiased}
+  a{color:var(--act)} a:hover{color:var(--focus)}
+  .scr{width:390px;min-height:844px;background:linear-gradient(180deg,#EFF8FD 0%,#F3FBFE 60%,#EDF7FD 100%);padding:0 16px 96px}
+  .top{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 0 14px}
+  .h1{font-size:34px;font-weight:700;letter-spacing:-.01em;margin:0;line-height:1.1}
+  .kick{font-size:13px;color:var(--ink2);margin:0 0 2px}
+  .card{background:var(--surface);border-radius:var(--rc);padding:14px;
+        box-shadow:0 1px 2px rgb(20 70 110 / 6%)}
+  .sect{font-size:13px;color:var(--ink2);margin:22px 0 8px;font-weight:500}
+  .chip{width:38px;height:38px;border-radius:var(--rk);display:grid;place-items:center;flex:none;
+        box-shadow:inset 0 0 0 1px color-mix(in oklab,currentColor 16%,transparent)}
+  .chip.sm{width:34px;height:34px}
+  .row{display:flex;align-items:center;gap:12px;min-height:60px}
+  .row b{font-size:15px;font-weight:600;display:block;line-height:1.35}
+  .row small{font-size:13px;color:var(--ink2);display:block;line-height:1.35}
+  .grow{flex:1;min-width:0}
+  .chev{color:var(--ink3);flex:none}
+  .divider{height:1px;background:var(--hair);margin:0 0 0 46px}
+
+  .sheet{width:980px;padding:36px 40px 48px;background:var(--canvas)}
+  .sh1{font-size:30px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{font-size:15px;color:var(--ink2);margin:0 0 26px;line-height:1.7;max-width:70ch}
+  .sh2{font-size:17px;font-weight:600;margin:32px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--hair)}
+  .note{font-size:13px;color:var(--ink2);line-height:1.75;margin:10px 0 0;max-width:78ch}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{text-align:left;font-weight:600;color:var(--ink2);padding:8px 10px;border-bottom:1px solid var(--hair2);white-space:nowrap}
+  td{padding:9px 10px;border-bottom:1px solid var(--hair);vertical-align:top;line-height:1.6}
+  code{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+       background:var(--grouped);padding:1px 5px;border-radius:4px}
+  .bad{color:#9E1B32}.good{color:var(--mint-i)}
+  .pane{width:302px;background:var(--surface);border-radius:var(--rc);padding:22px 18px;
+        display:grid;justify-items:center;gap:10px;text-align:center;min-height:250px;align-content:center;
+        box-shadow:0 1px 2px rgb(20 70 110 / 6%)}
+  .pane b{font-size:16px;font-weight:600}
+  .pane p{font-size:13px;color:var(--ink2);margin:0;line-height:1.6}
+  .tag{font-size:11px;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;font-weight:600}
+  .btn{min-height:44px;padding:0 20px;border-radius:999px;background:var(--act);color:#fff;
+       font-size:14px;font-weight:600;display:inline-grid;place-items:center;grid-auto-flow:column;gap:7px}
+  .btn.ghost{background:var(--grouped);color:var(--ink2)}
+  .skel{background:linear-gradient(90deg,#E4EEF6 25%,#EFF5FA 50%,#E4EEF6 75%);background-size:400% 100%;
+        border-radius:6px;animation:sk 1.4s var(--e,cubic-bezier(.4,0,.2,1)) infinite}
+  @keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+  @media (prefers-reduced-motion: reduce){.skel{animation:none;background:#E4EEF6}}
+
+  </style>
+</helmet>
+
+<div class="sheet">
+  <p class="tag">规范 · 文案</p>
+  <h1 class="sh1">文案口径</h1>
+  <p class="lede">仓内散落着 <b>86</b> 条不同写法的「暂无 / 还没有…」，同一件事在不同页面有不同说法。
+    这一张不是要统一措辞的美感，是要统一<b>态度</b>：不用公文腔，不把系统的问题说成用户的问题，
+    每一句话都告诉用户下一步能做什么。</p>
+
+  <h2 class="sh2">四条规矩</h2>
+  <table>
+    <tr><th style="width:190px">规矩</th><th>说明</th></tr>
+    <tr><td>不用「暂无」</td><td>公文腔。改用「还没有」「都看完了」这类口语；主语说清楚是谁</td></tr>
+    <tr><td>不用「异常」「失败」当标题</td><td>那是日志词。标题写发生了什么，动作放按钮上</td></tr>
+    <tr><td>每句都带出口</td><td>空态给一个能立刻做的动作；错误态给重试。实在没有出口才只写一句</td></tr>
+    <tr><td>不替用户道歉，也不甩锅</td><td>不写「很抱歉给您带来不便」，也不写「您的网络有问题」</td></tr>
+  </table>
+
+  <h2 class="sh2">对照表（左列是仓内现有原文）</h2>
+  <table>
+    <tr><th style="width:110px">场景</th><th style="width:190px">改前</th>
+        <th style="width:280px">改后</th><th>为什么</th></tr><tr><td style="white-space:nowrap;color:var(--ink2)">空 · 角色列表</td><td class="bad" style="text-decoration:line-through;text-decoration-color:rgb(158 27 50 / 45%)">还没有角色</td><td class="good" style="font-weight:500">还没有角色 · 创建第一个，或去发现页逛逛</td><td style="color:var(--ink2)">只说没有等于把人堵死；补一个能立刻做的动作</td></tr><tr><td style="white-space:nowrap;color:var(--ink2)">空 · 收藏</td><td class="bad" style="text-decoration:line-through;text-decoration-color:rgb(158 27 50 / 45%)">还没有收藏的角色</td><td class="good" style="font-weight:500">收藏过的角色会出现在这里</td><td style="color:var(--ink2)">说清楚「将来会有什么」，比重复「没有」有用</td></tr><tr><td style="white-space:nowrap;color:var(--ink2)">空 · 流水</td><td class="bad" style="text-decoration:line-through;text-decoration-color:rgb(158 27 50 / 45%)">暂无交易记录</td><td class="good" style="font-weight:500">还没有收支记录</td><td style="color:var(--ink2)">「暂无」是公文腔；口语里没人这么说话</td></tr><tr><td style="white-space:nowrap;color:var(--ink2)">空 · 榜单</td><td class="bad" style="text-decoration:line-through;text-decoration-color:rgb(158 27 50 / 45%)">暂无上榜角色</td><td class="good" style="font-weight:500">本期还没有角色上榜</td><td style="color:var(--ink2)">补上时间范围，否则用户以为功能坏了</td></tr><tr><td style="white-space:nowrap;color:var(--ink2)">空 · 简介</td><td class="bad" style="text-decoration:line-through;text-decoration-color:rgb(158 27 50 / 45%)">暂无简介</td><td class="good" style="font-weight:500">这位创作者还没有写简介</td><td style="color:var(--ink2)">主语说清楚是谁没写，避免读成系统故障</td></tr><tr><td style="white-space:nowrap;color:var(--ink2)">错 · 通用</td><td class="bad" style="text-decoration:line-through;text-decoration-color:rgb(158 27 50 / 45%)">加载失败</td><td class="good" style="font-weight:500">没能加载出来 · 重试</td><td style="color:var(--ink2)">失败要给出口；标题不吓人，动作在按钮上</td></tr><tr><td style="white-space:nowrap;color:var(--ink2)">错 · 网络</td><td class="bad" style="text-decoration:line-through;text-decoration-color:rgb(158 27 50 / 45%)">网络异常，请稍后重试</td><td class="good" style="font-weight:500">网络似乎开小差了，稍后再试一次</td><td style="color:var(--ink2)">「异常」是给工程师看的；用户要的是「不是我的错，可以再试」</td></tr><tr><td style="white-space:nowrap;color:var(--ink2)">错 · 兜底</td><td class="bad" style="text-decoration:line-through;text-decoration-color:rgb(158 27 50 / 45%)">请稍后重试</td><td class="good" style="font-weight:500">稍后再试一次 · 若一直失败请把错误码发给我们</td><td style="color:var(--ink2)">孤立的「请稍后重试」不提供任何信息</td></tr>
+  </table>
+
+  <h2 class="sh2">落地方式</h2>
+  <p class="note">这 86 条不能靠人肉逐处改 —— 改完还会散回去。做法是抽一个文案常量模块，
+    按<b>场景</b>而不是按页面组织（<code>empty.characters</code> / <code>error.network</code>），
+    页面只引用键名。散在 JSX 里的字面量随每一页的迁移批次一起收编；
+    收完之后加一条守卫：App 页面里不许再出现裸写的「暂无」。<br><br>
+    ⚠ 需要你拍板的一处：错误态要不要一直显示错误码。现在 <code>AppErrorState</code> 默认显示
+    <code>ERR · LOAD_FAILED</code>。显示的好处是用户报错时能带上，坏处是普通用户会被这行字吓到。
+    折中方案是平时收起、长按错误卡才显示 —— 但那等于没人找得到。我倾向保持显示。</p>
+</div>
+</x-dc>
+</body>
+</html>
