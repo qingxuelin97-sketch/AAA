@@ -221,6 +221,9 @@ match(mainSource, /import '\.\/styles\/web-lumen-tokens\.css';[\s\S]*import '\.\
 const perfSource = await read('./src/perf.js');
 doesNotMatch(perfSource, /if \(!isAppMode\(\) \|\| getPerfPref/, 'adaptive perf degradation must cover the web shell too');
 
+// 运行时由 JS setProperty 写入的令牌集合：第 15 与第 16 条共用，只收集一次。
+let runtimeSet = new Set();
+
 /* ---- 15. 不得引用从未定义的自定义属性 ---- */
 // 未定义的自定义属性在**计算期**失效：`background: var(--nope)` 不是「忽略这条声明」，
 // 而是整条属性回落到初始值 —— background 变透明、border 塌成 0px none。
@@ -254,7 +257,6 @@ doesNotMatch(perfSource, /if \(!isAppMode\(\) \|\| getPerfPref/, 'adaptive perf 
   }
   // JS 在运行时 setProperty 的令牌：从源码里实测收集，不写死名单（免得清单腐烂）。
   const jsDirs = ['./src/', './src/components/', './src/pages/', './src/chat/'];
-  const runtimeSet = new Set();
   for (const d of jsDirs) {
     const base = new URL(d, import.meta.url);
     let entries = [];
@@ -270,6 +272,143 @@ doesNotMatch(perfSource, /if \(!isAppMode\(\) \|\| getPerfPref/, 'adaptive perf 
     .sort();
   ok(dangling.length === 0,
     `stylesheets must not reference undefined custom properties without a fallback (a typo silently renders the element transparent): ${dangling.map((k) => `${k} in ${[...usedWithoutFallback.get(k)].join('/')}`).join(', ')}`);
+}
+
+/* ---- 16. 令牌必须在**它所在的壳里**有定义（按壳分区） ---- */
+// 第 15 条把全部 CSS 的定义汇成一个池，于是有一整类缺陷它天生看不见：
+// 令牌确实「在某个文件里定义过」，但那个文件**在这个壳里根本不加载**。
+//
+// 双壳的加载链是不对称的：
+//   · client/src/styles.css 的 @import 链 —— 两个壳都加载；
+//   · client/src/styles/app-entry.js 的 import 链 —— 只有 App 壳（动态引入）。
+// 而 app-shell / app-elevated / app-renov / app-motion 四个文件挂在**前者**，
+// 也就是说它们在 Web 壳里也生效，可它们大量引用只在 app-entry 链里定义的 --ix-*。
+// 未定义的自定义属性在计算期让整条声明回落到初始值 —— background 变透明、
+// border 塌成 0px none，不报错不警告。这正是第 15 条给不出答案的那一类。
+//
+// 判定按「文件在哪个壳加载」× 「选择器在哪个壳能命中」求交：
+//   选择器含 [data-app="1"] ⇒ 只在 App 命中；含 :not([data-app="1"]) ⇒ 只在 Web；
+//   两者都没有 ⇒ 两壳都命中。定义与引用各自算一次，引用的壳位必须被定义的壳位盖住。
+// 两条链都从源文件解析，不写死清单 —— 写死的清单迟早跟真实 import 顺序脱节。
+{
+  const APP = 1, WEB = 2, BOTH = APP | WEB;
+  const shellName = (m) => (m === BOTH ? '两壳' : m === APP ? 'App 壳' : 'Web 壳');
+
+  // —— 两条加载链：从源文件解析 ——
+  // 两壳链其实有**两条**入口，第一版只解析了 styles.css 就把 web-lumen-* 全判成
+  // 未定义 —— main.jsx 直接 import 的那九个 lumen 文件也是两壳都加载的。
+  const stylesCss = await readFile(new URL('./src/styles.css', import.meta.url), 'utf8');
+  const mainJsx = await readFile(new URL('./src/main.jsx', import.meta.url), 'utf8');
+  const entryJs = await readFile(new URL('./src/styles/app-entry.js', import.meta.url), 'utf8');
+  const bothChain = [
+    ...[...stylesCss.matchAll(/@import\s+'\.\/styles\/([\w-]+\.css)'/g)].map((m) => m[1]),
+    ...[...mainJsx.matchAll(/^\s*import\s+'\.\/styles\/([\w-]+\.css)'/gm)].map((m) => m[1]),
+  ];
+  const appChain = [...entryJs.matchAll(/^\s*import\s+'\.(?:\/|\.\/chat\/)([\w/-]+\.css)'/gm)].map((m) => m[1].replace(/^\//, ''));
+  ok(bothChain.length >= 15, `shell partition: 两壳加载链没解析全（拿到 ${bothChain.length} 个，应含 styles.css 的 8 个 + main.jsx 的 9 个 lumen）`);
+  ok(bothChain.includes('web-lumen-tokens.css'), 'shell partition: main.jsx 直接 import 的 lumen 令牌文件必须算进两壳链');
+  ok(appChain.length >= 12, `shell partition: app-entry.js 的 import 链没解析出来（拿到 ${appChain.length} 个）`);
+  // 这四个文件挂在两壳链上却是 app-* 命名 —— 泄漏面的本体，钉住它免得悄悄挪走
+  for (const f of ['app-shell.css', 'app-elevated.css', 'app-renov.css', 'app-motion.css']) {
+    ok(bothChain.includes(f), `shell partition: ${f} 应当仍在 styles.css 链上（本条守卫的前提）`);
+  }
+
+  const fileMask = new Map();
+  for (const f of bothChain) fileMask.set('styles/' + f, BOTH);
+  for (const f of appChain) fileMask.set(f.includes('/') ? f : 'styles/' + f, APP);
+
+  // —— 选择器上下文扫描：剥注释后按花括号配对，记住每处声明所在的选择器 ——
+  // [data-theme="dark"] 也是 Web 专属，但不是靠 data-app 围栏 —— 是运行时不变量：
+  // theme.js 的 resolveTheme() 在 App 壳里无条件返回 'light'，所以 App 的
+  // <html> 上永远不会出现 data-theme="dark"。下面把这个前提**断言住**，
+  // 免得哪天 App 重开深色而这里还在按「深色规则 App 命中不了」放行。
+  const themeJs = await readFile(new URL('./src/theme.js', import.meta.url), 'utf8');
+  ok(/if\s*\(\s*isAppMode\(\)\s*\)\s*return\s*'light'/.test(themeJs),
+    'shell partition: theme.js 必须仍然让 App 壳恒定浅色 —— 第 16 条把 [data-theme="dark"] 当作 Web 专属正是基于这一条；App 重开深色时必须回来重算');
+  const selMask = (sel) => {
+    if (/:not\(\s*\[data-app="1"\]\s*\)/.test(sel)) return WEB;
+    if (/\[data-app="1"\]/.test(sel)) return APP;
+    if (/\[data-theme="dark"\]/.test(sel)) return WEB;
+    return BOTH;
+  };
+  const scan = (src) => {
+    const out = [];                        // { name, kind: 'def'|'use', mask }
+    const ctx = [];
+    let buf = '';
+    let pos = 0;
+    const marks = [];                      // [offset, maskAtThatPoint]
+    while (pos < src.length) {
+      const c = src[pos];
+      if (c === '{') { ctx.push(buf.trim()); buf = ''; marks.push([pos, ctx.slice()]); }
+      else if (c === '}') { ctx.pop(); buf = ''; marks.push([pos, ctx.slice()]); }
+      else if (c === ';') buf = '';
+      else buf += c;
+      pos += 1;
+    }
+    const maskAt = (off) => {
+      let cur = [];
+      for (const [o, st] of marks) { if (o > off) break; cur = st; }
+      let m = BOTH;
+      for (const sel of cur) { if (sel.startsWith('@')) continue; m &= selMask(sel); }
+      return m || BOTH;                     // 交出 0 说明选择器自相矛盾，按两壳保守处理
+    };
+    for (const m of src.matchAll(/(?:^|[;{\s])(--[\w-]+)\s*:/g)) out.push({ name: m[1], kind: 'def', mask: maskAt(m.index) });
+    for (const m of src.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)) out.push({ name: m[1], kind: 'use', mask: maskAt(m.index) });
+    return out;
+  };
+
+  const defMask = new Map();
+  const useMask = new Map();
+  const useWhere = new Map();
+  for (const [rel, fmask] of fileMask) {
+    let src;
+    try { src = await readFile(new URL('./src/' + rel, import.meta.url), 'utf8'); } catch { continue; }
+    src = src.replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const it of scan(src)) {
+      const m = it.mask & fmask;
+      if (!m) continue;
+      const bag = it.kind === 'def' ? defMask : useMask;
+      bag.set(it.name, (bag.get(it.name) || 0) | m);
+      if (it.kind === 'use') {
+        // 记到「文件 → 壳位」而不是一个扁平集合：报错时只列**真的在缺失那个壳里**
+        // 用到它的文件，否则会把 App 专属文件也列进 Web 壳的定位里，误导排查。
+        if (!useWhere.has(it.name)) useWhere.set(it.name, new Map());
+        const w = useWhere.get(it.name);
+        w.set(rel, (w.get(rel) || 0) | m);
+      }
+    }
+  }
+
+  // 运行时由 JS 写进行内样式的令牌沿用第 15 条的口径（那一段已经实测收集过）
+  const leaks = [];
+  for (const [name, um] of useMask) {
+    if (runtimeSet.has(name)) continue;
+    const dm = defMask.get(name) || 0;
+    const missing = um & ~dm;
+    if (!missing) continue;
+    const where = [...useWhere.get(name)].filter(([, fm]) => fm & missing).map(([f]) => f);
+    leaks.push(`${name}（在${shellName(missing)}用到但那个壳里没定义：${where.slice(0, 3).join(' / ')}${where.length > 3 ? ` 等 ${where.length} 处` : ''}）`);
+  }
+  // —— 存量基线：只许减，不许增 ——
+  // 这条守卫刚立起来时仓里有 6 笔存量泄漏，全部是双壳加载的 app-* 样式表引用了
+  // App 专属链里定义的令牌。它们是真缺陷（对应声明在 Web 壳里静默回落到初始值），
+  // 但不能靠一次提交全修完 —— 修法是把规则围到正确的壳里，属于逐页迁移的活。
+  // 所以这里冻成基线：**新增一笔就报错**，存量随每一页的迁移逐条销账。
+  // 销账时直接从这张表里删名字；表清空了就把这段和 KNOWN_LEAKS 一起删掉。
+  const KNOWN_LEAKS = new Set([
+    // app-shell.css 在无围栏选择器里读 --app-top（定义在 App 专属的 app-runtime.css）
+    '--app-top',
+    // app-elevated / app-renov 在无围栏选择器里读 --hy-spring（定义在 App 专属层）
+    '--hy-spring',
+    // app-renov 读 chat/chat-app.css 定义的玻璃配色四件套（同为 App 专属链）
+    '--hy-cg-bg', '--hy-cg-blur', '--hy-cg-brd', '--hy-cg-sh',
+  ]);
+  const fresh = leaks.filter((l) => !KNOWN_LEAKS.has(l.slice(0, l.indexOf('（'))));
+  const fixed = [...KNOWN_LEAKS].filter((n) => !leaks.some((l) => l.startsWith(n + '（')));
+  ok(fresh.length === 0,
+    `custom properties must be defined in EVERY shell that can reach them — a stylesheet loaded in both shells referencing a shell-exclusive token renders that declaration as its initial value (transparent background, collapsed border), silently: ${fresh.sort().join('; ')}`);
+  ok(fixed.length === 0,
+    `shell partition: 这些令牌已经不再泄漏，请从 KNOWN_LEAKS 里删掉（基线只许减，留着会让它慢慢变成一张免检名单）：${fixed.join(', ')}`);
 }
 
 console.log(`web invariants: ${passed}/${passed} passed`);

@@ -44,6 +44,8 @@
     "test:integrity": "node server/integrity-test.mjs",
     "test:safe-url": "node server/safe-url-test.mjs",
     "test:app": "node client/app-test.mjs",
+    "test:smoke": "node scripts/appsmoke.mjs",
+    "test:pixels": "node scripts/appdiff.mjs",
     "test:web": "node client/web-test.mjs",
     "test:app:e2e": "npm run build:static && node server/quiet-aqua-e2e.mjs",
     "test:wb-vars": "node server/wb-vars-test.mjs",

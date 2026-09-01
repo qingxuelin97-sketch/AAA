@@ -42,7 +42,10 @@ export default class ErrorBoundary extends React.Component {
       }
       // 默认降级 UI：三端自适应
       return (
-        <div style={{
+        // app-crash：给崩溃页一个稳定的机器可读标记。scripts/appsmoke.mjs 靠它判定
+        // 「这一路由挂载后是不是掉进了错误边界」—— 此前只能靠匹配文案，改一句话就瞎。
+        // 样式仍然全部内联：错误边界不能依赖任何可能一起崩掉的样式层，类名只作标记。
+        <div className="app-crash" style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           minHeight: '100vh', padding: '24px', textAlign: 'center',
           fontFamily: 'system-ui, -apple-system, sans-serif',

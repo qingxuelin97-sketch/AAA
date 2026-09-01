@@ -1,7 +1,12 @@
 // App 模式像素自证闸（S7-G8 qa→lg 令牌迁移专用，通用于任何「零视觉重构」）。
 //   1) node scripts/appdiff.mjs --baseline   # 迁移前：构建产物截图存为基线
 //   2) node scripts/appdiff.mjs              # 迁移后：重截并逐像素比对，非 0 即败
-// 比对 9 路由 × light/dark/lite × 390×844。基线目录不入库（.tmp）。
+// 取样面：深度网 11 路由 × 5 个状态档 + 广度网 32 路由 × 1 档 = 87 帧，390×844 整页。
+// 基线目录不入库（.tmp）。
+// ⚠ 已知取样特性：路由之间是**同文档哈希导航**（goto 换 hash 不重新加载），
+//   所以 SPA 状态会跨路由累积 —— 这与真实用户在应用内跳转一致，是有意保留的。
+//   代价是「前一页把后一页带坏」这类问题在这里看不出归属；那一类由
+//   scripts/appsmoke.mjs 负责（它每条路由都真重载）。
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -31,6 +36,22 @@ const serve = () => new Promise((resolve) => {
 // #/chats/1 —— 对话详情页此前完全不在像素自证网内，而它是改动最密集的一页
 //（消息渲染、变体翻页器、失败卡片、渲染窗口全在这里）。
 const ROUTES = ['#/today', '#/', '#/messages', '#/chats/1', '#/me', '#/wallet', '#/achievements', '#/events', '#/insights', '#/settings', '#/app-controls'];
+// —— 广度网：只在第一档（light/high）跑 ——
+// 上面 11 条是**深度网**：五个状态档全跑，因为它们覆盖了全部材质类型
+//（玻璃面、渐变舱、列表、宫格、沉浸页），状态档的行为差异在那里已经取满。
+// 但 App.jsx 一共有 52 条路由，11 条只占 21% —— 对「改动面覆盖所有页面」的
+// 重构来说，这个取样面证不了「别的页面没被带坏」。
+// 广度优先于档位：下面这些路由各跑一档就够了，问的是「这一页的像素动没动」，
+// 而不是「这一页在弱机档下怎么退化」。5 档 × 43 条要跑十几分钟，
+// 每批都跑的闸门一旦太慢就会被跳过，那等于没有闸门。
+const BREADTH_ROUTES = [
+  '#/discover', '#/scripts', '#/script/1', '#/community', '#/search', '#/tags',
+  '#/announcements', '#/leaderboard', '#/gacha', '#/parliament', '#/draw', '#/friends',
+  '#/vip', '#/groups', '#/group/1', '#/theater', '#/theater/1', '#/library',
+  '#/worldbooks', '#/worldbook/1', '#/atelier', '#/atelier/1', '#/studio', '#/favorites',
+  '#/notifications', '#/character/1', '#/publish', '#/profile', '#/user/1',
+  '#/help', '#/features', '#/admin',
+];
 // 档位说明：
 //   · dark 已删除 —— theme.js:13 证明 App 壳恒返回 light，dark 基线与 light 逐字节
 //     相同，占掉 1/3 运行时间却换来 0 覆盖。
@@ -125,7 +146,9 @@ for (const mode of MODES) {
     }
   }, mode);
   const page = await ctx.newPage();
-  for (const route of ROUTES) {
+  // 广度网只挂在第一档上（MODES[0] = light/high）
+  const routes = mode === MODES[0] ? [...ROUTES, ...BREADTH_ROUTES] : ROUTES;
+  for (const route of routes) {
     await page.goto(`http://127.0.0.1:4275/?app=1${route}`);
     await page.waitForTimeout(1700);
     await page.evaluate(() => document.fonts?.ready?.then(() => {}));
